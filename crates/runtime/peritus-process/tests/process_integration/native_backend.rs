@@ -56,7 +56,6 @@ struct TestBackend {
     probe: LifecycleProbe,
     helper: String,
     fail_prepare: bool,
-    fail_preflight: bool,
     fail_release: bool,
     invalidate_prepared_observation: bool,
     limit_on_poll: bool,
@@ -70,7 +69,6 @@ impl TestBackend {
             probe,
             helper: native_helper_binary(),
             fail_prepare: false,
-            fail_preflight: false,
             fail_release: false,
             invalidate_prepared_observation: false,
             limit_on_poll: false,
@@ -88,24 +86,6 @@ impl NativeSandboxBackend for TestBackend {
 
     fn platform(&self) -> NativePlatform {
         NativePlatform::current()
-    }
-
-    fn validate_preparation_capacity(
-        &self,
-        _execution: &peritus_process::ExecutionPlan,
-        _sandbox: &peritus_sandbox::CheckedSandboxPlan,
-        _admission: &BackendAdmission,
-    ) -> Result<(), ProcessError> {
-        if self.fail_preflight {
-            Err(ProcessError::new(
-                ErrorCode::Unsupported,
-                ProcessOperation::Validate,
-                RecoveryClass::SelectBackend,
-                "selected native capacity unavailable",
-            ))
-        } else {
-            Ok(())
-        }
     }
 
     fn prepare(

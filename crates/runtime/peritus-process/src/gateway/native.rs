@@ -42,21 +42,15 @@ impl ExecutionGateway {
             action_digest: validation.action_digest,
             _plan_digest: plan.digest(),
         };
-        backend.validate_preparation_capacity(&plan, sandbox_plan, admission)?;
         self.store.consume(&plan, validation.action_digest, validation.lease_claim)?;
         let context = AuthorizedPreparationContext::new(&plan, sandbox_plan, admission);
         let mut session = match backend.prepare(context) {
             Ok(session) => session,
             Err(error) => {
-                // A failed preparation has no returned session to release. Accept only explicit
-                // backend cleanup evidence; Rust drops alone cannot establish completion.
-                if let Err(persistence) = supervisor::record_preparation_failure(
-                    &self.store,
-                    &plan,
-                    error.preparation_cleanup() == Some(true),
-                ) {
-                    return Err(persistence.with_source(error));
-                }
+                // A failed preparation cannot return an owned session whose release can be
+                // checked. Preserve incomplete cleanup evidence instead of inferring success from
+                // Rust drops whose cleanup errors are intentionally unobservable here.
+                supervisor::record_preparation_failure(&self.store, &plan, false)?;
                 return Err(error);
             }
         };

@@ -1,7 +1,5 @@
 //! Platform-neutral Windows compiler, protocol, and recovery contracts.
 
-#[path = "contracts/selected_controls.rs"]
-mod selected_controls;
 mod support;
 
 use std::{
@@ -76,21 +74,13 @@ fn external_inference_inputs_require_explicit_admission_and_cannot_be_writable()
             .is_err()
         );
     }
-    let nested = policy
-        .clone()
-        .with_read_only_inputs(vec![WindowsPath::new("C:/workspace/private").unwrap()])
-        .unwrap();
-    let readonly_acl = compile_acl_plan(
-        &read,
-        &nested.with_read_only_inputs(vec![WindowsPath::new("D:/models").unwrap()]).unwrap(),
-        "S-1-15-2-123",
-    )
-    .unwrap();
     assert!(
-        readonly_acl.entries().iter().any(|entry| entry.effect() == RuleEffect::Deny
-            && entry.access().contains(FileOperation::Write))
+        policy
+            .clone()
+            .with_read_only_inputs(vec![WindowsPath::new("C:/workspace/private").unwrap()])
+            .is_err()
     );
-    assert!(policy.with_read_only_inputs(vec![WindowsPath::new("C:/").unwrap()]).is_ok());
+    assert!(policy.with_read_only_inputs(vec![WindowsPath::new("C:/").unwrap()]).is_err());
 }
 
 #[test]

@@ -122,9 +122,7 @@ impl ControlOperation {
                     | crate::control::QueueIntent::Hold { .. }
                     | crate::control::QueueIntent::Withdraw(_)
                     | crate::control::QueueIntent::Reorder(_)
-                    | crate::control::QueueIntent::Move { .. }
             ) | ControlIntent::SetBrief { .. }
-                | ControlIntent::AcceptBriefProposal { .. }
                 | ControlIntent::ClearGoal { .. }
                 | ControlIntent::RenameConversation { .. }
                 | ControlIntent::PinConversation { .. }

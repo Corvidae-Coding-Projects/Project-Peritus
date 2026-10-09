@@ -24,8 +24,7 @@ Use `--help` for path/endpoint overrides.
 - `daemon.rs`: native conversation, model, status, and run protocol adapter.
 - `files.rs`: project-confined directory pages and UTF-8 text previews.
 - `git.rs`: explicit repository binding and real argument-vector Git operations.
-- `processes.rs`: exact durable command bindings, retained spool ranges, completion and cancellation.
-- `terminal.rs`: installed CLI console input, resize, output ranges, and termination.
+- `terminal.rs`: retained installed CLI processes, bounded output, input/resize/termination.
 
 Agent execution and product policy remain daemon-owned. Native and CLI
 capability routing, recovery behavior, limits, and verification scope are

@@ -88,25 +88,6 @@ impl ResourceControlPlan {
         Self { controls }
     }
 
-    /// Selects only resource ceilings actually requested by the checked plan.
-    ///
-    /// # Errors
-    /// Rejects any selected resource without proven enforcement.
-    pub fn select_checked_plan(
-        plan: &CheckedSandboxPlan,
-        levels: [EnforcementLevel; 8],
-    ) -> Result<Self, crate::WindowsError> {
-        let controls = Self::from_checked_plan(plan, levels);
-        if controls.is_complete() {
-            Ok(controls)
-        } else {
-            Err(crate::error::unsupported(
-                crate::WindowsOperation::Prepare,
-                "selected resource ceiling has no proven enforcement owner",
-            ))
-        }
-    }
-
     pub(crate) const fn from_controls(controls: [ResourceControl; 8]) -> Self {
         Self { controls }
     }
@@ -127,14 +108,7 @@ impl ResourceControlPlan {
     #[must_use]
     pub fn is_complete(self) -> bool {
         self.controls.iter().all(|control| {
-            (control.ceiling() == 0
-                && matches!(
-                    control.kind(),
-                    SandboxResourceKind::WallTime
-                        | SandboxResourceKind::CpuTime
-                        | SandboxResourceKind::Output
-                ))
-                || matches!(control.level(), EnforcementLevel::Hard | EnforcementLevel::Supervisor)
+            matches!(control.level(), EnforcementLevel::Hard | EnforcementLevel::Supervisor)
         })
     }
 }

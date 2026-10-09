@@ -83,10 +83,6 @@ pub enum AppResponsePayload {
     WorkbenchMemory(crate::WorkbenchMemory),
     /// Exact read-only initialization observations, patch diff, and unverified command inventory.
     InitProposal(crate::InitProposal),
-    /// Exact complete initialization manifest and review artifact identities.
-    InitArtifactProposal(crate::InitArtifactProposal),
-    /// One exact bounded byte page of a retained initialization review.
-    InitArtifactPage(crate::InitArtifactPage),
     /// Effective host-intersected permission inspection with provenance.
     WorkbenchPermissions(crate::WorkbenchPermissions),
     /// Exact local deterministic prompt-view proposal awaiting explicit confirmation.
@@ -121,10 +117,6 @@ pub enum AppResponsePayload {
     WorkbenchFiles(crate::WorkbenchFilePage),
     /// Exact user-confirmed fields and immutable input provenance.
     WorkbenchBrief(crate::WorkbenchBrief),
-    /// Revision-bound brief metadata with complete inventory counts.
-    WorkbenchBriefPage(crate::WorkbenchBriefPage),
-    /// Exact bounded UTF-8 bytes of an immutable proposal body.
-    WorkbenchBriefProposal(crate::WorkbenchBriefProposalPage),
     /// Exact content-free source manifest or eligible-input metadata page.
     WorkbenchContext(crate::WorkbenchContextPage),
     /// Exact bounded page of pending or historical immutable inputs.

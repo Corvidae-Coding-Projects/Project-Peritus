@@ -83,10 +83,6 @@ struct Inner {
     command_recoveries: std::sync::Mutex<BTreeSet<RunId>>,
     model_catalogs: catalog::ModelCatalogs,
     image_decodes: Arc<tokio::sync::Semaphore>,
-    file_reads: Arc<tokio::sync::Semaphore>,
-    file_previews: std::sync::Mutex<workbench::files::FilePreviewCache>,
-    file_refreshes:
-        std::sync::Mutex<BTreeMap<[u8; 16], workbench::files::refresh::RefreshSnapshot>>,
     host_permissions: permissions::HostPermissionCatalog,
     preview_processes: std::sync::Mutex<BTreeMap<ControlOperationId, PreviewProcess>>,
     preview_capture: PreviewCaptureHost,
@@ -126,7 +122,6 @@ struct PreviewOperationRecord {
 struct RunRecord {
     interaction: interaction::InteractionOptions,
     goal_resume: Option<peritus_product_runner::control::OperationId>,
-    message_launches: Vec<([u8; 16], u16)>,
     request: ProductRunRequest,
     snapshot: ProductRunSnapshot,
     cancelled: Arc<AtomicBool>,
@@ -190,7 +185,6 @@ impl ProductRunService {
                 RunRecord {
                     interaction,
                     goal_resume: None,
-                    message_launches: Vec::new(),
                     request: request.clone(),
                     snapshot: snapshot.clone(),
                     cancelled: Arc::clone(&cancelled),

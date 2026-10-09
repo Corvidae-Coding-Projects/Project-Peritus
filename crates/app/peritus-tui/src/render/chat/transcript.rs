@@ -136,7 +136,7 @@ fn wrapped_rows(lines: Vec<Line<'static>>, width: usize) -> Vec<OutputRow> {
         return Vec::new();
     }
     let mut result = Vec::new();
-    for line in lines.into_iter().flat_map(split_logical_line) {
+    for line in lines {
         let style = line.style;
         if line.width() <= width {
             result.push(OutputRow { line, hard_break: true });
@@ -168,23 +168,4 @@ fn wrapped_rows(lines: Vec<Line<'static>>, width: usize) -> Vec<OutputRow> {
         result.push(OutputRow { line: current, hard_break: true });
     }
     result
-}
-
-fn split_logical_line(line: Line<'static>) -> Vec<Line<'static>> {
-    if !line.spans.iter().any(|span| span.content.contains('\n')) {
-        return vec![line];
-    }
-    let mut lines = Vec::new();
-    let mut current = Line::default().style(line.style);
-    for span in line.spans {
-        for (index, part) in span.content.split('\n').enumerate() {
-            if index > 0 {
-                lines.push(current);
-                current = Line::default().style(line.style);
-            }
-            current.spans.push(Span::styled(part.to_owned(), span.style));
-        }
-    }
-    lines.push(current);
-    lines
 }

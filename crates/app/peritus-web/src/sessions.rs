@@ -13,13 +13,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
-pub fn title(value: &str) -> Result<peritus_app_protocol::ConversationTitle> {
-    peritus_app_protocol::ConversationTitle::new(value.to_owned()).map_err(|_| problem(format!(
-        "Use a nonblank title with no control characters and at most {} UTF-8 bytes (received {} bytes)",
-        peritus_app_protocol::MAX_CONVERSATION_TITLE_BYTES, value.len(),
-    )))
-}
-
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Settings {
@@ -115,13 +108,43 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
     };
     let conversation = binding.conversation();
     let interaction = binding.interaction();
-    open_workbench(
-        app,
-        &hex(conversation.conversation().as_bytes()),
-        id,
-        &hex(interaction.snapshot().workspace_id().as_bytes()),
-    )
-    .await
+    let workspace_id = hex(interaction.snapshot().workspace_id().as_bytes());
+    let project = app
+        .snapshot()?
+        .projects
+        .into_iter()
+        .find(|project| {
+            daemon::facts(app, project).is_ok_and(|facts| facts["workspace"]["id"] == workspace_id)
+        })
+        .ok_or_else(|| problem("Open this run's project before opening its conversation."))?;
+    app.update(|state| {
+        let project = state
+            .projects
+            .iter_mut()
+            .find(|p| p.id == project.id)
+            .ok_or_else(|| problem("Project missing"))?;
+        project.closed = false;
+        if let Some(session) = state.sessions.iter_mut().find(|s| s.run == id) {
+            if session.project != project.id {
+                return Err(problem("Run belongs to another project"));
+            }
+            session.closed = false;
+            session.conversation = hex(conversation.conversation().as_bytes());
+            return Ok(json!(session));
+        }
+        let session = Session {
+            id: crate::state::id()?,
+            conversation: hex(conversation.conversation().as_bytes()),
+            run: id.into(),
+            project: project.id.clone(),
+            parent: None,
+            title: interaction.snapshot().task().chars().take(60).collect(),
+            closed: false,
+            settings: Settings::default(),
+        };
+        state.sessions.push(session.clone());
+        Ok(json!(session))
+    })
 }
 
 pub async fn open_workbench(
@@ -186,17 +209,4 @@ pub async fn open_workbench(
         state.sessions.push(session.clone());
         Ok(json!(session))
     })
-}
-
-#[cfg(test)]
-mod title_tests {
-    #[test]
-    fn title_uses_the_native_utf8_byte_contract() {
-        assert!(super::title(&"é".repeat(128)).is_ok());
-        let error = super::title(&"é".repeat(129)).unwrap_err();
-        assert!(error.0.contains("258 bytes"));
-        for invalid in ["", "   ", "title\nnext", "\x1b[31m"] {
-            assert!(super::title(invalid).is_err());
-        }
-    }
 }

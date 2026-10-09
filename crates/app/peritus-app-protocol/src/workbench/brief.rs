@@ -9,11 +9,9 @@ use peritus_types::Sha256Digest;
 #[cfg(test)]
 mod tests;
 
-mod pages;
-pub use pages::*;
-
 /// Maximum explicit fields in one task brief.
 pub const MAX_WORKBENCH_BRIEF_FIELDS: usize = 4;
+/// Maximum exact agent reply candidates shown without silent truncation.
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }

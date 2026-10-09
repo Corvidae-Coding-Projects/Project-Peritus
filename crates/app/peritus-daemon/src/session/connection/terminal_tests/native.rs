@@ -89,11 +89,7 @@ async fn backpressured_attachment_preserves_live_process_and_healthy_sibling() {
     registry.register_preview(actor, session, lease).unwrap();
     registry.attach(actor, session, slow, 1).unwrap();
     registry.attach(actor, session, healthy, 8192).unwrap();
-    #[cfg(windows)]
-    let burst_input = b"burst\r".as_slice();
-    #[cfg(not(windows))]
-    let burst_input = b"burst\n".as_slice();
-    control.write_stdin(burst_input.to_vec()).unwrap();
+    control.write_stdin(b"burst\n".to_vec()).unwrap();
     wait_for("BURST DONE");
     let (stream, peer) = tokio::io::duplex(1024 * 1024);
     let mut frames = crate::AppFrameStream::new(stream, AppProtocolLimits::PRODUCTION);
@@ -126,10 +122,6 @@ async fn backpressured_attachment_preserves_live_process_and_healthy_sibling() {
         }
     }
     assert!(String::from_utf8_lossy(&output).contains("BURST DONE"));
-    #[cfg(windows)]
-    let finish_input = b"finish\r".as_slice();
-    #[cfg(not(windows))]
-    let finish_input = b"finish\n".as_slice();
-    control.write_stdin(finish_input.to_vec()).unwrap();
+    control.write_stdin(b"finish\n".to_vec()).unwrap();
     registry.shutdown().unwrap();
 }

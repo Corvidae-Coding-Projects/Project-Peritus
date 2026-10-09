@@ -1,0 +1,3 @@
+# FINDING-0015: Aliased Windows protected roots could evade ACL projection
+
+A reviewed predecessor projected configured protected paths lexically before validating their native identity. An existing short-name or other alias could therefore omit the intended deny from the actual object. The final candidate resolves every protected root through the native existing-or-parent identity path before projection and fails before any ACL mutation when identity is ambiguous. Native and fixture coverage exercises existing roots, missing final components, rejected multi-level missing paths, optional real 8.3 aliases, exact deny installation, and reversal.

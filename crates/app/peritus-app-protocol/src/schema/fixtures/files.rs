@@ -64,8 +64,7 @@ fn import_cases(
             text: WorkbenchInputText::new("Use this immutable import".to_owned()).expect("caption"),
         },
     );
-    let mut cases = message_cases(scope, &preview, limits)?;
-    cases.extend([
+    Ok(vec![
         encoded(
             "minimal-workbench-file-import-upload",
             FixtureClass::Minimal,
@@ -101,65 +100,6 @@ fn import_cases(
             "realistic-workbench-file-import-receipt-query",
             FixtureClass::Realistic,
             &request(AppRequestPayload::QueryWorkbenchReceipt(command)),
-            limits,
-        )?,
-    ]);
-    Ok(cases)
-}
-
-fn message_cases(
-    scope: WorkbenchQuery,
-    preview: &WorkbenchFileImportPreview,
-    limits: CodecLimits,
-) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
-    let artifact = preview.request().artifact();
-    let digest = preview.request().file().digest();
-    let message_preview = WorkbenchFileImportPreview::new(
-        WorkbenchFileImportRequest::new(
-            WorkbenchFileRequest::new(
-                scope,
-                9,
-                "User message".to_owned(),
-                WorkbenchFileRange::All,
-                WorkbenchFileMode::Snapshot,
-                id(61, ProviderProfileId::new),
-                ProductModelChoice::default(),
-            )
-            .expect("message selection"),
-            artifact,
-            WorkbenchFileMetadata::new(digest, 8, (0, 8), digest).expect("whole message"),
-        )
-        .expect("message import"),
-        2,
-        "configured-model".to_owned(),
-    )
-    .expect("message preview");
-    Ok(vec![
-        encoded(
-            "realistic-workbench-message-reference",
-            FixtureClass::Realistic,
-            &request(AppRequestPayload::WorkbenchCommand(WorkbenchCommand::new(
-                id(70, ControlOperationId::new),
-                scope,
-                9,
-                WorkbenchIntent::EnqueueMessage { preview: message_preview.clone() },
-            ))),
-            limits,
-        )?,
-        encoded(
-            "realistic-workbench-message-bundle",
-            FixtureClass::Realistic,
-            &request(AppRequestPayload::WorkbenchCommand(WorkbenchCommand::new(
-                id(71, ControlOperationId::new),
-                scope,
-                9,
-                WorkbenchIntent::EnqueueMessageBundle {
-                    text: WorkbenchInputText::new("Read exact message and attachments".to_owned())
-                        .expect("text"),
-                    message: Some(message_preview),
-                    attachments: vec![preview.clone()],
-                },
-            ))),
             limits,
         )?,
     ])

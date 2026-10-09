@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use peritus_policy::AuthorityInstant;
+#[cfg(not(windows))]
 use peritus_process::TerminalSize;
 use peritus_process::{
     CommandSpec, DeadlinePolicy, EnvironmentPlan, EnvironmentVariable, ExecutionCallerBinding,
@@ -95,6 +96,14 @@ pub(super) fn compile(
     let prepared =
         router.prepare(call).map_err(|error| format!("prepare command call: {error}"))?;
     let environment = environment(request.environment)?;
+    #[cfg(windows)]
+    let io = {
+        // Raw C2 launches cannot supply a contained ConPTY session. Keep interactive input
+        // functional through bounded pipes; restricted daemon launches retain native ConPTY.
+        let _ = (request.rows, request.columns);
+        IoMode::Pipes
+    };
+    #[cfg(not(windows))]
     let io = if request.interactive {
         IoMode::Pty(
             TerminalSize::new(request.rows, request.columns, 0, 0)

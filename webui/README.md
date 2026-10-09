@@ -187,10 +187,10 @@ theme = "nixie"                 # nixie | daylight | blueprint
 density = "comfortable"         # comfortable | compact
 motion = true                   # OS reduced-motion preference still wins
 sound = false
-font_size = 14                  # positive pixels
+font_size = 14                  # 12–22
 font_family = "Barlow, sans-serif"
 mono_family = "Iosevka, monospace"
-explorer_width = 248            # positive pixels
+explorer_width = 248            # 180–480
 controls_visible = true
 explorer_visible = true
 word_wrap = true
@@ -213,8 +213,8 @@ accent = "#efa466"
 
 `Mod` means Ctrl or Command. Shortcut keys name dispatcher commands, with
 `commands` reserved for the directory. Alias names use lowercase letters and
-hyphens; values must be single-line slash commands. Alias and shortcut counts
-are not capped; alias recursion remains bounded. Missing top-level
+hyphens; values must be single-line slash commands. At most 100 shortcuts and
+100 aliases are allowed, and alias recursion is bounded. Missing top-level
 fields use defaults; supplied maps replace their default map. Unknown top-level
 fields and invalid settings are rejected. Color override roles are
 `background`, `panel`, `display`, `text`, `muted`, `accent`, and `line`, using
@@ -262,9 +262,7 @@ its original outcome. On connection failure the client queries that operation
 instead of blindly resending. If an outcome remains uncertain, inspect the
 named run or repository before submitting a new action. These gateway records
 complement the daemon's own receipts; they cannot turn an interrupted Git or
-CLI process into a known successful result. Git commands keep mutation custody
-after an HTTP disconnect and have an explicit cancellation action. Recovery
-observes the original process binding; elapsed time does not authorize replay.
+CLI process into a known successful result.
 
 Explorer edits, ordinary Git actions, and retained CLI processes are explicit
 local-user operations under the gateway account's OS permissions. They are not
@@ -290,17 +288,13 @@ token automatically.
 CLI consoles retain processes while their panel is closed and can be reopened
 with `/consoles`, including after a browser reload. Titles, session bindings, exit
 status, and output are rediscovered from the gateway. **Terminate console** ends
-the exact selected process owner. Output is spooled to disk with saved process
-bindings and byte offsets, and remains inspectable after gateway restart. Ended
-processes release their live observers; there is no console-count gate. A reopened
-saved console does not claim a new live input attachment: open a new console when
-interactive input is unavailable. Closing a browser session tab does not cancel
-daemon-owned work.
+the selected CLI process. Output is held in server memory (1 MiB per console,
+maximum 24 consoles), and gateway shutdown ends those PTYs. Closing a browser session tab
+does not cancel daemon-owned work.
 
 File reads reject canonical paths outside the selected project, including
-outward symlinks. Text previews read version-bound UTF-8 byte ranges directly;
-directory continuations use a stable cached inventory, with explicit refresh.
-Downloads and browser media use raw streaming with byte-range support. Unsupported media
+outward symlinks. Text previews require UTF-8 and are limited to 50 MiB; downloads
+and browser media use raw streaming with byte-range support. Unsupported media
 has a download route. The gateway uses loopback host/origin checks, same-site
 cookies, a per-process API token, and a content security policy for the local
 single-user deployment.
@@ -315,7 +309,7 @@ sandbox policy. All routes retain authentication, canonical path confinement,
 Large text previews use bounded plain-text pages, with complete file access;
 they do not create a highlighted/Markdown DOM for the entire file. Editing
 files over 2 MiB requires a visible performance confirmation, not a reduced
-preview limit. Full-file editing and the text-save endpoint accept up to 50 MiB separately from
+preview limit. The text-save endpoint accepts up to 50 MiB separately from
 the normal 4 MiB action-body limit, and journals hashes rather than file bodies.
 
 ## Focused validation

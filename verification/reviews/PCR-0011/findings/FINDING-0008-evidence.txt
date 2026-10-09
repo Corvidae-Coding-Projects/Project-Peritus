@@ -1,0 +1,11 @@
+failing_candidate=51274d82315682b63a1d0c9e877a17b1d1e9a619
+replacement_candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/windows-512-monitor.md
+bytes=6248
+sha256=edc2f1df59629a632e4b0a92a9600e4f13160f3d08393991ecf55e85a02bdcdd
+/tmp/peritus-final23/windows-512-web-range-tests.log
+bytes=4574
+sha256=569efe893f67542d1e927ac5923ee4d76433dcfa11e824eacb47ff16a4427b04
+/tmp/peritus-final23/windows-512-updater-fix-cross-clippy.log
+bytes=250
+sha256=e1b294a2a5a23b815742bac190ec3b838687b706cedf725ac2d2c1e880b720dc

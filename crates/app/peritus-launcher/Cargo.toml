@@ -15,8 +15,8 @@ categories = ["command-line-utilities", "development-tools"]
 system-package = []
 
 [dependencies]
-fs4.workspace = true
 crossterm.workspace = true
+fs4.workspace = true
 futures-util.workspace = true
 getrandom.workspace = true
 nix = { workspace = true, features = ["process"] }
@@ -35,15 +35,13 @@ peritus-workspace = { version = "=0.0.5", path = "../../runtime/peritus-workspac
 reqwest.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["process"] }
+tokio.workspace = true
 toml.workspace = true
 zeroize.workspace = true
 
-[target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
-process-wrap = { workspace = true, features = ["tokio1", "kill-on-drop"] }
+[dev-dependencies]
+tempfile.workspace = true
 
 [package.metadata.peritus]
 owner = "G4"

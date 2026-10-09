@@ -1,7 +1,5 @@
 //! User-confirmed field edits retain the draft until an exact durable receipt arrives.
 
-mod pages;
-
 use super::{AppModel, AppRequestPayload, Effect, NoticeLevel, PendingRequest, WorkbenchMode};
 use peritus_app_protocol::{
     ControlOperationId, WellKnownProtocolFeature, WorkbenchBrief, WorkbenchBriefField,
@@ -41,9 +39,6 @@ impl AppModel {
         let (action, remainder) = arguments
             .split_once(char::is_whitespace)
             .map_or((arguments, ""), |(action, text)| (action, text.trim()));
-        if self.brief_pages_available() && matches!(action, "next" | "previous" | "show" | "text") {
-            return self.navigate_brief_pages(action, remainder);
-        }
         if action == "accept" {
             let Some((field, proposal)) = remainder.split_once(char::is_whitespace) else {
                 self.notice(
@@ -68,9 +63,6 @@ impl AppModel {
                 );
                 return Vec::new();
             };
-            if self.brief_pages_available() {
-                return self.accept_paged_proposal(field, proposal);
-            }
             let Some(source) =
                 self.chat.workbench.brief.as_ref().filter(|brief| brief.query() == query).and_then(
                     |brief| brief.proposals().iter().find(|source| source.operation() == proposal),
@@ -106,15 +98,6 @@ impl AppModel {
             return Vec::new();
         }
         let Some(query) = self.chat.workbench.selected else { return Vec::new() };
-        self.chat.workbench.brief_page = None;
-        self.chat.workbench.brief_body = None;
-        self.chat.workbench.brief_body_history.clear();
-        if self.brief_pages_available() {
-            return self.request_brief_page(
-                peritus_app_protocol::WorkbenchBriefPageRequest::new(query, 0, 0, 0)
-                    .expect("initial page"),
-            );
-        }
         self.request(
             AppRequestPayload::QueryWorkbenchBrief(query),
             PendingRequest::WorkbenchBrief(query),

@@ -2,10 +2,8 @@
 
 /// Removes active terminal controls from multiline conversational text.
 pub fn sanitize_display_text(text: &str) -> String {
-    let mut sanitizer = TerminalSanitizer::default();
-    let mut tokens = sanitizer.push(text.as_bytes());
-    tokens.extend(sanitizer.finish());
-    tokens
+    TerminalSanitizer::default()
+        .push(text.as_bytes())
         .into_iter()
         .filter_map(|token| match token {
             SafeToken::Character(character) if !character.is_control() => Some(character),
@@ -109,18 +107,6 @@ impl TerminalSanitizer {
         visible
     }
 
-    /// Ends a complete stream or record, exposes incomplete control state, and resets the parser.
-    /// Ordinary chunks must use `push` without finishing so split controls stay inert.
-    pub(crate) fn finish(&mut self) -> Vec<SafeToken> {
-        let mut visible = Vec::new();
-        self.finish_incomplete_utf8(&mut visible);
-        if self.state != EscapeState::Ground {
-            visible.extend("[incomplete terminal control]".chars().map(SafeToken::Character));
-        }
-        self.state = EscapeState::Ground;
-        visible
-    }
-
     fn push_utf8(&mut self, byte: u8, visible: &mut Vec<SafeToken>) {
         if self.utf8_tail.is_empty() && byte.is_ascii() {
             visible.push(SafeToken::Character(char::from(byte)));
@@ -211,26 +197,6 @@ mod tests {
             [SafeToken::Character('\u{fffd}'), SafeToken::Character('a')]
         );
         assert_eq!(inert_preview(b"a\n\x1b", 8), "a↵\\x1b");
-    }
-
-    #[test]
-    fn genuine_end_reports_incomplete_controls_and_next_record_is_visible() {
-        for control in
-            [b"\x1b".as_slice(), b"\x1b[31", b"\x1b]hidden", b"\x1bPpayload", b"\x1b]hidden\x1b"]
-        {
-            for split in 0..=control.len() {
-                let mut parser = TerminalSanitizer::default();
-                assert!(parser.push(&control[..split]).is_empty());
-                assert!(parser.push(&control[split..]).is_empty());
-                assert_eq!(parser.finish(), SafeToken::characters("[incomplete terminal control]"));
-                assert_eq!(parser.push(b"next record"), SafeToken::characters("next record"));
-                assert!(parser.finish().is_empty());
-            }
-        }
-        assert_eq!(
-            super::sanitize_display_text("safe\x1b]hidden"),
-            "safe[incomplete terminal control]"
-        );
     }
 
     impl SafeToken {

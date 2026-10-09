@@ -84,31 +84,13 @@ async fn imports_exact_cli_run_reopens_it_and_rejects_another_workspace() {
                 )),
             )
             .await;
-            let (mut stream, request) = receive_request(&listener).await;
-            let AppRequestPayload::QueryWorkbench(query) = request.payload() else {
-                panic!("query exact title")
-            };
-            assert_eq!(*query, WorkbenchQuery::new(conversation, workspace));
-            let title = ConversationTitle::new("é".repeat(128)).unwrap();
-            write_message(
-                &mut stream,
-                AppMessage::Response(AppResponseEnvelope::new(
-                    request.context(),
-                    request.request_id(),
-                    request.correlation_id(),
-                    AppResponsePayload::Workbench(
-                        WorkbenchSnapshot::new(*query, 1, title, false, false).unwrap(),
-                    ),
-                )),
-            )
-            .await;
         }
     });
     let id = hex(run.as_bytes());
     let imported = sessions::open_run(&app, &id).await.unwrap();
     assert_eq!(imported["run"], id);
     assert_eq!(imported["conversation"], hex(conversation.as_bytes()));
-    assert_eq!(imported["title"], "é".repeat(128));
+    assert_eq!(imported["title"], "CLI conversation");
     let browser_session = imported["id"].as_str().unwrap().to_owned();
     assert_ne!(browser_session, id);
     app.update(|state| {

@@ -21,7 +21,7 @@ mod conversation;
 )]
 pub(crate) use checkpoints::{RewindFaultPoint, inject_rewind_fault};
 mod execution;
-pub(super) mod files;
+mod files;
 mod folder_mutation;
 mod fork;
 mod goal;
@@ -169,7 +169,7 @@ impl ProductRunService {
                 }
                 match permission_host {
                     Some(host) => store.accept_permissions(&operation, host),
-                    None => mapping::proposal::accept(store, &operation, actor, command),
+                    None => store.accept(&operation),
                 }
                 .map(|receipt| (receipt, false))
             })
@@ -259,7 +259,7 @@ impl ProductRunService {
             | WorkbenchIntent::AddArtifactFeedback { .. } => {
                 return self.resolve_preview_receipt(actor, command);
             }
-            WorkbenchIntent::ApplyInitDiff(_) | WorkbenchIntent::ApplyInitArtifact(_) => {
+            WorkbenchIntent::ApplyInitDiff(_) => {
                 return self
                     .resolve_workbench_initialization(actor, command)
                     .map_or_else(error_response, AppResponsePayload::WorkbenchReceipt);

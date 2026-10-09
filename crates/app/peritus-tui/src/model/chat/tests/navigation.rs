@@ -229,21 +229,21 @@ fn shift_selection_reverses_collapses_and_replaces_without_splitting_utf8() {
 }
 
 #[test]
-fn replacement_accepts_large_paste_and_keeps_unicode_boundaries() {
+fn replacement_respects_byte_limit_and_rejected_paste_retains_selection() {
     let mut model = draft(&"a".repeat(peritus_app_protocol::MAX_PRODUCT_TASK_BYTES));
     modified(&mut model, KeyCode::Home, KeyModifiers::SHIFT);
-    let large = "b".repeat(peritus_app_protocol::MAX_PRODUCT_TASK_BYTES + 1);
-    assert!(model.paste_chat(&large));
-    assert_eq!(model.chat.buffer, large);
-    assert_eq!(model.chat.selection(), None);
-    modified(&mut model, KeyCode::Home, KeyModifiers::SHIFT);
+    let selection = model.chat.selection();
+    model.paste_chat(&"b".repeat(peritus_app_protocol::MAX_PRODUCT_TASK_BYTES + 1));
+    assert_eq!(model.chat.selection(), selection);
+    assert_eq!(model.chat.buffer.as_bytes()[0], b'a');
     model.paste_chat("λ界");
     assert_eq!(model.chat.buffer, "λ界");
     assert_eq!(model.chat.cursor, 5);
+    assert_eq!(model.chat.selection(), None);
     model.chat.buffer = "a".repeat(peritus_app_protocol::MAX_PRODUCT_TASK_BYTES - 1);
     model.chat.cursor = model.chat.buffer.len();
     modified(&mut model, KeyCode::Char('λ'), KeyModifiers::NONE);
-    assert_eq!(model.chat.buffer.len(), peritus_app_protocol::MAX_PRODUCT_TASK_BYTES + 1);
+    assert_eq!(model.chat.buffer.len(), peritus_app_protocol::MAX_PRODUCT_TASK_BYTES - 1);
 }
 
 #[test]

@@ -10,14 +10,6 @@ impl AppModel {
         code: AppErrorCode,
     ) {
         let Some(pending) = pending else { return };
-        if matches!(
-            pending,
-            PendingRequest::WorkbenchMessageUpload { .. }
-                | PendingRequest::WorkbenchMessagePreview(_)
-        ) {
-            self.message_upload_failed();
-            return;
-        }
         if let PendingRequest::WorkbenchControl(command)
         | PendingRequest::WorkbenchReceipt(command) = pending
         {
@@ -33,13 +25,6 @@ impl AppModel {
     }
 
     pub(in crate::model) fn workbench_inspection_timeout(&mut self, pending: &PendingRequest) {
-        if matches!(
-            pending,
-            PendingRequest::WorkbenchMessageUpload { .. }
-                | PendingRequest::WorkbenchMessagePreview(_)
-        ) {
-            self.message_upload_failed();
-        }
         self.chat.workbench.snapshot_refresh_command = None;
         self.chat.workbench.goal_refresh_command = None;
         self.chat.workbench.goal_confirm_pending = None;
@@ -77,9 +62,7 @@ impl AppModel {
                     "Permission inspection failed: {detail}. Refresh for current enforced policy; draft retained."
                 );
             }
-            PendingRequest::WorkbenchInitArtifacts(_)
-            | PendingRequest::WorkbenchInitArtifactPage(_)
-            | PendingRequest::WorkbenchInit(_) => {
+            PendingRequest::WorkbenchInit(_) => {
                 self.chat.workbench.init = None;
                 self.chat.workbench.message = format!(
                     "Initialization discovery failed: {detail}. The workspace is unchanged; draft retained."
@@ -125,12 +108,7 @@ impl AppModel {
                     "Queue inspection failed: {detail}. Refresh to read current state; draft retained."
                 );
             }
-            PendingRequest::WorkbenchBrief(_)
-            | PendingRequest::WorkbenchBriefPage(_)
-            | PendingRequest::WorkbenchBriefProposal(_) => {
-                self.chat.workbench.brief_page = None;
-                self.chat.workbench.brief_body = None;
-                self.chat.workbench.brief_body_history.clear();
+            PendingRequest::WorkbenchBrief(_) => {
                 self.chat.workbench.brief = None;
                 self.chat.workbench.message = format!(
                     "Brief inspection failed: {detail}. Refresh for current state; draft retained."
@@ -255,9 +233,6 @@ impl AppModel {
         self.chat.workbench.snapshot = None;
         self.chat.workbench.queue = None;
         self.chat.workbench.brief = None;
-        self.chat.workbench.brief_page = None;
-        self.chat.workbench.brief_body = None;
-        self.chat.workbench.brief_body_history.clear();
         self.chat.workbench.goal = None;
         self.chat.workbench.goal_refresh_command = None;
         self.chat.workbench.goal_confirm_pending = None;

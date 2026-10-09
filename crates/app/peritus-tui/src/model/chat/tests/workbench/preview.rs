@@ -176,14 +176,10 @@ fn preview_launch_receipt_results_play_and_feedback_remain_exactly_bound() {
     let AppRequestPayload::WorkbenchCommand(play_command) = play.payload() else {
         panic!("play command")
     };
-    #[cfg(windows)]
-    let expected_input = b"MOVE_RIGHT\r";
-    #[cfg(not(windows))]
-    let expected_input = b"MOVE_RIGHT\n";
     assert!(matches!(
         play_command.intent(),
         WorkbenchIntent::InteractPreview { launch, input }
-            if *launch == command.operation() && input.bytes() == expected_input
+            if *launch == command.operation() && input.bytes() == b"MOVE_RIGHT\n"
     ));
     let refresh = request(&respond(&mut model, &play, preview_receipt(play_command)));
     let refreshed_page =

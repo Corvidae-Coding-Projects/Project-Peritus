@@ -238,15 +238,7 @@ impl AppModel {
             self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
         if preview.request() == request
             && self.chat.workbench.selected == Some(request.query())
-            && self.chat.workbench.open
-            && self.chat.workbench.files.open
             && self.chat.workbench.files.path == request.path()
-            && parse_range(&self.chat.workbench.files.range) == Some(request.range())
-            && self.chat.workbench.files.refresh
-                == (request.mode() == WorkbenchFileMode::RefreshOnRequest)
-            && self.chat.workbench.snapshot.as_ref().is_some_and(|snapshot| {
-                snapshot.query() == request.query() && snapshot.revision() == request.revision()
-            })
             && active_provider == Some(request.provider())
             && self.chat.models.writer() == request.model()
         {

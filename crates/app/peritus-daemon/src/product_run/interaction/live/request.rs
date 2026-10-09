@@ -57,6 +57,13 @@ impl LiveConversation {
             ));
         }
         let start = &options.workbench;
+        if self
+            .service
+            .refresh_request_files(start, request)
+            .map_err(|error| port_error("refresh files attached to the provider request", error))?
+        {
+            return Ok(DeveloperRequestAdmission::Stale);
+        }
         let admission = self
             .service
             .with_controls(false, |store| {
@@ -81,9 +88,6 @@ impl LiveConversation {
         if admission != DeveloperRequestAdmission::Accepted {
             return Ok(admission);
         }
-        self.service
-            .finish_file_refresh(start)
-            .map_err(|error| port_error("finish selected source snapshot", error))?;
         let mut next = record.clone();
         let mut options = options.clone();
         self.service

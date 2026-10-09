@@ -122,14 +122,6 @@ fn execution_cases(
     for (name, payload) in [
         ("minimal-workbench-execution-query", AppRequestPayload::QueryWorkbenchExecution(query)),
         (
-            "minimal-workbench-message-continue",
-            AppRequestPayload::ContinueWorkbenchExecution(crate::WorkbenchContinuation::bound(
-                query,
-                crate::ProductInteractionMode::Chat,
-                id(29, ControlOperationId::new),
-            )),
-        ),
-        (
             "minimal-workbench-execution-continue",
             AppRequestPayload::ContinueWorkbenchExecution(crate::WorkbenchContinuation::new(
                 query,

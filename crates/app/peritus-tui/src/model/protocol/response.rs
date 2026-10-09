@@ -208,8 +208,6 @@ impl AppModel {
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
-            | AppResponsePayload::InitArtifactProposal(_)
-            | AppResponsePayload::InitArtifactPage(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
@@ -221,8 +219,6 @@ impl AppModel {
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchImagePreview(_)
             | AppResponsePayload::WorkbenchBrief(_)
-            | AppResponsePayload::WorkbenchBriefPage(_)
-            | AppResponsePayload::WorkbenchBriefProposal(_)
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchResult(_)
             | AppResponsePayload::WorkbenchPreview(_)
@@ -242,7 +238,11 @@ impl AppModel {
             }
             AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
             AppResponsePayload::SubscriptionStarted(started) => {
-                self.accept_subscription_response(*started);
+                self.subscription = Some(started.subscription_id());
+                self.notice(
+                    NoticeLevel::Info,
+                    format!("live event stream resumed after #{}", started.after().get()),
+                );
             }
             AppResponsePayload::DaemonStatus(status) => {
                 self.daemon_status = Some(status.clone());
@@ -292,13 +292,6 @@ impl AppModel {
         }
         Vec::new()
     }
-    fn accept_subscription_response(&mut self, started: peritus_app_protocol::SubscriptionStarted) {
-        self.subscription = Some(started.subscription_id());
-        self.notice(
-            NoticeLevel::Info,
-            format!("live event stream resumed after #{}", started.after().get()),
-        );
-    }
     fn interaction_response(
         &mut self,
         snapshot: &peritus_app_protocol::ProductInteractionSnapshot,
@@ -326,9 +319,6 @@ impl AppModel {
     }
     fn accept_ack(&mut self, pending: Option<&PendingRequest>) -> Vec<Effect> {
         match pending {
-            Some(PendingRequest::WorkbenchMessageUpload { transfer, step }) => {
-                return self.message_upload_ack(*transfer, *step);
-            }
             Some(PendingRequest::WorkbenchFileUpload { transfer, step }) => {
                 return self.file_upload_ack(*transfer, *step);
             }
@@ -410,8 +400,6 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
-            | AppResponsePayload::InitArtifactProposal(_)
-            | AppResponsePayload::InitArtifactPage(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
@@ -421,8 +409,6 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchImagePreview(_)
             | AppResponsePayload::WorkbenchBrief(_)
-            | AppResponsePayload::WorkbenchBriefPage(_)
-            | AppResponsePayload::WorkbenchBriefProposal(_)
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchReview(_)
             | AppResponsePayload::WorkbenchReviewSummary(_)

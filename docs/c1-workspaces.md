@@ -66,16 +66,6 @@ a retained snapshot manifest can be revalidated into a fresh `CandidateSnapshot`
 `CandidateSnapshot` reports the exact workspace and snapshot IDs, commit, tree, retaining ref, and
 snapshot-manifest digest. C1-owned refs live below `refs/peritus/workspaces/`.
 
-Candidate and restoration inventory has no entry-count gate. Ignored subtrees are pruned unless
-tracked or target-snapshot paths establish parent ownership; cancellation is checked during the
-scan. Independently owned nested repositories require explicit `RegisteredNestedRepository`
-bindings on the candidate or restoration request. Their committed HEAD is captured as a gitlink;
-their working files and history are not recursively snapshotted or restored. Each operation
-revalidates the child root and control directories. Restoration rejects colliding parent content
-and cleans only the nonignored untracked inventory observed before restoring ignore rules.
-Removing a parent worktree refuses nested control metadata, including ignored children, even
-with `ForceRegistered`; those independent repositories must be handled by their own owner first.
-
 ## Patch boundary
 
 `WorkspacePath` is the only file-target type accepted by a `PatchSet`. It represents one bounded

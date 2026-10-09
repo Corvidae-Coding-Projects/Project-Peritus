@@ -1,0 +1,31 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-network --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-network", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "049-peritus-network-ordinary-test.log", "owning_crate": "peritus-network", "started_at": "2026-10-09T21:21:29.465240Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.13s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_network-d91e30270f4fd506)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/network.rs (/home/doll/Project-Peritus/target/debug/deps/network-a886e53b961d647a)
+
+running 14 tests
+test connect_byte_ceiling_stops_the_tunnel_and_reports_a_limited_close ... ok
+test managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays ... ok
+test managed_proxy_denies_unlisted_destination_before_resolution_or_connect ... ok
+test managed_proxy_forwards_http_injects_scoped_credential_and_joins ... ok
+test policy::canonical_matching_denies_and_special_addresses_are_narrowed ... ok
+test policy::canonical_order_ipv6_and_multi_answer_denial_are_exact ... ok
+test policy::inert_proxy_preparation_starts_only_from_the_checked_plan ... ok
+test policy::inherited_listener_bridge_accepts_inside_namespace_and_connects_from_parent ... ok
+test policy::redirect_and_credential_scope_are_exact_and_bounded ... ok
+test proxy_shutdown_cancels_an_active_connect_and_joins_the_worker ... ok
+test redirects::managed_proxy_follows_relative_redirect_and_returns_only_final_response ... ok
+test redirects::managed_proxy_preserves_redirect_count_across_upstream_connections ... ok
+test redirects::managed_proxy_revalidates_and_suppresses_a_denied_absolute_redirect ... ok
+test worker_bound_applies_backpressure_and_shutdown_joins_the_active_tunnel ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-network --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 1.468, "exit_code": 0, "finished_at": "2026-10-09T21:21:30.933448Z", "invocation": ["cargo", "test", "--package", "peritus-network", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "049-peritus-network-ordinary-test.log", "owning_crate": "peritus-network", "result": "passed", "started_at": "2026-10-09T21:21:29.465240Z"}

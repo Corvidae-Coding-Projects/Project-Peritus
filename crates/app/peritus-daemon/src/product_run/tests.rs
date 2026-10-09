@@ -236,9 +236,6 @@ fn service(
             command_recoveries: std::sync::Mutex::new(std::collections::BTreeSet::new()),
             model_catalogs: super::catalog::ModelCatalogs::default(),
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
-            file_reads: Arc::new(tokio::sync::Semaphore::new(2)),
-            file_previews: std::sync::Mutex::new(BTreeMap::new()),
-            file_refreshes: std::sync::Mutex::new(BTreeMap::new()),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),
             preview_capture: super::PreviewCaptureHost::discover(),
             host_permissions: super::permissions::HostPermissionCatalog::managed(
@@ -302,20 +299,9 @@ async fn wait_for_review_stall(
     run_id: RunId,
     reviewer: &ScriptedProvider,
 ) {
-    tokio::select! {
-        () = reviewer.wait_for_stalled_response() => {}
-        result = wait_for_terminal_with_timeout(service, run_id, PRODUCT_RUN_TERMINAL_WAIT) => {
-            match result {
-                Ok(snapshot) => panic!(
-                    "run settled before the reviewer started its deliberately stalled response: {snapshot:?}",
-                ),
-                Err(snapshot) => panic!(
-                    "reviewer did not start its deliberately stalled response: {}; snapshot={snapshot:?}",
-                    terminal_wait_timeout_diagnostic(&snapshot, PRODUCT_RUN_TERMINAL_WAIT),
-                ),
-            }
-        }
-    }
+    tokio::time::timeout(Duration::from_secs(30), reviewer.wait_for_stalled_response())
+        .await
+        .expect("reviewer did not start its deliberately stalled response");
     let phase = service.query(ProductRunQuery::exact(run_id)).expect("review snapshot")[0].phase();
     assert_eq!(phase, ProductRunPhase::Reviewing, "reviewer stalled in {phase:?}");
 }

@@ -264,11 +264,8 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchContext,
         WellKnownProtocolFeature::WorkbenchCompaction,
         WellKnownProtocolFeature::WorkbenchBrief,
-        WellKnownProtocolFeature::WorkbenchBriefPages,
         WellKnownProtocolFeature::WorkbenchImages,
         WellKnownProtocolFeature::WorkbenchFiles,
-        WellKnownProtocolFeature::WorkbenchReferencedText,
-        WellKnownProtocolFeature::WorkbenchQueueMoves,
         WellKnownProtocolFeature::WorkbenchGoals,
         WellKnownProtocolFeature::WorkbenchReview,
         WellKnownProtocolFeature::WorkbenchReviewPages,
@@ -282,7 +279,6 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchPermissions,
         WellKnownProtocolFeature::WorkbenchMemory,
         WellKnownProtocolFeature::WorkbenchInit,
-        WellKnownProtocolFeature::WorkbenchInitArtifacts,
         WellKnownProtocolFeature::GracefulShutdown,
     ]
     .into_iter()

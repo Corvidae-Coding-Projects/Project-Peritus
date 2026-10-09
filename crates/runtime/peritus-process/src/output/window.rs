@@ -49,13 +49,11 @@ impl RetainedWindow {
     }
 
     pub(crate) fn stream_bytes(&self, stream: OutputStream) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        for chunk in self.chunks.iter().filter(|chunk| chunk.stream == stream) {
-            let (first, second) = chunk.bytes.as_slices();
-            bytes.extend_from_slice(first);
-            bytes.extend_from_slice(second);
-        }
-        bytes
+        self.chunks
+            .iter()
+            .filter(|chunk| chunk.stream == stream)
+            .flat_map(|chunk| chunk.bytes.iter().copied())
+            .collect()
     }
 
     fn discard_front(&mut self, mut count: usize) {
@@ -84,45 +82,6 @@ mod tests {
         window.push(OutputStream::Stdout, b"defg");
         assert_eq!(window.stream_bytes(OutputStream::Stdout), b"bcdefg");
         assert_eq!(window.stream_bytes(OutputStream::Stderr), b"12");
-        assert_eq!(window.length, 8);
-    }
-
-    #[test]
-    fn wrapped_and_interleaved_chunks_preserve_exact_stream_order_after_eviction() {
-        let mut window = RetainedWindow::new(8);
-        window.push(OutputStream::Stdout, b"abcdefgh");
-        let mut expected = b"abcdefgh".to_vec();
-        let capacity = window.chunks[0].bytes.capacity();
-        for index in 0..capacity {
-            let byte = b'A' + u8::try_from(index % 26).expect("ASCII letter offset");
-            window.push(OutputStream::Stdout, &[byte]);
-            expected.remove(0);
-            expected.push(byte);
-            assert_eq!(window.stream_bytes(OutputStream::Stdout), expected);
-            if !window.chunks[0].bytes.as_slices().1.is_empty() {
-                break;
-            }
-        }
-        assert!(!window.chunks[0].bytes.as_slices().1.is_empty(), "exercise both ring slices");
-
-        window.push(OutputStream::Stdout, b"abcdefghij");
-        assert_eq!(window.stream_bytes(OutputStream::Stdout), b"cdefghij");
-
-        window.push(OutputStream::Stderr, b"12");
-        window.push(OutputStream::Terminal, b"XYZ");
-        assert_eq!(window.stream_bytes(OutputStream::Stdout), b"hij");
-        assert_eq!(window.stream_bytes(OutputStream::Stderr), b"12");
-        assert_eq!(window.stream_bytes(OutputStream::Terminal), b"XYZ");
-
-        window.push(OutputStream::Stdout, b"Zebra");
-        assert_eq!(window.stream_bytes(OutputStream::Stdout), b"Zebra");
-        assert!(window.stream_bytes(OutputStream::Stderr).is_empty());
-        assert_eq!(window.stream_bytes(OutputStream::Terminal), b"XYZ");
-
-        window.push(OutputStream::Stderr, b"0123456789");
-        assert!(window.stream_bytes(OutputStream::Stdout).is_empty());
-        assert_eq!(window.stream_bytes(OutputStream::Stderr), b"23456789");
-        assert!(window.stream_bytes(OutputStream::Terminal).is_empty());
         assert_eq!(window.length, 8);
     }
 }

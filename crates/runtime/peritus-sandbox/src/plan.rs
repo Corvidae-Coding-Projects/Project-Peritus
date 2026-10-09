@@ -107,7 +107,7 @@ pub fn compile_sandbox(
     if !verified::compilation_complete(facts) {
         return Err(error::denied("sandbox refinement projection is incomplete"));
     }
-    let required_features = derive_features(&contract, &requirements);
+    let required_features = derive_features(&contract);
     let canonical_bytes = canonical::plan_bytes(
         binding,
         isolation,
@@ -191,7 +191,7 @@ fn compilation_facts(
     }
 }
 
-fn derive_features(contract: &SandboxContract, requirements: &SandboxRequirements) -> FeatureSet {
+fn derive_features(contract: &SandboxContract) -> FeatureSet {
     let mut features = FeatureSet::empty();
     for operation in FileOperation::ALL {
         features.insert(operation.feature());
@@ -220,22 +220,16 @@ fn derive_features(contract: &SandboxContract, requirements: &SandboxRequirement
         });
     }
     for feature in [
+        SandboxFeature::WallTime,
+        SandboxFeature::CpuTime,
         SandboxFeature::Memory,
         SandboxFeature::Disk,
+        SandboxFeature::Output,
         SandboxFeature::OpenHandles,
         SandboxFeature::ProcessCount,
         SandboxFeature::Concurrency,
     ] {
         features.insert(feature);
-    }
-    for (feature, selected) in [
-        (SandboxFeature::WallTime, requirements.resources().wall_time_limit()),
-        (SandboxFeature::CpuTime, requirements.resources().cpu_time_limit()),
-        (SandboxFeature::Output, requirements.resources().output_limit()),
-    ] {
-        if selected.is_some() {
-            features.insert(feature);
-        }
     }
     if contract.terminal().modes().contains(TerminalMode::Pipes) {
         features.insert(SandboxFeature::Pipes);

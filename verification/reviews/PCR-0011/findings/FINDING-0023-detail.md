@@ -1,0 +1,3 @@
+# FINDING-0023: Inherited ACEs were omitted from residual-authority comparison
+
+`GetExplicitEntriesFromAclW` omitted inherited ACEs while the rollback verifier used its output as a complete baseline. That could both reject a legitimate protected copy and miss inherited temporary authority. The final decoder validates the ACL and bounds every ACE and SID before native SID calls, enumerates standard allow and deny ACEs directly, preserves multiplicity, mode, rights, and flags, normalizes only `INHERITED_ACE`, and fails closed on unsupported layouts. Native file and directory cases reject residue and accept legitimate same-principal inheritance while preserving unrelated ACEs.

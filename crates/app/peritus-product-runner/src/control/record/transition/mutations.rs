@@ -81,9 +81,6 @@ impl ConversationRecord {
                 self.images.select(&mut self.inputs, *attachment, *selected)
             }
             ControlIntent::AttachFile { .. }
-            | ControlIntent::SubmitMessage { .. }
-            | ControlIntent::AcceptBriefProposal { .. }
-            | ControlIntent::RefreshFiles { .. }
             | ControlIntent::SelectFile { .. }
             | ControlIntent::RefreshFile { .. } => self.apply_file(operation),
             _ => Err(ControlError::InvalidInput),
@@ -217,37 +214,6 @@ impl ConversationRecord {
                     text,
                 )
             }
-            ControlIntent::AcceptBriefProposal { field, reply, version } => {
-                self.accept_brief_proposal(operation, *field, reply, version)
-            }
-            ControlIntent::SubmitMessage { text, files } => {
-                let input = crate::control::InputId::new(*operation.id.as_bytes())?;
-                if files.iter().filter(|file| file.source().is_user_message()).count() > 1 {
-                    return Err(ControlError::InvalidInput);
-                }
-                self.apply_queue(
-                    operation.actor,
-                    &crate::control::QueueIntent::Enqueue {
-                        id: input,
-                        text: text.clone(),
-                        dependencies: Vec::new(),
-                    },
-                )?;
-                self.files.attach_message(&self.inputs, input, files)
-            }
-            ControlIntent::RefreshFiles { versions } => {
-                if versions.is_empty() {
-                    return Err(ControlError::InvalidInput);
-                }
-                let mut attachments = std::collections::BTreeSet::new();
-                for (attachment, previous, version) in versions {
-                    if !attachments.insert(*attachment) {
-                        return Err(ControlError::InvalidInput);
-                    }
-                    self.files.refresh(&mut self.inputs, *attachment, *previous, version)?;
-                }
-                Ok(())
-            }
             ControlIntent::SelectFile { attachment, selected } => {
                 self.files.select(&mut self.inputs, *attachment, *selected)
             }
@@ -258,37 +224,6 @@ impl ConversationRecord {
             }
             _ => Err(ControlError::InvalidInput),
         }
-    }
-
-    fn accept_brief_proposal(
-        &mut self,
-        operation: &ControlOperation,
-        field: crate::control::BriefField,
-        reply: &crate::control::PublicReplyReference,
-        version: &crate::control::FileVersion,
-    ) -> Result<(), ControlError> {
-        if version.operation() != operation.id || !self.replies.contains(reply) {
-            return Err(ControlError::InvalidInput);
-        }
-        let text = crate::control::ControlText::new(format!(
-            "Read the complete user_confirmed_proposal reference {} with attachment_read, following every continuation offset. The user explicitly accepted these exact model-authored bytes as the {} field; the original proposal and author invocation remain recorded.",
-            operation.id,
-            field.label()
-        ))?;
-        self.apply_brief(operation.actor, operation.id, field, &text)?;
-        let selected = self
-            .brief
-            .bindings()
-            .iter()
-            .find(|binding| binding.field() == field)
-            .ok_or(ControlError::InvalidInput)?
-            .selected();
-        let file = crate::control::FileAttachment::for_selection(
-            crate::control::FileSource::accepted_proposal(reply.clone()),
-            version.clone(),
-            selected,
-        )?;
-        self.files.attach_message(&self.inputs, selected.id(), &[file])
     }
 
     fn publish_reply(

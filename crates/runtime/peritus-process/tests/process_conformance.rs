@@ -2,7 +2,8 @@
 
 // The complete catalog requires Unix PTY and sampled process-group observations. Windows runs
 // the production pipe, cancellation, descendant-cleanup, and native-backend coverage in
-// `process_integration`, including native ConPTY input, resize, and owned-job cleanup.
+// `process_integration`; local Windows PTY is intentionally unsupported until C2 is paired with the
+// native ConPTY backend.
 #![cfg(unix)]
 
 #[path = "support/subject.rs"]

@@ -6,8 +6,6 @@ use std::{error::Error, fmt};
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum EvidenceErrorKind {
-    /// An owned operation was cancelled with resumable progress retained.
-    Cancelled,
     /// An identity, tag, ordering, or configured bound is invalid.
     InvalidInput,
     /// The named journal record or command batch does not exist.

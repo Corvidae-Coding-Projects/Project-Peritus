@@ -17,7 +17,6 @@ impl PersistedRecord {
         Ok(Self {
             format_version: FORMAT_VERSION,
             goal_resume: record.goal_resume.map(|operation| *operation.as_bytes()),
-            message_launches: record.message_launches.clone(),
             interaction: interaction::PersistedInteraction::capture(&record.interaction),
             run_id: hex(snapshot.run_id().as_bytes()),
             workspace_id: hex(snapshot.workspace_id().as_bytes()),
@@ -199,7 +198,6 @@ impl PersistedRecord {
         }
         Ok(RunRecord {
             interaction,
-            message_launches: self.message_launches,
             goal_resume: self
                 .goal_resume
                 .map(peritus_product_runner::control::OperationId::new)

@@ -12,7 +12,6 @@ use transcript::Transcript;
 pub fn preview_lines(text: &str) -> Vec<String> {
     let mut transcript = Transcript::default();
     transcript.push(text.as_bytes());
-    transcript.finish();
     transcript.display_lines()
 }
 
@@ -26,7 +25,7 @@ pub struct TerminalSession {
     output_unavailable: bool,
     line_input: Option<line_input::LineInput>,
     maximum_chunk_bytes: usize,
-    scroll: usize,
+    scroll: u16,
 }
 
 impl TerminalSession {
@@ -180,13 +179,12 @@ impl TerminalSession {
 
     pub(crate) fn accept_exit(&mut self, exit: TerminalExit) -> Result<(), TerminalError> {
         self.state.exit(exit)?;
-        self.transcript.finish();
         self.capture_input = false;
         Ok(())
     }
 
     pub(crate) fn visible_lines(&self, height: usize) -> Vec<String> {
-        self.transcript.visible_lines(height, self.scroll)
+        self.transcript.visible_lines(height, usize::from(self.scroll))
     }
 
     pub(crate) fn cursor(&self) -> Option<(u16, u16)> {

@@ -3,15 +3,8 @@
 mod assemble;
 mod format;
 mod plan;
-mod preparation;
 mod verify;
 
-pub use assemble::{
-    BundleExportCursor, BundleExportOperation, BundleExportPhase, BundleReceipt, assemble_bundle,
-    publish_bundle, resume_bundle,
-};
+pub use assemble::{BundleReceipt, assemble_bundle};
 pub use plan::{BundleLimits, BundlePlan};
-pub use preparation::BundlePreparation;
-pub use verify::{
-    BundleVerificationCursor, BundleVerificationOperation, VerifiedBundle, verify_bundle,
-};
+pub use verify::{VerifiedBundle, verify_bundle};

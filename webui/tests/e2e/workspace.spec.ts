@@ -11,7 +11,7 @@ let temporary:string,root:string,repository:string,other:string,remote:string,se
 const origin='http://127.0.0.1:4174';
 function git(cwd:string,...args:string[]){return execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']});}
 async function startServer(){
-  server=spawn(resolve(process.env.PERITUS_WEB_TEST_BIN??'../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(temporary,'webui.toml'),'--state',join(temporary,'workspace.json'),'--daemon-config',join(temporary,'unconfigured.toml'),'--endpoint',join(temporary,'absent.sock'),'--product-state',join(temporary,'product-state'),'--assets',resolve('dist')],{stdio:['ignore','pipe','pipe']});
+  server=spawn(resolve('../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(temporary,'webui.toml'),'--state',join(temporary,'workspace.json'),'--daemon-config',join(temporary,'unconfigured.toml'),'--endpoint',join(temporary,'absent.sock'),'--product-state',join(temporary,'product-state'),'--assets',resolve('dist')],{stdio:['ignore','pipe','pipe']});
   await new Promise<void>((done,reject)=>{let errors='';server.stderr!.on('data',chunk=>errors+=String(chunk));server.stdout!.on('data',chunk=>{if(String(chunk).includes('Peritus console:'))done();});server.once('error',reject);server.once('exit',code=>reject(new Error(`gateway exited ${code}: ${errors}`)));});
 }
 async function stopServer(){if(server&&server.exitCode===null&&server.signalCode===null){server.kill('SIGINT');await new Promise<void>(done=>server.once('exit',()=>done()));}}
@@ -46,7 +46,7 @@ test('gateway confines files and rejects foreign origins',async({request})=>{
   expect((await query(request,'text',{path:'../beta/secret'})).error).toBeTruthy();
   expect((await query(request,'files',{path:'outside'})).error).toContain('outside');
   expect((await query(request,'text',{path:'sample.py'})).text).toContain('def hello');
-  expect((await query(request,'text',{path:'binary.dat'})).error).toContain('binary');
+  expect((await query(request,'text',{path:'binary.dat'})).error).toContain('Binary');
   const raw=await request.get('/api/raw',{params:{project,path:'sample.py'},headers:{'x-peritus-token':token,Range:'bytes=0-2'}});expect(raw.status()).toBe(206);expect(await raw.text()).toBe('def');
 });
 test('nested tabs are canonical-root-bound, cycle-free, and idempotent',async({request})=>{
@@ -61,8 +61,8 @@ test('nested tabs are canonical-root-bound, cycle-free, and idempotent',async({r
 test('explicit nested repository supports stage, commit, push, pull, and literal ignore',async({request})=>{
   expect((await query(request,'git')).error).toContain('No working Git');
   await action(request,'repository',{project,path:root});
-  expect(await action(request,'repository',{project,path:repository})).toMatchObject({repository});
-  expect(await query(request,'git')).toMatchObject({branch:'main'});
+  await action(request,'repository',{project,path:repository});
+  expect((await query(request,'git')).branch).toBe('main');
   await writeFile(join(repository,'code.ts'),'export const value = 2;\n');
   expect((await query(request,'git')).changes).toEqual(expect.arrayContaining([expect.objectContaining({path:'code.ts'})]));
   await action(request,'git',{project,action:'add',paths:['code.ts']});
@@ -127,10 +127,10 @@ test('text editor saves exact line endings, retains tab drafts, supports undo an
 });
 test('large previews are paged and file saves can exceed the old 4 MiB body limit',async({request,page})=>{
   await page.goto('/');await page.getByRole('button',{name:'large.txt',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Next range',exact:true})).toBeVisible();
+  await expect(page.getByText('Large file · plain-text pages')).toBeVisible();
   expect((await page.getByRole('region',{name:'File source',exact:true}).innerText()).length).toBeLessThanOrEqual(128_001);
-  await page.getByRole('button',{name:'Next range',exact:true}).click();await expect(page.getByText(/Bytes 65,536/)).toBeVisible();
-  const original=await query(request,'text-edit',{path:'large.txt'}),content='z'.repeat(5*1024*1024);
+  await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByRole('spinbutton',{name:'Preview page'})).toHaveValue('2');
+  const original=await query(request,'text',{path:'large.txt'}),content='z'.repeat(5*1024*1024);
   const saved=await request.put('/api/file',{headers:{'x-peritus-token':token,'Content-Type':'text/plain'},params:{project,path:'large.txt',revision:original.revision,operation:randomUUID()},data:content});
   expect((await saved.json()).bytes).toBe(content.length);expect((await readFile(join(root,'large.txt'))).length).toBe(content.length);
 });
@@ -152,7 +152,7 @@ test('explorer preview and drag attachment are distinct, session-bound and persi
     expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations).toEqual([]);
   }
   await page.getByRole('button',{name:'Remove attachment sample.py',exact:true}).click();await expect(page.getByLabel('Attachments for next message')).toHaveCount(0);
-  expect((await action(request,'attach-file',{session:firstSession,project,path:'binary.dat'})).error).toContain('binary or terminal control');
+  expect((await action(request,'attach-file',{session:firstSession,project,path:'binary.dat'})).error).toContain('UTF-8');
 });
 test('branch and remote forms operate on the selected repository',async({page})=>{
   await page.goto('/');await page.locator('.drawer-switch').getByRole('button',{name:'Git',exact:false}).click();
@@ -273,8 +273,7 @@ test('submitted operations remain held when their outcome cannot be proven',asyn
   await expect(page.getByRole('textbox',{name:'Message Peritus or enter a slash command'})).toHaveValue('Retain the submitted draft');
 });
 test('configuration validates, persists behavioral settings, and aliases share the dispatcher',async({request,page})=>{
-  const wide=await action(request,'config',{text:'font_size = 48\nexplorer_width = 1024\ntheme = "nixie"'});expect(wide.error).toBeUndefined();
-  const bad=await action(request,'config',{text:'font_size = 0\ntheme = "nixie"'});expect(bad.error).toContain('positive');
+  const bad=await action(request,'config',{text:'font_size = 99\ntheme = "nixie"'});expect(bad.error).toContain('12–22');
   await action(request,'config',{text:'theme = "daylight"\nmotion = false\nword_wrap = false\n[aliases]\nbranch = "/nest"\n[shortcuts]\ncommands = "Mod+Shift+p"\n'});
   await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-theme','daylight');
   await expect(page.locator('.command-key kbd')).toHaveText(/^(Ctrl|Cmd) Shift P$/);

@@ -71,6 +71,7 @@ pub fn publish_claimed_report(
     {
         return Err(binding("publication state, claim, report, or artifact differs"));
     }
+    artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
     let evidence_id = report_evidence_id(report)?;
     let draft = EvidenceDraft::new(
         evidence_id,
@@ -83,13 +84,8 @@ pub fn publish_claimed_report(
         Vec::new(),
     )
     .map_err(evidence_error)?;
-    let evidence =
-        if let Some(committed) = evidence_store.committed_retry(&draft).map_err(evidence_error)? {
-            committed
-        } else {
-            let export = journal.integrity_export().map_err(journal_error)?;
-            evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?
-        };
+    let export = journal.integrity_export().map_err(journal_error)?;
+    let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
     let publication = PublicationRecord::new(report.id(), evidence.id(), report_commit_position)?;
     let command = EvaluationCommand::new(
         ids.command_id(),
@@ -125,6 +121,14 @@ const fn binding(detail: &'static str) -> EvaluationError {
         EvaluationOperation::Publish,
         EvaluationRecovery::Quarantine,
         detail,
+    )
+}
+fn artifact_error(_: impl core::fmt::Display) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::Artifact,
+        EvaluationOperation::Publish,
+        EvaluationRecovery::Reconcile,
+        "report artifact verification failed",
     )
 }
 fn evidence_error(_: impl core::fmt::Display) -> EvaluationError {

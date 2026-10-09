@@ -64,39 +64,9 @@ fn pty() {
     std::io::stdout().write_all(&input).expect("fixture PTY output");
 }
 
-#[cfg(windows)]
-#[allow(unsafe_code, reason = "the fixture independently observes actual Windows console handles")]
+#[cfg(not(unix))]
 fn pty() {
-    use windows_sys::Win32::System::Console::{
-        CONSOLE_SCREEN_BUFFER_INFO, GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle,
-        STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetConsoleMode,
-    };
-    // SAFETY: standard console handles are borrowed for the lifetime of this process.
-    let input = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
-    let mut mode = 0;
-    // SAFETY: input is borrowed and mode is a writable output slot.
-    assert_ne!(unsafe { GetConsoleMode(input, &raw mut mode) }, 0, "actual console input");
-    // SAFETY: set raw console mode on this fixture's own standard input.
-    assert_ne!(unsafe { SetConsoleMode(input, 0) }, 0);
-    for argument in env::args().skip(2) {
-        println!("arg={}:{}", argument.len(), argument);
-    }
-    println!("conpty-ready");
-    std::io::stdout().flush().expect("ready flush");
-    let mut bytes = [0_u8; 9];
-    std::io::stdin().read_exact(&mut bytes).expect("raw console input");
-    assert_eq!(&bytes, b"pty-input");
-    // SAFETY: standard output is a live borrowed console handle.
-    let output = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
-    let mut screen = CONSOLE_SCREEN_BUFFER_INFO::default();
-    // SAFETY: output is borrowed and screen is valid writable storage of its exact type.
-    assert_ne!(unsafe { GetConsoleScreenBufferInfo(output, &raw mut screen) }, 0);
-    println!(
-        "size={}x{}",
-        screen.srWindow.Right - screen.srWindow.Left + 1,
-        screen.srWindow.Bottom - screen.srWindow.Top + 1
-    );
-    println!("pty-input");
+    panic!("the process fixture requires a Unix PTY");
 }
 
 #[cfg(unix)]

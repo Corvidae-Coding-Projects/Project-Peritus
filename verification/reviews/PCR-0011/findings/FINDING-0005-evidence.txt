@@ -1,0 +1,9 @@
+rejected_candidate=92766bf3c973a49567b52d37fd3df74e97129166 tree=c2256eb2ca8a6193a7bc30e8e80c35836447e968
+replacement_candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/compare-splits-51274d823.log
+bytes=410
+sha256=2197f6aaca347df13414d8ec49bd06c700751721fab88ddccb1dd7776b692726
+/tmp/peritus-final23/ci-repairs-final-layout.log
+bytes=48
+sha256=a26cf9e191c63b2119cd11d590259a92e8e461492eb4ea8cbf56aa018c152726
+The replacement layout log reports: source layout check passed (5013 source files).

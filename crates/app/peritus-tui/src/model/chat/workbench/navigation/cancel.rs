@@ -79,8 +79,6 @@ const fn is_inspection(pending: &PendingRequest) -> bool {
             | PendingRequest::WorkbenchGoal(_)
             | PendingRequest::WorkbenchResult(_)
             | PendingRequest::WorkbenchPermissions(_)
-            | PendingRequest::WorkbenchInitArtifacts(_)
-            | PendingRequest::WorkbenchInitArtifactPage(_)
             | PendingRequest::WorkbenchInit(_)
             | PendingRequest::WorkbenchMemory(_)
     )

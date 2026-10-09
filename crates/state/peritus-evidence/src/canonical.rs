@@ -20,6 +20,13 @@ pub(super) fn put_u64(bytes: &mut Vec<u8>, value: u64) {
 pub(super) fn put_digest(bytes: &mut Vec<u8>, value: Sha256Digest) {
     bytes.extend_from_slice(value.as_bytes());
 }
+pub(super) fn put_bytes(bytes: &mut Vec<u8>, value: &[u8]) {
+    put_u64(bytes, value.len() as u64);
+    bytes.extend_from_slice(value);
+}
+pub(super) fn put_text(bytes: &mut Vec<u8>, value: &str) {
+    put_bytes(bytes, value.as_bytes());
+}
 pub(super) fn put_revision(bytes: &mut Vec<u8>, revision: &RevisionTuple) {
     bytes.extend_from_slice(revision.acceptance_spec_id().as_bytes());
     bytes.extend_from_slice(revision.harness_id().as_bytes());
@@ -45,9 +52,6 @@ impl<'a> Reader<'a> {
         } else {
             Err(invalid("trailing canonical bytes"))
         }
-    }
-    pub(super) const fn remaining(&self) -> usize {
-        self.bytes.len() - self.offset
     }
     pub(super) fn take(&mut self, length: usize) -> Result<&'a [u8], EvidenceError> {
         let end =
@@ -81,16 +85,8 @@ impl<'a> Reader<'a> {
         }
         self.take(length)
     }
-    pub(super) fn bytes_unbounded(&mut self) -> Result<&'a [u8], EvidenceError> {
-        let length = usize::try_from(self.u64()?).map_err(|_| invalid("length exceeds usize"))?;
-        self.take(length)
-    }
     pub(super) fn text(&mut self, limit: usize) -> Result<String, EvidenceError> {
         let value = self.bytes(limit)?;
-        std::str::from_utf8(value).map(str::to_owned).map_err(|_| invalid("text is not UTF-8"))
-    }
-    pub(super) fn text_unbounded(&mut self) -> Result<String, EvidenceError> {
-        let value = self.bytes_unbounded()?;
         std::str::from_utf8(value).map(str::to_owned).map_err(|_| invalid("text is not UTF-8"))
     }
     pub(super) fn revision(&mut self) -> Result<RevisionTuple, EvidenceError> {

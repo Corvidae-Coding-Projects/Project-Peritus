@@ -1,350 +1,164 @@
-//! Cancellable native update helpers without an execution deadline.
+//! Bounded native child-process execution for update helpers.
+
+use std::{
+    process::{Child, Command, ExitStatus},
+    thread,
+    time::{Duration, Instant},
+};
 
 #[cfg(not(windows))]
 use std::process::Stdio;
-use std::process::{Command, ExitStatus};
-
-#[cfg(not(windows))]
-use tokio::io::AsyncReadExt as _;
 
 use crate::LauncherError;
 
-#[cfg(target_os = "macos")]
-mod macos;
+const POLL_INTERVAL: Duration = Duration::from_millis(25);
+#[cfg(not(windows))]
+const MAX_CAPTURED_STDOUT_BYTES: usize = 64 * 1024;
 
-/// Owns a child until it has been reaped, including cancellation by dropping its future.
-struct ChildOwner(
-    #[cfg(not(windows))] tokio::process::Child,
-    #[cfg(windows)] Box<dyn process_wrap::tokio::ChildWrapper>,
-);
-
-impl ChildOwner {
-    async fn wait(&mut self) -> std::io::Result<ExitStatus> {
-        #[cfg(unix)]
-        {
-            let pid =
-                self.0.id().and_then(|pid| i32::try_from(pid).ok()).ok_or_else(|| {
-                    std::io::Error::other("native updater has no live root identity")
-                })?;
-            let pid = nix::unistd::Pid::from_raw(pid);
-            loop {
-                if root_exited(pid.as_raw()).map_err(|error| {
-                    std::io::Error::new(error.kind(), format!("observe updater root exit: {error}"))
-                })? {
-                    break;
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-
-            // The unreaped root pins its PID. Kill remaining group members before allowing
-            // that identity to be reused, then reap the exact root through its Tokio owner.
-            match nix::sys::signal::killpg(pid, nix::sys::signal::Signal::SIGKILL) {
-                Ok(()) | Err(nix::errno::Errno::ESRCH) => {}
-                #[cfg(target_os = "macos")]
-                Err(nix::errno::Errno::EPERM) if macos::only_group_member(pid.as_raw()) => {}
-                Err(error) => {
-                    let error = std::io::Error::from_raw_os_error(error as i32);
-                    return Err(std::io::Error::new(
-                        error.kind(),
-                        format!("terminate updater process group: {error}"),
-                    ));
-                }
-            }
-            self.0.wait().await
-        }
-        #[cfg(not(any(unix, windows)))]
-        {
-            self.0.wait().await
-        }
-        #[cfg(windows)]
-        {
-            // Await the root without starting process-wrap's detached completion-port waiter.
-            #[allow(
-                unsafe_code,
-                reason = "uniquely borrow only the root while retaining its job wrapper"
-            )]
-            // SAFETY: the root is neither moved nor replaced; the wrapper stays alive through await.
-            let root = unsafe { self.0.inner_child_mut() };
-            let status = root.wait().await?;
-            // Terminate the owned Job explicitly before reporting success. process-wrap 9.1.0
-            // empties its wrapper registry during spawn, so its KillOnDrop lookup cannot enable
-            // the Job's kill-on-close flag even when the marker wrapper was configured.
-            self.0.start_kill()?;
-            Ok(status)
-        }
-    }
-}
-
-#[cfg(unix)]
-#[allow(
-    unsafe_code,
-    reason = "waitid observes an owned child without reaping and returns initialized POSIX siginfo"
-)]
-fn root_exited(pid: i32) -> std::io::Result<bool> {
-    let mut information = std::mem::MaybeUninit::<nix::libc::siginfo_t>::zeroed();
-    // SAFETY: valid aligned writable siginfo storage and the exact child PID returned by spawn.
-    let status = unsafe {
-        nix::libc::waitid(
-            nix::libc::P_PID,
-            pid.cast_unsigned(),
-            information.as_mut_ptr(),
-            nix::libc::WEXITED | nix::libc::WNOWAIT | nix::libc::WNOHANG,
-        )
-    };
-    if status != 0 {
-        let error = std::io::Error::last_os_error();
-        return if error.kind() == std::io::ErrorKind::Interrupted {
-            Ok(false)
-        } else {
-            Err(error)
-        };
-    }
-    // SAFETY: zero initialization plus successful waitid provides a valid siginfo record;
-    // POSIX zero si_pid means no child has exited for this nonblocking observation.
-    Ok(unsafe { information.assume_init().si_pid() } != 0)
-}
-
-impl Drop for ChildOwner {
-    fn drop(&mut self) {
-        #[cfg(unix)]
-        if let Some(pid) = self.0.id().and_then(|pid| i32::try_from(pid).ok()) {
-            let _ = nix::sys::signal::killpg(
-                nix::unistd::Pid::from_raw(pid),
-                nix::sys::signal::Signal::SIGKILL,
-            );
-        }
-        #[cfg(windows)]
-        // Dispatches to JobObjectChild::start_kill, terminating the whole owned tree.
-        let _ = self.0.start_kill();
-        // Tokio's kill-on-drop also arranges child reaping after future cancellation.
-    }
-}
-
-fn spawn(command: &mut Command, operation: &'static str) -> Result<ChildOwner, LauncherError> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt as _;
-        command.process_group(0);
-    }
-    let mut command = tokio::process::Command::from(std::mem::replace(command, Command::new("")));
-    #[cfg(not(windows))]
-    return command
-        .kill_on_drop(true)
-        .spawn()
-        .map(ChildOwner)
-        .map_err(|error| LauncherError::Update(format!("{operation}: {error}")));
-    #[cfg(windows)]
-    {
-        use process_wrap::tokio::{CommandWrap, JobObject, KillOnDrop};
-        command.kill_on_drop(true);
-        let mut wrapped = CommandWrap::from(command);
-        wrapped.wrap(KillOnDrop).wrap(JobObject);
-        wrapped
-            .spawn()
-            .map(ChildOwner)
-            .map_err(|error| LauncherError::Update(format!("{operation}: {error}")))
-    }
-}
-
-pub(super) async fn status(
+pub(super) fn status(
     command: &mut Command,
     operation: &'static str,
+    timeout: Duration,
 ) -> Result<ExitStatus, LauncherError> {
-    let mut child = spawn(command, operation)?;
-    tokio::select! {
-        status = child.wait() => status.map_err(|error| LauncherError::Update(format!("{operation}: {error}"))),
-        signal = tokio::signal::ctrl_c() => {
-            signal.map_err(|error| LauncherError::Update(format!("listen for cancellation: {error}")))?;
-            Err(LauncherError::Update(format!("{operation}: cancelled; inspect installation state before retrying")))
+    configure_group(command);
+    let mut child =
+        command.spawn().map_err(|error| LauncherError::Update(format!("{operation}: {error}")))?;
+    wait(&mut child, operation, timeout)
+}
+
+#[cfg(not(windows))]
+pub(super) fn stdout(
+    command: &mut Command,
+    operation: &'static str,
+    timeout: Duration,
+) -> Result<(ExitStatus, Vec<u8>), LauncherError> {
+    command.stdout(Stdio::piped());
+    configure_group(command);
+    let mut child =
+        command.spawn().map_err(|error| LauncherError::Update(format!("{operation}: {error}")))?;
+    let output = child
+        .stdout
+        .take()
+        .ok_or_else(|| LauncherError::Update(format!("{operation}: stdout pipe is unavailable")))?;
+    let reader = thread::spawn(move || drain_bounded(output));
+    let result = wait(&mut child, operation, timeout);
+    let captured = reader
+        .join()
+        .map_err(|_| LauncherError::Update(format!("{operation}: stdout reader panicked")))?
+        .map_err(|error| LauncherError::Update(format!("{operation}: read stdout: {error}")))?;
+    let status = result?;
+    if captured.1 {
+        return Err(LauncherError::Update(format!(
+            "{operation}: stdout exceeded {MAX_CAPTURED_STDOUT_BYTES} bytes"
+        )));
+    }
+    Ok((status, captured.0))
+}
+
+fn wait(
+    child: &mut Child,
+    operation: &'static str,
+    timeout: Duration,
+) -> Result<ExitStatus, LauncherError> {
+    let deadline = Instant::now()
+        .checked_add(timeout)
+        .ok_or_else(|| LauncherError::Update(format!("{operation}: timeout overflowed")))?;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return Ok(status),
+            Ok(None) if Instant::now() < deadline => {
+                thread::sleep(
+                    POLL_INTERVAL.min(deadline.saturating_duration_since(Instant::now())),
+                );
+            }
+            Ok(None) => {
+                terminate(child);
+                let _ = child.wait();
+                return Err(LauncherError::Update(format!(
+                    "{operation}: exceeded its {} second deadline",
+                    timeout.as_secs()
+                )));
+            }
+            Err(error) => {
+                terminate(child);
+                let _ = child.wait();
+                return Err(LauncherError::Update(format!("{operation}: wait failed: {error}")));
+            }
         }
     }
 }
 
 #[cfg(not(windows))]
-pub(super) async fn stdout(
-    command: &mut Command,
-    operation: &'static str,
-) -> Result<(ExitStatus, Vec<u8>), LauncherError> {
-    command.stdout(Stdio::piped());
-    let mut child = spawn(command, operation)?;
-    let output = child
-        .0
-        .stdout
-        .take()
-        .ok_or_else(|| LauncherError::Update(format!("{operation}: missing stdout")))?;
-    // Version replies have a bounded grammar; this is a protocol bound, not a run deadline.
-    let mut output = output.take(65 * 1024);
-    let mut bytes = Vec::new();
-    let capture = async {
-        output
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(|error| LauncherError::Update(format!("{operation}: {error}")))?;
-        if bytes.len() > 64 * 1024 {
-            return Err(LauncherError::Update(format!("{operation}: malformed version reply")));
+fn drain_bounded(mut output: impl std::io::Read) -> std::io::Result<(Vec<u8>, bool)> {
+    let mut retained = Vec::new();
+    let mut buffer = [0_u8; 8 * 1024];
+    let mut truncated = false;
+    loop {
+        let read = output.read(&mut buffer)?;
+        if read == 0 {
+            break;
         }
-        Ok(())
+        let remaining = MAX_CAPTURED_STDOUT_BYTES.saturating_sub(retained.len());
+        let keep = remaining.min(read);
+        retained.extend_from_slice(&buffer[..keep]);
+        truncated |= keep < read;
+    }
+    Ok((retained, truncated))
+}
+
+#[cfg(unix)]
+fn configure_group(command: &mut Command) {
+    use std::os::unix::process::CommandExt as _;
+    command.process_group(0);
+}
+
+#[cfg(not(unix))]
+const fn configure_group(_command: &mut Command) {}
+
+#[cfg(unix)]
+fn terminate(child: &mut Child) {
+    let Ok(pid) = i32::try_from(child.id()) else {
+        let _ = child.kill();
+        return;
     };
-    let completion = async {
-        child.wait().await.map_err(|error| LauncherError::Update(format!("{operation}: {error}")))
-    };
-    let status = tokio::select! {
-        result = async { tokio::try_join!(capture, completion) } => result?.1,
-        signal = tokio::signal::ctrl_c() => {
-            signal.map_err(|error| LauncherError::Update(format!("listen for cancellation: {error}")))?;
-            return Err(LauncherError::Update(format!("{operation}: cancelled")));
-        }
-    };
-    Ok((status, bytes))
+    if nix::sys::signal::killpg(nix::unistd::Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL)
+        .is_err()
+    {
+        let _ = child.kill();
+    }
+}
+
+#[cfg(not(unix))]
+fn terminate(child: &mut Child) {
+    let _ = child.kill();
 }
 
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn captures_real_version_output() {
-        let (status, output) =
-            stdout(Command::new("sh").args(["-c", "printf 'peritus 1.2.3\\n'"]), "test output")
-                .await
-                .expect("output");
+    #[test]
+    fn status_terminates_a_hung_process_group_at_the_deadline() {
+        let started = Instant::now();
+        let error = status(
+            Command::new("sh").args(["-c", "sleep 30"]),
+            "test hung child",
+            Duration::from_millis(50),
+        )
+        .expect_err("deadline");
+        assert!(error.to_string().contains("deadline"));
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn stdout_captures_a_bounded_successful_result() {
+        let (status, output) = stdout(
+            Command::new("sh").args(["-c", "printf 'peritus 1.2.3\\n'"]),
+            "test output",
+            Duration::from_secs(1),
+        )
+        .expect("output");
         assert!(status.success());
         assert_eq!(output, b"peritus 1.2.3\n");
-    }
-
-    #[tokio::test]
-    async fn output_capture_reaps_descendants_that_keep_stdout_open() {
-        let temporary = tempfile::tempdir().unwrap();
-        let marker = temporary.path().join("must-not-finish");
-        let (status, output) = stdout(
-            Command::new("sh")
-                .args(["-c", "(sleep 0.2; touch must-not-finish) & printf version; exit 0"])
-                .current_dir(temporary.path()),
-            "capture root exit",
-        )
-        .await
-        .unwrap();
-        assert!(status.success());
-        assert_eq!(output, b"version");
-        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-        assert!(!marker.exists());
-    }
-
-    #[tokio::test]
-    async fn dropping_execution_cancels_owned_group() {
-        let temporary = tempfile::tempdir().expect("temporary directory");
-        let marker = temporary.path().join("finished");
-        let mut command = Command::new("sh");
-        command.args(["-c", "sleep 0.2; touch \"$1\"", "test"]).arg(&marker);
-        {
-            let execution = status(&mut command, "cancel fixture");
-            tokio::pin!(execution);
-            tokio::select! {
-                result = &mut execution => panic!("unexpected completion: {result:?}"),
-                () = tokio::time::sleep(std::time::Duration::from_millis(20)) => {}
-            }
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-        assert!(!marker.exists(), "cancelled descendant wrote its completion marker");
-    }
-}
-
-#[cfg(all(test, windows))]
-mod windows_tests {
-    use super::*;
-
-    fn descendant_fixture(exit_after_ready: bool) -> (tempfile::TempDir, Command) {
-        let root = tempfile::tempdir().unwrap();
-        let marker = root.path().join("descendant-finished");
-        let ready = root.path().join("descendant-ready");
-        let child_script = root.path().join("child.ps1");
-        let parent_script = root.path().join("parent.ps1");
-        let quote = |path: &std::path::Path| path.to_str().unwrap().replace('\'', "''");
-        std::fs::write(
-            &child_script,
-            format!(
-                "Set-Content -LiteralPath '{}' -Value ready\nStart-Sleep -Milliseconds 1000\nSet-Content -LiteralPath '{}' -Value finished",
-                quote(&ready), quote(&marker)
-            ),
-        )
-        .unwrap();
-        let continuation = if exit_after_ready {
-            format!(
-                "while (-not (Test-Path -LiteralPath '{}')) {{ Start-Sleep -Milliseconds 10 }}\nexit 0",
-                quote(&ready)
-            )
-        } else {
-            "Start-Sleep -Seconds 30".to_owned()
-        };
-        std::fs::write(&parent_script, format!("Start-Process -FilePath powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '\"{}\"') -NoNewWindow\n{continuation}", quote(&child_script))).unwrap();
-        let mut command = Command::new("powershell.exe");
-        command.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]).arg(&parent_script);
-        (root, command)
-    }
-
-    #[tokio::test]
-    async fn cancelling_updater_kills_its_already_started_descendant() {
-        let (root, mut command) = descendant_fixture(false);
-        let ready = root.path().join("descendant-ready");
-        let marker = root.path().join("descendant-finished");
-        {
-            let execution = status(&mut command, "Windows cancel fixture");
-            tokio::pin!(execution);
-            let started = std::time::Instant::now();
-            loop {
-                tokio::select! {
-                    result = &mut execution => panic!("unexpected early result: {result:?}"),
-                    () = tokio::time::sleep(std::time::Duration::from_millis(10)) => {},
-                }
-                if ready.exists() {
-                    break;
-                }
-                assert!(
-                    started.elapsed() < std::time::Duration::from_secs(10),
-                    "updater did not start"
-                );
-            }
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
-        assert!(!marker.exists(), "cancelled updater descendant survived its Job Object");
-    }
-
-    #[tokio::test]
-    async fn successful_updater_root_exit_terminates_its_already_started_descendant() {
-        let (root, mut command) = descendant_fixture(true);
-        let status = tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            status(&mut command, "Windows root-exit fixture"),
-        )
-        .await
-        .expect("updater root did not observe descendant readiness")
-        .unwrap();
-        assert!(status.success());
-        assert!(root.path().join("descendant-ready").exists(), "descendant never started");
-        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
-        assert!(
-            !root.path().join("descendant-finished").exists(),
-            "updater descendant survived successful root exit"
-        );
-    }
-}
-
-#[cfg(all(test, unix))]
-mod root_exit_tests {
-    #[tokio::test]
-    async fn successful_root_exit_does_not_abandon_a_descendant() {
-        let directory = tempfile::tempdir().unwrap();
-        let marker = directory.path().join("descendant-completed");
-        let status = super::status(
-            std::process::Command::new("sh")
-                .args(["-c", "(sleep 0.2; printf survived > descendant-completed) & exit 0"])
-                .current_dir(directory.path()),
-            "root-exit fixture",
-        )
-        .await
-        .unwrap();
-        assert!(status.success());
-        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-        assert!(!marker.exists());
     }
 }

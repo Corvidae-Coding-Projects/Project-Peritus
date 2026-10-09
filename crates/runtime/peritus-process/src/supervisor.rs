@@ -150,16 +150,6 @@ fn start_with_native(
         changed: std::sync::Condvar::new(),
     });
     emit(&shared, &plan, None, ProcessEventKind::IntentPersisted, Vec::new());
-    // Observers can read output as soon as control is published. Prepare valid streams before
-    // scheduling the owner, retaining its existing asynchronous failure and native cleanup path.
-    let spools = match plan.io_mode() {
-        crate::IoMode::Pipes => {
-            SpoolSet::pipes(&spool_directory, plan.output_policy().spool_bytes())
-        }
-        crate::IoMode::Pty(_) => {
-            SpoolSet::pty(&spool_directory, plan.output_policy().spool_bytes())
-        }
-    };
     let control = ProcessControl::new(
         control_tx,
         Arc::clone(&shared),
@@ -171,6 +161,7 @@ fn start_with_native(
     let thread_session = Arc::clone(&pending_session);
     let thread_store = store.clone();
     let thread_shared = Arc::clone(&shared);
+    let thread_spool = spool_directory.clone();
     let thread_plan = plan.clone();
     let name = format!("peritus-process-{}", short_id(process_id.as_bytes()));
     let Ok(join) = thread::Builder::new().name(name).spawn(move || {
@@ -179,7 +170,7 @@ fn start_with_native(
         run_owner(
             &thread_store,
             &thread_plan,
-            spools,
+            &thread_spool,
             control_rx,
             thread_shared,
             session,
@@ -265,7 +256,7 @@ impl ProcessStore {
 fn run_owner(
     store: &ProcessStore,
     plan: &ExecutionPlan,
-    spools: Result<SpoolSet, ProcessError>,
+    spool_directory: &std::path::Path,
     control_rx: mpsc::Receiver<crate::control::ControlCommand>,
     shared: Arc<SharedObservation>,
     mut native: Option<Box<dyn NativeSandboxSession>>,
@@ -273,6 +264,12 @@ fn run_owner(
 ) -> Result<TerminalResult, ProcessError> {
     let began = Instant::now();
     emit(&shared, plan, None, ProcessEventKind::SpawnAttempt, Vec::new());
+    let spools = match plan.io_mode() {
+        crate::IoMode::Pipes => {
+            SpoolSet::pipes(spool_directory, plan.output_policy().spool_bytes())
+        }
+        crate::IoMode::Pty(_) => SpoolSet::pty(spool_directory, plan.output_policy().spool_bytes()),
+    };
     let spools = match spools {
         Ok(spools) => spools,
         Err(error) => {

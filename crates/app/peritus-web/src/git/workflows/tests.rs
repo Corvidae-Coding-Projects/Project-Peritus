@@ -81,7 +81,3 @@ async fn remote_workflows_publish_fetch_track_and_remove() {
     assert!(remote_url("ext::sh -c malicious").is_err());
     assert!(remote_url("--upload-pack=command").is_err());
 }
-
-async fn action(root: &Path, kind: &str, input: &Value) -> Result<String> {
-    super::action(root, kind, input, None).await
-}

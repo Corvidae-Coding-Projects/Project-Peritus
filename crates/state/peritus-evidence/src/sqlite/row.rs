@@ -57,9 +57,10 @@ pub(super) fn load_record(
     transaction: &Transaction<'_>,
     id: crate::EvidenceId,
 ) -> Result<Option<EvidenceRecord>, EvidenceError> {
+    type EvidenceRow = (Vec<u8>, Vec<u8>, i64, Vec<u8>, Vec<u8>, Vec<u8>);
     let quarantined: bool = transaction
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM peritus_evidence_quarantine WHERE evidence_id = ?1 AND reconciled_record_digest IS NULL)",
+            "SELECT EXISTS(SELECT 1 FROM peritus_evidence_quarantine WHERE evidence_id = ?1)",
             [id.as_bytes().as_slice()],
             |row| row.get(0),
         )
@@ -67,14 +68,6 @@ pub(super) fn load_record(
     if quarantined {
         return Err(corrupt("evidence record is quarantined"));
     }
-    load_record_uncontained(transaction, id)
-}
-
-pub(super) fn load_record_uncontained(
-    transaction: &Transaction<'_>,
-    id: crate::EvidenceId,
-) -> Result<Option<EvidenceRecord>, EvidenceError> {
-    type EvidenceRow = (Vec<u8>, Vec<u8>, i64, Vec<u8>, Vec<u8>, Vec<u8>);
     let raw: Option<EvidenceRow> = transaction
         .query_row(
             "SELECT record_bytes, record_digest, global_position, event_id, batch_hash, revision_digest FROM peritus_evidence_records WHERE evidence_id = ?1",

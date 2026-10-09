@@ -25,8 +25,6 @@ pub async fn observe(app: &App, id: &str) -> Result<Value> {
                     .then(|| json!({"revision":hash,"bytes":bytes.len(),"recovered":true})))
             };
             check().unwrap_or(None)
-        } else if record.input["command"] == "git" {
-            crate::git::recover(app, id, &record.input).await?
         } else if record.input["command"] == "send" {
             match daemon::recover_send(app, id).await {
                 Ok(result) => result,
@@ -57,18 +55,6 @@ pub async fn acknowledge(app: &App, id: &str) -> Result<Value> {
     let observed = observe(app, id).await?;
     if !observed["result"].is_null() {
         return Ok(observed);
-    }
-    if app.owned_operations.lock().map_err(problem)?.contains(id) {
-        return Err(problem("The original operation still has a live execution owner"));
-    }
-    if let Some(record) = app.snapshot()?.operations.get(id)
-        && record.input["command"] == "git"
-        && let Ok(command) = crate::processes::ManagedCommand::get(app, &format!("git:{id}"))
-        && command.observe()?.state() == peritus_product_runner::PreviewProcessState::Running
-    {
-        return Err(problem(
-            "Git is still running; cancel it or wait for its original outcome before clearing the hold",
-        ));
     }
     app.update(|state| acknowledge_review(state, id))?;
     observe(app, id).await

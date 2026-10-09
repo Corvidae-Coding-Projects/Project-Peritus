@@ -1,10 +1,8 @@
 //! Candidate-tree creation, retained snapshots, and exact tree restoration.
 
-mod nested;
 mod operations;
-pub use nested::RegisteredNestedRepository;
 mod quarantine;
-pub mod support;
+mod support;
 
 use std::path::PathBuf;
 
@@ -26,23 +24,13 @@ pub fn expected_snapshot_ref(workspace_id: WorkspaceId, snapshot_id: SnapshotId)
 pub struct CandidateRequest<'a> {
     worktree: &'a RegisteredWorktree,
     expected_head: CommitId,
-    nested: &'a [RegisteredNestedRepository],
 }
 
 impl<'a> CandidateRequest<'a> {
     /// Binds candidate creation to one registration and exact observed HEAD.
     #[must_use]
     pub const fn new(worktree: &'a RegisteredWorktree, expected_head: CommitId) -> Self {
-        Self { worktree, expected_head, nested: &[] }
-    }
-    /// Allows these exact independently owned nested repositories as gitlink boundaries.
-    #[must_use]
-    pub const fn with_nested_repositories(
-        mut self,
-        nested: &'a [RegisteredNestedRepository],
-    ) -> Self {
-        self.nested = nested;
-        self
+        Self { worktree, expected_head }
     }
 }
 
@@ -216,7 +204,6 @@ pub struct RestoreRequest<'a> {
     worktree: &'a RegisteredWorktree,
     snapshot: &'a CandidateSnapshot,
     expected_head: CommitId,
-    nested: &'a [RegisteredNestedRepository],
 }
 
 impl<'a> RestoreRequest<'a> {
@@ -227,16 +214,7 @@ impl<'a> RestoreRequest<'a> {
         snapshot: &'a CandidateSnapshot,
         expected_head: CommitId,
     ) -> Self {
-        Self { worktree, snapshot, expected_head, nested: &[] }
-    }
-    /// Allows these exact independently owned nested repositories as gitlink boundaries.
-    #[must_use]
-    pub const fn with_nested_repositories(
-        mut self,
-        nested: &'a [RegisteredNestedRepository],
-    ) -> Self {
-        self.nested = nested;
-        self
+        Self { worktree, snapshot, expected_head }
     }
 }
 

@@ -77,8 +77,6 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 32, name: "query-workbench-queue" },
     AppPayloadDescriptor { tag: 33, name: "query-workbench-context" },
     AppPayloadDescriptor { tag: 34, name: "query-workbench-brief" },
-    AppPayloadDescriptor { tag: 47, name: "query-workbench-brief-page" },
-    AppPayloadDescriptor { tag: 48, name: "query-workbench-brief-proposal" },
     AppPayloadDescriptor { tag: 35, name: "begin-workbench-image-upload" },
     AppPayloadDescriptor { tag: 36, name: "preview-workbench-image" },
     AppPayloadDescriptor { tag: 37, name: "query-workbench-images" },
@@ -89,7 +87,6 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 42, name: "preview-workbench-compaction" },
     AppPayloadDescriptor { tag: 43, name: "query-workbench-execution" },
     AppPayloadDescriptor { tag: 44, name: "continue-workbench-execution" },
-    AppPayloadDescriptor { tag: 46, name: "continue-workbench-message" },
     AppPayloadDescriptor { tag: 45, name: "query-interaction-binding" },
     AppPayloadDescriptor { tag: 60, name: "query-workbench-goal" },
     AppPayloadDescriptor { tag: 80, name: "query-workbench-review" },
@@ -104,8 +101,6 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 160, name: "query-workbench-permissions" },
     AppPayloadDescriptor { tag: 161, name: "query-workbench-memory" },
     AppPayloadDescriptor { tag: 162, name: "discover-init" },
-    AppPayloadDescriptor { tag: 164, name: "discover-init-artifacts" },
-    AppPayloadDescriptor { tag: 165, name: "query-init-artifact-page" },
 ];
 
 const RESPONSES: &[AppPayloadDescriptor] = &[
@@ -132,8 +127,6 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 21, name: "workbench-queue" },
     AppPayloadDescriptor { tag: 22, name: "workbench-context" },
     AppPayloadDescriptor { tag: 23, name: "workbench-brief" },
-    AppPayloadDescriptor { tag: 45, name: "workbench-brief-page" },
-    AppPayloadDescriptor { tag: 46, name: "workbench-brief-proposal" },
     AppPayloadDescriptor { tag: 24, name: "workbench-image-preview" },
     AppPayloadDescriptor { tag: 25, name: "workbench-images" },
     AppPayloadDescriptor { tag: 26, name: "workbench-file-preview" },
@@ -157,8 +150,6 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 160, name: "workbench-permissions" },
     AppPayloadDescriptor { tag: 161, name: "workbench-memory" },
     AppPayloadDescriptor { tag: 162, name: "init-proposal" },
-    AppPayloadDescriptor { tag: 164, name: "init-artifact-proposal" },
-    AppPayloadDescriptor { tag: 165, name: "init-artifact-page" },
 ];
 
 const EVENTS: &[AppPayloadDescriptor] = &[

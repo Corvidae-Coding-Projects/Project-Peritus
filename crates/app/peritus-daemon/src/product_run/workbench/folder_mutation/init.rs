@@ -10,20 +10,39 @@ use peritus_product_runner::control::{
 };
 use peritus_types::{Generation, RevisionNumber};
 
-mod artifacts;
-
 impl ProductRunService {
     pub(crate) fn discover_init(
         &self,
         actor: ActorId,
         request: peritus_app_protocol::InitDiscoveryRequest,
     ) -> AppResponsePayload {
-        let result = self.init_artifact_scope(actor, request).and_then(|scope| {
-            crate::product_control::discover_init_checked(&scope.root, request, &|path| {
-                scope.read_allowed(path)
-            })
-            .map_err(|_| Error::from(ControlError::InvalidInput))
-        });
+        let result = self
+            .require_workspace_permissions(
+                actor,
+                request.query(),
+                &[peritus_product_runner::control::PermissionCapability::Read],
+            )
+            .and_then(|()| {
+                let id = ConversationId::new(request.query().conversation().into_bytes())?;
+                let record = self
+                    .with_controls(false, |store| store.load(id))?
+                    .ok_or(ControlError::NotFound)?;
+                if record.owner_bytes() != actor.as_bytes()
+                    || record.workspace_bytes() != request.query().workspace().as_bytes()
+                {
+                    return Err(ControlError::ScopeMismatch.into());
+                }
+                if record.revision() != request.revision() {
+                    return Err(ControlError::StaleRevision.into());
+                }
+                let root = self
+                    .inner
+                    .workspaces
+                    .get(&request.query().workspace())
+                    .ok_or(ControlError::ScopeMismatch)?;
+                crate::product_control::discover_init(root, request)
+                    .map_err(|_| Error::from(ControlError::InvalidInput))
+            });
         result.map_or_else(error_response, AppResponsePayload::InitProposal)
     }
 
@@ -36,9 +55,6 @@ impl ProductRunService {
         generation: Generation,
         revision: RevisionNumber,
     ) -> Result<peritus_patch::PatchSet, Error> {
-        if let WorkbenchIntent::ApplyInitArtifact(proposal) = command.intent() {
-            return self.prepare_init_artifact(actor, command, *proposal, generation, revision);
-        }
         let WorkbenchIntent::ApplyInitDiff(proposal) = command.intent() else {
             return Err(ControlError::InvalidInput.into());
         };
@@ -54,19 +70,29 @@ impl ProductRunService {
                 peritus_product_runner::control::PermissionCapability::Write,
             ],
         )?;
-        let request = peritus_app_protocol::InitDiscoveryRequest::new(
-            command.query(),
-            command.expected_revision(),
-        )
-        .map_err(|_| ControlError::InvalidInput)?;
-        let scope = self.init_artifact_scope(actor, request)?;
-        crate::product_control::prepare_init_patch_checked(
-            &scope.root,
+        self.control_workspace(command.query())?;
+        let id = ConversationId::new(command.query().conversation().into_bytes())?;
+        let record =
+            self.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+        if record.owner_bytes() != actor.as_bytes()
+            || record.workspace_bytes() != command.query().workspace().as_bytes()
+        {
+            return Err(ControlError::ScopeMismatch.into());
+        }
+        if record.revision() != command.expected_revision() {
+            return Err(ControlError::StaleRevision.into());
+        }
+        let root = self
+            .inner
+            .workspaces
+            .get(&command.query().workspace())
+            .ok_or(ControlError::ScopeMismatch)?;
+        crate::product_control::prepare_init_patch(
+            root,
             command.query().workspace(),
             generation,
             revision,
             proposal,
-            &|path| scope.read_allowed(path),
         )
         .map_err(|_| ControlError::StaleRevision.into())
     }
@@ -92,8 +118,11 @@ impl ProductRunService {
         session: SessionId,
         command: &WorkbenchCommand,
     ) -> Result<WorkbenchReceipt, Error> {
+        let WorkbenchIntent::ApplyInitDiff(proposal) = command.intent() else {
+            return Err(ControlError::InvalidInput.into());
+        };
         self.control_workspace(command.query())?;
-        let fingerprint = artifacts::fingerprint(command.intent())?;
+        let fingerprint = proposal.fingerprint().map_err(|_| ControlError::InvalidInput)?;
         if let Some(receipt) = self.with_controls(false, |store| {
             resolve_initialization(store, actor, command, fingerprint.as_bytes())
         })? {
@@ -141,8 +170,11 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
     ) -> Result<WorkbenchReceipt, Error> {
+        let WorkbenchIntent::ApplyInitDiff(proposal) = command.intent() else {
+            return Err(ControlError::InvalidInput.into());
+        };
         self.control_workspace(command.query())?;
-        let fingerprint = artifacts::fingerprint(command.intent())?;
+        let fingerprint = proposal.fingerprint().map_err(|_| ControlError::InvalidInput)?;
         self.with_controls(false, |store| {
             resolve_initialization(store, actor, command, fingerprint.as_bytes())?
                 .ok_or_else(|| ControlError::NotFound.into())

@@ -1,4 +1,4 @@
-export interface TextSnapshot { text:string; revision:string; bytes:number; offset?:number; next?:number|null; version?:string }
+export interface TextSnapshot { text:string; revision:string; bytes:number }
 export function textFormat(text:string) {
   let lf=0,crlf=0,cr=0;
   for(let i=0;i<text.length;i++) {

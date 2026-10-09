@@ -8,7 +8,6 @@ mod error;
 mod files;
 mod git;
 mod operations;
-mod processes;
 mod server;
 mod sessions;
 mod state;

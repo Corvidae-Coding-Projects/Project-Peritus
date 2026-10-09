@@ -130,14 +130,6 @@ impl GitRepository {
                 "registered worktree contains status entries",
             ));
         }
-        crate::snapshot::support::inspect_nested_git_metadata(
-            self,
-            worktree,
-            &[],
-            true,
-            None,
-            Operation::RemoveWorktree,
-        )?;
         let mut arguments = strings(&["worktree", "remove"]);
         if policy == RemovalPolicy::ForceRegistered {
             arguments.push(OsString::from("--force"));

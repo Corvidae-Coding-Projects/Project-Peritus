@@ -257,14 +257,9 @@ impl AppModel {
             self.chat.workbench.compaction_preview = None;
             self.chat.workbench.snapshot = None;
         }
-        if matches!(
-            intent,
-            WorkbenchIntent::ApplyInitDiff(_) | WorkbenchIntent::ApplyInitArtifact(_)
-        ) {
+        if matches!(intent, WorkbenchIntent::ApplyInitDiff(_)) {
             self.chat.workbench.mode = WorkbenchMode::Sessions;
             self.chat.workbench.init = None;
-            self.chat.workbench.init_artifact = None;
-            self.chat.workbench.init_artifact_page = None;
             self.chat.workbench.snapshot = None;
         }
         if matches!(

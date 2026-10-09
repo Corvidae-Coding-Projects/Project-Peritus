@@ -1,0 +1,22 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-run-settlement", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "094-peritus-run-settlement-verus-verify.log", "owning_crate": "peritus-run-settlement", "started_at": "2026-10-09T21:23:20.625971Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:96:10
+   |
+96 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-run-settlement/src/evidence.rs:162:10
+    |
+162 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-run-settlement` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized] target(s) in 0.11s
+
+GATE DRIVER RESULT: {"command": "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "elapsed_seconds": 0.365, "exit_code": 0, "finished_at": "2026-10-09T21:23:20.991483Z", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-run-settlement", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "094-peritus-run-settlement-verus-verify.log", "owning_crate": "peritus-run-settlement", "result": "passed", "started_at": "2026-10-09T21:23:20.625971Z"}

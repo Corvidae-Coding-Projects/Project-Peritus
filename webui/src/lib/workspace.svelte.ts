@@ -18,7 +18,7 @@ export const ui = $state({
   panel:'conversation', drawer:'files',overlay:'',palette:'', notice:'',noticeError:false,
   pending:{} as Record<string,boolean>,details:false,config:'',configPath:'',configError:'',
   consoles:[] as ConsoleSession[],consoleId:'',
-  reportTitle:'',reportText:'',runs:[] as Run[],runsNext:null as number|null,
+  reportTitle:'',reportText:'',runs:[] as Run[],
 });
 export function openProjects(): Project[] { return ui.workspace.projects.filter(p=>!p.closed); }
 export function project(): Project|undefined { return openProjects().find(p=>p.id===ui.projectId); }
@@ -153,15 +153,10 @@ export async function attachFile(path:string,projectId=ui.projectId){
   const id=ui.sessionId;if(!id)throw new Error('Open a conversation before attaching a file.');
   if(projectId!==ui.projectId)throw new Error('Attach a file from this session’s project.');
   if((ui.attachments[id]??[]).some(file=>file.path===path)){notify('This file is already attached. Remove it first to take a fresh snapshot.');return;}
+  if((ui.attachments[id]?.length??0)+(ui.attaching[id]??0)>=16)throw new Error('Attach at most 16 files to one message.');
   ui.attaching[id]=(ui.attaching[id]??0)+1;
   try{const file=await api.action<Attachment>('attach-file',{session:id,project:projectId,path});ui.attachments[id]=[...(ui.attachments[id]??[]),file];if(ui.sessionId===id){ui.activeFile='';ui.panel='conversation';}notify(`Attached snapshot of ${path} to the next message.`);}
   finally{ui.attaching[id]=Math.max(0,(ui.attaching[id]??1)-1);}
-}
-export async function removeAttachment(attachment:Attachment){
-  const session=ui.sessionId;
-  await api.action('remove-attachment',{session,attachment:attachment.id});
-  ui.attachments[session]=(ui.attachments[session]??[]).filter(file=>file.id!==attachment.id);
-  notify(`Removed snapshot of ${attachment.path}.`);
 }
 export async function reconcileOperations(operation?:string){
   const outcome={recovered:0,unresolved:0,failed:0};
@@ -236,7 +231,7 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
       ui.reportText=run?(id==='diff'?run.diff:runInspection(run)):'No run has been observed in this session yet.';ui.overlay='report';return;
     }
     case 'improvements':ui.overlay='improvements';return;
-    case 'runs':await loadRuns();ui.overlay='runs';return;
+    case 'runs':ui.runs=await api.query<Run[]>('runs');ui.overlay='runs';return;
     case 'stop':case 'retry':case 'export':case 'acknowledge':
       observeConversation(ui.sessionId,await api.action<Conversation>('control',{session:ui.sessionId,action:id}));notify(`Requested ${id} for this run.`);return;
     case 'discard':ui.overlay='discard';return;
@@ -261,9 +256,4 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
         return openWorkbench(suggestion);
       }
   }
-}
-
-export async function loadRuns(offset=0) {
-  const page=await api.query<import('./types').RunPage>('runs',{offset});
-  ui.runs=offset?[...ui.runs,...page.runs]:page.runs;ui.runsNext=page.next;
 }

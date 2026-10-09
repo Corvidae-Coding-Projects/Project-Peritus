@@ -1,0 +1,13 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/native-evidence-review.md
+bytes=11120
+sha256=e072717168c697f8db95abf9228e1690f0c643ac2ff066a463985ae9b7f69159
+/tmp/peritus-final23/native-updater-owner-replay.log
+bytes=332
+sha256=3ebccbcb4432b9db7c299a8008084d4b4cc26d4cacacafebc0fb3c09f65c13c4
+/tmp/peritus-final23/native-updater-extraction-replay.log
+bytes=208
+sha256=649c78bca6eecf1a43fd546ef3adea90bf4df98cc2e10feefd0f80ad3ba4921f
+/tmp/peritus-final23/ci-repairs-launcher-tests.log
+bytes=9197
+sha256=558b24a2982271f45687930291129abdd105626d575ee02edeceeb87c3089997

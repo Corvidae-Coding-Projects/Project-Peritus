@@ -1,4 +1,4 @@
-//! Local project discovery and exact reviewed initialization patch preparation.
+//! Bounded local project discovery and exact reviewed initialization patch preparation.
 //!
 //! This module has no process or provider dependency. Discovery reads only a fixed source list;
 //! preparation repeats discovery and returns inert patch data for the existing authority gateway.
@@ -6,12 +6,13 @@
 use peritus_app_protocol::{
     AppErrorCode, AppProtocolError, InitCommand, InitCommandKind, InitCommandVerification,
     InitDiscoveryRequest, InitFileMode, InitProposal, InitSourceKind, InitSourceObservation,
+    MAX_INIT_SOURCE_BYTES,
 };
 use peritus_patch::{
     FileMode, FinalFile, LineEndingPolicy, PatchOperation, PatchSet, Preimage, WorkspacePath,
 };
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
-use peritus_workspace::{FolderIdentity, FolderInspection};
+use peritus_workspace::{FileReadSelection, FolderIdentity, FolderInspection};
 use std::{fs, path::Path};
 
 #[cfg(test)]
@@ -42,41 +43,25 @@ struct SelectedSource {
     mode: InitFileMode,
 }
 
-/// Discovers the legacy fixed set of root-local project sources without running commands.
+/// Discovers a fixed bounded set of root-local project sources without running commands.
 ///
 /// Missing selected sources are simply absent from the proposal. Present sources are opened
-/// handle-relatively without following symlinks, streamed with exact source checks, and
+/// handle-relatively without following symlinks, read completely under the 256 KiB ceiling, and
 /// represented by exact digests. This function performs no writes, provider calls, package-script
 /// execution, dependency installation, recursive scan, or network access.
 ///
 /// # Errors
-/// Rejects changed folder identity, unsafe source shapes, non-UTF-8 instructions,
+/// Rejects changed folder identity, unsafe source shapes, oversized files, non-UTF-8 instructions,
 /// malformed managed-section markers, or invalid protocol bounds.
-#[cfg(test)]
 pub fn discover_init(
     root: &Path,
     request: InitDiscoveryRequest,
-) -> Result<InitProposal, AppProtocolError> {
-    discover_init_checked(root, request, &|_| true)
-}
-
-/// Discovers fixed sources under the caller's authenticated read policy.
-///
-/// # Errors
-/// Returns a read-only error before reading a denied source, or a discovery error.
-pub fn discover_init_checked(
-    root: &Path,
-    request: InitDiscoveryRequest,
-    read_allowed: &dyn Fn(&str) -> bool,
 ) -> Result<InitProposal, AppProtocolError> {
     let identity = FolderIdentity::observe(root).map_err(|_| app_error(AppErrorCode::NotReady))?;
     let reader =
         FolderInspection::open(&identity).map_err(|_| app_error(AppErrorCode::NotReady))?;
     let mut selected = Vec::new();
     for &(path, kind) in SELECTED_SOURCES {
-        if !read_allowed(path) {
-            return Err(app_error(AppErrorCode::ReadOnly));
-        }
         if let Some(source) = read_selected(&reader, identity.root(), path, kind)? {
             selected.push(source);
         }
@@ -114,7 +99,6 @@ pub fn discover_init_checked(
 /// Rejects another workspace, changed folder/source bytes, a modified proposal, or invalid patch
 /// construction. Any intervening `AGENTS.md` edit therefore fails before a write is attempted; the
 /// patch transaction independently rechecks the same preimage at application time.
-#[cfg(test)]
 pub fn prepare_init_patch(
     root: &Path,
     workspace_id: WorkspaceId,
@@ -122,26 +106,11 @@ pub fn prepare_init_patch(
     revision: RevisionNumber,
     proposal: &InitProposal,
 ) -> Result<PatchSet, AppProtocolError> {
-    prepare_init_patch_checked(root, workspace_id, generation, revision, proposal, &|_| true)
-}
-
-/// Revalidates a fixed-source proposal with the caller's current authenticated read policy.
-///
-/// # Errors
-/// Rejects denied reads, changed sources, or invalid patch metadata.
-pub fn prepare_init_patch_checked(
-    root: &Path,
-    workspace_id: WorkspaceId,
-    generation: Generation,
-    revision: RevisionNumber,
-    proposal: &InitProposal,
-    read_allowed: &dyn Fn(&str) -> bool,
-) -> Result<PatchSet, AppProtocolError> {
     if proposal.query().workspace() != workspace_id {
         return Err(app_error(AppErrorCode::SessionMismatch));
     }
     let request = InitDiscoveryRequest::new(proposal.query(), proposal.revision())?;
-    let current = discover_init_checked(root, request, read_allowed)?;
+    let current = discover_init(root, request)?;
     if &current != proposal {
         return Err(app_error(AppErrorCode::StaleRevision));
     }
@@ -185,27 +154,25 @@ fn read_selected(
     if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
         return Err(app_error(AppErrorCode::InvalidIdentifier));
     }
+    if metadata.len() > MAX_INIT_SOURCE_BYTES as u64 {
+        return Err(app_error(AppErrorCode::LimitExceeded));
+    }
     let workspace_path =
         WorkspacePath::new(path).map_err(|_| app_error(AppErrorCode::InvalidIdentifier))?;
-    let mut bytes = Vec::new();
-    let allocation_failed = std::cell::Cell::new(false);
-    let (source_bytes, source_digest) = reader
-        .scan_file_chunks(
-            &workspace_path,
-            || allocation_failed.get(),
-            |_, chunk| {
-                if bytes.try_reserve(chunk.len()).is_err() {
-                    allocation_failed.set(true);
-                } else {
-                    bytes.extend_from_slice(chunk);
-                }
-            },
-        )
-        .map_err(|_| app_error(AppErrorCode::NotReady))?
-        .ok_or_else(|| app_error(AppErrorCode::NotReady))?;
-    let observation =
-        InitSourceObservation::new(path.to_owned(), kind, source_digest, source_bytes)?;
-    Ok(Some(SelectedSource { observation, bytes, mode: observed_mode(&metadata) }))
+    let inspected = reader
+        .read_file(&workspace_path, FileReadSelection::all(), MAX_INIT_SOURCE_BYTES as u64)
+        .map_err(|_| app_error(AppErrorCode::NotReady))?;
+    let observation = InitSourceObservation::new(
+        path.to_owned(),
+        kind,
+        inspected.source_digest(),
+        inspected.source_bytes(),
+    )?;
+    Ok(Some(SelectedSource {
+        observation,
+        bytes: inspected.bytes().to_vec(),
+        mode: observed_mode(&metadata),
+    }))
 }
 
 fn discover_commands(
@@ -375,9 +342,3 @@ fn observed_mode(metadata: &fs::Metadata) -> InitFileMode {
 const fn observed_mode(_metadata: &fs::Metadata) -> InitFileMode {
     InitFileMode::Regular
 }
-
-mod artifacts;
-pub use artifacts::{
-    discover_init_artifacts_checked, init_artifact_page_checked,
-    prepare_init_artifact_patch_checked,
-};

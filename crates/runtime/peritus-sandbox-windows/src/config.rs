@@ -18,7 +18,6 @@ pub struct WindowsBackendConfig {
     pub(crate) workspace: WindowsPath,
     pub(crate) protected_roots: Vec<WindowsPath>,
     pub(crate) read_only_inputs: Vec<WindowsPath>,
-    pub(crate) writable_inputs: Vec<WindowsPath>,
     pub(crate) acl_backup_root: PathBuf,
     pub(crate) token: TokenProfile,
     pub(crate) managed_filter_digest: Option<Sha256Digest>,
@@ -60,7 +59,6 @@ impl WindowsBackendConfig {
             workspace,
             protected_roots: policy.protected_roots().to_vec(),
             read_only_inputs: Vec::new(),
-            writable_inputs: Vec::new(),
             acl_backup_root,
             token,
             managed_filter_digest,
@@ -74,21 +72,9 @@ impl WindowsBackendConfig {
     /// # Errors
     /// Rejects external inputs overlapping the workspace or exceeding policy capacity.
     pub fn with_read_only_inputs(mut self, inputs: Vec<WindowsPath>) -> Result<Self, WindowsError> {
-        let policy = PathPolicy::new(self.workspace.clone(), self.protected_roots.clone())?
-            .with_read_only_inputs(inputs)?;
-        self.read_only_inputs = policy.read_only_inputs().to_vec();
-        Ok(self)
-    }
-
-    /// Admits native roots for explicit checked filesystem rules without granting ambient rights.
-    ///
-    /// # Errors
-    /// Rejects ambiguous native aliases.
-    pub fn with_writable_inputs(mut self, inputs: Vec<WindowsPath>) -> Result<Self, WindowsError> {
-        let policy = PathPolicy::new(self.workspace.clone(), self.protected_roots.clone())?
-            .with_read_only_inputs(self.read_only_inputs.clone())?
-            .with_writable_inputs(inputs)?;
-        self.writable_inputs = policy.writable_inputs().to_vec();
+        PathPolicy::new(self.workspace.clone(), self.protected_roots.clone())?
+            .with_read_only_inputs(inputs.clone())?;
+        self.read_only_inputs = inputs;
         Ok(self)
     }
 

@@ -41,10 +41,7 @@ pub use config::WindowsBackendConfig;
 pub use conformance::ConformanceFacts;
 pub use descriptor::{BACKEND_NAME, BACKEND_VERSION, WindowsBackendDescriptor, WindowsIdentity};
 pub use diagnostic::{enforcement_name, resource_name};
-pub use error::{
-    PreparationCleanup, WindowsError, WindowsErrorKind, WindowsErrorSource, WindowsOperation,
-    WindowsRecovery,
-};
+pub use error::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsRecovery};
 pub use filesystem::{
     AclAccess, AclEntry, AclPlan, AclTransaction, PathEvidence, PathPolicy, ResolvedWindowsPath,
     WindowsPath, compile_acl_plan,

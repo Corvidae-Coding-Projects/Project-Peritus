@@ -76,7 +76,7 @@ impl FileAttachments {
         self.entries
             .iter()
             .filter(|entry| {
-                entry.selected && included.iter().any(|input| entry.file.matches_input(*input))
+                entry.selected && included.iter().any(|input| input.id() == entry.file.input())
             })
             .collect()
     }
@@ -88,9 +88,6 @@ impl FileAttachments {
         text: &ControlText<8192>,
     ) -> Result<(), ControlError> {
         file.validate()?;
-        if file.shares_message_input() {
-            return Err(ControlError::InvalidInput);
-        }
         *inputs = inputs.apply(
             actor,
             &QueueIntent::Enqueue {
@@ -107,27 +104,6 @@ impl FileAttachments {
         });
         self.validate(inputs)
     }
-    pub(in crate::control) fn attach_message(
-        &mut self,
-        inputs: &InputLedger,
-        input: crate::control::InputId,
-        files: &[FileAttachment],
-    ) -> Result<(), ControlError> {
-        for file in files {
-            if !file.shares_message_input() || file.input() != input {
-                return Err(ControlError::InvalidInput);
-            }
-            file.validate()?;
-            self.entries.push(FileSelection {
-                file: file.clone(),
-                selected: true,
-                refreshes: Vec::new(),
-                frozen: false,
-            });
-        }
-        self.validate(inputs)
-    }
-
     pub(in crate::control) fn select(
         &mut self,
         inputs: &mut InputLedger,
@@ -175,12 +151,6 @@ impl FileAttachments {
         for entry in &self.entries {
             entry.file.validate()?;
             if inputs.latest(entry.file.input()).is_none()
-                || entry.file.input_revision().is_some_and(|revision| {
-                    !inputs.revisions().iter().any(|input| {
-                        input.selection().id() == entry.file.input()
-                            && input.selection().revision() == revision
-                    })
-                })
                 || !operations.insert(entry.file.operation())
                 || (!entry.refreshes.is_empty()
                     && entry.file.source().mode() != FileMode::RefreshOnRequest)

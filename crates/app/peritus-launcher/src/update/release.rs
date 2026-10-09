@@ -1,5 +1,7 @@
 //! Exact release identity and current GitHub release discovery.
 
+use std::time::Duration;
+
 use crate::LauncherError;
 
 const LATEST_RELEASE: &str =
@@ -55,15 +57,13 @@ impl Version {
 }
 
 pub(super) async fn latest() -> Result<Option<Release>, LauncherError> {
-    latest_from(LATEST_RELEASE).await
-}
-
-pub(super) async fn latest_from(url: &str) -> Result<Option<Release>, LauncherError> {
     let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(4))
         .build()
         .map_err(|error| update("construct release client", &error))?;
     let response = client
-        .get(url)
+        .get(LATEST_RELEASE)
         .header(reqwest::header::USER_AGENT, "peritus-updater")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()

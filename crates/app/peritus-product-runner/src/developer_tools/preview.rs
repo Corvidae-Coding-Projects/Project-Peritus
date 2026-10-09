@@ -301,48 +301,6 @@ impl PreviewCommand {
     }
 }
 
-/// Persistable observation identity for an owned preview. It grants no launch authority.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct PreviewOwner {
-    source_run: peritus_types::RunId,
-    execution_run: peritus_types::RunId,
-    action: peritus_types::ActionId,
-    process: ProcessId,
-}
-
-impl PreviewOwner {
-    /// Reconstructs an untrusted saved binding; the runtime validates it against durable authority.
-    #[must_use]
-    pub const fn new(
-        source_run: peritus_types::RunId,
-        execution_run: peritus_types::RunId,
-        action: peritus_types::ActionId,
-        process: ProcessId,
-    ) -> Self {
-        Self { source_run, execution_run, action, process }
-    }
-    /// Returns the source runtime identity.
-    #[must_use]
-    pub const fn source_run(self) -> peritus_types::RunId {
-        self.source_run
-    }
-    /// Returns the exact execution run.
-    #[must_use]
-    pub const fn execution_run(self) -> peritus_types::RunId {
-        self.execution_run
-    }
-    /// Returns the one-use action identity.
-    #[must_use]
-    pub const fn action(self) -> peritus_types::ActionId {
-        self.action
-    }
-    /// Returns the owned native process identity.
-    #[must_use]
-    pub const fn process(self) -> ProcessId {
-        self.process
-    }
-}
-
 /// Exact C2 process identity and private runtime handle for one accepted preview launch.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PreviewLaunch {

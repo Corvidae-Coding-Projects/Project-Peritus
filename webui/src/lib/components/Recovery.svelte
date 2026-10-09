@@ -1,9 +1,9 @@
 <script lang="ts">
   import {recovery,forgetOperation} from '../operations.svelte';
-  import {request,action} from '../api';
+  import {request} from '../api';
   import {ui,attempt,reconcileOperations,notify} from '../workspace.svelte';
   let checking=$state<Record<string,boolean>>({}),results=$state<Record<string,string>>({});
-  let unresolved=$derived(recovery.pending.filter(item=>(item.session===ui.sessionId||item.project===ui.projectId)&&!ui.pending[item.session??'']&&(!ui.gitBusy||item.command==='git')&&!ui.attaching[item.session??'']));
+  let unresolved=$derived(recovery.pending.filter(item=>(item.session===ui.sessionId||item.project===ui.projectId)&&!ui.pending[item.session??'']&&!ui.gitBusy&&!ui.attaching[item.session??'']));
   async function check(operation:string){
     if(checking[operation])return;
     checking[operation]=true;results[operation]='';
@@ -18,4 +18,4 @@
     await request('/api/operation-review',{operation,confirmed:true});forgetOperation(operation);notify('Safety hold cleared after your review. The original action was not repeated.');
   }
 </script>
-{#each unresolved as item(item.operation)}<div class="recovery-banner" role="status"><div><strong>Unresolved {item.command} operation</strong><p>Your draft is retained. Check the original target before submitting again.</p><code>{item.operation}</code>{#if checking[item.operation]||results[item.operation]}<p class="recovery-check" aria-live="polite">{checking[item.operation]?'Checking the original outcome…':results[item.operation]}</p>{/if}</div><div class="button-cluster">{#if item.command==='git'}<button class="key small" onclick={()=>void attempt(async()=>{await action('cancel-operation',{original:item.operation,project:ui.projectId});notify('Git cancellation requested. Inspect the original outcome before another change.');})}>Cancel Git operation</button>{/if}<button class="key small" disabled={checking[item.operation]} aria-busy={checking[item.operation]||undefined} onclick={()=>void check(item.operation)}>{checking[item.operation]?'Checking…':'Check original outcome'}</button><button class="key small" disabled={checking[item.operation]} onclick={()=>void attempt(()=>reviewed(item.operation))}>I inspected the outcome</button></div></div>{/each}
+{#each unresolved as item(item.operation)}<div class="recovery-banner" role="status"><div><strong>Unresolved {item.command} operation</strong><p>Your draft is retained. Check the original target before submitting again.</p><code>{item.operation}</code>{#if checking[item.operation]||results[item.operation]}<p class="recovery-check" aria-live="polite">{checking[item.operation]?'Checking the original outcome…':results[item.operation]}</p>{/if}</div><div class="button-cluster"><button class="key small" disabled={checking[item.operation]} aria-busy={checking[item.operation]||undefined} onclick={()=>void check(item.operation)}>{checking[item.operation]?'Checking…':'Check original outcome'}</button><button class="key small" disabled={checking[item.operation]} onclick={()=>void attempt(()=>reviewed(item.operation))}>I inspected the outcome</button></div></div>{/each}

@@ -3,7 +3,6 @@
 use super::AppTypeDescriptor;
 
 mod brief;
-mod brief_pages;
 mod checkpoints;
 mod compaction;
 mod context;
@@ -14,7 +13,6 @@ mod goal;
 mod image_page;
 mod images;
 mod init;
-mod init_artifacts;
 mod inputs;
 mod interaction;
 mod launch;
@@ -37,14 +35,12 @@ pub const APP_FLOW_TYPES: &[&[AppTypeDescriptor]] = &[
     launch::RESULT_TYPES,
     permissions::PERMISSION_TYPES,
     init::INIT_TYPES,
-    init_artifacts::INIT_ARTIFACT_TYPES,
     memory::MEMORY_TYPES,
     inputs::INPUT_TYPES,
     context::CONTEXT_TYPES,
     checkpoints::CHECKPOINT_TYPES,
     compaction::COMPACTION_TYPES,
     brief::BRIEF_TYPES,
-    brief_pages::BRIEF_PAGE_TYPES,
     images::IMAGE_TYPES,
     image_page::IMAGE_PAGE_TYPES,
     files::FILE_TYPES,

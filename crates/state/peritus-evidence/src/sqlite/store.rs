@@ -10,11 +10,7 @@ use peritus_artifact_store::{ArtifactStore, ReferenceOwner};
 use peritus_journal::IntegrityExport;
 use peritus_types::{EventId, RevisionTuple};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-    time::Duration,
-};
+use std::{collections::BTreeMap, path::Path, time::Duration};
 
 /// Shared `SQLite` connection policy for the evidence adapter.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,34 +54,13 @@ impl EvidenceStore {
         path: impl AsRef<Path>,
         options: EvidenceStoreOptions,
     ) -> Result<Self, EvidenceError> {
-        let mut store = Self::open_pending(path, options)?;
-        let cancellation = crate::EvidenceCancellation::new();
-        while !store
-            .containment_step(const { std::num::NonZeroUsize::new(128).unwrap() }, &cancellation)?
-            .is_complete()
-        {}
-        Ok(store)
-    }
-
-    /// Opens the catalog and resumes its durable startup scan without draining it.
-    ///
-    /// All record reads remain integrity checked. Call [`Self::containment_step`] to contain
-    /// corrupt records incrementally; dropping this owner retains the durable startup cursor.
-    ///
-    /// # Errors
-    /// Returns schema, dependency, contention, or catalog failures.
-    pub fn open_pending(
-        path: impl AsRef<Path>,
-        options: EvidenceStoreOptions,
-    ) -> Result<Self, EvidenceError> {
-        let mut connection = super::connection::open(path.as_ref(), options.busy_timeout())?;
+        let connection = super::connection::open(path.as_ref(), options.busy_timeout())?;
         validate_dependencies(&connection)?;
         connection
             .execute_batch(super::schema::INSTALL)
             .map_err(|error| EvidenceError::sqlite("install evidence schema", error))?;
-        super::schema::migrate(&mut connection)?;
         let mut store = Self { connection };
-        store.begin_containment()?;
+        store.contain_corrupt_records()?;
         Ok(store)
     }
 
@@ -103,56 +78,32 @@ impl EvidenceStore {
         export: &IntegrityExport,
         artifacts: &ArtifactStore,
     ) -> Result<EvidenceRecord, EvidenceError> {
-        let mut operation = crate::EvidenceAdmission::new(self, draft, export, artifacts);
-        operation.finish(&crate::EvidenceCancellation::new())
-    }
-
-    /// Recognizes an exact immutable admission receipt before dependency or export work.
-    ///
-    /// This does not assert that its dependencies are currently available or that the record is
-    /// fresh. Callers requiring present authority must separately evaluate freshness.
-    ///
-    /// # Errors
-    /// Returns identity conflict, quarantine, catalog integrity, or storage failures.
-    pub fn committed_retry(
-        &self,
-        draft: &EvidenceDraft,
-    ) -> Result<Option<EvidenceRecord>, EvidenceError> {
-        let existing = self.load(draft.id())?;
-        if existing.as_ref().is_some_and(|record| !record.matches_draft(draft)) {
-            return Err(conflict("evidence identity already names different content"));
+        for digest in draft.artifacts() {
+            artifacts
+                .verify(*digest)
+                .map_err(|error| EvidenceError::artifact("verify evidence artifact", error))?;
         }
-        Ok(existing)
-    }
-
-    pub(crate) fn commit_admission(
-        &mut self,
-        draft: EvidenceDraft,
-        export: &IntegrityExport,
-    ) -> Result<EvidenceRecord, EvidenceError> {
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|error| EvidenceError::sqlite("begin evidence admission", error))?;
         let existing = load_record(&transaction, draft.id())?;
-        if let Some(existing) = existing {
-            if !existing.matches_draft(&draft) {
-                return Err(conflict("evidence identity already names different content"));
-            }
-            transaction
-                .commit()
-                .map_err(|error| EvidenceError::sqlite("finish evidence retry", error))?;
-            return Ok(existing);
-        }
         let durable = journal_observation(&transaction, draft.journal_position())?;
         let parents = load_parents(&transaction, draft.causes())?;
-        let plan = AdmissionPlan::build(
-            draft,
-            &durable,
-            export,
-            export.report().journal_head_digest(),
-            &parents,
-        )?;
+        let provenance_head_digest = existing.as_ref().map_or_else(
+            || export.report().journal_head_digest(),
+            |record| record.provenance().journal_head_digest(),
+        );
+        let plan = AdmissionPlan::build(draft, &durable, export, provenance_head_digest, &parents)?;
+        if let Some(existing) = existing {
+            if existing == *plan.record() {
+                transaction
+                    .commit()
+                    .map_err(|error| EvidenceError::sqlite("finish evidence retry", error))?;
+                return Ok(existing);
+            }
+            return Err(conflict("evidence identity already names different content"));
+        }
         let digest_owner: Option<Vec<u8>> = transaction
             .query_row(
                 "SELECT evidence_id FROM peritus_evidence_records WHERE record_digest = ?1",
@@ -263,38 +214,6 @@ impl EvidenceStore {
             .commit()
             .map_err(|error| EvidenceError::sqlite("finish evidence freshness read", error))?;
         Ok(evaluate_freshness(&record, current, invalidation))
-    }
-    pub(crate) fn causal_snapshot(
-        &self,
-        authority: &[EvidenceId],
-        current: &RevisionTuple,
-    ) -> Result<Vec<(EvidenceRecord, Freshness)>, EvidenceError> {
-        let transaction =
-            Transaction::new_unchecked(&self.connection, TransactionBehavior::Deferred)
-                .map_err(|error| EvidenceError::sqlite("begin evidence causal snapshot", error))?;
-        let mut pending: BTreeSet<_> = authority.iter().copied().collect();
-        let mut snapshot = BTreeMap::new();
-        while let Some(id) = pending.pop_first() {
-            if snapshot.contains_key(&id) {
-                continue;
-            }
-            let record = load_record(&transaction, id)?.ok_or_else(|| {
-                EvidenceError::new(
-                    EvidenceErrorKind::InvalidCause,
-                    RecoveryAction::RepairDependency,
-                    "load evidence causal snapshot",
-                    "causal closure record is missing",
-                )
-            })?;
-            let freshness =
-                evaluate_freshness(&record, current, load_invalidation(&transaction, id)?);
-            pending.extend(record.causes().iter().copied());
-            snapshot.insert(id, (record, freshness));
-        }
-        transaction
-            .commit()
-            .map_err(|error| EvidenceError::sqlite("finish evidence causal snapshot", error))?;
-        Ok(snapshot.into_values().collect())
     }
 }
 

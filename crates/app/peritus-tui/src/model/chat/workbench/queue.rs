@@ -66,9 +66,6 @@ impl AppModel {
             };
             return self.refresh_queue(page.query().revision(), offset, page.query().history());
         }
-        if action == "add" && text.len() > peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES {
-            return self.send_workbench_text(text.to_owned(), true);
-        }
         let intent = match self.queue_intent(action, text) {
             Ok(intent) => intent,
             Err(message) => {
@@ -77,22 +74,6 @@ impl AppModel {
             }
         };
         let Some(query) = self.chat.workbench.selected else { return Vec::new() };
-        if matches!(intent, WorkbenchQueueIntent::Move { .. } | WorkbenchQueueIntent::Reorder(_)) {
-            let Some(page) =
-                self.chat.workbench.queue.as_ref().filter(|page| !page.query().history())
-            else {
-                self.notice(
-                    NoticeLevel::Warning,
-                    "Inspect the pending queue before changing its order; draft retained.",
-                );
-                return Vec::new();
-            };
-            return self.submit_bound_workbench(
-                WorkbenchIntent::Queue(intent),
-                query,
-                page.query().revision(),
-            );
-        }
         // Resolve row numbers once, against the page the user inspected. Refresh only the
         // aggregate fence; never reinterpret the user's row against a reordered queue.
         self.request(
@@ -148,33 +129,6 @@ impl AppModel {
             .map(WorkbenchQueueIntent::Enqueue)
             .map_err(|_| bad_text);
         }
-        if action == "move" {
-            if !self.features.iter().any(|feature| {
-                feature.as_str() == WellKnownProtocolFeature::WorkbenchQueueMoves.as_str()
-            }) {
-                return Err(
-                    "This daemon does not support incremental ordering; upgrade/reconnect. Draft retained.",
-                );
-            }
-            let (source, target) = split(text);
-            let selected = self.queue_selection(source)?;
-            let before = if target == "end" {
-                None
-            } else {
-                let (keyword, id) = split(target);
-                if keyword != "before" {
-                    return Err(
-                        "Use /queue move <inspected row or ID> before <32-hex ID>, or end; draft retained.",
-                    );
-                }
-                Some(
-                    decode_hex_16(id)
-                        .and_then(|bytes| WorkbenchInputId::new(bytes).ok())
-                        .ok_or("Destination must be an exact pending 32-hex ID; draft retained.")?,
-                )
-            };
-            return Ok(WorkbenchQueueIntent::Move { selected, before });
-        }
         if action == "order" {
             let order = text.split_whitespace().map(|value| decode_hex_16(value)
                 .and_then(|bytes| WorkbenchInputId::new(bytes).ok())
@@ -186,7 +140,7 @@ impl AppModel {
         }
         if !matches!(action, "edit" | "correct" | "hold" | "release" | "withdraw") {
             return Err(
-                "Use /queue [add <text> | edit <row> <text> | correct <row> <text> | hold <row> | release <row> | withdraw <row> | order <IDs> | move <row/ID> before <ID>/end | history | pending | next | previous | retry]. Draft retained.",
+                "Use /queue [add <text> | edit <row> <text> | correct <row> <text> | hold <row> | release <row> | withdraw <row> | order <IDs> | history | pending | next | previous | retry]. Draft retained.",
             );
         }
         let (row, replacement) = split(text);
@@ -241,14 +195,6 @@ impl AppModel {
             .queue
             .as_ref()
             .ok_or("Open /queue and inspect the exact row first; draft retained.")?;
-        if let Some(id) = decode_hex_16(text).and_then(|bytes| WorkbenchInputId::new(bytes).ok()) {
-            return page
-                .rows()
-                .iter()
-                .find(|row| row.selected().id() == id)
-                .map(peritus_app_protocol::WorkbenchInputRow::selected)
-                .ok_or("Inspect the page containing that exact input ID first; draft retained.");
-        }
         let index = text
             .parse::<usize>()
             .ok()

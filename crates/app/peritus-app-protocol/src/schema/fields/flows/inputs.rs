@@ -120,23 +120,6 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
-        name: "WorkbenchMoveInputIntent",
-        rust_type: "WorkbenchQueueIntent",
-        fields: &[
-            kind("\"move\"", &["move"]),
-            selected("selected"),
-            field(
-                "before",
-                W::Option,
-                &[B::NonZero],
-                "Option<WorkbenchInputId>",
-                "WorkbenchInputId",
-                J::Identifier,
-                false,
-            ),
-        ],
-    },
-    AppTypeDescriptor {
         name: "WorkbenchQueueControlIntent",
         rust_type: "WorkbenchIntent",
         fields: &[
@@ -146,7 +129,7 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
                 W::Struct,
                 &[],
                 "WorkbenchQueueIntent",
-                "WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent | WorkbenchMoveInputIntent",
+                "WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent",
                 J::OneOfRef(&[
                     "WorkbenchEnqueueIntent",
                     "WorkbenchEditInputIntent",
@@ -154,7 +137,6 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
                     "WorkbenchHoldInputIntent",
                     "WorkbenchWithdrawInputIntent",
                     "WorkbenchReorderInputIntent",
-                    "WorkbenchMoveInputIntent",
                 ]),
                 true,
             ),

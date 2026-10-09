@@ -262,48 +262,6 @@ pub(super) const FILE_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
-        name: "WorkbenchEnqueueMessageIntent",
-        rust_type: "WorkbenchIntent",
-        fields: &[
-            kind("WorkbenchIntent", "\"enqueueMessage\"", &["enqueueMessage"]),
-            nested("preview", "WorkbenchFileImportPreview"),
-        ],
-    },
-    AppTypeDescriptor {
-        name: "WorkbenchEnqueueMessageBundleIntent",
-        rust_type: "WorkbenchIntent",
-        fields: &[
-            kind("WorkbenchIntent", "\"enqueueMessageBundle\"", &["enqueueMessageBundle"]),
-            field(
-                "text",
-                W::Utf8,
-                &[B::WorkbenchInputBytes],
-                "WorkbenchInputText",
-                "string",
-                J::String,
-                true,
-            ),
-            field(
-                "message",
-                W::Option,
-                &[],
-                "Option<WorkbenchFileImportPreview>",
-                "WorkbenchFileImportPreview",
-                J::Ref("WorkbenchFileImportPreview"),
-                false,
-            ),
-            field(
-                "attachments",
-                W::Sequence,
-                &[],
-                "Vec<WorkbenchFileImportPreview>",
-                "ReadonlyArray<WorkbenchFileImportPreview>",
-                J::ArrayRef("WorkbenchFileImportPreview"),
-                true,
-            ),
-        ],
-    },
-    AppTypeDescriptor {
         name: "WorkbenchContextFileSource",
         rust_type: "WorkbenchContextSource",
         fields: &[

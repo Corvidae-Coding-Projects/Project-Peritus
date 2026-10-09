@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::support::{
-    inspect_nested_git_metadata, object_mismatch, read_manifest, release_snapshot_refs,
+    object_mismatch, read_manifest, reject_nested_git_metadata, release_snapshot_refs,
     retain_manifest, retain_ref, snapshot_ref, validate_candidate_binding, verify_retained,
 };
 use super::{
@@ -23,7 +23,7 @@ impl GitRepository {
     ///
     /// # Errors
     ///
-    /// Rejects registration or HEAD drift, unregistered nested repository metadata, Git staging failures, and
+    /// Rejects registration or HEAD drift, nested repository metadata, Git staging failures, and
     /// an index tree that cannot be validated under the repository object format.
     pub fn create_candidate(
         &self,
@@ -38,15 +38,12 @@ impl GitRepository {
                 "worktree HEAD changed or is no longer detached",
             ));
         }
-        inspect_nested_git_metadata(
+        reject_nested_git_metadata(
             self,
             request.worktree,
-            request.nested,
-            false,
-            None,
+            request.worktree.root(),
             Operation::CreateCandidate,
         )?;
-        let nested_links = super::nested::candidate_links(self, request.worktree, request.nested)?;
         let prior_status = self.status(request.worktree)?;
         self.runner.checked(
             request.worktree.root(),
@@ -56,7 +53,6 @@ impl GitRepository {
             &strings(&["add", "--all", "--", "."]),
             None,
         )?;
-        super::nested::stage_links(self, request.worktree, &nested_links)?;
         let tree = self.write_tree(request.worktree, Operation::CreateCandidate)?;
         let status = self.status(request.worktree)?;
         if status.head() != Some(request.expected_head)
@@ -264,21 +260,12 @@ impl GitRepository {
                 "worktree HEAD changed or is no longer detached",
             ));
         }
-        inspect_nested_git_metadata(
+        reject_nested_git_metadata(
             self,
             request.worktree,
-            request.nested,
-            false,
-            Some(request.snapshot.tree()),
+            request.worktree.root(),
             Operation::RestoreSnapshot,
         )?;
-        super::nested::protect_restore(
-            self,
-            request.worktree,
-            request.nested,
-            request.snapshot.tree(),
-        )?;
-        let cleanup = super::support::cleanup_inventory(self, request.worktree)?;
         let prior_tree = self.status(request.worktree)?.index_tree();
         let arguments = vec![
             OsString::from("read-tree"),
@@ -294,7 +281,14 @@ impl GitRepository {
             &arguments,
             None,
         )?;
-        super::support::clean_inventory(self, request.worktree, &cleanup)?;
+        self.runner.checked(
+            request.worktree.root(),
+            Some(Self::worktree_location(request.worktree.root(), request.worktree.git_dir())),
+            CommandAccess::Write,
+            Operation::RestoreSnapshot,
+            &strings(&["clean", "-fdx", "--", "."]),
+            None,
+        )?;
         let restored_tree = self.write_tree(request.worktree, Operation::RestoreSnapshot)?;
         if restored_tree != request.snapshot.tree() {
             return Err(GitError::new(

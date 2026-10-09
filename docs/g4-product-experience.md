@@ -87,28 +87,6 @@ interactive requests never silently fall back to another model.
 The same discovery is used during provider setup. Existing installations retain their exact
 selected account models when their state is upgraded; old immutable configurations are untouched.
 
-## Project initialization
-
-`/init` inspects local project sources and proposes a managed section in `AGENTS.md`. With
-`app.workbench-init-artifacts`, selected source bytes are captured in immutable chunks and the
-complete review is retained by digest. `/init next` and `/init previous` read bounded pages without
-limiting the total source or diff size. `/init source <manifest|commands|docs|instructions> <path>`
-adds an explicit workspace-relative source, including a nested project. Discovery and parser
-failures appear beside the affected source. `/init command <number>` toggles a discovered command;
-all commands remain unverified and initialization never executes them.
-
-`/init apply` approves the exact retained selection and patch. The daemon checks the actor,
-workspace, conversation revision, current read policy, complete source observations, and original
-instruction-file bytes before using the existing folder patch transaction and durable receipt.
-A changed source requires a new review. Restart preserves review pages and completed receipt replay;
-replaying an applied proposal does not overwrite a later independent edit. Managed markers and
-bytes outside the managed section retain the existing initialization behavior.
-
-Legacy peers keep their original message encoding. Artifact-capable peers send constant-size
-proposal references and individual source/command choices instead of complete source and diff
-bodies. Source capture and review transport are chunked; parsers and the existing final-file patch
-API still materialize individual manifest or instruction-file text when needed.
-
 ## Checked coding runs
 
 Use `/build <request>` from the conversation:
@@ -287,19 +265,14 @@ the package's own install or upgrade adapter. A tagged release first creates a r
 builds and qualifies Linux, macOS, and Windows packages independently, uploads all native archives
 and checksums, and publishes only after every package job succeeds.
 
-Interactive startup offers an already cached release while optional discovery runs independently,
-at most once every six hours. Exiting cancels that discovery; a stalled network request does not
-hold up launch. `peritus update` checks immediately and supports cancellation. Archive downloads
-stream to checksum-bound staging without an archive-size or execution deadline. A retry hashes the
-retained prefix and appends only after validating the server's exact byte range; a complete matching
-archive is reused. Native extraction and installation retain owned process cleanup on cancellation.
-
-Unix updates verify both installed CLI and daemon versions and retain a durable outcome beside the
-staging directory. Windows schedules a detached helper that waits for launcher exit, applies the
-upgrade, verifies both versions, and records pending/running/succeeded/failed outcomes. An interrupted
-or failed installation requires inspecting that outcome and the installed pair before retrying;
-cancellation does not claim successful rollback. Automatic checks default on; `--disable-checks`
-and `--enable-checks` persist the user's choice without affecting manual checks.
+Interactive startup performs a cached release check at most once every six hours. Network failure
+does not block offline use. When a newer exact `vMAJOR.MINOR.PATCH` release exists, Peritus offers
+the update with a useful default; `peritus update` performs the same check immediately. Archive
+downloads stream to the protected cache with a 1 GiB bound and are checksum-verified before native
+installation. Unix upgrades finish transactionally before exit. Windows launches a detached helper
+that waits for the running executable to exit, applies the transactional upgrade, and verifies the
+new installed version. Automatic checks default on; the update command's `--disable-checks` and
+`--enable-checks` options persist the user's choice without affecting manual checks.
 
 Hosted Linux, macOS, and Windows gates assemble native packages from already checked build outputs,
 exercise install, repeat command launch, upgrade, uninstall, the public bootstrap, and checksum

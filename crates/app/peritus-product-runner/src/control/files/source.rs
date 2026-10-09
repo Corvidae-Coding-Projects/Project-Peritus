@@ -66,8 +66,6 @@ pub struct FileSource {
 enum Origin {
     Workspace { folder: [u8; 32], path: ControlText<4096> },
     Import { label: ControlText<4096> },
-    UserMessage,
-    AcceptedProposal { reply: crate::control::PublicReplyReference },
 }
 impl FileSource {
     /// Describes one exact selected-workspace path; the conversation supplies workspace ID.
@@ -100,44 +98,12 @@ impl FileSource {
         value.validate()?;
         Ok(value)
     }
-    /// Describes a complete immutable user-authored message, rather than attachment source data.
-    #[must_use]
-    pub const fn user_message() -> Self {
-        Self { origin: Origin::UserMessage, range: FileRange::All, mode: FileMode::Snapshot }
-    }
-    /// Retains immutable model authorship when a user explicitly accepts a proposal.
-    #[must_use]
-    pub const fn accepted_proposal(reply: crate::control::PublicReplyReference) -> Self {
-        Self {
-            origin: Origin::AcceptedProposal { reply },
-            range: FileRange::All,
-            mode: FileMode::Snapshot,
-        }
-    }
-    /// Borrows the exact model-authored proposal explicitly accepted by the user.
-    #[must_use]
-    pub const fn proposal(&self) -> Option<&crate::control::PublicReplyReference> {
-        match &self.origin {
-            Origin::AcceptedProposal { reply } => Some(reply),
-            _ => None,
-        }
-    }
-    /// Reports whether this source carries user-authored or explicitly user-confirmed instructions.
-    #[must_use]
-    pub const fn is_user_instruction(&self) -> bool {
-        matches!(self.origin, Origin::UserMessage | Origin::AcceptedProposal { .. })
-    }
-    /// Reports whether these exact bytes were explicitly admitted as a user message.
-    #[must_use]
-    pub const fn is_user_message(&self) -> bool {
-        matches!(self.origin, Origin::UserMessage)
-    }
     /// Returns the observed folder identity, absent for an inert external import.
     #[must_use]
     pub const fn folder(&self) -> Option<Sha256Digest> {
         match &self.origin {
             Origin::Workspace { folder, .. } => Some(Sha256Digest::new(*folder)),
-            Origin::Import { .. } | Origin::UserMessage | Origin::AcceptedProposal { .. } => None,
+            Origin::Import { .. } => None,
         }
     }
     /// Borrows the exact relative workspace path, never an external-import label.
@@ -145,7 +111,7 @@ impl FileSource {
     pub fn path(&self) -> Option<&str> {
         match &self.origin {
             Origin::Workspace { path, .. } => Some(path.as_str()),
-            Origin::Import { .. } | Origin::UserMessage | Origin::AcceptedProposal { .. } => None,
+            Origin::Import { .. } => None,
         }
     }
     /// Borrows the inert user-visible path or source label.
@@ -154,8 +120,6 @@ impl FileSource {
         match &self.origin {
             Origin::Workspace { path, .. } => path.as_str(),
             Origin::Import { label } => label.as_str(),
-            Origin::UserMessage => "User message",
-            Origin::AcceptedProposal { .. } => "User-confirmed agent proposal",
         }
     }
     /// Returns explicit range semantics, which may resolve to different bytes after refresh.
@@ -177,12 +141,7 @@ impl FileSource {
             Origin::Import { .. } if self.mode != FileMode::Snapshot => {
                 return Err(ControlError::InvalidInput);
             }
-            Origin::UserMessage | Origin::AcceptedProposal { .. }
-                if self.mode != FileMode::Snapshot || self.range != FileRange::All =>
-            {
-                return Err(ControlError::InvalidInput);
-            }
-            Origin::Import { .. } | Origin::UserMessage | Origin::AcceptedProposal { .. } => {}
+            Origin::Import { .. } => {}
         }
         Ok(())
     }

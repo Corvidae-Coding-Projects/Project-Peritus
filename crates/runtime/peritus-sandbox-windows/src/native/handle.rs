@@ -276,14 +276,13 @@ impl AttributeList {
         let TerminalAttachment::ConPty { console, .. } = terminal else {
             return Ok(());
         };
-        // SAFETY: this attribute takes the HPCON value itself; the live console and attribute
-        // list remain owned through process creation.
+        // SAFETY: HPCON storage and attribute list remain valid through process creation.
         if unsafe {
             UpdateProcThreadAttribute(
                 self.pointer,
                 0,
                 usize::try_from(PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE).unwrap_or(usize::MAX),
-                *console as *const c_void,
+                ptr::from_ref(console).cast::<c_void>(),
                 size_of::<HPCON>(),
                 ptr::null_mut(),
                 ptr::null(),
@@ -362,79 +361,4 @@ fn terminal_error(detail: &'static str) -> WindowsError {
         WindowsRecovery::SelectBackend,
         detail,
     )
-}
-
-/// Exercises creation, resize, and closure using private pipes, without a target process.
-pub(super) fn probe_conpty() -> bool {
-    let Ok((input, _input_writer)) = conpty_input() else {
-        return false;
-    };
-    let Ok((_output_reader, output)) = conpty_input() else {
-        return false;
-    };
-    let mut console = 0;
-    // SAFETY: both private pipe handles and the output slot remain valid during the call.
-    if unsafe {
-        CreatePseudoConsole(
-            COORD { X: 80, Y: 24 },
-            input.as_raw_handle().cast(),
-            output.as_raw_handle().cast(),
-            0,
-            &raw mut console,
-        )
-    } < 0
-    {
-        return false;
-    }
-    // SAFETY: console is the live unique result of CreatePseudoConsole above.
-    let resized = unsafe { ResizePseudoConsole(console, COORD { X: 81, Y: 25 }) } >= 0;
-    // SAFETY: release exactly the console acquired above, before private pipes are dropped.
-    unsafe { ClosePseudoConsole(console) };
-    resized
-}
-
-/// Exercises an actual inherited handle-list attribute installation on private handles.
-pub(super) fn probe_handle_list() -> bool {
-    let Ok((reader, _writer)) = conpty_input() else {
-        return false;
-    };
-    // SAFETY: this private pipe endpoint is live; only its inherit flag is changed.
-    if unsafe {
-        windows_sys::Win32::Foundation::SetHandleInformation(
-            reader.as_raw_handle().cast(),
-            windows_sys::Win32::Foundation::HANDLE_FLAG_INHERIT,
-            windows_sys::Win32::Foundation::HANDLE_FLAG_INHERIT,
-        )
-    } == 0
-    {
-        return false;
-    }
-    let mut bytes = 0;
-    // SAFETY: documented sizing call writes only the required size.
-    unsafe { InitializeProcThreadAttributeList(ptr::null_mut(), 1, 0, &raw mut bytes) };
-    if bytes == 0 {
-        return false;
-    }
-    let mut storage = vec![0_usize; bytes.div_ceil(size_of::<usize>())];
-    let pointer = storage.as_mut_ptr().cast();
-    // SAFETY: storage is aligned and sized by the API's preceding query.
-    if unsafe { InitializeProcThreadAttributeList(pointer, 1, 0, &raw mut bytes) } == 0 {
-        return false;
-    }
-    let handle: HANDLE = reader.as_raw_handle().cast();
-    // SAFETY: list and handle storage stay live through the update and delete calls.
-    let installed = unsafe {
-        UpdateProcThreadAttribute(
-            pointer,
-            0,
-            PROC_THREAD_ATTRIBUTE_HANDLE_LIST as usize,
-            (&raw const handle).cast(),
-            size_of::<HANDLE>(),
-            ptr::null_mut(),
-            ptr::null(),
-        )
-    } != 0;
-    // SAFETY: exactly this initialized list is deleted while its allocation is still live.
-    unsafe { DeleteProcThreadAttributeList(pointer) };
-    installed
 }

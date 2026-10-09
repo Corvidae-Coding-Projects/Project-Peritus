@@ -7,8 +7,7 @@
   let entries=$state<Entry[]>([]),filter=$state(''),next=$state<number|null>(null),loading=$state(false),error=$state('');
   let selected=$state<Entry|null>(null),menu:HTMLDialogElement,ignorePreview=$state('');
   let projectId=$derived(ui.projectId);
-  let inventory=$state('');
-  async function load(offset=0){const id=projectId;if(!id)return;loading=true;error='';try{const page=await query<Directory>('files',{project:id,path:'',offset,inventory:offset?inventory:''});if(id===projectId){entries=offset?[...entries,...page.entries]:page.entries;next=page.next;inventory=page.inventory;}}catch(e){if(id===projectId)error=String(e);}finally{if(id===projectId)loading=false;}}
+  async function load(offset=0){const id=projectId;if(!id)return;loading=true;error='';try{const page=await query<Directory>('files',{project:id,path:'',offset});if(id===projectId){entries=offset?[...entries,...page.entries]:page.entries;next=page.next;}}catch(e){if(id===projectId)error=String(e);}finally{if(id===projectId)loading=false;}}
   $effect(()=>{const id=projectId;const revision=ui.gitRevision;entries=[];next=null;error='';loading=false;if(id){void revision;void load();}});
   function context(entry:Entry){selected=entry;ignorePreview='';menu.showModal();}
   async function stage(){if(!selected||!ui.git)return;const full=`${project()?.root}/${selected.path}`;const prefix=ui.git.root+'/';if(!full.startsWith(prefix))throw new Error('This file is outside the selected Git repository.');await gitAction('add',[full.slice(prefix.length)]);menu.close();}

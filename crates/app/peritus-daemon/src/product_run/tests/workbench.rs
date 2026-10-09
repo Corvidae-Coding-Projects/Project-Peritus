@@ -22,7 +22,6 @@ use peritus_product_runner::control::{ControlError, InputState};
 use peritus_types::ActorId;
 
 mod admission;
-mod brief_pages;
 mod checkpoints;
 mod conversation;
 mod files;

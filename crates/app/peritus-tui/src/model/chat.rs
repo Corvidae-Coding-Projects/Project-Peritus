@@ -110,7 +110,7 @@ impl ChatUi {
 }
 impl AppModel {
     fn submit_chat(&mut self) -> Vec<Effect> {
-        let text = self.chat.buffer.trim();
+        let text = self.chat.buffer.trim().to_owned();
         if text.is_empty() {
             return Vec::new();
         }
@@ -120,14 +120,12 @@ impl AppModel {
                     "Pasted commands do not execute. Type the command or select it with Tab; draft retained.");
                 return Vec::new();
             }
-            let command = text.to_owned();
-            return self.slash_command(&command);
+            return self.slash_command(&text);
         }
         if let Some(path) = text.strip_prefix('@') {
-            let path = path.to_owned();
-            return self.file_command(&path);
+            return self.file_command(path);
         }
-        self.send_chat_message(self.chat.buffer.clone())
+        self.send_chat_message(text)
     }
     pub(super) fn send_chat_message(&mut self, text: String) -> Vec<Effect> {
         if self.chat_submission_pending() {

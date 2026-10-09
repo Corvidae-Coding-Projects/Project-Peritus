@@ -1,0 +1,49 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tools-fs --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tools-fs", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "119-peritus-tools-fs-ordinary-test.log", "owning_crate": "peritus-tools-fs", "started_at": "2026-10-09T21:23:45.441865Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.12s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_tools_fs-04d7b1d67e0018ed)
+
+running 5 tests
+test read::search::scanner::tests::finish_finds_a_match_split_across_chunks_near_eof ... ok
+test read::search::scanner::tests::finish_flushes_a_short_unterminated_line ... ok
+test read::search::scanner::tests::repeated_matches_keep_exact_columns_across_chunk_boundaries ... ok
+test render::tests::selected_pages_can_exceed_production_json_member_and_string_limits ... ok
+test verified::tests::independent_bounds_fail_closed ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/filesystem_tools.rs (/home/doll/Project-Peritus/target/debug/deps/filesystem_tools-df8471d668e0a9f0)
+
+running 10 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test discovery_and_search_render_exact_paths_with_invalid_name ... ok
+test discovery_and_search_render_exact_paths_without_invalid_name ... ok
+test every_mutation_form_compiles_to_one_canonical_patch_set ... ok
+test immutable_discover_read_metadata_and_search_are_real_and_bounded ... ok
+test immutable_inspection_omits_symlinks_without_following_external_targets ... ok
+test path_fragment_rendering_rejects_a_budget_that_cannot_fit_progress ... ok
+test search_fragments_preserve_the_requested_match_cursor ... ok
+test search_subpage_finishes_after_the_last_retained_match ... ok
+test wide_directory_discovery_counts_each_unsupported_child_once ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.53s
+
+     Running tests/fs_dispatch.rs (/home/doll/Project-Peritus/target/debug/deps/fs_dispatch-4e953f369df511b4)
+
+running 4 tests
+test authorized_preimage_conflict_is_failed_without_effect ... ok
+test recreated_dispatcher_replays_the_retained_lower_action_outcome ... ok
+test router_dispatches_create_and_write_through_target_owned_gateway ... ok
+test router_dispatches_remove_replace_and_atomic_multi_file_patch ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.49s
+
+     Running tests/unsupported_diagnostic_pages.rs (/home/doll/Project-Peritus/target/debug/deps/unsupported_diagnostic_pages-27fa865a67313f92)
+
+running 1 test
+test discovery_and_search_stream_unsupported_diagnostics_across_pages ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tools-fs --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 7.632, "exit_code": 0, "finished_at": "2026-10-09T21:23:53.074818Z", "invocation": ["cargo", "test", "--package", "peritus-tools-fs", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "119-peritus-tools-fs-ordinary-test.log", "owning_crate": "peritus-tools-fs", "result": "passed", "started_at": "2026-10-09T21:23:45.441865Z"}

@@ -36,20 +36,6 @@ pub(super) fn preparation(
     offset: usize,
 ) -> Result<WorkbenchIntent, CodecError> {
     Ok(match tag {
-        17 => {
-            let text = workbench_inputs::read_text(reader)?;
-            let message = if reader.read_bool()? {
-                Some(workbench_files::read_import_preview(reader)?)
-            } else {
-                None
-            };
-            let count = reader.read_u64()?;
-            let mut attachments = Vec::new();
-            for _ in 0..count {
-                attachments.push(workbench_files::read_import_preview(reader)?);
-            }
-            WorkbenchIntent::EnqueueMessageBundle { text, message, attachments }
-        }
         7 => WorkbenchIntent::SetBrief {
             field: workbench_brief::read_field(reader)?,
             text: workbench_inputs::read_text(reader)?,
@@ -80,9 +66,6 @@ pub(super) fn preparation(
         9 => WorkbenchIntent::SelectImage {
             attachment: read_id(reader, ControlOperationId::new)?,
             selected: reader.read_bool()?,
-        },
-        16 => WorkbenchIntent::EnqueueMessage {
-            preview: workbench_files::read_import_preview(reader)?,
         },
         12 => WorkbenchIntent::AttachFileImport {
             preview: workbench_files::read_import_preview(reader)?,
@@ -199,9 +182,6 @@ pub(super) fn policy(
         133 => WorkbenchIntent::PinGuidance(workbench_memory::read_pin(reader)?),
         134 => WorkbenchIntent::ScopeGuidance(workbench_memory::read_scope_change(reader)?),
         135 => WorkbenchIntent::ForgetGuidance(workbench_memory::read_forget(reader)?),
-        137 => WorkbenchIntent::ApplyInitArtifact(
-            crate::wire::workbench_init_artifacts::read_proposal(reader)?,
-        ),
         136 => WorkbenchIntent::ApplyInitDiff(workbench_init::read_proposal(reader)?),
         _ => return unknown(offset),
     })

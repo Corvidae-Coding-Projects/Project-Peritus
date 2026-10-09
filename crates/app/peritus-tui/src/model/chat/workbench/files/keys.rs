@@ -1,6 +1,6 @@
 //! Keyboard actions are separate from inert draft editing and explicit confirmation.
 use super::{AppModel, Effect, WorkbenchIntent};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent};
 
 impl AppModel {
     pub(in crate::model::chat::workbench) fn file_key(
@@ -9,10 +9,7 @@ impl AppModel {
     ) -> Option<Vec<Effect>> {
         if let Some(field) = self.chat.workbench.files.editing {
             let file = &mut self.chat.workbench.files;
-            if key.code == KeyCode::Esc
-                || (key.code == KeyCode::Enter
-                    && !(field == 2 && key.modifiers.contains(KeyModifiers::SHIFT)))
-            {
+            if matches!(key.code, KeyCode::Enter | KeyCode::Esc) {
                 file.editing = None;
                 return Some(Vec::new());
             }
@@ -26,18 +23,8 @@ impl AppModel {
             {
                 return Some(Vec::new());
             }
-            let previous = (field < 2).then(|| text.clone());
-            if field == 2 && matches!(key.code, KeyCode::Enter | KeyCode::Tab) {
-                if text.len() < limit {
-                    text.insert(file.cursor, if key.code == KeyCode::Tab { '\t' } else { '\n' });
-                    file.cursor += 1;
-                }
-            } else {
-                crate::input::edit_text(text, &mut file.cursor, key);
-            }
-            if previous.as_ref().is_some_and(|previous| previous != text) {
-                file.discard_preview();
-            }
+            crate::input::edit_text(text, &mut file.cursor, key);
+            file.discard_preview();
             return Some(Vec::new());
         }
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
@@ -90,9 +77,7 @@ impl AppModel {
             1 => (&mut file.range, 80),
             _ => (&mut file.caption, 8192),
         };
-        if text.chars().any(|ch| ch.is_control() && !(field == 2 && matches!(ch, '\n' | '\t')))
-            || buffer.len().saturating_add(text.len()) > limit
-        {
+        if text.chars().any(char::is_control) || buffer.len().saturating_add(text.len()) > limit {
             self.notice(
                 super::NoticeLevel::Warning,
                 "Pasted field is oversized or contains controls; nothing changed.",
@@ -101,9 +86,7 @@ impl AppModel {
         }
         buffer.insert_str(file.cursor, text);
         file.cursor += text.len();
-        if field < 2 && !text.is_empty() {
-            file.discard_preview();
-        }
+        file.discard_preview();
         true
     }
     fn file_list_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {

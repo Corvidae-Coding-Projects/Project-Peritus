@@ -173,42 +173,6 @@ impl CommandRuntime {
         Err(unavailable("launch preview process"))
     }
 
-    /// Projects prelaunch registration without constructing an effect owner.
-    pub fn launch_preview_registered(
-        &self,
-        _command: &PreviewCommand,
-        _register: &mut dyn FnMut(crate::PreviewOwner) -> Result<(), String>,
-    ) -> Result<PreviewLaunch, ProductRunnerError> {
-        match self.unavailable {}
-    }
-
-    /// Projects reconnection without constructing an effect owner.
-    pub fn reconnect_preview(
-        &self,
-        _owner: crate::PreviewOwner,
-    ) -> Result<PreviewLaunch, ProductRunnerError> {
-        match self.unavailable {}
-    }
-
-    /// Projects native lifecycle observation; this effect owner is uninhabited.
-    pub fn observe_retained_preview(
-        &self,
-        _owner: crate::PreviewOwner,
-    ) -> Result<PreviewObservation, ProductRunnerError> {
-        match self.unavailable {}
-    }
-
-    /// Projects an exact retained spool read; this effect owner is uninhabited.
-    pub fn retained_preview_range(
-        &self,
-        _owner: crate::PreviewOwner,
-        _stream: peritus_process::OutputStream,
-        _offset: u64,
-        _maximum_bytes: usize,
-    ) -> Result<PreviewOutputRange, ProductRunnerError> {
-        match self.unavailable {}
-    }
-
     /// Verification-only builds cannot observe a preview process.
     pub fn observe_preview(
         &self,

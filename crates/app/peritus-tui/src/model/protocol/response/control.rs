@@ -7,26 +7,6 @@ pub(super) fn project(
     payload: &AppResponsePayload,
     pending: Option<PendingRequest>,
 ) -> Vec<Effect> {
-    if let AppResponsePayload::WorkbenchFileImportPreview(preview) = payload {
-        match pending {
-            Some(PendingRequest::WorkbenchMessagePreview(request)) => {
-                return model.accept_message_preview(&request, preview.clone());
-            }
-            Some(PendingRequest::WorkbenchFileImportPreview(request)) => {
-                model.accept_file_import_preview(&request, preview.clone());
-            }
-            _ => {}
-        }
-        return Vec::new();
-    }
-    if matches!(
-        payload,
-        AppResponsePayload::InitArtifactProposal(_)
-            | AppResponsePayload::InitArtifactPage(_)
-            | AppResponsePayload::InitProposal(_)
-    ) {
-        return project_init(model, payload, pending);
-    }
     if is_setup_payload(payload) {
         project_setup(model, payload, pending)
     } else {
@@ -89,6 +69,10 @@ fn project_setup(
             Some(PendingRequest::WorkbenchPermissions(query)),
         ) => model.accept_workbench_permissions(query, permissions.clone()),
         (
+            AppResponsePayload::InitProposal(proposal),
+            Some(PendingRequest::WorkbenchInit(request)),
+        ) => model.accept_init_proposal(request, proposal.clone()),
+        (
             AppResponsePayload::WorkbenchMemory(memory),
             Some(PendingRequest::WorkbenchMemory(query)),
         ) => model.accept_workbench_memory(query, memory.clone()),
@@ -106,6 +90,10 @@ fn project_setup(
         ) if page.query() == &query => {
             model.accept_library_page(page);
         }
+        (
+            AppResponsePayload::WorkbenchFileImportPreview(preview),
+            Some(PendingRequest::WorkbenchFileImportPreview(request)),
+        ) => model.accept_file_import_preview(&request, preview.clone()),
         (
             AppResponsePayload::WorkbenchReview(page),
             Some(PendingRequest::WorkbenchReview(query)),
@@ -154,14 +142,6 @@ fn project_live(
             AppResponsePayload::WorkbenchImagePreview(preview),
             Some(PendingRequest::WorkbenchImagePreview(request)),
         ) => model.accept_image_preview(&request, preview.clone()),
-        (
-            AppResponsePayload::WorkbenchBriefPage(page),
-            Some(PendingRequest::WorkbenchBriefPage(request)),
-        ) => return model.accept_brief_page(request, page.clone()),
-        (
-            AppResponsePayload::WorkbenchBriefProposal(page),
-            Some(PendingRequest::WorkbenchBriefProposal(request)),
-        ) => model.accept_brief_body(request, page.clone()),
         (
             AppResponsePayload::WorkbenchBrief(brief),
             Some(PendingRequest::WorkbenchBrief(query)),
@@ -240,8 +220,6 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchRestore(_)
             | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
-            | AppResponsePayload::InitArtifactProposal(_)
-            | AppResponsePayload::InitArtifactPage(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
@@ -252,27 +230,4 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchReviewDiff(_)
             | AppResponsePayload::WorkbenchReviewDiffBytes(_)
     )
-}
-
-fn project_init(
-    model: &mut AppModel,
-    payload: &AppResponsePayload,
-    pending: Option<PendingRequest>,
-) -> Vec<Effect> {
-    match (payload, pending) {
-        (
-            AppResponsePayload::InitArtifactProposal(proposal),
-            Some(PendingRequest::WorkbenchInitArtifacts(request)),
-        ) => return model.accept_init_artifact(&request, *proposal),
-        (
-            AppResponsePayload::InitArtifactPage(page),
-            Some(PendingRequest::WorkbenchInitArtifactPage(request)),
-        ) => model.accept_init_artifact_page(request, page.clone()),
-        (
-            AppResponsePayload::InitProposal(proposal),
-            Some(PendingRequest::WorkbenchInit(request)),
-        ) => model.accept_init_proposal(request, proposal.clone()),
-        _ => {}
-    }
-    Vec::new()
 }

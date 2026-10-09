@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
     layout::Rect,
     style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
+    text::{Line, Text},
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -30,15 +30,11 @@ pub(super) fn render_run_text(
 ) {
     let lines = run_text_lines(model, area.width, select, empty);
     let maximum = super::content_scroll_limit(lines.len(), area);
+    let paragraph = Paragraph::new(lines).block(
+        Block::default().borders(Borders::ALL).title(format!("{title}· PgUp/PgDn · Home/End ")),
+    );
     let scroll = model.product.as_ref().map_or(0, |product| product.inspection_scroll).min(maximum);
-    let paragraph =
-        Paragraph::new(crate::render::viewport(&lines, scroll, area.height.saturating_sub(2)))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!("{title}· PgUp/PgDn · Home/End ")),
-            );
-    frame.render_widget(paragraph, area);
+    frame.render_widget(paragraph.scroll((scroll, 0)), area);
 }
 
 pub(super) fn run_text_lines(
@@ -93,14 +89,14 @@ pub(super) fn run_detail(
         field("Cycle", run.cycle().to_string()),
         field("Task", safe(run.task())),
         Line::from(""),
-        Line::from(Span::styled(
+        Line::styled(
             if run.summary().is_empty() {
                 "The daemon will report each completed effect boundary here.".to_owned()
             } else {
                 safe(run.summary())
             },
             Style::default().fg(MUTED),
-        )),
+        ),
     ];
     if let Some(deliverable) = run.deliverable() {
         lines.push(Line::from(""));

@@ -139,22 +139,6 @@ impl ControlStore {
         bytes[0] |= 1;
         self.prepare_inputs(&captured, InvocationId::new(bytes)?, request)
     }
-    /// Expands only authenticated user-message and accepted-proposal references for read policy.
-    /// The caller must authenticate the record before using its contract as authority.
-    pub(crate) fn user_instruction_context(
-        &self,
-        record: &peritus_product_runner::control::ConversationRecord,
-    ) -> Result<String, Error> {
-        let inputs = record.inputs().capture()?;
-        let mut context = inputs.conversation().to_owned();
-        for source in record.eligible_files(inputs.included()) {
-            if source.file().source().is_user_instruction() {
-                context.push('\n');
-                context.push_str(self.file_text(source.current())?.text());
-            }
-        }
-        Ok(context)
-    }
     /// Captures current inputs after checking the authenticated owner and exact workspace.
     /// Does not create absent state, start work, or consume any queue entries.
     pub fn capture_inputs(
@@ -169,7 +153,7 @@ impl ControlStore {
         {
             return Err(ControlError::ScopeMismatch.into());
         }
-        let user_context = self.user_instruction_context(&record)?;
+        let user_context = record.inputs().capture()?.conversation().to_owned();
         let metadata = record
             .replies()
             .iter()

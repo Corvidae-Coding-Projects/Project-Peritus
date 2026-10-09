@@ -167,10 +167,7 @@ pub(in crate::product_control) fn validate_archive(
             | ControlIntent::PublishReply(_)
             | ControlIntent::AttachImage { .. }
             | ControlIntent::AttachFile { .. }
-            | ControlIntent::RefreshFile { .. }
-            | ControlIntent::SubmitMessage { .. }
-            | ControlIntent::AcceptBriefProposal { .. }
-            | ControlIntent::RefreshFiles { .. },
+            | ControlIntent::RefreshFile { .. },
             None,
         )
         | (_, Some(_)) => Err(ControlError::InvalidInput.into()),

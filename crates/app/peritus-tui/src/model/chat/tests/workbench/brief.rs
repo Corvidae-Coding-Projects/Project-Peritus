@@ -156,5 +156,3 @@ fn brief_panel_keeps_composer_and_escape_visible_and_labels_exact_source_state()
         }
     }
 }
-
-mod pages;

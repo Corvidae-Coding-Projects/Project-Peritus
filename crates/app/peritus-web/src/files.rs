@@ -1,14 +1,12 @@
 //! Bounded directory pages and canonical project-confined file access.
 
 use crate::error::{Result, problem};
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 pub mod attachments;
 pub mod edit;
-mod inventory;
 pub mod pdf;
-pub use inventory::DirectoryCache;
-pub mod range;
 pub const TEXT_LIMIT: usize = 50 * 1024 * 1024;
 
 pub fn revision(bytes: &[u8]) -> String {
@@ -50,6 +48,42 @@ pub fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
         return Err(problem("This path resolves outside the project root"));
     }
     Ok(candidate)
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Entry {
+    name: String,
+    path: String,
+    directory: bool,
+    symlink: bool,
+    bytes: u64,
+}
+pub fn list(root: &Path, relative: &str, offset: usize) -> Result<serde_json::Value> {
+    let directory = resolve(root, relative)?;
+    let mut entries = Vec::new();
+    for entry in std::fs::read_dir(directory)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+        let path = entry.path().strip_prefix(root).map_err(problem)?.to_string_lossy().into_owned();
+        entries.push(Entry {
+            name: entry.file_name().to_string_lossy().into_owned(),
+            path,
+            directory: metadata.is_dir(),
+            symlink: entry.file_type()?.is_symlink(),
+            bytes: metadata.len(),
+        });
+    }
+    entries.sort_by(|a, b| {
+        b.directory
+            .cmp(&a.directory)
+            .then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+            .then(a.name.cmp(&b.name))
+    });
+    let total = entries.len();
+    let next = (offset + 250 < total).then_some(offset + 250);
+    Ok(
+        serde_json::json!({"entries":entries.into_iter().skip(offset).take(250).collect::<Vec<_>>(), "total":total, "next":next}),
+    )
 }
 pub fn text(root: &Path, relative: &str) -> Result<serde_json::Value> {
     let path = resolve(root, relative)?;

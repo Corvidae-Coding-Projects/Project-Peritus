@@ -76,12 +76,6 @@ where
             AppRequestPayload::QueryWorkbenchMemory(query) => {
                 product_runs.workbench_memory(actor_id, *query)
             }
-            AppRequestPayload::DiscoverInitArtifacts(value) => {
-                product_runs.discover_init_artifacts(actor_id, value.clone()).await
-            }
-            AppRequestPayload::QueryInitArtifactPage(value) => {
-                product_runs.init_artifact_page(actor_id, *value).await
-            }
             AppRequestPayload::DiscoverInit(value) => product_runs.discover_init(actor_id, *value),
             AppRequestPayload::QueryWorkbenchPermissions(query) => {
                 product_runs.workbench_permissions(actor_id, *query)
@@ -115,12 +109,6 @@ where
             }
             AppRequestPayload::QueryWorkbenchContext(query) => {
                 product_runs.workbench_context(actor_id, *query)
-            }
-            AppRequestPayload::QueryWorkbenchBriefPage(request) => {
-                product_runs.workbench_brief_page(actor_id, *request)
-            }
-            AppRequestPayload::QueryWorkbenchBriefProposal(request) => {
-                product_runs.workbench_brief_proposal(actor_id, *request)
             }
             AppRequestPayload::QueryWorkbenchBrief(query) => {
                 product_runs.workbench_brief(actor_id, *query)

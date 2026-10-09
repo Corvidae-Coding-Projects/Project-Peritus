@@ -301,11 +301,9 @@ logs, and operation identity before attempting manual repair.
 ## Evidence provenance and freshness
 
 `EvidenceStore::open` requires the journal event/command and artifact record/reference tables to
-already exist in the same SQLite database. Exact committed retries are recognized before dependency
-work. For a new record, `EvidenceAdmission` retains bounded artifact reads and hashes across
-cancellation, outside any writer transaction. It then compares the draft with a fresh durable
-journal observation and the supplied immutable `IntegrityExport` in one immediate transaction.
-Retrying commit contention retains completed verification and the exact draft identity.
+already exist in the same SQLite database. Admission verifies every artifact through
+`ArtifactStore::verify`, then starts one immediate transaction and compares the draft with both a
+fresh durable journal observation and the supplied `IntegrityExport`.
 
 An admitted `EvidenceRecord` binds:
 
@@ -326,29 +324,12 @@ They identify the first drift in tuple order: acceptance specification, harness,
 workspace generation, workspace revision, policy, then provider profile. A later journal-bound
 `EvidenceInvalidation` dominates revision comparison.
 
-`plan_bundle` requires current authority roots and includes complete historical ancestry at its
-original revisions and record digests. It rejects explicit invalidations and mismatched journal
-bindings. Default bundle policy has no entry or byte ceilings; optional caller budgets and exact
-encoded-size arithmetic are checked before output. Legacy v1 bytes remain stable; scalable formats
-and explicit historical-authority roles use versioned encodings.
-
-`BundlePreparation` authenticates artifact bytes once into an owned private temporary stage, with
-bounded cancellable steps. Its completed stage becomes a `BundleExportOperation` that retains exact
-accepted output offsets through partial writes. `assemble_bundle` drains the same workflow;
-`publish_bundle` publishes a complete synchronized stage without overwriting a different owner.
-`BundleVerificationOperation` retains partial fields and hashes and completes at the authenticated
-root trailer without waiting for EOF. `verify_bundle` additionally rejects trailing bytes for
-standalone files. Both recheck canonical order, schemas, digests, causal closure, and authority
-bindings without consulting live state. Bundles are integrity-verifiable inert bytes; signing and
-transport authentication are outside C0.
-
-`open_pending` and `containment_step` expose durable incremental startup containment. Healthy
-records are inspected in read snapshots; each corrupt candidate is rechecked in a narrow write
-transaction and its exact scan cursor persists atomically. `reconcile_quarantined` revalidates an
-unchanged record after dependency repair, while `rebuild_quarantined` reconstructs only canonical
-bytes matching the originally indexed digest, identity, and provenance. Both require the permanent
-quarantine identity, recheck journal and artifact dependencies, and retain original quarantine
-bytes and digest-bound resolution metadata.
+`plan_bundle` rejects stale/invalidated records and re-verifies journal frames, causal ancestry, and
+artifact bytes. `assemble_bundle` streams deterministic canonical records, exact B3 frames, and
+artifacts without buffering complete artifacts. `verify_bundle` accepts only `Read` and rechecks
+ordering, bounds, schemas, digests, causality, truncation, trailing bytes, the manifest root, and the
+complete bundle digest without consulting live state. Bundles are integrity-verifiable inert bytes;
+signing and transport authentication are outside C0.
 
 ## Failure and recovery classes
 
@@ -377,7 +358,7 @@ Use the typed kind/code and recovery class, not display text, for automation.
 | Evidence | `CorrectInput` | Correct the record, revision, ancestry, manifest, or bundle. |
 | Evidence | `Retry` | Retry after bounded SQLite or I/O contention. |
 | Evidence | `RepairDependency` | Repair or restore journal/artifact dependencies before evidence use. |
-| Evidence | `RebuildCatalog` | Inspect the retained quarantine identity and use explicit digest-checked reconciliation or reconstruction from the original immutable record bytes. |
+| Evidence | `RebuildCatalog` | Rebuild the evidence catalog from retained immutable sources. No automatic rebuild API exists yet. |
 | Evidence | `ObtainFreshEvidence` | Keep the stale history and obtain a new revision-bound observation. |
 
 Do not treat every `Storage`, `Io`, or `Sqlite` failure as proof of absence. In particular,
@@ -401,9 +382,8 @@ workers or command intake.
    re-hashes cataloged/discovered files. Treat missing or corrupt referenced content as a startup
    failure. If recovery changed state, obtain a fresh journal integrity export before downstream
    planning.
-5. Open `EvidenceStore`, which validates dependencies and drains durable containment steps, or use
-   `open_pending` and retain cancellation ownership while advancing `containment_step`. Do not admit
-   or export evidence until journal and artifact checks have succeeded.
+5. Open `EvidenceStore`, which validates the journal/artifact schema dependencies. Do not admit or
+   export evidence until journal and artifact checks have succeeded.
 6. For each configured projection, open `ProjectionStore`, call `plan_startup` against the checked
    journal report, and either reuse the exact active generation or rebuild from the same export and
    install it with the observed active-generation CAS.

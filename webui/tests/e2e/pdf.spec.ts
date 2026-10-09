@@ -20,7 +20,7 @@ test.beforeAll(async({browser,request})=>{
   await writeFile(join(root,'broken.pdf'),'<html><script>throw new Error("must not run")</script>Not a PDF</html>');
   await writeFile(join(root,'notes.txt'),'Plain text remains editable.');
   await writeFile(join(directory,'outside.pdf'),pdf);await symlink(join(directory,'outside.pdf'),join(root,'escape.pdf'));
-  server=spawn(resolve(process.env.PERITUS_WEB_TEST_BIN??'../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(directory,'webui.toml'),'--state',join(directory,'workspace.json'),'--endpoint',join(directory,'absent.sock'),'--daemon-config',join(directory,'absent.toml'),'--product-state',join(directory,'product-state'),'--assets',resolve('dist')],{stdio:['ignore','pipe','pipe']});
+  server=spawn(resolve('../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(directory,'webui.toml'),'--state',join(directory,'workspace.json'),'--endpoint',join(directory,'absent.sock'),'--daemon-config',join(directory,'absent.toml'),'--product-state',join(directory,'product-state'),'--assets',resolve('dist')],{stdio:['ignore','pipe','pipe']});
   await new Promise<void>((done,reject)=>{let errors='';server.stderr!.on('data',value=>errors+=String(value));server.stdout!.on('data',value=>{if(String(value).includes('Peritus console:'))done();});server.once('error',reject);server.once('exit',code=>reject(new Error(`Gateway exited ${code}: ${errors}`)));});
   const boot=await(await request.get('/api/bootstrap')).json();token=boot.token;project=boot.workspace.projects[0].id;
 });

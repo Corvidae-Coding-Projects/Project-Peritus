@@ -224,7 +224,7 @@ fn candidate_inspection_scroll_reaches_the_diff_without_a_blank_tail() {
     let mut model = AppModel::with_product([91; 32], Some(launch));
     model.product.as_mut().expect("product").runs.push(run);
     let mut terminal = Terminal::new(TestBackend::new(60, 10)).expect("terminal");
-    for (offset, expected) in [(0, "Operation"), (usize::MAX, "diff --git")] {
+    for (offset, expected) in [(0, "Operation"), (u16::MAX, "diff --git")] {
         model.product.as_mut().expect("product").inspection_scroll = offset;
         let frame = terminal.draw(|frame| diff(frame, frame.area(), &model)).expect("draw");
         let text =
@@ -366,42 +366,4 @@ fn recovery_location_is_reachable_in_scrollable_candidate_inspection() {
         reachable |= text.contains("/saved/repository-recovery-123");
     }
     assert!(reachable, "recovery path must remain accessible beyond the run summary");
-}
-
-#[test]
-fn logical_scroll_passes_u16_boundary_and_end_keeps_a_real_tail() {
-    use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::{Terminal, backend::TestBackend, layout::Rect};
-    let summary = "x\n".repeat(66_000);
-    let (run, settlement) = dependency_candidate(&summary);
-    let launch = crate::runtime::ProductLaunchContext::new(
-        run.workspace_id(),
-        "fixture".into(),
-        vec![crate::runtime::ProductProviderOption::new(run.providers().writer(), "fixture")],
-        Some(0),
-    )
-    .expect("launch");
-    let mut model = AppModel::with_product([29; 32], Some(launch));
-    model.view = crate::model::View::Runs;
-    model.chat.viewport = Some(Rect::new(0, 0, 80, 24));
-    let product = model.product.as_mut().expect("product");
-    product.settlements.insert(run.run_id(), settlement);
-    product.runs.push(run);
-    let maximum = crate::render::inspection_scroll_limit(&model);
-    assert!(maximum > usize::from(u16::MAX));
-    let key = |code| {
-        crate::action::Action::TerminalEvent(Event::Key(KeyEvent::new(code, KeyModifiers::NONE)))
-    };
-    let _ = model.update(key(KeyCode::End));
-    assert_eq!(model.product.as_ref().expect("product").detail_scroll, maximum);
-    let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
-    let frame = terminal.draw(|frame| crate::render::draw(frame, &model)).expect("draw");
-    let screen =
-        frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol).collect::<String>();
-    assert!(screen.contains("State"), "End reaches final real row: {screen}");
-    let _ = model.update(key(KeyCode::PageUp));
-    let prior = model.product.as_ref().expect("product").detail_scroll;
-    assert!(prior < maximum && prior > usize::from(u16::MAX));
-    let _ = model.update(key(KeyCode::PageDown));
-    assert_eq!(model.product.as_ref().expect("product").detail_scroll, maximum);
 }

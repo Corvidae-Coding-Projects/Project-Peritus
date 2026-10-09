@@ -158,9 +158,6 @@ impl ConversationRecord {
             | ControlIntent::AttachImage { .. }
             | ControlIntent::SelectImage { .. }
             | ControlIntent::AttachFile { .. }
-            | ControlIntent::SubmitMessage { .. }
-            | ControlIntent::AcceptBriefProposal { .. }
-            | ControlIntent::RefreshFiles { .. }
             | ControlIntent::SelectFile { .. }
             | ControlIntent::RefreshFile { .. }) => self.apply_attachment(operation, intent),
             ControlIntent::SetPermissions { .. } | ControlIntent::RecordInitialization { .. } => {

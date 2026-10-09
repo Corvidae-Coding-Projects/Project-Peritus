@@ -49,16 +49,13 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let lines = content(model, area.width);
     let maximum = super::content_scroll_limit(lines.len(), area);
     frame.render_widget(
-        Paragraph::new(crate::render::viewport(
-            &lines,
-            product.preview_scroll.min(maximum),
-            area.height.saturating_sub(2),
-        ))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Preview evidence · PgUp/PgDn · Home/End · r refresh · Esc conversation "),
-        ),
+        Paragraph::new(lines)
+            .block(
+                Block::default().borders(Borders::ALL).title(
+                    " Preview evidence · PgUp/PgDn · Home/End · r refresh · Esc conversation ",
+                ),
+            )
+            .scroll((product.preview_scroll.min(maximum), 0)),
         area,
     );
 }

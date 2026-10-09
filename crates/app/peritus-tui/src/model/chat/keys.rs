@@ -5,22 +5,21 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::ProductRunControlAction;
 
 impl AppModel {
-    pub(in crate::model) fn paste_chat(&mut self, text: &str) -> bool {
+    pub(in crate::model) fn paste_chat(&mut self, text: &str) {
         self.chat.interrupt_requested = false;
         self.chat.mouse_anchor = None;
-        let accepted = |ch: &char| !ch.is_control() || matches!(*ch, '\n' | '\t');
-        let bytes = text.chars().filter(accepted).map(char::len_utf8).sum::<usize>();
+        let text: String =
+            text.chars().filter(|ch| !ch.is_control() || *ch == '\n' || *ch == '\t').collect();
         let selected = self.chat.selection().unwrap_or(self.chat.cursor..self.chat.cursor);
-        if self.chat.buffer.try_reserve(bytes.saturating_sub(selected.len())).is_err() {
-            self.notice(NoticeLevel::Warning, "Unable to allocate the insertion; draft retained.");
-            return false;
+        if self.chat.buffer.len().saturating_sub(selected.len()).saturating_add(text.len())
+            > peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
+        {
+            self.notice(NoticeLevel::Warning, "Message is too large; paste a smaller selection");
+            return;
         }
-        let text: String = text.chars().filter(accepted).collect();
-        let changed = self.chat.buffer[selected.clone()] != text;
         self.chat.cursor = selected.start + text.len();
         self.chat.buffer.replace_range(selected, &text);
         self.chat.selection_anchor = None;
-        changed
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) {
@@ -36,13 +35,16 @@ impl AppModel {
         {
             return;
         }
-        let token_end =
-            self.chat.buffer.find(char::is_whitespace).unwrap_or(self.chat.buffer.len());
+        let previous = self.chat.buffer.clone();
         let cursor = self.chat.selection().map_or(self.chat.cursor, |range| range.start);
-        let changed = self.paste_chat(text);
+        self.paste_chat(text);
         // A paste that introduces or modifies the command token cannot become an intent.
         // Pasting arguments after a fully keyboard-entered token remains deliberate input.
-        if changed && self.chat.buffer.trim_start().starts_with('/') && cursor <= token_end {
+        let token_end = previous.find(char::is_whitespace).unwrap_or(previous.len());
+        if previous != self.chat.buffer
+            && self.chat.buffer.trim_start().starts_with('/')
+            && cursor <= token_end
+        {
             self.chat.pasted_command = true;
         }
     }
@@ -91,9 +93,7 @@ impl AppModel {
         }
         let commands = self.chat.matching_commands();
         match key.code {
-            KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
-                self.paste_chat("\n");
-            }
+            KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => self.paste_chat("\n"),
             KeyCode::Enter => return self.submit_chat(),
             KeyCode::Tab if !commands.is_empty() => {
                 self.chat.buffer =
@@ -132,11 +132,8 @@ impl AppModel {
                     _ => 0,
                 };
                 if inserted_bytes == 0
-                    || self
-                        .chat
-                        .buffer
-                        .try_reserve(inserted_bytes.saturating_sub(selected_bytes))
-                        .is_ok()
+                    || self.chat.buffer.len() - selected_bytes + inserted_bytes
+                        <= peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
                 {
                     let _ = crate::input::selection::edit(
                         &mut self.chat.buffer,
@@ -147,11 +144,6 @@ impl AppModel {
                     if self.chat.buffer.is_empty() {
                         self.chat.pasted_command = false;
                     }
-                } else {
-                    self.notice(
-                        NoticeLevel::Warning,
-                        "Unable to allocate the insertion; draft retained.",
-                    );
                 }
             }
         }

@@ -50,48 +50,27 @@ pub fn publish_claimed_evolution(
     {
         return Err(binding("publication claim, artifact, or semantic digest differs"));
     }
-    let evidence = if let Some(existing) =
-        evidence_store.load(evidence_id(claim)?).map_err(evidence_error)?
-    {
-        let draft =
-            publication_draft(claim, artifact.artifact_digest(), existing.artifacts().to_vec())?;
-        evidence_store
-            .committed_retry(&draft)
-            .map_err(evidence_error)?
-            .ok_or_else(|| binding("committed publication evidence disappeared during retry"))?
-    } else {
-        let export = journal.integrity_export().map_err(journal_error)?;
-        let references = export.artifact_references();
-        let start = references
-            .partition_point(|reference| reference.last_position() < claim.producing_position());
-        let end = references
-            .partition_point(|reference| reference.first_position() <= claim.producing_position());
-        let artifacts = references[start..end]
-            .iter()
-            .map(|reference| ArtifactDigest::from_sha256(reference.artifact_digest()))
-            .collect();
-        let draft = publication_draft(claim, artifact.artifact_digest(), artifacts)?;
-        evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?
-    };
-    journal.acknowledge_outbox(claim.id(), claim.fence()).map_err(journal_error)?;
-    Ok(EvolutionPublication { evidence })
-}
-
-fn publication_draft(
-    claim: &EvolutionPublicationClaim,
-    artifact: ArtifactDigest,
-    artifacts: Vec<ArtifactDigest>,
-) -> Result<EvidenceDraft, EvolutionError> {
-    if !artifacts.contains(&artifact) {
+    artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
+    let export = journal.integrity_export().map_err(journal_error)?;
+    let artifacts = export
+        .artifact_references()
+        .iter()
+        .filter(|reference| {
+            reference.first_position() <= claim.producing_position()
+                && claim.producing_position() <= reference.last_position()
+        })
+        .map(|reference| ArtifactDigest::from_sha256(reference.artifact_digest()))
+        .collect::<Vec<_>>();
+    if !artifacts.contains(&artifact.artifact_digest()) {
         return Err(binding("publication artifact is absent from the producing journal batch"));
     }
-    let directive = claim.directive();
+    let evidence_id = evidence_id(claim)?;
     let kind = match directive.kind() {
         EvolutionPublicationKind::CampaignDecision => "evolution-decision",
         EvolutionPublicationKind::HarnessActivation => "harness-activation",
     };
-    EvidenceDraft::new(
-        evidence_id(claim)?,
+    let draft = EvidenceDraft::new(
+        evidence_id,
         EvidenceKind::new(kind).map_err(evidence_error)?,
         EvidenceSource::new("peritus-evolution").map_err(evidence_error)?,
         directive.revision(),
@@ -100,7 +79,10 @@ fn publication_draft(
         artifacts,
         Vec::new(),
     )
-    .map_err(evidence_error)
+    .map_err(evidence_error)?;
+    let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
+    journal.acknowledge_outbox(claim.id(), claim.fence()).map_err(journal_error)?;
+    Ok(EvolutionPublication { evidence })
 }
 
 fn evidence_id(claim: &EvolutionPublicationClaim) -> Result<EvidenceId, EvolutionError> {
@@ -122,6 +104,15 @@ const fn binding(detail: &'static str) -> EvolutionError {
         EvolutionOperation::Publish,
         EvolutionRecovery::Quarantine,
         detail,
+    )
+}
+
+fn artifact_error(_: impl core::fmt::Display) -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::Artifact,
+        EvolutionOperation::Publish,
+        EvolutionRecovery::Reconcile,
+        "evolution publication artifact verification failed",
     )
 }
 
