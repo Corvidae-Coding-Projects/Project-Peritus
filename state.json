@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4257,
-        "tip_oid": "7fb500d010aedfa81521ae99a0a307e279f4cecd",
-        "prefix_sha256": "1fd784fb8036ff0074be4916d7bef9544ac283dce6833ce75b524b0cab7d9945"
+        "sequence": 4258,
+        "tip_oid": "e11383d551eb84a5964f5e4afefcb30360d1641a",
+        "prefix_sha256": "8ff843cc3184b5c163519d32f7139419ebfa5a61cea44e086909ca5d27470f23"
       },
       "NWAR": {
         "sequence": 39,
@@ -39855,12 +39855,13 @@
       "display_id": 763,
       "title": "[L736] File and image consent archives add fixed 16 KiB proof ceilings and full-byte reconstruction",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L736.\n\n- Evidence: `crates/app/peritus-daemon/src/product_control/storage/files.rs:17-39,42-102`; `src/product_control/storage/images.rs:36-76,79-140`; `src/product_control/storage/initialization.rs:13-62`; `src/product_control/storage/permissions.rs:13-58` in the same crate.\n- Behavior: file consent and confirmed image preview must be nonempty and at most 16 KiB. Archived images retain the original fixed MAX_IMAGE_BYTES ceiling; reconstructing media copies the complete bytes and hashes the archive. File reconstruction copies complete selected text. Both archive proof and operation receipt are published together and checked against the exact producing position; initialization retains an exact manifest digest and permissions use a revision fence.\n- Consequence: growth in legitimate preview/consent detail can reject admission even when the selected artifact fits its own size gate. Reads/replays operate on full archives rather than ranges. These proof checks are durable integrity/consent controls; they should not be removed with synthetic time limits.\n- Repair direction: use versioned structured consent records or bounded references/pages with complete retrievable detail, and stream artifact verification. Preserve atomic byte/proof publication, producing-position checks and workspace policy revision fences. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.706116650Z",
-      "updated_at": "2026-10-09T02:37:45.167235141Z",
+      "updated_at": "2026-10-09T06:26:25.911886118Z",
+      "closed_at": "2026-10-09T06:26:25.908706943Z",
       "labels": [
         "daily-driving-limiter"
       ],
