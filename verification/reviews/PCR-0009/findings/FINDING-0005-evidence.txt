@@ -1,0 +1,2 @@
+FINDING-0005: Paged directory inspection duplicated unsupported-child diagnostics
+External public-API fixture `/tmp/peritus-batch3/formal-review/diag-repro` created 261 supported root files, one late-sorted symlink, and one non-UTF-8 name. Before repair, three pages produced 3 symlink diagnostics and 3 invalid-name diagnostics; discover reported omission_count=6. Repointed to the repaired source, the same command produced three pages, one diagnostic of each kind, omission_count=2, and exit code 0.

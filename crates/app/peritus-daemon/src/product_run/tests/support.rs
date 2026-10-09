@@ -16,7 +16,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream, ProviderCoreError,
 };
-use peritus_types::{ProviderProfileId, RunId, Sha256Digest};
+use peritus_types::{ProviderProfileId, Sha256Digest};
 use serde_json::{Map, Value};
 
 pub(super) const CORRECT: &str = "pub const fn answer() -> u32 {\n    42\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn answer_is_42() {\n        assert_eq!(super::answer(), 42);\n    }\n}\n";
@@ -48,14 +48,6 @@ pub(super) struct ScriptedProvider {
     pub(super) responses: Mutex<VecDeque<VecDeque<EventEnvelope>>>,
     pub(super) requests: Mutex<Vec<ModelRequest>>,
     stalls: Mutex<VecDeque<bool>>,
-    attachment_read_on_first_turn: bool,
-    stalled_response_started: tokio::sync::Notify,
-}
-
-impl ScriptedProvider {
-    pub(super) async fn wait_for_stalled_response(&self) {
-        self.stalled_response_started.notified().await;
-    }
 }
 
 impl ModelProvider for ScriptedProvider {
@@ -72,34 +64,21 @@ impl ModelProvider for ScriptedProvider {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
-            let read_attachment = self.attachment_read_on_first_turn
-                && self.requests.lock().expect("request observations").is_empty();
-            let attachment_events = read_attachment.then(|| {
-                attachment_read_events(&request).expect("file reference metadata in request")
-            });
             self.requests.lock().expect("request observations").push(request);
-            let events = if let Some(events) = attachment_events {
-                events
-            } else {
-                self.responses
-                    .lock()
-                    .map_err(|_| {
-                        ProviderCoreError::configuration("scripted_provider", "lock failed")
-                    })?
-                    .pop_front()
-                    .ok_or_else(|| {
-                        ProviderCoreError::configuration("scripted_provider", "script exhausted")
-                    })?
-            };
+            let events = self
+                .responses
+                .lock()
+                .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
+                .pop_front()
+                .ok_or_else(|| {
+                    ProviderCoreError::configuration("scripted_provider", "script exhausted")
+                })?;
             let stall_on_empty = self
                 .stalls
                 .lock()
                 .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
                 .pop_front()
                 .unwrap_or(false);
-            if stall_on_empty {
-                self.stalled_response_started.notify_one();
-            }
             Ok(OwnedModelStream::new(ScriptedStream { events, stall_on_empty }, cancellation))
         })
     }
@@ -115,63 +94,7 @@ pub(super) fn scripted(
         responses: Mutex::new(responses.into()),
         requests: Mutex::new(Vec::new()),
         stalls: Mutex::new(VecDeque::new()),
-        attachment_read_on_first_turn: false,
-        stalled_response_started: tokio::sync::Notify::new(),
     })
-}
-
-pub(super) fn scripted_attachment_reader(
-    id: u8,
-    name: &str,
-    final_response: VecDeque<EventEnvelope>,
-) -> Arc<ScriptedProvider> {
-    Arc::new(ScriptedProvider {
-        profile: profile([id; 16], name),
-        responses: Mutex::new(VecDeque::from([final_response])),
-        requests: Mutex::new(Vec::new()),
-        stalls: Mutex::new(VecDeque::new()),
-        attachment_read_on_first_turn: true,
-        stalled_response_started: tokio::sync::Notify::new(),
-    })
-}
-
-fn attachment_read_events(request: &ModelRequest) -> Result<VecDeque<EventEnvelope>, String> {
-    let mut metadata = None;
-    for message in request.messages() {
-        for block in message.content() {
-            if let peritus_model_protocol::ContentBlock::Text(text) = block {
-                for line in text.expose_for_wire().lines() {
-                    if let Ok(value) = serde_json::from_str::<Value>(line)
-                        && value.get("attachment").is_some()
-                        && value.get("version").is_some()
-                    {
-                        metadata = Some(value);
-                    }
-                }
-            }
-        }
-    }
-    let metadata = metadata.ok_or_else(|| "attachment metadata not found".to_owned())?;
-    let range = metadata
-        .get("range")
-        .and_then(Value::as_array)
-        .filter(|range| range.len() == 2)
-        .ok_or_else(|| "attachment range is invalid".to_owned())?;
-    let arguments = serde_json::json!({
-        "attachment": metadata["attachment"],
-        "version": metadata["version"],
-        "source_sha256": metadata["source_sha256"],
-        "selected_sha256": metadata["selected_sha256"],
-        "source_bytes": metadata["source_bytes"],
-        "range_start": range[0],
-        "range_end": range[1],
-        "offset": range[0],
-        "max_bytes": 32768,
-    });
-    Ok(named_tool_response(
-        "attachment_read",
-        serde_json::to_vec(&arguments).map_err(|err| err.to_string())?,
-    ))
 }
 
 pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
@@ -183,8 +106,6 @@ pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
         }])])),
         stalls: Mutex::new(VecDeque::from([true])),
         requests: Mutex::new(Vec::new()),
-        attachment_read_on_first_turn: false,
-        stalled_response_started: tokio::sync::Notify::new(),
     })
 }
 
@@ -222,8 +143,6 @@ pub(super) fn stalled_then(
         responses: Mutex::new(all),
         requests: Mutex::new(Vec::new()),
         stalls: Mutex::new(VecDeque::from([true])),
-        attachment_read_on_first_turn: false,
-        stalled_response_started: tokio::sync::Notify::new(),
     })
 }
 
@@ -446,45 +365,4 @@ fn command(root: &Path, executable: &str, arguments: &[&str]) {
         "{executable} failed: {}",
         String::from_utf8_lossy(&output.stderr),
     );
-}
-
-pub(super) fn exact_command_owner_fixture(run: RunId) -> Value {
-    let source_run = identity_hex(run.into_bytes());
-    serde_json::json!({
-        "source_run_id": source_run,
-        "run_id": identity_hex(run.into_bytes()),
-        "action_id": identity_hex([0xd1; 16]),
-        "process_id": identity_hex([0xd2; 16]),
-    })
-}
-
-pub(super) fn write_command_receipt(
-    path: &Path,
-    scope: &str,
-    version: u32,
-    native_owner: Option<Value>,
-    owner_inactive: bool,
-) {
-    let mut receipt = serde_json::json!({
-        "version": version,
-        "scope": scope,
-        "ordinal": 1,
-        "call_id": "call-1",
-        "tool": "run_command",
-        "request_sha256": "00",
-        "state": "started",
-    });
-    if version == 2 {
-        receipt["native_owner"] = native_owner.unwrap_or(Value::Null);
-        receipt["owner_inactive"] = Value::Bool(owner_inactive);
-    }
-    let payload = serde_json::to_vec(&receipt).expect("encode command receipt fixture");
-    let mut bytes =
-        u64::try_from(payload.len()).expect("command receipt length").to_le_bytes().to_vec();
-    bytes.extend(payload);
-    fs::write(path, bytes).expect("persist command receipt fixture");
-}
-
-fn identity_hex(bytes: [u8; 16]) -> String {
-    format!("{:032x}", u128::from_be_bytes(bytes))
 }

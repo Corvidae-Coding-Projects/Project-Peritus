@@ -19,28 +19,6 @@ fn complete_terminal_encoding_round_trips() {
 }
 
 #[test]
-fn optional_resource_ceilings_round_trip_as_absent() {
-    let mut terminal = complete_terminal();
-    terminal.resources[0] = ProcessResourceObservation::new(
-        ProcessResourceDimension::WallTimeMilliseconds,
-        42,
-        None,
-        ResourceFidelity::Enforced,
-    );
-    let bytes = encode_terminal(&terminal).expect("encode unbounded resource observation");
-    assert_eq!(decode_terminal(&bytes).expect("decode unbounded resource observation"), terminal);
-}
-
-#[test]
-fn terminal_signal_names_and_results_can_exceed_the_old_recovery_bound() {
-    let mut terminal = complete_terminal();
-    terminal.os_exit = OsExitObservation::SignalName("signal-".repeat(3_000));
-    let bytes = encode_terminal(&terminal).expect("large signal name is representable");
-    assert!(bytes.len() > 16 * 1_024);
-    assert_eq!(decode_terminal(&bytes).expect("decode large terminal result"), terminal);
-}
-
-#[test]
 fn corrupt_stream_accounting_is_rejected_during_decode() {
     let terminal = complete_terminal();
     let mut bytes = encode_terminal(&terminal).expect("encode terminal");
@@ -98,7 +76,7 @@ fn terminal_digest_binds_every_durable_fact_group() {
     changed.resources[0] = ProcessResourceObservation::new(
         ProcessResourceDimension::WallTimeMilliseconds,
         9,
-        Some(10),
+        10,
         ResourceFidelity::Enforced,
     );
     assert_digest_changed(&terminal, &changed);
@@ -182,12 +160,7 @@ fn all_resource_observations() -> Vec<ProcessResourceObservation> {
     .into_iter()
     .zip(1_u64..)
     .map(|(dimension, value)| {
-        ProcessResourceObservation::new(
-            dimension,
-            value,
-            Some(value + 9),
-            ResourceFidelity::Enforced,
-        )
+        ProcessResourceObservation::new(dimension, value, value + 9, ResourceFidelity::Enforced)
     })
     .collect()
 }

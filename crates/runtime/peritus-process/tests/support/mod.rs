@@ -210,11 +210,11 @@ fn build_plan(
         DeadlinePolicy::new(options.wall_timeout, options.graceful, options.grace_millis, 1_000)
             .expect("deadline policy");
     let resources = ProcessResourcePolicy::new(
-        Some(wall),
-        Some(wall),
+        wall,
+        wall,
         64 * 1_024 * 1_024,
         1_024 * 1_024,
-        Some(options.output_limit.max(64)),
+        options.output_limit.max(64),
         options.process_count,
         32,
         1,

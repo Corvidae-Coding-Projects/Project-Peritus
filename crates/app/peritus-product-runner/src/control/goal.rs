@@ -5,14 +5,12 @@ use serde::Deserialize;
 use serde::Serialize;
 
 mod accounting;
-mod evidence;
 mod execution;
 mod lifecycle;
 mod validation;
 
 use accounting::GoalAttemptProgress;
 pub use accounting::{GoalAdmission, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport};
-pub use evidence::GraphicalOutputEvidence;
 
 #[cfg(test)]
 mod tests;

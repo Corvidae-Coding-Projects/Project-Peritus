@@ -1,0 +1,50 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-patch --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-patch", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "055-peritus-patch-ordinary-test.log", "owning_crate": "peritus-patch", "started_at": "2026-10-09T04:04:25.998399Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_patch-ed67135c0989eb8a)
+
+running 18 tests
+test path::tests::accepts_native_unix_names_and_deep_paths ... ok
+test path::tests::accepts_normal_unicode_and_leading_dash_paths ... ok
+test path::tests::rejects_traversal_aliases_devices_and_metadata ... ok
+test set::tests::canonical_identity_does_not_depend_on_input_order ... ok
+test transaction::recover::tests::recovery_reads_complete_valid_manifest_above_former_payload_limit ... ok
+test transaction::tests::binding_mismatch_is_reported_without_effects ... ok
+test transaction::tests::cancellation_during_staging_records_unchanged_terminal_state_before_cleanup ... ok
+test transaction::tests::corrupt_manifest_is_quarantined_and_never_success ... ok
+test transaction::tests::failure_after_directory_creation_restores_absence ... ok
+test transaction::tests::failure_after_first_install_rolls_back_all_targets ... ok
+test transaction::tests::large_observation_hashes_the_complete_file ... ok
+test transaction::tests::nonempty_created_directory_is_indeterminate_not_restored ... ok
+test transaction::tests::parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect ... ok
+test transaction::tests::prepared_transaction_recovers_without_touching_workspace ... ok
+test transaction::tests::replacements_preserve_private_permissions_through_apply_and_restart ... ok
+test transaction::tests::restart_recognizes_a_fully_installed_transaction ... ok
+test transaction::tests::restart_recovers_a_partial_install_to_all_preimages ... ok
+test transaction::tests::restart_removes_directory_created_before_first_target_effect ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.00s
+
+     Running tests/model.rs (/home/doll/Project-Peritus/target/debug/deps/model-1779b56efb072eb4)
+
+running 4 tests
+test accepts_large_recovery_manifest_directory_sets ... ok
+test duplicate_and_ancestor_targets_are_rejected ... ok
+test line_endings_are_explicit_and_part_of_final_identity ... ok
+test stale_workspace_tuple_never_produces_a_plan ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.96s
+
+     Running tests/transaction.rs (/home/doll/Project-Peritus/target/debug/deps/transaction-4bd100eccad84fd3)
+
+running 5 tests
+test applies_create_replace_and_delete_as_one_real_transaction ... ok
+test applies_replacement_with_preimage_above_the_former_file_limit ... ok
+test rejects_one_bad_preimage_before_any_target_changes ... ok
+test rejects_symlink_targets_without_following_them ... ok
+test rejects_targets_inside_a_nested_git_worktree ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-patch --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 4.935, "exit_code": 0, "finished_at": "2026-10-09T04:04:30.934539Z", "invocation": ["cargo", "test", "--package", "peritus-patch", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "055-peritus-patch-ordinary-test.log", "owning_crate": "peritus-patch", "result": "passed", "started_at": "2026-10-09T04:04:25.998399Z"}

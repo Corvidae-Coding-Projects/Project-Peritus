@@ -2,18 +2,19 @@
 
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
+use std::io::{self, Read, Write};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
+use std::thread;
 
-use crate::{ErrorKind, GitCancellation, GitError, Operation, RecoveryClass};
+use crate::{ErrorKind, GitError, Operation, RecoveryClass};
 
-mod execution;
+pub const DEFAULT_OUTPUT_LIMIT: usize = 16 * 1024 * 1024;
+pub const MAX_OUTPUT_LIMIT: usize = 64 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommandAccess {
     Read,
-    /// Read-only Git command whose parser rejects Git's global literal-pathspec option.
-    ReadWithoutLiteralPathspecs,
     Write,
 }
 
@@ -33,12 +34,12 @@ pub struct CommandOutput {
 #[derive(Clone, Debug)]
 pub struct GitRunner {
     program: OsString,
-    pub(crate) cancellation: GitCancellation,
+    output_limit: usize,
 }
 
 impl GitRunner {
-    pub(crate) fn new(program: OsString) -> Self {
-        Self { program, cancellation: GitCancellation::new() }
+    pub(crate) const fn new(program: OsString, output_limit: usize) -> Self {
+        Self { program, output_limit }
     }
 
     pub(crate) fn checked(
@@ -69,14 +70,8 @@ impl GitRunner {
     ) -> Result<CommandOutput, GitError> {
         let mut command = Command::new(&self.program);
         command.current_dir(cwd);
-        command.arg("--no-pager");
-        // Shared shallow/graft metadata must not redefine immutable commit ancestry. Missing
-        // parent objects in an incomplete clone remain explicit Git command failures.
-        command.arg("--shallow-file").arg(null_device());
-        if access != CommandAccess::ReadWithoutLiteralPathspecs {
-            command.arg("--literal-pathspecs");
-        }
-        if matches!(access, CommandAccess::Read | CommandAccess::ReadWithoutLiteralPathspecs) {
+        command.arg("--no-pager").arg("--literal-pathspecs");
+        if access == CommandAccess::Read {
             command.arg("--no-optional-locks");
         }
         command
@@ -95,8 +90,6 @@ impl GitRunner {
             .arg("-c")
             .arg("core.autocrlf=false")
             .arg("-c")
-            .arg("i18n.logOutputEncoding=UTF-8")
-            .arg("-c")
             .arg("core.hooksPath=/dev/null");
         if let Some(repository) = repository {
             command.arg(git_path_argument("--git-dir=", repository.git_dir));
@@ -112,7 +105,36 @@ impl GitRunner {
         } else {
             command.stdin(Stdio::null());
         }
-        execution::run(command, stdin, &self.cancellation, access, operation)
+        let mut child =
+            command.spawn().map_err(|source| GitError::unavailable(operation, source))?;
+        let stdout =
+            child.stdout.take().ok_or_else(|| protocol(operation, "Git stdout pipe missing"))?;
+        let stderr =
+            child.stderr.take().ok_or_else(|| protocol(operation, "Git stderr pipe missing"))?;
+        let stdout_limit = self.output_limit;
+        let stderr_limit = self.output_limit.min(crate::error::MAX_ERROR_STDERR_BYTES * 4);
+        let stdout_reader = thread::spawn(move || read_bounded(stdout, stdout_limit));
+        let stderr_reader = thread::spawn(move || read_bounded(stderr, stderr_limit));
+        let stdin_writer = match (stdin, child.stdin.take()) {
+            (Some(bytes), Some(mut pipe)) => {
+                let bytes = bytes.to_vec();
+                Some(thread::spawn(move || pipe.write_all(&bytes)))
+            }
+            (Some(_), None) => return Err(protocol(operation, "Git stdin pipe missing")),
+            (None, _) => None,
+        };
+        let status = child.wait().map_err(|source| {
+            GitError::io(operation, RecoveryClass::Retry, "wait for Git", source)
+        })?;
+        if let Some(writer) = stdin_writer {
+            join_io(writer, operation, "write Git stdin")?;
+        }
+        let (stdout, stdout_overflow) = join_reader(stdout_reader, operation, "read Git stdout")?;
+        let (stderr, stderr_overflow) = join_reader(stderr_reader, operation, "read Git stderr")?;
+        if stdout_overflow || stderr_overflow {
+            return Err(protocol(operation, "Git output exceeded the configured byte limit"));
+        }
+        Ok(CommandOutput { status, stdout, stderr })
     }
 }
 
@@ -156,9 +178,6 @@ fn apply_environment(command: &mut Command) {
         copy_parent(&parent, command, "SystemRoot");
         copy_parent(&parent, command, "ComSpec");
     }
-    // Object IDs must identify original immutable bytes across all observation pages.
-    command.env("GIT_NO_REPLACE_OBJECTS", "1");
-    command.env("GIT_GRAFT_FILE", null_device());
     command.env("GIT_CONFIG_NOSYSTEM", "1");
     command.env("GIT_CONFIG_GLOBAL", null_device());
     command.env("GIT_ATTR_NOSYSTEM", "1");
@@ -189,6 +208,45 @@ const fn null_device() -> &'static str {
 #[cfg(windows)]
 const fn null_device() -> &'static str {
     "NUL"
+}
+
+fn read_bounded(mut reader: impl Read, limit: usize) -> io::Result<(Vec<u8>, bool)> {
+    let mut output = Vec::with_capacity(limit.min(64 * 1024));
+    let mut overflow = false;
+    let mut buffer = [0_u8; 8_192];
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        let remaining = limit.saturating_sub(output.len());
+        let retained = count.min(remaining);
+        output.extend_from_slice(&buffer[..retained]);
+        overflow |= retained != count;
+    }
+    Ok((output, overflow))
+}
+
+fn join_reader(
+    handle: thread::JoinHandle<io::Result<(Vec<u8>, bool)>>,
+    operation: Operation,
+    detail: &'static str,
+) -> Result<(Vec<u8>, bool), GitError> {
+    handle
+        .join()
+        .map_err(|_| protocol(operation, "Git pipe reader panicked"))?
+        .map_err(|source| GitError::io(operation, RecoveryClass::Retry, detail, source))
+}
+
+fn join_io(
+    handle: thread::JoinHandle<io::Result<()>>,
+    operation: Operation,
+    detail: &'static str,
+) -> Result<(), GitError> {
+    handle
+        .join()
+        .map_err(|_| protocol(operation, "Git stdin writer panicked"))?
+        .map_err(|source| GitError::io(operation, RecoveryClass::Retry, detail, source))
 }
 
 pub fn one_line(output: &[u8], operation: Operation) -> Result<&str, GitError> {

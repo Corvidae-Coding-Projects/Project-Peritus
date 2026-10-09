@@ -11,7 +11,6 @@ pub struct MigrationVersion(u64);
 impl MigrationVersion {
     pub(crate) const FIRST: Self = Self(1);
     pub(crate) const SECOND: Self = Self(2);
-    pub(crate) const THIRD: Self = Self(3);
     /// Creates a positive, `SQLite`-representable version.
     ///
     /// # Errors

@@ -1,7 +1,5 @@
 use super::*;
 use crate::execution::ProductDeliveryScope;
-use peritus_agent::estimate_developer_request_tokens;
-use peritus_model_protocol::{BoundedText, ContentBlock, Message, ProtocolLimits, Role};
 
 #[test]
 fn developer_loop_exhaustion_is_a_local_budget_failure() {
@@ -281,7 +279,6 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
         developer_evidence: "request: python check.py\nresult: success",
         prior: "finding",
         max_input_tokens: 200_000,
-        additional_framing_tokens: 0,
         delivery: ReviewDelivery {
             scope: ProductDeliveryScope::WorkspaceChanges,
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
@@ -292,7 +289,7 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
 
     assert!(prompt.contains("Developer command observations"));
     assert!(prompt.contains("python check.py"));
-    assert!(prompt.contains("Confirm each claimed acceptance command"));
+    assert!(prompt.contains("confirm that each claimed acceptance command"));
     assert!(prompt.contains("For every conserved finding"));
     assert!(prompt.contains("read each cited current workspace file"));
     assert!(prompt.contains("can predate fixer writes"));
@@ -310,7 +307,6 @@ fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
         developer_evidence: &oversized,
         prior: "",
         max_input_tokens: 200_000,
-        additional_framing_tokens: 0,
         delivery: ReviewDelivery {
             scope: ProductDeliveryScope::WorkspaceChanges,
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
@@ -319,26 +315,9 @@ fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
     })
     .unwrap();
 
-    let system = reviewer_system(Some(Duration::from_secs(235)));
-    let messages = [(Role::System, system.as_str()), (Role::User, prompt.as_str())]
-        .into_iter()
-        .map(|(role, text)| {
-            Message::new(
-                role,
-                vec![ContentBlock::Text(
-                    BoundedText::new(text.to_owned(), ProtocolLimits::PRODUCTION).unwrap(),
-                )],
-                ProtocolLimits::PRODUCTION,
-            )
-            .unwrap()
-        })
-        .collect::<Vec<_>>();
-    assert!(
-        estimate_developer_request_tokens(&messages, &[]) <= 200_000,
-        "reviewer input estimate must stay within the input ceiling"
-    );
-    assert!(prompt.contains("Peritus reviewer source=diff"));
-    assert!(prompt.contains("developer_evidence_read section=diff"));
+    assert!(prompt.len() < 320 * 1024, "review prompt bytes: {}", prompt.len());
+    assert!(prompt.contains("Peritus bounded reviewer evidence"));
+    assert!(prompt.contains("Use fresh read-only workspace tools"));
 }
 
 #[test]
@@ -359,7 +338,6 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
         developer_evidence: "",
         prior: "",
         max_input_tokens: 200_000,
-        additional_framing_tokens: 0,
         delivery: ReviewDelivery {
             scope: ProductDeliveryScope::AuthorizedExternalEffects,
             effect_requirement: requirement,
@@ -387,7 +365,6 @@ fn reviewer_rejects_a_profile_that_would_erase_the_authoritative_request() {
         developer_evidence: "",
         prior: "",
         max_input_tokens: 8_000,
-        additional_framing_tokens: 0,
         delivery: ReviewDelivery {
             scope: ProductDeliveryScope::WorkspaceChanges,
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,

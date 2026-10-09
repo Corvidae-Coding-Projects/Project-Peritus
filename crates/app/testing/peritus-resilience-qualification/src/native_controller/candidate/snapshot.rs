@@ -124,7 +124,7 @@ pub(super) fn recover(
         || manifest_sha256 != injected_snapshot.manifest_sha256
         || !journal_verified
         || retained != committed
-        || snapshot_refs != 2 * u64::from(committed)
+        || snapshot_refs != u64::from(committed)
     {
         return Err("staged peritusd snapshot recovery differs from the commit boundary".into());
     }

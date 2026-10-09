@@ -8,7 +8,7 @@ use crate::{ArtifactStoreError, ErrorCode, RecoveryClass, verified::checked_quot
 pub struct QuotaSnapshot {
     used_bytes: u64,
     reserved_bytes: u64,
-    limit_bytes: Option<u64>,
+    limit_bytes: u64,
 }
 
 impl QuotaSnapshot {
@@ -23,41 +23,16 @@ impl QuotaSnapshot {
         reserved_bytes: u64,
         limit_bytes: u64,
     ) -> Result<Self, ArtifactStoreError> {
-        Self::with_optional_limit(used_bytes, reserved_bytes, Some(limit_bytes))
-    }
-
-    /// Validates accounting without imposing an aggregate logical quota.
-    ///
-    /// # Errors
-    ///
-    /// Returns overflow when used and reserved accounting cannot be represented.
-    pub const fn without_limit(
-        used_bytes: u64,
-        reserved_bytes: u64,
-    ) -> Result<Self, ArtifactStoreError> {
-        Self::with_optional_limit(used_bytes, reserved_bytes, None)
-    }
-
-    const fn with_optional_limit(
-        used_bytes: u64,
-        reserved_bytes: u64,
-        limit_bytes: Option<u64>,
-    ) -> Result<Self, ArtifactStoreError> {
-        if matches!(limit_bytes, Some(0)) {
+        if limit_bytes == 0 {
             return Err(ArtifactStoreError::message(
                 ErrorCode::InvalidConfiguration,
                 RecoveryClass::CorrectRequest,
-                "quota limit must be positive when selected",
+                "quota limit must be positive",
             ));
         }
         match checked_quota_totals(used_bytes, reserved_bytes, 0) {
             None => Err(overflow()),
-            Some((_, total)) if matches!(limit_bytes, Some(limit) if total > limit) => {
-                let Some(limit) = limit_bytes else {
-                    return Err(overflow());
-                };
-                Err(exceeded(total, limit))
-            }
+            Some((_, total)) if total > limit_bytes => Err(exceeded(total, limit_bytes)),
             Some(_) => Ok(Self { used_bytes, reserved_bytes, limit_bytes }),
         }
     }
@@ -76,7 +51,7 @@ impl QuotaSnapshot {
 
     /// Returns the configured logical byte limit.
     #[must_use]
-    pub const fn limit_bytes(self) -> Option<u64> {
+    pub const fn limit_bytes(self) -> u64 {
         self.limit_bytes
     }
 }
@@ -105,10 +80,8 @@ impl QuotaPlan {
         else {
             return Err(overflow());
         };
-        if let Some(limit) = before.limit_bytes
-            && total_after > limit
-        {
-            return Err(exceeded(total_after, limit));
+        if total_after > before.limit_bytes {
+            return Err(exceeded(total_after, before.limit_bytes));
         }
         Ok(Self { before, reservation_bytes, reserved_after, total_after })
     }

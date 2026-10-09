@@ -178,7 +178,6 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 evidence_input_generation: left_input_generation,
                 launch: left_launch,
                 capture: left_capture,
-                evidence: left_evidence,
                 ..
             },
             ControlIntent::ObserveGraphicalGoalEvidence {
@@ -189,7 +188,6 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 evidence_input_generation: right_input_generation,
                 launch: right_launch,
                 capture: right_capture,
-                evidence: right_evidence,
                 ..
             },
         ) => {
@@ -201,7 +199,6 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 left_input_generation,
                 left_launch,
                 left_capture,
-                left_evidence,
             ) == (
                 right_criterion,
                 right_goal,
@@ -210,67 +207,8 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 right_input_generation,
                 right_launch,
                 right_capture,
-                right_evidence,
             )
         }
         _ => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::equivalent_host_intent;
-    use peritus_product_runner::control::ControlIntent;
-    use serde_json::json;
-
-    fn graphical_intent(note_digest: u8) -> ControlIntent {
-        serde_json::from_value(json!({
-            "observe_graphical_goal_evidence": {
-                "criterion_index": 0,
-                "goal": vec![1; 16],
-                "attempt": 1,
-                "evidence_user_revision": 2,
-                "evidence_input_generation": 3,
-                "launch": vec![4; 16],
-                "capture": vec![5; 16],
-                "evidence": {
-                    "check": vec![6; 16],
-                    "observed": {
-                        "stream": "stdout",
-                        "start_byte": 2,
-                        "end_byte": 4,
-                        "observed_stream_bytes": 8,
-                        "matched_bytes_digest": vec![7; 32],
-                        "source": {"live_spool": {
-                            "process_id": vec![8; 16],
-                            "observed_prefix_digest": vec![9; 32]
-                        }}
-                    },
-                    "note": {
-                        "stream": "stderr",
-                        "start_byte": 5,
-                        "end_byte": 6,
-                        "observed_stream_bytes": 8,
-                        "matched_bytes_digest": vec![note_digest; 32],
-                        "source": {"live_spool": {
-                            "process_id": vec![8; 16],
-                            "observed_prefix_digest": vec![10; 32]
-                        }}
-                    }
-                },
-                "now_unix_millis": 10
-            }
-        }))
-        .expect("valid graphical evidence intent")
-    }
-
-    #[test]
-    fn graphical_output_evidence_participates_in_host_replay_identity() {
-        let first = graphical_intent(11);
-        let same = graphical_intent(11);
-        let changed_match = graphical_intent(12);
-
-        assert!(equivalent_host_intent(&first, &same));
-        assert!(!equivalent_host_intent(&first, &changed_match));
     }
 }

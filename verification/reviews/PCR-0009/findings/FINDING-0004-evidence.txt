@@ -1,0 +1,2 @@
+FINDING-0004: Ordinary and Verus product-runner APIs diverged for attachment and preview evidence
+Source review compared ordinary and `verus_only` exports and inspected the shared `attachment_read.rs`, `verified_api/command_runtime.rs`, and API-parity assertions. Focused strict checks reported 5 daemon, 28 product-runner, and 86 protocol verification items with no cheating and no errors. A later CI lint on unnecessary qualification was fixed without changing these types or behaviors.

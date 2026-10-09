@@ -326,13 +326,3 @@ use record::hex;
 #[cfg(test)]
 #[path = "persistence/tests.rs"]
 mod tests;
-
-#[cfg(test)]
-mod evidence_tests;
-#[cfg(test)]
-pub(super) fn test_behavior_evidence(
-    record: &RunRecord,
-    operation: peritus_app_protocol::ControlOperationId,
-) {
-    evidence_tests::test_behavior_evidence(record, operation);
-}

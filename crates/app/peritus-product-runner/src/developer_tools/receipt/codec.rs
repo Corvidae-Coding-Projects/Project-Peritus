@@ -15,18 +15,6 @@ pub(super) fn encode(record: &ReceiptRecord) -> Value {
     fields.insert("tool".to_owned(), Value::String(record.tool.clone()));
     fields.insert("request_sha256".to_owned(), Value::String(record.request_sha256.clone()));
     fields.insert(
-        "native_owner".to_owned(),
-        record.native_owner.map_or(Value::Null, |owner| {
-            Value::Object(Map::from_iter([
-                ("source_run_id".to_owned(), Value::String(id_hex(owner.source_run.as_bytes()))),
-                ("run_id".to_owned(), Value::String(id_hex(owner.execution_run.as_bytes()))),
-                ("action_id".to_owned(), Value::String(id_hex(owner.action.as_bytes()))),
-                ("process_id".to_owned(), Value::String(id_hex(owner.process.as_bytes()))),
-            ]))
-        }),
-    );
-    fields.insert("owner_inactive".to_owned(), Value::Bool(record.owner_inactive));
-    fields.insert(
         "state".to_owned(),
         Value::String(
             match &record.state {
@@ -39,14 +27,10 @@ pub(super) fn encode(record: &ReceiptRecord) -> Value {
             .to_owned(),
         ),
     );
-    if record.state != ReceiptState::Completed
-        && let Some(output) = &record.output
-    {
+    if let Some(output) = &record.output {
         fields.insert("output".to_owned(), output.clone());
     }
-    if record.state != ReceiptState::Completed
-        && let Some(is_error) = record.is_error
-    {
+    if let Some(is_error) = record.is_error {
         fields.insert("is_error".to_owned(), Value::Bool(is_error));
     }
     Value::Object(fields)
@@ -56,9 +40,6 @@ pub(super) fn decode(value: &Value) -> Result<ReceiptRecord, DeveloperLoopError>
     let fields = value.as_object().ok_or_else(|| tool("effect receipt is not an object"))?;
     let version = u32::try_from(required_u64(fields, "version")?)
         .map_err(|_| tool("effect receipt version is out of range"))?;
-    if version != 1 && version != super::FORMAT_VERSION {
-        return Err(tool(format!("unsupported effect receipt format version {version}")));
-    }
     let ordinal = u32::try_from(required_u64(fields, "ordinal")?)
         .map_err(|_| tool("effect receipt ordinal is out of range"))?;
     let state = match required_text(fields, "state")? {
@@ -69,23 +50,6 @@ pub(super) fn decode(value: &Value) -> Result<ReceiptRecord, DeveloperLoopError>
         "reviewed" => ReceiptState::Reviewed,
         _ => return Err(tool("effect receipt state is unknown")),
     };
-    let native_owner = if version == 1 {
-        None
-    } else {
-        match fields.get("native_owner") {
-            Some(Value::Null) => None,
-            Some(Value::Object(owner)) => Some(decode_owner(owner)?),
-            _ => return Err(tool("effect receipt native_owner field is malformed")),
-        }
-    };
-    let owner_inactive = if version == 1 {
-        false
-    } else {
-        fields
-            .get("owner_inactive")
-            .and_then(Value::as_bool)
-            .ok_or_else(|| tool("effect receipt owner_inactive field is not boolean"))?
-    };
     Ok(ReceiptRecord {
         version,
         scope: required_text(fields, "scope")?.to_owned(),
@@ -94,49 +58,9 @@ pub(super) fn decode(value: &Value) -> Result<ReceiptRecord, DeveloperLoopError>
         tool: required_text(fields, "tool")?.to_owned(),
         request_sha256: required_text(fields, "request_sha256")?.to_owned(),
         state,
-        native_owner,
-        owner_inactive,
         output: fields.get("output").cloned(),
         is_error: fields.get("is_error").and_then(Value::as_bool),
     })
-}
-
-fn decode_owner(
-    fields: &Map<String, Value>,
-) -> Result<super::NativeCommandOwner, DeveloperLoopError> {
-    Ok(super::NativeCommandOwner {
-        source_run: peritus_types::RunId::new(id_bytes(required_text(fields, "source_run_id")?)?)
-            .map_err(|_| tool("effect receipt source run owner is malformed"))?,
-        execution_run: peritus_types::RunId::new(id_bytes(required_text(fields, "run_id")?)?)
-            .map_err(|_| tool("effect receipt run owner is malformed"))?,
-        action: peritus_types::ActionId::new(id_bytes(required_text(fields, "action_id")?)?)
-            .map_err(|_| tool("effect receipt action owner is malformed"))?,
-        process: peritus_types::ProcessId::new(id_bytes(required_text(fields, "process_id")?)?)
-            .map_err(|_| tool("effect receipt process owner is malformed"))?,
-    })
-}
-
-fn id_hex(bytes: &[u8; 16]) -> String {
-    use core::fmt::Write as _;
-
-    let mut output = String::with_capacity(32);
-    for byte in bytes {
-        let _ = write!(output, "{byte:02x}");
-    }
-    output
-}
-
-fn id_bytes(value: &str) -> Result<[u8; 16], DeveloperLoopError> {
-    if value.len() != 32 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Err(tool("effect receipt native owner is not a 16-byte hex ID"));
-    }
-    let mut output = [0_u8; 16];
-    for (index, byte) in output.iter_mut().enumerate() {
-        let offset = index * 2;
-        *byte = u8::from_str_radix(&value[offset..offset + 2], 16)
-            .map_err(|_| tool("effect receipt native owner hex is malformed"))?;
-    }
-    Ok(output)
 }
 
 fn required_text<'a>(

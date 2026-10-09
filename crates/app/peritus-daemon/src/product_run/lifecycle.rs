@@ -37,11 +37,8 @@ impl ProductRunService {
                 let _ = record.provider_cancellation.cancel();
             }
         }
-        let tasks = {
-            let mut owned = self.inner.tasks.lock().await;
-            owned.drain(..).map(|(_, task)| task).collect::<Vec<_>>()
-        };
-        for task in tasks {
+        let mut tasks = self.inner.tasks.lock().await;
+        for task in tasks.drain(..) {
             let _ = tokio::time::timeout(timeout, task).await;
         }
         if let Ok(mut records) = self.inner.records.write() {

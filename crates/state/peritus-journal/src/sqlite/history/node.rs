@@ -3,12 +3,14 @@
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
-use crate::JournalError;
+use crate::{JournalError, record::MAX_STATE_BYTES};
 
 use super::corrupt;
 
 pub(super) const LEAF_BYTES: usize = 512;
 pub(super) const FANOUT: usize = 16;
+const MAX_LEVEL: u8 = 4;
+
 #[derive(Debug, Eq, PartialEq)]
 pub(super) struct Node {
     level: u8,
@@ -22,7 +24,7 @@ impl Node {
         byte_length: usize,
         payload: Vec<u8>,
     ) -> Result<Self, JournalError> {
-        if byte_length > capacity(level)? {
+        if byte_length > MAX_STATE_BYTES || byte_length > capacity(level)? {
             return Err(corrupt("history node length exceeds its logical bound"));
         }
         let expected_payload = if level == 0 {
@@ -60,33 +62,19 @@ impl Node {
 }
 
 pub(super) fn capacity(level: u8) -> Result<usize, JournalError> {
-    let maximum_level = native_max_level();
-    if level > maximum_level {
+    if level > MAX_LEVEL {
         return Err(corrupt("history node exceeds maximum tree height"));
     }
-    let mut capacity = LEAF_BYTES;
-    for _ in 0..level {
-        capacity = capacity.saturating_mul(FANOUT);
-    }
-    Ok(capacity)
+    Ok(LEAF_BYTES * FANOUT.pow(u32::from(level)))
 }
 
 pub(super) fn root_level(length: usize) -> Result<u8, JournalError> {
-    let maximum_level = native_max_level();
-    for level in 0..=maximum_level {
-        if length <= capacity(level)? {
-            return Ok(level);
-        }
+    if length > MAX_STATE_BYTES {
+        return Err(corrupt("history value exceeds maximum logical state bytes"));
     }
-    Err(corrupt("history value length cannot be represented"))
-}
-
-const fn native_max_level() -> u8 {
-    let mut level = 0_u8;
-    let mut capacity = LEAF_BYTES;
-    while capacity.checked_mul(FANOUT).is_some() {
-        capacity *= FANOUT;
+    let mut level = 0;
+    while length > capacity(level)? {
         level += 1;
     }
-    level.saturating_add(1)
+    Ok(level)
 }

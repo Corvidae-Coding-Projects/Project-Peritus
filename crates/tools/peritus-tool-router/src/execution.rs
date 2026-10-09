@@ -138,8 +138,8 @@ pub fn validate_result(
 }
 
 fn deadline_reached(prepared: &PreparedToolCall, observed_at: AuthorityInstant) -> bool {
-    observed_at.epoch() != prepared.call().authority_epoch()
-        || prepared.call().deadline().is_some_and(|deadline| observed_at >= deadline)
+    observed_at.epoch() != prepared.call().deadline().epoch()
+        || observed_at.tick_millis() >= prepared.call().deadline().tick_millis()
 }
 
 const fn invalid(detail: &'static str) -> RouterError {

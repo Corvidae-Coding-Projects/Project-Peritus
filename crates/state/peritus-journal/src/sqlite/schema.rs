@@ -1,19 +1,6 @@
 //! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 3;
-
-pub(super) const GROW_STATE_HISTORY: &str = r"
-CREATE TABLE state_history_nodes_v3 (
-    node_digest BLOB PRIMARY KEY CHECK (length(node_digest) = 32),
-    level INTEGER NOT NULL CHECK (level BETWEEN 0 AND 255),
-    byte_length INTEGER NOT NULL CHECK (byte_length >= 0),
-    payload BLOB NOT NULL CHECK (length(payload) <= 512)
-) STRICT, WITHOUT ROWID;
-INSERT INTO state_history_nodes_v3 SELECT * FROM state_history_nodes;
-DROP TABLE state_history_nodes;
-ALTER TABLE state_history_nodes_v3 RENAME TO state_history_nodes;
-UPDATE store_meta SET schema_version = 3 WHERE singleton = 1;
-";
+pub(super) const SCHEMA_VERSION: i64 = 2;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
 CREATE TABLE IF NOT EXISTS store_meta (
@@ -78,8 +65,8 @@ CREATE INDEX IF NOT EXISTS state_history_producer
     ON state_record_history(producing_position, namespace, record_key);
 CREATE TABLE IF NOT EXISTS state_history_nodes (
     node_digest BLOB PRIMARY KEY CHECK (length(node_digest) = 32),
-    level INTEGER NOT NULL CHECK (level BETWEEN 0 AND 255),
-    byte_length INTEGER NOT NULL CHECK (byte_length >= 0),
+    level INTEGER NOT NULL CHECK (level BETWEEN 0 AND 4),
+    byte_length INTEGER NOT NULL CHECK (byte_length BETWEEN 0 AND 16777216),
     payload BLOB NOT NULL CHECK (length(payload) <= 512)
 ) STRICT, WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS outbox (

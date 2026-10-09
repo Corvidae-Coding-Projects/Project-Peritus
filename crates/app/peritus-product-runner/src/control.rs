@@ -24,7 +24,6 @@ mod goal;
 pub use goal::{
     GoalAdmission, GoalCriterion, GoalCriterionKind, GoalCriterionState, GoalPauseMode, GoalRecord,
     GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage, GoalUsageReport,
-    GraphicalOutputEvidence,
 };
 mod inputs;
 mod permissions;
@@ -38,8 +37,8 @@ mod text;
 pub use branch::{ConversationBranch, ConversationBranchMode};
 pub use brief::{BriefBinding, BriefField, TaskBrief};
 pub use checkpoint::{
-    CheckpointExclusion, CheckpointExclusionIter, CheckpointFileMode, CheckpointFileVersion,
-    CheckpointPath, CheckpointReferences, RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointFileMode, CheckpointFileVersion, CheckpointPath, CheckpointReferences,
+    RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 pub use compaction::{CompactedReply, PromptView};
 pub use context::{ContextPreference, ContextSelection, ContextSelections, ContextTarget};

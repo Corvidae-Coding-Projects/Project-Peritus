@@ -169,46 +169,6 @@ fn foreign_preview_and_wrong_ack_never_enable_confirmation_or_advance_upload() {
 }
 
 #[test]
-fn active_chat_provider_and_model_bind_image_preview_and_confirmation() {
-    let mut model = opened();
-    let profile = ProviderProfileId::new([0xb1; 16]).expect("chat provider");
-    active_chat_writer_binding(&mut model, profile, "selected-chat-vision-model");
-    let (sent, preview) = upload(&mut model, b"image bytes");
-    assert_eq!(preview.request().provider(), profile);
-    assert_eq!(preview.request().model().id(), "selected-chat-vision-model");
-    assert_ne!(model.product.as_ref().unwrap().providers().unwrap().writer(), profile);
-    assert!(
-        respond(&mut model, &sent, AppResponsePayload::WorkbenchImagePreview(preview.clone()))
-            .is_empty()
-    );
-    model.chat.workbench.images.caption = "Use this image".to_owned();
-    let confirmed = request(&key(&mut model, KeyCode::Char('c')));
-    let AppRequestPayload::WorkbenchCommand(command) = confirmed.payload() else {
-        panic!("confirm")
-    };
-    assert!(
-        matches!(command.intent(), WorkbenchIntent::AttachImage { preview: exact, .. } if exact == &preview)
-    );
-}
-
-#[test]
-fn actual_active_writer_change_invalidates_image_preview() {
-    let mut model = opened();
-    let original = ProviderProfileId::new([0xb2; 16]).expect("provider");
-    active_chat_writer_binding(&mut model, original, "chat-model");
-    let (sent, preview) = upload(&mut model, b"image bytes");
-    respond(&mut model, &sent, AppResponsePayload::WorkbenchImagePreview(preview)).is_empty();
-    assert!(model.chat.workbench.images.preview.is_some());
-    active_chat_writer_binding(
-        &mut model,
-        ProviderProfileId::new([0xb3; 16]).expect("changed provider"),
-        "chat-model",
-    );
-    assert!(model.chat.workbench.images.preview.is_none());
-    assert!(key(&mut model, KeyCode::Char('c')).is_empty());
-}
-
-#[test]
 fn import_editor_paste_and_escape_do_not_run_commands_or_change_the_composer() {
     let mut model = opened();
     model.chat.workbench.open = true;

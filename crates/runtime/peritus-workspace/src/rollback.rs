@@ -4,12 +4,11 @@ use peritus_artifact_store::{ArtifactDigest, ArtifactStore, FinalizedArtifact};
 use peritus_git::{CandidateRequest, CandidateSnapshot, RestoreRequest, SnapshotRequest};
 use peritus_types::{ActionId, SnapshotId};
 
-use crate::consumption::{self, ActionConsumptionBinding, ActionTerminalRecord};
 use crate::{
     ErrorCode, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest, WorkspaceCondition,
     WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
 };
-use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest_recoverable};
+use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 
 /// Exact retained snapshot to restore and identity for its new successor snapshot.
 #[derive(Clone, Copy, Debug)]
@@ -48,16 +47,6 @@ pub struct RollbackOutcome {
 }
 
 impl RollbackOutcome {
-    pub(crate) const fn from_receipt(
-        action_id: ActionId,
-        restored_from: peritus_git::CommitId,
-        snapshot: CandidateSnapshot,
-        identity: SnapshotIdentity,
-        manifest: WorkspaceManifest,
-        artifact: FinalizedArtifact,
-    ) -> Self {
-        Self { action_id, restored_from, snapshot, identity, manifest, artifact }
-    }
     /// Returns the exact authorized action.
     #[must_use]
     pub const fn action_id(&self) -> ActionId {
@@ -107,7 +96,6 @@ impl WorkspaceGateway {
         request: RollbackRequest<'_>,
         artifacts: &ArtifactStore,
     ) -> Result<RollbackOutcome, WorkspaceError> {
-        let action_binding = ActionConsumptionBinding::from_state(self.state());
         let payload = rollback_payload(self.state(), &request, authorization.caller_binding());
         let permit = self.authorize(authorization, &payload)?;
         let prior = self.state().current_snapshot().clone();
@@ -118,20 +106,6 @@ impl WorkspaceGateway {
                 "workspace revision is exhausted",
             )
         })?;
-        self.workspace_mut().prepare_action_consumption(
-            permit.action_id(),
-            permit.action_digest(),
-            &consumption::ActionPlan {
-                operation: 4,
-                snapshot_id: request.successor_snapshot_id(),
-                payload_digest: peritus_codec::sha256(&payload),
-                installed_revision: next_revision,
-                dispatch_event: permit.dispatch_event(),
-                patch_identity: None,
-                patch_manifest_digest: None,
-                target_snapshot_id: Some(request.target().snapshot_id()),
-            },
-        )?;
         let baseline_commit = self.state().binding().baseline_commit();
         if request.target().workspace_id() != self.state().binding().workspace_id() {
             return Err(rollback_error(
@@ -204,7 +178,7 @@ impl WorkspaceGateway {
             snapshot.tree(),
             candidate.manifest_digest(),
         );
-        let artifact = finalize_snapshot_manifest_recoverable(
+        let artifact = finalize_snapshot_manifest(
             &repository,
             &snapshot,
             &manifest,
@@ -212,24 +186,6 @@ impl WorkspaceGateway {
             permit.dispatch_event(),
         )
         .map_err(|failure| rollback_publication_error(self, &failure))?;
-        let receipt = ActionTerminalRecord::WorkspaceRollback {
-            restored_from: request.target().commit(),
-            detail_digest: candidate.manifest_digest(),
-            artifact_digest: artifact.digest(),
-            artifact_size: artifact.size(),
-            snapshot_manifest: snapshot.manifest().bytes().to_vec(),
-            workspace_manifest: manifest.canonical_bytes().to_vec(),
-        };
-        if let Err(error) = consumption::complete_action(
-            self.workspace_mut().transaction_root(),
-            action_binding,
-            permit.action_id(),
-            permit.action_digest(),
-            &receipt,
-        ) {
-            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Indeterminate);
-            return Err(error);
-        }
         self.workspace_mut().state_mut().install(identity.clone());
         Ok(RollbackOutcome {
             action_id: permit.action_id(),
@@ -246,19 +202,19 @@ const fn rollback_publication_error(
     gateway: &mut WorkspaceGateway,
     failure: &SnapshotPublicationFailure,
 ) -> WorkspaceError {
-    let retained = failure.snapshot_retained();
-    gateway.workspace_mut().state_mut().set_condition(if retained {
+    let compensated = failure.compensation_failure().is_none();
+    gateway.workspace_mut().state_mut().set_condition(if compensated {
         WorkspaceCondition::Dirty
     } else {
         WorkspaceCondition::Indeterminate
     });
     rollback_error(
-        if retained { ErrorCode::Artifact } else { ErrorCode::Git },
+        if compensated { ErrorCode::Artifact } else { ErrorCode::Git },
         RecoveryClass::Reconcile,
-        if retained {
-            "rollback manifest was not finalized; its retained snapshot is available for action recovery"
+        if compensated {
+            "rollback manifest was not finalized; its retained snapshot was released"
         } else {
-            "rollback manifest failed and exact snapshot release was inconclusive"
+            "rollback manifest failed and retained snapshot cleanup was inconclusive"
         },
     )
 }

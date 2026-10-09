@@ -4,14 +4,10 @@ use peritus_policy::AuthorityInstant;
 use peritus_types::RevisionTuple;
 
 pub fn begin(family: u16) -> Vec<u8> {
-    begin_version(family, 1)
-}
-
-pub fn begin_version(family: u16, version: u16) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(256);
     bytes.extend_from_slice(b"PTL1");
     u16_value(&mut bytes, family);
-    u16_value(&mut bytes, version);
+    u16_value(&mut bytes, 1);
     bytes
 }
 

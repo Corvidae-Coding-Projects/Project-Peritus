@@ -5,12 +5,11 @@ use std::{
     process::Command,
 };
 
-use peritus_gates::{GateExecutionRecord, GateObservation, TargetGatePlan, TargetGateReport};
+use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
 mod artifact_csv;
-mod cancellation;
 mod deliverable_inventory;
 mod explicit_paths;
 mod json_structure;
@@ -22,13 +21,6 @@ use crate::{
     ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text,
     developer_tools::WorkspaceOwnership, execution::ProductDeliveryScope,
 };
-
-pub use cancellation::GateCancellation;
-
-pub enum GateOutcome {
-    Required(GateExecutionRecord),
-    Optional(GateObservation),
-}
 
 /// Rendered exact-target gate evidence and typed D1 report.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -46,67 +38,22 @@ impl GateReport {
     }
 }
 
-pub async fn run_with_ownership(
+pub fn run_with_ownership(
     root: &Path,
     changed_paths: Vec<PathBuf>,
     ownership: &WorkspaceOwnership,
     delivery_scope: ProductDeliveryScope,
     transcript: &str,
-    request_context: &str,
-    cancellation: GateCancellation,
 ) -> Result<GateReport, ProductRunnerError> {
-    let root = root.to_owned();
-    let ownership = ownership.clone();
-    let transcript = transcript.to_owned();
-    let request_context = request_context.to_owned();
-    tokio::task::spawn_blocking(move || {
-        run_scoped_with_cancellation(
-            &root,
-            changed_paths,
-            Some(&ownership),
-            delivery_scope,
-            &transcript,
-            &request_context,
-            &cancellation,
-        )
-    })
-    .await
-    .map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::Gate,
-            "run exact-target gates",
-            format!("blocking gate worker failed: {error}"),
-        )
-    })?
+    run_scoped(root, changed_paths, Some(ownership), delivery_scope, transcript)
 }
 
-#[cfg(test)]
 fn run_scoped(
     root: &Path,
     changed_paths: Vec<PathBuf>,
     ownership: Option<&WorkspaceOwnership>,
     delivery_scope: ProductDeliveryScope,
     transcript: &str,
-) -> Result<GateReport, ProductRunnerError> {
-    run_scoped_with_cancellation(
-        root,
-        changed_paths,
-        ownership,
-        delivery_scope,
-        transcript,
-        "",
-        &GateCancellation::default(),
-    )
-}
-
-fn run_scoped_with_cancellation(
-    root: &Path,
-    changed_paths: Vec<PathBuf>,
-    ownership: Option<&WorkspaceOwnership>,
-    delivery_scope: ProductDeliveryScope,
-    transcript: &str,
-    request_context: &str,
-    cancellation: &GateCancellation,
 ) -> Result<GateReport, ProductRunnerError> {
     let path_analysis = explicit_paths::analyze(root, transcript);
     let requested_artifacts = path_analysis.required_outputs();
@@ -120,81 +67,49 @@ fn run_scoped_with_cancellation(
                 error.to_string(),
             )
         })?;
-    let execution_context = execution_context(root, &plan, request_context);
-    let (records, observations) =
-        execute_plan(root, &plan, ownership, request_context, cancellation);
-    let report = TargetGateReport::from_execution_with_observations(
-        &plan,
-        records,
-        observations,
-        vec![explicit_paths, deliverable_inventory],
-    );
-    let output = render(&report, delivery_scope);
-    Ok(GateReport { report, output, execution_context })
-}
-
-fn execute_plan(
-    root: &Path,
-    plan: &TargetGatePlan,
-    ownership: Option<&WorkspaceOwnership>,
-    request_context: &str,
-    cancellation: &GateCancellation,
-) -> (Vec<GateExecutionRecord>, Vec<GateObservation>) {
+    let execution_context = execution_context(root, &plan);
     let mut records = Vec::new();
-    let mut observations = Vec::new();
     for specification in plan.commands() {
         if specification.program() == "peritus-internal" {
-            let outcome = match specification.arguments().first().map(String::as_str) {
-                Some("source-readability") => GateOutcome::Required(source_layout::run(
+            let record = match specification.arguments().first().map(String::as_str) {
+                Some("source-readability") => source_layout::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
                     specification.project().kind(),
                     specification.display(),
                     ownership,
-                    cancellation,
-                )),
+                ),
                 Some("artifact-csv-structure") => artifact_csv::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
                     specification.display(),
-                    request_context,
-                    cancellation,
                 ),
-                Some("json-structure") => GateOutcome::Required(json_structure::run(
+                Some("json-structure") => json_structure::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
                     specification.display(),
-                    cancellation,
-                )),
+                ),
                 Some("sqlite-migration") => sqlite_migration::run(
-                    root,
-                    specification.project().root(),
-                    plan.changed_paths(),
+                    &root.join(specification.current_dir()),
                     specification.display(),
-                    request_context,
-                    cancellation,
                 ),
-                Some("yaml-structure") => GateOutcome::Required(yaml_structure::run(
+                Some("yaml-structure") => yaml_structure::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
                     specification.display(),
-                    cancellation,
-                )),
-                _ => GateOutcome::Required(GateExecutionRecord {
+                ),
+                _ => GateExecutionRecord {
                     command: specification.display(),
                     label: specification.label().to_owned(),
                     exit_code: None,
                     output: "unknown internal exact-target gate".to_owned(),
-                }),
+                },
             };
-            match outcome {
-                GateOutcome::Required(record) => records.push(record),
-                GateOutcome::Optional(observation) => observations.push(observation),
-            }
+            records.push(record);
             continue;
         }
         let mut command = Command::new(specification.program());
@@ -225,16 +140,21 @@ fn execute_plan(
         };
         records.push(record);
     }
-    (records, observations)
+    let report = TargetGateReport::from_execution_with_constraints(
+        &plan,
+        records,
+        vec![explicit_paths, deliverable_inventory],
+    );
+    let output = render(&report, delivery_scope);
+    Ok(GateReport { report, output, execution_context })
 }
 
-fn execution_context(root: &Path, plan: &TargetGatePlan, request_context: &str) -> Sha256Digest {
+fn execution_context(root: &Path, plan: &TargetGatePlan) -> Sha256Digest {
     let mut hasher = Sha256::new();
     hasher.update(b"peritus-gate-execution-context-v1\0");
     hash_bytes(&mut hasher, std::env::consts::OS.as_bytes());
     hash_bytes(&mut hasher, std::env::consts::ARCH.as_bytes());
     hash_bytes(&mut hasher, root.as_os_str().as_encoded_bytes());
-    hash_bytes(&mut hasher, request_context.as_bytes());
     let mut environment = std::env::vars_os().collect::<Vec<_>>();
     environment.sort_by(|left, right| {
         left.0
@@ -323,12 +243,6 @@ fn render(report: &TargetGateReport, delivery_scope: ProductDeliveryScope) -> St
             record.command,
             record.output,
             record.exit_code.map_or_else(|| "not started".to_owned(), |code| code.to_string()),
-        ));
-    }
-    for observation in report.observations() {
-        text.push_str(&format!(
-            "\n[Optional observation: {}]\n$ {}\n{}\n",
-            observation.label, observation.command, observation.output,
         ));
     }
     let exact_target_status =

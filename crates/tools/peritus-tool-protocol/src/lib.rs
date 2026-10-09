@@ -19,7 +19,7 @@ mod verified;
 mod wire;
 
 pub use artifact::{ArtifactCompleteness, ArtifactProvenance, ArtifactReference};
-pub use call::{CallLifetime, CallLimits, ToolCall};
+pub use call::{CallLimits, ToolCall};
 pub use control::{CancellationReason, ControlSet, ToolControl};
 pub use descriptor::{
     IdempotencySemantics, LeaseRequirement, ProtocolCompatibility, SideEffectClass, ToolDescriptor,

@@ -237,10 +237,6 @@ impl From<crate::product_control::ControlStoreError> for ProductRunServiceError 
                 "apply the workspace operation",
                 format!("{error}. Inspect the workspace and permissions before retrying"),
             ),
-            ControlStoreError::Patch(error) => Self::internal(
-                "plan the workspace patch",
-                format!("{error}. Reinspect the covered files before retrying"),
-            ),
             ControlStoreError::Runner(error) => Self::internal(
                 "authorize the workspace operation",
                 format!("{error}. Inspect the run state before retrying"),

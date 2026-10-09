@@ -2,25 +2,20 @@
 
 use std::{fs, path::PathBuf};
 
-use cap_std::fs::Metadata as CapMetadata;
-#[cfg(unix)]
-use cap_std::fs::MetadataExt as _;
 use peritus_patch::WorkspacePath;
 
 use crate::{ErrorCode, ReadOnlyWorkspace, RecoveryClass, WorkspaceError, WorkspaceOperation};
 
-mod directory;
-pub use directory::{DirectoryCursor, DirectoryPage};
+/// Hard maximum returned by one immutable file read.
+pub const MAX_INSPECTION_FILE_BYTES: u64 = 8 * 1_024 * 1_024;
 
 /// Closed filesystem entry vocabulary returned by C1 inspection.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum WorkspaceEntryKind {
     /// Regular file.
     File,
     /// Directory.
     Directory,
-    /// Symlink or special node observed as a child without opening or following it.
-    Other,
 }
 
 /// Stable metadata for one no-follow workspace entry.
@@ -70,64 +65,6 @@ impl DirectoryEntry {
     }
 }
 
-/// Why one direct child could not be represented as an ordinary directory entry.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum DirectoryDiagnosticKind {
-    /// The child name is not a supported canonical UTF-8 workspace path component.
-    UnsupportedName,
-    /// The child is a symlink or special filesystem object.
-    UnsupportedType,
-}
-
-/// One safely reported child that could not be represented as an ordinary directory entry.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DirectoryDiagnostic {
-    directory: Option<WorkspacePath>,
-    name_bytes: Vec<u8>,
-    kind: DirectoryDiagnosticKind,
-}
-
-impl DirectoryDiagnostic {
-    /// Parent directory, or `None` for the workspace root.
-    #[must_use]
-    pub const fn directory(&self) -> Option<&WorkspacePath> {
-        self.directory.as_ref()
-    }
-
-    /// Exact platform-encoded child name bytes.
-    #[must_use]
-    pub fn name_bytes(&self) -> &[u8] {
-        &self.name_bytes
-    }
-
-    /// Reason the child is diagnostic-only.
-    #[must_use]
-    pub const fn kind(&self) -> DirectoryDiagnosticKind {
-        self.kind
-    }
-}
-
-/// Direct children supported by C1 plus child-local diagnostics.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DirectoryListing {
-    entries: Vec<DirectoryEntry>,
-    diagnostics: Vec<DirectoryDiagnostic>,
-}
-
-impl DirectoryListing {
-    /// Supported entries in canonical path order.
-    #[must_use]
-    pub fn entries(&self) -> &[DirectoryEntry] {
-        &self.entries
-    }
-
-    /// Unsupported children, without granting them a path or mutation authority.
-    #[must_use]
-    pub fn diagnostics(&self) -> &[DirectoryDiagnostic] {
-        &self.diagnostics
-    }
-}
-
 impl ReadOnlyWorkspace {
     /// Inspects one exact regular file or directory without following symlinks.
     ///
@@ -142,7 +79,7 @@ impl ReadOnlyWorkspace {
                 "workspace entry metadata could not be observed",
             )
         })?;
-        Ok(metadata_from(path.clone(), &metadata))
+        metadata_from(path.clone(), &metadata)
     }
 
     /// Lists direct children in canonical path order without following symlinks.
@@ -150,25 +87,11 @@ impl ReadOnlyWorkspace {
     /// `None` selects the workspace root. Protected metadata entries are not exposed.
     ///
     /// # Errors
-    /// Returns typed failures for a non-directory or I/O failure. Unsupported children appear in
-    /// the returned listing's diagnostics and do not hide supported siblings.
+    /// Returns a typed failure for a non-directory, symlink, non-UTF-8 child, or I/O failure.
     pub fn list_directory(
         &self,
         path: Option<&WorkspacePath>,
-    ) -> Result<DirectoryListing, WorkspaceError> {
-        self.list_directory_cancellable(path, || false)?
-            .ok_or_else(|| invalid("workspace directory listing was cancelled without a request"))
-    }
-
-    /// Lists direct children in canonical order while checking cancellation during enumeration.
-    ///
-    /// # Errors
-    /// Returns the same no-follow failures as `list_directory`; child-local problems are reported.
-    pub fn list_directory_cancellable(
-        &self,
-        path: Option<&WorkspacePath>,
-        mut cancelled: impl FnMut() -> bool,
-    ) -> Result<Option<DirectoryListing>, WorkspaceError> {
+    ) -> Result<Vec<DirectoryEntry>, WorkspaceError> {
         let directory = match path {
             Some(path) => checked_target(self, path)?,
             None => self.root().to_path_buf(),
@@ -184,79 +107,23 @@ impl ReadOnlyWorkspace {
             return Err(invalid("workspace inspection target is not a no-follow directory"));
         }
         let mut entries = Vec::new();
-        let mut diagnostics = Vec::new();
         for entry in fs::read_dir(&directory).map_err(|_| inspect_io())? {
-            if cancelled() {
-                return Ok(None);
-            }
             let entry = entry.map_err(|_| inspect_io())?;
-            let raw_name = entry.file_name();
-            let Ok(name) = raw_name.clone().into_string() else {
-                diagnostics.push(DirectoryDiagnostic {
-                    directory: path.cloned(),
-                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
-                    kind: DirectoryDiagnosticKind::UnsupportedName,
-                });
-                continue;
-            };
+            let name = entry
+                .file_name()
+                .into_string()
+                .map_err(|_| invalid("workspace contains a non-UTF-8 entry name"))?;
             if protected_component(&name) {
                 continue;
             }
             let value = path.map_or_else(|| name.clone(), |parent| format!("{parent}/{name}"));
-            let Ok(child) = WorkspacePath::new(value) else {
-                diagnostics.push(DirectoryDiagnostic {
-                    directory: path.cloned(),
-                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
-                    kind: DirectoryDiagnosticKind::UnsupportedName,
-                });
-                continue;
-            };
+            let child = WorkspacePath::new(value)
+                .map_err(|_| invalid("workspace child path is not representable"))?;
             let metadata = fs::symlink_metadata(entry.path()).map_err(|_| inspect_io())?;
-            if !metadata.is_file() && !metadata.is_dir() {
-                diagnostics.push(DirectoryDiagnostic {
-                    directory: path.cloned(),
-                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
-                    kind: DirectoryDiagnosticKind::UnsupportedType,
-                });
-            }
-            entries.push(DirectoryEntry(metadata_from(child, &metadata)));
+            entries.push(DirectoryEntry(metadata_from(child, &metadata)?));
         }
         entries.sort_unstable_by(|left, right| left.0.path.cmp(&right.0.path));
-        diagnostics.sort_unstable_by(|left, right| {
-            left.name_bytes.cmp(&right.name_bytes).then(left.kind.cmp(&right.kind))
-        });
-        if cancelled() { Ok(None) } else { Ok(Some(DirectoryListing { entries, diagnostics })) }
-    }
-
-    /// Visits direct children in canonical order and permits cancellation between entries.
-    ///
-    /// Each bounded page is sorted before callbacks, preserving `list_directory` ordering without
-    /// retaining the complete directory in the caller.
-    ///
-    /// # Errors
-    /// Returns the same no-follow inspection failures as `list_directory`.
-    pub fn visit_directory(
-        &self,
-        path: Option<&WorkspacePath>,
-        mut cancelled: impl FnMut() -> bool,
-        mut visit: impl FnMut(DirectoryEntry) -> bool,
-    ) -> Result<bool, WorkspaceError> {
-        let mut cursor = None;
-        loop {
-            let Some(page) =
-                self.list_directory_page_cancellable(path, cursor.as_ref(), &mut cancelled)?
-            else {
-                return Ok(false);
-            };
-            let (entries, _diagnostics, next) = page.into_parts();
-            for entry in entries {
-                if cancelled() || !visit(entry) {
-                    return Ok(false);
-                }
-            }
-            let Some(next) = next else { return Ok(true) };
-            cursor = Some(next);
-        }
+        Ok(entries)
     }
 
     /// Reads one exact regular file without following symlinks.
@@ -268,48 +135,9 @@ impl ReadOnlyWorkspace {
         path: &WorkspacePath,
         maximum_bytes: u64,
     ) -> Result<Vec<u8>, WorkspaceError> {
-        self.read_file_selection(path, crate::FileReadSelection::all(), maximum_bytes)
+        self.file_inspection()
+            .read_file(path, crate::FileReadSelection::all(), maximum_bytes)
             .map(crate::InspectedFile::into_bytes)
-    }
-
-    /// Reads an exact whole-file, byte-range, or line selection while hashing the complete source.
-    ///
-    /// # Errors
-    /// Returns a typed failure for invalid bounds, unsafe paths, source drift, or I/O failure.
-    pub fn read_file_selection(
-        &self,
-        path: &WorkspacePath,
-        selection: crate::FileReadSelection,
-        maximum_bytes: u64,
-    ) -> Result<crate::InspectedFile, WorkspaceError> {
-        self.file_inspection().read_file(path, selection, maximum_bytes)
-    }
-
-    /// Reads an exact selection while checking cancellation between source chunks.
-    ///
-    /// # Errors
-    /// Returns a typed failure for invalid bounds, unsafe paths, drift, or I/O failure.
-    pub fn read_file_selection_cancellable(
-        &self,
-        path: &WorkspacePath,
-        selection: crate::FileReadSelection,
-        maximum_bytes: u64,
-        cancelled: impl FnMut() -> bool,
-    ) -> Result<Option<crate::InspectedFile>, WorkspaceError> {
-        self.file_inspection().read_file_cancellable(path, selection, maximum_bytes, cancelled)
-    }
-
-    /// Streams one exact no-follow file with cancellation checks between chunks.
-    ///
-    /// # Errors
-    /// Returns a typed failure for an unsafe, changed, or unavailable source.
-    pub fn scan_file_chunks(
-        &self,
-        path: &WorkspacePath,
-        cancelled: impl FnMut() -> bool,
-        visit: impl FnMut(u64, &[u8]),
-    ) -> Result<Option<(u64, peritus_types::Sha256Digest)>, WorkspaceError> {
-        self.file_inspection().scan_file_chunks(path, cancelled, visit)
     }
 }
 
@@ -330,13 +158,16 @@ fn checked_target(
     Ok(current)
 }
 
-fn metadata_from(path: WorkspacePath, metadata: &fs::Metadata) -> WorkspaceMetadata {
+fn metadata_from(
+    path: WorkspacePath,
+    metadata: &fs::Metadata,
+) -> Result<WorkspaceMetadata, WorkspaceError> {
     let kind = if metadata.is_file() {
         WorkspaceEntryKind::File
     } else if metadata.is_dir() {
         WorkspaceEntryKind::Directory
     } else {
-        WorkspaceEntryKind::Other
+        return Err(invalid("workspace inspection refuses symlinks and special nodes"));
     };
     #[cfg(unix)]
     let executable = {
@@ -345,32 +176,12 @@ fn metadata_from(path: WorkspacePath, metadata: &fs::Metadata) -> WorkspaceMetad
     };
     #[cfg(not(unix))]
     let executable = false;
-    WorkspaceMetadata {
+    Ok(WorkspaceMetadata {
         path,
         kind,
         size: if kind == WorkspaceEntryKind::File { metadata.len() } else { 0 },
         executable,
-    }
-}
-
-fn metadata_from_cap(path: WorkspacePath, metadata: &CapMetadata) -> WorkspaceMetadata {
-    let kind = if metadata.is_file() {
-        WorkspaceEntryKind::File
-    } else if metadata.is_dir() {
-        WorkspaceEntryKind::Directory
-    } else {
-        WorkspaceEntryKind::Other
-    };
-    #[cfg(unix)]
-    let executable = kind == WorkspaceEntryKind::File && metadata.mode() & 0o111 != 0;
-    #[cfg(not(unix))]
-    let executable = false;
-    WorkspaceMetadata {
-        path,
-        kind,
-        size: if kind == WorkspaceEntryKind::File { metadata.len() } else { 0 },
-        executable,
-    }
+    })
 }
 
 fn protected_component(value: &str) -> bool {

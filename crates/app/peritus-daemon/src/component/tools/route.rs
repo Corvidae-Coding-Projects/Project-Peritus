@@ -44,7 +44,10 @@ impl FilesystemDispatcherRoute {
     }
 }
 
-/// Production Git adapter selections. Unsupported branch delivery is not advertised.
+/// Production Git adapter selections.
+///
+/// `git.merge` is absent because C1 does not publish a merge effect; the existing typed
+/// unsupported adapter is not a production handler.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GitDispatcherRoute {
     /// `git.candidate` through an authorized C1 candidate gateway.

@@ -2,12 +2,12 @@
 
 use crate::{BoundedJson, IdempotencyKey, ProtocolError, ProtocolErrorKind, SemanticVersion};
 use peritus_policy::AuthorityInstant;
-use peritus_types::{ActionId, CapabilityName, Generation, RevisionTuple};
+use peritus_types::{ActionId, CapabilityName, RevisionTuple};
 
 /// Per-call ceilings that can only narrow an immutable descriptor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CallLimits {
-    timeout_millis: Option<u64>,
+    timeout_millis: u64,
     output_bytes: u64,
     model_bytes: u32,
     human_bytes: u32,
@@ -29,29 +29,7 @@ impl CallLimits {
         progress_events: u32,
         artifacts: u16,
     ) -> Result<Self, ProtocolError> {
-        Self::new_optional(
-            Some(timeout_millis),
-            output_bytes,
-            model_bytes,
-            human_bytes,
-            progress_events,
-            artifacts,
-        )
-    }
-
-    /// Creates call ceilings with an explicitly optional execution timeout.
-    ///
-    /// # Errors
-    /// Rejects zero supplied limits. Absence of a timeout must also be permitted by the descriptor.
-    pub fn new_optional(
-        timeout_millis: Option<u64>,
-        output_bytes: u64,
-        model_bytes: u32,
-        human_bytes: u32,
-        progress_events: u32,
-        artifacts: u16,
-    ) -> Result<Self, ProtocolError> {
-        if timeout_millis == Some(0)
+        if timeout_millis == 0
             || output_bytes == 0
             || model_bytes == 0
             || human_bytes == 0
@@ -76,7 +54,7 @@ impl CallLimits {
 
     /// Returns the wall-time ceiling.
     #[must_use]
-    pub const fn timeout_millis(self) -> Option<u64> {
+    pub const fn timeout_millis(self) -> u64 {
         self.timeout_millis
     }
     /// Returns the complete output ceiling.
@@ -106,12 +84,7 @@ impl CallLimits {
     }
 
     pub(crate) const fn fits(self, descriptor: crate::ToolLimits) -> bool {
-        let timeout_fits = match (self.timeout_millis, descriptor.timeout_millis()) {
-            (_, None) => true,
-            (Some(call), Some(maximum)) => call <= maximum,
-            (None, Some(_)) => false,
-        };
-        timeout_fits
+        self.timeout_millis <= descriptor.timeout_millis()
             && self.output_bytes <= descriptor.output_bytes()
             && self.model_bytes <= descriptor.model_bytes()
             && self.human_bytes <= descriptor.human_bytes()
@@ -121,7 +94,7 @@ impl CallLimits {
 
     pub(crate) fn canonical_bytes(self) -> [u8; 30] {
         let mut bytes = [0; 30];
-        bytes[0..8].copy_from_slice(&self.timeout_millis.unwrap_or(0).to_be_bytes());
+        bytes[0..8].copy_from_slice(&self.timeout_millis.to_be_bytes());
         bytes[8..16].copy_from_slice(&self.output_bytes.to_be_bytes());
         bytes[16..20].copy_from_slice(&self.model_bytes.to_be_bytes());
         bytes[20..24].copy_from_slice(&self.human_bytes.to_be_bytes());
@@ -129,18 +102,6 @@ impl CallLimits {
         bytes[28..30].copy_from_slice(&self.artifacts.to_be_bytes());
         bytes
     }
-}
-
-/// Explicit invocation lifetime within one authority-clock epoch.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CallLifetime {
-    /// A caller-selected absolute deadline.
-    Deadline(AuthorityInstant),
-    /// Execution continues until completion or explicit cancellation in this epoch.
-    UntilCancelled {
-        /// Authority-clock epoch binding retained even without elapsed-time expiry.
-        epoch: Generation,
-    },
 }
 
 /// One untrusted model-proposed call, validated for structural bounds only.
@@ -152,7 +113,7 @@ pub struct ToolCall {
     arguments: BoundedJson,
     limits: CallLimits,
     revision: RevisionTuple,
-    lifetime: CallLifetime,
+    deadline: AuthorityInstant,
     idempotency_key: IdempotencyKey,
 }
 
@@ -170,32 +131,7 @@ impl ToolCall {
         deadline: AuthorityInstant,
         idempotency_key: IdempotencyKey,
     ) -> Self {
-        Self::new_with_lifetime(
-            action_id,
-            name,
-            version,
-            arguments,
-            limits,
-            revision,
-            CallLifetime::Deadline(deadline),
-            idempotency_key,
-        )
-    }
-
-    /// Creates a call with an explicit epoch-bound execution lifetime.
-    #[must_use]
-    #[allow(clippy::too_many_arguments)]
-    pub const fn new_with_lifetime(
-        action_id: ActionId,
-        name: CapabilityName,
-        version: SemanticVersion,
-        arguments: BoundedJson,
-        limits: CallLimits,
-        revision: RevisionTuple,
-        lifetime: CallLifetime,
-        idempotency_key: IdempotencyKey,
-    ) -> Self {
-        Self { action_id, name, version, arguments, limits, revision, lifetime, idempotency_key }
+        Self { action_id, name, version, arguments, limits, revision, deadline, idempotency_key }
     }
 
     /// Returns the B0 action identity.
@@ -230,24 +166,8 @@ impl ToolCall {
     }
     /// Returns the immutable authority-clock deadline.
     #[must_use]
-    pub const fn deadline(&self) -> Option<AuthorityInstant> {
-        match self.lifetime {
-            CallLifetime::Deadline(deadline) => Some(deadline),
-            CallLifetime::UntilCancelled { .. } => None,
-        }
-    }
-    /// Returns the required authority-clock epoch independently of deadline selection.
-    #[must_use]
-    pub const fn authority_epoch(&self) -> Generation {
-        match self.lifetime {
-            CallLifetime::Deadline(deadline) => deadline.epoch(),
-            CallLifetime::UntilCancelled { epoch } => epoch,
-        }
-    }
-    /// Returns the explicit execution lifetime without losing its authority epoch.
-    #[must_use]
-    pub const fn lifetime(&self) -> CallLifetime {
-        self.lifetime
+    pub const fn deadline(&self) -> AuthorityInstant {
+        self.deadline
     }
     /// Borrows the explicit idempotency identity.
     #[must_use]
@@ -258,9 +178,7 @@ impl ToolCall {
     /// Returns the stable version-one canonical call envelope bytes.
     #[must_use]
     pub fn canonical_bytes(&self) -> Vec<u8> {
-        let version =
-            if self.deadline().is_some() && self.limits.timeout_millis().is_some() { 1 } else { 2 };
-        let mut bytes = crate::wire::begin_version(2, version);
+        let mut bytes = crate::wire::begin(2);
         bytes.extend_from_slice(self.action_id.as_bytes());
         crate::wire::text(&mut bytes, self.name.as_str());
         crate::wire::u16_value(&mut bytes, self.version.major());
@@ -269,15 +187,7 @@ impl ToolCall {
         crate::wire::bytes(&mut bytes, self.arguments.canonical_bytes());
         bytes.extend_from_slice(&self.limits.canonical_bytes());
         crate::wire::revision(&mut bytes, self.revision);
-        if let Some(deadline) = self.deadline() {
-            if version == 2 {
-                bytes.push(1);
-            }
-            crate::wire::instant(&mut bytes, deadline);
-        } else {
-            bytes.push(0);
-            crate::wire::u64_value(&mut bytes, self.authority_epoch().get());
-        }
+        crate::wire::instant(&mut bytes, self.deadline);
         crate::wire::text(&mut bytes, self.idempotency_key.as_str());
         bytes
     }

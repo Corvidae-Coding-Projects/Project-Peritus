@@ -2,7 +2,13 @@
 
 use crate::control::ControlError;
 use peritus_types::Sha256Digest;
-use sha2::{Digest as _, Sha256};
+
+/// Maximum selected text bytes per explicit file reference.
+pub const MAX_FILE_BYTES: u64 = 256 * 1024;
+/// Maximum aggregate selected file text bytes in a request, excluding its other context.
+pub const MAX_FILE_SELECTION_BYTES: u64 = 512 * 1024;
+/// Maximum eligible file references in one request.
+pub const MAX_FILE_COUNT: usize = 32;
 
 /// Exact validated text, without filesystem authority or a claim of user consent.
 #[derive(Clone, Eq, PartialEq)]
@@ -14,27 +20,18 @@ impl ValidatedFileText {
     /// Validates original UTF-8 bytes, including empty files and original CRLF terminators.
     ///
     /// # Errors
-    /// Rejects invalid UTF-8 (including split codepoints) and binary/terminal
+    /// Rejects oversized data, invalid UTF-8 (including split codepoints), and binary/terminal
     /// control characters other than tab and line terminators. No lossy conversion occurs.
     pub fn new(bytes: Vec<u8>) -> Result<Self, ControlError> {
-        let digest = Self::validate_bytes(&bytes)?;
+        if bytes.len() as u64 > MAX_FILE_BYTES {
+            return Err(ControlError::Capacity);
+        }
         let text = String::from_utf8(bytes).map_err(|_| ControlError::InvalidInput)?;
-        Ok(Self { text, digest })
-    }
-    /// Validates exact UTF-8 bytes without retaining or reconstructing the source.
-    ///
-    /// # Errors
-    /// Rejects invalid UTF-8 or binary/terminal controls.
-    pub fn validate_bytes(bytes: &[u8]) -> Result<Sha256Digest, ControlError> {
-        let text = std::str::from_utf8(bytes).map_err(|_| ControlError::InvalidInput)?;
         if text.chars().any(|ch| ch.is_control() && !matches!(ch, '\n' | '\r' | '\t')) {
             return Err(ControlError::InvalidInput);
         }
-        let mut digest = Sha256::new();
-        for chunk in bytes.chunks(64 * 1024) {
-            digest.update(chunk);
-        }
-        Ok(Sha256Digest::new(digest.finalize().into()))
+        let digest = peritus_codec::sha256(text.as_bytes());
+        Ok(Self { text, digest })
     }
     /// Borrows exactly the validated source text; renderers still own display sanitization.
     #[must_use]

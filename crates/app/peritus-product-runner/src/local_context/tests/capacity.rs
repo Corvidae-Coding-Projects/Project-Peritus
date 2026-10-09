@@ -145,7 +145,6 @@ fn reviewer_packet_leaves_room_for_authoritative_tool_observations() {
             developer_evidence: &developer,
             prior: "",
             max_input_tokens: capacity,
-            additional_framing_tokens: memory.additional_request_framing_tokens().unwrap(),
             delivery: ReviewDelivery {
                 scope: crate::ProductDeliveryScope::WorkspaceChanges,
                 effect_requirement:
@@ -174,13 +173,7 @@ fn reviewer_packet_leaves_room_for_authoritative_tool_observations() {
                 &[message(Role::System, &request.system), message(Role::User, &request.prompt)],
             )
             .unwrap();
-        let page_bytes = crate::developer_tools::DEFAULT_INSPECTION_PAGE_BYTES;
-        let empty_facts = canonical(&serde_json::json!({"diagnostic":""}));
-        let payload_bytes = page_bytes - empty_facts.canonical_bytes().len();
-        let prefix = "CURRENT_SOURCE_FACT ";
-        let facts = format!("{prefix}{}", "x".repeat(payload_bytes - prefix.len()));
-        let expected = canonical(&serde_json::json!({"diagnostic": facts}));
-        assert_eq!(expected.canonical_bytes().len(), page_bytes);
+        let facts = "CURRENT_SOURCE_FACT ".repeat(475);
         observation(&mut memory, "decisive-read", &facts, false);
         let view = memory.prepare_view(&profile(capacity), &definitions).unwrap();
         assert!(estimate_developer_request_tokens(&view, &definitions) <= capacity);
@@ -188,6 +181,7 @@ fn reviewer_packet_leaves_room_for_authoritative_tool_observations() {
             view.iter().any(|message| message.role() == Role::Tool),
             "the {capacity}-token reviewer must receive its completed authoritative read"
         );
+        let expected = canonical(&serde_json::json!({"diagnostic": facts}));
         assert!(view.iter().flat_map(peritus_model_protocol::Message::content).any(|block| {
             matches!(
                 block,

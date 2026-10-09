@@ -171,7 +171,7 @@ fn visible_prior_observation_bounds_a_repeat_in_a_fresh_executor() {
 }
 
 #[test]
-fn large_text_files_support_bounded_line_ranges_and_continuations() {
+fn large_text_files_support_bounded_line_ranges() {
     let workspace = tempfile::tempdir().unwrap();
     let mut content = "padding\n".repeat(300_000);
     content.push_str("TARGET-LINE\n");
@@ -179,41 +179,15 @@ fn large_text_files_support_bounded_line_ranges_and_continuations() {
     let mut tools = writable_tools(workspace.path());
 
     execute(&mut tools, "workspace_list", r#"{"path":".","depth":1}"#);
-    let whole = execute(&mut tools, "workspace_read", r#"{"path":"large.txt","max_bytes":65536}"#);
-    let default_page = execute(&mut tools, "workspace_read", r#"{"path":"large.txt"}"#);
+    let whole = execute(&mut tools, "workspace_read", r#"{"path":"large.txt"}"#);
     let ranged = execute(
         &mut tools,
         "workspace_read",
         r#"{"path":"large.txt","start_line":300001,"end_line":300002}"#,
     );
 
-    assert!(!whole.is_error, "{}", wire(&whole));
+    assert!(whole.is_error);
     assert!(!ranged.is_error);
-    let whole_page: Value = serde_json::from_slice(whole.output.canonical_bytes()).unwrap();
-    let next_line = whole_page["next_line"].as_u64().expect("default window continuation");
-    let next_offset = whole_page["next_line_byte_offset"].as_u64().expect("line offset");
-    assert_eq!(next_line, 501);
-    assert_eq!(next_offset, 0);
-    assert!(!default_page.is_error, "{}", wire(&default_page));
-    let default_page: Value =
-        serde_json::from_slice(default_page.output.canonical_bytes()).unwrap();
-    assert!(default_page["next_line"].as_u64().is_some_and(|line| line < 501));
-    let continuation = execute(
-        &mut tools,
-        "workspace_read",
-        &serde_json::json!({
-            "path":"large.txt",
-            "start_line":next_line,
-            "line_byte_offset":next_offset,
-        })
-        .to_string(),
-    );
-    assert!(!continuation.is_error, "{}", wire(&continuation));
-    let continuation_page: Value =
-        serde_json::from_slice(continuation.output.canonical_bytes()).unwrap();
-    assert_eq!(continuation_page["start_line"], next_line);
-    assert!(continuation_page["content"].as_str().unwrap().starts_with("501: padding"));
-    assert!(continuation_page["next_line"].as_u64().unwrap() > next_line);
     let value: Value = serde_json::from_slice(ranged.output.canonical_bytes()).unwrap();
     assert_eq!(value["content"], "300001: TARGET-LINE");
 }

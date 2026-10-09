@@ -15,8 +15,8 @@ use support::version;
 fn production_registry_retains_initial_schema_and_registers_artifact_identity_upgrade() {
     let registry = MigrationRegistry::current();
     registry.validate().expect("production registry");
-    assert_eq!(registry.descriptors().len(), 3);
-    assert_eq!(registry.latest().expect("current schema"), version(3));
+    assert_eq!(registry.descriptors().len(), 2);
+    assert_eq!(registry.latest().expect("initial schema"), version(2));
     let initial = registry.descriptors()[0];
     assert_eq!(initial.release(), "0.0.1");
     assert_eq!(initial.sql(), "PRAGMA user_version = 1;\n");

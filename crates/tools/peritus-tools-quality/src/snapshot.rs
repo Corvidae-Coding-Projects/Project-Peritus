@@ -59,7 +59,7 @@ impl CleanQualitySnapshot {
         let status_mismatches = [
             !status.is_clean(),
             !status.is_detached(),
-            status.head() != Some(snapshot.commit()),
+            status.head() != snapshot.commit(),
             status.index_tree() != Some(snapshot.tree()),
             status.worktree_root() != workspace.root(),
         ];

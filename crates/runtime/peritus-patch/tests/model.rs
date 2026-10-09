@@ -62,9 +62,9 @@ fn duplicate_and_ancestor_targets_are_rejected() {
 }
 
 #[test]
-fn accepts_large_recovery_manifest_directory_sets() {
+fn rejects_recovery_manifest_directory_overflow_during_planning() {
     let workspace = WorkspaceId::new([3; 16]).expect("workspace");
-    let operations = (0..1_024)
+    let operations = (0..peritus_patch::MAX_PATCH_OPERATIONS)
         .map(|index| {
             let path = format!("p{index}/{}/file", vec!["d"; 63].join("/"));
             PatchOperation::create(
@@ -74,6 +74,7 @@ fn accepts_large_recovery_manifest_directory_sets() {
             )
         })
         .collect();
-    PatchSet::new(workspace, Generation::first(), RevisionNumber::first(), operations)
-        .expect("local recovery manifest uses native codec capacities");
+    let error = PatchSet::new(workspace, Generation::first(), RevisionNumber::first(), operations)
+        .expect_err("directory collection exceeds recovery manifest limit");
+    assert_eq!(error.code(), ErrorCode::InvalidPatchBounds);
 }

@@ -1,7 +1,4 @@
-use std::{
-    cell::{Cell, RefCell},
-    io,
-};
+use std::{cell::RefCell, io};
 
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
 
@@ -70,36 +67,6 @@ fn binding() -> RecoveryBinding {
         Generation::first(),
         RevisionNumber::first(),
     )
-}
-
-#[test]
-fn cancellation_during_staging_records_unchanged_terminal_state_before_cleanup() {
-    let workspace = tempfile::tempdir().expect("workspace");
-    let transactions = tempfile::tempdir().expect("transactions");
-    std::fs::write(workspace.path().join("old"), b"before").expect("original");
-    let checks = Cell::new(0);
-    let completion_called = Cell::new(false);
-    let result = crate::apply_patch_with_completion_and_cancellation(
-        workspace.path(),
-        transactions.path(),
-        &plan(),
-        || {
-            let next = checks.get() + 1;
-            checks.set(next);
-            next >= 11
-        },
-        |applied| {
-            assert!(applied.is_none());
-            completion_called.set(true);
-            Ok(())
-        },
-    )
-    .expect("cancellation is a terminal safe outcome");
-    assert!(result.is_none());
-    assert!(completion_called.get());
-    assert_eq!(std::fs::read(workspace.path().join("old")).expect("old"), b"before");
-    assert!(!workspace.path().join("new").exists());
-    assert_eq!(std::fs::read_dir(transactions.path()).expect("transactions").count(), 0);
 }
 
 #[cfg(unix)]
@@ -224,7 +191,7 @@ fn prepared_transaction_recovers_without_touching_workspace() {
     )
     .expect("directories");
     let manifest = Manifest::from_plan(&plan, directories);
-    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults, &|| false)
+    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults)
         .expect("prepared");
     let recovered =
         recover_transaction(workspace.path(), &transaction, binding()).expect("recover");
@@ -262,7 +229,7 @@ fn parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect
     )
     .expect("directories");
     let manifest = Manifest::from_plan(&plan, directories);
-    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults, &|| false)
+    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults)
         .expect("prepared");
     let manifest_path = transaction.join(super::storage::MANIFEST_FILE);
     let mut bytes = std::fs::read(&manifest_path).expect("read manifest");
@@ -280,24 +247,23 @@ fn parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect
 }
 
 #[test]
-fn large_observation_hashes_the_complete_file() {
+fn oversized_observation_never_matches_a_forged_empty_digest() {
     let directory = tempfile::tempdir().expect("directory");
     let path = directory.path().join("large");
-    let bytes = vec![7; 8 * 1024 * 1024 + 1];
-    std::fs::write(&path, &bytes).expect("large file");
+    std::fs::write(&path, vec![7; crate::set::MAX_FILE_BYTES + 1]).expect("large file");
     let observed = observe_absolute(
         &path,
         crate::PatchOperationContext::InspectPreimage,
         RollbackStatus::NotRequired,
     )
     .expect("observation");
-    let expected = super::manifest::FileIdentity {
-        digest: peritus_codec::sha256(&bytes),
-        size: bytes.len() as u64,
+    assert_eq!(observed, Observation::Oversized);
+    let forged = super::manifest::FileIdentity {
+        digest: peritus_codec::sha256(&[]),
+        size: (crate::set::MAX_FILE_BYTES + 1) as u64,
         mode: FileMode::Regular,
     };
-    assert_eq!(observed, Observation::Present(expected));
-    assert!(observation_matches(observed, Some(expected)));
+    assert!(!observation_matches(observed, Some(forged)));
 }
 
 #[test]
@@ -369,7 +335,7 @@ fn binding_mismatch_is_reported_without_effects() {
     )
     .expect("directories");
     let manifest = Manifest::from_plan(&plan, directories);
-    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults, &|| false)
+    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults)
         .expect("prepared");
     let different = RecoveryBinding::new(
         WorkspaceId::new([4; 16]).expect("other workspace"),

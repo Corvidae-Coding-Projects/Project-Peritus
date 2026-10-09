@@ -241,32 +241,8 @@ fn checkpoint_installs(
 }
 
 fn checkpoint_key(checkpoint: CheckpointId, index: usize) -> Result<Vec<u8>, Error> {
+    let index = u16::try_from(index).map_err(|_| ControlError::Capacity)?;
     let mut key = checkpoint.as_bytes().to_vec();
-    if let Ok(index) = u16::try_from(index) {
-        key.extend_from_slice(&index.to_be_bytes());
-    } else {
-        let index = u64::try_from(index).map_err(|_| ControlError::Capacity)?;
-        key.extend_from_slice(&[u8::MAX; 2]);
-        key.extend_from_slice(&index.to_be_bytes());
-    }
+    key.extend_from_slice(&index.to_be_bytes());
     Ok(key)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn extended_body_keys_preserve_legacy_identity_and_journal_install_order() {
-        let checkpoint = CheckpointId::new([1; 16]).expect("checkpoint");
-        let boundary = usize::from(u16::MAX);
-        let keys = [boundary - 1, boundary, boundary + 1, boundary + 2]
-            .map(|index| checkpoint_key(checkpoint, index).expect("representable index"));
-        let mut legacy = checkpoint.as_bytes().to_vec();
-        legacy.extend_from_slice(&u16::MAX.to_be_bytes());
-        assert_eq!(keys[1], legacy);
-        assert_eq!(keys[0].len(), 18);
-        assert_eq!(keys[1].len(), 18);
-        assert!(keys.windows(2).all(|pair| pair[0] < pair[1]));
-    }
 }

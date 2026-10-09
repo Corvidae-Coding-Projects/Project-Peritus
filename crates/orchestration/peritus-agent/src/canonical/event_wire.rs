@@ -51,12 +51,11 @@ fn encode_kind(w: &mut Writer, kind: &AgentCommandKind) {
             retry(w, *value);
         }
         AgentCommandKind::ToolCallsProposed { terminal, proposals } => {
-            let optional_lifetimes = proposals.iter().any(|proposal| proposal.deadline().is_none());
-            w.u8(if optional_lifetimes { 24 } else { 5 });
+            w.u8(5);
             model_terminal(w, *terminal);
             w.len(proposals.len());
             for proposal in proposals {
-                tool_proposal(w, proposal, optional_lifetimes);
+                tool_proposal(w, proposal);
             }
         }
         AgentCommandKind::CompletionProposed { terminal, proposal } => {
@@ -128,12 +127,12 @@ fn decode_kind(r: &mut Reader<'_>) -> Result<AgentCommandKind, AgentRejection> {
         },
         3 => AgentCommandKind::ProviderEventObserved(read_provider(r)?),
         4 => AgentCommandKind::ProviderRetryScheduled(read_retry(r)?),
-        tag @ (5 | 24) => {
+        5 => {
             let terminal = read_model_terminal(r)?;
             let count = r.bounded_len(usize::from(AgentLimits::HARD_MAX_TOOL_CALLS))?;
             let mut proposals = Vec::with_capacity(count);
             for _ in 0..count {
-                proposals.push(read_tool_proposal(r, tag == 24)?);
+                proposals.push(read_tool_proposal(r)?);
             }
             AgentCommandKind::ToolCallsProposed { terminal, proposals }
         }
@@ -235,7 +234,7 @@ fn read_model_terminal(r: &mut Reader<'_>) -> Result<ModelTerminalRecord, AgentR
     Ok(ModelTerminalRecord::new(r.digest()?, r.bool()?, r.bool()?, r.bool()?))
 }
 
-fn tool_proposal(w: &mut Writer, value: &ToolProposal, optional_lifetimes: bool) {
+fn tool_proposal(w: &mut Writer, value: &ToolProposal) {
     w.u16(value.ordinal().get());
     w.digest(value.model_call_id().digest());
     w.raw(value.action_id().as_bytes());
@@ -246,20 +245,12 @@ fn tool_proposal(w: &mut Writer, value: &ToolProposal, optional_lifetimes: bool)
     w.digest(value.prepared_digest());
     w.digest(value.replay_identity());
     w.revision(value.revision());
-    if optional_lifetimes {
-        w.bool(value.deadline().is_some());
-    }
-    w.u64(value.authority_epoch().get());
-    if let Some(deadline) = value.deadline() {
-        w.u64(deadline.tick_millis());
-    }
+    w.u64(value.deadline().epoch().get());
+    w.u64(value.deadline().tick_millis());
     w.u8(value.side_effect() as u8);
     w.u8(value.idempotency() as u8);
 }
-fn read_tool_proposal(
-    r: &mut Reader<'_>,
-    optional_lifetimes: bool,
-) -> Result<ToolProposal, AgentRejection> {
+fn read_tool_proposal(r: &mut Reader<'_>) -> Result<ToolProposal, AgentRejection> {
     let ordinal = ToolOrdinal::new(r.u16()?);
     let call = ModelCallId::new(r.digest()?)?;
     let action = r.id(ActionId::new)?;
@@ -270,13 +261,8 @@ fn read_tool_proposal(
     let prepared = r.digest()?;
     let replay = r.digest()?;
     let revision = r.revision()?;
-    let timed = !optional_lifetimes || r.bool()?;
     let epoch = Generation::new(r.u64()?).map_err(|_| wire_error("invalid authority epoch"))?;
-    let lifetime = if timed {
-        peritus_tool_protocol::CallLifetime::Deadline(AuthorityInstant::new(epoch, r.u64()?))
-    } else {
-        peritus_tool_protocol::CallLifetime::UntilCancelled { epoch }
-    };
+    let tick = r.u64()?;
     let side_effect = match r.u8()? {
         0 => ToolSideEffect::None,
         1 => ToolSideEffect::Workspace,
@@ -290,7 +276,7 @@ fn read_tool_proposal(
         2 => ToolIdempotency::NonIdempotent,
         _ => return Err(wire_error("unknown idempotency tag")),
     };
-    Ok(ToolProposal::new_with_lifetime(
+    Ok(ToolProposal::new(
         ordinal,
         call,
         action,
@@ -300,7 +286,7 @@ fn read_tool_proposal(
         prepared,
         replay,
         revision,
-        lifetime,
+        AuthorityInstant::new(epoch, tick),
         side_effect,
         idempotency,
     ))

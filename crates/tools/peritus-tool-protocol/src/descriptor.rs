@@ -83,7 +83,7 @@ impl ProtocolCompatibility {
 /// Immutable resource ceilings advertised by a descriptor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ToolLimits {
-    timeout_millis: Option<u64>,
+    timeout_millis: u64,
     output_bytes: u64,
     model_bytes: u32,
     human_bytes: u32,
@@ -123,7 +123,7 @@ impl ToolLimits {
             ));
         }
         Ok(Self {
-            timeout_millis: Some(timeout_millis),
+            timeout_millis,
             output_bytes,
             model_bytes,
             human_bytes,
@@ -135,14 +135,8 @@ impl ToolLimits {
 
     /// Returns the wall-time ceiling.
     #[must_use]
-    pub const fn timeout_millis(self) -> Option<u64> {
+    pub const fn timeout_millis(self) -> u64 {
         self.timeout_millis
-    }
-    /// Advertises support for calls whose lifetime ends by completion or cancellation.
-    #[must_use]
-    pub const fn without_timeout(mut self) -> Self {
-        self.timeout_millis = None;
-        self
     }
     /// Returns the complete output ceiling.
     #[must_use]

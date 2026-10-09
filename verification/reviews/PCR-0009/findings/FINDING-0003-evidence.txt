@@ -1,0 +1,2 @@
+FINDING-0003: Verus-only product-runner build attempted a production-only workspace media export
+The precursor strict Verus run failed with `E0432` unresolved-import diagnostics. After the configuration repair, the product-runner strict Verus/API-parity checks passed, including 28 verified items and 0 errors for `peritus-product-runner`. Source inspection confirmed the change was an export/configuration correction, without substituting an opaque API.

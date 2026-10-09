@@ -8,10 +8,12 @@ use crate::{
     ProtocolLimits, SchemaDialect,
 };
 
+const MAX_CANONICAL_REQUEST_BYTES: usize = 512 * 1024 * 1024;
+
 pub(super) const fn reader_limits(limits: ProtocolLimits) -> CodecLimits {
     CodecLimits::new(
-        usize::MAX,
-        usize::MAX,
+        MAX_CANONICAL_REQUEST_BYTES,
+        MAX_CANONICAL_REQUEST_BYTES,
         max_usize(
             max_usize(limits.max_messages(), limits.max_content_blocks()),
             max_usize(limits.max_tools(), 128),
@@ -37,11 +39,6 @@ pub(super) fn read_collection_len(
     let count = reader.read_collection_len().map_err(codec)?;
     if count > maximum {
         return Err(invalid(path, "canonical collection count exceeds its request bound"));
-    }
-    // Every collection element decoded by this module consumes at least one byte.
-    // Reject impossible counts before allocating for untrusted archive metadata.
-    if count > reader.remaining() {
-        return Err(invalid(path, "canonical collection count exceeds the remaining input"));
     }
     Ok(count)
 }

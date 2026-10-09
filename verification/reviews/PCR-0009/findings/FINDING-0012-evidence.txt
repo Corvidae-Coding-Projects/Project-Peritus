@@ -1,0 +1,2 @@
+FINDING-0012: TUI review navigation and raw mode could show stale or incomplete data
+Source review followed summary, page, stale-response, render, and raw-toggle state transitions. The final navigation regression supplies a deliberately stale cached snapshot and verifies that only fresh endpoint bytes appear while moving forward and backward. Focused TUI review tests passed 19/19 and structured-review render tests passed 2/2.

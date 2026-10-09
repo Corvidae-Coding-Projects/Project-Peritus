@@ -1,4 +1,4 @@
-//! Production JSON parsing ceilings and explicit construction capacities.
+//! Fixed JSON parsing and validation ceilings.
 
 /// Complete bounds applied while accepting JSON values and schemas.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -30,20 +30,26 @@ impl JsonLimits {
     ///
     /// # Errors
     ///
-    /// Returns an envelope error when any limit is zero. Production call and schema parsing use
-    /// [`Self::PRODUCTION`]; renderers may select wider capacities for an output page whose
-    /// complete encoded size is independently checked against the call ceiling.
+    /// Returns an envelope error when any limit is zero or widens the production ceiling.
     pub fn new(
         max_bytes: usize,
         max_depth: usize,
         max_members: usize,
         max_string_bytes: usize,
     ) -> Result<Self, crate::ProtocolError> {
-        if max_bytes == 0 || max_depth == 0 || max_members == 0 || max_string_bytes == 0 {
+        if max_bytes == 0
+            || max_depth == 0
+            || max_members == 0
+            || max_string_bytes == 0
+            || max_bytes > Self::PRODUCTION.max_bytes
+            || max_depth > Self::PRODUCTION.max_depth
+            || max_members > Self::PRODUCTION.max_members
+            || max_string_bytes > Self::PRODUCTION.max_string_bytes
+        {
             return Err(crate::ProtocolError::at(
                 crate::ProtocolErrorKind::InvalidEnvelope,
                 "json_limits",
-                "JSON limits must be nonzero",
+                "JSON limits must be nonzero and no wider than production ceilings",
             ));
         }
         Ok(Self { max_bytes, max_depth, max_members, max_string_bytes })

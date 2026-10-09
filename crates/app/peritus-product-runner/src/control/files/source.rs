@@ -5,6 +5,8 @@ use peritus_patch::WorkspacePath;
 use serde::Deserialize;
 use serde::Serialize;
 
+pub(super) const MAX_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
+
 /// Explicit future-read preference. Refresh is supported only for selected-workspace sources.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -20,7 +22,7 @@ pub enum FileMode {
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum FileRange {
-    /// Complete source, with no silent truncation.
+    /// Complete bounded source, with no silent truncation.
     All,
     /// Exact nonempty half-open byte interval.
     Bytes {
@@ -41,12 +43,16 @@ impl FileRange {
     /// Checks structural bounds; source existence and resolved range require an actual read.
     ///
     /// # Errors
-    /// Rejects empty/reversed intervals and zero or reversed line numbers.
+    /// Rejects empty/reversed intervals, zero line numbers or bounds beyond the source ceiling.
     pub const fn validate(self) -> Result<(), ControlError> {
         match self {
             Self::All => Ok(()),
-            Self::Bytes { start, end } if start < end => Ok(()),
-            Self::Lines { first, last } if first > 0 && first <= last => Ok(()),
+            Self::Bytes { start, end } if start < end && end <= MAX_SOURCE_BYTES => Ok(()),
+            Self::Lines { first, last }
+                if first > 0 && first <= last && last as u64 <= MAX_SOURCE_BYTES =>
+            {
+                Ok(())
+            }
             _ => Err(ControlError::InvalidInput),
         }
     }
@@ -65,7 +71,7 @@ pub struct FileSource {
 #[serde(deny_unknown_fields)]
 enum Origin {
     Workspace { folder: [u8; 32], path: ControlText<4096> },
-    Import { label: ControlText<4096> },
+    Import { label: ControlText<1024> },
 }
 impl FileSource {
     /// Describes one exact selected-workspace path; the conversation supplies workspace ID.
@@ -93,7 +99,7 @@ impl FileSource {
     ///
     /// # Errors
     /// Rejects malformed ranges; caller still must validate and confirm imported bytes.
-    pub fn imported(label: ControlText<4096>, range: FileRange) -> Result<Self, ControlError> {
+    pub fn imported(label: ControlText<1024>, range: FileRange) -> Result<Self, ControlError> {
         let value = Self { origin: Origin::Import { label }, range, mode: FileMode::Snapshot };
         value.validate()?;
         Ok(value)

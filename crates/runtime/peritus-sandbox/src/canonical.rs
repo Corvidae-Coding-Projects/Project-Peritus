@@ -174,12 +174,7 @@ fn secret_grant_bytes(bytes: &mut Vec<u8>, grant: &SecretGrant) {
 
 fn resource_limits_bytes(bytes: &mut Vec<u8>, limits: &ResourceLimits) {
     for kind in SandboxResourceKind::ALL {
-        let value = match kind {
-            SandboxResourceKind::WallTime => limits.wall_time_limit(),
-            SandboxResourceKind::Output => limits.output_limit(),
-            _ => Some(limits.limit(kind)),
-        };
-        u64_value(bytes, value.map_or(0, peritus_types::ResourceQuantity::get));
+        u64_value(bytes, limits.limit(kind).get());
     }
 }
 

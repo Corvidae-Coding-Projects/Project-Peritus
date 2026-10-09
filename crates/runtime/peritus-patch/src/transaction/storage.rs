@@ -23,44 +23,17 @@ pub(super) fn prepare_transaction(
     plan: &PatchPlan,
     manifest: &Manifest,
     faults: &dyn FaultInjector,
-    cancelled: &dyn Fn() -> bool,
 ) -> Result<(), PatchError> {
-    // Establish transaction ownership and every pre/postimage before staging the first payload.
-    // A restart can then discard a partial staging set while proving the workspace is unchanged.
-    persist_manifest(transaction_directory, &manifest.encode()?)?;
     for (index, operation) in plan.operations().iter().enumerate() {
-        if cancelled() {
-            return Err(cancellation_error());
-        }
         if let Some(final_file) = operation.final_file() {
-            stage_final(
-                workspace,
-                transaction_directory,
-                index,
-                operation,
-                final_file,
-                faults,
-                cancelled,
-            )?;
+            stage_final(workspace, transaction_directory, index, operation, final_file, faults)?;
         }
-    }
-    if cancelled() {
-        return Err(cancellation_error());
     }
     sync_directory(transaction_directory, RollbackStatus::NotRequired)?;
+    persist_manifest(transaction_directory, &manifest.encode()?)?;
     faults.check(TransactionFaultPoint::AfterPreparedManifest).map_err(|error| {
         PatchError::io(PatchOperationContext::PersistManifest, RollbackStatus::NotRequired, error)
     })
-}
-
-const fn cancellation_error() -> PatchError {
-    PatchError::message(
-        crate::ErrorCode::Cancelled,
-        crate::RecoveryClass::Retry,
-        PatchOperationContext::Cancellation,
-        RollbackStatus::NotRequired,
-        "cancellation was observed before workspace mutation",
-    )
 }
 
 fn stage_final(
@@ -70,11 +43,7 @@ fn stage_final(
     operation: &crate::PatchOperation,
     final_file: &crate::FinalFile,
     faults: &dyn FaultInjector,
-    cancelled: &dyn Fn() -> bool,
 ) -> Result<(), PatchError> {
-    if cancelled() {
-        return Err(cancellation_error());
-    }
     let staged = staged_path(transaction_directory, index);
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
@@ -104,23 +73,15 @@ fn stage_final(
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
             .at(operation.path().clone())
     })?;
-    for chunk in final_file.bytes().chunks(64 * 1024) {
-        if cancelled() {
-            return Err(cancellation_error().at(operation.path().clone()));
-        }
-        file.write_all(chunk).map_err(|error| {
-            PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
-                .at(operation.path().clone())
-        })?;
-    }
+    file.write_all(final_file.bytes()).map_err(|error| {
+        PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
+            .at(operation.path().clone())
+    })?;
     set_mode(&staged, final_file.mode())?;
     file.sync_all().map_err(|error| {
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
             .at(operation.path().clone())
     })?;
-    if cancelled() {
-        return Err(cancellation_error().at(operation.path().clone()));
-    }
     faults.check(TransactionFaultPoint::AfterStageFinal).map_err(|error| {
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
     })

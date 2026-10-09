@@ -16,10 +16,7 @@ pub use journal::open_journal;
     unused_imports,
     reason = "each integration target consumes a different subset of the shared fixture API"
 )]
-pub use tool::{
-    authority_request, call, call_without_timeout, complete_truncation, router,
-    router_without_timeout,
-};
+pub use tool::{authority_request, call, complete_truncation, router};
 
 use std::{fs, path::Path};
 

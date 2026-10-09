@@ -103,7 +103,7 @@ impl ProductRunService {
             let record =
                 records.get(&run).ok_or(crate::product_run::ProductRunServiceError::NotFound)?;
             Ok::<_, crate::product_run::ProductRunServiceError>(
-                super::super::operation::may_start_execution(self, record)?
+                super::super::operation::may_start_execution(&self.inner.directory, record)?
                     && self.pending_record_input(record)?,
             )
         })();
@@ -140,7 +140,7 @@ impl ProductRunService {
             if options.mode == mode {
                 return Ok(());
             }
-            if !super::super::operation::may_start_execution(self, record)? {
+            if !super::super::operation::may_start_execution(&self.inner.directory, record)? {
                 return Err(Error::InvalidState);
             }
             (record.request.providers(), options.clone())
@@ -150,7 +150,7 @@ impl ProductRunService {
         self.resolve_selected_providers(providers, &selection)?;
         let mut records = self.inner.records.write().map_err(|_| Error::Unavailable)?;
         let record = records.get_mut(&run).ok_or(Error::NotFound)?;
-        if !super::super::operation::may_start_execution(self, record)? {
+        if !super::super::operation::may_start_execution(&self.inner.directory, record)? {
             return Err(Error::InvalidState);
         }
         let previous = record.clone();

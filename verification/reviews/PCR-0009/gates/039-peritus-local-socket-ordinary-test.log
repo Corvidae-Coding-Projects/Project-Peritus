@@ -1,0 +1,17 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-local-socket --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-local-socket", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "039-peritus-local-socket-ordinary-test.log", "owning_crate": "peritus-local-socket", "started_at": "2026-10-09T04:04:11.766515Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.23s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_local_socket-4151fef6a3e8beb0)
+
+running 6 tests
+test path::tests::long_unicode_paths_are_stable_and_isolated_by_the_complete_original_path ... ok
+test path::tests::preserves_existing_paths_through_each_platform_boundary ... ok
+test path::tests::rejects_invalid_paths_without_turning_them_into_valid_runtime_names ... ok
+test unix::tests::cleanup_preserves_replacements_and_nonempty_directories ... ok
+test unix::tests::ordinary_clients_round_trip_at_a_short_private_runtime_address ... ok
+test unix::tests::refuses_symlinks_wrong_owner_and_broad_permissions_without_repair ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-local-socket --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.366, "exit_code": 0, "finished_at": "2026-10-09T04:04:12.133797Z", "invocation": ["cargo", "test", "--package", "peritus-local-socket", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "039-peritus-local-socket-ordinary-test.log", "owning_crate": "peritus-local-socket", "result": "passed", "started_at": "2026-10-09T04:04:11.766515Z"}

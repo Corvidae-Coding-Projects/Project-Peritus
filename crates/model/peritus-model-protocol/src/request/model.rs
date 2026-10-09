@@ -143,18 +143,18 @@ impl ModelRequest {
     ///
     /// # Errors
     ///
-    /// Returns a protocol limit error if a canonical length cannot be represented.
+    /// Returns a protocol limit error if an internal canonical bound is exceeded.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, ProtocolError> {
         crate::canonical::request_bytes(self)
     }
 
-    /// Encodes the same canonical bytes while enforcing an explicit caller byte ceiling.
+    /// Encodes the same canonical bytes while enforcing a narrower host storage ceiling.
     ///
     /// The writer rejects before appending a field that would exceed the ceiling. This does
     /// not encode the whole request and truncate it, and does not change its fingerprint.
     ///
     /// # Errors
-    /// Rejects a zero ceiling or a request that cannot fit completely or be represented.
+    /// Rejects a zero or above-protocol ceiling, or a request that cannot fit completely.
     pub fn canonical_bytes_bounded(&self, maximum_bytes: usize) -> Result<Vec<u8>, ProtocolError> {
         crate::canonical::request_bytes_bounded(self, maximum_bytes)
     }

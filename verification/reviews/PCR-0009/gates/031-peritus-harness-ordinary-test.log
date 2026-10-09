@@ -1,0 +1,107 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-harness --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-harness", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "031-peritus-harness-ordinary-test.log", "owning_crate": "peritus-harness", "started_at": "2026-10-09T04:03:50.182219Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.26s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_harness-b146fa622d015976)
+
+running 1 test
+test runtime::binding::tests::exact_binding_retains_the_shared_tuple_and_rejects_drift ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_catalog.rs (/home/doll/Project-Peritus/target/debug/deps/domain_catalog-6cbe8b3c07c069d8)
+
+running 5 tests
+test complete_catalog_has_stable_unique_tags_and_every_protection_class ... ok
+test declaration_enforces_compiled_protection_and_authority ... ok
+test intervals_feature_sets_and_authority_sets_are_strict ... ok
+test manifest_limits_can_only_tighten_compiled_ceilings ... ok
+test nominal_values_reject_noncanonical_or_protected_inputs ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/domain_graph.rs (/home/doll/Project-Peritus/target/debug/deps/domain_graph-9b9791b141d6c34e)
+
+running 6 tests
+test declaration_order_is_identity_but_topological_ties_use_component_id ... ok
+test dependency_kind_version_and_digest_are_independently_checked ... ok
+test duplicate_missing_and_cycle_are_rejected ... ok
+test graph_resolves_deterministically_and_round_trips_canonical_bytes ... ok
+test transitive_authority_and_incompatible_protected_dependencies_reject ... ok
+test unknown_features_remain_inert_and_unsatisfied ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_properties.rs (/home/doll/Project-Peritus/target/debug/deps/domain_properties-342877c1d6bd9bc7)
+
+running 1 test
+test all_small_ranked_dags_match_the_reference_checker_and_round_trip ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/domain_revision.rs (/home/doll/Project-Peritus/target/debug/deps/domain_revision-b20f0b79ac75b511)
+
+running 6 tests
+test every_structural_change_to_a_protected_asset_rejects ... ok
+test exact_component_bytes_are_checked_before_revision_construction ... ok
+test genesis_and_successor_are_deterministic_content_addressed_values ... ok
+test history_retains_branches_and_allows_only_strict_ancestor_rollback ... ok
+test history_snapshot_is_deterministic_and_fully_rechecked ... ok
+test protected_asset_addition_removal_and_reordering_reject ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/target/debug/deps/durability_restart-3e3b048b13d5ac2f)
+
+running 3 tests
+test atomic_genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+test checked_restart_recreates_plan_and_atomically_settles_exact_claim ... ok
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+
+     Running tests/fixtures_support.rs (/home/doll/Project-Peritus/target/debug/deps/fixtures_support-6c045d4951aa9b5b)
+
+running 1 test
+test fixed_fixture_constructs_a_content_bound_genesis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_document.rs (/home/doll/Project-Peritus/target/debug/deps/manifest_document-9990694761a86d46)
+
+running 2 tests
+test strict_manifest_retains_exact_bytes_and_checked_declaration ... ok
+test unknown_manifest_field_and_noncanonical_digest_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_loading.rs (/home/doll/Project-Peritus/target/debug/deps/manifest_loading-03999fa24c4c09f2)
+
+running 2 tests
+test real_c1_inventory_rejects_missing_undeclared_and_drifted_content ... ok
+test real_c1_snapshot_loads_checks_finalizes_and_constructs_genesis ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.00s
+
+     Running tests/materialization_safety.rs (/home/doll/Project-Peritus/target/debug/deps/materialization_safety-0bb950c67128ee94)
+
+running 4 tests
+test absent_files_and_malformed_plan_bytes_cannot_be_activated ... ok
+test deterministic_plan_round_trips_exact_artifact_and_snapshot_bindings ... ok
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test rollback_reason_is_explicit_bounded_and_control_free ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+     Running tests/replay_wire.rs (/home/doll/Project-Peritus/target/debug/deps/replay_wire-70f08391d0f865e6)
+
+running 5 tests
+test canonical_corpus_is_exact_and_rejects_corruption ... ok
+test complete_frame_trailing_bytes_are_rejected ... ok
+test families_79_80_81_round_trip_only_through_checked_activation ... ok
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test replay_projection_matches_live_state_and_rejects_duplicate_genesis ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-harness --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 4.732, "exit_code": 0, "finished_at": "2026-10-09T04:03:54.915062Z", "invocation": ["cargo", "test", "--package", "peritus-harness", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "031-peritus-harness-ordinary-test.log", "owning_crate": "peritus-harness", "result": "passed", "started_at": "2026-10-09T04:03:50.182219Z"}

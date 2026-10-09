@@ -262,11 +262,11 @@ fn python_spec(
 
 fn python_syntax_check() -> String {
     [
-        "import ast,pathlib,tokenize; ",
+        "import ast,pathlib; ",
         "files=(p for p in pathlib.Path('.').rglob('*.py') ",
         "if not any(part.startswith('.') or part in {'build','dist','node_modules','target','vendor'} ",
         "for part in p.parts)); ",
-        "[ast.parse(tokenize.open(p).read(),filename=str(p)) for p in files]",
+        "[ast.parse(p.read_text(encoding='utf-8'),filename=str(p)) for p in files]",
     ]
     .join("")
 }
@@ -279,7 +279,7 @@ fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
 }
 
 fn sqlite_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
-    vec![optional_spec(
+    vec![spec(
         "SQLite migration verification",
         "peritus-internal",
         vec!["sqlite-migration".to_owned()],
@@ -309,7 +309,7 @@ fn artifact_commands(
             "artifact workspace manifest must contain only schema_version = 1 and kind = \"artifact\"",
         ));
     }
-    Ok(vec![optional_spec(
+    Ok(vec![spec(
         "Artifact CSV structure",
         "peritus-internal",
         vec!["artifact-csv-structure".to_owned()],
@@ -329,19 +329,7 @@ fn spec(
         arguments,
         current_dir: project.root().to_owned(),
         project: project.clone(),
-        optional_when_not_selected: false,
     }
-}
-
-fn optional_spec(
-    label: &str,
-    program: &str,
-    arguments: Vec<String>,
-    project: &AffectedProject,
-) -> GateCommandSpec {
-    let mut command = spec(label, program, arguments, project);
-    command.optional_when_not_selected = true;
-    command
 }
 
 fn planning(detail: &'static str) -> GateError {

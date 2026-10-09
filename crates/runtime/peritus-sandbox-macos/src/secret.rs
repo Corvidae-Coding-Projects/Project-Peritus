@@ -327,7 +327,7 @@ mod tests {
         descriptor.encode(&mut writer).unwrap();
         let bytes = writer.finish();
         assert!(!bytes.windows(8).any(|window| window == [7; 8]));
-        let mut reader = crate::canonical::Reader::new(&bytes);
+        let mut reader = crate::canonical::Reader::new(&bytes).unwrap();
         let decoded = SecretHandleDescriptor::decode(&mut reader).unwrap();
         reader.finish().unwrap();
         assert_eq!(decoded, descriptor);

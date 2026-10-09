@@ -1,7 +1,5 @@
 //! Narrow writable workspace and lower C1 authorization fixture.
 
-use std::sync::{Arc, Mutex};
-
 use peritus_git::{
     CandidateRequest, CreateWorktree, GitRepository, RepositoryOptions, SnapshotRequest,
     WorktreeAccess, WorktreeName,
@@ -20,7 +18,7 @@ use super::{AuthorityReceipts, Ids, commit_authority, journal};
 
 pub struct WorkspaceFixture {
     pub _source: TemporaryRepository,
-    pub gateway: Arc<Mutex<WorkspaceGateway>>,
+    pub gateway: WorkspaceGateway,
 }
 
 pub fn workspace_fixture(temp: &TempDir, ids: &Ids, label: &str) -> WorkspaceFixture {
@@ -86,10 +84,7 @@ pub fn workspace_fixture(temp: &TempDir, ids: &Ids, label: &str) -> WorkspaceFix
         temp.path().join(format!("{label}-transactions")),
     ))
     .expect("writable workspace");
-    WorkspaceFixture {
-        _source: source,
-        gateway: Arc::new(Mutex::new(WorkspaceGateway::new(workspace))),
-    }
+    WorkspaceFixture { _source: source, gateway: WorkspaceGateway::new(workspace) }
 }
 
 pub fn intent(ids: &Ids, payload: Vec<u8>) -> ActionIntentDto {

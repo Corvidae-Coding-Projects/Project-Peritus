@@ -133,7 +133,7 @@ fn explicit_references_are_read_only_and_confined_to_the_named_root() {
 }
 
 #[test]
-fn explicit_reference_uses_native_rules_for_unique_directory_and_file_casing() {
+fn explicit_reference_corrects_unique_directory_and_file_casing() {
     let workspace = tempfile::tempdir().expect("workspace");
     let references = tempfile::tempdir().expect("references");
     let existing = references.path().join("Documents").join("Invoices");
@@ -141,69 +141,36 @@ fn explicit_reference_uses_native_rules_for_unique_directory_and_file_casing() {
     let actual_file = existing.join("DS-2026-001.html");
     fs::write(&actual_file, "CASE_CORRECTED_CANARY").expect("case fixture");
     let requested = references.path().join("documents").join("invoices");
-    let native_directory_alias = fs::symlink_metadata(&requested).is_ok();
-    let mut alias_tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
-        .with_reference_contract(&format!("Inspect {}", requested.display()));
-    let alias_listing = execute(
-        &mut alias_tools,
-        "workspace_list",
-        &serde_json::json!({"path": requested}).to_string(),
-    );
-    if native_directory_alias {
-        assert!(!alias_listing.is_error, "{}", wire(&alias_listing));
-        let listing: Value =
-            serde_json::from_str(&wire(&alias_listing)).expect("reference listing");
-        assert_eq!(listing["reference_root"], existing.to_string_lossy().as_ref());
-    } else {
-        assert!(alias_listing.is_error, "{}", wire(&alias_listing));
-        assert!(wire(&alias_listing).contains("not_found"));
-    }
+    let task = format!("Inspect {}", requested.display());
+    let mut tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reference_contract(&task);
 
-    let mut exact_tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
-        .with_reference_contract(&format!("Inspect {}", existing.display()));
-    let exact_listing = execute(
-        &mut exact_tools,
-        "workspace_list",
-        &serde_json::json!({"path": existing}).to_string(),
-    );
-    assert!(!exact_listing.is_error, "{}", wire(&exact_listing));
-    let listing: Value = serde_json::from_str(&wire(&exact_listing)).expect("reference listing");
+    let listed =
+        execute(&mut tools, "workspace_list", &serde_json::json!({"path": requested}).to_string());
+    assert!(!listed.is_error, "{}", wire(&listed));
+    let listing: Value = serde_json::from_str(&wire(&listed)).expect("reference listing");
     assert_eq!(listing["reference_root"], existing.to_string_lossy().as_ref());
     assert!(listing["entries"].as_array().is_some_and(|entries| {
         entries.iter().any(|entry| entry["path"] == actual_file.to_string_lossy().as_ref())
     }));
 
-    let requested_file = existing.join("ds-2026-001.html");
-    let native_file_alias = fs::symlink_metadata(&requested_file).is_ok();
-    let alias_read = execute(
-        &mut exact_tools,
+    let requested_file =
+        references.path().join("DOCUMENTS").join("INVOICES").join("ds-2026-001.HTML");
+    let read = execute(
+        &mut tools,
         "workspace_read",
         &serde_json::json!({"path": requested_file}).to_string(),
     );
-    if native_file_alias {
-        assert!(!alias_read.is_error, "{}", wire(&alias_read));
-        let result: Value = serde_json::from_str(&wire(&alias_read)).expect("reference read");
-        assert_eq!(result["path"], actual_file.to_string_lossy().as_ref());
-    } else {
-        assert!(alias_read.is_error, "{}", wire(&alias_read));
-        assert!(wire(&alias_read).contains("not_found"));
-    }
-
-    let exact_read = execute(
-        &mut exact_tools,
-        "workspace_read",
-        &serde_json::json!({"path": actual_file}).to_string(),
-    );
-    assert!(!exact_read.is_error, "{}", wire(&exact_read));
-    let exact_result: Value = serde_json::from_str(&wire(&exact_read)).expect("reference read");
-    assert_eq!(exact_result["content"], "1: CASE_CORRECTED_CANARY");
-    assert_eq!(exact_result["path"], actual_file.to_string_lossy().as_ref());
-    assert_eq!(exact_result["reference_root"], existing.to_string_lossy().as_ref());
+    assert!(!read.is_error, "{}", wire(&read));
+    let result: Value = serde_json::from_str(&wire(&read)).expect("reference read");
+    assert_eq!(result["content"], "1: CASE_CORRECTED_CANARY");
+    assert_eq!(result["path"], actual_file.to_string_lossy().as_ref());
+    assert_eq!(result["reference_root"], existing.to_string_lossy().as_ref());
 
     let missing = execute(
-        &mut exact_tools,
+        &mut tools,
         "workspace_read",
-        &serde_json::json!({"path": existing.join("missing.txt")}).to_string(),
+        &serde_json::json!({"path": requested.join("missing.txt")}).to_string(),
     );
     assert!(missing.is_error, "{}", wire(&missing));
     assert!(wire(&missing).contains("not_found"));
@@ -211,7 +178,7 @@ fn explicit_reference_uses_native_rules_for_unique_directory_and_file_casing() {
 
 #[cfg(target_os = "linux")]
 #[test]
-fn explicit_reference_obeys_native_case_resolution_and_prefers_an_exact_name() {
+fn explicit_reference_rejects_ambiguous_case_but_prefers_an_exact_name() {
     let workspace = tempfile::tempdir().expect("workspace");
     let references = tempfile::tempdir().expect("references");
     let title_case = references.path().join("Invoices");
@@ -230,7 +197,7 @@ fn explicit_reference_obeys_native_case_resolution_and_prefers_an_exact_name() {
         &serde_json::json!({"path": ambiguous}).to_string(),
     );
     assert!(rejected.is_error, "{}", wire(&rejected));
-    assert!(wire(&rejected).contains("not_found"));
+    assert!(wire(&rejected).contains("ambiguous"));
     assert!(!wire(&rejected).contains("TITLE_CASE_CANARY"));
     assert!(!wire(&rejected).contains("LOWER_CASE_CANARY"));
 
@@ -294,13 +261,13 @@ fn explicit_reference_allows_an_ancestor_alias_without_allowing_target_links() {
     fs::write(directory.join("example.txt"), "ANCESTOR_ALIAS_CANARY").expect("contents");
     let alias = references.path().join("ReferenceAnchor");
     symlink(&storage, &alias).expect("ancestor alias");
-    let requested = alias.join("Invoices");
+    let requested = references.path().join("referenceanchor").join("invoices");
     let mut tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
         .with_reference_contract(&format!("Inspect {}", requested.display()));
     let read = execute(
         &mut tools,
         "workspace_read",
-        &serde_json::json!({"path": requested.join("example.txt")}).to_string(),
+        &serde_json::json!({"path": requested.join("EXAMPLE.TXT")}).to_string(),
     );
     assert!(!read.is_error, "{}", wire(&read));
     assert!(wire(&read).contains("ANCESTOR_ALIAS_CANARY"));
@@ -340,8 +307,8 @@ fn explicit_reference_rejects_symbolic_link_targets() {
         .with_reference_contract(&task);
 
     for (name, path) in [
-        ("workspace_read", named.join("file-link")),
-        ("workspace_list", named.join("directory-link")),
+        ("workspace_read", named.join("FILE-LINK")),
+        ("workspace_list", named.join("DIRECTORY-LINK")),
     ] {
         let result = execute(&mut tools, name, &serde_json::json!({"path": path}).to_string());
         assert!(result.is_error, "{name}: {}", wire(&result));

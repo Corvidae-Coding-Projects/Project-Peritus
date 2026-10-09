@@ -1,12 +1,9 @@
 //! Reserved logical rewind branches, published atomically only after successful settlement.
-use super::{
-    ControlError, ControlStore, Error, ProductRunService, WorkbenchRestoreProjection, derived_id,
-    public_restore,
-};
+use super::{ControlError, ControlStore, Error, ProductRunService, derived_id, public_restore};
 use peritus_app_protocol::{
-    ControlOperationId, ConversationTitle, MAX_CONVERSATION_TITLE_BYTES, WorkbenchCommand,
-    WorkbenchForkMode, WorkbenchForkRequest, WorkbenchIntent, WorkbenchQuery,
-    WorkbenchRestoreStatus, WorkbenchRestoreSummary, WorkbenchRewindRequest,
+    ControlOperationId, ConversationTitle, WorkbenchCommand, WorkbenchForkMode,
+    WorkbenchForkRequest, WorkbenchIntent, WorkbenchQuery, WorkbenchRestoreReceipt,
+    WorkbenchRestoreStatus, WorkbenchRewindRequest,
 };
 use peritus_product_runner::control::{
     CheckpointId, ControlIntent, ControlOperation, ConversationBranch, ConversationId,
@@ -34,17 +31,10 @@ impl ProductRunService {
                 )?
                 .ok_or(ControlError::NotFound)?;
             let refs = checkpoint.references();
-            let mut derived_title = format!("Rewind of {}", record.title());
-            if derived_title.len() > MAX_CONVERSATION_TITLE_BYTES {
-                let mut end = MAX_CONVERSATION_TITLE_BYTES;
-                while !derived_title.is_char_boundary(end) {
-                    end -= 1;
-                }
-                derived_title.truncate(end);
-            }
             let fork = WorkbenchForkRequest::new(
                 WorkbenchQuery::new(child, request.query().workspace()),
-                ConversationTitle::new(derived_title).map_err(|_| ControlError::Capacity)?,
+                ConversationTitle::new(format!("Rewind of {}", record.title()))
+                    .map_err(|_| ControlError::Capacity)?,
                 request.checkpoint(),
                 refs.source_conversation_revision(),
                 refs.context_generation(),
@@ -99,8 +89,8 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
-        receipt: WorkbenchRestoreProjection,
-    ) -> Result<WorkbenchRestoreProjection, Error> {
+        receipt: WorkbenchRestoreReceipt,
+    ) -> Result<WorkbenchRestoreReceipt, Error> {
         self.logical_rewind_receipt(actor, command, receipt, true)
     }
 
@@ -108,8 +98,8 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
-        receipt: WorkbenchRestoreProjection,
-    ) -> Result<WorkbenchRestoreProjection, Error> {
+        receipt: WorkbenchRestoreReceipt,
+    ) -> Result<WorkbenchRestoreReceipt, Error> {
         self.logical_rewind_receipt(actor, command, receipt, false)
     }
 
@@ -117,18 +107,10 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
-        receipt: WorkbenchRestoreProjection,
+        receipt: WorkbenchRestoreReceipt,
         publish: bool,
-    ) -> Result<WorkbenchRestoreProjection, Error> {
-        let applied = match &receipt {
-            WorkbenchRestoreProjection::Detailed(value) => {
-                value.status() == WorkbenchRestoreStatus::Applied
-            }
-            WorkbenchRestoreProjection::Summary(value) => {
-                value.status() == WorkbenchRestoreStatus::Applied
-            }
-        };
-        if !applied {
+    ) -> Result<WorkbenchRestoreReceipt, Error> {
+        if receipt.status() != WorkbenchRestoreStatus::Applied {
             return Ok(receipt);
         }
         let source = ConversationId::new(command.query().conversation().into_bytes())?;
@@ -137,30 +119,14 @@ impl ProductRunService {
             publish_branch(store, actor, command, source, restore_id, publish)
         })?;
         let Some(revision) = published else { return Ok(receipt) };
-        match receipt {
-            WorkbenchRestoreProjection::Detailed(value) => public_restore(
-                command,
-                CheckpointId::new(value.recovery_checkpoint().into_bytes())?,
-                RestoreStatus::Applied,
-                revision,
-                value.restored().to_vec(),
-                value.conflicts().to_vec(),
-                value.external_effects().to_vec(),
-            ),
-            WorkbenchRestoreProjection::Summary(value) => WorkbenchRestoreSummary::new(
-                value.restore(),
-                value.checkpoint(),
-                value.recovery_checkpoint(),
-                value.query(),
-                revision,
-                value.status(),
-                value.restored_paths(),
-                value.conflicting_paths(),
-                value.fingerprint(),
-            )
-            .map(WorkbenchRestoreProjection::Summary)
-            .map_err(|_| ControlError::InvalidInput.into()),
-        }
+        public_restore(
+            command,
+            CheckpointId::new(receipt.recovery_checkpoint().into_bytes())?,
+            RestoreStatus::Applied,
+            revision,
+            receipt.restored().to_vec(),
+            receipt.conflicts().to_vec(),
+        )
     }
 }
 

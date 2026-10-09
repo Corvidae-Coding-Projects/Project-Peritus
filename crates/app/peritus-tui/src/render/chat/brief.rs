@@ -60,9 +60,9 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
             lines.push(format!(
                 "SHA256 {} · {} bytes",
                 hex(proposal.digest().as_bytes()),
-                proposal.text().len()
+                proposal.text().as_str().len()
             ));
-            lines.extend(proposal.text().lines().map(str::to_owned));
+            lines.extend(proposal.text().as_str().lines().map(str::to_owned));
         }
         if brief.excluded_proposals() > 0 {
             lines.push(format!(

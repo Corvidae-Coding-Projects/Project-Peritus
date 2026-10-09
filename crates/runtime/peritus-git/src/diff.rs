@@ -9,9 +9,9 @@ use crate::{
     command::CommandAccess,
 };
 
-/// Default structured-path transfer window; not a whole-diff admission limit.
+/// Maximum structured paths in one diff observation.
 pub const MAX_DIFF_ENTRIES: u32 = 100_000;
-/// Default patch transfer window; not a whole-diff admission limit.
+/// Maximum retained textual patch bytes.
 pub const MAX_DIFF_BYTES: u64 = 8 * 1_024 * 1_024;
 
 /// Closed name-status change vocabulary.
@@ -29,25 +29,18 @@ pub enum DiffChange {
     Unmerged,
 }
 
-/// One native repository-relative changed path with a display projection.
+/// One UTF-8 repository-relative changed path.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DiffEntry {
     path: String,
-    path_bytes: Vec<u8>,
     change: DiffChange,
 }
 
 impl DiffEntry {
-    /// Returns a display path; use `path_bytes` for exact native identity.
+    /// Returns the exact unquoted repository-relative path.
     #[must_use]
     pub fn path(&self) -> &str {
         &self.path
-    }
-
-    /// Returns exact native repository-relative path bytes.
-    #[must_use]
-    pub fn path_bytes(&self) -> &[u8] {
-        &self.path_bytes
     }
 
     /// Returns the reported change class.
@@ -65,15 +58,13 @@ pub struct DiffRequest<'a> {
     target: CommitId,
     maximum_entries: u32,
     maximum_patch_bytes: u64,
-    cursor: DiffCursor,
-    expected_digest: Option<Sha256Digest>,
 }
 
 impl<'a> DiffRequest<'a> {
     /// Creates one structured immutable diff request.
     ///
     /// # Errors
-    /// Rejects zero entry or patch page sizes.
+    /// Rejects zero or excessive entry and patch bounds.
     pub fn new(
         worktree: &'a RegisteredWorktree,
         base: CommitId,
@@ -81,41 +72,18 @@ impl<'a> DiffRequest<'a> {
         maximum_entries: u32,
         maximum_patch_bytes: u64,
     ) -> Result<Self, GitError> {
-        if maximum_entries == 0 || maximum_patch_bytes == 0 {
-            return Err(input_error("Git diff page dimensions must be nonzero"));
+        if maximum_entries == 0
+            || maximum_entries > MAX_DIFF_ENTRIES
+            || maximum_patch_bytes == 0
+            || maximum_patch_bytes > MAX_DIFF_BYTES
+        {
+            return Err(input_error("Git diff bounds are zero or exceed their hard maximum"));
         }
-        Ok(Self {
-            worktree,
-            base,
-            target,
-            maximum_entries,
-            maximum_patch_bytes,
-            cursor: DiffCursor::default(),
-            expected_digest: None,
-        })
-    }
-
-    /// Binds a continuation to the previous complete immutable observation digest.
-    #[must_use]
-    pub const fn with_cursor(mut self, cursor: DiffCursor, digest: Option<Sha256Digest>) -> Self {
-        self.cursor = cursor;
-        self.expected_digest = digest;
-        self
+        Ok(Self { worktree, base, target, maximum_entries, maximum_patch_bytes })
     }
 }
 
-/// Independent offsets into an immutable diff. Path bytes continue the first selected entry.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct DiffCursor {
-    /// Absolute changed-path index.
-    pub entry_offset: u64,
-    /// Absolute patch-byte offset.
-    pub patch_offset: u64,
-    /// Byte offset within the first selected native path.
-    pub path_byte_offset: u64,
-}
-
-/// Bounded diff page with complete-source identity and explicit continuation.
+/// Complete bounded diff observation with exact source identities.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GitDiffObservation {
     repository_digest: Sha256Digest,
@@ -124,40 +92,9 @@ pub struct GitDiffObservation {
     entries: Vec<DiffEntry>,
     patch: Vec<u8>,
     digest: Sha256Digest,
-    cursor: DiffCursor,
-    total_entries: u64,
-    total_patch_bytes: u64,
 }
 
 impl GitDiffObservation {
-    /// Requested immutable-source coordinates.
-    #[must_use]
-    pub const fn cursor(&self) -> DiffCursor {
-        self.cursor
-    }
-    /// Number of paths in the complete diff.
-    #[must_use]
-    pub const fn total_entries(&self) -> u64 {
-        self.total_entries
-    }
-    /// Number of bytes in the complete patch.
-    #[must_use]
-    pub const fn total_patch_bytes(&self) -> u64 {
-        self.total_patch_bytes
-    }
-    /// Next path index after all entries in this runtime page.
-    #[must_use]
-    pub fn next_entry_offset(&self) -> Option<u64> {
-        let end = self.cursor.entry_offset + self.entries.len() as u64;
-        (end < self.total_entries).then_some(end)
-    }
-    /// Next byte offset after this runtime patch page.
-    #[must_use]
-    pub fn next_patch_offset(&self) -> Option<u64> {
-        let end = self.cursor.patch_offset + self.patch.len() as u64;
-        (end < self.total_patch_bytes).then_some(end)
-    }
-
     /// Returns the repository binding.
     #[must_use]
     pub const fn repository_digest(&self) -> Sha256Digest {
@@ -222,7 +159,7 @@ impl GitRepository {
             &names,
             None,
         )?;
-        let entries = parse_names(&names.stdout)?;
+        let entries = parse_names(&names.stdout, request.maximum_entries)?;
         let mut arguments = crate::repository::strings(&[
             "diff",
             "--patch",
@@ -245,30 +182,11 @@ impl GitRepository {
                 None,
             )?
             .stdout;
+        if patch.len() as u64 > request.maximum_patch_bytes {
+            return Err(input_error("Git diff patch exceeds the requested byte bound"));
+        }
         let digest =
             diff_digest(self.identity.digest(), request.base, request.target, &entries, &patch);
-        if request.expected_digest.is_some_and(|expected| expected != digest) {
-            return Err(input_error("Git diff continuation identity changed"));
-        }
-        let total_entries = entries.len() as u64;
-        let total_patch_bytes = patch.len() as u64;
-        let entry_offset = usize::try_from(request.cursor.entry_offset)
-            .map_err(|_| input_error("Git diff path offset is not representable"))?;
-        let patch_offset = usize::try_from(request.cursor.patch_offset)
-            .map_err(|_| input_error("Git diff patch offset is not representable"))?;
-        if entry_offset > entries.len()
-            || patch_offset > patch.len()
-            || request.cursor.path_byte_offset
-                > entries.get(entry_offset).map_or(0, |entry| entry.path_bytes.len() as u64)
-        {
-            return Err(input_error("Git diff continuation is outside its immutable source"));
-        }
-        let entries =
-            entries.into_iter().skip(entry_offset).take(request.maximum_entries as usize).collect();
-        let patch_end = patch_offset
-            .saturating_add(usize::try_from(request.maximum_patch_bytes).unwrap_or(usize::MAX))
-            .min(patch.len());
-        let patch = patch[patch_offset..patch_end].to_vec();
         Ok(GitDiffObservation {
             repository_digest: self.identity.digest(),
             base: request.base,
@@ -276,23 +194,15 @@ impl GitRepository {
             entries,
             patch,
             digest,
-            cursor: request.cursor,
-            total_entries,
-            total_patch_bytes,
         })
     }
 }
 
-fn parse_names(bytes: &[u8]) -> Result<Vec<DiffEntry>, GitError> {
-    if bytes.is_empty() {
-        return Ok(Vec::new());
-    }
-    let bytes = bytes
-        .strip_suffix(&[0])
-        .ok_or_else(|| protocol("Git diff name-status output is not NUL terminated"))?;
-    let fields = bytes.split(|byte| *byte == 0).collect::<Vec<_>>();
-    if fields.len() % 2 != 0 {
-        return Err(protocol("Git diff name-status output is malformed"));
+fn parse_names(bytes: &[u8], maximum: u32) -> Result<Vec<DiffEntry>, GitError> {
+    let fields =
+        bytes.split(|byte| *byte == 0).filter(|field| !field.is_empty()).collect::<Vec<_>>();
+    if fields.len() % 2 != 0 || fields.len() / 2 > maximum as usize {
+        return Err(protocol("Git diff name-status output is malformed or exceeds its bound"));
     }
     let mut entries = Vec::with_capacity(fields.len() / 2);
     for pair in fields.chunks_exact(2) {
@@ -304,12 +214,13 @@ fn parse_names(bytes: &[u8]) -> Result<Vec<DiffEntry>, GitError> {
             b"U" => DiffChange::Unmerged,
             _ => return Err(protocol("Git diff reported an unsupported change code")),
         };
-        if pair[1].is_empty() {
-            return Err(protocol("Git diff path is empty"));
+        let path = std::str::from_utf8(pair[1])
+            .map_err(|_| protocol("Git diff path is not UTF-8"))?
+            .to_owned();
+        if path.is_empty() || path.len() > crate::status::MAX_STATUS_PATH_BYTES {
+            return Err(protocol("Git diff path is empty or exceeds its bound"));
         }
-        let path_bytes = pair[1].to_vec();
-        let path = String::from_utf8_lossy(&path_bytes).into_owned();
-        entries.push(DiffEntry { path, path_bytes, change });
+        entries.push(DiffEntry { path, change });
     }
     Ok(entries)
 }
@@ -334,7 +245,7 @@ fn diff_digest(
             DiffChange::TypeChanged => 4,
             DiffChange::Unmerged => 5,
         });
-        crate::status::put_bytes(&mut bytes, &entry.path_bytes);
+        crate::status::put_bytes(&mut bytes, entry.path.as_bytes());
     }
     crate::status::put_bytes(&mut bytes, patch);
     peritus_codec::sha256(&bytes)

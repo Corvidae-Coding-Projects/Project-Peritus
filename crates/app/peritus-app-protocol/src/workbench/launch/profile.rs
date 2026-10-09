@@ -1,6 +1,6 @@
 //! Bounded inert preview launch profiles and exact source identities.
 
-use super::{MAX_PREVIEW_INPUT_BYTES, invalid, valid_environment_name};
+use super::{MAX_LAUNCH_TEXT_BYTES, MAX_PREVIEW_INPUT_BYTES, invalid, valid_environment_name};
 use crate::AppProtocolError;
 use peritus_types::{RunId, Sha256Digest};
 
@@ -12,9 +12,12 @@ impl WorkbenchLaunchText {
     /// Creates nonempty literal text without NUL or terminal control characters.
     ///
     /// # Errors
-    /// Rejects empty or NUL-containing text.
+    /// Rejects empty, oversized, NUL-containing, or display-control-containing text.
     pub fn new(value: String) -> Result<Self, AppProtocolError> {
-        if value.is_empty() || value.as_bytes().contains(&0) {
+        if value.is_empty()
+            || value.len() > MAX_LAUNCH_TEXT_BYTES
+            || value.chars().any(char::is_control)
+        {
             return Err(invalid());
         }
         Ok(Self(value))
@@ -175,18 +178,18 @@ pub struct WorkbenchLaunchProfile {
     environment: Vec<WorkbenchLaunchText>,
     source: WorkbenchLaunchSource,
     build: Option<WorkbenchBuildIdentity>,
-    readiness_millis: Option<u64>,
-    wall_millis: Option<u64>,
+    readiness_millis: u64,
+    wall_millis: u64,
     interactive: bool,
     network: WorkbenchPreviewNetwork,
     stop_policy: WorkbenchPreviewStopPolicy,
 }
 
 impl WorkbenchLaunchProfile {
-    /// Validates source identity and optional time bounds without discovery or execution.
+    /// Validates collection and finite time bounds without performing discovery or execution.
     ///
     /// # Errors
-    /// Rejects duplicate/invalid environment references or zero finite limits.
+    /// Rejects excessive/duplicate environment references or invalid finite limits.
     #[allow(clippy::too_many_arguments, reason = "independent launch bindings remain explicit")]
     pub fn new(
         run: RunId,
@@ -196,16 +199,17 @@ impl WorkbenchLaunchProfile {
         mut environment: Vec<WorkbenchLaunchText>,
         source: WorkbenchLaunchSource,
         build: Option<WorkbenchBuildIdentity>,
-        readiness_millis: Option<u64>,
-        wall_millis: Option<u64>,
+        readiness_millis: u64,
+        wall_millis: u64,
         interactive: bool,
     ) -> Result<Self, AppProtocolError> {
         environment.sort_by(|left, right| left.as_str().cmp(right.as_str()));
-        if environment.windows(2).any(|pair| pair[0] == pair[1])
+        if u16::try_from(arguments.len()).is_err()
+            || u16::try_from(environment.len()).is_err()
+            || environment.windows(2).any(|pair| pair[0] == pair[1])
             || environment.iter().any(|name| !valid_environment_name(name.as_str()))
-            || readiness_millis.is_some_and(|value| value == 0)
-            || wall_millis.is_some_and(|value| value == 0)
-            || readiness_millis.zip(wall_millis).is_some_and(|(readiness, wall)| readiness > wall)
+            || readiness_millis == 0
+            || readiness_millis > wall_millis
         {
             return Err(invalid());
         }
@@ -261,12 +265,12 @@ impl WorkbenchLaunchProfile {
     }
     /// Returns the bounded readiness-observation wait.
     #[must_use]
-    pub const fn readiness_millis(&self) -> Option<u64> {
+    pub const fn readiness_millis(&self) -> u64 {
         self.readiness_millis
     }
     /// Returns the immutable process wall deadline.
     #[must_use]
-    pub const fn wall_millis(&self) -> Option<u64> {
+    pub const fn wall_millis(&self) -> u64 {
         self.wall_millis
     }
     /// Returns whether bounded process input is enabled.

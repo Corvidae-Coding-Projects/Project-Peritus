@@ -6,90 +6,13 @@ use super::{
     ProductRunService, WorkbenchResultQuery, app_error,
 };
 use peritus_app_protocol::{
-    MAX_WORKBENCH_PREVIEW_OUTPUT_BYTES, WorkbenchPreviewOutput, WorkbenchPreviewOutputQuery,
-    WorkbenchPreviewOutputRange, WorkbenchPreviewOutputStream, WorkbenchPreviewSnapshot,
+    MAX_WORKBENCH_PREVIEW_OUTPUT_BYTES, WorkbenchPreviewOutput, WorkbenchPreviewSnapshot,
 };
-use peritus_types::RunId;
-
-use super::hex;
 
 // Sixteen launches, two streams each, fit the four MiB durable aggregate bound.
 const RETAINED_STREAM_BYTES: usize = 128 * 1024;
 
 impl ProductRunService {
-    pub(crate) fn workbench_preview_output_range(
-        &self,
-        actor: ActorId,
-        query: WorkbenchPreviewOutputQuery,
-    ) -> AppResponsePayload {
-        self.preview_output_range(actor, query)
-            .map_or_else(AppResponsePayload::Error, AppResponsePayload::WorkbenchPreviewOutput)
-    }
-
-    fn preview_output_range(
-        &self,
-        actor: ActorId,
-        query: WorkbenchPreviewOutputQuery,
-    ) -> Result<WorkbenchPreviewOutputRange, AppProtocolError> {
-        let result_query = WorkbenchResultQuery::new(query.query(), query.run());
-        let result = self.result_page(actor, result_query)?;
-        let launch = result
-            .launches()
-            .iter()
-            .find(|row| row.launch() == query.launch())
-            .ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-        let process_id = launch.process().ok_or_else(|| app_error(Code::StaleRevision))?;
-        let (workspace, direct) = self.verify_profile(query.query(), launch.profile())?;
-        let active = self
-            .inner
-            .preview_processes
-            .lock()
-            .map_err(|_| app_error(Code::Backpressure))?
-            .get(&query.launch())
-            .cloned();
-        let runtime =
-            if let Some(active) = active.filter(|item| item.launch.process_id() == process_id) {
-                active.runtime
-            } else {
-                let run = RunId::new(query.launch().into_bytes())
-                    .map_err(|_| app_error(Code::Internal))?;
-                let state =
-                    self.preview_state_root().join("commands").join(hex(query.launch().as_bytes()));
-                if direct {
-                    peritus_product_runner::CommandRuntime::open_direct(
-                        state,
-                        workspace,
-                        run,
-                        self.inner.processes.clone(),
-                    )
-                } else {
-                    peritus_product_runner::CommandRuntime::open(
-                        state,
-                        workspace,
-                        run,
-                        self.inner.processes.clone(),
-                    )
-                }
-                .map_err(|_| app_error(Code::Backpressure))?
-            };
-        let stream = match query.stream() {
-            WorkbenchPreviewOutputStream::Stdout => peritus_process::OutputStream::Stdout,
-            WorkbenchPreviewOutputStream::Stderr => peritus_process::OutputStream::Stderr,
-            WorkbenchPreviewOutputStream::Terminal => peritus_process::OutputStream::Terminal,
-        };
-        let range = runtime
-            .preview_output_range(process_id, stream, query.offset(), query.maximum_bytes())
-            .map_err(|_| app_error(Code::Backpressure))?;
-        WorkbenchPreviewOutputRange::new(
-            query.launch(),
-            query.stream(),
-            query.offset(),
-            range.total_bytes(),
-            range.digest(),
-            range.bytes().to_vec(),
-        )
-    }
-
     pub(crate) fn workbench_preview(
         &self,
         actor: ActorId,

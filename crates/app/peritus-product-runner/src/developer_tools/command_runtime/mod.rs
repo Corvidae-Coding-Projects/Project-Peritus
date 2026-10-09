@@ -5,7 +5,6 @@ mod compactor;
 mod construction;
 mod contract;
 mod control;
-mod dispatch;
 mod folder_patch;
 mod identity;
 mod journal;
@@ -17,7 +16,6 @@ mod preview;
 mod preview_terminal;
 pub use preview_terminal::PreviewTerminal;
 mod projections;
-mod recovery;
 mod result;
 mod sandbox;
 
@@ -34,16 +32,14 @@ use std::{
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{ArtifactStore, StoreConfig};
 use peritus_policy::AuthorityInstant;
-use peritus_process::{ExecutionGateway, ProcessStore, RecoveryDisposition};
+use peritus_process::ExecutionGateway;
 use peritus_tool_protocol::{CancellationReason, ToolControl, ToolProgress, ToolResult};
-use peritus_tool_router::{InvocationHandle, RecoveryOutcome, ToolRouter};
+use peritus_tool_router::{DispatchOutcome, InvocationHandle, RecoveryOutcome, ToolRouter};
 use peritus_tools_shell::RawShellDispatcher;
 use peritus_types::RunId;
 use serde_json::Value;
 
 use super::path::{canonical_command_cwd, tool};
-use super::receipt::NativeCommandOwner;
-use dispatch::StartedCommandOutcome;
 
 const ARTIFACT_QUOTA_BYTES: u64 = 1024 * 1_024 * 1_024;
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
@@ -60,7 +56,6 @@ struct RuntimeInner {
     workspace_root: PathBuf,
     state_root: PathBuf,
     artifacts: StoreConfig,
-    process_store: ProcessStore,
     gateway: ExecutionGateway,
     state: Mutex<RuntimeState>,
     #[cfg(test)]
@@ -75,7 +70,6 @@ struct RuntimeState {
     active: BTreeMap<String, ActiveCommand>,
     terminal: BTreeMap<String, TerminalCommand>,
     recovered: BTreeMap<String, Value>,
-    recovered_owners: BTreeMap<String, NativeCommandOwner>,
 }
 
 struct ActiveCommand {
@@ -101,19 +95,12 @@ pub(super) struct StartCommand<'a> {
     pub(super) program: &'a str,
     pub(super) arguments: &'a [String],
     pub(super) cwd: &'a Path,
-    pub(super) timeout: Option<Duration>,
+    pub(super) timeout: Duration,
     pub(super) interactive: bool,
     pub(super) rows: u16,
     pub(super) columns: u16,
     pub(super) idempotency_key: &'a str,
     pub(super) environment: Vec<(String, String)>,
-    pub(super) owner_registered:
-        Option<&'a mut dyn FnMut(NativeCommandOwner) -> Result<(), DeveloperLoopError>>,
-}
-
-pub(super) struct RecoveredCommandOwner {
-    pub(super) disposition: RecoveryDisposition,
-    pub(super) value: Value,
 }
 
 impl CommandRuntime {
@@ -137,8 +124,11 @@ impl CommandRuntime {
     #[cfg(test)]
     pub(crate) fn open_for_test(workspace_root: &Path, run_id: RunId) -> Self {
         let state_guard = tempfile::tempdir().expect("temporary command state");
-        let processes = ProcessStore::open(state_guard.path().join("processes"), workspace_root)
-            .expect("test command process store");
+        let processes = peritus_process::ProcessStore::open(
+            state_guard.path().join("processes"),
+            workspace_root,
+        )
+        .expect("test command process store");
         let mut runtime =
             Self::open(state_guard.path().join("router"), workspace_root, run_id, processes)
                 .expect("test command runtime");
@@ -178,45 +168,10 @@ impl CommandRuntime {
         self.observe(handle, Observation::Poll)
     }
 
-    pub(super) fn attach_native_owner(
-        &self,
-        owner: NativeCommandOwner,
-    ) -> Result<(), DeveloperLoopError> {
-        if owner.source_run != self.inner.run_id {
-            return Err(tool("native command receipt belongs to a different runtime run"));
-        }
-        let handle = identity::action_hex(owner.action);
-        let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
-        if let Some(active) = state.active.get(&handle) {
-            let identity = active.plan.identity();
-            if identity.run_id() != owner.execution_run
-                || identity.action_id() != owner.action
-                || identity.process_id() != owner.process
-            {
-                return Err(tool("native command receipt differs from the active command owner"));
-            }
-            return Ok(());
-        }
-        if state.recovered_owners.get(&handle).is_some_and(|existing| *existing != owner) {
-            return Err(tool("native command receipt conflicts with the retained owner link"));
-        }
-        state.recovered.remove(&handle);
-        state.recovered_owners.insert(handle, owner);
-        drop(state);
-        Ok(())
-    }
-
-    fn start_owned(
-        &self,
-        mut request: StartCommand<'_>,
-    ) -> Result<StartedCommand, DeveloperLoopError> {
+    fn start_owned(&self, request: StartCommand<'_>) -> Result<StartedCommand, DeveloperLoopError> {
         let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
-        let timeout_millis = request
-            .timeout
-            .map(|timeout| u64::try_from(timeout.as_millis()))
-            .transpose()
+        let timeout_millis = u64::try_from(request.timeout.as_millis())
             .map_err(|_| tool("command timeout is not representable in milliseconds"))?;
-        let tool_budget_millis = timeout_millis.unwrap_or(0);
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         let ordinal =
             ordinal::reserve(&self.inner.state_root, self.inner.run_id, state.next_ordinal)
@@ -247,7 +202,7 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.prepared,
-            tool_budget_millis,
+            timeout_millis,
         )
         .map_err(tool)?;
         let process_authority = authority::commit_process(
@@ -255,7 +210,7 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.execution,
-            timeout_millis.unwrap_or(0),
+            timeout_millis,
         )
         .map_err(tool)?;
         let process_request = process_authority.request(&ids, &command.execution);
@@ -269,31 +224,39 @@ impl CommandRuntime {
         )
         .map_err(|error| tool(error.to_string()))?;
         let tool_request = tool_authority.request(&ids, &command.prepared);
-        let native_owner = NativeCommandOwner {
-            source_run: self.inner.run_id,
-            execution_run: ids.run,
-            action: ids.action,
-            process: ids.process,
-        };
-        if let Some(register) = request.owner_registered.as_deref_mut() {
-            register(native_owner)?;
-        }
         let outcome = state
             .router
             .dispatch(command.prepared, &tool_request, &mut dispatcher)
             .map_err(|error| tool(error.to_string()))?;
         let handle = identity::action_hex(ids.action);
-        self.record_started_outcome(
-            &mut state,
-            &handle,
-            StartedCommandOutcome {
-                outcome,
-                plan: command.execution,
-                control: dispatcher.process_control(),
-                interactive: request.interactive,
-                owner: native_owner,
-            },
-        )?;
+        match outcome {
+            DispatchOutcome::Active(invocation) => {
+                state.active.insert(
+                    handle.clone(),
+                    ActiveCommand {
+                        plan: command.execution,
+                        control: dispatcher.process_control(),
+                        invocation,
+                        started: Instant::now(),
+                        interactive: request.interactive,
+                    },
+                );
+                retain_projection(&self.inner.state_root, &handle, result::active(&handle, &[]));
+            }
+            DispatchOutcome::Completed(result) | DispatchOutcome::Replayed(result) => {
+                let projection =
+                    result::terminal(&handle, &result, &self.inner.artifacts, &[]).map_err(tool)?;
+                state
+                    .terminal
+                    .insert(handle.clone(), TerminalCommand { result, progress: Vec::new() });
+                retain_projection(&self.inner.state_root, &handle, projection);
+            }
+            DispatchOutcome::PriorOutcome(disposition) => {
+                return Err(tool(format!(
+                    "command has prior non-replayable outcome: {disposition:?}"
+                )));
+            }
+        }
         drop(state);
         Ok(StartedCommand { handle, process_id: ids.process })
     }
@@ -301,9 +264,6 @@ impl CommandRuntime {
     fn observe(&self, handle: &str, operation: Observation) -> Result<Value, DeveloperLoopError> {
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         if let Some(terminal) = state.terminal.get(handle) {
-            if !matches!(&operation, Observation::Poll | Observation::Recover) {
-                return Err(tool("command owner is terminal; no control effect was dispatched"));
-            }
             return result::terminal(
                 handle,
                 &terminal.result,
@@ -312,15 +272,8 @@ impl CommandRuntime {
             )
             .map_err(tool);
         }
-        if let Some(owner) = state.recovered_owners.get(handle).copied() {
-            drop(state);
-            return self.observe_recovered_owner(owner, operation);
-        }
-        if let Some(recovered) = state.recovered.get(handle).cloned() {
-            if !matches!(&operation, Observation::Poll | Observation::Recover) {
-                return Err(tool("recovered command has no exact live control attachment"));
-            }
-            return Ok(recovered);
+        if let Some(recovered) = state.recovered.get(handle) {
+            return Ok(recovered.clone());
         }
         let (invocation, observed_at) = {
             let active = state
@@ -404,19 +357,6 @@ fn retain_projection(root: &Path, handle: &str, value: Value) {
         // command that was already dispatched or its terminal result from the current caller.
         crate::diagnostic::report(&format!(
             "peritus command runtime: command {handle} completed an in-memory transition, but its reconnect projection could not be retained: {error}"
-        ));
-    }
-}
-
-fn retain_projection_with_owner(
-    root: &Path,
-    handle: &str,
-    value: Value,
-    owner: NativeCommandOwner,
-) {
-    if let Err(error) = projections::record_with_owner(root, handle, value, owner) {
-        crate::diagnostic::report(&format!(
-            "peritus command runtime: command {handle} has a durable native owner, but its reconnect projection could not be retained: {error}"
         ));
     }
 }

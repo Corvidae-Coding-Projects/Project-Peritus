@@ -63,7 +63,7 @@ pub(in crate::product_control) fn messages(
         .messages()
         .iter()
         .map(|message| {
-            let bytes = encode_messages(std::slice::from_ref(message), ProtocolLimits::ARCHIVE)
+            let bytes = encode_messages(std::slice::from_ref(message), ProtocolLimits::PRODUCTION)
                 .map_err(|_| ControlError::InvalidInput)?;
             let role = match message.role() {
                 Role::System => MessageRole::System,

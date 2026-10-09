@@ -1,0 +1,330 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-budget", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "010-peritus-budget-verus-verify.log", "owning_crate": "peritus-budget", "started_at": "2026-10-09T03:56:34.227450Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality.rs:23:7
+   |
+23 |   proof fn activation_candidates_equal(
+   |  _______^
+24 | |     left_before: &BudgetLedger,
+25 | |     right_before: &BudgetLedger,
+26 | |     activation: crate::Activation,
+...  |
+30 | |     right_receipt: BudgetReceipt,
+31 | | )
+   | |_^
+
+note: function body check finished in 6 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality.rs:23:7
+   |
+23 |   proof fn activation_candidates_equal(
+   |  _______^
+24 | |     left_before: &BudgetLedger,
+25 | |     right_before: &BudgetLedger,
+26 | |     activation: crate::Activation,
+...  |
+30 | |     right_receipt: BudgetReceipt,
+31 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/finalization.rs:176:1
+    |
+176 | / pub(super) proof fn cancellation_candidates_equal(
+177 | |     left_before: &BudgetLedger,
+178 | |     right_before: &BudgetLedger,
+179 | |     reference: ReservationReference,
+...   |
+183 | |     right_receipt: BudgetReceipt,
+184 | | )
+    | |_^
+
+note: function body check finished in 3 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/finalization.rs:176:1
+    |
+176 | / pub(super) proof fn cancellation_candidates_equal(
+177 | |     left_before: &BudgetLedger,
+178 | |     right_before: &BudgetLedger,
+179 | |     reference: ReservationReference,
+...   |
+183 | |     right_receipt: BudgetReceipt,
+184 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/finalization/full.rs:16:1
+   |
+16 | / pub(in crate::reachability::functionality) proof fn full_finalization_candidates_equal(
+17 | |     left_before: &BudgetLedger,
+18 | |     right_before: &BudgetLedger,
+19 | |     command: BudgetCommand,
+...  |
+26 | |     right_receipt: BudgetReceipt,
+27 | | )
+   | |_^
+
+note: function body check finished in 8 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/finalization/full.rs:16:1
+   |
+16 | / pub(in crate::reachability::functionality) proof fn full_finalization_candidates_equal(
+17 | |     left_before: &BudgetLedger,
+18 | |     right_before: &BudgetLedger,
+19 | |     command: BudgetCommand,
+...  |
+26 | |     right_receipt: BudgetReceipt,
+27 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/lifecycle.rs:150:1
+    |
+150 | / pub(super) proof fn close_candidates_equal(
+151 | |     left_before: &BudgetLedger,
+152 | |     right_before: &BudgetLedger,
+153 | |     budget_id: peritus_types::BudgetId,
+...   |
+157 | |     right_receipt: BudgetReceipt,
+158 | | )
+    | |_^
+
+note: function body check finished in 14 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/lifecycle.rs:150:1
+    |
+150 | / pub(super) proof fn close_candidates_equal(
+151 | |     left_before: &BudgetLedger,
+152 | |     right_before: &BudgetLedger,
+153 | |     budget_id: peritus_types::BudgetId,
+...   |
+157 | |     right_receipt: BudgetReceipt,
+158 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/applied.rs:18:1
+   |
+18 | / pub(super) proof fn applied_candidates_equal(
+19 | |     left_before: &BudgetLedger,
+20 | |     right_before: &BudgetLedger,
+21 | |     observation: UsageObservation,
+...  |
+29 | |     right_budget: BudgetId,
+30 | | )
+   | |_^
+
+note: function body check finished in 6 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/applied.rs:18:1
+   |
+18 | / pub(super) proof fn applied_candidates_equal(
+19 | |     left_before: &BudgetLedger,
+20 | |     right_before: &BudgetLedger,
+21 | |     observation: UsageObservation,
+...  |
+29 | |     right_budget: BudgetId,
+30 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:11:7
+   |
+11 |   proof fn active_overrun_has_accounting_witness(
+   |  _______^
+12 | |     before: &BudgetLedger,
+13 | |     observation: UsageObservation,
+14 | |     after: &BudgetLedger,
+...  |
+17 | |     index: int,
+18 | | )
+   | |_^
+
+note: function body check finished in 2 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:11:7
+   |
+11 |   proof fn active_overrun_has_accounting_witness(
+   |  _______^
+12 | |     before: &BudgetLedger,
+13 | |     observation: UsageObservation,
+14 | |     after: &BudgetLedger,
+...  |
+17 | |     index: int,
+18 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/operations.rs:9:1
+   |
+ 9 | / pub(super) proof fn begin_candidates_equal(
+10 | |     left_before: &BudgetLedger,
+11 | |     right_before: &BudgetLedger,
+12 | |     request: crate::BudgetRequest,
+...  |
+16 | |     right_receipt: BudgetReceipt,
+17 | | )
+   | |_^
+
+note: function body check finished in 3 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/operations.rs:9:1
+   |
+ 9 | / pub(super) proof fn begin_candidates_equal(
+10 | |     left_before: &BudgetLedger,
+11 | |     right_before: &BudgetLedger,
+12 | |     request: crate::BudgetRequest,
+...  |
+16 | |     right_receipt: BudgetReceipt,
+17 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/release.rs:228:1
+    |
+228 | / pub(super) proof fn reservation_accounting_functional(
+229 | |     left_before: &BudgetLedger,
+230 | |     right_before: &BudgetLedger,
+231 | |     left_after: &BudgetLedger,
+...   |
+238 | |     right_released_amount: BudgetAmounts,
+239 | | )
+    | |_^
+
+note: function body check finished in 11 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/release.rs:228:1
+    |
+228 | / pub(super) proof fn reservation_accounting_functional(
+229 | |     left_before: &BudgetLedger,
+230 | |     right_before: &BudgetLedger,
+231 | |     left_after: &BudgetLedger,
+...   |
+238 | |     right_released_amount: BudgetAmounts,
+239 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/reservation_updates.rs:42:1
+   |
+42 | / pub(super) proof fn observation_effects_equal(
+43 | |     before: &BudgetLedger,
+44 | |     left_after: &BudgetLedger,
+45 | |     right_after: &BudgetLedger,
+...  |
+51 | |     finality: Option<UsageFinality>,
+52 | | )
+   | |_^
+
+note: function body check finished in 2 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/reservation_updates.rs:42:1
+   |
+42 | / pub(super) proof fn observation_effects_equal(
+43 | |     before: &BudgetLedger,
+44 | |     left_after: &BudgetLedger,
+45 | |     right_after: &BudgetLedger,
+...  |
+51 | |     finality: Option<UsageFinality>,
+52 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/transition/reconciliation/observation/in_bounds.rs:101:1
+    |
+101 | / pub(in crate::transition) fn apply_final_validated(
+102 | |     ledger: &mut BudgetLedger,
+103 | |     reservation_index: usize,
+104 | |     observation: UsageObservation,
+105 | | ) -> (result: Result<BudgetReceipt, BudgetError>)
+    | |________________________________________________^
+
+note: function body check finished in 2 seconds
+   --> crates/foundation/peritus-budget/src/transition/reconciliation/observation/in_bounds.rs:101:1
+    |
+101 | / pub(in crate::transition) fn apply_final_validated(
+102 | |     ledger: &mut BudgetLedger,
+103 | |     reservation_index: usize,
+104 | |     observation: UsageObservation,
+105 | | ) -> (result: Result<BudgetReceipt, BudgetError>)
+    | |________________________________________________^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/transition/reconciliation/observation/terminal.rs:80:1
+   |
+80 | / pub(in crate::transition) fn apply_overrun_validated(
+81 | |     ledger: &mut BudgetLedger,
+82 | |     reservation_index: usize,
+83 | |     observation: UsageObservation,
+84 | | ) -> (result: Result<BudgetReceipt, BudgetError>)
+   | |________________________________________________^
+
+note: function body check finished in 4 seconds
+  --> crates/foundation/peritus-budget/src/transition/reconciliation/observation/terminal.rs:80:1
+   |
+80 | / pub(in crate::transition) fn apply_overrun_validated(
+81 | |     ledger: &mut BudgetLedger,
+82 | |     reservation_index: usize,
+83 | |     observation: UsageObservation,
+84 | | ) -> (result: Result<BudgetReceipt, BudgetError>)
+   | |________________________________________________^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:84:7
+   |
+84 |   proof fn active_overrun_accounts_equal(
+   |  _______^
+85 | |     left_before: &BudgetLedger,
+86 | |     right_before: &BudgetLedger,
+87 | |     observation: UsageObservation,
+...  |
+96 | |     right_effect_index: int,
+97 | | )
+   | |_^
+
+note: function body check finished in 9 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:84:7
+   |
+84 |   proof fn active_overrun_accounts_equal(
+   |  _______^
+85 | |     left_before: &BudgetLedger,
+86 | |     right_before: &BudgetLedger,
+87 | |     observation: UsageObservation,
+...  |
+96 | |     right_effect_index: int,
+97 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:201:7
+    |
+201 |   proof fn active_overrun_candidates_equal(
+    |  _______^
+202 | |     left_before: &BudgetLedger,
+203 | |     right_before: &BudgetLedger,
+204 | |     observation: UsageObservation,
+...   |
+213 | |     right_effect_index: int,
+214 | | )
+    | |_^
+
+note: function body check finished in 4 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:201:7
+    |
+201 |   proof fn active_overrun_candidates_equal(
+    |  _______^
+202 | |     left_before: &BudgetLedger,
+203 | |     right_before: &BudgetLedger,
+204 | |     observation: UsageObservation,
+...   |
+213 | |     right_effect_index: int,
+214 | | )
+    | |_^
+
+    Finished `dev` profile [unoptimized] target(s) in 0.24s
+
+GATE DRIVER RESULT: {"command": "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "elapsed_seconds": 0.718, "exit_code": 0, "finished_at": "2026-10-09T03:56:34.946188Z", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-budget", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "010-peritus-budget-verus-verify.log", "owning_crate": "peritus-budget", "result": "passed", "started_at": "2026-10-09T03:56:34.227450Z"}

@@ -123,15 +123,23 @@ fn cancellation_during_folder_review_retains_effects_without_qualification_or_co
             .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
-        wait_for_review_stall(&service, id, &writer).await;
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let phase = service.query(ProductRunQuery::exact(id)).expect("snapshot")[0].phase();
+                if phase == ProductRunPhase::Reviewing {
+                    break;
+                }
+                assert!(!phase.terminal(), "stopped before review: {phase:?}");
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("entered review");
         service
             .control(ProductRunControl::new(id, ProductRunControlAction::Cancel))
             .await
             .expect("cancel");
-        let cancelled =
-            tokio::time::timeout(Duration::from_secs(5), wait_for_terminal(&service, id))
-                .await
-                .expect("folder run did not settle after reviewer cancellation");
+        let cancelled = wait_for_terminal(&service, id).await;
         assert_eq!(cancelled.phase(), ProductRunPhase::Cancelled);
         assert!(cancelled.deliverable().is_none());
         assert_eq!(

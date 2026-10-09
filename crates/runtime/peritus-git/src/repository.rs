@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 
 use peritus_types::Sha256Digest;
 
-use crate::command::{CommandAccess, GitRunner, RepositoryLocation, one_line};
+use crate::command::{
+    CommandAccess, DEFAULT_OUTPUT_LIMIT, GitRunner, MAX_OUTPUT_LIMIT, RepositoryLocation, one_line,
+};
 use crate::{ErrorKind, GitError, ObjectFormat, Operation, RecoveryClass};
 
 /// Configuration for opening one existing repository.
@@ -13,6 +15,7 @@ use crate::{ErrorKind, GitError, ObjectFormat, Operation, RecoveryClass};
 pub struct RepositoryOptions {
     start: PathBuf,
     git_program: OsString,
+    max_output_bytes: usize,
     require_exact_root: bool,
 }
 
@@ -20,13 +23,25 @@ impl RepositoryOptions {
     /// Selects the directory from which Git discovery starts.
     #[must_use]
     pub fn new(start: impl Into<PathBuf>) -> Self {
-        Self { start: start.into(), git_program: OsString::from("git"), require_exact_root: true }
+        Self {
+            start: start.into(),
+            git_program: OsString::from("git"),
+            max_output_bytes: DEFAULT_OUTPUT_LIMIT,
+            require_exact_root: true,
+        }
     }
 
     /// Selects the exact Git executable without invoking a shell.
     #[must_use]
     pub fn git_program(mut self, program: impl Into<OsString>) -> Self {
         self.git_program = program.into();
+        self
+    }
+
+    /// Sets the maximum stdout or stderr bytes accepted from one Git command.
+    #[must_use]
+    pub const fn max_output_bytes(mut self, value: usize) -> Self {
+        self.max_output_bytes = value;
         self
     }
 
@@ -95,17 +110,20 @@ pub struct GitRepository {
 }
 
 impl GitRepository {
-    /// Binds subsequent Git commands to one explicit owned execution lifetime.
-    /// Existing clones keep their previous lifetime; this cannot grant repository authority.
-    pub fn set_cancellation(&mut self, cancellation: crate::GitCancellation) {
-        self.runner.cancellation = cancellation;
-    }
     /// Opens and validates an existing repository.
     ///
     /// # Errors
     ///
     /// Returns a typed discovery, path, object-format, or Git protocol failure.
     pub fn open(options: RepositoryOptions) -> Result<Self, GitError> {
+        if options.max_output_bytes == 0 || options.max_output_bytes > MAX_OUTPUT_LIMIT {
+            return Err(GitError::new(
+                ErrorKind::InvalidInput,
+                Operation::Discover,
+                RecoveryClass::CorrectRequest,
+                "Git output limit must be between one byte and the hard 64 MiB bound",
+            ));
+        }
         let start = std::fs::canonicalize(&options.start).map_err(|source| {
             GitError::io(
                 Operation::Discover,
@@ -122,7 +140,7 @@ impl GitRepository {
                 "repository discovery root is not a directory",
             ));
         }
-        let runner = GitRunner::new(options.git_program);
+        let runner = GitRunner::new(options.git_program, options.max_output_bytes);
         let bare = scalar(&runner, &start, &["rev-parse", "--is-bare-repository"])? == "true";
         let git_dir = canonical_git_path(
             &runner,

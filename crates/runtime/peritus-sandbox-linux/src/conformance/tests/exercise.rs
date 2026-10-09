@@ -147,7 +147,7 @@ fn resource_boundary(
     )
     .map_err(|_| ())?;
     let resources = ResourcePlan::from_sandbox(&plan);
-    if resources.output_bytes().is_some_and(|limit| fixture.resource_requested() > limit) {
+    if fixture.resource_requested() > resources.output_bytes() {
         return Ok(vacuous(SandboxDecision::Violation, Vec::new(), fixture));
     }
     subject.run_session(

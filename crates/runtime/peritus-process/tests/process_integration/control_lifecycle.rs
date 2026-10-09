@@ -33,12 +33,8 @@ fn cancellation_publishes_one_terminal_owned_tree_result() {
     .expect("execution plan");
     let intent = intent(&ids, &plan);
     let mut journal = open_journal(&root);
-    let receipts = commit_authority(
-        &mut journal,
-        &ids,
-        &intent,
-        plan.resource_policy().wall_millis().expect("finite wall limit"),
-    );
+    let receipts =
+        commit_authority(&mut journal, &ids, &intent, plan.resource_policy().wall_millis());
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("process store"),
     );
@@ -92,12 +88,8 @@ fn interrupt_signal_is_ordered_and_does_not_become_cancellation() {
     .expect("execution plan");
     let intent = intent(&ids, &plan);
     let mut journal = open_journal(&root);
-    let receipts = commit_authority(
-        &mut journal,
-        &ids,
-        &intent,
-        plan.resource_policy().wall_millis().expect("finite wall limit"),
-    );
+    let receipts =
+        commit_authority(&mut journal, &ids, &intent, plan.resource_policy().wall_millis());
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("process store"),
     );

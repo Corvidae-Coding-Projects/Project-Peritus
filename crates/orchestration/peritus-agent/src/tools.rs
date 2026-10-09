@@ -4,9 +4,7 @@ use crate::{
     AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection, ModelCallId, ToolOrdinal,
 };
 use peritus_policy::AuthorityInstant;
-use peritus_types::{
-    ActionId, CapabilityName, EvidenceId, Generation, RevisionTuple, Sha256Digest,
-};
+use peritus_types::{ActionId, CapabilityName, EvidenceId, RevisionTuple, Sha256Digest};
 use vstd::prelude::*;
 
 mod batch;
@@ -93,8 +91,7 @@ pub struct ToolProposal {
     prepared_digest: Sha256Digest,
     replay_identity: Sha256Digest,
     revision: RevisionTuple,
-    deadline: Option<AuthorityInstant>,
-    authority_epoch: Generation,
+    deadline: AuthorityInstant,
     side_effect: ToolSideEffect,
     idempotency: ToolIdempotency,
 }
@@ -118,45 +115,6 @@ impl ToolProposal {
         side_effect: ToolSideEffect,
         idempotency: ToolIdempotency,
     ) -> Self {
-        Self::new_with_lifetime(
-            ordinal,
-            model_call_id,
-            action_id,
-            capability,
-            version,
-            argument_digest,
-            prepared_digest,
-            replay_identity,
-            revision,
-            peritus_tool_protocol::CallLifetime::Deadline(deadline),
-            side_effect,
-            idempotency,
-        )
-    }
-
-    /// Projects the exact optional C4 lifetime, including its required authority epoch.
-    #[allow(clippy::too_many_arguments, reason = "the C4-prepared identity must remain exact")]
-    #[must_use]
-    pub const fn new_with_lifetime(
-        ordinal: ToolOrdinal,
-        model_call_id: ModelCallId,
-        action_id: ActionId,
-        capability: CapabilityName,
-        version: ToolVersion,
-        argument_digest: Sha256Digest,
-        prepared_digest: Sha256Digest,
-        replay_identity: Sha256Digest,
-        revision: RevisionTuple,
-        lifetime: peritus_tool_protocol::CallLifetime,
-        side_effect: ToolSideEffect,
-        idempotency: ToolIdempotency,
-    ) -> Self {
-        let (deadline, authority_epoch) = match lifetime {
-            peritus_tool_protocol::CallLifetime::Deadline(deadline) => {
-                (Some(deadline), deadline.epoch())
-            }
-            peritus_tool_protocol::CallLifetime::UntilCancelled { epoch } => (None, epoch),
-        };
         Self {
             ordinal,
             model_call_id,
@@ -168,7 +126,6 @@ impl ToolProposal {
             replay_identity,
             revision,
             deadline,
-            authority_epoch,
             side_effect,
             idempotency,
         }
@@ -211,13 +168,8 @@ impl ToolProposal {
         self.revision
     }
     #[must_use]
-    pub const fn deadline(&self) -> Option<AuthorityInstant> {
+    pub const fn deadline(&self) -> AuthorityInstant {
         self.deadline
-    }
-    /// Returns the authority epoch even when no runtime deadline was selected.
-    #[must_use]
-    pub const fn authority_epoch(&self) -> Generation {
-        self.authority_epoch
     }
     #[must_use]
     pub const fn side_effect(&self) -> ToolSideEffect {

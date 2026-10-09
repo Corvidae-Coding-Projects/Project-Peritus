@@ -125,13 +125,7 @@ impl<'a> GitReadService<'a> {
     /// Returns a typed C1 Git observation failure.
     pub fn diff(&self, input: &DiffInput) -> Result<GitDiffObservation, GitToolError> {
         self.workspace
-            .git_diff_page(
-                &input.base_revision,
-                input.maximum_entries.min(500),
-                input.maximum_patch_bytes.min(24 * 1024),
-                input.cursor,
-                input.expected_digest,
-            )
+            .git_diff(&input.base_revision, input.maximum_entries, input.maximum_patch_bytes)
             .map_err(|error| git_error(GitToolOperation::Diff, &error))
     }
 
@@ -141,12 +135,7 @@ impl<'a> GitReadService<'a> {
     /// Returns a typed C1 Git observation failure.
     pub fn history(&self, input: HistoryInput) -> Result<GitHistoryObservation, GitToolError> {
         self.workspace
-            .git_history_page(
-                input.maximum_commits,
-                input.offset,
-                input.parent_offset,
-                input.subject_offset,
-            )
+            .git_history(input.maximum_commits)
             .map_err(|error| git_error(GitToolOperation::History, &error))
     }
 
@@ -202,15 +191,30 @@ impl<'a> GitReadService<'a> {
             manifest_digest: retained.manifest_digest(),
         })
     }
+
+    /// Reports unavailable branch delivery without invoking Git or mutating a reference.
+    ///
+    /// # Errors
+    /// Always returns the frozen typed unsupported result until C1 owns merge delivery.
+    pub const fn merge_unsupported(&self) -> Result<(), GitToolError> {
+        Err(GitToolError::new(
+            GitToolErrorKind::Unsupported,
+            GitToolOperation::Merge,
+            RecoveryClass::SelectSupportedOperation,
+            "C1 has no authorized merge-delivery operation",
+        ))
+    }
 }
 
-fn git_error(operation: GitToolOperation, error: &peritus_git::GitError) -> GitToolError {
+const fn git_error(operation: GitToolOperation, error: &peritus_git::GitError) -> GitToolError {
     let recovery = match error.recovery() {
         peritus_git::RecoveryClass::CorrectRequest => RecoveryClass::CorrectInput,
-        peritus_git::RecoveryClass::Reobserve => RecoveryClass::Reobserve,
-        peritus_git::RecoveryClass::Retry => RecoveryClass::Retry,
-        peritus_git::RecoveryClass::Reconcile => RecoveryClass::Reconcile,
-        peritus_git::RecoveryClass::Quarantine => RecoveryClass::Quarantine,
+        peritus_git::RecoveryClass::Reobserve | peritus_git::RecoveryClass::Retry => {
+            RecoveryClass::Reobserve
+        }
+        peritus_git::RecoveryClass::Reconcile | peritus_git::RecoveryClass::Quarantine => {
+            RecoveryClass::Reconcile
+        }
     };
     GitToolError::new(
         GitToolErrorKind::Git,
@@ -218,6 +222,4 @@ fn git_error(operation: GitToolOperation, error: &peritus_git::GitError) -> GitT
         recovery,
         "structured C1 Git observation failed",
     )
-    .with_source_code(error.kind().code())
-    .with_source_detail(error.detail())
 }

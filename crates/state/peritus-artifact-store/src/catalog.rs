@@ -48,7 +48,7 @@ impl Catalog {
     pub(crate) fn record_finalized(
         &self,
         metadata: &ArtifactMetadata,
-        quota_limit: Option<u64>,
+        quota_limit: u64,
     ) -> Result<bool, ArtifactStoreError> {
         let size = sqlite_integer(metadata.size())?;
         let (algorithm, key_reference, parameters_digest) =
@@ -112,9 +112,7 @@ impl Catalog {
                 "durable quota accounting overflowed",
             )
         })?;
-        if let Some(quota_limit) = quota_limit
-            && attempted > quota_limit
-        {
+        if attempted > quota_limit {
             return Err(ArtifactStoreError::limit(
                 ErrorCode::QuotaExceeded,
                 attempted,

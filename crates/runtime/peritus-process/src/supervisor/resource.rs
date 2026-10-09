@@ -149,13 +149,13 @@ impl ResourceTracker {
             observation(
                 ProcessResourceDimension::MemoryBytes,
                 self.greatest_memory,
-                Some(ceiling.memory_bytes()),
+                ceiling.memory_bytes(),
                 self.sampled_fidelity(),
             ),
             observation(
                 ProcessResourceDimension::DiskBytes,
                 self.greatest_disk,
-                Some(ceiling.disk_bytes()),
+                ceiling.disk_bytes(),
                 self.sampled_fidelity(),
             ),
             observation(
@@ -167,19 +167,19 @@ impl ResourceTracker {
             observation(
                 ProcessResourceDimension::ProcessCount,
                 self.greatest_processes,
-                Some(ceiling.process_count()),
+                ceiling.process_count(),
                 self.process_count_fidelity(),
             ),
             observation(
                 ProcessResourceDimension::OpenHandles,
                 self.greatest_handles,
-                Some(ceiling.file_descriptors()),
+                ceiling.file_descriptors(),
                 self.sampled_fidelity(),
             ),
             observation(
                 ProcessResourceDimension::ConcurrencySlots,
                 1,
-                Some(ceiling.concurrent_slots()),
+                ceiling.concurrent_slots(),
                 ResourceFidelity::Enforced,
             ),
         ]
@@ -200,15 +200,11 @@ impl ResourceTracker {
 
     const fn exceeded(&self, plan: &ExecutionPlan) -> bool {
         let ceiling = plan.resource_policy();
-        match ceiling.cpu_millis() {
-            Some(limit) if self.greatest_cpu > limit => true,
-            _ => {
-                self.greatest_memory > ceiling.memory_bytes()
-                    || self.greatest_disk > ceiling.disk_bytes()
-                    || self.greatest_processes > ceiling.process_count()
-                    || self.greatest_handles > ceiling.file_descriptors()
-            }
-        }
+        self.greatest_cpu > ceiling.cpu_millis()
+            || self.greatest_memory > ceiling.memory_bytes()
+            || self.greatest_disk > ceiling.disk_bytes()
+            || self.greatest_processes > ceiling.process_count()
+            || self.greatest_handles > ceiling.file_descriptors()
     }
 
     const fn sampled_fidelity(&self) -> ResourceFidelity {
@@ -231,7 +227,7 @@ impl ResourceTracker {
 const fn observation(
     dimension: ProcessResourceDimension,
     value: u64,
-    ceiling: Option<u64>,
+    ceiling: u64,
     fidelity: ResourceFidelity,
 ) -> ProcessResourceObservation {
     ProcessResourceObservation::new(dimension, value, ceiling, fidelity)

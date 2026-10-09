@@ -86,8 +86,7 @@ fn descriptor(
         LeaseRequirement::None,
         IdempotencySemantics::ReportPriorOutcome,
         ImplementationIdentity::new(implementation.to_owned())?,
-        ToolLimits::new(u64::MAX, 8 * 1_024 * 1_024, 16_384, 16_384, 4_096, 3, 65_536)?
-            .without_timeout(),
+        ToolLimits::new(u64::MAX, 8 * 1_024 * 1_024, 16_384, 16_384, 4_096, 3, 65_536)?,
         ControlSet::new(true, true, true, true, true),
         ProtocolCompatibility::V1,
         BoundedText::new(description.to_owned())?,

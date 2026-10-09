@@ -31,7 +31,7 @@ impl<'a> CanonicalEnvelope<'a> {
         }
         let family = u16::from_be_bytes([bytes[4], bytes[5]]);
         let version = u16::from_be_bytes([bytes[6], bytes[7]]);
-        if family == 0 || !(version == 1 || (family == 2 && version == 2)) {
+        if family == 0 || version != 1 {
             return Err(invalid("canonical envelope family or protocol version is unsupported"));
         }
         Ok(Self { bytes, family, version })

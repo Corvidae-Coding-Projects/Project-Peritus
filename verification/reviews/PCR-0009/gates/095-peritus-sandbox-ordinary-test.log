@@ -1,0 +1,44 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-sandbox --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-sandbox", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "095-peritus-sandbox-ordinary-test.log", "owning_crate": "peritus-sandbox", "started_at": "2026-10-09T04:07:27.531767Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_sandbox-23fd166cc8053259)
+
+running 1 test
+test resource::tests::absent_wall_cpu_and_output_have_no_synthetic_ceilings ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/backend_reference.rs (/home/doll/Project-Peritus/target/debug/deps/backend_reference-a1e737f763e4df2d)
+
+running 6 tests
+test admission_is_fail_closed_and_bound_to_backend_identity ... ok
+test admission_requires_default_filesystem_and_descendant_denial_controls ... ok
+test first_cancellation_reason_overrides_later_terminal_classification ... ok
+test observation_capacity_drops_optional_events_but_retains_teardown ... ok
+test preparation_detects_cross_plan_admission_and_faults_are_deterministic ... ok
+test reference_backend_exercises_all_domains_and_complete_teardown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (/home/doll/Project-Peritus/target/debug/deps/contracts-e2ad1e1908caef67)
+
+running 7 tests
+test canonical_plan_digest_ignores_input_permutation_and_binds_target ... ok
+test compile_rejects_operation_class_or_requirement_broadening ... ok
+test domain_values_reject_ambiguous_or_nonportable_input ... ok
+test filesystem_and_network_are_default_deny_with_deny_precedence ... ok
+test ip_prefixes_clear_host_bits_before_identity_and_evaluation ... ok
+test terminal_bound_fields_change_canonical_plan_identity ... ok
+test terminal_bounds_validate_and_reject_each_one_over_requirement ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/target/debug/deps/production_conformance-c6b0a716e962f035)
+
+running 1 test
+test production_reference_adapter_passes_the_complete_a2_sandbox_suite ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-sandbox --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.366, "exit_code": 0, "finished_at": "2026-10-09T04:07:27.899665Z", "invocation": ["cargo", "test", "--package", "peritus-sandbox", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "095-peritus-sandbox-ordinary-test.log", "owning_crate": "peritus-sandbox", "result": "passed", "started_at": "2026-10-09T04:07:27.531767Z"}

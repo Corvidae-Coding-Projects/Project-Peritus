@@ -220,15 +220,6 @@ impl MediaInput {
         }
     }
 
-    /// Consumes inline media and returns its exact bytes.
-    #[must_use]
-    pub fn into_inline_bytes(self) -> Option<Vec<u8>> {
-        match self.source {
-            MediaSource::Inline { bytes, .. } => Some(bytes),
-            MediaSource::Reference { .. } | MediaSource::Artifact { .. } => None,
-        }
-    }
-
     /// Returns a sensitive external reference for authorized wire projection.
     #[must_use]
     pub fn reference_for_wire(&self) -> Option<(MediaReferenceKind, &str)> {

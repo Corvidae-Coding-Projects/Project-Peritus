@@ -179,10 +179,6 @@ fn detail_scroll_limit(detail: &Text<'_>, area: Rect) -> u16 {
 }
 
 pub(super) fn diff(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    if model.product.as_ref().is_some_and(|product| product.review.raw_stream) {
-        structured_review::render_raw_stream(frame, area, model);
-        return;
-    }
     if let Some(review) = model.product.as_ref().map(|product| &product.review)
         && review.page.is_some()
         && !review.raw
@@ -216,11 +212,6 @@ pub(super) fn preview(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 }
 
 pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
-    if model.view == crate::model::View::Diff
-        && model.product.as_ref().is_some_and(|product| product.review.raw_stream)
-    {
-        return structured_review::raw_stream_scroll_limit(model, area);
-    }
     if model.view == crate::model::View::Diff
         && model
             .product

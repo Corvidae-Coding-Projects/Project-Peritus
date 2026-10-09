@@ -28,13 +28,9 @@ impl ArtifactAuthority {
         artifact: ArtifactId,
         maximum_bytes: u64,
     ) -> Result<(ApplicationArtifact, Vec<u8>), DaemonError> {
-        if maximum_bytes == 0 {
+        if maximum_bytes == 0 || maximum_bytes > self.maximum_artifact_bytes {
             return Err(resource_limit("invalid bounded attachment read"));
         }
-        // Callers may request the complete already-admitted object with `u64::MAX`; keep the
-        // configured daemon object limit as the effective ceiling rather than rejecting that
-        // sentinel before looking at the small artifact's actual length.
-        let maximum_bytes = maximum_bytes.min(self.maximum_artifact_bytes);
         let catalog = journal
             .application_artifact(artifact)
             .map_err(journal_error)?

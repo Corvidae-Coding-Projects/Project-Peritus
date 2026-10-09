@@ -1,6 +1,6 @@
 //! Candidate-checkpoint classification for accepted developer tool effects.
 
-use std::{fs, io::Read as _, sync::Arc};
+use std::{fs, sync::Arc};
 
 use peritus_agent::DeveloperLoopError;
 use peritus_types::Sha256Digest;
@@ -129,6 +129,9 @@ impl WorkspaceDeveloperTools {
     fn prepare_write_checkpoint(&mut self, arguments: &Value) -> Result<(), DeveloperLoopError> {
         let relative = required_string(arguments, "path")?;
         let content = required_string(arguments, "content")?;
+        if content.len() > super::MAX_FILE_BYTES {
+            return Err(tool("write exceeds the per-file byte bound"));
+        }
         let path = checked(&self.root, relative, true)?;
         let existed_before = path.exists();
         self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
@@ -159,6 +162,9 @@ impl WorkspaceDeveloperTools {
         }
         let replaced =
             if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
+        if replaced.len() > super::MAX_FILE_BYTES {
+            return Err(tool("patched file exceeds the per-file byte bound"));
+        }
         self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File)?;
         self.prepared_mutations.push(prepared_file(relative, replaced.as_bytes()));
         Ok(())
@@ -343,29 +349,14 @@ fn exact_file_receipt(
     if !before.is_file() || before.file_type().is_symlink() {
         return Err(tool("completed command scope is not a regular file or absent"));
     }
-    let mut file = fs::File::open(&target).map_err(|error| tool(error.to_string()))?;
-    let opened = file.metadata().map_err(|error| tool(error.to_string()))?;
-    if !opened.is_file() || opened.len() != before.len() {
-        return Err(tool("completed command scope changed while opening its receipt"));
-    }
-    let mut digest = Sha256::new();
-    let mut size = 0_u64;
-    let mut buffer = vec![0_u8; 64 * 1024];
-    loop {
-        let count = file.read(&mut buffer).map_err(|error| tool(error.to_string()))?;
-        if count == 0 {
-            break;
-        }
-        size = size
-            .checked_add(u64::try_from(count).map_err(|_| tool("file size cannot be represented"))?)
-            .ok_or_else(|| tool("file size cannot be represented"))?;
-        digest.update(&buffer[..count]);
+    let bytes = fs::read(&target).map_err(|error| tool(error.to_string()))?;
+    if bytes.len() > super::MAX_FILE_BYTES {
+        return Err(tool("completed command scope exceeds the per-file byte bound"));
     }
     let after = fs::symlink_metadata(&target).map_err(|error| tool(error.to_string()))?;
     if !after.is_file()
         || after.file_type().is_symlink()
         || before.len() != after.len()
-        || before.len() != size
         || before.modified().ok() != after.modified().ok()
     {
         return Err(tool("completed command scope changed while recording its receipt"));
@@ -374,8 +365,8 @@ fn exact_file_receipt(
         path: path.to_owned(),
         kind: WorkspaceMutationKind::File,
         owned_postchange: CheckpointFileVersion::present(
-            Sha256Digest::new(digest.finalize().into()),
-            size,
+            Sha256Digest::new(Sha256::digest(&bytes).into()),
+            bytes.len() as u64,
             file_mode(&after),
         ),
     })

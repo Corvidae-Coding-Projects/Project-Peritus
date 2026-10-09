@@ -1,0 +1,2 @@
+FINDING-0001: Non-Unix builds compiled Unix-only sandbox path codecs
+Observed by the root reviewer in the frozen precursor candidate through the native Windows all-target check. The final repair was inspected in source: Unix retains exact `OsStr`/`OsString` bytes; non-Unix converts exact UTF-8 and rejects invalid input. The final pre-freeze Windows GNU all-target check completed with exit code 0. Candidate-wide formal gate evidence is retained separately in PCR-0009.

@@ -168,7 +168,7 @@ pub(super) async fn create_design(
 }
 
 #[allow(clippy::too_many_arguments, reason = "gate execution binds one exact run boundary")]
-pub(super) async fn inspect_gates(
+pub(super) fn inspect_gates(
     input: &ProductRunInput,
     observe: &RunObserver,
     baseline: &CandidateBaseline,
@@ -217,25 +217,13 @@ pub(super) async fn inspect_gates(
         &input.task,
     );
     let changed_paths = baseline.changed_paths(&input.workspace_root)?;
-    let mut request_context = input.conversation.reference_authority_context();
-    if !input.task.is_empty() && !request_context.contains(&input.task) {
-        request_context.push('\n');
-        request_context.push_str(&input.task);
-    }
     let gate_report = gates::run_with_ownership(
         &input.workspace_root,
         changed_paths,
         ownership,
         input.delivery_scope,
         &conversation,
-        &request_context,
-        gates::GateCancellation::new(
-            std::sync::Arc::clone(&input.cancelled),
-            input.provider_cancellation.clone(),
-        ),
-    )
-    .await?;
-    check_cancelled(input)?;
+    )?;
     let mut gate_output = gate_report.output.clone();
     if input.workspace_kind.is_in_place() {
         gate_output.insert_str(0, "In-place verification covers explicitly tracked task files, not a whole-folder inventory or undeclared command effects.\n\n");

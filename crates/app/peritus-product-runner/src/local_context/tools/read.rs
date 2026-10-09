@@ -6,13 +6,6 @@ use peritus_agent::DeveloperLoopError;
 use serde::Deserialize;
 use serde_json::Value;
 
-mod cursor;
-mod state;
-use cursor::{cursor, search_cursor};
-use state::state_page;
-
-const ARTIFACT_CHUNK_BYTES: usize = 64 * 1024;
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Read {
@@ -23,16 +16,13 @@ struct Read {
     max_bytes: usize,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-struct CursorPosition {
-    index: usize,
-    offset: u64,
-}
-
 pub(in crate::local_context) fn execute(
     memory: &mut LocalMemory,
     bytes: &[u8],
 ) -> Result<Value, DeveloperLoopError> {
+    if bytes.len() > 8192 {
+        return Ok(rejected(memory, "read request exceeds bound"));
+    }
     let Ok(request) = serde_json::from_slice::<Read>(bytes) else {
         return Ok(rejected(memory, "invalid read schema"));
     };
@@ -42,10 +32,16 @@ pub(in crate::local_context) fn execute(
             &format!("max_bytes must be within 256..={}", memory.config.max_read_bytes),
         ));
     }
-    if request.query.as_ref().is_some_and(String::is_empty) {
-        return Ok(rejected(memory, "query must be null or a nonempty literal search"));
+    if request.observation_ids.len() > 32 {
+        return Ok(rejected(memory, "observation_ids must contain at most 32 handles"));
     }
-    // Validate every explicit scope before opening any source artifact.
+    if request.query.as_ref().is_some_and(|query| query.is_empty() || query.len() > 256) {
+        return Ok(rejected(
+            memory,
+            "query must be null for explicit handles/state, or a nonempty search of at most 256 bytes",
+        ));
+    }
+    // Validate all supplied scopes before touching any source bytes.
     let ids = match request
         .observation_ids
         .iter()
@@ -56,15 +52,11 @@ pub(in crate::local_context) fn execute(
         Err(reason) => return Ok(rejected(memory, &reason.to_string())),
     };
     let state = ids.is_empty() && request.query.is_none();
-    let position = match cursor(
-        memory,
-        request.cursor.as_deref(),
-        if state { "entry" } else { "search" },
-        request.query.as_deref(),
-    ) {
-        Ok(position) => position,
-        Err(reason) => return Ok(rejected(memory, &reason.to_string())),
-    };
+    let start =
+        match cursor(memory, request.cursor.as_deref(), if state { "entry" } else { "search" }) {
+            Ok(start) => start,
+            Err(reason) => return Ok(rejected(memory, &reason.to_string())),
+        };
     if !ids.is_empty() && (request.cursor.is_some() || request.query.is_some()) {
         return Ok(rejected(
             memory,
@@ -74,19 +66,17 @@ pub(in crate::local_context) fn execute(
     memory.retrieval_calls =
         memory.retrieval_calls.checked_add(1).ok_or_else(|| error("retrieval counter overflow"))?;
     if state {
-        state_page(memory, &request, position)
-    } else {
-        source_page(memory, &request, &ids, position)
+        return state_page(memory, &request, start);
     }
+    source_page(memory, &request, &ids, start)
 }
 
 fn source_page(
     memory: &LocalMemory,
     request: &Read,
     ids: &[u64],
-    start: CursorPosition,
+    start: usize,
 ) -> Result<Value, DeveloperLoopError> {
-    let search = request.query.as_deref();
     let mut response = Value::from_iter([
         ("base_revision", Value::from(memory.model_revision)),
         ("authority", Value::from("none")),
@@ -94,82 +84,60 @@ fn source_page(
         ("cursor", Value::Null),
         ("next_handle_index", Value::Null),
     ]);
-    let mut index = start.index;
-    let mut offset = start.offset;
-    let source_count = if ids.is_empty() { memory.sources.len() } else { ids.len() };
-    while index < source_count {
-        let id = if ids.is_empty() { memory.sources[index].sequence } else { ids[index] };
+    let selected = if ids.is_empty() {
+        memory.sources.iter().skip(start).take(32).map(|source| source.sequence).collect()
+    } else {
+        ids.to_vec()
+    };
+    let mut scanned = 0_usize;
+    for (index, id) in selected.into_iter().enumerate() {
         let source = memory.archived(id)?;
-        if search.is_some()
+        let ordinal =
+            usize::try_from(id).map_err(|_| error("source ordinal exceeds platform capacity"))?;
+        let next_cursor = if request.observation_ids.is_empty() && ordinal < memory.sources.len() {
+            Value::from(page_cursor(memory, "search", ordinal))
+        } else {
+            Value::Null
+        };
+        if request.query.is_some()
             && (source.kind == ArchiveKind::ToolMessage
                 || source.call.as_ref().is_some_and(|call| {
                     matches!(call.name.as_str(), "context_read" | "context_update")
                 }))
         {
-            index += 1;
-            offset = 0;
-            response["cursor"] = search_cursor(memory, search.unwrap_or_default(), index, offset);
+            response["cursor"] = next_cursor;
             continue;
         }
-
-        if let Some(query) = search {
-            let hit = find_match(memory, source, query.as_bytes(), offset)?;
-            let Some(hit) = hit else {
-                index += 1;
-                offset = 0;
-                response["cursor"] = search_cursor(memory, query, index, offset);
-                continue;
-            };
-            let continuation = hit.checked_add(1).ok_or_else(|| error("search offset overflow"))?;
-            let cursor = search_cursor(memory, query, index, continuation);
-            let requested_offset = u64::try_from(request.offset).unwrap_or(u64::MAX);
-            let preview_offset = usize::try_from(hit.saturating_sub(128).max(requested_offset))
-                .unwrap_or(usize::MAX);
-            if !append_source(
-                memory,
-                request,
-                &mut response,
-                source,
-                preview_offset,
-                Some(hit),
-                Some(&cursor),
-            )? {
-                if response["sources"].as_array().is_some_and(Vec::is_empty) {
-                    return Ok(rejected(
-                        memory,
-                        "max_bytes cannot fit source metadata; increase it",
-                    ));
-                }
-                response["cursor"] = search_cursor(memory, query, index, offset);
-                return Ok(response);
+        if scanned > 0
+            && scanned.saturating_add(usize::try_from(source.artifact.bytes).unwrap_or(usize::MAX))
+                > 64 * 1024 * 1024
+        {
+            if !request.observation_ids.is_empty() {
+                response["next_handle_index"] = Value::from(index);
             }
-            response["cursor"] = cursor;
-            offset = continuation;
-            continue;
+            break;
         }
-
-        let source_offset = request.offset;
-        if !append_source(memory, request, &mut response, source, source_offset, None, None)? {
+        let bytes = memory.artifact(id)?;
+        scanned = scanned.saturating_add(bytes.len());
+        let hit = request.query.as_ref().and_then(|query| {
+            bytes.windows(query.len()).position(|window| window == query.as_bytes())
+        });
+        if (request.query.is_none() || hit.is_some())
+            && !append_source(memory, request, &mut response, source, &bytes, hit)?
+        {
             if response["sources"].as_array().is_some_and(Vec::is_empty) {
                 return Ok(rejected(memory, "max_bytes cannot fit source metadata; increase it"));
             }
-            if !ids.is_empty() {
+            if !request.observation_ids.is_empty() {
                 response["next_handle_index"] = Value::from(index);
             }
-            return Ok(response);
+            break;
         }
-        index += 1;
-        if !ids.is_empty() && index < ids.len() {
-            response["next_handle_index"] = Value::from(index);
-        }
+        response["cursor"] = next_cursor;
     }
-    if search.is_some() {
-        response["cursor"] = Value::Null;
-    }
-    if !ids.is_empty() {
-        response["next_handle_index"] = Value::Null;
-    }
-    if !ids.is_empty() && response["sources"].as_array().is_some_and(Vec::is_empty) {
+    if response["sources"].as_array().is_some_and(Vec::is_empty)
+        && !request.observation_ids.is_empty()
+    {
         return Ok(rejected(memory, "max_bytes cannot fit source metadata; increase it"));
     }
     Ok(response)
@@ -180,167 +148,141 @@ fn append_source(
     request: &Read,
     response: &mut Value,
     source: &super::super::record::ArchivedObservation,
-    offset: usize,
-    match_offset: Option<u64>,
-    cursor: Option<&Value>,
+    bytes: &[u8],
+    hit: Option<usize>,
 ) -> Result<bool, DeveloperLoopError> {
-    let mut candidate = response.clone();
-    let source_offset = u64::try_from(offset)
-        .map_err(|_| error("source offset exceeds durable size representation"))?
-        .min(source.artifact.bytes);
-    let mut item = Value::from_iter([
+    let offset = hit
+        .map_or(request.offset, |position| request.offset.max(position.saturating_sub(128)))
+        .min(bytes.len());
+    let metadata = Value::from_iter([
         ("handle", Value::from(handle(memory, source.sequence))),
         ("sha256", Value::from(hex(source.artifact.digest.as_bytes()))),
-        ("total_bytes", Value::from(source.artifact.bytes)),
-        ("offset", Value::from(source_offset)),
-        ("next_offset", Value::Null),
+        ("total_bytes", Value::from(bytes.len())),
+        ("offset", Value::from(offset)),
+        ("next_offset", Value::from(offset)),
         ("encoding", Value::from("utf8")),
         ("data", Value::from("")),
         ("is_error", Value::from(source.is_error)),
     ]);
-    if let Some(match_offset) = match_offset {
-        item["match_offset"] = Value::from(match_offset);
-    }
-    candidate["sources"].as_array_mut().ok_or_else(|| error("invalid read response"))?.push(item);
-    if let Some(cursor) = cursor {
-        candidate["cursor"] = (*cursor).clone();
-    }
-    if candidate.to_string().len() > request.max_bytes {
+    let mut candidate = response.clone();
+    candidate["sources"]
+        .as_array_mut()
+        .ok_or_else(|| error("invalid read response"))?
+        .push(metadata);
+    // Reserve the largest cursor, index, and byte-offset growth before escaping exact bytes.
+    candidate["cursor"] = Value::from(page_cursor(memory, "search", memory.sources.len()));
+    let overhead = candidate.to_string().len() + 32;
+    if overhead > request.max_bytes {
         return Ok(false);
     }
-
-    let bytes =
-        read_fragment(memory, source, source_offset, request.max_bytes.min(ARTIFACT_CHUNK_BYTES))?;
-    let text = match std::str::from_utf8(&bytes) {
-        Ok(text) => Some(text),
-        Err(error) if error.error_len().is_none() && error.valid_up_to() > 0 => {
-            std::str::from_utf8(&bytes[..error.valid_up_to()]).ok()
-        }
-        Err(_) => None,
-    };
-    let encoding = if text.is_some() { "utf8" } else { "hex" };
-    let raw_length = text.map_or(bytes.len(), str::len);
-    let boundaries = text.map(|text| {
-        text.char_indices()
-            .map(|(offset, _)| offset)
-            .chain(std::iter::once(text.len()))
-            .collect::<Vec<_>>()
-    });
-    let mut low = 0_usize;
-    let mut high = boundaries.as_ref().map_or(raw_length, |items| items.len().saturating_sub(1));
-    let mut best = 0_usize;
-    while low <= high {
-        let middle = low + (high - low) / 2;
-        let byte_length = boundaries.as_ref().map_or(middle, |items| items[middle]);
-        let data =
-            text.map_or_else(|| hex(&bytes[..byte_length]), |text| text[..byte_length].to_owned());
-        let end = source_offset
-            .checked_add(u64::try_from(byte_length).map_err(|_| error("source offset overflow"))?)
-            .ok_or_else(|| error("source offset overflow"))?;
-        let item = candidate["sources"]
-            .as_array_mut()
-            .and_then(|items| items.last_mut())
-            .ok_or_else(|| error("invalid read page"))?;
-        item["data"] = Value::from(data);
-        item["encoding"] = Value::from(encoding);
-        item["next_offset"] =
-            if end < source.artifact.bytes { Value::from(end) } else { Value::Null };
-        if candidate.to_string().len() <= request.max_bytes {
-            best = byte_length;
-            low = middle.saturating_add(1);
-        } else if middle == 0 {
-            break;
-        } else {
-            high = middle - 1;
-        }
+    let available = (request.max_bytes - overhead) / 6;
+    let mut end = offset.saturating_add(available).min(bytes.len());
+    let text = std::str::from_utf8(bytes).ok().filter(|text| text.is_char_boundary(offset));
+    if let Some(text) = text {
+        end = text.floor_char_boundary(end);
     }
-    let data = text.map_or_else(|| hex(&bytes[..best]), |text| text[..best].to_owned());
-    if best == 0 && source_offset < source.artifact.bytes {
+    if end == offset && end < bytes.len() {
         return Ok(false);
     }
-    let end = source_offset
-        .checked_add(u64::try_from(best).map_err(|_| error("source offset overflow"))?)
-        .ok_or_else(|| error("source offset overflow"))?;
     let item = candidate["sources"]
         .as_array_mut()
         .and_then(|items| items.last_mut())
         .ok_or_else(|| error("invalid read page"))?;
-    item["data"] = Value::from(data);
-    item["encoding"] = Value::from(encoding);
-    item["next_offset"] = if end < source.artifact.bytes { Value::from(end) } else { Value::Null };
-    if candidate.to_string().len() > request.max_bytes {
-        return Ok(false);
-    }
+    item["data"] = text.map_or_else(
+        || Value::from(hex(&bytes[offset..end])),
+        |text| Value::from(&text[offset..end]),
+    );
+    item["encoding"] = Value::from(if text.is_some() { "utf8" } else { "hex" });
+    item["next_offset"] = if end < bytes.len() { Value::from(end) } else { Value::Null };
     *response = candidate;
     Ok(true)
 }
 
-fn read_fragment(
+fn state_page(
     memory: &LocalMemory,
-    source: &super::super::record::ArchivedObservation,
-    offset: u64,
-    maximum: usize,
-) -> Result<Vec<u8>, DeveloperLoopError> {
-    let mut reader = memory.store.open_read(source.artifact)?;
-    let mut output = Vec::new();
-    while let Some(chunk) =
-        reader.read_chunk(ARTIFACT_CHUNK_BYTES).map_err(|_| error("read source artifact"))?
-    {
-        let chunk_end = chunk
-            .offset()
-            .checked_add(
-                u64::try_from(chunk.bytes().len())
-                    .map_err(|_| error("source chunk size overflow"))?,
-            )
-            .ok_or_else(|| error("source byte offset overflow"))?;
-        if chunk_end <= offset {
-            continue;
-        }
-        let within = usize::try_from(offset.saturating_sub(chunk.offset()))
-            .map_err(|_| error("source offset exceeds platform capacity"))?;
-        output.extend_from_slice(&chunk.bytes()[within..]);
-        if output.len() >= maximum {
-            output.truncate(maximum);
+    request: &Read,
+    start: usize,
+) -> Result<Value, DeveloperLoopError> {
+    if !memory.derived_memory_allowed() {
+        return Ok(rejected(
+            memory,
+            "role policy excludes derived memory; read exact source handles",
+        ));
+    }
+    let entries = memory
+        .state
+        .entries(memory.state.binding())
+        .map_err(|_| error("state read scope mismatch"))?;
+    if start > entries.len() {
+        return Ok(rejected(memory, "entry cursor out of range"));
+    }
+    let mut response = Value::from_iter([
+        ("base_revision", Value::from(memory.model_revision)),
+        ("generation", Value::from(memory.store.generation())),
+        ("observations", Value::from(memory.sources.len())),
+        ("pending_operations", Value::from(memory.transcript.pending.len())),
+        ("authority", Value::from("none")),
+        ("entries", Value::Array(vec![])),
+        ("cursor", Value::Null),
+    ]);
+    for (index, entry) in entries.iter().enumerate().skip(start) {
+        let item = super::entry_view(memory, entry);
+        let mut candidate = response.clone();
+        candidate["entries"]
+            .as_array_mut()
+            .ok_or_else(|| error("invalid state response"))?
+            .push(item);
+        candidate["cursor"] = if index + 1 < entries.len() {
+            Value::from(page_cursor(memory, "entry", index + 1))
+        } else {
+            Value::Null
+        };
+        if candidate.to_string().len() > request.max_bytes {
+            response["cursor"] = Value::from(page_cursor(memory, "entry", index));
+            if index == start {
+                return Ok(rejected(memory, "max_bytes cannot fit next entry; increase it"));
+            }
             break;
         }
+        response = candidate;
     }
-    Ok(output)
+    Ok(response)
 }
 
-fn find_match(
+fn page_cursor(memory: &LocalMemory, kind: &str, index: usize) -> String {
+    format!("{}:{index}", cursor_prefix(memory, kind))
+}
+
+fn cursor_prefix(memory: &LocalMemory, kind: &str) -> String {
+    let scope = hex(memory.store.scope_digest().as_bytes());
+    if kind == "entry" {
+        format!("entry:{scope}:{}", memory.model_revision)
+    } else {
+        format!("search:{scope}")
+    }
+}
+
+fn cursor(
     memory: &LocalMemory,
-    source: &super::super::record::ArchivedObservation,
-    query: &[u8],
-    start: u64,
-) -> Result<Option<u64>, DeveloperLoopError> {
-    if query.is_empty() || u64::try_from(query.len()).unwrap_or(u64::MAX) > source.artifact.bytes {
-        return Ok(None);
+    value: Option<&str>,
+    kind: &str,
+) -> Result<usize, DeveloperLoopError> {
+    let Some(value) = value else {
+        return Ok(0);
+    };
+    if value.len() > 100 {
+        return Err(error("cursor exceeds bound"));
     }
-    let mut reader = memory.store.open_read(source.artifact)?;
-    let mut carry = Vec::new();
-    while let Some(chunk) =
-        reader.read_chunk(ARTIFACT_CHUNK_BYTES).map_err(|_| error("search source artifact"))?
-    {
-        let carry_len = carry.len();
-        let base = chunk.offset().saturating_sub(u64::try_from(carry_len).unwrap_or(u64::MAX));
-        carry.extend_from_slice(chunk.bytes());
-        let scan_from =
-            usize::try_from(start.saturating_sub(base)).unwrap_or(usize::MAX).min(carry.len());
-        if let Some(found) =
-            carry[scan_from..].windows(query.len()).position(|window| window == query)
-        {
-            let absolute = base
-                .checked_add(
-                    u64::try_from(scan_from + found)
-                        .map_err(|_| error("search offset overflow"))?,
-                )
-                .ok_or_else(|| error("search offset overflow"))?;
-            if absolute >= start {
-                return Ok(Some(absolute));
-            }
-        }
-        let keep = query.len().saturating_sub(1).min(carry.len());
-        carry.drain(..carry.len() - keep);
+    let prefix = format!("{}:", cursor_prefix(memory, kind));
+    let tail = value.strip_prefix(&prefix).ok_or_else(|| error("cursor scope or kind mismatch"))?;
+    let index = tail.parse::<usize>().map_err(|_| error("invalid cursor"))?;
+    let bound = if kind == "entry" {
+        memory.state.entries(memory.state.binding()).map_err(|_| error("entry cursor scope"))?.len()
+    } else {
+        memory.sources.len()
+    };
+    if index > bound {
+        return Err(error("cursor out of range"));
     }
-    Ok(None)
+    Ok(index)
 }

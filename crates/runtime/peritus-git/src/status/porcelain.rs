@@ -1,10 +1,13 @@
 //! Strict parser for the fixed porcelain-v2 invocation used by this crate.
 
-use crate::status::{ChangeCode, EntryModes, StatusEntry, StatusKind, SubmoduleState};
+use crate::status::{
+    ChangeCode, EntryModes, MAX_STATUS_BYTES, MAX_STATUS_ENTRIES, MAX_STATUS_PATH_BYTES,
+    StatusEntry, StatusKind, SubmoduleState,
+};
 use crate::{CommitId, ErrorKind, GitError, ObjectFormat, ObjectId, Operation, RecoveryClass};
 
 pub(super) struct ParsedStatus {
-    pub(super) head: Option<CommitId>,
+    pub(super) head: CommitId,
     pub(super) detached: bool,
     pub(super) entries: Vec<StatusEntry>,
 }
@@ -35,10 +38,19 @@ pub(super) fn parse(input: &[u8], format: ObjectFormat) -> Result<ParsedStatus, 
             b'!' => entries.push(simple_path(record, StatusKind::Ignored)?),
             _ => return Err(protocol("porcelain-v2 contains an unsupported record type")),
         }
+        if !crate::verified::status_shape_within_bounds(
+            input.len(),
+            entries.len(),
+            MAX_STATUS_BYTES,
+            MAX_STATUS_ENTRIES,
+        ) {
+            return Err(protocol("porcelain-v2 contains too many entries"));
+        }
     }
     if !saw_branch_oid {
         return Err(protocol("porcelain-v2 lacks branch.oid"));
     }
+    let head = head.ok_or_else(|| protocol("unborn HEAD is unsupported for managed worktrees"))?;
     let detached = detached.ok_or_else(|| protocol("porcelain-v2 lacks branch.head"))?;
     Ok(ParsedStatus { head, detached, entries })
 }
@@ -246,17 +258,19 @@ fn decimal(value: &[u8]) -> Result<u8, GitError> {
     value.parse().map_err(|_| protocol("decimal cannot be represented"))
 }
 
-fn path(value: &[u8]) -> Result<Vec<u8>, GitError> {
-    if value.is_empty() || value[0] == b'/' || value.contains(&0) {
-        return Err(protocol("porcelain-v2 path is not a repository-relative Git path"));
-    }
-    if value
-        .split(|byte| *byte == b'/')
-        .any(|component| component.is_empty() || matches!(component, b"." | b".."))
+fn path(value: &[u8]) -> Result<String, GitError> {
+    if value.is_empty()
+        || value.len() > MAX_STATUS_PATH_BYTES
+        || value[0] == b'/'
+        || value.iter().any(|byte| *byte == 0 || byte.is_ascii_control())
     {
+        return Err(protocol("porcelain-v2 path is invalid or exceeds bounds"));
+    }
+    let value = std::str::from_utf8(value).map_err(|_| protocol("status path is not UTF-8"))?;
+    if value.split('/').any(|component| component.is_empty() || matches!(component, "." | "..")) {
         return Err(protocol("porcelain-v2 path is not canonical relative form"));
     }
-    Ok(value.to_vec())
+    Ok(value.to_owned())
 }
 
 fn protocol(detail: &'static str) -> GitError {
@@ -281,7 +295,7 @@ mod tests {
         assert!(matches!(status.entries[0].kind(), StatusKind::Ordinary { .. }));
         assert!(matches!(status.entries[1].kind(), StatusKind::Untracked));
         assert!(matches!(status.entries[2].kind(), StatusKind::Ignored));
-        assert_eq!(status.entries[2].path(), b"ignored-directory");
+        assert_eq!(status.entries[2].path(), "ignored-directory");
     }
 
     #[test]
@@ -289,25 +303,5 @@ mod tests {
         assert!(parse(b"# branch.oid deadbeef", ObjectFormat::Sha1).is_err());
         let input = format!("# branch.oid {HEAD}\0# branch.head (detached)\0? ../escape\0");
         assert!(parse(input.as_bytes(), ObjectFormat::Sha1).is_err());
-    }
-
-    #[test]
-    fn represents_unborn_head_and_preserves_native_path_bytes() {
-        let mut input = b"# branch.oid (initial)\0# branch.head main\0? raw-".to_vec();
-        input.push(0xff);
-        input.push(0);
-        let status = parse(&input, ObjectFormat::Sha1).expect("unborn status");
-        assert_eq!(status.head, None);
-        assert_eq!(status.entries[0].path(), b"raw-\xff");
-    }
-
-    #[test]
-    fn does_not_impose_status_entry_or_output_size_quotas() {
-        let mut input = format!("# branch.oid {HEAD}\0# branch.head (detached)\0").into_bytes();
-        for _ in 0..100_001 {
-            input.extend_from_slice(b"? entry\0");
-        }
-        let status = parse(&input, ObjectFormat::Sha1).expect("large status");
-        assert_eq!(status.entries.len(), 100_001);
     }
 }

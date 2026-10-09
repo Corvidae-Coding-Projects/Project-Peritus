@@ -218,8 +218,7 @@ fn terminal(projection: &Projection) -> (TerminalContract, TerminalRequirements)
         ),
     };
     let event_count = ResourceQuantity::new(256);
-    let output_bytes =
-        ResourceQuantity::new(projection.resources.output_bytes().expect("finite output limit"));
+    let output_bytes = ResourceQuantity::new(projection.resources.output_bytes());
     let terminal_limits =
         TerminalLimits::new(initial_size, event_count, output_bytes).expect("terminal limits");
     let contract = TerminalContract::new(
@@ -245,11 +244,11 @@ fn terminal(projection: &Projection) -> (TerminalContract, TerminalRequirements)
 
 fn limits(resources: ProcessResourcePolicy) -> ResourceLimits {
     ResourceLimits::new(
-        ResourceQuantity::new(resources.wall_millis().expect("finite wall limit")),
-        ResourceQuantity::new(resources.cpu_millis().expect("finite CPU limit")),
+        ResourceQuantity::new(resources.wall_millis()),
+        ResourceQuantity::new(resources.cpu_millis()),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
-        ResourceQuantity::new(resources.output_bytes().expect("finite output limit")),
+        ResourceQuantity::new(resources.output_bytes()),
         ResourceQuantity::new(resources.file_descriptors()),
         ResourceQuantity::new(resources.process_count()),
         ResourceQuantity::new(resources.concurrent_slots()),

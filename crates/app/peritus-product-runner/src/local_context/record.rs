@@ -68,7 +68,11 @@ impl ArchivedObservation {
         }
         match (&self.call, self.tool_sequence, self.kind) {
             (Some(call), Some(sequence), ArchiveKind::ToolOutput)
-                if sequence > 0 && !call.id.is_empty() && !call.name.is_empty() =>
+                if sequence > 0
+                    && !call.id.is_empty()
+                    && call.id.len() <= 256
+                    && !call.name.is_empty()
+                    && call.name.len() <= 128 =>
             {
                 Ok(())
             }
@@ -163,12 +167,19 @@ pub(super) struct ViewValidation {
 }
 
 pub(super) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, DeveloperLoopError> {
-    serde_json::to_vec(value).map_err(|_| error("encode host memory record"))
+    let bytes = serde_json::to_vec(value).map_err(|_| error("encode host memory record"))?;
+    if bytes.len() > 32 * 1024 * 1024 {
+        return Err(error("host record capacity exceeded"));
+    }
+    Ok(bytes)
 }
 
 pub(super) fn decode<T: DeserializeOwned + Serialize>(
     bytes: &[u8],
 ) -> Result<T, DeveloperLoopError> {
+    if bytes.len() > 32 * 1024 * 1024 {
+        return Err(error("host record capacity exceeded"));
+    }
     let value: T = serde_json::from_slice(bytes).map_err(|_| error("decode host memory record"))?;
     if encode(&value)? != bytes {
         return Err(error("noncanonical host memory record"));

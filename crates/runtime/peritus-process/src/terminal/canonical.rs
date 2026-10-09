@@ -19,10 +19,9 @@ use tags::{
     recovery_tag, resource_tag, stream_tag,
 };
 
-const MAGIC_V2: &[u8] = b"PERITUS-PROCESS-TERMINAL-V2\0";
-const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-TERMINAL-V3\0";
-const MAGIC_V4: &[u8] = b"PERITUS-PROCESS-TERMINAL-V4\0";
+const MAGIC: &[u8] = b"PERITUS-PROCESS-TERMINAL-V2\0";
 const MAX_ITEMS: usize = 64;
+const MAX_SIGNAL_NAME_BYTES: usize = 128;
 
 pub(crate) fn terminal_digest(result: &TerminalResult) -> Result<Sha256Digest, ProcessError> {
     let bytes = encode_terminal(result)?;
@@ -32,7 +31,7 @@ pub(crate) fn terminal_digest(result: &TerminalResult) -> Result<Sha256Digest, P
 pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, ProcessError> {
     validate_terminal(result)?;
     let mut bytes = Vec::with_capacity(512);
-    bytes.extend_from_slice(MAGIC_V4);
+    bytes.extend_from_slice(MAGIC);
     bytes.extend_from_slice(result.process_id().as_bytes());
     digest(&mut bytes, result.plan_digest());
     bytes.push(disposition_tag(result.disposition()));
@@ -55,26 +54,20 @@ pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, Proces
 }
 
 pub(crate) fn decode_terminal(bytes: &[u8]) -> Result<TerminalResult, ProcessError> {
-    let (magic, legacy, optional_ceilings) = if bytes.starts_with(MAGIC_V4) {
-        (MAGIC_V4, false, true)
-    } else if bytes.starts_with(MAGIC_V3) {
-        (MAGIC_V3, false, false)
-    } else if bytes.starts_with(MAGIC_V2) {
-        (MAGIC_V2, true, false)
-    } else {
+    if !bytes.starts_with(MAGIC) {
         return Err(corrupt("terminal result has invalid framing"));
-    };
-    let mut reader = Reader::new(&bytes[magic.len()..]);
+    }
+    let mut reader = Reader::new(&bytes[MAGIC.len()..]);
     let process_id = reader.id(ProcessId::new)?;
     let plan_digest = reader.digest()?;
     let disposition = decode_disposition(reader.u8()?)?;
-    let os_exit = decode_exit(&mut reader, legacy)?;
+    let os_exit = decode_exit(&mut reader)?;
     let first_trigger = decode_trigger(&mut reader)?;
     let escalation = EscalationRecord::new(reader.boolean()?, reader.boolean()?, reader.boolean()?);
     let started_at = reader.optional_u64()?.map(ProcessInstant::from_millis);
     let ended_at = ProcessInstant::from_millis(reader.u64()?);
     let output = decode_output(&mut reader)?;
-    let resources = decode_resources(&mut reader, optional_ceilings)?;
+    let resources = decode_resources(&mut reader)?;
     let artifacts = decode_artifacts(&mut reader)?;
     let tree_cleanup_complete = reader.boolean()?;
     let support_tasks_joined = reader.boolean()?;
@@ -107,7 +100,7 @@ pub(crate) fn decode_terminal(bytes: &[u8]) -> Result<TerminalResult, ProcessErr
         result.mark_artifact_failure();
     }
     validate_terminal(&result)?;
-    if optional_ceilings && encode_terminal(&result)? != bytes {
+    if encode_terminal(&result)? != bytes {
         return Err(corrupt("terminal result uses a noncanonical field order"));
     }
     Ok(result)
@@ -235,13 +228,7 @@ fn encode_resources(
     for resource in ordered {
         bytes.push(resource_tag(resource.dimension()));
         u64_value(bytes, resource.value());
-        match resource.ceiling() {
-            Some(ceiling) => {
-                bytes.push(1);
-                u64_value(bytes, ceiling);
-            }
-            None => bytes.push(0),
-        }
+        u64_value(bytes, resource.ceiling());
         bytes.push(fidelity_tag(resource.fidelity()));
     }
     Ok(())
@@ -249,26 +236,14 @@ fn encode_resources(
 
 fn decode_resources(
     reader: &mut Reader<'_>,
-    optional_ceilings: bool,
 ) -> Result<Vec<ProcessResourceObservation>, ProcessError> {
     let count = reader.count(MAX_ITEMS)?;
     let mut resources = Vec::with_capacity(count);
     for _ in 0..count {
-        let dimension = decode_resource(reader.u8()?)?;
-        let value = reader.u64()?;
-        let ceiling = if optional_ceilings {
-            match reader.u8()? {
-                0 => None,
-                1 => Some(reader.u64()?),
-                _ => return Err(corrupt("invalid optional resource ceiling")),
-            }
-        } else {
-            Some(reader.u64()?)
-        };
         resources.push(ProcessResourceObservation::new(
-            dimension,
-            value,
-            ceiling,
+            decode_resource(reader.u8()?)?,
+            reader.u64()?,
+            reader.u64()?,
             decode_fidelity(reader.u8()?)?,
         ));
     }
@@ -317,12 +292,11 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: &OsExitObservation) -> Result<(), Proc
             bytes.extend_from_slice(&value.to_be_bytes());
         }
         OsExitObservation::SignalName(value) => {
+            if value.len() > MAX_SIGNAL_NAME_BYTES {
+                return Err(corrupt("terminal signal name exceeds its bound"));
+            }
             bytes.push(3);
-            bytes.extend_from_slice(
-                &u64::try_from(value.len())
-                    .map_err(|_| crate::error::invalid("signal name length is not representable"))?
-                    .to_be_bytes(),
-            );
+            length(bytes, value.len(), MAX_SIGNAL_NAME_BYTES)?;
             bytes.extend_from_slice(value.as_bytes());
         }
         OsExitObservation::PlatformException(value) => {
@@ -334,12 +308,11 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: &OsExitObservation) -> Result<(), Proc
     Ok(())
 }
 
-fn decode_exit(reader: &mut Reader<'_>, legacy: bool) -> Result<OsExitObservation, ProcessError> {
+fn decode_exit(reader: &mut Reader<'_>) -> Result<OsExitObservation, ProcessError> {
     match reader.u8()? {
         1 => Ok(OsExitObservation::Code(reader.i32()?)),
         2 => Ok(OsExitObservation::Signal(reader.i32()?)),
-        3 if legacy => Ok(OsExitObservation::SignalName(reader.string_u16()?)),
-        3 => Ok(OsExitObservation::SignalName(reader.string_u64()?)),
+        3 => Ok(OsExitObservation::SignalName(reader.string(MAX_SIGNAL_NAME_BYTES)?)),
         4 => Ok(OsExitObservation::PlatformException(reader.u32()?)),
         5 => Ok(OsExitObservation::Unavailable),
         _ => Err(corrupt("terminal result has an unknown exit tag")),

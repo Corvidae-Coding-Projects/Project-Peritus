@@ -1,23 +1,13 @@
 //! Bounded model, human, and structured filesystem renderings.
 
-mod fragments;
-mod json;
-mod omission;
-mod pages;
-#[cfg(test)]
-mod tests;
-
-use json::{array, object, string};
-
-use peritus_tool_protocol::{BoundedJson, BoundedText};
+use peritus_tool_protocol::{BoundedJson, BoundedText, JsonLimits};
 
 use crate::{
     DiscoverObservation, FileContent, FileObservation, FsToolError, FsToolErrorKind,
     FsToolOperation, MetadataObservation, RecoveryClass, SearchObservation,
 };
 
-use omission::{discover_next_omission, next_omission_offset, omission_json, omission_name};
-
+const MAX_RENDER_ITEMS: usize = 500;
 const TEXT_LIMIT: usize = 16 * 1024;
 
 /// Independently bounded structured, model, and human renderings.
@@ -37,9 +27,9 @@ impl RenderedOutput {
     pub fn mutation(value: &peritus_workspace::MutationOutcome) -> Result<Self, FsToolError> {
         let structured = object(vec![
             ("action_id", string(identifier_hex(value.action_id().as_bytes()))),
-            ("generation", u64_integer(value.generation().get())),
+            ("generation", Ok(integer(u64_integer(value.generation().get())))),
             ("patch_identity", string(value.patch_identity().to_string())),
-            ("revision", u64_integer(value.revision().get())),
+            ("revision", Ok(integer(u64_integer(value.revision().get())))),
             ("workspace_id", string(identifier_hex(value.workspace_id().as_bytes()))),
         ])?;
         let text = format!("Applied authorized patch {}.", value.patch_identity());
@@ -53,7 +43,8 @@ impl RenderedOutput {
     pub fn metadata(value: &MetadataObservation) -> Result<Self, FsToolError> {
         let structured = metadata_json(value)?;
         let text = format!(
-            "Observed {} bytes, {}, executable={}",
+            "{}: {} bytes, {}, executable={}",
+            value.path(),
             value.size(),
             kind_name(value),
             value.executable()
@@ -65,126 +56,43 @@ impl RenderedOutput {
     ///
     /// # Errors
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
-    #[allow(
-        clippy::too_many_lines,
-        reason = "entry and omission pages share one exact output budget"
-    )]
-    pub fn discover_page(
-        value: &DiscoverObservation,
-        offset: u64,
-        maximum_items: u32,
-        output_bytes: u64,
-    ) -> Result<Self, FsToolError> {
-        let page_offset = offset.checked_sub(value.page_start()).ok_or_else(protocol_error)?;
-        let start =
-            usize::try_from(page_offset).map_err(|_| protocol_error())?.min(value.entries().len());
-        let end = start.saturating_add(maximum_items as usize).min(value.entries().len());
-        let global_start = value
-            .page_start()
-            .checked_add(u64::try_from(start).map_err(|_| protocol_error())?)
-            .ok_or_else(protocol_error)?;
-        let omission_start = value.omission_page_start();
-        let mut entries = Vec::new();
-        let mut omissions = Vec::new();
-        let initial_next_omission = discover_next_omission(value, omission_start, 0)?;
-        let mut structured = discover_json_with_page(
-            value,
-            &entries,
-            global_start,
-            global_start < value.observed_count(),
-            &omissions,
-            initial_next_omission,
-        )?;
-        if structured.canonical_bytes().len() as u64 > output_bytes {
-            return Err(protocol_error());
-        }
-        for omission in value.omissions().iter().take(maximum_items as usize) {
-            omissions.push(omission_json(omission)?);
-            let next_omission = discover_next_omission(value, omission_start, omissions.len())?;
-            let candidate = discover_json_with_page(
-                value,
-                &entries,
-                global_start,
-                global_start < value.observed_count(),
-                &omissions,
-                next_omission,
-            );
-            match candidate {
-                Ok(candidate) if candidate.canonical_bytes().len() as u64 <= output_bytes => {}
-                _ => {
-                    omissions.pop();
-                    break;
-                }
-            }
-        }
-        for entry in value.entries().get(start..end).unwrap_or_default() {
-            let item = object(vec![
-                ("depth", Ok(integer(i64::from(entry.depth())))),
-                ("metadata", metadata_json(entry.metadata())),
-                (
-                    "omission",
-                    entry.omission_reason().map_or_else(
-                        || Ok(BoundedJson::null()),
-                        |reason| string(omission_name(reason).to_owned()),
-                    ),
-                ),
-            ])?;
-            entries.push(item);
-            let retained_end = global_start
-                .checked_add(u64::try_from(entries.len()).map_err(|_| protocol_error())?)
-                .ok_or_else(protocol_error)?;
-            let next_omission = discover_next_omission(value, omission_start, omissions.len())?;
-            let candidate = discover_json_with_page(
-                value,
-                &entries,
-                retained_end,
-                retained_end < value.observed_count(),
-                &omissions,
-                next_omission,
-            );
-            match candidate {
-                Ok(candidate) if candidate.canonical_bytes().len() as u64 <= output_bytes => {}
-                _ => {
-                    entries.pop();
-                    break;
-                }
-            }
-        }
-        let retained_end = global_start
-            .checked_add(u64::try_from(entries.len()).map_err(|_| protocol_error())?)
-            .ok_or_else(protocol_error)?;
-        let more_entries = retained_end < value.observed_count();
-        let next_omission = discover_next_omission(value, omission_start, omissions.len())?;
-        let more = more_entries || next_omission.is_some();
-        if (more_entries && entries.is_empty())
-            || (next_omission == Some(omission_start) && omissions.is_empty())
-        {
-            return Err(protocol_error());
-        }
-        structured = discover_json_with_page(
-            value,
-            &entries,
-            retained_end,
-            more_entries,
-            &omissions,
-            next_omission,
-        )?;
+    pub fn discover(value: &DiscoverObservation) -> Result<Self, FsToolError> {
+        let retained = value.entries().len().min(MAX_RENDER_ITEMS);
+        let truncated = retained < value.entries().len();
+        let entries = value.entries()[..retained]
+            .iter()
+            .map(|entry| {
+                object(vec![
+                    ("depth", Ok(integer(i64::from(entry.depth())))),
+                    ("metadata", metadata_json(entry.metadata())),
+                ])
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let structured = object(vec![
+            ("digest", string(digest_hex(value.digest()))),
+            ("entries", array(entries)),
+            ("observed_count", Ok(integer(usize_integer(value.entries().len())))),
+            (
+                "root",
+                value
+                    .root()
+                    .map_or_else(|| Ok(BoundedJson::null()), |path| string(path.to_string())),
+            ),
+            ("truncated", Ok(BoundedJson::boolean(truncated))),
+        ])?;
         let text = format!(
-            "Discovered {} entries of {} and {} omissions ({} total omissions){}.",
-            entries.len(),
-            value.observed_count(),
-            omissions.len(),
-            value.omission_count(),
-            if more { "; more results continue" } else { "" }
+            "Discovered {} workspace entries{}.",
+            value.entries().len(),
+            if truncated { " (rendered window truncated)" } else { "" }
         );
-        finish(structured, text.clone(), text, more)
+        finish(structured, text.clone(), text, truncated)
     }
 
     /// Renders an exact bounded text or base64 file observation.
     ///
     /// # Errors
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
-    pub fn file(value: &FileObservation, output_bytes: u64) -> Result<Self, FsToolError> {
+    pub fn file(value: &FileObservation) -> Result<Self, FsToolError> {
         let (encoding, content) = match value.content() {
             FileContent::Utf8(text) => ("utf8", text.clone()),
             FileContent::Base64(text) => ("base64", text.clone()),
@@ -194,119 +102,49 @@ impl RenderedOutput {
             ("content_digest", string(digest_hex(value.content_digest()))),
             ("encoding", string(encoding.to_owned())),
             ("metadata", metadata_json(value.metadata())),
-            ("range_end", u64_integer(value.range().1)),
-            ("range_start", u64_integer(value.range().0)),
-            ("source_digest", string(digest_hex(value.source_digest()))),
-            (
-                "continuation_offset",
-                value.continuation_offset().map_or_else(|| Ok(BoundedJson::null()), u64_integer),
-            ),
         ])?;
         let text = format!(
-            "Read bytes {} through {} of {} as {encoding}.",
-            value.range().0,
-            value.range().1,
+            "Read {} exact bytes from {} as {encoding}.",
             value.metadata().size(),
+            value.metadata().path()
         );
-        if structured.canonical_bytes().len() as u64 > output_bytes {
-            return Err(protocol_error());
-        }
-        finish(structured, text.clone(), text, value.continuation_offset().is_some())
+        finish(structured, text.clone(), text, false)
     }
 
     /// Renders a bounded window of structured literal matches.
     ///
     /// # Errors
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
-    pub fn search_page(
-        value: &SearchObservation,
-        offset: u64,
-        maximum_items: u32,
-        omission_offset: u64,
-        output_bytes: u64,
-    ) -> Result<Self, FsToolError> {
-        let match_start =
-            usize::try_from(offset.checked_sub(value.page_start()).ok_or_else(protocol_error)?)
-                .map_err(|_| protocol_error())?
-                .min(value.matches().len());
-        let match_end =
-            match_start.saturating_add(maximum_items as usize).min(value.matches().len());
-        let omission_start = usize::try_from(
-            omission_offset.checked_sub(value.omission_page_start()).ok_or_else(protocol_error)?,
-        )
-        .map_err(|_| protocol_error())?
-        .min(value.omissions().len());
-        let omission_end =
-            omission_start.saturating_add(maximum_items as usize).min(value.omissions().len());
-        let mut matches = Vec::new();
-        let mut omissions = Vec::new();
-        let mut structured = search_json(
-            value,
-            &matches,
-            &omissions,
-            next_match_offset(value, offset, matches.len())?,
-            next_omission_offset(value, omission_start, omissions.len(), omission_offset)?,
-        )?;
-        if structured.canonical_bytes().len() as u64 > output_bytes {
-            return Err(protocol_error());
-        }
-        for matched in value.matches().get(match_start..match_end).unwrap_or_default() {
-            let item = search_match_json(matched)?;
-            matches.push(item);
-            let candidate = search_json(
-                value,
-                &matches,
-                &omissions,
-                next_match_offset(value, offset, matches.len())?,
-                next_omission_offset(value, omission_start, omissions.len(), omission_offset)?,
-            );
-            match candidate {
-                Ok(candidate) if candidate.canonical_bytes().len() as u64 <= output_bytes => {}
-                _ => {
-                    matches.pop();
-                    break;
-                }
-            }
-        }
-        for omission in value.omissions().get(omission_start..omission_end).unwrap_or_default() {
-            omissions.push(omission_json(omission)?);
-            let candidate = search_json(
-                value,
-                &matches,
-                &omissions,
-                next_match_offset(value, offset, matches.len())?,
-                next_omission_offset(value, omission_start, omissions.len(), omission_offset)?,
-            );
-            match candidate {
-                Ok(candidate) if candidate.canonical_bytes().len() as u64 <= output_bytes => {}
-                _ => {
-                    omissions.pop();
-                    break;
-                }
-            }
-        }
-        let next_match = next_match_offset(value, offset, matches.len())?;
-        let next_omission =
-            next_omission_offset(value, omission_start, omissions.len(), omission_offset)?;
-        if matches.is_empty()
-            && omissions.is_empty()
-            && (next_match == Some(offset) || next_omission == Some(omission_offset))
-        {
-            return Err(protocol_error());
-        }
-        structured = search_json(value, &matches, &omissions, next_match, next_omission)?;
-        if structured.canonical_bytes().len() as u64 > output_bytes {
-            return Err(protocol_error());
-        }
-        let more = next_match.is_some() || next_omission.is_some();
+    pub fn search(value: &SearchObservation) -> Result<Self, FsToolError> {
+        let retained = value.matches().len().min(MAX_RENDER_ITEMS);
+        let truncated = retained < value.matches().len();
+        let matches = value.matches()[..retained]
+            .iter()
+            .map(|value| {
+                object(vec![
+                    ("column_bytes", Ok(integer(i64::from(value.column_bytes())))),
+                    ("line", Ok(integer(u64_integer(value.line())))),
+                    ("path", string(value.path().to_string())),
+                    ("preview", string(value.preview().to_owned())),
+                ])
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let structured = object(vec![
+            ("digest", string(digest_hex(value.digest()))),
+            ("match_count", Ok(integer(usize_integer(value.matches().len())))),
+            ("matches", array(matches)),
+            ("scanned_bytes", Ok(integer(u64_integer(value.scanned_bytes())))),
+            ("scanned_files", Ok(integer(i64::from(value.scanned_files())))),
+            ("truncated", Ok(BoundedJson::boolean(truncated))),
+        ])?;
         let text = format!(
-            "Found {} literal matches on this page across {} UTF-8 files ({} bytes scanned){}.",
-            matches.len(),
+            "Found {} literal matches across {} UTF-8 files ({} bytes scanned){}.",
+            value.matches().len(),
             value.scanned_files(),
             value.scanned_bytes(),
-            if more { " More matches continue" } else { "" }
+            if truncated { " Rendered match window is truncated" } else { "" }
         );
-        finish(structured, text.clone(), text, more)
+        finish(structured, text.clone(), text, truncated)
     }
 
     /// Returns canonical bounded structured output.
@@ -336,7 +174,7 @@ fn metadata_json(value: &MetadataObservation) -> Result<BoundedJson, FsToolError
         ("executable", Ok(BoundedJson::boolean(value.executable()))),
         ("kind", string(kind_name(value).to_owned())),
         ("path", string(value.path().to_string())),
-        ("size", u64_integer(value.size())),
+        ("size", Ok(integer(u64_integer(value.size())))),
     ])
 }
 
@@ -344,7 +182,6 @@ const fn kind_name(value: &MetadataObservation) -> &'static str {
     match value.kind() {
         peritus_workspace::WorkspaceEntryKind::File => "file",
         peritus_workspace::WorkspaceEntryKind::Directory => "directory",
-        peritus_workspace::WorkspaceEntryKind::Other => "other",
     }
 }
 
@@ -359,87 +196,34 @@ fn finish(
     Ok(RenderedOutput { structured, model, human, truncated })
 }
 
+fn object(
+    members: Vec<(&str, Result<BoundedJson, FsToolError>)>,
+) -> Result<BoundedJson, FsToolError> {
+    let members = members
+        .into_iter()
+        .map(|(name, value)| value.map(|value| (name.to_owned(), value)))
+        .collect::<Result<Vec<_>, _>>()?;
+    BoundedJson::object(members, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+}
+
+fn array(values: Vec<BoundedJson>) -> Result<BoundedJson, FsToolError> {
+    BoundedJson::array(values, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+}
+
+fn string(value: String) -> Result<BoundedJson, FsToolError> {
+    BoundedJson::string(value, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+}
+
 fn integer(value: i64) -> BoundedJson {
     BoundedJson::integer(value)
 }
 
-fn u64_integer(value: u64) -> Result<BoundedJson, FsToolError> {
-    i64::try_from(value).map(integer).map_err(|_| protocol_error())
+fn u64_integer(value: u64) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
 }
 
-fn discover_json_with_page(
-    value: &DiscoverObservation,
-    entries: &[BoundedJson],
-    end: u64,
-    more_entries: bool,
-    omissions: &[BoundedJson],
-    next_omission: Option<u64>,
-) -> Result<BoundedJson, FsToolError> {
-    object(vec![
-        ("digest", string(digest_hex(value.digest()))),
-        ("entries", array(entries.to_vec())),
-        ("next_offset", if more_entries { u64_integer(end) } else { Ok(BoundedJson::null()) }),
-        (
-            "next_omission_offset",
-            next_omission.map_or_else(|| Ok(BoundedJson::null()), u64_integer),
-        ),
-        ("omission_count", u64_integer(value.omission_count())),
-        ("omissions", array(omissions.to_vec())),
-        ("observed_count", u64_integer(value.observed_count())),
-        (
-            "root",
-            value.root().map_or_else(|| Ok(BoundedJson::null()), |path| string(path.to_string())),
-        ),
-        ("truncated", Ok(BoundedJson::boolean(more_entries || next_omission.is_some()))),
-    ])
-}
-
-fn search_json(
-    value: &SearchObservation,
-    matches: &[BoundedJson],
-    omissions: &[BoundedJson],
-    next_match: Option<u64>,
-    next_omission: Option<u64>,
-) -> Result<BoundedJson, FsToolError> {
-    object(vec![
-        ("digest", string(digest_hex(value.digest()))),
-        ("match_count", u64_integer(value.match_count())),
-        ("matches", array(matches.to_vec())),
-        ("next_match_offset", next_match.map_or_else(|| Ok(BoundedJson::null()), u64_integer)),
-        (
-            "next_omission_offset",
-            next_omission.map_or_else(|| Ok(BoundedJson::null()), u64_integer),
-        ),
-        ("omission_count", u64_integer(value.omission_count())),
-        ("omissions", array(omissions.to_vec())),
-        ("scanned_bytes", u64_integer(value.scanned_bytes())),
-        ("scanned_files", u64_integer(value.scanned_files())),
-        ("truncated", Ok(BoundedJson::boolean(next_match.is_some() || next_omission.is_some()))),
-    ])
-}
-
-fn next_match_offset(
-    value: &SearchObservation,
-    offset: u64,
-    rendered: usize,
-) -> Result<Option<u64>, FsToolError> {
-    let end = offset
-        .checked_add(u64::try_from(rendered).map_err(|_| protocol_error())?)
-        .ok_or_else(protocol_error)?;
-    let page_end = value
-        .page_start()
-        .checked_add(u64::try_from(value.matches().len()).map_err(|_| protocol_error())?)
-        .ok_or_else(protocol_error)?;
-    if end < page_end { Ok(Some(end)) } else { Ok(value.next_offset()) }
-}
-
-fn search_match_json(value: &crate::SearchMatch) -> Result<BoundedJson, FsToolError> {
-    object(vec![
-        ("column_bytes", u64_integer(value.column_bytes())),
-        ("line", u64_integer(value.line())),
-        ("path", string(value.path().to_string())),
-        ("preview", string(value.preview().to_owned())),
-    ])
+fn usize_integer(value: usize) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
 }
 
 fn digest_hex(value: peritus_types::Sha256Digest) -> String {

@@ -73,10 +73,10 @@ fn context_pages_reject_false_seals_wrong_views_gaps_and_duplicate_sources() {
         WorkbenchContextRow::new(
             input().source(),
             input().digest(),
-            u64::MAX,
+            64 * 1024 * 1024 + 1,
             input().disposition()
         )
-        .is_ok()
+        .is_err()
     );
     assert!(
         WorkbenchContextRow::new(
@@ -114,19 +114,4 @@ fn context_fixtures_roundtrip_every_source_role_view_and_disposition_without_con
         seen += 1;
     }
     assert_eq!(seen, 6);
-}
-
-#[test]
-fn sealed_provenance_metadata_is_independent_of_provider_message_and_byte_limits() {
-    let row = WorkbenchContextRow::new(
-        WorkbenchContextSource::Message {
-            ordinal: u32::MAX,
-            role: WorkbenchMessageRole::Assistant,
-        },
-        input().digest(),
-        u64::MAX,
-        WorkbenchContextDisposition::Included,
-    )
-    .expect("metadata is representable regardless of archived body size");
-    assert_eq!(row.bytes(), u64::MAX);
 }

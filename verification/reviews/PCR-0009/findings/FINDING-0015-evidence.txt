@@ -1,0 +1,2 @@
+FINDING-0015: Git history identity changed under replace, graft, and shallow metadata
+The `replace` fixture changed the offset-1 subject from B to A under the same request. The `shallow` fixture changed B from parentless/no-next to parent A/next offset 2 after removing `.git/shallow`; both initially exited 101. Final `history_identity` regression covers replacements, shallow metadata, and grafts and passed 1/1; the external fixtures then preserved the original identity.

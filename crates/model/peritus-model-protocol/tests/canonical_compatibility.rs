@@ -42,10 +42,7 @@ fn host_bounded_encoding_preserves_exact_bytes_and_rejects_instead_of_truncating
             ProtocolErrorKind::InvalidLimit
         );
         assert!(request.canonical_bytes_bounded(0).is_err());
-        assert_eq!(
-            request.canonical_bytes_bounded(512 * 1024 * 1024 + 1).expect("caller ceiling"),
-            expected
-        );
+        assert!(request.canonical_bytes_bounded(512 * 1024 * 1024 + 1).is_err());
     }
 }
 

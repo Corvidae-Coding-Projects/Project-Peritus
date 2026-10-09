@@ -1,6 +1,6 @@
 //! Exact process-tree probing and deterministic restart classifications.
 
-use peritus_types::{ActionId, ProcessId, RunId};
+use peritus_types::ProcessId;
 
 use crate::{LifecyclePhase, ProcessError, ProcessStore, ProcessTreeIdentity};
 
@@ -39,7 +39,7 @@ pub trait ProcessProbe {
 pub enum RecoveryDisposition {
     /// A complete durable result exists and resource ownership is settled.
     Terminal,
-    /// The exact live owned tree was found and remains live or termination was requested.
+    /// The exact live owned tree was found and termination was requested.
     LiveOwned,
     /// The process was absent without a committed terminal observation.
     AbsentUnobserved,
@@ -112,147 +112,6 @@ impl RecoveryReport {
 }
 
 impl ProcessStore {
-    /// Observes one exact durable owner without terminating or mutating it.
-    ///
-    /// Unlike [`Self::reconcile_exact`], this method is safe for ordinary receipt recovery: an
-    /// exact live process is returned as `LiveOwned` and remains untouched. A missing manifest,
-    /// mismatched claim, or unverifiable platform identity remains `Indeterminate`.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed recovery error when the native probe itself fails.
-    pub fn observe_exact(
-        &self,
-        run_id: RunId,
-        action_id: ActionId,
-        process_id: ProcessId,
-        probe: &mut impl ProcessProbe,
-    ) -> Result<RecoveryEntry, ProcessError> {
-        let (manifests, mut claims) = self.recovery_records();
-        let Some(manifest) =
-            manifests.into_iter().find(|manifest| manifest.identity.process_id() == process_id)
-        else {
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Indeterminate, false));
-        };
-        let claim_matches =
-            claims.remove(&process_id).is_some_and(|claim| claim.matches_manifest(&manifest));
-        if !claim_matches
-            || manifest.identity.run_id() != run_id
-            || manifest.identity.action_id() != action_id
-        {
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Indeterminate, false));
-        }
-        if manifest.phase == LifecyclePhase::Terminal && manifest.ownership_settled() {
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Terminal, false));
-        }
-        let Some(tree) = manifest.tree else {
-            let disposition = if manifest.phase == LifecyclePhase::Authorized {
-                RecoveryDisposition::AbsentUnobserved
-            } else {
-                RecoveryDisposition::Indeterminate
-            };
-            return Ok(RecoveryEntry::new(process_id, disposition, false));
-        };
-        let disposition = match probe.observe(tree)? {
-            ProbeObservation::ExactLive => RecoveryDisposition::LiveOwned,
-            ProbeObservation::ExactAbsent
-                if manifest.phase == LifecyclePhase::Terminal && manifest.terminal.is_some() =>
-            {
-                // The terminal envelope exists, but incomplete cleanup/publication facts cannot
-                // be repaired by a read-only receipt observer.
-                RecoveryDisposition::Indeterminate
-            }
-            ProbeObservation::ExactAbsent => RecoveryDisposition::AbsentUnobserved,
-            ProbeObservation::Mismatched | ProbeObservation::Unverifiable => {
-                RecoveryDisposition::Indeterminate
-            }
-        };
-        Ok(RecoveryEntry::new(process_id, disposition, false))
-    }
-
-    /// Reconciles one exact durable owner without probing or terminating unrelated processes.
-    ///
-    /// The run, action, and process identities must all match the retained manifest. A live exact
-    /// tree is terminated and probed again; absence without a terminal result remains
-    /// `AbsentUnobserved`, never success.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed recovery error when the native probe or durable ownership update fails.
-    pub fn reconcile_exact(
-        &self,
-        run_id: RunId,
-        action_id: ActionId,
-        process_id: ProcessId,
-        probe: &mut impl ProcessProbe,
-    ) -> Result<RecoveryEntry, ProcessError> {
-        let (manifests, mut claims) = self.recovery_records();
-        let Some(manifest) =
-            manifests.into_iter().find(|manifest| manifest.identity.process_id() == process_id)
-        else {
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Indeterminate, false));
-        };
-        let claim_matches =
-            claims.remove(&process_id).is_some_and(|claim| claim.matches_manifest(&manifest));
-        if !claim_matches
-            || manifest.identity.run_id() != run_id
-            || manifest.identity.action_id() != action_id
-        {
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Indeterminate, false));
-        }
-        if manifest.phase == LifecyclePhase::Terminal && manifest.ownership_settled() {
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Terminal, false));
-        }
-        let Some(tree) = manifest.tree else {
-            if manifest.phase == LifecyclePhase::Authorized {
-                self.reconcile_ownership(process_id, true)?;
-                return Ok(RecoveryEntry::new(
-                    process_id,
-                    RecoveryDisposition::AbsentUnobserved,
-                    false,
-                ));
-            }
-            return Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Indeterminate, false));
-        };
-        match probe.observe(tree)? {
-            ProbeObservation::ExactAbsent => {
-                self.reconcile_ownership(process_id, true)?;
-                Ok(RecoveryEntry::new(
-                    process_id,
-                    if manifest.phase == LifecyclePhase::Terminal {
-                        RecoveryDisposition::Terminal
-                    } else {
-                        RecoveryDisposition::AbsentUnobserved
-                    },
-                    false,
-                ))
-            }
-            ProbeObservation::ExactLive => {
-                probe.terminate(tree)?;
-                self.reconcile_ownership(process_id, false)?;
-                let disposition = match probe.observe(tree)? {
-                    ProbeObservation::ExactAbsent => {
-                        self.reconcile_ownership(process_id, true)?;
-                        if manifest.phase == LifecyclePhase::Terminal {
-                            RecoveryDisposition::Terminal
-                        } else {
-                            RecoveryDisposition::AbsentUnobserved
-                        }
-                    }
-                    ProbeObservation::ExactLive => RecoveryDisposition::LiveOwned,
-                    ProbeObservation::Mismatched | ProbeObservation::Unverifiable => {
-                        RecoveryDisposition::Indeterminate
-                    }
-                };
-                Ok(RecoveryEntry::new(process_id, disposition, true))
-            }
-            ProbeObservation::Mismatched | ProbeObservation::Unverifiable => {
-                self.reconcile_ownership(process_id, false)?;
-                Ok(RecoveryEntry::new(process_id, RecoveryDisposition::Indeterminate, false))
-            }
-        }
-    }
-
     /// Reconciles every durable manifest using exact injected process observations.
     ///
     /// Only [`ProbeObservation::ExactLive`] permits a termination request. Absence is never
@@ -263,30 +122,10 @@ impl ProcessStore {
     ///
     /// Returns a typed error if probing, exact termination, or durable reconciliation fails.
     pub fn reconcile(&self, probe: &mut impl ProcessProbe) -> Result<RecoveryReport, ProcessError> {
-        self.reconcile_preserving_exact_live(&[], probe)
-    }
-
-    /// Reconciles the process registry while preserving receipt-linked exact live owners.
-    ///
-    /// The preservation list contains exact `(run, action, process)` identities recovered from
-    /// durable command receipts. Each identity is still checked against its manifest, claim, and
-    /// native process-tree birth identity before it can be preserved. Unlisted, mismatched, or
-    /// unverifiable owners retain the ordinary [`Self::reconcile`] behavior.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error if probing, exact termination, or durable reconciliation fails.
-    pub fn reconcile_preserving_exact_live(
-        &self,
-        preserved_owners: &[(RunId, ActionId, ProcessId)],
-        probe: &mut impl ProcessProbe,
-    ) -> Result<RecoveryReport, ProcessError> {
         let mut entries = Vec::new();
         let (manifests, mut claims) = self.recovery_records();
         for manifest in manifests {
             let process_id = manifest.identity.process_id();
-            let exact_owner =
-                (manifest.identity.run_id(), manifest.identity.action_id(), process_id);
             let claim_matches =
                 claims.remove(&process_id).is_some_and(|claim| claim.matches_manifest(&manifest));
             let (disposition, signal_sent) = if !claim_matches {
@@ -295,9 +134,6 @@ impl ProcessStore {
                 (RecoveryDisposition::Terminal, false)
             } else if let Some(tree) = manifest.tree {
                 match probe.observe(tree)? {
-                    ProbeObservation::ExactLive if preserved_owners.contains(&exact_owner) => {
-                        (RecoveryDisposition::LiveOwned, false)
-                    }
                     ProbeObservation::ExactLive => {
                         probe.terminate(tree)?;
                         self.reconcile_ownership(process_id, false)?;

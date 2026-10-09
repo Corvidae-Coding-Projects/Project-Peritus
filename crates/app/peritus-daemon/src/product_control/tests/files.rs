@@ -1,7 +1,6 @@
 use super::*;
 use crate::product_control::inputs::{InputAdmission, tests::request};
 use peritus_product_runner::{
-    AttachmentReadRequest,
     attachment::ValidatedFileText,
     control::{FileAttachment, FileObservation, FileRange, FileSource, FileVersion, InvocationId},
 };
@@ -48,168 +47,40 @@ fn confirmed_file_round_trips_restart_and_only_exact_included_context_is_admitte
     drop(journal);
     let mut journal = store(root.path());
     assert_eq!(journal.resolve(&attach).expect("resolve"), Some(receipt));
-    let file = match attach.intent() {
-        ControlIntent::AttachFile { file, .. } => file.clone(),
-        _ => unreachable!("attachment helper returns attach-file intent"),
-    };
-    let start =
-        operation(3, 2, ControlIntent::StartExecution { run: [5; 16], settings_digest: [6; 32] });
-    journal.accept(&start).expect("start");
-    let capture = journal.capture_execution(&start).expect("capture");
-    let prompt = capture.inputs().conversation();
-    assert!(prompt.contains(&file.operation().to_string()));
-    assert!(prompt.contains("attachment_read"));
-    assert!(!prompt.contains("exact selected text"));
+    let capture = journal
+        .capture_inputs(
+            create().conversation(),
+            ActorId::new([3; 16]).expect("owner"),
+            WorkspaceId::new([4; 16]).expect("workspace"),
+        )
+        .expect("capture");
+    assert!(capture.inputs().conversation().contains("exact selected text\\r\\n"));
     let invocation = InvocationId::new([11; 16]).expect("invocation");
     assert!(journal.prepare_inputs(&capture, invocation, &request("caption only")).is_err());
     assert!(matches!(
-        journal.prepare_inputs(&capture, invocation, &request(prompt)).expect("exact request"),
+        journal
+            .prepare_inputs(&capture, invocation, &request(capture.inputs().conversation()))
+            .expect("exact request"),
         InputAdmission::Accepted(_)
     ));
-    let observation = file.initial().observation();
-    let page_request = AttachmentReadRequest::new(
-        file.operation(),
-        file.initial().operation(),
-        observation.source_digest(),
-        observation.digest(),
-        observation.source_bytes(),
-        observation.range(),
-        observation.range().0,
-        32 * 1024,
-    )
-    .expect("read selected bytes");
-    let page = journal.read_file_page(&start, page_request).expect("selected page");
-    assert_eq!(page.text(), "exact selected text\r\n");
-    let current_revision = journal
-        .load(create().conversation())
-        .expect("load before deselect")
-        .expect("record before deselect")
-        .revision();
     journal
         .accept(&operation(
-            4,
-            current_revision,
-            ControlIntent::SelectFile { attachment: file.operation(), selected: false },
+            3,
+            3,
+            ControlIntent::SelectFile { attachment: attach.id(), selected: false },
         ))
         .expect("deselect");
-    assert!(matches!(
-        journal.prepare_inputs(
-            &capture,
-            InvocationId::new([13; 16]).expect("stale invocation"),
-            &request(prompt),
-        ),
-        Ok(InputAdmission::Stale)
-    ));
-    assert!(journal.read_file_page(&start, page_request).is_err());
-    let capture = journal.capture_execution(&start).expect("current capture");
-    assert!(!capture.inputs().conversation().contains(&file.operation().to_string()));
+    let capture = journal
+        .capture_inputs(
+            create().conversation(),
+            ActorId::new([3; 16]).expect("owner"),
+            WorkspaceId::new([4; 16]).expect("workspace"),
+        )
+        .expect("capture");
+    assert!(!capture.inputs().conversation().contains("exact selected text"));
     drop(journal);
     let journal = store(root.path());
     let record = journal.load(create().conversation()).expect("replay").expect("record");
     assert!(!record.files().entries()[0].selected());
     assert_eq!(record.inputs().invocations().len(), 1);
-}
-
-#[test]
-fn large_selected_file_uses_exact_metadata_and_continues_through_immutable_pages() {
-    let root = tempfile::tempdir().expect("root");
-    let mut journal = store(root.path());
-    journal.accept(&create()).expect("create");
-    let bytes = vec![b'x'; 17 * 1024 * 1024];
-    let text = ValidatedFileText::new(bytes).expect("large text");
-    let attach = attachment(&text);
-    let file = match attach.intent() {
-        ControlIntent::AttachFile { file, .. } => file.clone(),
-        _ => unreachable!("attachment helper returns attach-file intent"),
-    };
-    journal.accept_file(&attach, &text, b"confirmed preview".to_vec()).expect("attach");
-    let start =
-        operation(3, 2, ControlIntent::StartExecution { run: [5; 16], settings_digest: [6; 32] });
-    journal.accept(&start).expect("start");
-    let captured = journal.capture_execution(&start).expect("capture");
-    let prompt = captured.conversation_with_guidance().expect("live conversation view");
-    assert!(prompt.contains("attachment_read"));
-    assert!(prompt.contains(&file.operation().to_string()));
-    assert!(!prompt.contains(&"x".repeat(1024)));
-    journal
-        .prepare_inputs(
-            &captured,
-            InvocationId::new([12; 16]).expect("invocation"),
-            &request(&prompt),
-        )
-        .expect("bind metadata prompt");
-
-    let observation = file.initial().observation();
-    let first_request = AttachmentReadRequest::new(
-        file.operation(),
-        file.initial().operation(),
-        observation.source_digest(),
-        observation.digest(),
-        observation.source_bytes(),
-        observation.range(),
-        observation.range().0,
-        32 * 1024,
-    )
-    .expect("first range request");
-    let first = journal.read_file_page(&start, first_request).expect("first page");
-    assert_eq!(first.text().len(), 32 * 1024);
-    assert_eq!(first.next_offset(), Some(32 * 1024));
-    let stale_request = AttachmentReadRequest::new(
-        file.operation(),
-        file.initial().operation(),
-        observation.source_digest(),
-        peritus_types::Sha256Digest::new([99; 32]),
-        observation.source_bytes(),
-        observation.range(),
-        observation.range().0,
-        32 * 1024,
-    )
-    .expect("structurally valid but stale digest");
-    assert!(journal.read_file_page(&start, stale_request).is_err());
-    let second_request = AttachmentReadRequest::new(
-        file.operation(),
-        file.initial().operation(),
-        observation.source_digest(),
-        observation.digest(),
-        observation.source_bytes(),
-        observation.range(),
-        first.next_offset().expect("continuation"),
-        32 * 1024,
-    )
-    .expect("second range request");
-    let second = journal.read_file_page(&start, second_request).expect("second page");
-    assert_eq!(second.offset(), 32 * 1024);
-    assert_eq!(second.text(), "x".repeat(32 * 1024));
-}
-
-#[test]
-fn empty_confirmed_file_has_an_explicit_terminal_attachment_page() {
-    let root = tempfile::tempdir().expect("root");
-    let mut journal = store(root.path());
-    journal.accept(&create()).expect("create");
-    let text = ValidatedFileText::new(Vec::new()).expect("empty text is valid");
-    let attach = attachment(&text);
-    let file = match attach.intent() {
-        ControlIntent::AttachFile { file, .. } => file.clone(),
-        _ => unreachable!("attachment helper returns attach-file intent"),
-    };
-    journal.accept_file(&attach, &text, b"confirmed preview".to_vec()).expect("attach");
-    let start =
-        operation(3, 2, ControlIntent::StartExecution { run: [5; 16], settings_digest: [6; 32] });
-    journal.accept(&start).expect("start");
-    let observation = file.initial().observation();
-    let request = AttachmentReadRequest::new(
-        file.operation(),
-        file.initial().operation(),
-        observation.source_digest(),
-        observation.digest(),
-        0,
-        (0, 0),
-        0,
-        4,
-    )
-    .expect("empty range is valid");
-    let page = journal.read_file_page(&start, request).expect("empty terminal page");
-    assert!(page.text().is_empty());
-    assert_eq!(page.next_offset(), None);
 }

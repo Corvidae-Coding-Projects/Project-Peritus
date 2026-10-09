@@ -13,7 +13,7 @@ pub(crate) fn job(preparation: Sha256Digest, plan: JobPlan) -> Sha256Digest {
     bytes.extend_from_slice(preparation.as_bytes());
     bytes.extend_from_slice(&plan.active_process_limit().to_be_bytes());
     bytes.extend_from_slice(&plan.job_memory_bytes().to_be_bytes());
-    bytes.extend_from_slice(&plan.cpu_time_millis().unwrap_or(0).to_be_bytes());
+    bytes.extend_from_slice(&plan.cpu_time_millis().to_be_bytes());
     peritus_codec::sha256(&bytes)
 }
 

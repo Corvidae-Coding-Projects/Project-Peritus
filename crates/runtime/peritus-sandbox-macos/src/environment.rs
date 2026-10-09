@@ -10,6 +10,10 @@ use crate::{
     error,
 };
 
+const MAX_ENVIRONMENT_NAMES: usize = 1_024;
+const MAX_ENVIRONMENT_NAME_BYTES: usize = 255;
+const MAX_ENVIRONMENT_VALUE_BYTES: usize = 64 * 1_024;
+
 /// One exact non-secret environment assignment carried in the protected manifest.
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct EnvironmentEntry {
@@ -21,12 +25,18 @@ impl EnvironmentEntry {
     /// Creates one portable target assignment.
     ///
     /// # Errors
-    /// Rejects an empty name, `=` or NUL in the name, or NUL in the value.
+    /// Rejects an invalid name, NUL-bearing value, or an excessive value.
     pub fn new(name: String, value: String) -> Result<Self, MacosError> {
-        if name.is_empty() || name.contains(['=', '\0']) || value.as_bytes().contains(&0) {
+        let valid_name = !name.is_empty()
+            && name.len() <= MAX_ENVIRONMENT_NAME_BYTES
+            && name.bytes().enumerate().all(|(index, byte)| {
+                byte == b'_' || byte.is_ascii_alphabetic() || (index > 0 && byte.is_ascii_digit())
+            });
+        if !valid_name || value.len() > MAX_ENVIRONMENT_VALUE_BYTES || value.as_bytes().contains(&0)
+        {
             return Err(error::invalid(
                 MacosOperation::Manifest,
-                "target environment assignment contains an invalid native name or NUL",
+                "target environment assignment is invalid or excessive",
             ));
         }
         Ok(Self { name, value })
@@ -80,6 +90,12 @@ pub(crate) fn project_environment(
 }
 
 pub(crate) fn canonicalize(entries: &mut [EnvironmentEntry]) -> Result<(), MacosError> {
+    if entries.len() > MAX_ENVIRONMENT_NAMES {
+        return Err(error::limited(
+            MacosOperation::Manifest,
+            "target environment assignment count exceeds its bound",
+        ));
+    }
     entries.sort_by(|left, right| left.name.cmp(&right.name));
     if entries.windows(2).any(|pair| pair[0].name == pair[1].name) {
         return Err(error::invalid(
@@ -88,25 +104,4 @@ pub(crate) fn canonicalize(entries: &mut [EnvironmentEntry]) -> Result<(), Macos
         ));
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn environment_projection_has_no_host_name_count_or_value_ceiling() {
-        let mut entries = (0..1_025)
-            .map(|index| {
-                EnvironmentEntry::new(
-                    format!("VARIABLE_{index}_{}", "N".repeat(256)),
-                    if index == 0 { "v".repeat(65 * 1_024) } else { String::new() },
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .expect("environment projection");
-        canonicalize(&mut entries).expect("canonical environment");
-        assert_eq!(entries.len(), 1_025);
-        assert_eq!(entries[0].value().len(), 65 * 1_024);
-    }
 }

@@ -176,8 +176,6 @@ enum PendingRequest {
     },
     WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),
-    WorkbenchCheckpointPage(peritus_app_protocol::WorkbenchCheckpointPageRequest),
-    WorkbenchRewindPage(peritus_app_protocol::WorkbenchRewindPageRequest),
     WorkbenchMemory(peritus_app_protocol::WorkbenchMemoryQuery),
     WorkbenchInit(peritus_app_protocol::InitDiscoveryRequest),
     WorkbenchPermissions(peritus_app_protocol::WorkbenchQuery),
@@ -192,9 +190,6 @@ enum PendingRequest {
     WorkbenchFilePreview(peritus_app_protocol::WorkbenchFileRequest),
     WorkbenchFiles(peritus_app_protocol::WorkbenchFileQuery),
     WorkbenchReview(peritus_app_protocol::WorkbenchReviewQuery),
-    WorkbenchReviewSummary(peritus_app_protocol::WorkbenchReviewQuery),
-    WorkbenchReviewDiff(peritus_app_protocol::WorkbenchReviewDiffQuery),
-    WorkbenchReviewDiffBytes(peritus_app_protocol::WorkbenchReviewDiffBytesQuery),
     WorkbenchImageUpload {
         transfer: peritus_app_protocol::TransferId,
         step: crate::image_import::UploadStep,

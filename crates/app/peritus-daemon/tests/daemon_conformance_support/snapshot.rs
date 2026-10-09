@@ -53,8 +53,7 @@ fn qualify(after_commit: bool) -> io::Result<()> {
         || field(recovery.get(3).copied(), "manifest_sha256")? != manifest
         || field(recovery.get(4).copied(), "journal_verified")? != "true"
         || field(recovery.get(5).copied(), "retained")? != after_commit.to_string()
-        || field(recovery.get(6).copied(), "snapshot_refs")?
-            != (2 * u8::from(after_commit)).to_string()
+        || field(recovery.get(6).copied(), "snapshot_refs")? != u8::from(after_commit).to_string()
     {
         return Err(io::Error::other("snapshot recovery facts differ from the commit boundary"));
     }

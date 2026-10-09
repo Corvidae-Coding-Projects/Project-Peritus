@@ -57,26 +57,6 @@ pub(super) const LAUNCH_TYPES: &[AppTypeDescriptor] = &[
         fields: &[nested("query", "WorkbenchQuery"), id("run", "RunId")],
     },
     AppTypeDescriptor {
-        name: "WorkbenchPreviewOutputQuery",
-        rust_type: "WorkbenchPreviewOutputQuery",
-        fields: &[
-            nested("query", "WorkbenchQuery"),
-            id("run", "RunId"),
-            id("launch", "ControlOperationId"),
-            field(
-                "stream",
-                W::U16,
-                &[],
-                "WorkbenchPreviewOutputStream",
-                "WorkbenchPreviewOutputStream",
-                J::Ref("WorkbenchPreviewOutputStream"),
-                true,
-            ),
-            field("offset", W::U64, &[], "u64", "UInt64", J::U64String, true),
-            field("maximumBytes", W::U32, &[B::NonZero], "u32", "number", J::U32, true),
-        ],
-    },
-    AppTypeDescriptor {
         name: "WorkbenchLaunchSource",
         rust_type: "WorkbenchLaunchSource",
         fields: &[

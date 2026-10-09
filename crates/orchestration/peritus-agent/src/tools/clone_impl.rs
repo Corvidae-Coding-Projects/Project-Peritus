@@ -18,7 +18,6 @@ impl ToolProposal {
             && left.replay_identity == right.replay_identity
             && left.revision == right.revision
             && left.deadline == right.deadline
-            && left.authority_epoch == right.authority_epoch
             && left.side_effect == right.side_effect
             && left.idempotency == right.idempotency
     }
@@ -58,7 +57,6 @@ impl Clone for ToolProposal {
             replay_identity: self.replay_identity,
             revision: self.revision,
             deadline: self.deadline,
-            authority_epoch: self.authority_epoch,
             side_effect: self.side_effect,
             idempotency: self.idempotency,
         }

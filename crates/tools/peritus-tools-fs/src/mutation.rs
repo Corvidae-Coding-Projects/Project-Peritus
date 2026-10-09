@@ -4,8 +4,8 @@ use peritus_patch::{FinalFile, PatchOperation, PatchSet, Preimage};
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
 
 use crate::{
-    CreateInput, FsToolError, FsToolErrorKind, FsToolOperation, MutationContent, PatchEdit,
-    PatchInput, RecoveryClass, RemoveInput, ReplaceInput, WriteInput,
+    CreateInput, FsToolError, FsToolErrorKind, FsToolOperation, PatchEdit, PatchInput,
+    RecoveryClass, RemoveInput, ReplaceInput, WriteInput,
 };
 
 /// Exact C1 workspace version bound into an inert patch.
@@ -131,11 +131,7 @@ fn create(input: CreateInput) -> Result<PatchOperation, FsToolError> {
 
 fn replace(input: ReplaceInput) -> Result<PatchOperation, FsToolError> {
     let fields = input.0;
-    let bytes = match fields.content {
-        MutationContent::Inline(bytes) => bytes,
-        MutationContent::Artifact(_) => return Err(patch_error(FsToolOperation::Replace)),
-    };
-    let final_file = FinalFile::new(bytes, fields.mode, fields.line_endings)
+    let final_file = FinalFile::new(fields.bytes, fields.mode, fields.line_endings)
         .map_err(|_| patch_error(FsToolOperation::Replace))?;
     PatchOperation::replace(fields.existing.path, fields.existing.preimage, final_file)
         .map_err(|_| patch_error(FsToolOperation::Replace))
@@ -151,11 +147,8 @@ fn final_file(
     operation: FsToolOperation,
     input: &crate::input::FinalInput,
 ) -> Result<FinalFile, FsToolError> {
-    let bytes = match &input.content {
-        MutationContent::Inline(bytes) => bytes.clone(),
-        MutationContent::Artifact(_) => return Err(patch_error(operation)),
-    };
-    FinalFile::new(bytes, input.mode, input.line_endings).map_err(|_| patch_error(operation))
+    FinalFile::new(input.bytes.clone(), input.mode, input.line_endings)
+        .map_err(|_| patch_error(operation))
 }
 
 const fn patch_error(operation: FsToolOperation) -> FsToolError {

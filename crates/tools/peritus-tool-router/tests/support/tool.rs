@@ -15,32 +15,10 @@ use peritus_types::Sha256Digest;
 use super::{AuthorityReceipts, Ids};
 
 pub fn router(idempotency: IdempotencySemantics) -> ToolRouter {
-    router_with_timeout(idempotency, true)
-}
-
-pub fn router_without_timeout(idempotency: IdempotencySemantics) -> ToolRouter {
-    router_with_timeout(idempotency, false)
-}
-
-fn router_with_timeout(idempotency: IdempotencySemantics, timed: bool) -> ToolRouter {
-    let (descriptor, operations) = descriptor_and_operations(idempotency, timed);
+    let (descriptor, operations) = descriptor_and_operations(idempotency);
     ToolRouter::new(
         ToolRegistry::new(vec![descriptor], &operations).unwrap(),
         RouterLimits::new(2, 8).unwrap(),
-    )
-}
-
-pub fn call_without_timeout(ids: &Ids, key: &str) -> ToolCall {
-    let timed = call(ids, key);
-    ToolCall::new_with_lifetime(
-        timed.action_id(),
-        timed.name().clone(),
-        timed.version(),
-        timed.arguments().clone(),
-        CallLimits::new_optional(None, 2_048, 256, 256, 4, 1).unwrap(),
-        timed.revision(),
-        peritus_tool_protocol::CallLifetime::UntilCancelled { epoch: timed.authority_epoch() },
-        timed.idempotency_key().clone(),
     )
 }
 
@@ -89,7 +67,6 @@ pub const fn complete_truncation() -> TruncationMetadata {
 
 fn descriptor_and_operations(
     idempotency: IdempotencySemantics,
-    timed: bool,
 ) -> (Arc<ToolDescriptor>, OperationRegistry) {
     let name = peritus_types::CapabilityName::new("fixture.inspect".to_owned()).unwrap();
     let operation = OperationDescriptor::new(
@@ -116,7 +93,6 @@ fn descriptor_and_operations(
         false,
     )
     .unwrap();
-    let limits = ToolLimits::new(2_000, 4_096, 512, 512, 8, 2, 128).unwrap();
     let descriptor = ToolDescriptor::new(
         name,
         SemanticVersion::new(1, 0, 0).unwrap(),
@@ -126,7 +102,7 @@ fn descriptor_and_operations(
         LeaseRequirement::None,
         idempotency,
         ImplementationIdentity::new("fixture-router-dispatcher".to_owned()).unwrap(),
-        if timed { limits } else { limits.without_timeout() },
+        ToolLimits::new(2_000, 4_096, 512, 512, 8, 2, 128).unwrap(),
         ControlSet::new(false, false, false, true, true),
         ProtocolCompatibility::V1,
         BoundedText::new("fixture".to_owned()).unwrap(),

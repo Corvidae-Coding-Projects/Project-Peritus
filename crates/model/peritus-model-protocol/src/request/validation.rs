@@ -47,6 +47,13 @@ fn validate_counts(
     if blocks.is_none_or(|count| count > limits.max_content_blocks()) {
         return Err(invalid("messages", "aggregate content-block count exceeds its bound"));
     }
+    let media = messages
+        .iter()
+        .flat_map(Message::content)
+        .try_fold(0_usize, |total, block| total.checked_add(block.inline_media_bytes()));
+    if media.is_none_or(|bytes| bytes > limits.max_total_media_bytes()) {
+        return Err(invalid("messages", "aggregate inline-media bytes exceed their bound"));
+    }
     if tools.len() > limits.max_tools() {
         return Err(invalid("tools", "tool count exceeds its request bound"));
     }

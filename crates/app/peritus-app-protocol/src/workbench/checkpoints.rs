@@ -222,40 +222,127 @@ impl WorkbenchCheckpointReceipt {
     pub fn external_effects(&self) -> &[String] {
         &self.external_effects
     }
-    /// Computes the page-independent fingerprint over the complete retained manifest.
-    ///
-    /// # Errors
-    /// Rejects a fact that cannot be represented by the canonical fingerprint encoding.
-    pub fn coverage_fingerprint(&self) -> Result<Sha256Digest, peritus_codec::CodecError> {
-        crate::wire::workbench_checkpoints::checkpoint_fingerprint(self)
-    }
-
-    /// Computes the paging binding over complete coverage and one selected revision.
-    ///
-    /// # Errors
-    /// Rejects a fact that cannot be represented by the canonical fingerprint encoding.
-    pub fn page_fingerprint(
-        &self,
-        selected_revision: u64,
-    ) -> Result<Sha256Digest, peritus_codec::CodecError> {
-        crate::wire::workbench_checkpoints::checkpoint_page_fingerprint(self, selected_revision)
-    }
 }
-
-mod restore;
-pub use restore::{WorkbenchRestoreReceipt, WorkbenchRestoreStatus, WorkbenchRestoreSummary};
 
 mod rewind;
 pub use rewind::{
-    WorkbenchRewindConfirmation, WorkbenchRewindDisposition, WorkbenchRewindMode,
-    WorkbenchRewindPath, WorkbenchRewindPreview, WorkbenchRewindRequest,
+    WorkbenchRewindDisposition, WorkbenchRewindMode, WorkbenchRewindPath, WorkbenchRewindPreview,
+    WorkbenchRewindRequest,
 };
 
-mod paging;
-pub use paging::{
-    WorkbenchCheckpointCoveragePage, WorkbenchCheckpointPageRequest, WorkbenchCoverageCursor,
-    WorkbenchCoverageSection, WorkbenchRewindCoveragePage, WorkbenchRewindPageRequest,
-};
+/// Public terminal restore state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkbenchRestoreStatus {
+    /// All planned covered paths were restored and verified.
+    Applied,
+    /// At least one covered path conflicts; no workspace byte was changed.
+    Conflict,
+    /// A prior interrupted operation requires explicit recovery inspection.
+    RecoveryRequired,
+}
+
+/// Durable post-confirmation receipt.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WorkbenchRestoreReceipt {
+    restore: ControlOperationId,
+    checkpoint: ControlOperationId,
+    recovery_checkpoint: ControlOperationId,
+    query: WorkbenchQuery,
+    accepted_revision: u64,
+    status: WorkbenchRestoreStatus,
+    restored: Vec<String>,
+    conflicts: Vec<String>,
+    external_effects: Vec<String>,
+}
+impl WorkbenchRestoreReceipt {
+    /// Constructs one bounded truthful receipt.
+    ///
+    /// # Errors
+    /// Rejects absent revisions, invalid target lists, or inconsistent status.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "restore receipts retain independent identities and exact outcomes"
+    )]
+    pub fn new(
+        restore: ControlOperationId,
+        checkpoint: ControlOperationId,
+        recovery_checkpoint: ControlOperationId,
+        query: WorkbenchQuery,
+        accepted_revision: u64,
+        status: WorkbenchRestoreStatus,
+        restored: Vec<String>,
+        conflicts: Vec<String>,
+        external_effects: Vec<String>,
+    ) -> Result<Self, AppProtocolError> {
+        if accepted_revision == 0
+            || u16::try_from(restored.len()).is_err()
+            || u16::try_from(conflicts.len()).is_err()
+            || u16::try_from(external_effects.len()).is_err()
+            || matches!(status, WorkbenchRestoreStatus::Conflict) == conflicts.is_empty()
+            || restored.iter().chain(&conflicts).chain(&external_effects).any(|text| {
+                text.is_empty() || text.len() > 4096 || text.chars().any(char::is_control)
+            })
+        {
+            return Err(invalid());
+        }
+        Ok(Self {
+            restore,
+            checkpoint,
+            recovery_checkpoint,
+            query,
+            accepted_revision,
+            status,
+            restored,
+            conflicts,
+            external_effects,
+        })
+    }
+    /// Returns restore operation identity.
+    #[must_use]
+    pub const fn restore(&self) -> ControlOperationId {
+        self.restore
+    }
+    /// Returns source checkpoint identity.
+    #[must_use]
+    pub const fn checkpoint(&self) -> ControlOperationId {
+        self.checkpoint
+    }
+    /// Returns exact retained pre-apply recovery checkpoint identity.
+    #[must_use]
+    pub const fn recovery_checkpoint(&self) -> ControlOperationId {
+        self.recovery_checkpoint
+    }
+    /// Returns conversation/workspace scope.
+    #[must_use]
+    pub const fn query(&self) -> WorkbenchQuery {
+        self.query
+    }
+    /// Returns terminal journal revision.
+    #[must_use]
+    pub const fn accepted_revision(&self) -> u64 {
+        self.accepted_revision
+    }
+    /// Returns terminal restore status.
+    #[must_use]
+    pub const fn status(&self) -> WorkbenchRestoreStatus {
+        self.status
+    }
+    /// Borrows paths actually restored.
+    #[must_use]
+    pub fn restored(&self) -> &[String] {
+        &self.restored
+    }
+    /// Borrows conflicting paths retained untouched.
+    #[must_use]
+    pub fn conflicts(&self) -> &[String] {
+        &self.conflicts
+    }
+    /// Borrows external effects explicitly not restored.
+    #[must_use]
+    pub fn external_effects(&self) -> &[String] {
+        &self.external_effects
+    }
+}
 
 fn validate_lists<T>(
     revision: u64,
@@ -267,12 +354,13 @@ where
     T: CheckpointPathName,
 {
     if revision == 0
+        || u16::try_from(paths.len()).is_err()
+        || u16::try_from(exclusions.len()).is_err()
+        || u16::try_from(external_effects.len()).is_err()
         || paths.windows(2).any(|pair| pair[0].path_name() >= pair[1].path_name())
         || exclusions
             .iter()
-            .any(|text| text.is_empty() || text.len() > 4_610 || text.chars().any(char::is_control))
-        || external_effects
-            .iter()
+            .chain(external_effects)
             .any(|text| text.is_empty() || text.len() > 512 || text.chars().any(char::is_control))
     {
         Err(invalid())
@@ -304,6 +392,3 @@ fn valid_path(path: &str) -> bool {
             .split('/')
             .all(|component| !component.is_empty() && component != "." && component != "..")
 }
-
-#[cfg(test)]
-mod tests;

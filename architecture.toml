@@ -1,6 +1,6 @@
 schema = 3
-soft_source_lines = 500
-hard_source_lines = 500
+soft_source_lines = 400
+hard_source_lines = 700
 root_module_lines = 80
 required_license = "MIT"
 ignored_directories = [
@@ -18,14 +18,19 @@ ignored_directories = [
 forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
 trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
 source_exceptions = [
+    { path = "xtask/src/reproducibility/verification_commands/tests.rs", owner = "A0", rationale = "The canonical architecture fixture keeps the complete ordered package and verification-class inventory together so strict Verus command drift is detected by one exact fail-closed comparison." },
     { path = "crates/foundation/peritus-release-policy/src/catalog.rs", owner = "H4", rationale = "The closed 25-criterion and 44-evidence-requirement H4 catalog keeps stable IDs, exact criterion ownership, source-class mappings, and canonical ordering together as one directly auditable release contract." },
+    { path = "crates/app/peritus-cli/src/args.rs", owner = "G1", rationale = "The strict dependency-free CLI parser keeps the complete closed command grammar, option cardinality, and stable usage failures in one auditable surface while command value types live separately." },
     { path = "crates/app/peritus-tui/src/model.rs", owner = "G2", rationale = "The bounded presentation state keeps view, notice, prompt, event, terminal, and pending-request invariants together while protocol and interaction transitions remain split into submodules." },
     { path = "crates/extensions/peritus-mcp/src/server.rs", owner = "G3", rationale = "The MCP server keeps its closed JSON-RPC lifecycle, request dispatch, cancellation registry, bounded pagination, and response mapping in one auditable protocol surface." },
+    { path = "crates/extensions/peritus-plugin-host/src/host.rs", owner = "G3", rationale = "The plugin host keeps discovery-to-start-to-authorize-to-invoke-to-stop lifecycle ordering and owned runtime state in one auditable orchestration surface." },
     { path = "crates/extensions/peritus-plugin-sdk/src/manifest.rs", owner = "G3", rationale = "The canonical plugin manifest keeps the versioned entrypoint, capability, quota, signature, trust, validation, and digest contract together for compatibility review." },
     { path = "crates/analysis/peritus-eval/src/aggregate/reducer.rs", owner = "E3", rationale = "The pure evaluation reducer keeps its closed command vocabulary, legal phase transitions, and corresponding canonical command encoding in one auditable surface." },
     { path = "crates/analysis/peritus-eval/src/aggregate/state.rs", owner = "E3", rationale = "Complete evaluation state and its versioned canonical encode/decode implementation remain together so replay digest correspondence can be audited directly." },
     { path = "crates/analysis/peritus-eval/src/aggregate/types.rs", owner = "E3", rationale = "The closed durable aggregate vocabulary keeps phase, rollout, plan, publication, report, and failure tag mappings visible together." },
+    { path = "crates/analysis/peritus-eval/src/durability/commit.rs", owner = "E3", rationale = "Evaluation commit logic keeps journal append, artifact dependency admission, outbox insertion, claim acknowledgement, and checkpoint ordering in one transaction audit surface." },
     { path = "crates/analysis/peritus-eval/src/durability/directive.rs", owner = "E3", rationale = "The three closed evaluation outbox directive families keep canonical codecs, deterministic identities, and claimed-message validation together." },
+    { path = "crates/analysis/peritus-eval/src/profile/binding.rs", owner = "E3", rationale = "Frozen profile construction keeps every dataset, harness, provider, execution, retry, metric, infrastructure, and limit binding beside its domain-separated digest." },
     { path = "crates/analysis/peritus-eval/src/report/analysis.rs", owner = "E3", rationale = "Evaluation analysis keeps correctness denominators, paired evidence, resource aggregation, missing-data policy, and reliability accounting in one checked derivation." },
     { path = "crates/analysis/peritus-eval/src/verified.rs", owner = "E3", rationale = "The E3 Verus refinement surface keeps executable predicates adjacent to their specifications and proofs so runtime-to-proof correspondence remains inspectable." },
     { path = "crates/orchestration/peritus-agent/src/canonical/event_wire.rs", owner = "D0", rationale = "The closed version-one command payload codec keeps its exhaustive encode/decode tag correspondence in one audited source." },
@@ -34,8 +39,10 @@ source_exceptions = [
     { path = "crates/orchestration/peritus-agent/src/runtime/tools.rs", owner = "D0", rationale = "The C4 coordinator keeps proposal-order slot state and the sole prepare, dispatch, control, recovery, and result projection boundary together." },
     { path = "crates/orchestration/peritus-agent/tests/runtime_driver.rs", owner = "D0", rationale = "The fake-provider durability matrix shares one exact scripted-provider and request fixture across completion, duplicate, malformed-order, and restart cases." },
     { path = "crates/orchestration/peritus-agent/tests/runtime_tools.rs", owner = "D0", rationale = "The end-to-end D0/C4 test intentionally shows complete B0/B1/C0 authority and lease assembly beside inspect, edit, run, and test effect ordering." },
+    { path = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", owner = "C6", rationale = "The compaction matrix keeps source validation and operational graph-replacement cases beside their shared canonical graph fixture." },
     { path = "crates/orchestration/peritus-review/tests/domain_engine.rs", owner = "D2", rationale = "The D2 engine matrix keeps exact binding, quorum, waiver, terminal, and shared identity fixtures together so each assertion exercises the same deterministic domain construction." },
     { path = "crates/orchestration/peritus-review/tests/domain_transitions.rs", owner = "D2", rationale = "The D2 transition matrix keeps reconciliation, confirmation, cancellation, supersession, and oscillation sequences beside one shared canonical review-history fixture." },
+    { path = "crates/state/peritus-migrations/src/engine.rs", owner = "C0", rationale = "The migration engine keeps backup, transaction, integrity, recovery, and version publication ordering in one auditable implementation." },
 ]
 forbidden_dependencies = []
 controlled_source_roots = [

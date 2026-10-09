@@ -67,18 +67,12 @@ fn write_payload(
         AppRequestPayload::Improvements(value) => super::improvements::write_request(writer, value),
         AppRequestPayload::PreviewWorkbenchRewind(_)
         | AppRequestPayload::InspectWorkbenchCheckpoint(_)
-        | AppRequestPayload::QueryWorkbenchCheckpointPage(_)
-        | AppRequestPayload::QueryWorkbenchRewindPage(_)
         | AppRequestPayload::QueryWorkbenchMemory(_)
         | AppRequestPayload::DiscoverInit(_)
         | AppRequestPayload::PreviewWorkbenchCompaction(_)
         | AppRequestPayload::QueryWorkbenchResult(_)
         | AppRequestPayload::QueryWorkbenchPreview(_)
-        | AppRequestPayload::QueryWorkbenchPreviewOutput(_)
         | AppRequestPayload::QueryWorkbenchReview(_)
-        | AppRequestPayload::QueryWorkbenchReviewSummary(_)
-        | AppRequestPayload::QueryWorkbenchReviewDiff(_)
-        | AppRequestPayload::QueryWorkbenchReviewDiffBytes(_)
         | AppRequestPayload::QueryConversationLibrary(_)
         | AppRequestPayload::BeginWorkbenchFileUpload(_)
         | AppRequestPayload::PreviewWorkbenchFileImport(_)
@@ -144,19 +138,13 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::Improvements(_) => 180,
         AppRequestPayload::PreviewWorkbenchRewind(_) => 120,
         AppRequestPayload::InspectWorkbenchCheckpoint(_) => 121,
-        AppRequestPayload::QueryWorkbenchCheckpointPage(_) => 122,
-        AppRequestPayload::QueryWorkbenchRewindPage(_) => 123,
         AppRequestPayload::QueryWorkbenchMemory(_) => 161,
         AppRequestPayload::DiscoverInit(_) => 162,
         AppRequestPayload::QueryWorkbenchPermissions(_) => 160,
         AppRequestPayload::PreviewWorkbenchCompaction(_) => 42,
         AppRequestPayload::QueryWorkbenchResult(_) => 100,
         AppRequestPayload::QueryWorkbenchPreview(_) => 101,
-        AppRequestPayload::QueryWorkbenchPreviewOutput(_) => 103,
         AppRequestPayload::QueryWorkbenchReview(_) => 80,
-        AppRequestPayload::QueryWorkbenchReviewSummary(_) => 109,
-        AppRequestPayload::QueryWorkbenchReviewDiff(_) => 105,
-        AppRequestPayload::QueryWorkbenchReviewDiffBytes(_) => 107,
         AppRequestPayload::QueryConversationLibrary(_) => 140,
         AppRequestPayload::QueryWorkbenchImages(_) => 37,
         AppRequestPayload::BeginWorkbenchImageUpload(_) => 35,
@@ -230,10 +218,6 @@ pub(super) fn read_request(
     Ok(request)
 }
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "canonical tag dispatch keeps wire compatibility visible in one exhaustive match"
-)]
 fn read_payload(
     reader: &mut CanonicalReader<'_>,
     limits: AppProtocolLimits,
@@ -244,26 +228,11 @@ fn read_payload(
             AppRequestPayload::QueryWorkbenchResult(super::workbench_launch::read_query(reader)?)
         }
         80 => AppRequestPayload::QueryWorkbenchReview(super::workbench_review::read_query(reader)?),
-        109 => AppRequestPayload::QueryWorkbenchReviewSummary(super::workbench_review::read_query(
-            reader,
-        )?),
-        105 => AppRequestPayload::QueryWorkbenchReviewDiff(
-            super::workbench_review::read_diff_query(reader)?,
-        ),
-        107 => AppRequestPayload::QueryWorkbenchReviewDiffBytes(
-            super::workbench_review::read_diff_bytes_query(reader)?,
-        ),
         120 => AppRequestPayload::PreviewWorkbenchRewind(
             super::workbench_checkpoints::read_request(reader)?,
         ),
         121 => AppRequestPayload::InspectWorkbenchCheckpoint(
             super::workbench_checkpoints::read_request(reader)?,
-        ),
-        122 => AppRequestPayload::QueryWorkbenchCheckpointPage(
-            super::workbench_checkpoint_pages::read_checkpoint_request(reader)?,
-        ),
-        123 => AppRequestPayload::QueryWorkbenchRewindPage(
-            super::workbench_checkpoint_pages::read_rewind_request(reader)?,
         ),
         140 => AppRequestPayload::QueryConversationLibrary(super::workbench_library::read_query(
             reader,
@@ -309,9 +278,6 @@ fn read_payload(
         101 => {
             AppRequestPayload::QueryWorkbenchPreview(super::workbench_launch::read_query(reader)?)
         }
-        103 => AppRequestPayload::QueryWorkbenchPreviewOutput(
-            super::workbench_launch::read_output_query(reader)?,
-        ),
         43 => AppRequestPayload::QueryWorkbenchExecution(super::workbench::read_query(reader)?),
         45 => AppRequestPayload::QueryInteractionBinding(read_conversation_query(reader)?),
         30 => AppRequestPayload::QueryWorkbench(super::workbench::read_query(reader)?),

@@ -73,17 +73,22 @@ fn pending_input_waits_for_unknown_command_reconciliation_before_provider_resume
             .directory
             .join(format!("{:032x}.trace", u128::from_be_bytes(run.into_bytes())))
             .with_extension("effects.bin");
-        let scope = format!(
-            "peritus-{:032x}-writer-1-revision-1-invocation-1-test",
-            u128::from_be_bytes(run.into_bytes())
-        );
-        support::write_command_receipt(
-            &effects,
-            &scope,
-            2,
-            Some(support::exact_command_owner_fixture(run)),
-            true,
-        );
+        let receipt = serde_json::json!({
+            "version": 1,
+            "scope": format!(
+                "peritus-{:032x}-writer-1-revision-1-invocation-1-test",
+                u128::from_be_bytes(run.into_bytes())
+            ),
+            "ordinal": 1,
+            "call_id": "call-1",
+            "tool": "run_command",
+            "request_sha256": "00",
+            "state": "started",
+        });
+        let payload = serde_json::to_vec(&receipt).expect("receipt");
+        let mut bytes = u64::try_from(payload.len()).expect("length").to_le_bytes().to_vec();
+        bytes.extend(payload);
+        fs::write(&effects, bytes).expect("write interrupted receipt");
 
         let continuation = peritus_app_protocol::WorkbenchContinuation::new(
             query(workspace),
@@ -243,8 +248,12 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             panic!("multiple replies must not make the brief unreadable: {brief:?}")
         };
         assert_eq!(brief.proposals().len(), 2);
-        assert!(brief.proposals().iter().any(|proposal| proposal.text() == "First answer."));
-        assert!(brief.proposals().iter().any(|proposal| proposal.text() == "Revised answer."));
+        assert!(
+            brief.proposals().iter().any(|proposal| proposal.text().as_str() == "First answer.")
+        );
+        assert!(
+            brief.proposals().iter().any(|proposal| proposal.text().as_str() == "Revised answer.")
+        );
         let requests = writer.requests.lock().expect("requests").clone();
         assert_eq!(
             requests.len(),

@@ -5,8 +5,7 @@ use peritus_types::Sha256Digest;
 
 use crate::{JournalError, JournalErrorKind};
 
-/// Historical state-value recommendation retained for source compatibility; it is not an
-/// admission limit.
+/// Maximum opaque bytes in one journal-owned durable state value.
 pub const MAX_STATE_BYTES: usize = 16 * 1024 * 1024;
 /// Maximum bytes in one state-record key.
 pub const MAX_STATE_KEY_BYTES: usize = 1_024;
@@ -76,8 +75,8 @@ impl StateInstall {
     ///
     /// # Errors
     ///
-    /// Rejects reserved namespaces, empty or oversized keys, unrepresentable payload lengths,
-    /// zero revisions, and non-successor CAS revisions.
+    /// Rejects reserved namespaces, empty or oversized keys, oversized payloads, zero revisions,
+    /// and non-successor CAS revisions.
     pub fn new(
         namespace: u16,
         key: Vec<u8>,
@@ -89,10 +88,7 @@ impl StateInstall {
         if namespace == 0
             || key.is_empty()
             || key.len() > MAX_STATE_KEY_BYTES
-            || u64::try_from(bytes.len())
-                .ok()
-                .and_then(|length| i64::try_from(length).ok())
-                .is_none()
+            || bytes.len() > MAX_STATE_BYTES
             || !valid_revision
         {
             return Err(JournalError::new(

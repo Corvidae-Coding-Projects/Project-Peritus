@@ -32,7 +32,7 @@ fn brief(query: WorkbenchQuery) -> WorkbenchBrief {
         ControlOperationId::new([69; 16]).expect("proposal"),
         WorkbenchInvocationId::new([70; 16]).expect("invocation"),
         peritus_codec::sha256(proposal_text.as_str().as_bytes()),
-        proposal_text.as_str().to_owned(),
+        proposal_text,
     )
     .expect("proposal");
     WorkbenchBrief::with_sources(

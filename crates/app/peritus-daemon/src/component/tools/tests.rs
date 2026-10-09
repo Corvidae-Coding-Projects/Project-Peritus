@@ -41,13 +41,6 @@ fn duplicates_and_unknown_routes_are_rejected() {
 }
 
 #[test]
-fn duplicate_in_oversized_allowlist_is_reported_as_duplicate() {
-    let allowed = (0..257).map(|_| "fs.read".to_owned()).collect::<Vec<_>>();
-    let error = ToolComponents::build(&allowed, limits()).expect_err("duplicate rejected");
-    assert_eq!(error.kind(), ToolComponentErrorKind::DuplicateTool);
-}
-
-#[test]
 fn unsupported_git_merge_is_never_a_production_handler() {
     let allowed = vec!["git.merge".to_owned()];
     let error = ToolComponents::build(&allowed, limits()).expect_err("merge rejected");

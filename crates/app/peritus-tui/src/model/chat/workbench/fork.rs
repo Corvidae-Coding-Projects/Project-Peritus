@@ -37,16 +37,6 @@ impl AppModel {
                 receipt.checkpoint() == checkpoint && receipt.query() == source.query()
             })
             .map(peritus_app_protocol::WorkbenchCheckpointReceipt::references)
-            .or_else(|| {
-                self.chat
-                    .workbench
-                    .checkpoint_page
-                    .as_ref()
-                    .filter(|page| {
-                        page.checkpoint() == checkpoint && page.query() == source.query()
-                    })
-                    .map(peritus_app_protocol::WorkbenchCheckpointCoveragePage::references)
-            })
         else {
             self.notice(
                 NoticeLevel::Warning,

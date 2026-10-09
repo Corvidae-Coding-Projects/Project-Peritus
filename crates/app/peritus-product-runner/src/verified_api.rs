@@ -14,9 +14,7 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
 
-use crate::{
-    AttachmentReadRequest, AttachmentReadResponse, ProductRunnerError, control::HostPermissions,
-};
+use crate::{ProductRunnerError, control::HostPermissions};
 
 mod command_runtime;
 mod effect_stubs;
@@ -94,17 +92,6 @@ pub trait ConversationView: Send + Sync {
     /// Whether media is supplied only through the revisioned input port.
     fn uses_explicit_media(&self) -> bool {
         false
-    }
-    /// Whether the authenticated current input contains a selected immutable file attachment.
-    fn has_selected_file_attachments(&self) -> bool {
-        false
-    }
-    /// Reads a bounded page from an exact selected immutable attachment version.
-    fn read_attachment_range(
-        &self,
-        _request: AttachmentReadRequest,
-    ) -> Result<AttachmentReadResponse, String> {
-        Err("immutable attachment reads are unavailable".to_owned())
     }
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;

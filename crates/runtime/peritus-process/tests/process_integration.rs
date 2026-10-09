@@ -51,12 +51,8 @@ fn exact_committed_authority_launches_separate_bounded_pipe_streams() {
     .expect("execution plan");
     let intent = intent(&ids, &plan);
     let mut journal = open_journal(&root);
-    let receipts = commit_authority(
-        &mut journal,
-        &ids,
-        &intent,
-        plan.resource_policy().wall_millis().expect("finite wall limit"),
-    );
+    let receipts =
+        commit_authority(&mut journal, &ids, &intent, plan.resource_policy().wall_millis());
     let store = ProcessStore::open(root.registry(), root.workspace()).expect("process store");
     let gateway = ExecutionGateway::new(store);
     let request = ExecutionAuthorizationRequest::new(
@@ -120,7 +116,7 @@ fn non_dispatched_action_is_rejected_before_durable_consumption() {
         &mut journal,
         &ids,
         &action,
-        execution.resource_policy().wall_millis().expect("finite wall limit"),
+        execution.resource_policy().wall_millis(),
     );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("process store"),
@@ -237,7 +233,7 @@ fn writable_launch(
         &mut journal,
         ids,
         &action,
-        execution.resource_policy().wall_millis().expect("finite wall limit"),
+        execution.resource_policy().wall_millis(),
     );
     let claim = receipts.lease.transition().record().binding().as_use().expect("lease use").claim();
     let gateway = ExecutionGateway::new(

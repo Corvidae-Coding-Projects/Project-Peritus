@@ -1,9 +1,6 @@
 //! Bounded non-owning process control and observation handle.
 
 use std::{
-    fs::File,
-    io::{Read, Seek, SeekFrom},
-    path::PathBuf,
     sync::{
         Arc, Condvar, Mutex,
         mpsc::{SyncSender, TrySendError},
@@ -55,7 +52,6 @@ pub struct ProcessControl {
     shared: Arc<SharedObservation>,
     stdin_policy: StdinPolicy,
     terminal: TerminalCapabilities,
-    spool_directory: PathBuf,
 }
 
 impl ProcessControl {
@@ -64,9 +60,8 @@ impl ProcessControl {
         shared: Arc<SharedObservation>,
         stdin_policy: StdinPolicy,
         terminal: TerminalCapabilities,
-        spool_directory: PathBuf,
     ) -> Self {
-        Self { sender, shared, stdin_policy, terminal, spool_directory }
+        Self { sender, shared, stdin_policy, terminal }
     }
 
     /// Queues one bounded literal stdin write without blocking on a full control queue.
@@ -208,65 +203,6 @@ impl ProcessControl {
         }
     }
 
-    /// Reads the complete current spool for one exact process stream.
-    ///
-    /// # Errors
-    /// Returns a typed output error when the stream spool cannot be read.
-    pub fn full_spooled_stream_output(
-        &self,
-        stream: crate::OutputStream,
-    ) -> Result<Vec<u8>, ProcessError> {
-        let name = match stream {
-            crate::OutputStream::Stdout => "stdout.spool",
-            crate::OutputStream::Stderr => "stderr.spool",
-            crate::OutputStream::Terminal => "terminal.spool",
-        };
-        let path = self.spool_directory.join(name);
-        let mut file =
-            File::open(&path).map_err(|_| output_error("process output spool cannot be opened"))?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)
-            .map_err(|_| output_error("process output spool cannot be read"))?;
-        Ok(bytes)
-    }
-
-    /// Reads one exact bounded range from the current durable stream spool.
-    ///
-    /// # Errors
-    /// Returns a typed output error when the spool cannot be inspected or read.
-    pub fn spooled_stream_range(
-        &self,
-        stream: crate::OutputStream,
-        offset: u64,
-        maximum_bytes: usize,
-    ) -> Result<(u64, Vec<u8>), ProcessError> {
-        let name = match stream {
-            crate::OutputStream::Stdout => "stdout.spool",
-            crate::OutputStream::Stderr => "stderr.spool",
-            crate::OutputStream::Terminal => "terminal.spool",
-        };
-        let path = self.spool_directory.join(name);
-        let mut file =
-            File::open(&path).map_err(|_| output_error("process output spool cannot be opened"))?;
-        let total = file
-            .metadata()
-            .map_err(|_| output_error("process output spool metadata cannot be read"))?
-            .len();
-        if offset > total {
-            return Err(output_error("process output range begins past the retained stream"));
-        }
-        file.seek(SeekFrom::Start(offset))
-            .map_err(|_| output_error("process output spool range cannot be positioned"))?;
-        let remaining = total - offset;
-        let count =
-            usize::try_from(remaining.min(u64::try_from(maximum_bytes).unwrap_or(u64::MAX)))
-                .map_err(|_| output_error("process output range size cannot be represented"))?;
-        let mut bytes = vec![0; count];
-        file.read_exact(&mut bytes)
-            .map_err(|_| output_error("process output spool range cannot be read"))?;
-        Ok((total, bytes))
-    }
-
     /// Returns the terminal result after publication.
     #[must_use]
     pub fn terminal_result(&self) -> Option<TerminalResult> {
@@ -298,15 +234,6 @@ impl ProcessControl {
             ),
         })
     }
-}
-
-const fn output_error(detail: &'static str) -> ProcessError {
-    ProcessError::new(
-        ErrorCode::Output,
-        ProcessOperation::Stream,
-        RecoveryClass::ReopenAndReconcile,
-        detail,
-    )
 }
 
 fn append_stream(output: &mut Vec<u8>, stream: &[u8]) {

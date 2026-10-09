@@ -213,14 +213,6 @@ impl ToolExecution for ShellExecution {
     }
 }
 
-impl Drop for ShellExecution {
-    fn drop(&mut self) {
-        if let Some(owner) = self.owner.take() {
-            owner.detach();
-        }
-    }
-}
-
 const fn cancellation(reason: CancellationReason) -> ProcessCancellation {
     match reason {
         CancellationReason::Requested => ProcessCancellation::User,

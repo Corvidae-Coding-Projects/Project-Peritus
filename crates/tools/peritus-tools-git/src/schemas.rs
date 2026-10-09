@@ -11,22 +11,13 @@ pub fn status_schema() -> Result<Schema, GitToolError> {
 pub fn diff_schema() -> Result<Schema, GitToolError> {
     object(vec![
         property("base_revision", Schema::string(1, 1_024).map_err(|_| schema_error())?, true)?,
-        property("entry_offset", integer(0, i64::MAX)?, false)?,
-        property("expected_digest", Schema::string(64, 64).map_err(|_| schema_error())?, false)?,
-        property("maximum_entries", integer(1, i64::from(u32::MAX))?, true)?,
-        property("maximum_patch_bytes", integer(1, i64::MAX)?, true)?,
-        property("patch_offset", integer(0, i64::MAX)?, false)?,
-        property("path_byte_offset", integer(0, i64::MAX)?, false)?,
+        property("maximum_entries", integer(1, 100_000)?, true)?,
+        property("maximum_patch_bytes", integer(1, 8 * 1_024 * 1_024)?, true)?,
     ])
 }
 
 pub fn history_schema() -> Result<Schema, GitToolError> {
-    object(vec![
-        property("maximum_commits", integer(1, 1_024)?, true)?,
-        property("offset", integer(0, i64::MAX)?, false)?,
-        property("parent_offset", integer(0, i64::from(u32::MAX))?, false)?,
-        property("subject_offset", integer(0, i64::from(u32::MAX))?, false)?,
-    ])
+    object(vec![property("maximum_commits", integer(1, 1_024)?, true)?])
 }
 
 pub fn candidate_schema() -> Result<Schema, GitToolError> {
@@ -47,8 +38,20 @@ pub fn rollback_schema() -> Result<Schema, GitToolError> {
     ])
 }
 
+pub fn merge_schema() -> Result<Schema, GitToolError> {
+    object(vec![
+        property("expected_target_commit", object_id()?, true)?,
+        property("source_snapshot_id", identifier()?, true)?,
+        property("target_ref", Schema::string(1, 1_024).map_err(|_| schema_error())?, true)?,
+    ])
+}
+
 fn identifier() -> Result<Schema, GitToolError> {
     Schema::string(32, 32).map_err(|_| schema_error())
+}
+
+fn object_id() -> Result<Schema, GitToolError> {
+    Schema::string(40, 64).map_err(|_| schema_error())
 }
 
 fn enumeration(values: &[&str]) -> Result<Schema, GitToolError> {

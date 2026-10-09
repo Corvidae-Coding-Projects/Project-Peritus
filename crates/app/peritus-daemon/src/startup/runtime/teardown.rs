@@ -90,7 +90,7 @@ impl DaemonRuntime {
             &mut indeterminate_effects,
             self.terminals.shutdown().map(|_| ()).map_err(terminal_shutdown_error),
         )?;
-        let process_reconciliation = match reconcile_processes(&self.processes, &[]) {
+        let process_reconciliation = match reconcile_processes(&self.processes) {
             Ok(None) => Ok(()),
             Ok(Some(_)) => Err(DaemonError::new(
                 DaemonErrorCode::RecoveryRequired,

@@ -50,8 +50,6 @@ pub(super) struct PersistedPreviewOperation {
     pub(super) accepted_revision: u64,
     pub(super) result_sequence: u64,
     pub(super) completed_sequence: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) behavior_evidence: Option<super::super::preview_evidence::PreviewBehaviorEvidence>,
 }
 
 #[derive(Serialize, Deserialize)]

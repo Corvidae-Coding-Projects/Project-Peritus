@@ -29,13 +29,20 @@ fn image_fixtures_roundtrip_every_format_and_independently_gate_upload_preview_a
 }
 
 #[test]
-fn image_metadata_and_labels_reject_invalid_content_free_metadata_only() {
+fn image_metadata_and_labels_reject_controls_and_host_limit_violations() {
     for label in ["", "  ", "escape\u{1b}[31m", "new\nline"] {
         assert!(WorkbenchImageLabel::new(label.to_owned()).is_err());
     }
-    assert!(WorkbenchImageLabel::new("x".repeat(2048)).is_ok());
+    assert!(WorkbenchImageLabel::new("x".repeat(MAX_WORKBENCH_IMAGE_LABEL_BYTES + 1)).is_err());
     let digest = Sha256Digest::new([1; 32]);
-    for (bytes, dimensions, frames) in [(0, (1, 1), 1), (1, (1, 0), 1), (1, (1, 1), 0)] {
+    for (bytes, dimensions, frames) in [
+        (0, (1, 1), 1),
+        (MAX_WORKBENCH_IMAGE_BYTES + 1, (1, 1), 1),
+        (1, (8193, 1), 1),
+        (1, (4097, 4096), 1),
+        (1, (1, 1), 65),
+        (1, (1, 0), 1),
+    ] {
         assert!(
             WorkbenchImageMetadata::new(
                 digest,
@@ -50,10 +57,10 @@ fn image_metadata_and_labels_reject_invalid_content_free_metadata_only() {
     assert!(
         WorkbenchImageMetadata::new(
             digest,
-            u64::MAX,
+            MAX_WORKBENCH_IMAGE_BYTES,
             WorkbenchImageFormat::Png,
-            (u32::MAX, u32::MAX),
-            u32::MAX
+            (4096, 4096),
+            64
         )
         .is_ok()
     );

@@ -168,18 +168,6 @@ impl ArtifactStore {
         Ok(metadata)
     }
 
-    /// Reconstructs an exact successful finalization receipt for a verified existing object.
-    ///
-    /// # Errors
-    /// Returns missing-artifact, catalog, I/O, or integrity errors.
-    pub fn reopen_finalized(
-        &self,
-        digest: ArtifactDigest,
-    ) -> Result<FinalizedArtifact, ArtifactStoreError> {
-        let metadata = self.verify(digest)?;
-        Ok(FinalizedArtifact::new(digest, metadata.size(), crate::Publication::Existing))
-    }
-
     /// Reads one finalized active artifact into a bounded owned buffer and verifies the exact
     /// durable size and digest against the bytes returned to the caller.
     ///
@@ -239,11 +227,7 @@ impl ArtifactStore {
     ///
     /// Returns overflow or quota exhaustion for an invalid observation.
     pub fn quota_snapshot(&self, reserved_bytes: u64) -> Result<QuotaSnapshot, ArtifactStoreError> {
-        let used_bytes = self.catalog.used_bytes()?;
-        self.config.quota_bytes().map_or_else(
-            || QuotaSnapshot::without_limit(used_bytes, reserved_bytes),
-            |limit| QuotaSnapshot::new(used_bytes, reserved_bytes, limit),
-        )
+        QuotaSnapshot::new(self.catalog.used_bytes()?, reserved_bytes, self.config.quota_bytes())
     }
 
     /// Plans a quota reservation against durable artifact accounting.

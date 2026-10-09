@@ -36,8 +36,6 @@ use crate::outbox::{
 use crate::terminal::qualify_pty_ordering;
 use arguments::{CommandLine, parse};
 
-// Qualification checkpoints must wait for the controller even if joined scoped workers left
-// this thread's park token set. Callers sleep; park_timeout may return immediately or spuriously.
 const QUALIFICATION_KILL_BOUND: Duration = Duration::from_secs(30);
 
 /// Runs the production daemon command line and returns its truthful process status.
@@ -198,7 +196,7 @@ fn stage_blob_before(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::sleep(QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
     write_error(&format!(
         "blob-before qualifier was not killed for digest {}",
         checkpoint.digest(),
@@ -227,7 +225,7 @@ fn stage_blob_after(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::sleep(QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
     write_error(&format!("blob-after qualifier was not killed for digest {}", checkpoint.digest()));
     ExitCode::FAILURE
 }
@@ -281,7 +279,7 @@ fn stage_journal_before(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::sleep(QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
     write_error(&format!(
         "journal-before crash qualifier was not killed at request {}",
         checkpoint.request_sha256(),
@@ -347,7 +345,7 @@ fn stage_outbox(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::sleep(QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
     write_error("outbox crash qualifier was not killed at its published checkpoint");
     ExitCode::FAILURE
 }

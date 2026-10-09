@@ -19,12 +19,12 @@ mod terminal_payload;
 use reader::Reader;
 use terminal_payload::{decode_terminal_payload, encode_terminal_payload, terminal_binding_valid};
 
-const MAGIC_V2: &[u8] = b"PERITUS-PROCESS-MANIFEST-V2\0";
-const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-MANIFEST-V3\0";
+const MAGIC: &[u8] = b"PERITUS-PROCESS-MANIFEST-V2\0";
+const MAX_MANIFEST_BYTES: usize = 16 * 1_024;
 
 pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessError> {
     let mut bytes = Vec::with_capacity(768);
-    bytes.extend_from_slice(MAGIC_V3);
+    bytes.extend_from_slice(MAGIC);
     encode_identity(&mut bytes, &manifest.identity);
     for digest_value in [
         manifest.action_digest,
@@ -52,20 +52,19 @@ pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessErr
     bytes.push(u8::from(manifest.support_tasks_joined));
     optional_digest(&mut bytes, manifest.terminal_digest);
     encode_terminal_payload(&mut bytes, manifest.terminal.as_ref())?;
+    if bytes.len() + Sha256Digest::LENGTH > MAX_MANIFEST_BYTES {
+        return Err(corrupt("process manifest exceeds its canonical bound"));
+    }
     let checksum: [u8; 32] = Sha256::digest(&bytes).into();
     bytes.extend_from_slice(&checksum);
     Ok(bytes)
 }
 
 pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
-    let (magic, legacy) = if bytes.starts_with(MAGIC_V3) {
-        (MAGIC_V3, false)
-    } else if bytes.starts_with(MAGIC_V2) {
-        (MAGIC_V2, true)
-    } else {
-        return Err(corrupt("process manifest has invalid framing"));
-    };
-    if bytes.len() < magic.len() + Sha256Digest::LENGTH || (legacy && bytes.len() > 16 * 1_024) {
+    if bytes.len() < MAGIC.len() + Sha256Digest::LENGTH
+        || bytes.len() > MAX_MANIFEST_BYTES
+        || !bytes.starts_with(MAGIC)
+    {
         return Err(corrupt("process manifest has invalid framing"));
     }
     let payload_end = bytes.len() - Sha256Digest::LENGTH;
@@ -73,7 +72,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
     if bytes[payload_end..] != expected {
         return Err(corrupt("process manifest checksum differs"));
     }
-    let mut reader = Reader::new(&bytes[magic.len()..payload_end]);
+    let mut reader = Reader::new(&bytes[MAGIC.len()..payload_end]);
     let manifest = ExecutionManifest {
         identity: decode_identity(&mut reader)?,
         action_digest: reader.digest()?,
@@ -87,7 +86,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
         phase: decode_phase(reader.u8()?)?,
         tree: decode_tree(&mut reader)?,
         trigger: decode_trigger(&mut reader)?,
-        exit: decode_exit(&mut reader, legacy)?,
+        exit: decode_exit(&mut reader)?,
         observed_output: reader.u64()?,
         retained_output: reader.u64()?,
         dropped_output: reader.u64()?,
@@ -276,12 +275,13 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: Option<&OsExitObservation>) -> Result<
             i32_value(bytes, *signal);
         }
         Some(OsExitObservation::SignalName(name)) => {
+            if name.len() > 128 {
+                return Err(corrupt("platform signal name exceeds its bound"));
+            }
             bytes.push(3);
-            u64_value(
+            u16_value(
                 bytes,
-                u64::try_from(name.len()).map_err(|_| {
-                    crate::error::invalid("signal name length is not representable")
-                })?,
+                u16::try_from(name.len()).map_err(|_| corrupt("signal name is too long"))?,
             );
             bytes.extend_from_slice(name.as_bytes());
         }
@@ -294,16 +294,12 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: Option<&OsExitObservation>) -> Result<
     Ok(())
 }
 
-fn decode_exit(
-    reader: &mut Reader<'_>,
-    legacy: bool,
-) -> Result<Option<OsExitObservation>, ProcessError> {
+fn decode_exit(reader: &mut Reader<'_>) -> Result<Option<OsExitObservation>, ProcessError> {
     Ok(match reader.u8()? {
         0 => None,
         1 => Some(OsExitObservation::Code(reader.i32()?)),
         2 => Some(OsExitObservation::Signal(reader.i32()?)),
-        3 if legacy => Some(OsExitObservation::SignalName(reader.string_u16()?)),
-        3 => Some(OsExitObservation::SignalName(reader.string_u64()?)),
+        3 => Some(OsExitObservation::SignalName(reader.string(128)?)),
         4 => Some(OsExitObservation::PlatformException(reader.u32()?)),
         5 => Some(OsExitObservation::Unavailable),
         _ => return Err(corrupt("manifest has an unknown exit observation tag")),
@@ -380,6 +376,9 @@ fn optional_u64(bytes: &mut Vec<u8>, value: Option<u64>) {
         }
         None => bytes.push(0),
     }
+}
+fn u16_value(bytes: &mut Vec<u8>, value: u16) {
+    bytes.extend_from_slice(&value.to_be_bytes());
 }
 fn u32_value(bytes: &mut Vec<u8>, value: u32) {
     bytes.extend_from_slice(&value.to_be_bytes());

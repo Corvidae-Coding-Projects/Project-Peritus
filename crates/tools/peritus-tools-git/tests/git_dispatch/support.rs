@@ -1,6 +1,6 @@
 //! Exact router and authority assembly for Git production-flow tests.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use peritus_artifact_store::ArtifactStore;
 use peritus_git::CandidateSnapshot;
@@ -18,9 +18,8 @@ use peritus_tool_router::{
 use peritus_tools_git::{GitDispatcher, GitMutationOutcome, descriptor_catalog};
 use peritus_types::SnapshotId;
 use peritus_workspace::{
-    MutationOutcome, OwnedWorkspaceAuthorization, RollbackRequest, WorkspaceCallerBinding,
-    WorkspaceGateway, candidate_authorization_payload_for_caller,
-    rollback_authorization_payload_for_caller,
+    MutationOutcome, RollbackRequest, WorkspaceCallerBinding, WorkspaceGateway,
+    candidate_authorization_payload_for_caller, rollback_authorization_payload_for_caller,
 };
 use tempfile::TempDir;
 
@@ -57,25 +56,17 @@ pub fn prepare(ids: &Ids, name: &str, arguments: BoundedJson) -> (ToolRouter, Pr
     (router, prepared)
 }
 
-#[derive(Clone, Copy)]
-pub enum Completion {
-    Wait,
-    Cancel,
-    DropRouter,
-}
-
 #[allow(clippy::too_many_arguments, reason = "the fixture binds two authorities and one effect")]
 pub fn dispatch_candidate(
     temp: &TempDir,
     lower: &Ids,
     parent: &Ids,
-    gateway: &Arc<Mutex<WorkspaceGateway>>,
-    mutation: &Arc<MutationOutcome>,
+    gateway: &mut WorkspaceGateway,
+    mutation: &MutationOutcome,
     snapshot: SnapshotId,
-    artifacts: &Arc<Mutex<ArtifactStore>>,
+    artifacts: &ArtifactStore,
     prepared: PreparedToolCall,
     mut router: ToolRouter,
-    completion: Completion,
 ) -> (peritus_tool_router::DispatchOutcome, Option<GitMutationOutcome>) {
     let caller = caller(&prepared, parent);
     let lower_intent = authority_support::intent(
@@ -83,42 +74,17 @@ pub fn dispatch_candidate(
         candidate_authorization_payload_for_caller(mutation, snapshot, &caller),
     );
     let lower_receipts = authority_support::receipts(temp, lower, &lower_intent);
-    let lower_request = owned_request(lower_intent, lower_receipts, lower, caller);
+    let lower_request = authority_support::exact_request(&lower_intent, &lower_receipts, lower)
+        .with_caller_binding(caller);
     let parent_intent = parent_intent(&prepared, parent);
     let parent_receipts = authority_support::receipts(temp, parent, &parent_intent);
     let parent_request = tool_request(parent, &parent_intent, &parent_receipts, &prepared);
-    let mut dispatcher = GitDispatcher::candidate(
-        Arc::clone(gateway),
-        lower_request,
-        Arc::clone(mutation),
-        Arc::clone(artifacts),
-    )
-    .expect("dispatcher");
+    let mut dispatcher =
+        GitDispatcher::candidate(gateway, &lower_request, mutation, artifacts).expect("dispatcher");
     let outcome = router
         .dispatch(prepared, &parent_request, &mut dispatcher)
         .expect("router candidate dispatch");
-    let outcome = if matches!(completion, Completion::DropRouter) {
-        drop(router);
-        outcome
-    } else if matches!(completion, Completion::Cancel) {
-        let peritus_tool_router::DispatchOutcome::Active(handle) = outcome else {
-            panic!("expected owned operation")
-        };
-        let update = router
-            .cancel(
-                handle,
-                peritus_tool_protocol::CancellationReason::Requested,
-                AuthorityInstant::new(peritus_types::Generation::first(), 20),
-            )
-            .expect("request cancellation");
-        update.terminal().map_or_else(
-            || await_terminal(&mut router, &peritus_tool_router::DispatchOutcome::Active(handle)),
-            |terminal| peritus_tool_router::DispatchOutcome::Completed(terminal.clone()),
-        )
-    } else {
-        await_terminal(&mut router, &outcome)
-    };
-    let mutation = dispatcher.take_mutation_outcome().expect("retained outcome");
+    let mutation = dispatcher.take_mutation_outcome();
     (outcome, mutation)
 }
 
@@ -127,10 +93,10 @@ pub fn dispatch_rollback(
     temp: &TempDir,
     lower: &Ids,
     parent: &Ids,
-    gateway: &Arc<Mutex<WorkspaceGateway>>,
+    gateway: &mut WorkspaceGateway,
     target: &CandidateSnapshot,
     successor: SnapshotId,
-    artifacts: &Arc<Mutex<ArtifactStore>>,
+    artifacts: &ArtifactStore,
     prepared: PreparedToolCall,
     mut router: ToolRouter,
 ) -> (peritus_tool_router::DispatchOutcome, Option<GitMutationOutcome>) {
@@ -138,29 +104,20 @@ pub fn dispatch_rollback(
     let request = RollbackRequest::new(target, successor);
     let lower_intent = authority_support::intent(
         lower,
-        rollback_authorization_payload_for_caller(
-            gateway.lock().expect("gateway").state(),
-            &request,
-            &caller,
-        ),
+        rollback_authorization_payload_for_caller(gateway.state(), &request, &caller),
     );
     let lower_receipts = authority_support::receipts(temp, lower, &lower_intent);
-    let lower_request = owned_request(lower_intent, lower_receipts, lower, caller);
+    let lower_request = authority_support::exact_request(&lower_intent, &lower_receipts, lower)
+        .with_caller_binding(caller);
     let parent_intent = parent_intent(&prepared, parent);
     let parent_receipts = authority_support::receipts(temp, parent, &parent_intent);
     let parent_request = tool_request(parent, &parent_intent, &parent_receipts, &prepared);
-    let mut dispatcher = GitDispatcher::rollback(
-        Arc::clone(gateway),
-        lower_request,
-        target.clone(),
-        Arc::clone(artifacts),
-    )
-    .expect("dispatcher");
+    let mut dispatcher =
+        GitDispatcher::rollback(gateway, &lower_request, target, artifacts).expect("dispatcher");
     let outcome = router
         .dispatch(prepared, &parent_request, &mut dispatcher)
         .expect("router rollback dispatch");
-    let outcome = await_terminal(&mut router, &outcome);
-    let mutation = dispatcher.take_mutation_outcome().expect("retained outcome");
+    let mutation = dispatcher.take_mutation_outcome();
     (outcome, mutation)
 }
 
@@ -226,45 +183,4 @@ pub fn snapshot_hex(value: SnapshotId) -> String {
         write!(&mut output, "{byte:02x}").expect("hex rendering");
     }
     output
-}
-
-fn owned_request(
-    intent: ActionIntentDto,
-    receipts: AuthorityReceipts,
-    ids: &Ids,
-    caller: WorkspaceCallerBinding,
-) -> OwnedWorkspaceAuthorization {
-    OwnedWorkspaceAuthorization::new(
-        intent,
-        receipts.kernel,
-        receipts.capability,
-        receipts.lease,
-        receipts.epoch,
-        ids.revision,
-        ids.session,
-        ids.revision.workspace_generation(),
-        ids.revision.workspace_revision(),
-        receipts.observed_at,
-    )
-    .with_caller_binding(caller)
-}
-
-fn await_terminal(
-    router: &mut ToolRouter,
-    outcome: &peritus_tool_router::DispatchOutcome,
-) -> peritus_tool_router::DispatchOutcome {
-    let peritus_tool_router::DispatchOutcome::Active(handle) = outcome else {
-        panic!("Git must transfer an active owned operation to the router");
-    };
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
-    loop {
-        let update = router
-            .poll(*handle, AuthorityInstant::new(peritus_types::Generation::first(), 20))
-            .expect("poll Git");
-        if let Some(result) = update.terminal() {
-            return peritus_tool_router::DispatchOutcome::Completed(result.clone());
-        }
-        assert!(std::time::Instant::now() < deadline, "owned Git test did not finish");
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
 }

@@ -136,10 +136,6 @@ fn scoped_upload_bytes_and_owner_conversation_workspace_binding_survive_restart(
         .read_scoped(&journal, selected, metadata.artifact_id(), CONTENT.len() as u64)
         .expect("reopened exact read");
     assert_eq!(bytes, CONTENT);
-    let (_, bytes) = authority
-        .read_scoped(&journal, selected, metadata.artifact_id(), u64::MAX)
-        .expect("unbounded request is clamped to the configured object ceiling");
-    assert_eq!(bytes, CONTENT);
     assert!(
         authority
             .read_scoped(&journal, selected, metadata.artifact_id(), CONTENT.len() as u64 - 1)

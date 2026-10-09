@@ -20,11 +20,6 @@ fn independent_user_edit_is_a_conflict_and_preserves_every_current_byte() {
 }
 
 #[test]
-fn paged_confirmation_rejects_stale_coverage_and_replays_conflict_summary_without_writes() {
-    interaction::block_on(scenario::paged_confirmation_conflict_scenario());
-}
-
-#[test]
 fn prepared_restore_before_c1_recovers_as_safe_no_effect_conflict() {
     interaction::block_on(checkpoint_scenario(
         false,

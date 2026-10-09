@@ -12,10 +12,9 @@ use super::error;
 use identity::StorageIdentity;
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{
-    ArtifactDigest, ArtifactReadHandle, ArtifactStore, EncryptionMetadata, MediaType, StoreConfig,
-    WriteRequest,
+    ArtifactDigest, ArtifactStore, EncryptionMetadata, MediaType, StoreConfig, WriteRequest,
 };
-use peritus_codec::{CodecLimits, HEADER_LEN, decode_frame, sha256};
+use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_context::working::WorkingBinding;
 use peritus_journal::{AggregateHead, SqliteJournal, SqliteJournalOptions};
 use peritus_types::Sha256Digest;
@@ -28,21 +27,7 @@ use std::{
 const FRAME_FAMILY: u16 = 3401;
 const STATE_NAMESPACE: u16 = 3401;
 const STATE_KEY: &[u8] = b"local-working-memory/checkpoint/v1";
-// SQLite stores artifact sizes as signed 64-bit integers. This is a representation bound, not a
-// local-memory quota or per-artifact policy.
-pub(super) const MAX_ARTIFACT_SQLITE_BYTES: u64 = i64::MAX as u64;
-
-pub(super) const fn record_codec_limits() -> CodecLimits {
-    let payload_bytes = u32::MAX as usize;
-    CodecLimits::new(
-        payload_bytes.saturating_add(HEADER_LEN),
-        payload_bytes,
-        payload_bytes,
-        payload_bytes,
-        payload_bytes,
-        16,
-    )
-}
+pub(super) const MAX_ARTIFACT_BYTES: u64 = 64 * 1024 * 1024;
 
 /// Local artifact handle with exact verified size.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -98,13 +83,10 @@ impl LocalStore {
             SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
         )
         .map_err(|_| error("open C0 journal"))?;
-        let config = StoreConfig::new_with_quota_policy(
-            root.join("artifacts"),
-            MAX_ARTIFACT_SQLITE_BYTES,
-            None,
-        )
-        .and_then(|config| config.with_database_path(&database))
-        .map_err(|_| error("configure C0 artifact store"))?;
+        let config =
+            StoreConfig::new(root.join("artifacts"), MAX_ARTIFACT_BYTES, 1024 * 1024 * 1024)
+                .and_then(|config| config.with_database_path(&database))
+                .map_err(|_| error("configure C0 artifact store"))?;
         let artifacts = ArtifactStore::open(config).map_err(|_| error("open C0 artifact store"))?;
         let head = journal.head(identity.aggregate).map_err(|_| error("read lineage head"))?;
         let checkpoint = journal
@@ -131,7 +113,7 @@ impl LocalStore {
             .map_err(|_| error("verify journal chain"))?
             .into_iter()
             .map(|record| {
-                let frame = decode_frame(record.frame_bytes(), record_codec_limits())
+                let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
                     .map_err(|_| error("decode local event frame"))?;
                 if frame.header().family() != FRAME_FAMILY || frame.header().schema_version() != 1 {
                     return Err(error("unsupported local event schema"));
@@ -150,8 +132,8 @@ impl LocalStore {
 
     pub(super) fn store(&self, bytes: &[u8]) -> Result<StoredArtifact, DeveloperLoopError> {
         let length = u64::try_from(bytes.len()).map_err(|_| error("artifact size overflow"))?;
-        if length > MAX_ARTIFACT_SQLITE_BYTES {
-            return Err(error("artifact size exceeds the durable SQLite representation"));
+        if length > MAX_ARTIFACT_BYTES {
+            return Err(error("artifact capacity exceeded"));
         }
         let digest = sha256(bytes);
         let event = self.identity.event(
@@ -160,7 +142,7 @@ impl LocalStore {
         let request = WriteRequest::new(
             ArtifactDigest::from_sha256(digest),
             length,
-            MAX_ARTIFACT_SQLITE_BYTES,
+            MAX_ARTIFACT_BYTES,
             MediaType::new("application/octet-stream").map_err(|_| error("artifact media type"))?,
             EncryptionMetadata::unencrypted(),
             event,
@@ -173,8 +155,8 @@ impl LocalStore {
     }
 
     pub(super) fn read(&self, artifact: StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError> {
-        if artifact.bytes > MAX_ARTIFACT_SQLITE_BYTES {
-            return Err(error("artifact size exceeds the durable SQLite representation"));
+        if artifact.bytes > MAX_ARTIFACT_BYTES {
+            return Err(error("artifact read capacity exceeded"));
         }
         let bytes = self
             .artifacts
@@ -186,23 +168,9 @@ impl LocalStore {
         Ok(bytes)
     }
 
-    pub(super) fn open_read(
-        &self,
-        artifact: StoredArtifact,
-    ) -> Result<ArtifactReadHandle, DeveloperLoopError> {
-        let reader = self
-            .artifacts
-            .open_read(ArtifactDigest::from_sha256(artifact.digest))
-            .map_err(|_| error("artifact unavailable or digest mismatch"))?;
-        if reader.metadata().size() != artifact.bytes {
-            return Err(error("artifact length mismatch"));
-        }
-        Ok(reader)
-    }
-
     pub(super) fn read_digest(&self, digest: [u8; 32]) -> Result<Vec<u8>, DeveloperLoopError> {
         self.artifacts
-            .read(ArtifactDigest::from_sha256(Sha256Digest::new(digest)), MAX_ARTIFACT_SQLITE_BYTES)
+            .read(ArtifactDigest::from_sha256(Sha256Digest::new(digest)), MAX_ARTIFACT_BYTES)
             .map_err(|_| error("artifact unavailable or digest mismatch"))
     }
 }

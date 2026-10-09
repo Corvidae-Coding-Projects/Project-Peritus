@@ -8,7 +8,7 @@ use peritus_app_protocol::{
     WorkbenchQuery, WorkbenchReceipt,
 };
 use peritus_product_runner::{
-    attachment::ValidatedImage,
+    attachment::{MAX_IMAGE_BYTES, ValidatedImage},
     control::{ControlError, ConversationId},
 };
 use peritus_types::{ActorId, SessionId};
@@ -117,7 +117,11 @@ impl ProductRunService {
             .try_acquire_owned()
             .map_err(|_| error(Code::Backpressure))?;
         let (catalog, bytes) = authority
-            .read_scoped_artifact(scope, request.artifact(), u64::MAX)
+            .read_scoped_artifact(
+                scope,
+                request.artifact(),
+                MAX_IMAGE_BYTES.min(profile.limits().max_inline_media_bytes()),
+            )
             .await
             .map_err(daemon_error)?;
         let decode_profile = profile.clone();

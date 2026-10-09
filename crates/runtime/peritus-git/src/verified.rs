@@ -26,6 +26,18 @@ pub const fn worktree_name_byte_allowed(byte: u8) -> (allowed: bool)
         || byte == b'_'
 }
 
+/// Returns whether a bounded status observation can be accepted for parsing.
+pub const fn status_shape_within_bounds(
+    bytes: usize,
+    entries: usize,
+    byte_limit: usize,
+    entry_limit: usize,
+) -> (valid: bool)
+    ensures valid == (bytes <= byte_limit && entries <= entry_limit),
+{
+    bytes <= byte_limit && entries <= entry_limit
+}
+
 /// Exact three-way Git reconciliation decision over already checked observations.
 #[allow(clippy::fn_params_excessive_bools)] // Independent verified observation facts.
 pub const fn reconciliation_is_clean(

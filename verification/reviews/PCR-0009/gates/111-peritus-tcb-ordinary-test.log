@@ -1,0 +1,19 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tcb --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tcb", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "111-peritus-tcb-ordinary-test.log", "owning_crate": "peritus-tcb", "started_at": "2026-10-09T04:07:41.257101Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_tcb-8027c55033ddc6af)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_paths.rs (/home/doll/Project-Peritus/target/debug/deps/manifest_paths-796d6f4444fff365)
+
+running 2 tests
+test manifest_paths_are_unique_repository_relative_toml_files ... ok
+test manifest_paths_resolve_to_regular_repository_files ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tcb --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.366, "exit_code": 0, "finished_at": "2026-10-09T04:07:41.625288Z", "invocation": ["cargo", "test", "--package", "peritus-tcb", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "111-peritus-tcb-ordinary-test.log", "owning_crate": "peritus-tcb", "result": "passed", "started_at": "2026-10-09T04:07:41.257101Z"}

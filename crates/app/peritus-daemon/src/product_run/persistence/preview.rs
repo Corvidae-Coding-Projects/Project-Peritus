@@ -40,37 +40,6 @@ pub(super) fn restore_preview(
     for value in operations {
         let operation = ControlOperationId::new(value.operation)
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-        if let Some(evidence) = &value.behavior_evidence {
-            let page = page.as_ref().ok_or(ProductRunServiceError::InvalidMessage)?;
-            let command = evidence
-                .command(operation, page.query().query(), value.accepted_revision)
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-            let launch = page
-                .launches()
-                .iter()
-                .find(|launch| launch.launch().as_bytes() == &evidence.launch)
-                .ok_or(ProductRunServiceError::InvalidMessage)?;
-            if let Some(goal) = evidence.goal
-                && (goal.goal != *interaction.workbench.id().as_bytes()
-                    || !matches!(
-                        interaction.workbench.intent(),
-                        peritus_product_runner::control::ControlIntent::StartGoal { .. }
-                    ))
-            {
-                return Err(ProductRunServiceError::InvalidMessage);
-            }
-            evidence
-                .validate(&command, launch)
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-            if command
-                .fingerprint()
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?
-                .into_bytes()
-                != value.fingerprint
-            {
-                return Err(ProductRunServiceError::InvalidMessage);
-            }
-        }
         if value.accepted_revision == 0
             || value.result_sequence > page.as_ref().map_or(0, WorkbenchResultPage::result_revision)
             || value.completed_sequence
@@ -84,7 +53,6 @@ pub(super) fn restore_preview(
                         accepted_revision: value.accepted_revision,
                         result_sequence: value.result_sequence,
                         completed_sequence: value.completed_sequence,
-                        behavior_evidence: value.behavior_evidence,
                     },
                 )
                 .is_some()

@@ -108,10 +108,6 @@ impl WorkspaceState {
         self.consumed_actions.contains_key(&action_id)
     }
 
-    pub(crate) fn consumed_action_digest(&self, action_id: ActionId) -> Option<Sha256Digest> {
-        self.consumed_actions.get(&action_id).copied()
-    }
-
     pub(crate) fn install(&mut self, snapshot: SnapshotIdentity) {
         self.revision = snapshot.revision();
         self.current = snapshot;

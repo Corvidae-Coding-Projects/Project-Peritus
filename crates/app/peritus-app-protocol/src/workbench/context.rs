@@ -167,20 +167,25 @@ pub struct WorkbenchContextRow {
     preference: Option<WorkbenchContextPreference>,
 }
 impl WorkbenchContextRow {
-    /// Validates source metadata. Size is exact encoded bytes, never tokens.
+    /// Validates a bounded nonempty source. Size is exact encoded bytes, never tokens.
     ///
     /// # Errors
-    /// Rejects empty non-file sources or impossible sealed states.
+    /// Rejects zero/excessive sizes, invalid message positions, or impossible sealed states.
     pub const fn new(
         source: WorkbenchContextSource,
         digest: Sha256Digest,
         bytes: u64,
         disposition: WorkbenchContextDisposition,
     ) -> Result<Self, AppProtocolError> {
-        if bytes == 0 && !matches!(source, WorkbenchContextSource::File { .. }) {
+        if (bytes == 0 && !matches!(source, WorkbenchContextSource::File { .. }))
+            || bytes > 64 * 1024 * 1024
+        {
             return Err(invalid());
         }
         match source {
+            WorkbenchContextSource::Message { ordinal, .. } if ordinal >= 4096 => {
+                return Err(invalid());
+            }
             WorkbenchContextSource::Message { .. } | WorkbenchContextSource::Invocation { .. }
                 if !matches!(disposition, WorkbenchContextDisposition::Included) =>
             {

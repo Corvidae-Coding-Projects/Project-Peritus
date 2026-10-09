@@ -19,7 +19,6 @@ mod subscription;
 mod terminal;
 mod workbench;
 mod workbench_brief;
-mod workbench_checkpoint_pages;
 pub(crate) mod workbench_checkpoints;
 mod workbench_compaction;
 mod workbench_context;

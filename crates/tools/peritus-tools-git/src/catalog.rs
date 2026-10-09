@@ -10,8 +10,8 @@ use peritus_types::{CapabilityName, Sha256Digest};
 use crate::{
     GitToolError, GitToolErrorKind, GitToolOperation, RecoveryClass,
     schemas::{
-        candidate_schema, diff_schema, history_schema, rollback_schema, snapshot_schema,
-        status_schema,
+        candidate_schema, diff_schema, history_schema, merge_schema, rollback_schema,
+        snapshot_schema, status_schema,
     },
 };
 
@@ -34,6 +34,16 @@ const SPECS: &[DescriptorSpec] = &[
     ),
     read_spec("git.diff", "Observe a bounded immutable structured Git diff", diff_schema),
     read_spec("git.history", "Observe bounded immutable structured Git history", history_schema),
+    DescriptorSpec {
+        name: "git.merge",
+        description: "Request separately authorized branch delivery when C1 supports it",
+        class: OperationClass::RepositoryHistoryMutation,
+        risk: RiskClass::RepositoryHistoryMutation,
+        effect: SideEffectClass::Workspace,
+        lease: LeaseRequirement::Required,
+        replay: IdempotencySemantics::ReportPriorOutcome,
+        schema: merge_schema,
+    },
     mutation_spec(
         "git.rollback",
         "Restore a retained snapshot as an authorized successor",
@@ -117,9 +127,8 @@ fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, GitToolErro
         ImplementationIdentity::new(format!("peritus.tools.git.{}/v1", spec.name))
             .map_err(|_| catalog_error())?,
         ToolLimits::new(30_000, 8 * 1_024 * 1_024, 16_384, 16_384, 1, 1, 1)
-            .map_err(|_| catalog_error())?
-            .without_timeout(),
-        ControlSet::new(false, false, false, true, true),
+            .map_err(|_| catalog_error())?,
+        ControlSet::NONE,
         ProtocolCompatibility::V1,
         BoundedText::new(spec.description.to_owned()).map_err(|_| catalog_error())?,
     )

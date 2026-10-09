@@ -9,28 +9,17 @@ fn range_scanning_is_chunk_independent_and_preserves_original_line_terminators()
         for chunk in source.chunks(width) {
             scan.accept(chunk).expect("chunk");
         }
-        assert_eq!(
-            scan.finish().expect("range"),
-            ScannedSelection {
-                range: (7, 12),
-                bytes: b"\nlast".to_vec(),
-                continuation_offset: None
-            }
-        );
+        assert_eq!(scan.finish().expect("range"), ((7, 12), b"\nlast".to_vec()));
     }
 }
 
 #[test]
-fn nonexistent_last_line_rejects_and_oversized_selected_lines_return_exact_continuations() {
+fn nonexistent_last_line_and_oversized_selected_lines_reject_without_partial_result() {
     let mut scan = Scan::new(Selection::Lines { first: 2, last: 2 }, 32, 2).expect("scan");
     scan.accept(b"a\n").expect("first line");
     assert!(scan.finish().is_err(), "trailing newline is not an extra line");
     let mut scan = Scan::new(Selection::Lines { first: 1, last: 1 }, 2, 4).expect("scan");
-    scan.accept(b"long").expect("oversized line yields its first page");
-    assert_eq!(
-        scan.finish().expect("complete selected line page"),
-        ScannedSelection { range: (0, 2), bytes: b"lo".to_vec(), continuation_offset: Some(2) }
-    );
+    assert!(scan.accept(b"long").is_err());
     let mut scan = Scan::new(Selection::All, 32, 2).expect("scan");
     assert!(scan.accept(b"grew").is_err());
 }

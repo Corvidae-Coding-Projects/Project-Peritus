@@ -269,18 +269,10 @@ impl ProductRunService {
                     .resolve_workbench_checkpoint(actor, command)
                     .map_or_else(error_response, AppResponsePayload::WorkbenchCheckpoint);
             }
-            WorkbenchIntent::ApplyRewind(_) | WorkbenchIntent::ConfirmRewind(_) => {
-                return self.observe_workbench_restore(actor, command).map_or_else(
-                    error_response,
-                    |outcome| match outcome {
-                        checkpoints::WorkbenchRestoreProjection::Detailed(receipt) => {
-                            AppResponsePayload::WorkbenchRestore(receipt)
-                        }
-                        checkpoints::WorkbenchRestoreProjection::Summary(summary) => {
-                            AppResponsePayload::WorkbenchRestoreSummary(summary)
-                        }
-                    },
-                );
+            WorkbenchIntent::ApplyRewind(_) => {
+                return self
+                    .observe_workbench_restore(actor, command)
+                    .map_or_else(error_response, AppResponsePayload::WorkbenchRestore);
             }
             _ => {}
         }
@@ -387,9 +379,12 @@ pub(super) fn error_value(error: Error) -> AppProtocolError {
         Error::Control(ControlError::NotFound) => AppErrorCode::InvalidIdentifier,
         Error::Io(_) | Error::Journal(_) => AppErrorCode::Backpressure,
         Error::PermissionDenied => AppErrorCode::ReadOnly,
-        Error::Corrupt(_) | Error::Workspace(_) | Error::Patch(_) | Error::Runner(_) => {
-            AppErrorCode::NotReady
+        Error::Workspace(error)
+            if error.recovery() == peritus_workspace::RecoveryClass::Reobserve =>
+        {
+            AppErrorCode::StaleRevision
         }
+        Error::Corrupt(_) | Error::Workspace(_) | Error::Runner(_) => AppErrorCode::NotReady,
     };
     AppProtocolError::new(code, None)
 }

@@ -33,8 +33,6 @@ pub enum ErrorKind {
     Io,
     /// The observed repository state cannot safely determine an outcome.
     Indeterminate,
-    /// The owning execution explicitly cancelled and reaped the Git subprocess tree.
-    Cancelled,
 }
 
 impl ErrorKind {
@@ -54,7 +52,6 @@ impl ErrorKind {
             Self::SnapshotConflict => "PERITUS-GIT-010",
             Self::Io => "PERITUS-GIT-011",
             Self::Indeterminate => "PERITUS-GIT-012",
-            Self::Cancelled => "PERITUS-GIT-013",
         }
     }
 }

@@ -48,7 +48,7 @@ fn plan(journal: &crate::SqliteJournal, sequence: u64, bytes: Vec<u8>) -> Append
 fn shared_history_preserves_empty_leaf_branch_and_maximum_values_after_restart() {
     let temp = TempDir::new().expect("temporary journal");
     let mut journal = open(&temp);
-    let lengths = [0, 1, 512, 513, 8192, 8193, 16 * 1024 * 1024, 16 * 1024 * 1024 + 1];
+    let lengths = [0, 1, 512, 513, 8192, 8193, 16 * 1024 * 1024];
     for (index, length) in lengths.iter().copied().enumerate() {
         let bytes = vec![u8::try_from(index).expect("index"); length];
         journal.append(plan(&journal, index as u64 + 1, bytes)).expect("commit");
@@ -64,10 +64,7 @@ fn shared_history_preserves_empty_leaf_branch_and_maximum_values_after_restart()
         assert_eq!(state.digest(), peritus_codec::sha256(state.bytes()));
         assert_eq!(state.producing_position(), index as u64 + 1);
     }
-    assert_eq!(
-        restarted.integrity_scan().expect("full integrity").event_count(),
-        lengths.len() as u64
-    );
+    assert_eq!(restarted.integrity_scan().expect("full integrity").event_count(), 7);
 }
 
 #[test]
@@ -97,23 +94,25 @@ fn shared_history_rejects_missing_corrupt_and_wrong_root_nodes() {
 
 #[test]
 fn shared_history_node_bounds_reject_malformed_encodings() {
-    use super::node::{Node, capacity, root_level};
+    use super::node::{Node, root_level};
     for (level, length, payload) in [
-        (root_level(usize::MAX).expect("native maximum") + 1, 1, vec![0; 32]),
+        (5, 1, vec![0; 32]),
         (0, 513, vec![0; 513]),
         (0, 1, vec![]),
         (1, 0, vec![]),
         (1, 8193, vec![0; 512]),
         (1, 513, vec![0; 33]),
-        (u8::MAX, 1, vec![0; 32]),
+        (4, crate::record::MAX_STATE_BYTES + 1, vec![0; 288]),
     ] {
         assert_eq!(
             Node::new(level, length, payload).expect_err("invalid node").kind(),
             JournalErrorKind::CorruptJournal
         );
     }
-    let maximum_level = root_level(usize::MAX).expect("representable native maximum");
-    assert_eq!(capacity(maximum_level).expect("native capacity"), usize::MAX);
+    assert_eq!(
+        root_level(crate::record::MAX_STATE_BYTES + 1).expect_err("oversized value").kind(),
+        JournalErrorKind::CorruptJournal
+    );
 }
 
 #[test]

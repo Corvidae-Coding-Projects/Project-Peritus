@@ -142,7 +142,7 @@ pub struct ArtifactWriter<'store> {
     hasher: Sha256,
     written: u64,
     failed: bool,
-    quota_limit: Option<u64>,
+    quota_limit: u64,
 }
 
 impl<'store> ArtifactWriter<'store> {
@@ -151,7 +151,7 @@ impl<'store> ArtifactWriter<'store> {
         catalog: &'store Catalog,
         request: WriteRequest,
         configured_limit: u64,
-        quota_limit: Option<u64>,
+        quota_limit: u64,
     ) -> Result<Self, ArtifactStoreError> {
         if !write_bounds_valid(request.expected_size, request.declared_limit, configured_limit) {
             return Err(invalid_request(

@@ -35,7 +35,9 @@ fn accepted_result_stays_complete_when_shutdown_follows_late_cancellation() {
         .expect("request");
 
         running.start(request).await.expect("start run");
-        barrier.reached().await;
+        tokio::time::timeout(Duration::from_secs(5), barrier.reached())
+            .await
+            .expect("runner reached finalization barrier");
         let cancelling = running.cancel(run_id).expect("request late cancellation");
         assert!(!cancelling.phase().terminal());
         let shutdown_service = running.clone();

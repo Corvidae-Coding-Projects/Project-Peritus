@@ -27,12 +27,6 @@ artifact store, and installs the successor revision. Rollback likewise restores 
 same-lineage snapshot as a new successor; once restoration changes the worktree, later failures
 leave the workspace dirty or indeterminate for reconciliation rather than reporting it clean.
 
-Candidate and rollback plans are recorded before Git effects, and their exact terminal outcomes
-are stored before installing the successor revision. Snapshot companion refs retain the manifest
-needed to finish artifact publication after restart. Recovery checks the prior/successor lineage,
-retained snapshot, index, and worktree before installing or replaying an outcome; intervening
-workspace edits are preserved and require reconciliation.
-
 Restart reconciliation supplies the current workspace tuple to patch recovery through
 `RecoveryBinding`, inspects Git against the retained current snapshot, and produces one of clean,
 dirty, fenced, or indeterminate. The durable action ledger is target metadata, not a patch

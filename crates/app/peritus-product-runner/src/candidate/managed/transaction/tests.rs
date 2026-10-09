@@ -102,27 +102,6 @@ fn explicit_retry_completes_a_persisted_partial_source_restore() {
 }
 
 #[test]
-fn retry_cleans_only_a_resumable_owned_unsealed_preparation() {
-    let fixture = Fixture::new();
-    let mut state = state::read(&fixture.path).unwrap().unwrap();
-    state.phase = Phase::Restoring;
-    let owner = Owner::acquire(&fixture.path).unwrap();
-    let directory = state.plan.root.join(".peritus-restore-interrupted");
-    fs::create_dir(&directory).unwrap();
-    let mut journal = Journal { path: fixture.path.clone(), state, _owner: owner };
-    own_directory(&directory, Kind::Source, Some(&mut journal)).unwrap();
-    fs::write(directory.join("source"), b"partial preimage").unwrap();
-    drop(journal);
-
-    execute(&fixture.path, fixture.binding, fixture.digest).unwrap();
-    assert_eq!(
-        fs::read(fixture.repository.path().join("tracked.txt")).unwrap(),
-        b"prior unstaged\n"
-    );
-    assert!(!directory.exists());
-}
-
-#[test]
 fn completed_retry_preserves_later_human_edits() {
     let fixture = Fixture::new();
     execute(&fixture.path, fixture.binding, fixture.digest).unwrap();

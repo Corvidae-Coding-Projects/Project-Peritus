@@ -4,6 +4,11 @@ use std::{collections::BTreeMap, fmt};
 
 use crate::{ProcessError, error::invalid};
 
+const MAX_ENVIRONMENT_NAMES: usize = 1_024;
+const MAX_ENVIRONMENT_NAME_BYTES: usize = 255;
+const MAX_ENVIRONMENT_VALUE_BYTES: usize = 64 * 1_024;
+const MAX_ENVIRONMENT_BYTES: usize = 2 * 1_024 * 1_024;
+
 /// One validated portable environment variable.
 #[derive(Clone, Eq, PartialEq)]
 pub struct EnvironmentVariable {
@@ -26,7 +31,7 @@ impl EnvironmentVariable {
     ///
     /// # Errors
     ///
-    /// Returns an error for an empty name, an equals sign in a name, or NUL bytes.
+    /// Returns an error for a non-portable name, NUL, or an over-limit value.
     pub fn new(name: impl Into<String>, value: impl Into<String>) -> Result<Self, ProcessError> {
         let name = name.into();
         let value = value.into();
@@ -38,12 +43,12 @@ impl EnvironmentVariable {
                 "environment name is not portable ASCII or exceeds its bound",
             ));
         }
-        if value.as_bytes().contains(&0) {
+        if value.len() > MAX_ENVIRONMENT_VALUE_BYTES || value.as_bytes().contains(&0) {
             return Err(ProcessError::new(
                 crate::ErrorCode::InvalidEnvironment,
                 crate::ProcessOperation::Validate,
                 crate::RecoveryClass::CorrectRequest,
-                "environment value contains NUL",
+                "environment value contains NUL or exceeds its bound",
             ));
         }
         Ok(Self { name, value, source: EnvironmentValueSource::Literal })
@@ -124,12 +129,15 @@ impl EnvironmentPlan {
         allowlist: Vec<String>,
         bindings: Vec<EnvironmentVariable>,
     ) -> Result<Self, ProcessError> {
+        if allowlist.len() > MAX_ENVIRONMENT_NAMES {
+            return Err(invalid("environment allowlist exceeds its bound"));
+        }
         let mut canonical = BTreeMap::new();
         for name in allowlist {
             if !valid_name(&name) {
                 return Err(invalid("environment allowlist contains an invalid name"));
             }
-            let folded = canonical_name(&name);
+            let folded = fold_name(&name);
             if canonical.insert(folded, name).is_some() {
                 return Err(invalid("environment allowlist contains a case-fold collision"));
             }
@@ -143,15 +151,13 @@ impl EnvironmentPlan {
                 resolved.push(EnvironmentVariable::inherited(name.clone(), value)?);
             }
         }
-        let mut by_name: BTreeMap<String, EnvironmentVariable> = resolved
-            .into_iter()
-            .map(|variable| (canonical_name(variable.name()), variable))
-            .collect();
+        let mut by_name: BTreeMap<String, EnvironmentVariable> =
+            resolved.into_iter().map(|variable| (fold_name(variable.name()), variable)).collect();
         for variable in bindings {
-            by_name.insert(canonical_name(variable.name()), variable);
+            by_name.insert(fold_name(variable.name()), variable);
         }
         let mut normalized_allowlist: Vec<String> = canonical.into_values().collect();
-        normalized_allowlist.sort_by_key(|name| canonical_name(name));
+        normalized_allowlist.sort_by_key(|name| fold_name(name));
         Self::finish(
             EnvironmentSource::Allowlisted(normalized_allowlist),
             by_name.into_values().collect(),
@@ -162,9 +168,21 @@ impl EnvironmentPlan {
         source: EnvironmentSource,
         variables: Vec<EnvironmentVariable>,
     ) -> Result<Self, ProcessError> {
+        if variables.len() > MAX_ENVIRONMENT_NAMES {
+            return Err(invalid("environment binding count exceeds its bound"));
+        }
         let mut canonical = BTreeMap::new();
+        let mut total = 0_usize;
         for variable in variables {
-            if canonical.insert(canonical_name(&variable.name), variable).is_some() {
+            total = total
+                .checked_add(variable.name.len())
+                .and_then(|value| value.checked_add(variable.value.len()))
+                .and_then(|value| value.checked_add(2))
+                .ok_or_else(|| invalid("environment byte accounting overflowed"))?;
+            if total > MAX_ENVIRONMENT_BYTES {
+                return Err(invalid("complete environment exceeds its bound"));
+            }
+            if canonical.insert(fold_name(&variable.name), variable).is_some() {
                 return Err(invalid("environment contains a case-fold collision"));
             }
         }
@@ -185,15 +203,13 @@ impl EnvironmentPlan {
 }
 
 fn valid_name(name: &str) -> bool {
-    !name.is_empty() && !name.contains(['=', '\0'])
+    !name.is_empty()
+        && name.len() <= MAX_ENVIRONMENT_NAME_BYTES
+        && name.bytes().enumerate().all(|(index, byte)| {
+            byte == b'_' || byte.is_ascii_alphabetic() || (index > 0 && byte.is_ascii_digit())
+        })
 }
 
-#[cfg(windows)]
-fn canonical_name(name: &str) -> String {
-    name.to_uppercase()
-}
-
-#[cfg(not(windows))]
-fn canonical_name(name: &str) -> String {
-    name.to_owned()
+fn fold_name(name: &str) -> String {
+    name.to_ascii_uppercase()
 }

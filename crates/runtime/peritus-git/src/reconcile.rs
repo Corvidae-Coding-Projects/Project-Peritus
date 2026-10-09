@@ -114,7 +114,7 @@ fn classify(
     if !status.is_detached() {
         return ReconcileDisposition::Indeterminate(vec![DirtyReason::AttachedHead]);
     }
-    let head_matches = status.head() == Some(expectation.head);
+    let head_matches = status.head() == expectation.head;
     let tree_matches = status.index_tree() == Some(expectation.tree);
     let worktree_changed = status.has_worktree_change();
     let untracked = status.has_untracked();

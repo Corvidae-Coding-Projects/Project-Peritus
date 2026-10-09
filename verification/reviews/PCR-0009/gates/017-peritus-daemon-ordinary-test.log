@@ -1,0 +1,386 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-daemon --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-daemon", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "017-peritus-daemon-ordinary-test.log", "owning_crate": "peritus-daemon", "started_at": "2026-10-09T03:56:38.928860Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.36s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_daemon-1717f1aedbee3f56)
+
+running 281 tests
+test artifact::service::tests::cancelling_owned_imports_releases_capacity_and_rejects_foreign_cancellation ... ok
+test artifact::service::tests::foreign_completion_and_duplicate_object_upload_do_not_destroy_the_owned_transfer ... ok
+test artifact::service::tests::identical_bytes_can_be_imported_as_independent_scoped_artifacts ... ok
+test artifact::service::tests::interrupted_claim_cannot_be_adopted_by_legacy_or_foreign_upload_after_restart ... ok
+test artifact::service::tests::legacy_artifact_cannot_be_promoted_to_a_scoped_import_by_identifier ... ok
+test artifact::service::tests::repeating_a_scoped_upload_keeps_the_original_publication_and_exact_bytes ... ok
+test artifact::service::tests::scoped_upload_bytes_and_owner_conversation_workspace_binding_survive_restart ... ok
+test authority::owner::orchestrator::children_tests::child_command_and_event_identities_are_restart_stable_and_domain_separated ... ok
+test authority::owner::orchestrator::children_tests::d3::collaboration_cancel_and_finalize_retry_without_manufacturing_success ... ok
+test authority::owner::orchestrator::children_tests::d3::collaboration_lifecycle_retries_exactly_across_restart ... ok
+test authority::owner::orchestrator::children_tests::d3::scheduler_lifecycle_retries_exactly_across_restart ... ok
+test authority::owner::orchestrator::children_tests::d3::scheduler_stale_fence_does_not_append_or_claim_success ... ok
+test authority::owner::orchestrator::children_tests::production_router_registers_both_supported_child_destinations ... ok
+test authority::owner::orchestrator::children_tests::review_child_admission_retries_exactly_across_restart ... ok
+test authority::owner::orchestrator_tests::owner_rejects_a_claim_that_is_absent_from_the_target_run_history ... ok
+test authority::owner::orchestrator_tests::owner_restart_retry_resolves_the_same_acknowledgement ... ok
+test authority::owner::orchestrator_tests::owner_settlement_atomically_acknowledges_e0_and_c0 ... ok
+test authority::owner::orchestrator_tests::stale_fence_rolls_back_before_the_current_claim_can_settle ... ok
+test authority::owner::prompt_tests::settled_prompt_restores_its_terminal_status_after_restart ... ok
+test cli::context::tests::inspection_requires_exact_identity_and_rejects_duplicates_or_unknown_flags ... ok
+test command::service_tests::same_id_schema_v2_relabel_conflicts_without_aliasing_the_v1_result ... ok
+test command::service_tests::settled_v1_genesis_retry_returns_its_original_committed_result ... ok
+test command::service_tests::unsettled_v1_genesis_retries_reconcile_the_exact_c0_digest ... ok
+test component::credentials::tests::lookup_failures_explain_recovery_without_echoing_store_contents ... ok
+test component::tools::tests::configured_allowlist_is_canonical_and_exact ... ok
+test component::tools::tests::duplicate_in_oversized_allowlist_is_reported_as_duplicate ... ok
+test component::tools::tests::duplicates_and_unknown_routes_are_rejected ... ok
+test component::tools::tests::empty_allowlist_exposes_no_router_or_operations ... ok
+test component::tools::tests::every_registration_has_the_declared_route_name ... ok
+test component::tools::tests::unsupported_git_merge_is_never_a_production_handler ... ok
+test config::context::tests::local_is_default_and_legacy_is_explicit_with_strict_bounds ... ok
+test config::context::tests::offline_admission_checks_every_route_and_disallows_automatic_failover ... ok
+test config::product::tests::failover_defaults_off_and_requires_an_explicit_true_value ... ok
+test domain::dispatch::scheduler_tests::fresh_v1_genesis_is_rejected_without_state_while_equivalent_v2_genesis_commits ... ok
+test instance::lock::tests::released_owner_does_not_leave_its_lock_in_a_duplicated_handle ... ok
+test ipc::frame::tests::cancelled_reads_retain_partial_headers_and_payloads ... ok
+test ipc::frame::tests::frame_boundary_eof_is_a_clean_disconnect ... ok
+test ipc::frame::tests::partial_header_is_a_transport_failure ... ok
+test ipc::server::tests::delayed_accept_remains_cancellable_without_consuming_the_queued_client ... ok
+test lifecycle::tests::startup_rejects_repeated_skipped_and_reversed_phases ... ok
+test outbox::handlers::tests::durable_handlers_cover_every_non_child_destination_once ... ok
+test product_control::goal::replay::tests::graphical_output_evidence_participates_in_host_replay_identity ... ok
+test product_control::guidance::tests::c0_reopen_retains_tombstone_and_audit_while_future_render_excludes_guidance ... ok
+test product_control::init::tests::decline_and_prepare_are_no_effects_and_an_intervening_edit_rejects_without_overwrite ... ok
+test product_control::init::tests::existing_instructions_are_discovered_then_applied_exactly_without_running_scripts ... ok
+test product_control::inputs::archive::tests::complete_manifest_above_former_state_ceiling_remains_verifiable_and_inspectable ... ok
+test product_control::inputs::tests::archive_capacity::large_request_and_long_history_recover_exactly_after_restart ... ok
+test product_control::inputs::tests::brief_edits_fence_stale_requests_and_seal_the_exact_revised_requirement_after_restart ... ok
+test product_control::inputs::tests::exact_request_admission_replays_after_restart_and_never_consumes_a_withdrawn_input ... ok
+test product_control::inputs::tests::public_reply_is_immutable_and_enters_only_a_later_user_turn_after_restart ... ok
+test product_control::storage::checkpoints::tests::extended_body_keys_preserve_legacy_identity_and_journal_install_order ... ok
+test product_control::storage::tests::checkpoints::full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_after_restart ... ok
+test product_control::storage::tests::closing_the_store_releases_ownership_even_while_a_duplicated_handle_exists ... ok
+test product_control::storage::tests::context::compact_preview_confirmation_changes_next_view_but_not_exact_archives ... ok
+test product_control::storage::tests::context::context_pagination_and_exclusions_track_exact_revisions_without_incorporation ... ok
+test product_control::storage::tests::context::context_preferences_change_only_future_request_views_and_survive_restart ... ok
+test product_control::storage::tests::context::fresh_conversation_compaction_is_an_empty_read_only_preview ... ok
+test product_control::storage::tests::context::manifest_metadata_tampering_is_detected_even_with_a_recomputed_artifact_digest ... ok
+test product_control::storage::tests::context::sealed_context_is_exact_content_free_read_only_scoped_and_restart_stable ... ok
+test product_control::storage::tests::control_store_has_one_owner_and_rejects_wrong_store_identity_after_release ... ok
+test product_control::storage::tests::exact_receipt_survives_later_mutation_and_reopen_without_reapplying_old_state ... ok
+test product_control::storage::tests::files::confirmed_file_round_trips_restart_and_only_exact_included_context_is_admitted ... ok
+test product_control::storage::tests::files::empty_confirmed_file_has_an_explicit_terminal_attachment_page ... ok
+test product_control::storage::tests::files::large_selected_file_uses_exact_metadata_and_continues_through_immutable_pages ... ok
+test product_control::storage::tests::goal::accounting_does_not_invalidate_user_edits_but_competing_edits_do ... ok
+test product_control::storage::tests::goal::legacy_tool_identity_fails_closed_without_a_v2_replay_debit ... ok
+test product_control::storage::tests::goal::tool_sequence_identity_is_scoped_to_role_and_loop_invocation_with_exact_replay ... ok
+test product_control::storage::tests::images::context_reports_original_image_digest_and_distinguishes_sealed_inclusion_from_deselection ... ok
+test product_control::storage::tests::images::image_import_requires_exact_decoded_bytes_and_replays_with_its_artifact_after_restart ... ok
+test product_control::storage::tests::images::image_selection_and_caption_queue_changes_fence_captured_requests_without_changing_old_bytes ... ok
+test product_control::storage::tests::images::missing_changed_or_separately_published_image_bytes_fail_closed_on_replay ... ok
+test product_control::storage::tests::images::original_image_larger_than_sixteen_mib_survives_atomic_archive_and_restart ... ok
+test product_control::storage::tests::images::preview::exact_preview_and_image_publish_together_and_replay_after_restart ... ok
+test product_control::storage::tests::images::preview::failed_preview_publication_leaves_no_image_input_or_receipt ... ok
+test product_control::storage::tests::images::preview::missing_changed_or_separately_published_consent_fails_closed ... ok
+test product_control::storage::tests::images::request_rejects_omitted_extra_or_changed_images_and_seals_exact_selection ... ok
+test product_control::storage::tests::request_artifact_disk_full_leaves_inputs_pending_and_publishes_no_archive ... ok
+test product_control::storage::tests::reservations::committed_automatic_fork_retry_resolves_after_the_checkpoint_is_later_sealed ... ok
+test product_control::storage::tests::reservations::prepared_restore_reserves_child_until_exact_publication_even_after_reopen ... ok
+test product_control::storage::tests::sqlite_full_never_acknowledges_or_publishes_a_partial_control_transition ... ok
+test product_control::storage::tests::stale_revision_and_changed_payload_reject_without_receipt_or_state_change ... ok
+test product_control::storage::tests::withdrawal_and_incorporation_cas_have_one_winner_and_replay_preserves_exact_binding ... ok
+test product_run::deliverable::tests::bracketed_filename_does_not_commit_or_discard_a_matching_unrelated_file ... ok
+test product_run::deliverable::tests::candidate_action_rejects_a_workspace_that_no_longer_matches_its_digest ... ok
+test product_run::deliverable::tests::commit_excludes_an_unrelated_pre_staged_change ... ok
+test product_run::deliverable::tests::commit_handoff::automated_qualification_wording_does_not_create_a_human_decision ... ok
+test product_run::deliverable::tests::commit_handoff::committed_handoff_binds_current_files_without_reissuing_old_qualification ... ok
+test product_run::deliverable::tests::commit_handoff::nested_commit_binds_the_final_root_and_nested_git_state ... ok
+test product_run::deliverable::tests::commit_handoff::successful_commit_hook_edit_is_preserved_and_does_not_become_the_recorded_candidate ... ok
+test product_run::deliverable::tests::discard::a_foreign_final_record_is_preserved_when_completion_is_published ... ok
+test product_run::deliverable::tests::discard::a_live_reservation_cannot_be_reopened_by_a_second_control ... ok
+test product_run::deliverable::tests::discard::a_symlink_reservation_does_not_overwrite_its_target ... ok
+test product_run::deliverable::tests::discard::completed_reserved_record_recovers_after_rename_failure_without_touching_later_edits ... ok
+test product_run::deliverable::tests::discard::completion_record_cannot_acknowledge_a_different_candidate_or_baseline ... ok
+test product_run::deliverable::tests::discard::corrupt_completion_record_is_scoped_to_its_run_without_aborting_startup ... ok
+test product_run::deliverable::tests::discard::reservation_alone_is_inert_and_a_matching_retry_can_complete_it ... ok
+test product_run::deliverable::tests::discard::unknown_or_foreign_reservation_is_preserved ... ok
+test product_run::deliverable::tests::export_and_discard_are_limited_to_exact_deliverable_paths ... ok
+test product_run::deliverable::tests::many_recovery_locations_cannot_make_a_successful_discard_unreportable ... ok
+test product_run::deliverable::tests::nested::commit_handles_a_deep_unborn_repository ... ok
+test product_run::deliverable::tests::nested::commit_handles_deletions_and_a_previously_committed_candidate ... ok
+test product_run::deliverable::tests::nested::commit_saves_nested_source_and_preserves_unrelated_staged_changes ... ok
+test product_run::deliverable::tests::nested::failed_signer_keeps_a_durable_source_patch_available ... ok
+test product_run::deliverable::tests::nested::partial_nested_commit_retries_after_reconciliation_only_for_unchanged_source ... ok
+test product_run::deliverable::tests::repeated_user_action_is_idempotent ... ok
+test product_run::deliverable::tests::restart_marks_changed_candidate_evidence_stale ... ok
+test product_run::error::tests::invalid_provider_output_is_not_mislabeled_as_command_input ... ok
+test product_run::error::tests::persistence_error_keeps_operation_cause_and_recovery_action ... ok
+test product_run::error::tests::product_prerequisite_failures_keep_distinct_public_ownership ... ok
+test product_run::error::tests::provider_and_workspace_failures_keep_distinct_public_ownership ... ok
+test product_run::error::tests::unavailable_run_state_is_not_mislabeled_as_subscription_backpressure ... ok
+test product_run::error::tests::unsupported_control_schema_requires_a_new_protocol_relationship ... ok
+test product_run::improvements::store::tests::changing_retained_evidence_without_its_digest_is_rejected ... ok
+test product_run::improvements::store::tests::collection_deduplicates_and_survives_restart_without_evaluation ... ok
+test product_run::improvements::store::tests::corrupt_and_future_records_are_not_treated_as_empty_inboxes ... ok
+test product_run::improvements::store::tests::dismissal_is_durable_and_cannot_be_auto_reactivated ... ok
+test product_run::improvements::store::tests::evaluation_reservation_is_stable_and_freezes_evidence ... ok
+test product_run::improvements::store::tests::pre_release_schema_is_quarantined_without_migration ... peritusd: isolated unsupported pre-release improvement inbox /tmp/.tmpIeJtnl/inbox.sqlite3 at /tmp/.tmpIeJtnl/improvements-quarantine/inbox.sqlite3.schema-1
+ok
+test product_run::improvements::store::tests::suggestion_evidence_grows_past_four_runs_and_survives_restart ... ok
+test product_run::improvements::store::tests::suggestions_grow_past_the_old_ceiling_and_dismissal_remains_deduplicated ... ok
+test product_run::interaction::narration::tests::chat_start_does_not_claim_implementation ... ok
+test product_run::interaction::narration::tests::repeated_waits_preserve_the_conversation_and_update_one_notice ... ok
+test product_run::interaction::narration::tests::review_retry_is_visible_and_separate_from_provider_text_and_wait_status ... ok
+test product_run::interaction::presentation::tests::pipeline_envelopes_show_delivered_text_and_preserve_every_finding_field ... ok
+test product_run::interaction::tests::invalid_provider_utf8_retains_provider_classification ... ok
+test product_run::interaction::tests::standalone_leading_whitespace_waits_for_real_assistant_text ... ok
+test product_run::interaction::tests::thinking_summary_streams_separately_from_answer_with_split_utf8 ... ok
+test product_run::interaction::tests::whitespace_only_stream_is_bounded_without_a_public_empty_activity ... ok
+test product_run::interaction::tool_activity::tests::command_is_visible_before_completion_and_same_entry_gains_real_output ... ok
+test product_run::interaction::tool_activity::tests::previews_bound_unicode_and_omit_bodies_and_recognizable_credentials ... ok
+test product_run::interaction::tool_activity::tests::rejected_commands_and_background_handles_do_not_claim_completed_success ... ok
+test product_run::library::tests::multiline_task_and_handoff_project_as_bounded_library_labels ... ok
+test product_run::permissions::tests::rewind_permissions_distinguish_logical_and_filesystem_effects ... ok
+test product_run::persistence::interaction::tests::canonical_efforts_are_required_and_unknown_values_reject ... ok
+test product_run::persistence::interaction::tests::mixed_role_efforts_roundtrip_without_changing_model_provenance_or_activities ... ok
+test product_run::persistence::progress::tests::active_provider_elapsed_time_survives_persistence_and_reconnection ... ok
+test product_run::persistence::progress::tests::legacy_provider_deadline_is_read_but_not_republished ... ok
+test product_run::persistence::settlement::tests::dependency_aware_checkpoint_round_trips_exactly ... ok
+test product_run::persistence::tests::identity::malformed_projection_is_quarantined_without_blocking_startup ... peritusd: isolated unusable run projection /tmp/.tmpvDR6Z1/workbench-v1/runs/broken.json: workbench execution projection is malformed: key must be a string at line 1 column 2
+ok
+test product_run::persistence::tests::identity::previous_format_projection_is_quarantined_without_migration ... peritusd: isolated unusable run projection /tmp/.tmpZZi3a1/workbench-v1/runs/01010101010101010101010101010101.json: workbench execution projection is malformed: invalid type: null, expected struct PersistedInteraction at line 4 column 30
+ok
+test product_run::persistence::tests::record_format::canonical_record_rejects_omitted_current_fields ... ok
+test product_run::persistence::tests::ungoverned_workbench_projection_is_quarantined_without_blocking_startup ... peritusd: isolated unusable run projection /tmp/.tmpPqdVe5/workbench-v1/runs/orphan.json: workbench projection has no governing control store
+ok
+test product_run::progress::tests::live_status_distinguishes_silence_from_failure ... ok
+test product_run::progress::tests::provider_events_are_live_and_completed_attempt_snapshots_cannot_roll_them_back ... ok
+test product_run::tests::cancellation_during_review_keeps_the_candidate_actionable ... ok
+test product_run::tests::candidate_retry_resumes_review_without_repeating_design_or_writing ... ok
+test product_run::tests::catalog::discovery_cache_retains_provenance_and_failed_refresh_never_becomes_fresh ... ok
+test product_run::tests::catalog::slow_discovery_does_not_block_cached_models_or_another_provider ... ok
+test product_run::tests::discard_recovery::incomplete_backend_and_foreign_receipt_never_acknowledge_or_change_candidate ... ok
+test product_run::tests::discard_recovery::lost_final_acknowledgement_recovers_from_completed_backend_without_touching_new_edits ... ok
+test product_run::tests::discard_recovery::restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_resume ... ok
+test product_run::tests::doctor::diagnostics_do_not_consume_provider_responses_or_mutate_files_or_runs ... ok
+test product_run::tests::folder::folder_trust_and_read_only_modes_are_enforced_in_the_daemon ... ok
+test product_run::tests::folder::git_candidate_delivery_is_rejected_before_admitting_a_folder_run ... ok
+test product_run::tests::folder::greeting_in_a_non_git_home_shaped_folder_needs_no_baseline_or_scan ... ok
+test product_run::tests::folder::pipeline::cancellation_during_folder_review_retains_effects_without_qualification_or_controls ... ok
+test product_run::tests::folder::pipeline::folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review ... ok
+test product_run::tests::folder::pipeline::folder_provider_failure_retains_unqualified_effects_and_durable_retry_reuses_the_pipeline ... ok
+test product_run::tests::folder::pipeline::unsupported_folder_checks_do_not_become_success_from_clean_reviewer_prose ... ok
+test product_run::tests::folder::requested_command_runs_in_the_original_folder_with_daemon_owned_processes ... ok
+test product_run::tests::folder::requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_state ... ok
+test product_run::tests::healing::healed_tool_arguments_keep_schema_validation_and_durable_private_provenance ... ok
+test product_run::tests::improvements::suggestions_require_real_terminal_evidence_and_only_explicit_evaluation_launches ... ok
+test product_run::tests::interaction::a_question_finishes_without_design_or_workspace_changes_and_restores_durably ... ok
+test product_run::tests::interaction::idle_chat_releases_workspace_ownership_for_a_new_conversation ... ok
+test product_run::tests::interaction::public_start_message_is_visible_before_a_stalled_provider_finishes ... ok
+test product_run::tests::interaction::read_only::planning_and_review_cannot_execute_a_provider_requested_write ... ok
+test product_run::tests::model_selection::active_effort_selection_reaches_next_turn_and_survives_reload_for_each_execution_mode ... ok
+test product_run::tests::model_selection::active_selection_changes_the_next_request_without_restarting_or_losing_context ... ok
+test product_run::tests::observations::mixed_active_and_candidate_queries_encode_with_exact_evidence ... ok
+test product_run::tests::observations::uncertain_command_requires_explicit_review_and_never_admits_blind_retry ... ok
+test product_run::tests::recovery::abrupt_cancel_child_fixture ... ignored, subprocess fixture; invoked by abrupt_cancel_survives_process_termination
+test product_run::tests::recovery::abrupt_cancel_survives_process_termination ... ok
+test product_run::tests::recovery::accepted_result_stays_complete_when_shutdown_follows_late_cancellation ... ok
+test product_run::tests::recovery::persistence_faults::interaction_persistence_failure_is_visible_and_terminal_in_memory ... ok
+test product_run::tests::recovery::persistence_faults::persistent_failure_after_effect_does_not_replay_provider_or_tool_on_restart ... ok
+test product_run::tests::recovery::persistence_faults::product_record_fault_boundaries_preserve_an_old_or_complete_new_record ... ok
+test product_run::tests::recovery::persistence_faults::restored_interrupted_run_remains_idle_without_restart_narration ... ok
+test product_run::tests::recovery::restart::daemon_restart_waits_for_explicit_retry_before_continuing_writer ... ok
+test product_run::tests::recovery::restart::explicitly_cancelled_writer_stays_stopped_after_daemon_restart ... ok
+test product_run::tests::recovery::restart::qualified_restart_reacquires_gates_without_replaying_a_provider ... ok
+test product_run::tests::recovery::shutdown::explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state ... ok
+test product_run::tests::task_baseline::completed_discard_is_recovered_after_result_persistence_failure_and_restart ... ok
+test product_run::tests::task_baseline::discard_retention_failure_leaves_the_exact_candidate_unchanged ... ok
+test product_run::tests::task_baseline::repeated_deliverable_actions_retry_failed_persistence_before_reporting_success ... ok
+test product_run::tests::task_baseline::restarted_deliverable_exports_and_discards_from_embedded_preimages ... ok
+test product_run::tests::workbench::admission::failed_run_staging_preserves_the_pending_queue_and_does_not_call_a_provider ... ok
+test product_run::tests::workbench::admission::governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart ... ok
+test product_run::tests::workbench::admission::governed_textual_image_mentions_do_not_discover_or_cache_ambient_workspace_images ... ok
+test product_run::tests::workbench::checkpoints::actual_c1_indeterminate_error_remains_prepared_for_authorized_reconciliation ... ok
+test product_run::tests::workbench::checkpoints::applied_folder_patch_before_settlement_recovers_as_applied_idempotently ... ok
+test product_run::tests::workbench::checkpoints::automatic::automatic_checkpoint_rewinds_after_the_user_projection_is_bypassed ... ok
+test product_run::tests::workbench::checkpoints::checkpoint_owned_edit_preview_and_restore_round_trip_exact_bytes_and_journal ... ok
+test product_run::tests::workbench::checkpoints::combined_rewind_conflict_never_publishes_a_child ... ok
+test product_run::tests::workbench::checkpoints::combined_rewind_publishes_historical_branch_only_after_files_settle ... ok
+test product_run::tests::workbench::checkpoints::combined_rewind_recovers_completed_files_before_publishing_branch ... ok
+test product_run::tests::workbench::checkpoints::conversation_rewind_preserves_independent_files_and_works_without_write_permission ... ok
+test product_run::tests::workbench::checkpoints::independent_user_edit_is_a_conflict_and_preserves_every_current_byte ... ok
+test product_run::tests::workbench::checkpoints::paged_confirmation_rejects_stale_coverage_and_replays_conflict_summary_without_writes ... ok
+test product_run::tests::workbench::checkpoints::prepared_restore_before_c1_recovers_as_safe_no_effect_conflict ... ok
+test product_run::tests::workbench::conversation::pending_input_waits_for_unknown_command_reconciliation_before_provider_resume ... ok
+test product_run::tests::workbench::conversation::selected_conversation_continues_receipted_input_without_legacy_admission ... ok
+test product_run::tests::workbench::files::file_snapshot_and_refresh_modes_deliver_the_right_version_through_the_real_runner ... ok
+test product_run::tests::workbench::goals::goal_continues_after_the_first_provider_request_without_a_budget ... ok
+test product_run::tests::workbench::goals::idle::a_goal_paused_at_an_idle_boundary_resumes_after_restart_without_new_input ... ok
+test product_run::tests::workbench::goals::idle::committed_resume_without_launch_recovers_once_on_exact_replay_after_restart ... ok
+test product_run::tests::workbench::goals::idle::replay_of_unlaunched_resume_cannot_override_a_later_goal_clear ... ok
+test product_run::tests::workbench::goals::persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run ... peritusd: recovered validated goal projection /tmp/.tmpfL4Eoc/workbench-v1/runs/.quarantine/65656565656565656565656565656565.json; original quarantine copy retained
+ok
+test product_run::tests::workbench::goals::resume_recovery::failed_resume_projection_does_not_publish_an_in_memory_launch_or_call_provider ... ok
+test product_run::tests::workbench::goals::resume_recovery::resume_projection_requires_current_format_and_exact_receipt ... peritusd: isolated unusable run projection /tmp/.tmp0bb4bd/workbench-v1/runs/c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5.json: workbench execution projection contains invalid values: The request contains invalid conversation or command data. Correct it and submit a new request.
+peritusd: isolated unusable run projection /tmp/.tmp0bb4bd/workbench-v1/runs/c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5.json: goal resume launch marker has no exact control receipt
+peritusd: isolated unusable run projection /tmp/.tmp0bb4bd/workbench-v1/runs/c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5.json: goal resume launch marker has no exact control receipt
+peritusd: isolated unusable run projection /tmp/.tmp0bb4bd/workbench-v1/runs/c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5.json: workbench execution projection contains invalid values: The request contains invalid conversation or command data. Correct it and submit a new request.
+ok
+test product_run::tests::workbench::goals::resume_recovery::saved_resume_launch_without_worker_is_recovered_by_explicit_replay ... ok
+test product_run::tests::workbench::images::governed_image_reaches_the_real_runner_and_text_only_provider_never_receives_a_request ... ok
+test product_run::tests::workbench::images::page::retained_image_pages_cover_more_than_one_page_at_one_exact_revision ... ok
+test product_run::tests::workbench::init::confirmed_init_preserves_existing_instructions_and_replays_without_scripts_or_reapplication ... ok
+test product_run::tests::workbench::init::initialization_discovery_rechecks_read_permission_before_inspecting_the_folder ... ok
+test product_run::tests::workbench::init::initialization_rechecks_effective_write_policy_before_committing_authority ... ok
+test product_run::tests::workbench::library::isolated_fork_preserves_parent_and_starts_as_an_independent_draft ... ok
+test product_run::tests::workbench::library::search::durable_library_search_and_metadata_navigation_never_invoke_a_provider ... ok
+test product_run::tests::workbench::memory::saved_guidance_enters_future_provider_request_and_restart_tombstone_excludes_it ... ok
+test product_run::tests::workbench::permissions::a_permission_change_cannot_grant_above_the_host_ceiling ... ok
+test product_run::tests::workbench::permissions::narrowing_network_blocks_the_actual_provider_boundary_and_survives_restart ... ok
+test product_run::tests::workbench::permissions::narrowing_process_blocks_a_direct_preview_before_receipt_or_launch ... ok
+test product_run::tests::workbench::permissions::ordinary_chat_enforces_the_workspace_overlay_without_a_workbench_binding ... ok
+test product_run::tests::workbench::preview::daemon_preview_evidence_does_not_retarget_a_changed_goal_after_restart ... ignored, requires Xvfb, xdotool, ImageMagick import, and Python Tk
+test product_run::tests::workbench::preview::daemon_preview_evidence_satisfies_only_the_graphical_goal_criterion ... ignored, requires Xvfb, xdotool, ImageMagick import, and Python Tk
+test product_run::tests::workbench::preview_output::preview_prompt_fixture ... ignored, owned subprocess fixture
+test product_run::tests::workbench::preview_output::preview_prompt_is_visible_before_input_and_retained_after_restart ... ok
+test product_run::tests::workbench::preview_output::terminal::tests::prompt_wait_retries_empty_pages_and_accumulates_split_chunks ... ok
+test product_run::tests::workbench::review::oversized::oversized_diff_review_starts_bounded_and_keeps_raw_and_anchor_paths_exact ... ok
+test product_run::tests::workbench::review::review_service_rejects_stale_add_then_projects_and_rebinds_a_persisted_stale_hunk ... ok
+test product_run::tests::workbench::review::selected_feedback_produces_a_read_only_reply_or_a_new_qualified_candidate ... ok
+test product_run::tests::workbench::tetris::v1_image_build_and_controlled_tetris_playtest_preserve_exact_evidence ... ignored, requires Xvfb, xdotool, ImageMagick import, and Python Tk
+test product_run::workbench::checkpoints::pages::tests::empty_checkpoint_and_conversation_only_routes_encode_terminal_pages ... ok
+test product_run::workbench::checkpoints::pages::tests::empty_checkpoint_coverage_starts_with_a_terminal_page ... ok
+test product_run::workbench::checkpoints::recovery::tests::postclassification_requires_unchanged_covered_paths_to_remain_at_checkpoint_bytes ... ok
+test product_run::workbench::execution::tests::read_only_branch_execution_is_exactly_chat_and_governance_shaped ... ok
+test product_run::workbench::launch::capture::pending::tests::failed_publication_retry_after_restart_reuses_exact_capture_bytes_and_stamp ... ok
+test product_run::workbench::launch::capture::pending::tests::partial_or_unreadable_pending_record_never_triggers_recapture ... ok
+test product_run::workbench::launch::evidence::tests::capture_requires_delivered_input_before_pixels_and_a_later_check ... ok
+test product_run::workbench::tests::accepting_an_exact_public_reply_creates_a_user_confirmed_brief_revision ... ok
+test prompt::clock::tests::observations_retain_epoch_and_do_not_regress ... ok
+test prompt::clock::tests::zero_epoch_is_rejected ... ok
+test prompt::tests::abandoned_preparation_can_be_retried_exactly ... ok
+test prompt::tests::cancellation_is_inert_until_its_target_settles ... ok
+test prompt::tests::correlation_listing_is_exact_bounded_and_owner_scoped ... ok
+test prompt::tests::durable_registration_preparation_is_inert_and_exact_replay_is_idempotent ... ok
+test prompt::tests::only_terminal_prompts_can_be_retired ... ok
+test prompt::tests::prepared_answer_remains_awaiting_until_durable_settlement ... ok
+test session::connection::select::tests::delayed_catalog_does_not_block_heartbeat_or_a_fragmented_followup_request ... ok
+test session::connection::terminal_tests::native::backpressured_attachment_preserves_live_process_and_healthy_sibling ... ok
+test session::connection::terminal_tests::native::burst_fixture ... ignored, owned PTY subprocess fixture invoked by the backpressure regression
+test session::connection::terminal_tests::unavailable_attachment_does_not_end_the_application_connection ... ok
+test session::request::discovery::tests::excess_discovery_is_bounded_and_disconnect_reaps_every_owned_task ... ok
+test session::request::response::tests::artifact_registration_errors_are_not_subscription_failures ... ok
+test session::request::response::tests::negotiated_limit_constrains_error_without_dropping_the_connection_frame ... ok
+test shutdown::tests::bounds_preserve_exact_aggregate_reporting ... ok
+test shutdown::tests::client_shutdown_reports_monotonic_exact_unclean_truth ... ok
+test shutdown::tests::operating_system_shutdown_is_clean_without_synthetic_protocol_identity ... ok
+test startup::plan::tests::checkpoint_prefix_retains_exact_digests_and_next_actions ... ok
+test startup::plan::tests::every_kill_point_preserves_the_exact_restart_prefix ... ok
+test startup::plan::tests::fixed_failpoint_set_tracks_both_boundaries_without_allocation ... ok
+test startup::plan::tests::wrong_completion_is_typed_and_does_not_advance ... ok
+test startup::registry::tests::exact_restart_is_idempotent ... ok
+test startup::registry::tests::exact_successor_advances_registry ... ok
+test startup::registry::tests::fresh_store_installs_configured_registry ... ok
+test startup::registry::tests::non_successor_configuration_is_rejected_as_drift ... ok
+test terminal::registry::receipts::tests::old_receipts_expire_without_losing_recent_exact_facts ... ok
+test terminal::registry::tests::cancelled_terminal_receipt_survives_owner_retirement ... ok
+test terminal::registry::tests::completed_attached_previews_keep_pending_delivery_until_disconnect ... ok
+test terminal::registry::tests::completed_disconnected_previews_release_registry_capacity ... ok
+test terminal::registry::tests::repeated_detach_and_reattach_preserves_receipts_without_consuming_live_slots ... ok
+test terminal::registry::tests::terminal_capacity_fixture ... ignored, subprocess fixture; invoked by terminal registry lifecycle tests
+test verified::tests::executable_readiness_predicates_match_the_closed_admission_matrix ... ok
+test verified::tests::executable_startup_relation_admits_only_exact_successors ... ok
+test worker::tests::cancellation_retains_and_delivers_the_first_reason ... ok
+test worker::tests::durable_start_acknowledgement_precedes_worker_effect ... ok
+test worker::tests::empty_shutdown_is_clean_and_immediate ... ok
+test worker::tests::panic_is_normalized_to_a_redaction_safe_failure ... ok
+test worker::tests::reap_and_result_draining_preserve_bounds_and_order ... ok
+test worker::tests::rejects_duplicate_dispatch_and_active_task_capacity ... ok
+test worker::tests::shutdown_reports_cooperative_cancellation_and_forced_abort_exactly ... ok
+
+test result: ok. 274 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 399.27s
+
+     Running unittests src/bin/peritusd.rs (/home/doll/Project-Peritus/target/debug/deps/peritusd-79b6be52debddd1a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/daemon_conformance.rs (/home/doll/Project-Peritus/target/debug/deps/daemon_conformance-fb1953bf988c2e65)
+
+running 19 tests
+test artifact_commit_recovers_on_both_sides_of_publication ... ok
+test corrupt_acceptance_evidence_is_quarantined_before_reuse ... ok
+test corrupt_harness_activation_evidence_is_quarantined_without_pointer_mutation ... ok
+test corrupt_journal_stops_fresh_startup_before_authority_mutation ... ok
+test corrupt_projection_is_replaced_during_fresh_startup ... ok
+test corrupt_referenced_artifact_is_quarantined_and_made_unavailable ... ok
+test corrupt_snapshot_reference_is_quarantined_before_reuse ... ok
+test dependency_death_and_retry_exhaustion_reconcile_real_owned_work ... ok
+test every_publicly_reachable_daemon_case_passes_against_peritusd ... ok
+test gate_commit_recovers_on_both_sides_of_atomic_checkpoint_install ... ok
+test journal_append_plan_dies_cleanly_before_durable_commit ... ok
+test journal_page_exhaustion_rolls_back_and_allows_fresh_inspection ... ok
+test lease_commit_recovers_on_both_sides_of_durable_projection_install ... ok
+test no_contract_case_remains_blocked_from_the_public_binary ... ok
+test patch_commit_recovers_on_both_sides_of_durable_application ... ok
+test promotion_commit_recovers_on_both_sides_of_atomic_activation ... ok
+test public_coverage_inventory_partitions_the_complete_contract ... ok
+test snapshot_commit_recovers_on_both_sides_of_retained_ref_publication ... ok
+test snapshot_manifest_quota_releases_the_unpublished_reference ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.04s
+
+     Running tests/instance_ownership.rs (/home/doll/Project-Peritus/target/debug/deps/instance_ownership-55e1617407c96287)
+
+running 1 test
+test second_runtime_cannot_acquire_a_live_state_root ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/protocol_boundaries.rs (/home/doll/Project-Peritus/target/debug/deps/protocol_boundaries-fea795d41c404d64)
+
+running 4 tests
+test clients_that_close_before_authentication_do_not_stop_the_daemon ... application connection terminated: PERITUS-DAEMON-WORKER-001 during communicate with authority owner: authority owner is no longer available
+ok
+test incompatible_hello_returns_no_session_and_closes_the_connection ... ok
+test malformed_and_oversized_headers_close_without_waiting_for_declared_payloads ... application connection terminated: PERITUS-DAEMON-INPUT-001 during read application frame: PRTS frame magic is invalid
+application connection terminated: PERITUS-DAEMON-INPUT-001 during decode application frame: application frame violates the negotiated protocol; cause: malformed-frame; cause: codec NonzeroFlags at byte 10
+application connection terminated: PERITUS-DAEMON-LIMIT-001 during read application frame: declared PRTS payload exceeds the pre-allocation bound
+ok
+test very_long_state_roots_use_standard_sockets_and_survive_early_closes ... application connection terminated: PERITUS-DAEMON-WORKER-001 during communicate with authority owner: authority owner is no longer available
+ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/recovery_shutdown.rs (/home/doll/Project-Peritus/target/debug/deps/recovery_shutdown-148f383e80c330d0)
+
+running 2 tests
+test authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly ... ok
+test restart_resumes_the_durable_session_and_replays_the_exact_command_result ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/runtime.rs (/home/doll/Project-Peritus/target/debug/deps/runtime-d8db819627a12f2d)
+
+running 18 tests
+test doctor::doctor_requires_negotiation_and_reports_missing_prerequisites_without_starting_work ... ok
+test runtime_accepts_authenticated_negotiation_and_status ... ok
+test runtime_commits_and_replays_registered_scheduler_commands ... ok
+test runtime_streams_uploaded_artifacts_through_the_durable_catalog ... ok
+test strict_configuration_rejects_unknown_and_plaintext_authority_fields ... ok
+test workbench::brief::brief_ipc_is_durable_feature_gated_and_retains_exact_held_sources_without_execution ... ok
+test workbench::context_inspection::context_ipc_is_feature_gated_content_free_and_restart_stable_without_execution ... ok
+test workbench::control_negotiation_exact_receipts_and_stale_edits_survive_daemon_restart ... ok
+test workbench::files::external_text_upload_preview_confirm_and_restart_never_reopen_the_source_label ... ok
+test workbench::files::file_confirmation_restart_replay_and_deselection_remain_local ... ok
+test workbench::images::image_upload_preview_confirm_and_exact_receipt_replay_survive_provider_revision_change ... ok
+test workbench::images::page::image_inspection_exposes_exact_metadata_and_persistent_selection_without_inference ... ok
+test workbench::images::rejections::corrupt_pixels_wrong_mime_and_foreign_conversation_never_produce_a_preview ... ok
+test workbench::images::rejections::forged_preview_and_mismatched_outer_revision_reject_without_consuming_the_image ... ok
+test workbench::images::rejections::provider_revision_change_invalidates_unconfirmed_preview_but_allows_a_fresh_preview ... ok
+test workbench::images::rejections::unnegotiated_image_controls_reject_before_upload_or_preview_dispatch ... ok
+test workbench::integrated::all_workbench_features_init_and_checkpoint_round_trip_over_authenticated_ipc ... ok
+test workbench::queue::queue_mutations_are_durable_and_feature_gated_and_never_start_execution ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.80s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-daemon --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 413.257, "exit_code": 0, "finished_at": "2026-10-09T04:03:32.186847Z", "invocation": ["cargo", "test", "--package", "peritus-daemon", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "017-peritus-daemon-ordinary-test.log", "owning_crate": "peritus-daemon", "result": "passed", "started_at": "2026-10-09T03:56:38.928860Z"}

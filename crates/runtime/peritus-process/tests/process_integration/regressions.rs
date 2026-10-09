@@ -48,12 +48,8 @@ fn unavailable_claimed_resource_enforcement_is_rejected_before_consumption() {
     let execution = plan(&root, &ids, options).expect("supervisor-fidelity plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts = commit_authority(
-        &mut journal,
-        &ids,
-        &action,
-        execution.resource_policy().wall_millis().expect("finite wall limit"),
-    );
+    let receipts =
+        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("process store"),
     );
@@ -172,12 +168,8 @@ fn launch(
 ) -> (peritus_process::OwnedProcess, ProcessStore) {
     let action = intent(ids, &execution);
     let mut journal = open_journal(root);
-    let receipts = commit_authority(
-        &mut journal,
-        ids,
-        &action,
-        execution.resource_policy().wall_millis().expect("finite wall limit"),
-    );
+    let receipts =
+        commit_authority(&mut journal, ids, &action, execution.resource_policy().wall_millis());
     let store = ProcessStore::open(root.registry(), root.workspace()).expect("process store");
     let gateway = ExecutionGateway::new(store.clone());
     let request = ExecutionAuthorizationRequest::new(

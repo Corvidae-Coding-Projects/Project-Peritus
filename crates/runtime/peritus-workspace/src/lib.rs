@@ -15,7 +15,6 @@ mod folder;
 mod folder_mutation;
 mod gateway;
 mod git_inspection;
-mod git_mutation_recovery;
 mod identity;
 mod inspection;
 mod manifest;
@@ -40,30 +39,24 @@ mod transaction_namespace;
 mod verified;
 mod writable;
 
-pub use authorization::{OwnedWorkspaceAuthorization, WorkspaceAuthorizationRequest};
+pub use authorization::WorkspaceAuthorizationRequest;
 pub use caller::{ReadOnlyTargetBinding, WorkspaceCallerBinding};
 pub use candidate::{
     CandidateOutcome, candidate_authorization_payload, candidate_authorization_payload_for_caller,
     predicted_candidate_authorization_payload,
 };
-pub use consumption::ActionConsumptionBinding;
 pub use error::{ErrorCode, RecoveryClass, WorkspaceError, WorkspaceOperation};
 pub use gateway::WorkspaceGateway;
-pub use git_mutation_recovery::GitMutationRecoveryOutcome;
 pub use identity::{SnapshotIdentity, WorkspaceBinding};
 pub use inspection::{
-    DirectoryCursor, DirectoryDiagnostic, DirectoryDiagnosticKind, DirectoryEntry,
-    DirectoryListing, DirectoryPage, WorkspaceEntryKind, WorkspaceMetadata,
+    DirectoryEntry, MAX_INSPECTION_FILE_BYTES, WorkspaceEntryKind, WorkspaceMetadata,
 };
 pub use manifest::{ManifestKind, WorkspaceManifest};
 pub use mutation::{
-    AuthorizedPatch, MutationOutcome, MutationRecoveryOutcome, patch_authorization_payload,
-    patch_authorization_payload_for_caller,
+    MutationOutcome, patch_authorization_payload, patch_authorization_payload_for_caller,
 };
 pub use open::{ReadOnlyOpenRequest, WritableOpenRequest};
-pub use publication::{
-    SnapshotPublicationFailure, finalize_snapshot_manifest, finalize_snapshot_manifest_recoverable,
-};
+pub use publication::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 pub use read_only::ReadOnlyWorkspace;
 pub use reconcile::{
     ReconciliationEvidence, ReconciliationInput, ReconciliationOutcome, RestartDisposition,
@@ -74,6 +67,8 @@ pub use rollback::{
     RollbackOutcome, RollbackRequest, rollback_authorization_payload,
     rollback_authorization_payload_for_caller,
 };
-pub use scoped_inspection::{FileReadSelection, FolderInspection, InspectedFile};
+pub use scoped_inspection::{
+    FileReadSelection, FolderInspection, InspectedFile, MAX_INSPECTION_SOURCE_BYTES,
+};
 pub use state::{WorkspaceCondition, WorkspaceState};
 pub use writable::WritableWorkspace;

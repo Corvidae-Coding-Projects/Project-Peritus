@@ -25,14 +25,6 @@ pub struct ProtocolLimits {
 }
 
 impl ProtocolLimits {
-    /// Field capacities for durable archives, independent of a provider's selected view.
-    ///
-    /// Canonical strings, opaque fields, and collection counts have `u32` length prefixes.
-    /// This policy retains those representation limits without applying production request
-    /// quotas to stored history. It does not authorize replay: callers must validate a
-    /// provider-bound request against its negotiated capabilities and selected limits.
-    pub const ARCHIVE: Self = Self::from_array([u32::MAX as usize; 13]);
-
     /// Production-wide upper bounds. Provider profiles may only narrow them.
     pub const PRODUCTION: Self = Self {
         max_messages: 4_096,

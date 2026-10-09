@@ -1,0 +1,2 @@
+FINDING-0010: Diff page byte budgeting could skip a line and emit an invalid wire preview
+External fixture `/tmp/peritus-batch3/formal-review/stream-page-edge` initially expected the next raw offset 62139 but observed a later offset 64141; encoding an oversized preview returned `MalformedFrame`. After repair it reported 31 lines, cursor 31, exact next raw offset 62139, and successful response encode/decode with exit code 0. App-protocol review tests passed 14/14.

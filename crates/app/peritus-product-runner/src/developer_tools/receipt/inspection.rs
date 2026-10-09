@@ -14,7 +14,6 @@ pub struct UncertainEffect {
     tool: String,
     state: UncertainEffectState,
     requirements_revision: Option<u64>,
-    owner_inactive: bool,
 }
 
 /// Durable receipt state for a command without a terminal result.
@@ -52,12 +51,6 @@ impl UncertainEffect {
     pub const fn requirements_revision(&self) -> Option<u64> {
         self.requirements_revision
     }
-
-    /// Returns whether exact native-owner reconciliation durably proved the process inactive.
-    #[must_use]
-    pub const fn owner_inactive(&self) -> bool {
-        self.owner_inactive
-    }
 }
 
 /// Inspects durable receipt owners without advancing, replaying, or repairing any effect.
@@ -85,7 +78,6 @@ pub fn uncertain_effects(
                 _ => unreachable!("filtered uncertain receipt state"),
             },
             requirements_revision: receipt_revision(&record.scope),
-            owner_inactive: record.owner_inactive,
         })
         .collect())
 }
@@ -107,7 +99,6 @@ pub fn acknowledge_uncertain_effect(
     let Some(record) = records.into_iter().find(|record| {
         command_effect(&record.tool)
             && matches!(record.state, ReceiptState::Started | ReceiptState::Ambiguous)
-            && record.owner_inactive
             && uncertain_identity(record) == identity
     }) else {
         return Err(inspect_error("the command receipt is no longer awaiting explicit review"));

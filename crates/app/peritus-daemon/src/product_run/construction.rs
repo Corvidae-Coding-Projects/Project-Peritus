@@ -1,7 +1,7 @@
 //! Daemon-owned product service construction and durable-generation rehydration.
 
 use super::{
-    Arc, BTreeMap, BTreeSet, DaemonComponents, DaemonError, Inner, Mutex, Path, PreviewCaptureHost,
+    Arc, BTreeMap, DaemonComponents, DaemonError, Inner, Mutex, Path, PreviewCaptureHost,
     ProcessStore, ProductRunService, RwLock, WorkspaceCatalog, filesystem, fs, invalid,
     permissions, persistence, reconcile_restored_candidates,
 };
@@ -15,7 +15,7 @@ impl ProductRunService {
         product_policy: crate::config::ProductRunPolicy,
         local_context: peritus_product_runner::LocalContextConfig,
         processes: ProcessStore,
-    ) -> Result<super::OpenedProductRunService, DaemonError> {
+    ) -> Result<Self, DaemonError> {
         let directory = state_root.join("product-runs");
         fs::create_dir_all(&directory).map_err(filesystem)?;
         let mut providers = BTreeMap::new();
@@ -52,7 +52,7 @@ impl ProductRunService {
             records.insert(run, record);
         }
         reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
-        let service = Self {
+        Ok(Self {
             inner: Arc::new(Inner {
                 improvements: std::sync::Mutex::new(
                     super::improvements::Store::open(&state_root.join("improvements.sqlite3"))
@@ -77,15 +77,12 @@ impl ProductRunService {
                 folders: workspaces.folders().clone(),
                 processes,
                 tasks: Mutex::new(Vec::new()),
-                command_recoveries: std::sync::Mutex::new(BTreeSet::new()),
                 model_catalogs: super::catalog::ModelCatalogs::default(),
                 image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
                 preview_processes: std::sync::Mutex::new(BTreeMap::new()),
                 preview_capture: PreviewCaptureHost::discover(),
                 host_permissions: permissions::HostPermissionCatalog::new(components, workspaces),
             }),
-        };
-        let live_command_owners = service.reconcile_restored_command_receipts();
-        Ok((service, live_command_owners))
+        })
     }
 }

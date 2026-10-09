@@ -8,8 +8,6 @@ use peritus_model_protocol::{
 };
 use peritus_product_runner::control::{ControlText, InputId, InputSelection};
 
-mod archive_capacity;
-
 pub(in crate::product_control) fn request(text: &str) -> ModelRequest {
     request_images(text, &[])
 }

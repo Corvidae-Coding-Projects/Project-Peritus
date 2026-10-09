@@ -1,0 +1,2 @@
+FINDING-0007: Structured review required a complete diff within fixed collection caps
+External fixture `/tmp/peritus-batch3/formal-review/review-page-cap` supplied 513 valid files: parsing succeeded, but the precursor page constructor returned an error (exit 101). Final protocol tests cover the oversized daemon path, negotiated feature tags, complete legacy behavior, and bounded page navigation. Focused app-protocol review tests passed 14/14 and daemon oversized-review regression passed 1/1.

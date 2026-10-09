@@ -14,6 +14,10 @@ use crate::{
     WindowsErrorKind, WindowsOperation, WindowsPath, WindowsRecovery, error,
 };
 
+const MAX_MANIFEST_BYTES: usize = 4 * 1_024 * 1_024;
+const MAX_ARGUMENTS: usize = 4_096;
+const MAX_ENVIRONMENT: usize = 4_096;
+
 /// One ordinary environment value copied from the exact C2 execution plan.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct EnvironmentEntry {
@@ -22,14 +26,19 @@ pub struct EnvironmentEntry {
 }
 
 impl EnvironmentEntry {
-    /// Creates a Windows environment entry.
+    /// Creates a bounded Windows environment entry.
     ///
     /// # Errors
-    /// Rejects empty names, names containing `=` or NUL, and NUL values.
+    /// Rejects empty/invalid names, NUL values, or over-limit text.
     pub fn new(name: impl Into<String>, value: impl Into<String>) -> Result<Self, WindowsError> {
         let name = name.into();
         let value = value.into();
-        if name.is_empty() || name.contains(['=', '\0']) || value.contains('\0') {
+        if name.is_empty()
+            || name.len() > 32_767
+            || value.len() > 1_048_576
+            || name.contains(['=', '\0'])
+            || value.contains('\0')
+        {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
                 "environment entry is invalid or exceeds its bound",
@@ -82,7 +91,7 @@ impl HelperManifest {
     ///
     /// # Errors
     /// Rejects any preparation drift, root-command drift, incomplete resource mapping, handle
-    /// mismatch, or noncanonical environment.
+    /// mismatch, collection bound, or noncanonical environment.
     #[allow(clippy::too_many_arguments, reason = "one argument per closed native domain")]
     pub fn build(
         process_id: ProcessId,
@@ -112,6 +121,12 @@ impl HelperManifest {
         }
         if command.executable() != sandbox.requirements().process().program().as_str() {
             return Err(binding_error("literal target executable differs from checked process"));
+        }
+        if command.arguments().len() > MAX_ARGUMENTS || environment.len() > MAX_ENVIRONMENT {
+            return Err(error::invalid(
+                WindowsOperation::Manifest,
+                "target arguments or environment exceed manifest bounds",
+            ));
         }
         if !resources.is_complete() {
             return Err(error::unsupported(
@@ -174,7 +189,7 @@ impl HelperManifest {
     /// Reads C2's little-endian length-prefixed protected stdin frame.
     ///
     /// # Errors
-    /// Rejects I/O failure, zero length, or an invalid manifest.
+    /// Rejects I/O failure, zero/excessive length, or an invalid manifest.
     pub fn read_framed(mut reader: impl Read) -> Result<Self, WindowsError> {
         let mut length = [0_u8; 4];
         reader
@@ -183,8 +198,11 @@ impl HelperManifest {
         let length = usize::try_from(u32::from_le_bytes(length)).map_err(|_| {
             error::invalid(WindowsOperation::Manifest, "manifest frame length overflowed")
         })?;
-        if length == 0 {
-            return Err(error::invalid(WindowsOperation::Manifest, "manifest frame is empty"));
+        if length == 0 || length > MAX_MANIFEST_BYTES {
+            return Err(error::invalid(
+                WindowsOperation::Manifest,
+                "manifest frame is empty or exceeds its bound",
+            ));
         }
         let mut bytes = vec![0_u8; length];
         reader

@@ -12,8 +12,7 @@ use crate::{
     WorkbenchCaptureTarget, WorkbenchCommand, WorkbenchInputText, WorkbenchIntent,
     WorkbenchInteractionReceipt, WorkbenchLaunchProfile, WorkbenchLaunchResult,
     WorkbenchLaunchSource, WorkbenchLaunchSourceKind, WorkbenchLaunchState, WorkbenchLaunchText,
-    WorkbenchPreviewInput, WorkbenchPreviewOutputQuery, WorkbenchPreviewOutputRange,
-    WorkbenchPreviewOutputStream, WorkbenchQuery, WorkbenchReceipt, WorkbenchResultPage,
+    WorkbenchPreviewInput, WorkbenchQuery, WorkbenchReceipt, WorkbenchResultPage,
     WorkbenchResultQuery, WorkbenchReviewFeedback,
 };
 use peritus_codec::{CodecError, CodecLimits};
@@ -58,37 +57,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         "minimal-workbench-preview-query",
         FixtureClass::Minimal,
         &request(AppRequestPayload::QueryWorkbenchPreview(result_query)),
-        limits,
-    )?);
-    let output_query = WorkbenchPreviewOutputQuery::new(
-        query,
-        run,
-        launch,
-        WorkbenchPreviewOutputStream::Stdout,
-        0,
-        5,
-    )
-    .expect("output range query");
-    cases.push(encoded(
-        "minimal-workbench-preview-output-range-query",
-        FixtureClass::Minimal,
-        &request(AppRequestPayload::QueryWorkbenchPreviewOutput(output_query)),
-        limits,
-    )?);
-    cases.push(encoded(
-        "realistic-workbench-preview-output-range",
-        FixtureClass::Realistic,
-        &response(AppResponsePayload::WorkbenchPreviewOutput(
-            WorkbenchPreviewOutputRange::new(
-                launch,
-                WorkbenchPreviewOutputStream::Stdout,
-                0,
-                5,
-                Some([22; 32]),
-                b"READY".to_vec(),
-            )
-            .expect("output range"),
-        )),
         limits,
     )?);
     cases.push(encoded(
@@ -219,8 +187,8 @@ fn profile(run: RunId) -> WorkbenchLaunchProfile {
             Sha256Digest::new([78; 32]),
         ),
         Some(WorkbenchBuildIdentity::new(text("target/preview"), Sha256Digest::new([79; 32]))),
-        Some(2_000),
-        Some(20_000),
+        2_000,
+        20_000,
         true,
     )
     .expect("launch profile")

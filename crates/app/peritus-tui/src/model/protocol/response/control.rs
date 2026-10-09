@@ -36,34 +36,12 @@ fn project_setup(
             ),
         ) => return model.accept_workbench_checkpoint(&command, receipt),
         (
-            AppResponsePayload::WorkbenchCheckpointPage(page),
-            Some(PendingRequest::WorkbenchCheckpointPage(request)),
-        ) => model.accept_workbench_checkpoint_page(request, page.clone()),
-        (
-            AppResponsePayload::WorkbenchCheckpointPage(page),
-            Some(
-                PendingRequest::WorkbenchControl(command)
-                | PendingRequest::WorkbenchReceipt(command),
-            ),
-        ) => return model.accept_workbench_checkpoint_command_page(&command, page),
-        (
-            AppResponsePayload::WorkbenchRewindPage(page),
-            Some(PendingRequest::WorkbenchRewindPage(request)),
-        ) => model.accept_workbench_rewind_page(request, page.clone()),
-        (
             AppResponsePayload::WorkbenchRestore(receipt),
             Some(
                 PendingRequest::WorkbenchControl(command)
                 | PendingRequest::WorkbenchReceipt(command),
             ),
         ) => return model.accept_workbench_restore(&command, receipt),
-        (
-            AppResponsePayload::WorkbenchRestoreSummary(summary),
-            Some(
-                PendingRequest::WorkbenchControl(command)
-                | PendingRequest::WorkbenchReceipt(command),
-            ),
-        ) => return model.accept_workbench_restore_summary(&command, summary),
         (
             AppResponsePayload::WorkbenchPermissions(permissions),
             Some(PendingRequest::WorkbenchPermissions(query)),
@@ -97,25 +75,7 @@ fn project_setup(
         (
             AppResponsePayload::WorkbenchReview(page),
             Some(PendingRequest::WorkbenchReview(query)),
-        ) => return model.accept_review_page(query, page.clone()),
-        (
-            AppResponsePayload::WorkbenchReviewSummary(summary),
-            Some(PendingRequest::WorkbenchReviewSummary(query)),
-        ) if summary.query().query() == query.query()
-            && summary.query().run() == query.run()
-            && summary.query().offset() == query.offset()
-            && (query.revision() == 0 || query.revision() == summary.query().revision()) =>
-        {
-            return model.accept_review_summary(query, summary);
-        }
-        (
-            AppResponsePayload::WorkbenchReviewDiff(page),
-            Some(PendingRequest::WorkbenchReviewDiff(query)),
-        ) => return model.accept_review_diff_page(query, page.clone()),
-        (
-            AppResponsePayload::WorkbenchReviewDiffBytes(bytes),
-            Some(PendingRequest::WorkbenchReviewDiffBytes(query)),
-        ) => model.accept_review_diff_bytes(query, bytes),
+        ) => model.accept_review_page(query, page.clone()),
         _ => {}
     }
     Vec::new()
@@ -215,10 +175,7 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
         payload,
         AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchCheckpoint(_)
-            | AppResponsePayload::WorkbenchCheckpointPage(_)
-            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRestore(_)
-            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
@@ -226,8 +183,5 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchReview(_)
-            | AppResponsePayload::WorkbenchReviewSummary(_)
-            | AppResponsePayload::WorkbenchReviewDiff(_)
-            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
     )
 }

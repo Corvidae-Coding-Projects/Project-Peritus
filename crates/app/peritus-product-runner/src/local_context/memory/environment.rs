@@ -73,13 +73,16 @@ pub(in crate::local_context) fn capture(
 fn digest_file(mut file: File) -> Result<Sha256Digest, DeveloperLoopError> {
     let mut hasher = Sha256::new();
     let mut buffer = [0; 8192];
-    let mut _total = 0_u64;
+    let mut total = 0_u64;
     loop {
         let count = file.read(&mut buffer).map_err(|_| error("hash file dependency"))?;
         if count == 0 {
             return Ok(Sha256Digest::new(hasher.finalize().into()));
         }
-        _total = _total.checked_add(count as u64).ok_or_else(|| error("file size overflow"))?;
+        total = total.checked_add(count as u64).ok_or_else(|| error("file size overflow"))?;
+        if total > 64 * 1024 * 1024 {
+            return Err(error("file dependency exceeds inspection bound"));
+        }
         hasher.update(&buffer[..count]);
     }
 }

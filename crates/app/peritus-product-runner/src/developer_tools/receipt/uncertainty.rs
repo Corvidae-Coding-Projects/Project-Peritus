@@ -4,27 +4,6 @@ use std::{fs, io::Write as _};
 
 use super::*;
 
-fn record_inactive_command(path: &Path, scope: &str, call: &CompletedToolCall) {
-    let owner = NativeCommandOwner {
-        source_run: RunId::new([1; 16]).expect("source run ID"),
-        execution_run: RunId::new([2; 16]).expect("process run ID"),
-        action: ActionId::new([3; 16]).expect("action ID"),
-        process: ProcessId::new([4; 16]).expect("process ID"),
-    };
-    let mut ledger = EffectReceiptLedger::new(path.to_path_buf(), scope.to_owned());
-    assert!(matches!(ledger.begin(call).expect("start command"), ReceiptDecision::Execute));
-    ledger
-        .bind_native_command_owner(call.id().expose_for_wire(), owner)
-        .expect("persist exact command owner");
-    ledger
-        .reconcile_native_command_owner(
-            owner,
-            peritus_process::RecoveryDisposition::AbsentUnobserved,
-            &Value::Null,
-        )
-        .expect("persist exact inactive owner observation");
-}
-
 #[test]
 fn uncertain_command_inspection_is_read_only_and_identity_stable_across_recovery() {
     let directory = tempfile::tempdir().expect("state");
@@ -38,8 +17,6 @@ fn uncertain_command_inspection_is_read_only_and_identity_stable_across_recovery
     assert_eq!(started.len(), 1);
     assert_eq!(started[0].tool(), "run_command");
     assert_eq!(started[0].state(), UncertainEffectState::Started);
-    assert!(!started[0].owner_inactive());
-    assert!(acknowledge_uncertain_effect(&path, started[0].identity()).is_err());
     assert_eq!(fs::read(&path).expect("ledger after inspection"), started_bytes);
 
     let mut recovered = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
@@ -58,9 +35,9 @@ fn acknowledged_uncertain_command_replays_unknown_error_without_relaunch() {
     let directory = tempfile::tempdir().expect("state");
     let path = directory.path().join("effects.bin");
     let call = call("call-1", "run_command", r#"{"args":[],"program":"example"}"#);
-    record_inactive_command(&path, "writer-1", &call);
+    let mut first = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+    assert!(matches!(first.begin(&call).expect("start"), ReceiptDecision::Execute));
     let effect = uncertain_effects(&path).expect("inspect").pop().expect("uncertain command");
-    assert!(effect.owner_inactive());
 
     acknowledge_uncertain_effect(&path, effect.identity()).expect("acknowledge uncertainty");
     let reviewed = uncertain_effects(&path).expect("inspect reviewed");
@@ -88,8 +65,11 @@ fn acknowledged_command_is_blocked_across_fresh_invocation_scopes() {
     let directory = tempfile::tempdir().expect("state");
     let path = directory.path().join("effects.bin");
     let original = call("call-1", "run_command", r#"{"args":[],"program":"example"}"#);
-    let scope = "peritus-11111111111111111111111111111111-writer-1-revision-2-invocation-1-old";
-    record_inactive_command(&path, scope, &original);
+    let mut first = EffectReceiptLedger::new(
+        path.clone(),
+        "peritus-11111111111111111111111111111111-writer-1-revision-2-invocation-1-old".to_owned(),
+    );
+    assert!(matches!(first.begin(&original).expect("start"), ReceiptDecision::Execute));
     let effect = uncertain_effects(&path).expect("inspect").pop().expect("uncertain command");
     acknowledge_uncertain_effect(&path, effect.identity()).expect("acknowledge uncertainty");
     let retained_length = fs::metadata(&path).expect("reviewed ledger").len();
@@ -116,8 +96,11 @@ fn reviewed_unknown_command_freezes_other_mutations_in_the_same_requirements_rev
     let directory = tempfile::tempdir().expect("state");
     let path = directory.path().join("effects.bin");
     let original = call("call-1", "run_command", r#"{"args":[],"program":"example"}"#);
-    let scope = "peritus-11111111111111111111111111111111-writer-1-revision-2-invocation-1-old";
-    record_inactive_command(&path, scope, &original);
+    let mut first = EffectReceiptLedger::new(
+        path.clone(),
+        "peritus-11111111111111111111111111111111-writer-1-revision-2-invocation-1-old".to_owned(),
+    );
+    assert!(matches!(first.begin(&original).expect("start"), ReceiptDecision::Execute));
     let effect = uncertain_effects(&path).expect("inspect").pop().expect("uncertain command");
     acknowledge_uncertain_effect(&path, effect.identity()).expect("acknowledge uncertainty");
 
@@ -188,8 +171,11 @@ fn reviewed_command_does_not_block_a_new_requirements_revision() {
     let directory = tempfile::tempdir().expect("state");
     let path = directory.path().join("effects.bin");
     let original = call("call-1", "run_command", r#"{"args":[],"program":"example"}"#);
-    let scope = "peritus-11111111111111111111111111111111-writer-1-revision-2-invocation-1-old";
-    record_inactive_command(&path, scope, &original);
+    let mut first = EffectReceiptLedger::new(
+        path.clone(),
+        "peritus-11111111111111111111111111111111-writer-1-revision-2-invocation-1-old".to_owned(),
+    );
+    assert!(matches!(first.begin(&original).expect("start"), ReceiptDecision::Execute));
     let effect = uncertain_effects(&path).expect("inspect").pop().expect("uncertain command");
     acknowledge_uncertain_effect(&path, effect.identity()).expect("acknowledge uncertainty");
 

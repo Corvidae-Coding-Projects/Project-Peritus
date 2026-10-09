@@ -20,9 +20,6 @@ pub struct WritableWorkspace {
 }
 
 impl WritableWorkspace {
-    pub(crate) fn set_git_cancellation(&mut self, cancellation: peritus_git::GitCancellation) {
-        self.repository.set_cancellation(cancellation);
-    }
     /// Opens a registered detached writable worktree bound to exact durable state.
     ///
     /// # Errors

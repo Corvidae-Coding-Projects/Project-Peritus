@@ -26,11 +26,7 @@ async fn scenario(refresh: bool) {
     );
     let path = repository.path().join("reference.txt");
     fs::write(&path, "UNSELECTED_FIRST\nORIGINAL_REFERENCE\nUNSELECTED_LAST\n").expect("source");
-    let writer = support::scripted_attachment_reader(
-        0x61,
-        "chat",
-        support::text_response(b"Reference received."),
-    );
+    let writer = scripted(0x61, "chat", vec![support::text_response(b"Reference received.")]);
     let reviewer = scripted(0x62, "review", Vec::new());
     let fixer = scripted(0x63, "fix", Vec::new());
     let workspace = WorkspaceId::new([0x64; 16]).expect("workspace");
@@ -81,17 +77,10 @@ async fn scenario(refresh: bool) {
     ));
     let terminal = wait_for_terminal(&service, run).await;
     assert_eq!(terminal.phase(), ProductRunPhase::WaitingForUser, "{}", terminal.summary());
-    let tool_result = {
+    let text = {
         let requests = writer.requests.lock().expect("requests");
-        assert_eq!(requests.len(), 2, "runner must retrieve the selected file before continuing");
-        let first_request = &requests[0];
-        let attachment_read_available =
-            first_request.tools().iter().any(|tool| tool.name().as_str() == "attachment_read");
-        assert!(
-            attachment_read_available,
-            "provider request must expose the scoped read-only tool"
-        );
-        let metadata = first_request
+        assert_eq!(requests.len(), 1, "stale preparation must not send an obsolete request");
+        requests[0]
             .messages()
             .iter()
             .flat_map(peritus_model_protocol::Message::content)
@@ -99,36 +88,17 @@ async fn scenario(refresh: bool) {
                 peritus_model_protocol::ContentBlock::Text(text) => Some(text.expose_for_wire()),
                 _ => None,
             })
-            .collect::<String>();
-        assert!(metadata.contains("Explicit immutable file references"));
-        assert!(metadata.contains("source_sha256"));
-        assert!(metadata.contains("selected_sha256"));
-        assert!(metadata.contains("range"));
-        assert!(!metadata.contains("ORIGINAL_REFERENCE"));
-        assert!(!metadata.contains("REFRESHED_REFERENCE"));
-        assert!(!metadata.contains("UNSELECTED_FIRST"));
-        assert!(!metadata.contains("UNSELECTED_LAST"));
-        requests[1]
-            .messages()
-            .iter()
-            .flat_map(peritus_model_protocol::Message::content)
-            .find_map(|block| match block {
-                peritus_model_protocol::ContentBlock::ToolResult(result) => {
-                    Some(String::from_utf8_lossy(result.output().canonical_bytes()).into_owned())
-                }
-                _ => None,
-            })
-            .expect("tool result in actual provider continuation")
+            .collect::<String>()
     };
     let (included, excluded) = if refresh {
         ("REFRESHED_REFERENCE", "ORIGINAL_REFERENCE")
     } else {
         ("ORIGINAL_REFERENCE", "REFRESHED_REFERENCE")
     };
-    assert!(tool_result.contains(included), "expected exact selected source in tool result");
-    assert!(!tool_result.contains(excluded));
-    assert!(!tool_result.contains("UNSELECTED_FIRST"));
-    assert!(!tool_result.contains("UNSELECTED_LAST"));
+    assert!(text.contains(included), "expected selected source in actual provider request");
+    assert!(!text.contains(excluded));
+    assert!(!text.contains("UNSELECTED_FIRST"));
+    assert!(!text.contains("UNSELECTED_LAST"));
     let record = service
         .with_controls(false, |store| {
             store.load(peritus_product_runner::control::ConversationId::new([2; 16])?)
@@ -136,6 +106,6 @@ async fn scenario(refresh: bool) {
         .expect("load")
         .expect("record");
     assert_eq!(record.files().entries()[0].refreshes().len(), usize::from(refresh));
-    assert_eq!(record.inputs().invocations().len(), 2, "file retrieval stays in the governed turn");
+    assert_eq!(record.inputs().invocations().len(), 1);
     service.shutdown(Duration::from_secs(5)).await;
 }

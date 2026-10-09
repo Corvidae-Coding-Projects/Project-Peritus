@@ -41,7 +41,7 @@ pub(super) fn stage(
     if let Err(error) = super::write_output(&line) {
         return super::output_failure(error);
     }
-    std::thread::sleep(super::QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(super::QUALIFICATION_KILL_BOUND);
     super::write_error("host reboot qualifier was not interrupted at its checkpoint");
     ExitCode::FAILURE
 }

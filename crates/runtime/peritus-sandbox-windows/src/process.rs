@@ -74,19 +74,19 @@ pub struct JobPlan {
     kill_on_close: bool,
     active_process_limit: u32,
     job_memory_bytes: u64,
-    cpu_time_millis: Option<u64>,
+    cpu_time_millis: u64,
 }
 
 impl JobPlan {
     /// Projects process containment and hard resource ceilings.
     #[must_use]
-    pub fn from_checked_plan(plan: &CheckedSandboxPlan) -> Self {
+    pub const fn from_checked_plan(plan: &CheckedSandboxPlan) -> Self {
         let limits = plan.requirements().resources();
         Self {
             kill_on_close: true,
             active_process_limit: plan.contract().process().maximum_processes(),
             job_memory_bytes: limits.limit(peritus_sandbox::SandboxResourceKind::Memory).get(),
-            cpu_time_millis: limits.cpu_time_limit().map(peritus_types::ResourceQuantity::get),
+            cpu_time_millis: limits.limit(peritus_sandbox::SandboxResourceKind::CpuTime).get(),
         }
     }
 
@@ -96,18 +96,17 @@ impl JobPlan {
         job_memory_bytes: u64,
         cpu_time_millis: u64,
     ) -> Result<Self, WindowsError> {
-        if !kill_on_close || active_process_limit == 0 || job_memory_bytes == 0 {
+        if !kill_on_close
+            || active_process_limit == 0
+            || job_memory_bytes == 0
+            || cpu_time_millis == 0
+        {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
                 "job policy is incomplete or has a zero hard ceiling",
             ));
         }
-        Ok(Self {
-            kill_on_close,
-            active_process_limit,
-            job_memory_bytes,
-            cpu_time_millis: nonzero_optional(cpu_time_millis),
-        })
+        Ok(Self { kill_on_close, active_process_limit, job_memory_bytes, cpu_time_millis })
     }
 
     /// Reports kill-on-close ownership.
@@ -130,13 +129,9 @@ impl JobPlan {
 
     /// Returns the Job Object CPU-time ceiling.
     #[must_use]
-    pub const fn cpu_time_millis(self) -> Option<u64> {
+    pub const fn cpu_time_millis(self) -> u64 {
         self.cpu_time_millis
     }
-}
-
-const fn nonzero_optional(value: u64) -> Option<u64> {
-    if value == 0 { None } else { Some(value) }
 }
 
 /// Exact C2-owned terminal mapping.

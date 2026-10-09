@@ -1,7 +1,6 @@
 //! Preview binding checks and graphical-goal evidence qualification.
 
 use super::*;
-mod goal;
 
 #[cfg(test)]
 #[path = "evidence_tests.rs"]
@@ -15,79 +14,32 @@ impl ProductRunService {
         launch: ControlOperationId,
         observed: &WorkbenchLaunchText,
     ) -> Result<WorkbenchReceipt, AppProtocolError> {
-        let receipt = self.admit_preview_behavior(run, command, launch, observed)?;
-        self.qualify_graphical_goal(run, command, launch)?;
-        Ok(receipt)
-    }
-
-    /// Persists the observed fact before its separately retryable goal publication.
-    pub(in crate::product_run) fn admit_preview_behavior(
-        &self,
-        run: RunId,
-        command: &WorkbenchCommand,
-        launch: ControlOperationId,
-        observed: &WorkbenchLaunchText,
-    ) -> Result<WorkbenchReceipt, AppProtocolError> {
-        // The durable receipt is authoritative on retry, even after output cleanup or restart.
-        let prior = {
-            let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
-            let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-            record.preview.operations.get(&command.operation()).cloned()
-        };
-        if let Some(prior) = prior {
-            let fingerprint = command.fingerprint()?;
-            if prior.fingerprint != fingerprint {
-                return Err(app_error(Code::IdempotencyConflict));
-            }
-            return receipt(command, prior.accepted_revision, fingerprint);
-        }
         self.refresh_previews(run)?;
-        let current = {
-            let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
-            let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-            require_launch(&record.preview, launch)?.clone()
-        };
-        if current.state() == WorkbenchLaunchState::Accepted {
+        let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
+        let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+        let current = require_launch(&record.preview, launch)?;
+        if matches!(current.state(), WorkbenchLaunchState::Accepted | WorkbenchLaunchState::Running)
+            || !record
+                .preview
+                .outputs
+                .get(&launch)
+                .is_some_and(|value| value.contains(observed.as_str()))
+        {
             return Err(app_error(Code::StaleRevision));
         }
-        let process_id = current.process().ok_or_else(|| app_error(Code::StaleRevision))?;
-        let observed_match = self
-            .preview_output_match(command.query(), launch, &current, process_id, observed.as_str())?
-            .ok_or_else(|| app_error(Code::StaleRevision))?;
-        let WorkbenchIntent::CheckPreviewBehavior { note, .. } = command.intent() else {
-            return Err(app_error(Code::MalformedFrame));
-        };
-        let note_match = self.preview_output_match(
-            command.query(),
-            launch,
-            &current,
-            process_id,
-            note.as_str(),
-        )?;
-        let goal = if note_match.is_some() {
-            self.preview_goal_binding(run, note.as_str())?
-        } else {
-            None
-        };
-        let evidence = super::super::super::preview_evidence::PreviewBehaviorEvidence::new(
-            command,
-            observed_match,
-            note_match,
-            goal,
-        )?;
-        evidence.validate(command, &current)?;
-        let (receipt, _) =
-            self.admit_preview_with_evidence(command, run, Some(evidence), |preview| {
-                mutate_launch(preview, launch, |current| {
-                    rebuild_launch_with(
-                        current,
-                        current.interactions().to_vec(),
-                        current.captures().to_vec(),
-                        current.feedback().to_vec(),
-                        current.behavior_checks().saturating_add(1),
-                    )
-                })
-            })?;
+        drop(records);
+        let (receipt, _) = self.admit_preview(command, run, |preview| {
+            mutate_launch(preview, launch, |current| {
+                rebuild_launch_with(
+                    current,
+                    current.interactions().to_vec(),
+                    current.captures().to_vec(),
+                    current.feedback().to_vec(),
+                    current.behavior_checks().saturating_add(1),
+                )
+            })
+        })?;
+        self.qualify_graphical_goal(run, command, launch)?;
         Ok(receipt)
     }
 
@@ -216,39 +168,93 @@ impl ProductRunService {
         Ok((workspace, direct))
     }
 
-    fn preview_output_match(
+    pub(super) fn qualify_graphical_goal(
         &self,
-        query: WorkbenchQuery,
+        run: RunId,
+        command: &WorkbenchCommand,
         launch_id: ControlOperationId,
-        launch: &WorkbenchLaunchResult,
-        process_id: peritus_types::ProcessId,
-        needle: &str,
-    ) -> Result<Option<peritus_product_runner::PreviewOutputMatch>, AppProtocolError> {
-        let (workspace, direct) = self.verify_profile(query, launch.profile())?;
-        let active = self
+    ) -> Result<(), AppProtocolError> {
+        let WorkbenchIntent::CheckPreviewBehavior { note, .. } = command.intent() else {
+            return Ok(());
+        };
+        let query = command.query();
+        let (start, launch, operations) = {
+            let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
+            let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+            let start = record.interaction.workbench.clone();
+            let launch = require_launch(&record.preview, launch_id)?.clone();
+            (start, launch, record.preview.operations.clone())
+        };
+        if !matches!(start.intent(), ControlIntent::StartGoal { .. })
+            || launch.profile().run() != run
+            || launch.profile().build().is_none()
+            || launch.process().is_none()
+            || !launch.ready()
+            || !matches!(
+                launch.state(),
+                WorkbenchLaunchState::Exited | WorkbenchLaunchState::Stopped
+            )
+            || launch.behavior_checks() == 0
+        {
+            return Ok(());
+        }
+        let capture = launch.captures().iter().find(|capture| {
+            capture.state() == WorkbenchCaptureState::Captured
+                && capture.artifact().is_some()
+                && capture.image_digest().is_some()
+                && capture.dimensions().is_some_and(|(width, height)| width > 0 && height > 0)
+                && capture.captured_unix_millis().is_some()
+                && ordered_capture(
+                    capture.operation(),
+                    command.operation(),
+                    launch.interactions(),
+                    &operations,
+                )
+        });
+        let Some(capture) = capture else { return Ok(()) };
+        let owned = self
             .inner
             .preview_processes
             .lock()
             .map_err(|_| app_error(Code::Backpressure))?
             .get(&launch_id)
-            .cloned();
-        if let Some(active) = active
-            && active.launch.process_id() == process_id
-        {
-            return active
-                .runtime
-                .preview_output_match(process_id, needle)
-                .map_err(|_| app_error(Code::Backpressure));
+            .is_some_and(|active| Some(active.launch.process_id()) == launch.process());
+        if !owned {
+            return Ok(());
         }
-        let run = RunId::new(launch_id.into_bytes()).map_err(|_| app_error(Code::Internal))?;
-        let state = self.preview_state_root().join("commands").join(hex(launch_id.as_bytes()));
-        let runtime = if direct {
-            CommandRuntime::open_direct(state, workspace, run, self.inner.processes.clone())
-        } else {
-            CommandRuntime::open(state, workspace, run, self.inner.processes.clone())
+        match self.verify_profile(query, launch.profile()) {
+            Ok(_) => {}
+            Err(error) if error.code() == Code::StaleRevision => return Ok(()),
+            Err(error) => return Err(error),
         }
-        .map_err(|_| app_error(Code::Backpressure))?;
-        runtime.preview_output_match(process_id, needle).map_err(|_| app_error(Code::Backpressure))
+        self.with_controls(false, |store| {
+            let record = store.load(start.conversation())?.ok_or(ControlError::NotFound)?;
+            let goal = record
+                .goal()
+                .filter(|goal| goal.id() == start.id())
+                .ok_or(ControlError::NotFound)?;
+            if goal.run_bytes() != run.as_bytes() {
+                return Ok(());
+            }
+            let mut matching = goal.criteria().iter().enumerate().filter(|(_, criterion)| {
+                criterion.kind() == GoalCriterionKind::GraphicalPlaytest
+                    && criterion.description() == note.as_str()
+            });
+            let Some((index, _)) = matching.next() else { return Ok(()) };
+            if matching.next().is_some() {
+                return Err(ControlError::InvalidInput.into());
+            }
+            let index = u32::try_from(index).map_err(|_| ControlError::Capacity)?;
+            store.observe_graphical_goal_evidence(
+                &start,
+                index,
+                goal.user_revision(),
+                goal.required_input_generation(),
+                OperationId::new(launch_id.into_bytes())?,
+                OperationId::new(capture.operation().into_bytes())?,
+            )
+        })
+        .map_err(error_value)
     }
 
     pub(super) fn preview_state_root(&self) -> PathBuf {

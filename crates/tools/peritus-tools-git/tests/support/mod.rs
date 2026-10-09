@@ -9,19 +9,11 @@ use tempfile::TempDir;
 pub struct GitFixture {
     pub workspace: ReadOnlyWorkspace,
     pub first_commit: String,
-    pub _source: TemporaryRepository,
+    pub source: TemporaryRepository,
     pub _temp: TempDir,
 }
 
-pub fn git_fixture_with(label: &str, setup: impl FnOnce(&mut TemporaryRepository)) -> GitFixture {
-    git_fixture_with_first_subject(label, "first", setup)
-}
-
-pub fn git_fixture_with_first_subject(
-    label: &str,
-    first_subject: &str,
-    setup: impl FnOnce(&mut TemporaryRepository),
-) -> GitFixture {
+pub fn git_fixture(label: &str) -> GitFixture {
     let temp = TempDir::new().expect("temporary root");
     let mut source =
         TemporaryRepositoryBuilder::new(temp.path().join(format!("peritus-test-{label}-source")))
@@ -30,7 +22,7 @@ pub fn git_fixture_with_first_subject(
     source
         .write_text(&FixturePath::new("README.md").expect("path"), "first\n")
         .expect("first README");
-    let first_commit = source.commit_all(first_subject).expect("first commit").as_str().to_owned();
+    let first_commit = source.commit_all("first").expect("first commit").as_str().to_owned();
     source
         .write_text(&FixturePath::new("README.md").expect("path"), "second\n")
         .expect("second README");
@@ -40,7 +32,6 @@ pub fn git_fixture_with_first_subject(
             "fn main() { println!(\"ok\"); }\n",
         )
         .expect("source file");
-    setup(&mut source);
     source.commit_all("second").expect("second commit");
 
     let repository = GitRepository::open(RepositoryOptions::new(source.root())).expect("open Git");
@@ -87,5 +78,5 @@ pub fn git_fixture_with_first_subject(
         .with_workspace_binding(binding),
     )
     .expect("read-only workspace");
-    GitFixture { workspace, first_commit, _source: source, _temp: temp }
+    GitFixture { workspace, first_commit, source, _temp: temp }
 }

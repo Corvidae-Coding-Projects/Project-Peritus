@@ -1,6 +1,8 @@
 //! Explicit-path-only media for direct folders: no recursive discovery or private-state reads.
 
-use super::{ProductRunnerError, ProviderProfile, WorkspaceImages, attach, supported_extension};
+use super::{
+    MAX_IMAGES, ProductRunnerError, ProviderProfile, WorkspaceImages, attach, supported_extension,
+};
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
@@ -31,10 +33,11 @@ pub fn discover_explicit(
             .ok()
         })
         .filter(|path| path.is_file())
+        .take(MAX_IMAGES)
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
-    attach(root, paths, Vec::new(), profile, super::requests_visual_inspection(task))
+    attach(root, paths, profile, super::requests_visual_inspection(task))
 }
 
 #[cfg(test)]
@@ -78,11 +81,8 @@ mod tests {
         let private = root.path().join("private");
         std::fs::create_dir(&private).expect("private directory");
         std::fs::write(private.join("secret.png"), b"invalid private image").expect("private file");
-        std::fs::write(
-            root.path().join("public photo.png"),
-            super::super::tests::encoded(image::ImageFormat::Png),
-        )
-        .expect("image");
+        std::fs::write(root.path().join("public photo.png"), b"\x89PNG\r\n\x1a\npixels")
+            .expect("image");
         let images = discover_explicit(
             root.path(),
             "Inspect `public photo.png` and private/secret.png",

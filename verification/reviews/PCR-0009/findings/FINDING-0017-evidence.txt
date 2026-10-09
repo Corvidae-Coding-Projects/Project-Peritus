@@ -1,0 +1,2 @@
+FINDING-0017: Process output accounting counted bytes that never reached durable storage
+External public-API fixture `/tmp/peritus-batch3/formal-review/process-spool-accounting` redirected an open stdout spool descriptor to `/dev/full` and released a child to emit 8 bytes. Before repair it observed `observed=8 retained=8 durable_spool_bytes=0` and exited 101. Repointed to repaired source it observed `retained=0 dropped=8`, incomplete/SupervisorFailed, durable bytes 0, and exited 0. Focused process output tests passed 4/4.

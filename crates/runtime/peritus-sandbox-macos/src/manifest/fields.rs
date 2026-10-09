@@ -14,7 +14,7 @@ use crate::{
     resource::{resource_from_ordinal, resource_ordinal},
 };
 
-use super::PREPARATION_DOMAIN;
+use super::{MAX_ARGUMENTS, PREPARATION_DOMAIN};
 
 pub(super) fn expected_preparation(
     plan: Sha256Digest,
@@ -28,6 +28,11 @@ pub(super) fn expected_preparation(
     peritus_codec::sha256(&bytes)
 }
 
+pub(super) fn path_text(path: &Path) -> Result<&str, MacosError> {
+    path.to_str()
+        .ok_or_else(|| error::invalid(MacosOperation::Manifest, "manifest path is not valid UTF-8"))
+}
+
 pub(super) fn validate_executable_path(path: &Path) -> Result<(), MacosError> {
     if !path.is_absolute() || path.as_os_str().is_empty() {
         return Err(error::invalid(
@@ -35,6 +40,7 @@ pub(super) fn validate_executable_path(path: &Path) -> Result<(), MacosError> {
             "native executable path must be absolute",
         ));
     }
+    path_text(path)?;
     Ok(())
 }
 
@@ -55,10 +61,14 @@ pub(super) fn validate_working_directory(path: &Path) -> Result<(), MacosError> 
             "target working directory must be absolute",
         ));
     }
+    path_text(path)?;
     Ok(())
 }
 
 pub(super) fn encode_strings(writer: &mut Writer, values: &[String]) -> Result<(), MacosError> {
+    if values.len() > MAX_ARGUMENTS {
+        return Err(error::limited(MacosOperation::Manifest, "too many target arguments"));
+    }
     writer.count(values.len())?;
     for value in values {
         writer.string(value)?;
@@ -68,6 +78,9 @@ pub(super) fn encode_strings(writer: &mut Writer, values: &[String]) -> Result<(
 
 pub(super) fn decode_strings(reader: &mut Reader<'_>) -> Result<Vec<String>, MacosError> {
     let count = reader.count()?;
+    if count > MAX_ARGUMENTS {
+        return Err(error::limited(MacosOperation::Manifest, "too many target arguments"));
+    }
     (0..count).map(|_| reader.string()).collect()
 }
 

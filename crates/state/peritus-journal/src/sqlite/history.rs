@@ -55,16 +55,7 @@ fn install_subtree(
             .execute(params![
                 digest.as_bytes().as_slice(),
                 i64::from(level),
-                super::append::to_i64(
-                    u64::try_from(bytes.len()).map_err(|_| {
-                        JournalError::new(
-                            JournalErrorKind::InvalidInput,
-                            "encode history node",
-                            "history node byte length cannot be represented",
-                        )
-                    })?,
-                    "history node byte length",
-                )?,
+                super::append::to_i64(bytes.len() as u64, "history node byte length")?,
                 node.payload()
             ])
             .map_err(|error| JournalError::sqlite("insert immutable history node", error))?;
@@ -80,14 +71,7 @@ pub fn restore(connection: &Connection, root: &[u8]) -> Result<Vec<u8>, JournalE
     if node.level() != root_level(node.byte_length())? {
         return Err(corrupt("history root does not have its canonical minimum height"));
     }
-    let mut bytes = Vec::new();
-    bytes.try_reserve_exact(node.byte_length()).map_err(|_| {
-        JournalError::new(
-            JournalErrorKind::InvalidInput,
-            "restore immutable state history",
-            "history value cannot be allocated on this host",
-        )
-    })?;
+    let mut bytes = Vec::with_capacity(node.byte_length());
     restore_subtree(&mut read, &node, &mut bytes)?;
     Ok(bytes)
 }

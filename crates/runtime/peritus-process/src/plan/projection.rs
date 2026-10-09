@@ -35,13 +35,12 @@ pub(super) fn validate_sandbox_projection(
     let event_count = terminal.event_count().get();
     let output_bytes = terminal.output_bytes().get();
     let output_matches = output.event_count() <= event_count
-        && output.spool_bytes().is_none_or(|limit| limit <= output_bytes)
+        && output.spool_bytes() <= output_bytes
         && match io_mode {
             IoMode::Pipes => {
-                output.stdout_bytes().is_none_or(|limit| limit <= output_bytes)
-                    && output.stderr_bytes().is_none_or(|limit| limit <= output_bytes)
+                output.stdout_bytes() <= output_bytes && output.stderr_bytes() <= output_bytes
             }
-            IoMode::Pty(_) => output.terminal_bytes().is_none_or(|limit| limit <= output_bytes),
+            IoMode::Pty(_) => output.terminal_bytes() <= output_bytes,
         };
     if !mode_matches || !input_matches || !output_matches {
         return Err(invalid("process I/O differs from checked sandbox requirements"));
@@ -57,18 +56,11 @@ fn validate_environment(
     let source_matches = match environment.source() {
         EnvironmentSource::Cleared => requirements.inherited_names().is_empty(),
         EnvironmentSource::Allowlisted(names) => {
-            // Native environments retain platform ordering; sandbox names use uppercase ASCII.
-            // Compare canonical identities, not positions in differently ordered sequences.
-            let canonical = names
-                .iter()
-                .map(|name| name.to_ascii_uppercase())
-                .collect::<std::collections::BTreeSet<_>>();
-            canonical.len() == names.len()
-                && canonical.len() == requirements.inherited_names().len()
-                && canonical
+            names.len() == requirements.inherited_names().len()
+                && names
                     .iter()
                     .zip(requirements.inherited_names())
-                    .all(|(left, right)| left == right.as_str())
+                    .all(|(left, right)| left.eq_ignore_ascii_case(right.as_str()))
         }
     };
     let names_allowed = environment.variables().iter().all(|variable| {
@@ -84,18 +76,15 @@ fn validate_environment(
     Ok(())
 }
 
-fn validate_resources(
+const fn validate_resources(
     resources: ProcessResourcePolicy,
     expected: &peritus_sandbox::ResourceLimits,
 ) -> Result<(), ProcessError> {
-    let matches = expected.wall_time_limit()
-        == resources.wall_millis().map(peritus_types::ResourceQuantity::new)
-        && expected.cpu_time_limit().map(peritus_types::ResourceQuantity::get)
-            == resources.cpu_millis()
+    let matches = expected.limit(SandboxResourceKind::WallTime).get() == resources.wall_millis()
+        && expected.limit(SandboxResourceKind::CpuTime).get() == resources.cpu_millis()
         && expected.limit(SandboxResourceKind::Memory).get() == resources.memory_bytes()
         && expected.limit(SandboxResourceKind::Disk).get() == resources.disk_bytes()
-        && expected.output_limit()
-            == resources.output_bytes().map(peritus_types::ResourceQuantity::new)
+        && expected.limit(SandboxResourceKind::Output).get() == resources.output_bytes()
         && expected.limit(SandboxResourceKind::Processes).get() == resources.process_count()
         && expected.limit(SandboxResourceKind::OpenHandles).get() == resources.file_descriptors()
         && expected.limit(SandboxResourceKind::Concurrency).get() == resources.concurrent_slots();
@@ -103,45 +92,4 @@ fn validate_resources(
         return Err(invalid("process resources differ from checked sandbox requirements"));
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::validate_environment;
-    use crate::EnvironmentPlan;
-    use peritus_sandbox::{EnvironmentName, EnvironmentRequirements};
-
-    #[test]
-    fn environment_projection_compares_canonical_names_independent_of_native_order() {
-        let names = vec!["Z_PERITUS_PROJECTION".to_owned(), "a_peritus_projection".to_owned()];
-        let environment = EnvironmentPlan::allowlisted(names.clone(), Vec::new()).expect("plan");
-        let requirements = EnvironmentRequirements::new(
-            names.into_iter().map(|name| EnvironmentName::new(name).expect("name")).collect(),
-            Vec::new(),
-        )
-        .expect("requirements");
-        validate_environment(&environment, &requirements).expect("equal canonical names");
-        let wrong = EnvironmentRequirements::new(
-            vec![EnvironmentName::new("OTHER").expect("name")],
-            Vec::new(),
-        )
-        .expect("wrong requirements");
-        assert!(validate_environment(&environment, &wrong).is_err());
-    }
-
-    #[cfg(not(windows))]
-    #[test]
-    fn environment_projection_rejects_ambiguous_case_folded_inheritance() {
-        let environment = EnvironmentPlan::allowlisted(
-            vec!["PERITUS_PROJECTION".to_owned(), "peritus_projection".to_owned()],
-            Vec::new(),
-        )
-        .expect("distinct native names");
-        let requirements = EnvironmentRequirements::new(
-            vec![EnvironmentName::new("PERITUS_PROJECTION").expect("name")],
-            Vec::new(),
-        )
-        .expect("requirements");
-        assert!(validate_environment(&environment, &requirements).is_err());
-    }
 }

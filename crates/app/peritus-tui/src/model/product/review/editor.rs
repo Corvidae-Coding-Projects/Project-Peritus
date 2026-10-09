@@ -64,25 +64,11 @@ impl AppModel {
         };
         let revision = self.product.as_ref().and_then(|product| {
             let page = product.review.page.as_ref()?;
-            let anchor_is_current = product.review.diff_page.as_ref().map_or_else(
-                || {
-                    page.files().iter().any(|file| {
-                        file.anchor() == &target.anchor
-                            || file.hunks().iter().any(|hunk| hunk.anchor() == &target.anchor)
-                    })
-                },
-                |diff| {
-                    diff.query().query() == target.query
-                        && (diff.file_anchor() == &target.anchor
-                            || diff.hunk().is_some_and(|hunk| hunk.anchor() == &target.anchor))
-                },
-            );
-            (anchor_is_current
-                && page.query().query() == target.query
+            (page.query().query() == target.query
                 && self.chat.workbench.selected == Some(target.query)
-                && product.review.diff_page.as_ref().is_none_or(|diff| {
-                    diff.query().revision() == page.query().revision()
-                        && diff.candidate_digest() == page.candidate_digest()
+                && page.files().iter().any(|file| {
+                    file.anchor() == &target.anchor
+                        || file.hunks().iter().any(|hunk| hunk.anchor() == &target.anchor)
                 }))
             .then_some(page.query().revision())
         });

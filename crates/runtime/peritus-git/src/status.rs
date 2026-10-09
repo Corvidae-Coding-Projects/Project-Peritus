@@ -11,6 +11,10 @@ use crate::command::CommandAccess;
 use crate::repository::strings;
 use crate::{CommitId, GitError, GitRepository, RegisteredWorktree, TreeId};
 
+pub const MAX_STATUS_ENTRIES: usize = 100_000;
+pub const MAX_STATUS_PATH_BYTES: usize = 4_096;
+pub const MAX_STATUS_BYTES: usize = 64 * 1024 * 1024;
+
 /// One porcelain-v2 index or worktree change code.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ChangeCode {
@@ -122,8 +126,8 @@ pub enum StatusKind {
         modes: EntryModes,
         /// Similarity percentage from Git.
         score: u8,
-        /// Original raw Git path bytes paired with the entry's destination path.
-        original_path: Vec<u8>,
+        /// Original path paired with the entry's destination path.
+        original_path: String,
     },
     /// An unmerged entry retaining every stage mode.
     Unmerged {
@@ -147,14 +151,14 @@ pub enum StatusKind {
 /// One validated repository-relative status entry.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StatusEntry {
-    path: Vec<u8>,
+    path: String,
     kind: StatusKind,
 }
 
 impl StatusEntry {
-    /// Returns the exact unquoted repository-relative Git path bytes.
+    /// Returns the exact unquoted repository-relative UTF-8 path.
     #[must_use]
-    pub fn path(&self) -> &[u8] {
+    pub fn path(&self) -> &str {
         &self.path
     }
 
@@ -170,7 +174,7 @@ impl StatusEntry {
 pub struct StatusObservation {
     repository_digest: Sha256Digest,
     worktree_root: PathBuf,
-    head: Option<CommitId>,
+    head: CommitId,
     detached: bool,
     index_tree: Option<TreeId>,
     digest: Sha256Digest,
@@ -190,9 +194,9 @@ impl StatusObservation {
         &self.worktree_root
     }
 
-    /// Returns the current HEAD commit, or `None` when the worktree is unborn.
+    /// Returns the exact current HEAD commit.
     #[must_use]
-    pub const fn head(&self) -> Option<CommitId> {
+    pub const fn head(&self) -> CommitId {
         self.head
     }
 
@@ -226,17 +230,6 @@ impl StatusObservation {
         self.entries.is_empty()
     }
 
-    /// Returns whether the worktree has no changes relative to its index.
-    ///
-    /// Staged index changes are permitted; untracked, ignored, conflicted, or unstaged paths are not.
-    #[must_use]
-    pub fn worktree_matches_index(&self) -> bool {
-        !self.has_worktree_change()
-            && !self.has_untracked()
-            && !self.has_ignored()
-            && !self.has_unmerged()
-    }
-
     pub(crate) fn has_unmerged(&self) -> bool {
         self.entries.iter().any(|entry| matches!(&entry.kind, StatusKind::Unmerged { .. }))
     }
@@ -261,7 +254,7 @@ impl StatusObservation {
 }
 
 impl GitRepository {
-    /// Observes a registered worktree using NUL-delimited porcelain-v2 records.
+    /// Observes a registered worktree with bounded NUL-delimited porcelain-v2 output.
     ///
     /// # Errors
     ///
@@ -290,26 +283,22 @@ impl GitRepository {
             None,
         )?;
         let parsed = porcelain::parse(&output.stdout, self.identity.object_format())?;
-        let index_tree = if parsed
-            .entries
-            .iter()
-            .any(|entry| matches!(&entry.kind, StatusKind::Unmerged { .. }))
-        {
-            None
-        } else {
-            let index_output = self.runner.checked(
-                worktree.root(),
-                Some(Self::worktree_location(worktree.root(), worktree.git_dir())),
-                CommandAccess::Read,
-                crate::Operation::Status,
-                &[OsString::from("write-tree")],
-                None,
-            )?;
+        let index_output = self.runner.observe(
+            worktree.root(),
+            Some(Self::worktree_location(worktree.root(), worktree.git_dir())),
+            CommandAccess::Read,
+            crate::Operation::Status,
+            &[OsString::from("write-tree")],
+            None,
+        )?;
+        let index_tree = if index_output.status.success() {
             Some(TreeId::checked(crate::ObjectId::parse(
                 self.identity.object_format(),
                 crate::command::one_line(&index_output.stdout, crate::Operation::Status)?,
                 crate::Operation::Status,
             )?))
+        } else {
+            None
         };
         let digest = status_digest(
             self.identity.digest(),
@@ -334,7 +323,7 @@ impl GitRepository {
 fn status_digest(
     repository: Sha256Digest,
     root: &Path,
-    head: Option<CommitId>,
+    head: CommitId,
     detached: bool,
     index: Option<TreeId>,
     porcelain: &[u8],
@@ -350,10 +339,7 @@ fn status_digest(
     let mut bytes = b"PERITUS-GIT-STATUS-V1\0".to_vec();
     bytes.extend_from_slice(repository.as_bytes());
     put_bytes(&mut bytes, root.as_bytes());
-    match head {
-        Some(head) => put_bytes(&mut bytes, head.object_id().as_bytes()),
-        None => put_bytes(&mut bytes, &[]),
-    }
+    put_bytes(&mut bytes, head.object_id().as_bytes());
     bytes.push(u8::from(detached));
     match index {
         Some(tree) => {
@@ -369,32 +355,4 @@ fn status_digest(
 pub fn put_bytes(output: &mut Vec<u8>, value: &[u8]) {
     output.extend_from_slice(&(value.len() as u64).to_be_bytes());
     output.extend_from_slice(value);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{put_bytes, status_digest};
-    use crate::{CommitId, ObjectFormat, ObjectId, Operation};
-    use peritus_types::Sha256Digest;
-
-    #[test]
-    fn committed_head_status_digest_preserves_v1_encoding() {
-        let repository = Sha256Digest::new([3; 32]);
-        let root = std::path::Path::new("/workspace");
-        let head = CommitId::checked(
-            ObjectId::parse(ObjectFormat::Sha1, &"a".repeat(40), Operation::Status)
-                .expect("valid commit object ID"),
-        );
-        let mut original = b"PERITUS-GIT-STATUS-V1\0".to_vec();
-        original.extend_from_slice(repository.as_bytes());
-        put_bytes(&mut original, root.to_str().expect("UTF-8 root").as_bytes());
-        put_bytes(&mut original, head.object_id().as_bytes());
-        original.push(1);
-        original.push(0);
-        put_bytes(&mut original, b"");
-
-        let observed =
-            status_digest(repository, root, Some(head), true, None, b"").expect("status digest");
-        assert_eq!(observed, peritus_codec::sha256(&original));
-    }
 }

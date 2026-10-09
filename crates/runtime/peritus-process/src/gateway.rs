@@ -254,21 +254,13 @@ fn validate_budget(
         )
     })?;
     let begin = snapshot.request();
-    let wall = plan.resource_policy().wall_millis();
-    // Match tool authorization: absent wall deadlines create an exact zero-reserve,
-    // settled accounting record. A held positive reservation is required only when
-    // the immutable execution plan carries an actual wall bound.
-    let expected_phase =
-        if wall.is_some() { ReservationPhase::Held } else { ReservationPhase::SettledExact };
-    Ok(snapshot.phase() == expected_phase
+    Ok(snapshot.phase() == ReservationPhase::Held
         && begin.reservation_id() == reservation_id
         && begin.action_id() == plan.identity().action_id()
         && begin.action_digest() == action_digest
         && begin.revision() == plan.identity().revision()
-        && wall.map_or_else(
-            || begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get() == 0,
-            |wall| begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get() >= wall,
-        ))
+        && begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get()
+            >= plan.resource_policy().wall_millis())
 }
 
 fn validate_lease(

@@ -1,0 +1,2 @@
+FINDING-0021: Graphical qualification incorrectly required note and behavior evidence from one stream
+Source inspection identified the overconstraint during L193 integration. Focused tests now cover mixed stdout/stderr evidence for pipe mode and exact terminal evidence for PTY mode. The final goal projection preserves the independent match records rather than collapsing them.

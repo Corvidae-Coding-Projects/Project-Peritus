@@ -7,127 +7,13 @@ use peritus_app_protocol::{
 use peritus_product_runner::{
     DiscardTransactionState, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,
 };
-use std::{path::Path, sync::Arc};
-
-use crate::diagnostic;
+use std::path::Path;
 
 use super::{ProductRunServiceError, RunRecord, deliverable};
 
 const REVIEWED_COMMAND_UNCERTAINTY: &str = "A reviewed command outcome remains unknown. Developer mutations for this requirements revision are frozen; inspect and preserve the candidate or provide new user input.";
 
-struct ReceiptRecoveryOwner {
-    inner: Arc<super::Inner>,
-    run: peritus_types::RunId,
-}
-
-impl Drop for ReceiptRecoveryOwner {
-    fn drop(&mut self) {
-        self.inner
-            .command_recoveries
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .remove(&self.run);
-    }
-}
-
 impl super::ProductRunService {
-    pub(super) fn reconcile_restored_command_receipts(
-        &self,
-    ) -> Vec<(peritus_types::RunId, peritus_types::ActionId, peritus_types::ProcessId)> {
-        let records = self.inner.records.read().ok().map(|records| {
-            records
-                .values()
-                .filter(|record| record.snapshot.phase().terminal())
-                .cloned()
-                .collect::<Vec<_>>()
-        });
-        let Some(records) = records else { return Vec::new() };
-        let mut live_owners = Vec::new();
-        for record in records {
-            let receipts = effects_path(&self.inner.directory, &record);
-            if receipts.exists() {
-                match peritus_product_runner::CommandRuntime::receipt_linked_live_owners(
-                    &receipts,
-                    record.request.run_id(),
-                    &self.inner.processes,
-                ) {
-                    Ok(owners) => {
-                        for owner in owners {
-                            if !live_owners.contains(&owner) {
-                                live_owners.push(owner);
-                            }
-                        }
-                    }
-                    Err(error) => {
-                        diagnostic::report(&format!(
-                            "peritusd: exact live command owner could not be verified for run {}: {error}",
-                            deliverable::run_hex(record.request.run_id())
-                        ));
-                    }
-                }
-            }
-            if let Err(error) = self.reconcile_command_receipts(&record) {
-                diagnostic::report(&format!(
-                    "peritusd: native command receipt recovery remains unresolved for run {}: {error}",
-                    deliverable::run_hex(record.request.run_id())
-                ));
-            }
-        }
-        live_owners
-    }
-
-    pub(super) fn project_operation(
-        &self,
-        record: &RunRecord,
-    ) -> Result<ProductRunOperation, ProductRunServiceError> {
-        self.reconcile_command_receipts(record)?;
-        project(&self.inner.directory, record)
-    }
-
-    fn reconcile_command_receipts(&self, record: &RunRecord) -> Result<(), ProductRunServiceError> {
-        if !record.snapshot.phase().terminal() {
-            return Ok(());
-        }
-        let receipts = effects_path(&self.inner.directory, record);
-        if !receipts.exists() {
-            return Ok(());
-        }
-        let pending = uncertain_effects(&receipts).map_err(|error| {
-            ProductRunServiceError::internal("inspect native command receipt", error.to_string())
-        })?;
-        if !pending.iter().any(|effect| effect.state() != UncertainEffectState::Reviewed) {
-            return Ok(());
-        }
-        let Ok(tasks) = self.inner.tasks.try_lock() else {
-            return Ok(());
-        };
-        if tasks.iter().any(|(run, task)| *run == record.request.run_id() && !task.is_finished()) {
-            return Ok(());
-        }
-        let run = record.request.run_id();
-        let mut recovering = self
-            .inner
-            .command_recoveries
-            .lock()
-            .map_err(|_| ProductRunServiceError::Unavailable)?;
-        if !recovering.insert(run) {
-            return Ok(());
-        }
-        drop(recovering);
-        drop(tasks);
-        let _owner = ReceiptRecoveryOwner { inner: Arc::clone(&self.inner), run };
-        let Some(root) = self.inner.workspaces.get(&record.request.workspace_id()) else {
-            return Ok(());
-        };
-        let Ok(runtime) = super::execution::open_command_runtime(self, &record.request, root)
-        else {
-            return Ok(());
-        };
-        runtime.reconcile_effect_receipts(&receipts).map_err(|error| {
-            ProductRunServiceError::internal("reconcile native command receipt", error.to_string())
-        })
-    }
-
     pub(super) fn ensure_control_legal(
         &self,
         run: peritus_types::RunId,
@@ -135,7 +21,7 @@ impl super::ProductRunService {
     ) -> Result<(), ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
-        if self.project_operation(record)?.legal_controls().allows(action) {
+        if project(&self.inner.directory, record)?.legal_controls().allows(action) {
             Ok(())
         } else {
             Err(ProductRunServiceError::InvalidState)
@@ -149,7 +35,7 @@ impl super::ProductRunService {
         let mut records =
             self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
-        let projection = self.project_operation(record)?;
+        let projection = project(&self.inner.directory, record)?;
         if projection.kind() != Kind::Command
             || projection.state() != State::OutcomeUnknown
             || !projection.legal_controls().allows(Action::Acknowledge)
@@ -175,7 +61,7 @@ impl super::ProductRunService {
             record.snapshot.summary(),
         )?;
         super::persistence::persist_record(&self.inner.directory, record)?;
-        super::snapshot::live_snapshot(self, record)
+        super::snapshot::live_snapshot(&self.inner.directory, record)
     }
 }
 
@@ -231,11 +117,7 @@ pub(super) fn project(
         .collect::<Vec<_>>();
     if let Some(effect) = unresolved.first() {
         let count = unresolved.len();
-        let mut independent = command_export_control(record);
-        if effect.state() == UncertainEffectState::Started
-            && !effect.owner_inactive()
-            && !record.snapshot.phase().terminal()
-        {
+        if effect.state() == UncertainEffectState::Started && !record.snapshot.phase().terminal() {
             return operation(
                 Kind::Command,
                 State::Running,
@@ -245,11 +127,8 @@ pub(super) fn project(
                     effect.tool()
                 ),
                 "The command has not recorded a terminal result yet.".to_owned(),
-                independent.with(Action::Cancel),
+                ProductRunLegalControls::none().with(Action::Cancel),
             );
-        }
-        if effect.owner_inactive() {
-            independent = independent.with(Action::Acknowledge);
         }
         return operation(
             Kind::Command,
@@ -267,7 +146,7 @@ pub(super) fn project(
                     count - 1
                 )
             },
-            independent,
+            ProductRunLegalControls::none().with(Action::Acknowledge),
         );
     }
     let reviewed_current = uncertain.iter().any(|effect| {
@@ -293,11 +172,7 @@ pub(super) fn project(
     }
 
     let state = execution_state(record.snapshot.phase());
-    let controls = if reviewed_current {
-        command_export_control(record)
-    } else {
-        deliverable_controls(record, execution_controls(state))
-    };
+    let controls = deliverable_controls(record, execution_controls(state));
     operation(
         Kind::Execution,
         state,
@@ -308,19 +183,11 @@ pub(super) fn project(
     )
 }
 
-fn command_export_control(record: &RunRecord) -> ProductRunLegalControls {
-    if record.snapshot.deliverable().is_some_and(deliverable::export_available) {
-        ProductRunLegalControls::none().with(Action::Export)
-    } else {
-        ProductRunLegalControls::none()
-    }
-}
-
 pub(super) fn may_start_execution(
-    service: &super::ProductRunService,
+    directory: &Path,
     record: &RunRecord,
 ) -> Result<bool, ProductRunServiceError> {
-    Ok(service.project_operation(record)?.may_start_execution())
+    Ok(project(directory, record)?.may_start_execution())
 }
 
 /// Builds the execution projection retained inside a snapshot.

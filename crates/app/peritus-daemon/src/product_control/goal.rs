@@ -6,7 +6,7 @@ use super::{ControlStore, ControlStoreError as Error};
 use peritus_model_protocol::UsageCounters;
 use peritus_product_runner::control::{
     ControlError, ControlIntent, ControlOperation, ConversationRecord, GoalAdmission, GoalRole,
-    GoalSettlement, GoalState, GoalUsageReport, GraphicalOutputEvidence, OperationId,
+    GoalSettlement, GoalState, GoalUsageReport, OperationId,
 };
 use peritus_types::{ActorId, WorkspaceId};
 
@@ -235,6 +235,10 @@ impl ControlStore {
         clippy::too_many_arguments,
         reason = "current goal and immutable preview evidence fences stay explicit"
     )]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "criterion and evidence identity bindings stay explicit"
+    )]
     pub fn observe_graphical_goal_evidence(
         &mut self,
         start: &ControlOperation,
@@ -243,9 +247,7 @@ impl ControlStore {
         evidence_input_generation: u64,
         launch: OperationId,
         capture: OperationId,
-        evidence: GraphicalOutputEvidence,
     ) -> Result<(), Error> {
-        evidence.validate()?;
         let Some((record, goal)) = self.goal_record(start)? else {
             return Ok(());
         };
@@ -262,18 +264,12 @@ impl ControlStore {
         }
         let attempt = goal.attempt();
         let goal_id = goal.id();
-        let evidence_bytes =
-            serde_json::to_vec(&evidence).map_err(|_| ControlError::InvalidInput)?;
-        let mut semantic = Vec::with_capacity(64 + evidence_bytes.len());
+        let mut semantic = Vec::with_capacity(56);
         semantic.extend_from_slice(&evidence_user_revision.to_be_bytes());
         semantic.extend_from_slice(&evidence_input_generation.to_be_bytes());
         semantic.extend_from_slice(launch.as_bytes());
         semantic.extend_from_slice(capture.as_bytes());
         semantic.extend_from_slice(&criterion_index.to_be_bytes());
-        semantic.extend_from_slice(
-            &u32::try_from(evidence_bytes.len()).map_err(|_| ControlError::Capacity)?.to_be_bytes(),
-        );
-        semantic.extend_from_slice(&evidence_bytes);
         let intent = ControlIntent::ObserveGraphicalGoalEvidence {
             criterion_index,
             goal: goal_id,
@@ -282,7 +278,6 @@ impl ControlStore {
             evidence_input_generation,
             launch,
             capture,
-            evidence: Some(evidence),
             now_unix_millis: now_millis(),
         };
         self.apply_host_goal(

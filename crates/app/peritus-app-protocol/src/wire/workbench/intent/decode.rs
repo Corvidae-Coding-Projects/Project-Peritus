@@ -162,10 +162,6 @@ pub(super) fn checkpoint(
             WorkbenchCheckpointName::new(reader.read_str()?.to_owned()),
         )?),
         91 => WorkbenchIntent::ApplyRewind(workbench_checkpoints::read_preview(reader)?),
-        92 => WorkbenchIntent::ConfirmRewind(crate::WorkbenchRewindConfirmation::new(
-            workbench_checkpoints::read_request(reader)?,
-            read_digest(reader)?,
-        )),
         _ => return unknown(offset),
     })
 }

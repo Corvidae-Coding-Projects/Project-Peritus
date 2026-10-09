@@ -11,17 +11,12 @@ use crate::{
 
 /// Maximum commits returned by one history observation.
 pub const MAX_HISTORY_COMMITS: u16 = 1_024;
-/// Maximum commit parents returned for one history row.
-pub const MAX_HISTORY_PARENTS: u32 = 32;
 
 /// One structured commit observation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CommitObservation {
     commit: CommitId,
     parents: Vec<CommitId>,
-    parent_offset: u32,
-    parent_count: u32,
-    next_parent_offset: Option<u32>,
     timestamp_seconds: u64,
     subject: String,
 }
@@ -37,27 +32,12 @@ impl CommitObservation {
     pub fn parents(&self) -> &[CommitId] {
         &self.parents
     }
-    /// Returns the offset represented by this parent page.
-    #[must_use]
-    pub const fn parent_offset(&self) -> u32 {
-        self.parent_offset
-    }
-    /// Returns the complete ordered parent count.
-    #[must_use]
-    pub const fn parent_count(&self) -> u32 {
-        self.parent_count
-    }
-    /// Returns the next parent offset when more parents remain.
-    #[must_use]
-    pub const fn next_parent_offset(&self) -> Option<u32> {
-        self.next_parent_offset
-    }
     /// Returns Git's committed Unix timestamp.
     #[must_use]
     pub const fn timestamp_seconds(&self) -> u64 {
         self.timestamp_seconds
     }
-    /// Returns the complete UTF-8 commit subject for paged rendering.
+    /// Returns the bounded UTF-8 commit subject.
     #[must_use]
     pub fn subject(&self) -> &str {
         &self.subject
@@ -70,9 +50,6 @@ pub struct HistoryRequest<'a> {
     worktree: &'a RegisteredWorktree,
     start: CommitId,
     maximum_commits: u16,
-    offset: u64,
-    parent_offset: u32,
-    subject_offset: u32,
 }
 
 impl<'a> HistoryRequest<'a> {
@@ -88,43 +65,7 @@ impl<'a> HistoryRequest<'a> {
         if maximum_commits == 0 || maximum_commits > MAX_HISTORY_COMMITS {
             return Err(input_error("Git history count is zero or exceeds its hard maximum"));
         }
-        Ok(Self {
-            worktree,
-            start,
-            maximum_commits,
-            offset: 0,
-            parent_offset: 0,
-            subject_offset: 0,
-        })
-    }
-
-    /// Creates a continuation page bound to the same immutable history start.
-    ///
-    /// # Errors
-    /// Rejects zero or excessive commit counts.
-    pub fn page(
-        worktree: &'a RegisteredWorktree,
-        start: CommitId,
-        maximum_commits: u16,
-        offset: u64,
-    ) -> Result<Self, GitError> {
-        let mut request = Self::new(worktree, start, maximum_commits)?;
-        request.offset = offset;
-        Ok(request)
-    }
-
-    /// Adds a parent-list page offset to this history page.
-    #[must_use]
-    pub const fn with_parent_offset(mut self, parent_offset: u32) -> Self {
-        self.parent_offset = parent_offset;
-        self
-    }
-
-    /// Adds a byte offset for the first commit subject in the page.
-    #[must_use]
-    pub const fn with_subject_offset(mut self, subject_offset: u32) -> Self {
-        self.subject_offset = subject_offset;
-        self
+        Ok(Self { worktree, start, maximum_commits })
     }
 }
 
@@ -134,10 +75,6 @@ pub struct GitHistoryObservation {
     repository_digest: Sha256Digest,
     start: CommitId,
     commits: Vec<CommitObservation>,
-    offset: u64,
-    next_offset: Option<u64>,
-    parent_offset: u32,
-    subject_offset: u32,
     digest: Sha256Digest,
 }
 
@@ -152,30 +89,10 @@ impl GitHistoryObservation {
     pub const fn start(&self) -> CommitId {
         self.start
     }
-    /// Returns the exact offset represented by this history page.
-    #[must_use]
-    pub const fn offset(&self) -> u64 {
-        self.offset
-    }
     /// Returns commits in Git's deterministic newest-first order.
     #[must_use]
     pub fn commits(&self) -> &[CommitObservation] {
         &self.commits
-    }
-    /// Returns the exact next offset, bound to the same immutable history start.
-    #[must_use]
-    pub const fn next_offset(&self) -> Option<u64> {
-        self.next_offset
-    }
-    /// Returns the requested parent page offset.
-    #[must_use]
-    pub const fn parent_offset(&self) -> u32 {
-        self.parent_offset
-    }
-    /// Returns the requested first-subject byte offset.
-    #[must_use]
-    pub const fn subject_offset(&self) -> u32 {
-        self.subject_offset
     }
     /// Returns the canonical observation digest.
     #[must_use]
@@ -196,13 +113,8 @@ impl GitRepository {
             "-z",
             "--format=%H%x00%P%x00%at%x00%s",
             "--no-decorate",
-            "--no-show-signature",
-            "--no-notes",
-            "--no-color",
-            "--no-patch",
         ]);
-        arguments.push(OsString::from(format!("--max-count={}", request.maximum_commits + 1)));
-        arguments.push(OsString::from(format!("--skip={}", request.offset)));
+        arguments.push(OsString::from(format!("--max-count={}", request.maximum_commits)));
         arguments.push(OsString::from(request.start.to_string()));
         arguments.push(OsString::from("--"));
         let output = self.runner.checked(
@@ -213,55 +125,13 @@ impl GitRepository {
             &arguments,
             None,
         )?;
-        let mut commits = parse_history(
-            &output.stdout,
-            self.identity.object_format(),
-            request.maximum_commits + 1,
-        )?;
-        let has_more = commits.len() > request.maximum_commits as usize;
-        if has_more {
-            commits.pop();
-        }
-        for (index, commit) in commits.iter_mut().enumerate() {
-            let parent_count = u32::try_from(commit.parents.len())
-                .map_err(|_| protocol("Git history parent count is not representable"))?;
-            let start = usize::try_from(request.parent_offset)
-                .map_err(|_| protocol("Git history parent offset is not representable"))?
-                .min(commit.parents.len());
-            let end = start.saturating_add(MAX_HISTORY_PARENTS as usize).min(commit.parents.len());
-            let next_parent_offset =
-                (end < commit.parents.len()).then(|| u32::try_from(end).ok()).flatten();
-            commit.parents = commit.parents[start..end].to_vec();
-            commit.parent_offset = u32::try_from(start)
-                .map_err(|_| protocol("Git history parent offset is not representable"))?;
-            commit.parent_count = parent_count;
-            commit.next_parent_offset = next_parent_offset;
-            if index == 0 {
-                let subject_len = u32::try_from(commit.subject.len())
-                    .map_err(|_| protocol("Git history subject length is not representable"))?;
-                if request.subject_offset > subject_len {
-                    return Err(input_error("Git history subject offset exceeds its byte length"));
-                }
-            }
-        }
-        let next_offset = has_more
-            .then(|| request.offset.checked_add(u64::from(request.maximum_commits)))
-            .flatten();
-        let digest = history_digest(
-            self.identity.digest(),
-            request.start,
-            request.offset,
-            request.subject_offset,
-            &commits,
-        );
+        let commits =
+            parse_history(&output.stdout, self.identity.object_format(), request.maximum_commits)?;
+        let digest = history_digest(self.identity.digest(), request.start, &commits);
         Ok(GitHistoryObservation {
             repository_digest: self.identity.digest(),
             start: request.start,
             commits,
-            offset: request.offset,
-            next_offset,
-            parent_offset: request.parent_offset,
-            subject_offset: request.subject_offset,
             digest,
         })
     }
@@ -300,12 +170,12 @@ fn parse_history(
             .map_err(|_| protocol("Git history timestamp is invalid"))?;
         let subject = std::str::from_utf8(record[3])
             .map_err(|_| protocol("Git history subject is not UTF-8"))?;
+        if subject.len() > 4_096 || subject.bytes().any(|byte| byte == 0) {
+            return Err(protocol("Git history subject exceeds its bound"));
+        }
         commits.push(CommitObservation {
             commit,
             parents,
-            parent_offset: 0,
-            parent_count: 0,
-            next_parent_offset: None,
             timestamp_seconds,
             subject: subject.to_owned(),
         });
@@ -322,23 +192,15 @@ fn parse_commit(bytes: &[u8], format: crate::ObjectFormat) -> Result<CommitId, G
 fn history_digest(
     repository: Sha256Digest,
     start: CommitId,
-    offset: u64,
-    subject_offset: u32,
     commits: &[CommitObservation],
 ) -> Sha256Digest {
-    let mut bytes = b"PERITUS-GIT-HISTORY-V2\0".to_vec();
+    let mut bytes = b"PERITUS-GIT-HISTORY-V1\0".to_vec();
     bytes.extend_from_slice(repository.as_bytes());
     bytes.extend_from_slice(start.object_id().as_bytes());
-    bytes.extend_from_slice(&offset.to_be_bytes());
-    bytes.extend_from_slice(&subject_offset.to_be_bytes());
-    // The history digest binds the cursor that selected the first subject range.
     bytes.extend_from_slice(&(commits.len() as u64).to_be_bytes());
     for commit in commits {
         bytes.extend_from_slice(commit.commit.object_id().as_bytes());
         bytes.extend_from_slice(&(commit.parents.len() as u64).to_be_bytes());
-        bytes.extend_from_slice(&commit.parent_offset.to_be_bytes());
-        bytes.extend_from_slice(&commit.parent_count.to_be_bytes());
-        bytes.extend_from_slice(&commit.next_parent_offset.unwrap_or(u32::MAX).to_be_bytes());
         for parent in &commit.parents {
             bytes.extend_from_slice(parent.object_id().as_bytes());
         }

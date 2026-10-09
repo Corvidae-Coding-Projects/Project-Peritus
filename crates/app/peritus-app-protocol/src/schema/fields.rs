@@ -239,7 +239,7 @@ impl FieldBound {
             Self::WorkbenchGoalCriteria => "workbench.max-goal-criteria (16)",
             Self::WorkbenchGoalRoles => "workbench.goal-roles (3)",
             Self::WorkbenchGoalReasonBytes => "workbench.max-goal-reason-bytes (512)",
-            Self::WorkbenchCheckpointPaths => "wire.u16-count (legacy full-list message only)",
+            Self::WorkbenchCheckpointPaths => "workbench.max-checkpoint-paths (64)",
             Self::WorkbenchCheckpointNameBytes => "workbench.max-checkpoint-name-bytes (256)",
             Self::WorkbenchCheckpointTextBytes => "workbench.max-checkpoint-text-bytes (512)",
             Self::WorkbenchRestoreTextBytes => "workbench.max-restore-text-bytes (4096)",

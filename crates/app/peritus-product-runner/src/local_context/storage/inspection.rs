@@ -10,8 +10,7 @@ use super::super::{
     view_binding,
 };
 use super::{
-    MAX_ARTIFACT_SQLITE_BYTES, STATE_KEY, STATE_NAMESPACE, StoredArtifact,
-    identity::StorageIdentity,
+    MAX_ARTIFACT_BYTES, STATE_KEY, STATE_NAMESPACE, StoredArtifact, identity::StorageIdentity,
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore, StoreConfig};
@@ -43,15 +42,14 @@ pub(in crate::local_context) fn inspect(
     {
         return Err(error("inspection scope or generation mismatch"));
     }
-    let config =
-        StoreConfig::new_with_quota_policy(root.join("artifacts"), MAX_ARTIFACT_SQLITE_BYTES, None)
-            .and_then(|config| config.with_database_path(&database))
-            .map_err(|_| error("invalid inspection artifact configuration"))?;
+    let config = StoreConfig::new(root.join("artifacts"), MAX_ARTIFACT_BYTES, 1024 * 1024 * 1024)
+        .and_then(|config| config.with_database_path(&database))
+        .map_err(|_| error("invalid inspection artifact configuration"))?;
     let read = |artifact: StoredArtifact| -> Result<Vec<u8>, DeveloperLoopError> {
         let bytes = ArtifactStore::read_existing(
             &config,
             ArtifactDigest::from_sha256(artifact.digest),
-            MAX_ARTIFACT_SQLITE_BYTES,
+            MAX_ARTIFACT_BYTES,
         )
         .map_err(|_| error("checkpoint artifact missing or corrupt"))?;
         if bytes.len() as u64 != artifact.bytes {
@@ -64,7 +62,7 @@ pub(in crate::local_context) fn inspect(
             ArtifactStore::read_existing(
                 &config,
                 ArtifactDigest::from_sha256(Sha256Digest::new(digest)),
-                MAX_ARTIFACT_SQLITE_BYTES,
+                MAX_ARTIFACT_BYTES,
             )
             .map_err(|_| error("checkpoint predecessor missing or corrupt"))
         })?;
@@ -102,6 +100,9 @@ pub(in crate::local_context) fn inspect(
         ("readable_messages", Value::from(readable)),
         ("canonical_view_archive_hex", Value::from(hex(&archive))),
     ]).to_string();
+    if output.len() > 32 * 1024 * 1024 {
+        return Err(error("exact inspection exceeds output capacity"));
+    }
     Ok(output)
 }
 

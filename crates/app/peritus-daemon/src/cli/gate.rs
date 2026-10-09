@@ -31,7 +31,7 @@ pub(super) fn stage_before(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::sleep(QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
     write_error("gate-before qualifier was not killed at its accepted transition checkpoint");
     ExitCode::FAILURE
 }
@@ -57,7 +57,7 @@ pub(super) fn stage_after(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::sleep(QUALIFICATION_KILL_BOUND);
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
     write_error("gate-after qualifier was not killed at its committed checkpoint");
     ExitCode::FAILURE
 }

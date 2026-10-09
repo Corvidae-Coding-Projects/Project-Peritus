@@ -1,10 +1,10 @@
 //! Effect receipts, delivery progress, and bounded filesystem mutations.
 
 use super::{
-    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_PROGRESS_NUDGES,
-    ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools,
-    WorkspaceToolMode, atomic_write, checked, fs, object, observation, removal, required_string,
-    string, tool,
+    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_FILE_BYTES,
+    MAX_PROGRESS_NUDGES, ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value,
+    WorkspaceDeveloperTools, WorkspaceToolMode, atomic_write, checked, fs, object, observation,
+    removal, required_string, string, tool,
 };
 
 impl WorkspaceDeveloperTools {
@@ -13,28 +13,6 @@ impl WorkspaceDeveloperTools {
         call: &CompletedToolCall,
         arguments: &Value,
     ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
-        let owners = self
-            .receipts
-            .as_mut()
-            .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-            .uncertain_command_owners()?;
-        if !owners.is_empty() {
-            let runtime = self
-                .command_runtime
-                .as_ref()
-                .ok_or_else(|| tool("writable tools have no command runtime"))?;
-            for owner in owners {
-                let recovered = runtime.recover_receipt_owner(owner)?;
-                self.receipts
-                    .as_mut()
-                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                    .reconcile_native_command_owner(
-                        owner,
-                        recovered.disposition,
-                        &recovered.value,
-                    )?;
-            }
-        }
         let Some(decision) = self
             .receipts
             .as_mut()
@@ -45,9 +23,7 @@ impl WorkspaceDeveloperTools {
         };
         match decision {
             ReceiptDecision::Replay { value, is_error } => {
-                if value.get("error").is_none()
-                    && value.get("success").and_then(Value::as_bool) != Some(false)
-                {
+                if value.get("error").is_none() {
                     self.record_success(call.name().as_str(), arguments, &value);
                 }
                 observation(&value, is_error).map(Some)
@@ -58,15 +34,10 @@ impl WorkspaceDeveloperTools {
                     .as_mut()
                     .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
                     .finalize()?;
-                if value.get("error").is_none()
-                    && value.get("success").and_then(Value::as_bool) != Some(false)
-                {
+                if value.get("error").is_none() {
                     self.record_success(call.name().as_str(), arguments, &value);
                 }
                 observation(&value, is_error).map(Some)
-            }
-            ReceiptDecision::RecoverCommandOwner { owner, scope, ordinal } => {
-                self.recover_command_receipt(call, arguments, owner, &scope, ordinal).map(Some)
             }
             ReceiptDecision::Refuse { detail, ambiguous } => observation(
                 &object(vec![
@@ -85,66 +56,32 @@ impl WorkspaceDeveloperTools {
         call: &CompletedToolCall,
         arguments: &Value,
     ) -> Result<Value, DeveloperLoopError> {
-        use super::super::inspection_search;
         use super::inspection;
         use crate::developer_tools::reference;
         match call.name().as_str() {
             "workspace_list" if routes_to_reference(&self.root, arguments) => {
-                reference::list(&self.references, arguments, &self.inspection_cancellation)
+                reference::list(&self.references, arguments)
             }
-            "workspace_list" => inspection::list(
-                &self.root,
-                arguments,
-                self.resources,
-                &self.access_policy,
-                &self.inspection_cancellation,
-            ),
-            "workspace_search" => inspection_search::search(
-                &self.root,
-                arguments,
-                &self.access_policy,
-                &self.inspection_cancellation,
-            ),
+            "workspace_list" => {
+                inspection::list(&self.root, arguments, self.resources, &self.access_policy)
+            }
+            "workspace_search" => inspection::search(&self.root, arguments, &self.access_policy),
             "workspace_read" if routes_to_reference(&self.root, arguments) => {
-                reference::read(&self.references, arguments, &self.inspection_cancellation)
+                reference::read(&self.references, arguments)
             }
-            "workspace_read" => {
-                inspection::read(&self.root, arguments, &self.inspection_cancellation)
-            }
-            "attachment_read" => {
-                super::super::attachment_read::read(self.protection_view.as_deref(), arguments)
-            }
-            "developer_evidence_read" => self.read_reviewer_evidence(arguments),
+            "workspace_read" => inspection::read(&self.root, arguments),
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),
             "workspace_remove" => self.remove(arguments),
             "run_command" => self.run_command(arguments, call.id().expose_for_wire()),
             "command_start" => self.start_command(arguments, call.id().expose_for_wire()),
-            "command_poll" => {
-                self.attach_command_owner_from_handle(arguments)?;
-                self.poll_command(arguments)
-            }
-            "command_stdin" => {
-                self.bind_command_receipt_owner(arguments, call.id().expose_for_wire())?;
-                self.write_command_stdin(arguments)
-            }
-            "command_resize" => {
-                self.bind_command_receipt_owner(arguments, call.id().expose_for_wire())?;
-                self.resize_command(arguments)
-            }
-            "command_signal" => {
-                self.bind_command_receipt_owner(arguments, call.id().expose_for_wire())?;
-                self.signal_command(arguments)
-            }
-            "command_cancel" => {
-                self.bind_command_receipt_owner(arguments, call.id().expose_for_wire())?;
-                self.cancel_command(arguments)
-            }
-            "command_recover" => {
-                self.attach_command_owner_from_handle(arguments)?;
-                self.recover_command(arguments)
-            }
+            "command_poll" => self.poll_command(arguments),
+            "command_stdin" => self.write_command_stdin(arguments),
+            "command_resize" => self.resize_command(arguments),
+            "command_signal" => self.signal_command(arguments),
+            "command_cancel" => self.cancel_command(arguments),
+            "command_recover" => self.recover_command(arguments),
             _ => Err(tool("model requested an undeclared developer tool")),
         }
     }
@@ -170,9 +107,6 @@ impl WorkspaceDeveloperTools {
             ReceiptDecision::RecoverCheckpoint { .. } => {
                 Err(tool("checkpoint recovery must occur before effect preflight"))
             }
-            ReceiptDecision::RecoverCommandOwner { owner, scope, ordinal } => {
-                self.recover_command_receipt(call, arguments, owner, &scope, ordinal).map(Some)
-            }
             ReceiptDecision::Refuse { detail, ambiguous } => observation(
                 &object(vec![
                     ("error", Value::String(detail)),
@@ -182,114 +116,6 @@ impl WorkspaceDeveloperTools {
             )
             .map(Some),
         }
-    }
-
-    fn bind_command_receipt_owner(
-        &mut self,
-        arguments: &Value,
-        call_id: &str,
-    ) -> Result<(), DeveloperLoopError> {
-        let handle = required_string(arguments, "handle")?;
-        let owner = {
-            let receipts = self
-                .receipts
-                .as_mut()
-                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?;
-            let owner = receipts
-                .command_owner_for_handle(handle)?
-                .ok_or_else(|| tool("command handle has no durable native owner receipt"))?;
-            receipts.bind_native_command_owner(call_id, owner)?;
-            owner
-        };
-        self.command_runtime
-            .as_ref()
-            .ok_or_else(|| tool("writable tools have no command runtime"))?
-            .attach_native_owner(owner)
-    }
-
-    fn attach_command_owner_from_handle(
-        &mut self,
-        arguments: &Value,
-    ) -> Result<(), DeveloperLoopError> {
-        let handle = required_string(arguments, "handle")?;
-        let owner = self
-            .receipts
-            .as_mut()
-            .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-            .command_owner_for_handle(handle)?;
-        if let Some(owner) = owner {
-            self.command_runtime
-                .as_ref()
-                .ok_or_else(|| tool("writable tools have no command runtime"))?
-                .attach_native_owner(owner)?;
-        }
-        Ok(())
-    }
-
-    fn recover_command_receipt(
-        &mut self,
-        call: &CompletedToolCall,
-        arguments: &Value,
-        owner: super::super::receipt::NativeCommandOwner,
-        scope: &str,
-        ordinal: u32,
-    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
-        let runtime = self
-            .command_runtime
-            .as_ref()
-            .ok_or_else(|| tool("writable tools have no command runtime"))?;
-        let mut recovered = runtime.recover_receipt_owner(owner)?;
-        if call.name().as_str() == "run_command" {
-            while recovered.disposition == peritus_process::RecoveryDisposition::LiveOwned {
-                std::thread::sleep(std::time::Duration::from_millis(20));
-                recovered = runtime.recover_receipt_owner(owner)?;
-            }
-        }
-        let tool_name = call.name().as_str();
-        let is_start = tool_name == "command_start";
-        let terminal = recovered.disposition == peritus_process::RecoveryDisposition::Terminal;
-        let live_start =
-            is_start && recovered.disposition == peritus_process::RecoveryDisposition::LiveOwned;
-        if terminal && matches!(tool_name, "run_command" | "command_start") || live_start {
-            let is_error = recovered.value.get("success").and_then(Value::as_bool) == Some(false);
-            self.receipts
-                .as_mut()
-                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                .complete_recovered_command(
-                    scope,
-                    ordinal,
-                    owner,
-                    &recovered.value,
-                    is_error,
-                    terminal,
-                )?;
-            if !is_error {
-                self.record_success(tool_name, arguments, &recovered.value);
-            }
-            return observation(&recovered.value, is_error);
-        }
-        let owner_inactive = matches!(
-            recovered.disposition,
-            peritus_process::RecoveryDisposition::Terminal
-                | peritus_process::RecoveryDisposition::AbsentUnobserved
-        );
-        self.receipts
-            .as_mut()
-            .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-            .mark_recovered_command_unknown(scope, ordinal, owner, owner_inactive)?;
-        observation(
-            &object(vec![
-                (
-                    "error",
-                    Value::String(format!(
-                        "the prior {tool_name} outcome remains unknown; the native command was not repeated"
-                    )),
-                ),
-                ("ambiguous", Value::Bool(true)),
-                ("owner_inactive", Value::Bool(owner_inactive)),
-            ]),
-            true,
-        )
     }
     pub(super) fn observe_delivery_progress(
         &mut self,
@@ -377,6 +203,9 @@ impl WorkspaceDeveloperTools {
     pub(super) fn write(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let relative = required_string(arguments, "path")?;
         let content = required_string(arguments, "content")?;
+        if content.len() > MAX_FILE_BYTES {
+            return Err(tool("write exceeds the per-file byte bound"));
+        }
         let path = checked(&self.root, relative, true)?;
         let existed_before = path.exists();
         self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
@@ -419,6 +248,9 @@ impl WorkspaceDeveloperTools {
         }
         let replaced =
             if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
+        if replaced.len() > MAX_FILE_BYTES {
+            return Err(tool("patched file exceeds the per-file byte bound"));
+        }
         atomic_write(&path, replaced.as_bytes())?;
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),

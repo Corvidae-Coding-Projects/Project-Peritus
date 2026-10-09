@@ -7,8 +7,6 @@ use super::{
     WorkbenchCheckpointFileMode, WorkbenchCheckpointName, WorkbenchCheckpointPath,
     WorkbenchCheckpointReceipt, WorkbenchCheckpointReferences, WorkbenchCheckpointVersion,
     WorkbenchCommand, WorkbenchIntent, WorkbenchRestoreReceipt, WorkbenchRestoreStatus,
-    WorkbenchRestoreSummary, WorkbenchRewindDisposition, WorkbenchRewindPath,
-    WorkbenchRewindPreview, WorkbenchRewindRequest,
 };
 
 pub(super) fn checkpoint_references(record: &ConversationRecord) -> CheckpointReferences {
@@ -58,15 +56,10 @@ pub(super) fn public_checkpoint(
             })
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| ControlError::InvalidInput)?,
-        checkpoint.exclusions().collect(),
+        checkpoint.exclusions().map(str::to_owned).collect(),
         checkpoint.external_effects().map(str::to_owned).collect(),
     )
     .map_err(|_| ControlError::InvalidInput.into())
-}
-
-pub(in crate::product_run::workbench) enum WorkbenchRestoreProjection {
-    Detailed(WorkbenchRestoreReceipt),
-    Summary(WorkbenchRestoreSummary),
 }
 
 pub(super) fn public_restore(
@@ -76,120 +69,26 @@ pub(super) fn public_restore(
     accepted_revision: u64,
     restored: Vec<String>,
     conflicts: Vec<String>,
-    external_effects: Vec<String>,
-) -> Result<WorkbenchRestoreProjection, Error> {
-    let (checkpoint_id, compact_fingerprint) = match command.intent() {
-        WorkbenchIntent::ApplyRewind(confirmed) => (confirmed.request().checkpoint(), None),
-        WorkbenchIntent::ConfirmRewind(confirmation) => {
-            (confirmation.request().checkpoint(), Some(confirmation.preview_digest()))
-        }
-        _ => return Err(ControlError::InvalidInput.into()),
+) -> Result<WorkbenchRestoreReceipt, Error> {
+    let WorkbenchIntent::ApplyRewind(confirmed) = command.intent() else {
+        return Err(ControlError::InvalidInput.into());
     };
-    let status = match status {
-        RestoreStatus::Applied => WorkbenchRestoreStatus::Applied,
-        RestoreStatus::Conflict => WorkbenchRestoreStatus::Conflict,
-        RestoreStatus::RecoveryRequired | RestoreStatus::Prepared => {
-            WorkbenchRestoreStatus::RecoveryRequired
-        }
-    };
-    let recovery =
-        ControlOperationId::new(*recovery.as_bytes()).map_err(|_| ControlError::InvalidInput)?;
-    if let Some(fingerprint) = compact_fingerprint {
-        let restored_paths = if status == WorkbenchRestoreStatus::Applied {
-            u64::try_from(restored.len()).map_err(|_| ControlError::Capacity)?
-        } else {
-            0
-        };
-        let conflicting_paths = if status == WorkbenchRestoreStatus::Conflict {
-            u64::try_from(conflicts.len()).map_err(|_| ControlError::Capacity)?
-        } else {
-            0
-        };
-        return WorkbenchRestoreSummary::new(
-            command.operation(),
-            checkpoint_id,
-            recovery,
-            command.query(),
-            accepted_revision,
-            status,
-            restored_paths,
-            conflicting_paths,
-            fingerprint,
-        )
-        .map(WorkbenchRestoreProjection::Summary)
-        .map_err(|_| ControlError::InvalidInput.into());
-    }
     WorkbenchRestoreReceipt::new(
         command.operation(),
-        checkpoint_id,
-        recovery,
+        confirmed.request().checkpoint(),
+        ControlOperationId::new(*recovery.as_bytes()).map_err(|_| ControlError::InvalidInput)?,
         command.query(),
         accepted_revision,
-        status,
-        if status == WorkbenchRestoreStatus::Applied { restored } else { Vec::new() },
+        match status {
+            RestoreStatus::Applied => WorkbenchRestoreStatus::Applied,
+            RestoreStatus::Conflict => WorkbenchRestoreStatus::Conflict,
+            RestoreStatus::RecoveryRequired | RestoreStatus::Prepared => {
+                WorkbenchRestoreStatus::RecoveryRequired
+            }
+        },
+        if status == RestoreStatus::Applied { restored } else { Vec::new() },
         conflicts,
-        external_effects,
-    )
-    .map(WorkbenchRestoreProjection::Detailed)
-    .map_err(|_| ControlError::InvalidInput.into())
-}
-
-pub(super) fn reconstruct_rewind_preview(
-    request: WorkbenchRewindRequest,
-    checkpoint: &UserCheckpoint,
-    recovery: &UserCheckpoint,
-) -> Result<WorkbenchRewindPreview, Error> {
-    let paths = if request.mode() == peritus_app_protocol::WorkbenchRewindMode::ConversationOnly {
-        if !recovery.paths().is_empty() {
-            return Err(Error::Corrupt("conversation-only restore retained file coverage"));
-        }
-        Vec::new()
-    } else {
-        if checkpoint.paths().len() != recovery.paths().len() {
-            return Err(Error::Corrupt("restore checkpoint coverage differs from recovery"));
-        }
-        checkpoint
-            .paths()
-            .iter()
-            .zip(recovery.paths())
-            .map(|(target, before)| {
-                if target.path() != before.path() {
-                    return Err(Error::Corrupt("restore checkpoint path order changed"));
-                }
-                let disposition = if target.checkpoint() == before.checkpoint() {
-                    WorkbenchRewindDisposition::Unchanged
-                } else if target.owned_postchange().is_none() {
-                    WorkbenchRewindDisposition::Unsealed
-                } else if target.owned_postchange() == Some(before.checkpoint()) {
-                    WorkbenchRewindDisposition::Restore
-                } else {
-                    WorkbenchRewindDisposition::Conflict
-                };
-                WorkbenchRewindPath::new(
-                    target.path().to_owned(),
-                    public_version(target.checkpoint()),
-                    target.owned_postchange().map(public_version),
-                    public_version(before.checkpoint()),
-                    disposition,
-                )
-                .map_err(|_| ControlError::InvalidInput.into())
-            })
-            .collect::<Result<Vec<_>, Error>>()?
-    };
-    let exclusions =
-        if request.mode() == peritus_app_protocol::WorkbenchRewindMode::ConversationOnly {
-            vec![
-                "Current files are unchanged; this branch is not a historical filesystem snapshot."
-                    .to_owned(),
-            ]
-        } else {
-            checkpoint.exclusions().collect()
-        };
-    WorkbenchRewindPreview::new(
-        request,
-        paths,
-        exclusions,
-        checkpoint.external_effects().map(str::to_owned).collect(),
+        confirmed.external_effects().to_vec(),
     )
     .map_err(|_| ControlError::InvalidInput.into())
 }
@@ -251,7 +150,7 @@ pub(super) fn noop_manifest(preview: Sha256Digest) -> Vec<u8> {
 }
 
 pub(super) fn patch_input<T>(result: Result<T, peritus_patch::PatchError>) -> Result<T, Error> {
-    result.map_err(Error::from)
+    result.map_err(|_| ControlError::InvalidInput.into())
 }
 
 pub(super) const fn app_error(code: AppErrorCode) -> AppProtocolError {

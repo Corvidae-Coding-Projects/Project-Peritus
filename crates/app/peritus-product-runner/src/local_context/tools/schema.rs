@@ -32,9 +32,9 @@ const READ: &str = r#"{
   "type":"object","additionalProperties":false,
   "required":["observation_ids","query","cursor","offset","max_bytes"],
   "properties":{
-    "observation_ids":{"type":"array","items":{"type":"string"}},
-    "query":{"type":["string","null"],"minLength":1,"description":"Use null for explicit handles or state pages; use a nonempty string only for literal search."},
-    "cursor":{"type":["string","null"]},
+    "observation_ids":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":100}},
+    "query":{"type":["string","null"],"minLength":1,"maxLength":256,"description":"Use null for explicit handles or state pages; use a nonempty string only for literal search."},
+    "cursor":{"type":["string","null"],"maxLength":100},
     "offset":{"type":"integer","minimum":0},
     "max_bytes":{"type":"integer","minimum":256,"maximum":65536}
   }

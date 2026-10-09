@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use peritus_codec::{CanonicalReader, CanonicalWriter};
+use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use peritus_types::{Generation, RevisionNumber, Sha256Digest, WorkspaceId};
 
 use crate::{
@@ -119,7 +119,7 @@ impl Manifest {
     }
 
     pub(super) fn encode(&self) -> Result<Vec<u8>, PatchError> {
-        let mut writer = CanonicalWriter::new(crate::local_record_codec_limits());
+        let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
         let result = (|| {
             writer.write_fixed(MAGIC)?;
             writer.write_u16(SCHEMA_VERSION)?;
@@ -148,14 +148,14 @@ impl Manifest {
     }
 
     pub(super) fn decode(bytes: &[u8]) -> Result<Self, PatchError> {
-        if bytes.len() < 32 {
+        if bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes || bytes.len() < 32 {
             return Err(corrupt_manifest());
         }
         let (payload, checksum) = bytes.split_at(bytes.len() - 32);
         if peritus_codec::sha256(payload).as_bytes() != checksum {
             return Err(corrupt_manifest());
         }
-        let mut reader = CanonicalReader::new(payload, crate::local_record_codec_limits());
+        let mut reader = CanonicalReader::new(payload, CodecLimits::PRODUCTION);
         let result = (|| {
             if &reader.read_fixed::<20>().ok()? != MAGIC
                 || reader.read_u16().ok()? != SCHEMA_VERSION
@@ -168,10 +168,10 @@ impl Manifest {
             let revision = RevisionNumber::new(reader.read_u64().ok()?).ok()?;
             let identity = PatchIdentity::new(Sha256Digest::new(reader.read_fixed::<32>().ok()?));
             let entry_count = reader.read_collection_len().ok()?;
-            if entry_count == 0 {
+            if entry_count == 0 || entry_count > crate::MAX_PATCH_OPERATIONS {
                 return None;
             }
-            let mut entries = Vec::new();
+            let mut entries = Vec::with_capacity(entry_count);
             for _ in 0..entry_count {
                 let kind = kind_from_tag(reader.read_u8().ok()?)?;
                 let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
@@ -183,7 +183,7 @@ impl Manifest {
                 entries.push(ManifestEntry { kind, path, preimage, postimage });
             }
             let directory_count = reader.read_collection_len().ok()?;
-            let mut created_directories = Vec::new();
+            let mut created_directories = Vec::with_capacity(directory_count);
             for _ in 0..directory_count {
                 created_directories.push(WorkspacePath::new(reader.read_str().ok()?).ok()?);
             }
@@ -263,6 +263,9 @@ fn read_identity(reader: &mut CanonicalReader<'_>) -> Result<Option<FileIdentity
     }
     let digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(|_| ())?);
     let size = reader.read_u64().map_err(|_| ())?;
+    if size > crate::set::MAX_FILE_BYTES as u64 {
+        return Err(());
+    }
     let mode = FileMode::from_tag(reader.read_u8().map_err(|_| ())?).ok_or(())?;
     Ok(Some(FileIdentity { digest, size, mode }))
 }

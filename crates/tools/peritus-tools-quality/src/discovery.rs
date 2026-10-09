@@ -64,9 +64,8 @@ pub fn inspect(
     workspace: &ReadOnlyWorkspace,
     explicit: Vec<CheckDefinition>,
 ) -> Result<CheckCatalog, QualityError> {
-    let listing = workspace.list_directory(None)?;
-    let entries = listing.entries();
-    let cargo = if regular_file(entries, "Cargo.toml") {
+    let entries = workspace.list_directory(None)?;
+    let cargo = if regular_file(&entries, "Cargo.toml") {
         let path = WorkspacePath::new("Cargo.toml").map_err(|error| {
             QualityError::new(QualityErrorKind::InvalidInput, error.to_string())
         })?;
@@ -76,7 +75,7 @@ pub fn inspect(
     };
     let mut justfiles = Vec::new();
     for name in ["Justfile", "justfile"] {
-        if regular_file(entries, name) {
+        if regular_file(&entries, name) {
             let path = WorkspacePath::new(name).map_err(|error| {
                 QualityError::new(QualityErrorKind::InvalidInput, error.to_string())
             })?;

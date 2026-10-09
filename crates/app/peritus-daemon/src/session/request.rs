@@ -56,20 +56,6 @@ where
             AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
                 product_runs.inspect_workbench_checkpoint(actor_id, *value)
             }
-            AppRequestPayload::QueryWorkbenchCheckpointPage(value) => {
-                workbench::checkpoint_coverage_page(
-                    product_runs,
-                    actor_id,
-                    *value,
-                    &request,
-                    limits,
-                )
-                .await
-            }
-            AppRequestPayload::QueryWorkbenchRewindPage(value) => {
-                workbench::rewind_coverage_page(product_runs, actor_id, *value, &request, limits)
-                    .await
-            }
             AppRequestPayload::PreviewWorkbenchRewind(value) => {
                 product_runs.preview_workbench_rewind(actor_id, value).await
             }
@@ -86,23 +72,11 @@ where
             AppRequestPayload::QueryWorkbenchPreview(query) => {
                 product_runs.workbench_preview(actor_id, *query)
             }
-            AppRequestPayload::QueryWorkbenchPreviewOutput(query) => {
-                product_runs.workbench_preview_output_range(actor_id, *query)
-            }
             AppRequestPayload::QueryWorkbenchResult(query) => {
                 product_runs.workbench_result(actor_id, *query)
             }
             AppRequestPayload::QueryWorkbenchReview(query) => {
                 product_runs.workbench_review(actor_id, *query)
-            }
-            AppRequestPayload::QueryWorkbenchReviewSummary(query) => {
-                product_runs.workbench_review_summary(actor_id, *query)
-            }
-            AppRequestPayload::QueryWorkbenchReviewDiff(query) => {
-                product_runs.workbench_review_diff(actor_id, *query)
-            }
-            AppRequestPayload::QueryWorkbenchReviewDiffBytes(query) => {
-                product_runs.workbench_review_diff_bytes(actor_id, *query)
             }
             AppRequestPayload::QueryConversationLibrary(query) => {
                 product_runs.conversation_library(actor_id, query)
@@ -120,18 +94,8 @@ where
                 product_runs.workbench_queue(actor_id, *query)
             }
             AppRequestPayload::WorkbenchCommand(command) => {
-                workbench::respond(
-                    authority,
-                    product_runs,
-                    actor_id,
-                    limits,
-                    context.supports(
-                        peritus_app_protocol::WellKnownProtocolFeature::WorkbenchCheckpointPages,
-                    ),
-                    &request,
-                    command,
-                )
-                .await?
+                workbench::respond(authority, product_runs, actor_id, limits, &request, command)
+                    .await?
             }
             AppRequestPayload::ContinueWorkbenchExecution(query) => {
                 product_runs.continue_workbench_execution(actor_id, *query).await

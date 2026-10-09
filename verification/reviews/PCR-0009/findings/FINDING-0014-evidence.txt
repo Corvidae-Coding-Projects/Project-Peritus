@@ -1,0 +1,2 @@
+FINDING-0014: Git history rejected subjects longer than its advertised continuation model
+External fixture `/tmp/peritus-batch3/formal-review/git-history-cap` created a 5,000-byte subject; the precursor `history` call returned an error and the fixture exited 101. The repaired regression uses a 5,008-byte subject and passes, and the Git/tools-Git suites passed including large diff/history cases.

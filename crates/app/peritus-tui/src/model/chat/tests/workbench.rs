@@ -33,47 +33,6 @@ fn enabled_model() -> AppModel {
     ];
     model
 }
-
-fn active_chat_writer_binding(model: &mut AppModel, provider: ProviderProfileId, model_id: &str) {
-    let run = model.chat.run_id.unwrap_or_else(|| RunId::new([0x91; 16]).expect("run"));
-    model.chat.run_id = Some(run);
-    let writer = peritus_app_protocol::ProductModelChoice::new(model_id.to_owned(), true)
-        .expect("selected writer model");
-    let models = ProductRoleModels::new(
-        writer,
-        model.chat.models.reviewer().clone(),
-        model.chat.models.fixer().clone(),
-    );
-    let providers =
-        peritus_app_protocol::ProductProviderSelection::new(provider, provider, provider);
-    let workspace = model.product.as_ref().expect("product").launch.workspace_id();
-    let snapshot = peritus_app_protocol::ProductRunSnapshot::new(
-        run,
-        workspace,
-        providers,
-        peritus_app_protocol::ProductRunPhase::Writing,
-        1,
-        "active chat".to_owned(),
-        "working".to_owned(),
-        String::new(),
-        String::new(),
-        String::new(),
-        String::new(),
-        crate::test_support::run_operation(run, peritus_app_protocol::ProductRunPhase::Writing),
-    )
-    .expect("run snapshot");
-    let binding = ProductInteractionSnapshot::new(
-        snapshot,
-        ProductInteractionMode::Chat,
-        models,
-        1,
-        1,
-        Vec::new(),
-        None,
-    )
-    .expect("active chat binding");
-    model.accept_chat(binding);
-}
 fn request(effects: &[Effect]) -> AppRequestEnvelope {
     let [Effect::Send(AppMessage::Request(request))] = effects else {
         panic!("one typed request: {effects:?}")

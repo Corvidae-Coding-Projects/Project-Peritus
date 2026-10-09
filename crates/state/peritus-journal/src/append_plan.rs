@@ -8,16 +8,24 @@ use crate::{
     hash_chain::batch_hash,
 };
 use peritus_types::{CommandId, Sha256Digest};
-use sha2::{Digest as _, Sha256};
 
 use validation::{
     validate_and_hash_events, validate_artifacts, validate_bounds, validate_heads, validate_outbox,
     validate_outbox_acknowledgements, validate_state_installs,
 };
 
-/// Historical batch-size recommendation retained for source compatibility; it is not an admission
-/// limit.
+/// Maximum immutable events in one atomic batch.
 pub const MAX_BATCH_EVENTS: usize = 4_096;
+/// Maximum aggregate heads in one atomic batch.
+pub const MAX_BATCH_AGGREGATES: usize = 1_024;
+/// Maximum state installs in one atomic batch.
+pub const MAX_STATE_INSTALLS: usize = 4_096;
+/// Maximum outbox rows in one atomic batch.
+pub const MAX_OUTBOX_ENTRIES: usize = 4_096;
+/// Maximum existing outbox rows acknowledged in one atomic batch.
+pub const MAX_OUTBOX_ACKNOWLEDGEMENTS: usize = 4_096;
+/// Maximum artifact dependencies in one atomic batch.
+pub const MAX_ARTIFACT_DEPENDENCIES: usize = 4_096;
 
 /// Exact aggregate-head precondition.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -101,7 +109,7 @@ impl AppendRequest {
     ///
     /// # Errors
     ///
-    /// Rejects duplicate or noncanonical acknowledgement collections.
+    /// Rejects duplicate, noncanonical, or excessive acknowledgement collections.
     pub fn with_outbox_acknowledgements(
         mut self,
         acknowledgements: Vec<OutboxAcknowledgement>,
@@ -214,28 +222,28 @@ impl AppendRequest {
 ///
 /// # Errors
 ///
-/// Rejects duplicate or noncanonical acknowledgement collections.
+/// Rejects duplicate, noncanonical, or excessive acknowledgement collections.
 pub fn bind_outbox_acknowledgements_digest(
     request_digest: Sha256Digest,
     acknowledgements: &[OutboxAcknowledgement],
 ) -> Result<Sha256Digest, JournalError> {
     validate_outbox_acknowledgements(acknowledgements)?;
-    let count = u64::try_from(acknowledgements.len()).map_err(|_| {
-        JournalError::new(
+    if acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS {
+        return Err(JournalError::new(
             JournalErrorKind::InvalidInput,
             "plan append",
-            "outbox acknowledgement count cannot be represented",
-        )
-    })?;
-    let mut binding = Sha256::new();
-    binding.update(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
-    binding.update(request_digest.as_bytes());
-    binding.update(count.to_be_bytes());
-    for acknowledgement in acknowledgements {
-        binding.update(acknowledgement.id().as_bytes());
-        binding.update(acknowledgement.fence().to_be_bytes());
+            "outbox acknowledgement bound exceeded",
+        ));
     }
-    Ok(Sha256Digest::new(binding.finalize().into()))
+    let mut binding = Vec::with_capacity(64 + acknowledgements.len() * 24);
+    binding.extend_from_slice(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
+    binding.extend_from_slice(request_digest.as_bytes());
+    binding.extend_from_slice(&(acknowledgements.len() as u64).to_be_bytes());
+    for acknowledgement in acknowledgements {
+        binding.extend_from_slice(acknowledgement.id().as_bytes());
+        binding.extend_from_slice(&acknowledgement.fence().to_be_bytes());
+    }
+    Ok(peritus_codec::sha256(&binding))
 }
 
 pub fn bind_registry_current_digest(

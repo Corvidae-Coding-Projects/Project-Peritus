@@ -36,8 +36,6 @@ pub enum ErrorCode {
     InterruptedTransaction,
     /// A transaction manifest was malformed, unsupported, or inconsistent.
     CorruptManifest,
-    /// Cancellation was observed before any workspace target mutation.
-    Cancelled,
     /// A checked arithmetic operation overflowed.
     ArithmeticOverflow,
     /// A filesystem effect failed.
@@ -65,7 +63,6 @@ impl ErrorCode {
             Self::InvalidTransactionRoot => "patch.invalid_transaction_root",
             Self::InterruptedTransaction => "patch.interrupted_transaction",
             Self::CorruptManifest => "patch.corrupt_manifest",
-            Self::Cancelled => "patch.cancelled",
             Self::ArithmeticOverflow => "patch.arithmetic_overflow",
             Self::Io => "patch.io",
             Self::Indeterminate => "patch.indeterminate",
@@ -121,8 +118,6 @@ pub enum PatchOperationContext {
     Recover,
     /// Remove completed transaction data.
     Cleanup,
-    /// Observe a cancellation request at a transaction-safe boundary.
-    Cancellation,
 }
 
 /// Whether an ordinary application error restored the pre-transaction state.
@@ -157,18 +152,6 @@ impl PatchError {
         detail: &'static str,
     ) -> Self {
         Self { code, recovery, operation, rollback, path: None, detail, source: None }
-    }
-
-    /// Creates the conservative error used when a durable caller receipt could not be retained.
-    #[must_use]
-    pub const fn completion_persistence_failure() -> Self {
-        Self::message(
-            ErrorCode::Indeterminate,
-            RecoveryClass::FenceWorkspace,
-            PatchOperationContext::PersistManifest,
-            RollbackStatus::Indeterminate,
-            "workspace action completion could not be retained",
-        )
     }
 
     pub(crate) fn at(mut self, path: WorkspacePath) -> Self {

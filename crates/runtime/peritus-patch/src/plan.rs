@@ -15,12 +15,6 @@ impl PatchIdentity {
         Self(digest)
     }
 
-    /// Reconstructs a patch identity from its retained digest bytes.
-    #[must_use]
-    pub const fn from_digest(digest: Sha256Digest) -> Self {
-        Self(digest)
-    }
-
     /// Returns the exact identity digest.
     #[must_use]
     pub const fn digest(self) -> Sha256Digest {

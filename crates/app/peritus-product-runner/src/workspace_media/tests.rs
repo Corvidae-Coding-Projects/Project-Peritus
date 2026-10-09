@@ -3,17 +3,8 @@ use peritus_model_protocol::{
     OutputLimitEnforcement, ProviderName, ResumeKind, StateMode, WireDialect,
 };
 use peritus_types::ProviderProfileId;
-use std::io::Cursor;
 
 use super::*;
-
-pub(super) fn encoded(format: image::ImageFormat) -> Vec<u8> {
-    let mut output = Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgba8(image::RgbaImage::new(2, 2))
-        .write_to(&mut output, format)
-        .expect("encode fixture");
-    output.into_inner()
-}
 
 #[test]
 fn non_visual_image_file_work_does_not_require_image_input() {
@@ -46,7 +37,7 @@ fn direct_visual_file_requests_still_require_image_input() {
 fn mentioned_workspace_image_is_attached_with_its_path() {
     let root = tempfile::tempdir().expect("workspace");
     fs::create_dir(root.path().join("in")).expect("input directory");
-    fs::write(root.path().join("in/reference.png"), encoded(image::ImageFormat::Png))
+    fs::write(root.path().join("in/reference.png"), b"\x89PNG\r\n\x1a\nbounded-test-pixels")
         .expect("image");
 
     let images =
@@ -77,7 +68,7 @@ fn mentioned_image_directory_attaches_the_complete_bounded_collection() {
     let scans = documents.join("scans");
     fs::create_dir_all(&scans).expect("documents directory");
     for index in 0..6 {
-        fs::write(scans.join(format!("page-{index}.jpg")), encoded(image::ImageFormat::Jpeg))
+        fs::write(scans.join(format!("page-{index}.jpg")), b"\xff\xd8\xffbounded-test-pixels")
             .expect("image");
     }
     let task =
@@ -88,60 +79,6 @@ fn mentioned_image_directory_attaches_the_complete_bounded_collection() {
 
     assert_eq!(attachments.len(), 6);
     assert!(prompt.contains("attachment 5: documents/scans/page-5.jpg"));
-}
-
-#[test]
-fn discovery_keeps_more_than_sixteen_images_and_deep_descendants() {
-    let root = tempfile::tempdir().expect("workspace");
-    let mut directory = root.path().to_path_buf();
-    for depth in 0..20 {
-        directory.push(format!("nested-{depth}"));
-        fs::create_dir(&directory).expect("nested directory");
-    }
-    for index in 0..17 {
-        fs::write(root.path().join(format!("image-{index}.png")), encoded(image::ImageFormat::Png))
-            .expect("image");
-    }
-    fs::write(directory.join("deep.png"), encoded(image::ImageFormat::Png)).expect("deep image");
-    let task = "Describe all image files in the workspace";
-    let images = discover(root.path(), task, &profile(true)).expect("complete traversal");
-    let (prompt, attachments) = images.into_parts(task.to_owned());
-    assert_eq!(attachments.len(), 18);
-    assert!(prompt.contains("nested-19"));
-}
-
-#[test]
-fn discovery_cursor_exposes_a_resumable_continuation_after_each_bounded_page() {
-    let root = tempfile::tempdir().expect("workspace");
-    for index in 0..257 {
-        fs::write(root.path().join(format!("image-{index:03}.png")), b"candidate")
-            .expect("image candidate");
-    }
-    let mut cursor = WorkspaceImageDiscovery::new(root.path());
-    let first = cursor.next_page().expect("first page");
-    // The first bounded traversal visits the root directory entry as well as image candidates.
-    assert_eq!(first.paths().len(), 255);
-    assert!(first.has_more());
-
-    let second = cursor.next_page().expect("resumed page");
-    assert_eq!(second.paths().len(), 2);
-    assert!(!second.has_more());
-}
-
-#[test]
-fn unreadable_or_invalid_selected_media_is_reported_without_dropping_valid_neighbors() {
-    let root = tempfile::tempdir().expect("workspace");
-    let directory = root.path().join("scans");
-    fs::create_dir(&directory).expect("directory");
-    fs::write(directory.join("valid.png"), encoded(image::ImageFormat::Png)).expect("image");
-    fs::write(directory.join("broken.png"), b"not a raster image").expect("broken image");
-    let task = format!("Describe the images in {}/scans/", root.path().display());
-    let images = discover(root.path(), &task, &profile(true)).expect("good neighbor is usable");
-    let (prompt, attachments) = images.into_parts(task);
-    assert_eq!(attachments.len(), 1);
-    assert!(prompt.contains("Skipped selected media"));
-    let expected_path = Path::new("scans").join("broken.png");
-    assert!(prompt.contains(&expected_path.display().to_string()));
 }
 
 #[test]

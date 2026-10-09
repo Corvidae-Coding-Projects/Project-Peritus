@@ -1,5 +1,7 @@
 //! Structured review projection and exact-anchor mutation admission.
 
+use std::path::PathBuf;
+
 use super::{Error, ProductRunService, error_response};
 use crate::product_run::{
     ProductRunServiceError, RunProgress, initial_snapshot, persist_record, replace_snapshot,
@@ -11,9 +13,8 @@ use peritus_app_protocol::{
     WorkbenchReviewComment, WorkbenchReviewCommentState, WorkbenchReviewEvidence,
     WorkbenchReviewEvidenceKind, WorkbenchReviewEvidenceState, WorkbenchReviewFeedback,
     WorkbenchReviewPage, WorkbenchReviewQuery, WorkbenchReviewRange, WorkbenchReviewTarget,
-    parse_workbench_diff, parse_workbench_diff_page, parse_workbench_diff_page_with_anchors,
+    parse_workbench_diff,
 };
-use peritus_codec::sha256;
 use peritus_product_runner::{
     ProductRunner,
     control::{
@@ -34,33 +35,6 @@ impl ProductRunService {
     ) -> AppResponsePayload {
         current_page(self, actor, query)
             .map_or_else(error_response, AppResponsePayload::WorkbenchReview)
-    }
-
-    pub(crate) fn workbench_review_summary(
-        &self,
-        actor: ActorId,
-        query: WorkbenchReviewQuery,
-    ) -> AppResponsePayload {
-        current_summary(self, actor, query)
-            .map_or_else(error_response, AppResponsePayload::WorkbenchReviewSummary)
-    }
-
-    pub(crate) fn workbench_review_diff(
-        &self,
-        actor: ActorId,
-        query: peritus_app_protocol::WorkbenchReviewDiffQuery,
-    ) -> AppResponsePayload {
-        current_structured_diff_page(self, actor, query)
-            .map_or_else(error_response, AppResponsePayload::WorkbenchReviewDiff)
-    }
-
-    pub(crate) fn workbench_review_diff_bytes(
-        &self,
-        actor: ActorId,
-        query: peritus_app_protocol::WorkbenchReviewDiffBytesQuery,
-    ) -> AppResponsePayload {
-        current_raw_diff(self, actor, query)
-            .map_or_else(error_response, AppResponsePayload::WorkbenchReviewDiffBytes)
     }
 }
 
@@ -84,50 +58,20 @@ pub(super) fn validate_command(
         }
         _ => return Ok(()),
     };
-    let current = current_snapshot(service, &record, run)?;
-    let mut anchors = Vec::new();
-    if let Some(anchor) = supplied {
-        anchors.push(anchor.clone());
-    }
-    if let Some(prior) = prior {
-        anchors.push(project_anchor(prior)?);
-    }
-    let matches = if anchors.is_empty()
-        || !current.raw_diff.lines().any(|line| line.starts_with("diff --git "))
-    {
-        vec![false; anchors.len()]
-    } else {
-        let cursor = peritus_app_protocol::WorkbenchReviewDiffQuery::new(
-            command.query(),
-            run,
-            record.revision(),
-            0,
-            0,
-            0,
-        );
-        parse_workbench_diff_page_with_anchors(
-            cursor,
-            current.candidate,
-            &current.raw_diff,
-            &anchors,
-        )
-        .map_err(|_| ControlError::InvalidInput)?
-        .1
-    };
-    let mut match_index = 0;
+    let current = current_targets(service, &record, run)?;
     if let Some(anchor) = supplied
         && (anchor.workspace() != command.query().workspace()
             || anchor.run() != run
-            || !matches.get(match_index).copied().unwrap_or(false))
+            || !contains(&current.files, anchor))
     {
         return Err(ControlError::StaleRevision.into());
     }
-    if supplied.is_some() {
-        match_index += 1;
-    }
-    if prior.is_some() && matches.get(match_index).copied().unwrap_or(false) {
-        // Rebinding is an explicit recovery operation, never an ordinary anchor edit.
-        return Err(ControlError::InvalidInput.into());
+    if let Some(prior) = prior {
+        let prior = project_anchor(prior)?;
+        if contains(&current.files, &prior) {
+            // Rebinding is an explicit recovery operation, never an ordinary anchor edit.
+            return Err(ControlError::InvalidInput.into());
+        }
     }
     Ok(())
 }
@@ -189,7 +133,7 @@ pub(super) async fn resume_feedback(
             workspace,
         )?;
         let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
-        if !super::super::operation::may_start_execution(service, record)? {
+        if !super::super::operation::may_start_execution(&service.inner.directory, record)? {
             return Err(ProductRunServiceError::InvalidState);
         }
         let mut options = record.interaction.clone();
@@ -252,24 +196,173 @@ pub(super) async fn resume_feedback(
     Ok(())
 }
 
-mod projection;
-use projection::{
-    missing, project_anchor, project_comment, project_comment_with_current, project_evidence,
-};
-mod current;
-use current::{
-    current_page, current_raw_diff, current_snapshot, current_structured_diff_page,
-    current_summary, load_control,
-};
-pub(super) fn domain_anchor(value: &WorkbenchReviewAnchor) -> Result<ReviewAnchor, ControlError> {
-    current::domain_anchor(value)
-}
-pub(super) const fn domain_feedback(value: WorkbenchReviewFeedback) -> ReviewFeedback {
-    current::domain_feedback(value)
+fn current_page(
+    service: &ProductRunService,
+    actor: ActorId,
+    requested: WorkbenchReviewQuery,
+) -> Result<WorkbenchReviewPage, Error> {
+    let record = load_control(service, actor, requested.query())?;
+    if requested.revision() != 0 && requested.revision() != record.revision() {
+        return Err(ControlError::StaleRevision.into());
+    }
+    let current = current_targets(service, &record, requested.run())?;
+    let total =
+        u32::try_from(record.reviews().comments().len()).map_err(|_| ControlError::Capacity)?;
+    let comments = record
+        .reviews()
+        .comments()
+        .iter()
+        .skip(requested.offset() as usize)
+        .take(peritus_app_protocol::MAX_WORKBENCH_REVIEW_PAGE)
+        .map(|comment| project_comment(comment, &current.files))
+        .collect::<Result<Vec<_>, _>>()?;
+    let query = WorkbenchReviewQuery::new(
+        requested.query(),
+        requested.run(),
+        record.revision(),
+        requested.offset(),
+    );
+    WorkbenchReviewPage::new(
+        query,
+        current.candidate,
+        current.diff,
+        current.files,
+        comments,
+        total,
+        current.evidence,
+    )
+    .map_err(|_| ControlError::InvalidInput.into())
 }
 
-pub(super) fn contains(files: &[WorkbenchDiffFile], anchor: &WorkbenchReviewAnchor) -> bool {
+fn load_control(
+    service: &ProductRunService,
+    actor: ActorId,
+    query: peritus_app_protocol::WorkbenchQuery,
+) -> Result<ConversationRecord, Error> {
+    service.control_workspace(query)?;
+    let id = ConversationId::new(query.conversation().into_bytes())?;
+    let record =
+        service.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+    if record.owner_bytes() != actor.as_bytes()
+        || record.workspace_bytes() != query.workspace().as_bytes()
+    {
+        return Err(ControlError::ScopeMismatch.into());
+    }
+    Ok(record)
+}
+
+struct CurrentReview {
+    candidate: Sha256Digest,
+    diff: Sha256Digest,
+    files: Vec<WorkbenchDiffFile>,
+    evidence: Vec<WorkbenchReviewEvidence>,
+}
+
+fn current_targets(
+    service: &ProductRunService,
+    control: &ConversationRecord,
+    run: RunId,
+) -> Result<CurrentReview, Error> {
+    let records =
+        service.inner.records.read().map_err(|_| Error::Corrupt("run owner lock poisoned"))?;
+    let record = records.get(&run).ok_or(ControlError::NotFound)?;
+    let start = &record.interaction.workbench;
+    if start.conversation() != control.id()
+        || start.workspace_bytes() != control.workspace_bytes()
+        || start.actor_bytes() != control.owner_bytes()
+        || record.request.workspace_id().as_bytes() != control.workspace_bytes()
+    {
+        return Err(ControlError::ScopeMismatch.into());
+    }
+    if !super::super::operation::may_start_execution(&service.inner.directory, record)
+        .map_err(|_| Error::Corrupt("operation projection unavailable"))?
+    {
+        return Err(ControlError::InvalidInput.into());
+    }
+    let workspace = service
+        .inner
+        .workspaces
+        .get(&record.request.workspace_id())
+        .ok_or(ControlError::ScopeMismatch)?;
+    let live_candidate = ProductRunner::candidate_digest(workspace)
+        .map_err(|_| Error::Corrupt("candidate digest unavailable"))?;
+    let candidate = record
+        .checkpoint
+        .as_ref()
+        .map_or(live_candidate, |checkpoint| checkpoint.identity().repository_digest());
+    if candidate != live_candidate {
+        return Err(ControlError::StaleRevision.into());
+    }
+    let (diff, files) =
+        parse_workbench_diff(run, record.request.workspace_id(), candidate, record.snapshot.diff())
+            .map_err(|_| ControlError::InvalidInput)?;
+    let evidence = record
+        .checkpoint
+        .as_ref()
+        .map_or_else(
+            || {
+                vec![
+                    missing(WorkbenchReviewEvidenceKind::Checks),
+                    missing(WorkbenchReviewEvidenceKind::IndependentReview),
+                ]
+            },
+            |checkpoint| {
+                vec![
+                    project_evidence(WorkbenchReviewEvidenceKind::Checks, checkpoint.gates()),
+                    project_evidence(
+                        WorkbenchReviewEvidenceKind::IndependentReview,
+                        checkpoint.review(),
+                    ),
+                ]
+            },
+        )
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(CurrentReview { candidate, diff, files, evidence })
+}
+
+fn contains(files: &[WorkbenchDiffFile], anchor: &WorkbenchReviewAnchor) -> bool {
     files.iter().any(|file| {
         file.anchor() == anchor || file.hunks().iter().any(|hunk| hunk.anchor() == anchor)
     })
 }
+
+pub(super) fn domain_anchor(value: &WorkbenchReviewAnchor) -> Result<ReviewAnchor, ControlError> {
+    let target = match value.target() {
+        WorkbenchReviewTarget::File => ReviewTarget::File,
+        WorkbenchReviewTarget::Hunk => ReviewTarget::Hunk,
+    };
+    let range = match target {
+        ReviewTarget::File => ReviewRange::file(),
+        ReviewTarget::Hunk => ReviewRange::hunk(
+            value.range().old_start(),
+            value.range().old_lines(),
+            value.range().new_start(),
+            value.range().new_lines(),
+        )?,
+    };
+    ReviewAnchor::new(
+        value.run(),
+        value.workspace(),
+        value.candidate_digest(),
+        value.diff_digest(),
+        PathBuf::from(value.path()),
+        value.before_blob_digest(),
+        value.after_blob_digest(),
+        value.context_digest(),
+        target,
+        range,
+    )
+}
+
+pub(super) const fn domain_feedback(value: WorkbenchReviewFeedback) -> ReviewFeedback {
+    match value {
+        WorkbenchReviewFeedback::Explain => ReviewFeedback::Explain,
+        WorkbenchReviewFeedback::RequestRevision => ReviewFeedback::RequestRevision,
+        WorkbenchReviewFeedback::KeepBehavior => ReviewFeedback::KeepBehavior,
+        WorkbenchReviewFeedback::LeaveAlone => ReviewFeedback::LeaveAlone,
+    }
+}
+
+mod projection;
+use projection::{missing, project_anchor, project_comment, project_evidence};

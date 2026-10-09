@@ -26,10 +26,6 @@ pub struct LocalContextHandle {
 }
 
 impl LocalContextHandle {
-    pub(crate) fn additional_request_framing_tokens(&self) -> Result<u64, DeveloperLoopError> {
-        self.lock()?.additional_request_framing_tokens()
-    }
-
     pub(crate) fn tool_definitions(
         &self,
     ) -> Result<Vec<peritus_model_protocol::ToolDefinition>, DeveloperLoopError> {

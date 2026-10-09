@@ -226,16 +226,6 @@ impl AppModel {
         }) {
             return;
         }
-        let old_writer = (
-            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer),
-            self.chat.models.writer().clone(),
-        );
-        let new_writer =
-            (Some(snapshot.snapshot().providers().writer()), snapshot.models().writer().clone());
-        if old_writer != new_writer {
-            self.chat.workbench.files.discard_preview();
-            self.chat.workbench.images.discard_preview();
-        }
         self.chat.models = snapshot.models().clone();
         self.accept_product_run(snapshot.snapshot().clone());
         if let Some(settlement) = snapshot.settlement()

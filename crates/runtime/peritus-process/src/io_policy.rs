@@ -151,16 +151,16 @@ pub enum OutputOverflowAction {
     Terminate,
 }
 
-/// Output retention and event-window policy.
+/// Independent bounded output/event policy.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct OutputPolicy {
     chunk_bytes: u64,
     retained_window_bytes: u64,
-    spool_bytes: Option<u64>,
+    spool_bytes: u64,
     event_count: u64,
-    stdout_bytes: Option<u64>,
-    stderr_bytes: Option<u64>,
-    terminal_bytes: Option<u64>,
+    stdout_bytes: u64,
+    stderr_bytes: u64,
+    terminal_bytes: u64,
     overflow_action: OutputOverflowAction,
 }
 
@@ -202,45 +202,11 @@ impl OutputPolicy {
         Ok(Self {
             chunk_bytes,
             retained_window_bytes,
-            spool_bytes: Some(spool_bytes),
+            spool_bytes,
             event_count,
-            stdout_bytes: Some(stdout_bytes),
-            stderr_bytes: Some(stderr_bytes),
-            terminal_bytes: Some(terminal_bytes),
-            overflow_action,
-        })
-    }
-
-    /// Creates output retention with no configured byte ceilings.
-    ///
-    /// The in-memory window and event count remain bounded; complete output is written to the
-    /// durable spool until the host reports a storage failure.
-    ///
-    /// # Errors
-    /// Rejects a zero or inconsistent in-memory window or event count.
-    pub const fn unbounded(
-        chunk_bytes: u64,
-        retained_window_bytes: u64,
-        event_count: u64,
-        overflow_action: OutputOverflowAction,
-    ) -> Result<Self, ProcessError> {
-        if chunk_bytes == 0
-            || retained_window_bytes == 0
-            || chunk_bytes > retained_window_bytes
-            || retained_window_bytes > MAX_OUTPUT_BOUND
-            || event_count == 0
-            || event_count > MAX_EVENT_COUNT
-        {
-            return Err(invalid("output window or event count is invalid"));
-        }
-        Ok(Self {
-            chunk_bytes,
-            retained_window_bytes,
-            spool_bytes: None,
-            event_count,
-            stdout_bytes: None,
-            stderr_bytes: None,
-            terminal_bytes: None,
+            stdout_bytes,
+            stderr_bytes,
+            terminal_bytes,
             overflow_action,
         })
     }
@@ -257,7 +223,7 @@ impl OutputPolicy {
     }
     /// Returns the durable spool bound.
     #[must_use]
-    pub const fn spool_bytes(self) -> Option<u64> {
+    pub const fn spool_bytes(self) -> u64 {
         self.spool_bytes
     }
     /// Returns the retained event count bound.
@@ -267,17 +233,17 @@ impl OutputPolicy {
     }
     /// Returns the total stdout observation bound.
     #[must_use]
-    pub const fn stdout_bytes(self) -> Option<u64> {
+    pub const fn stdout_bytes(self) -> u64 {
         self.stdout_bytes
     }
     /// Returns the total stderr observation bound.
     #[must_use]
-    pub const fn stderr_bytes(self) -> Option<u64> {
+    pub const fn stderr_bytes(self) -> u64 {
         self.stderr_bytes
     }
     /// Returns the total PTY observation bound.
     #[must_use]
-    pub const fn terminal_bytes(self) -> Option<u64> {
+    pub const fn terminal_bytes(self) -> u64 {
         self.terminal_bytes
     }
     /// Returns the configured overflow action.

@@ -23,10 +23,6 @@ pub struct WorkspaceGateway {
 }
 
 impl WorkspaceGateway {
-    /// Binds Git subprocesses to an owned operation's explicit cancellation signal.
-    pub fn set_git_cancellation(&mut self, cancellation: peritus_git::GitCancellation) {
-        self.workspace.set_git_cancellation(cancellation);
-    }
     /// Wraps one checked move-only writable workspace.
     #[must_use]
     pub const fn new(workspace: WritableWorkspace) -> Self {
@@ -101,10 +97,6 @@ impl WorkspaceGateway {
     pub(crate) const fn workspace_mut(&mut self) -> &mut WritableWorkspace {
         &mut self.workspace
     }
-
-    pub(crate) const fn writable_workspace(&self) -> &WritableWorkspace {
-        &self.workspace
-    }
 }
 
 /// Minimal exact target facts consumed by the shared committed-authority validator.
@@ -130,7 +122,7 @@ impl AuthorizationTarget {
         Self { workspace_id, resource_id, environment_id, generation, revision, lease_holder }
     }
 
-    pub(crate) const fn from_workspace(state: &WorkspaceState) -> Self {
+    const fn from_workspace(state: &WorkspaceState) -> Self {
         Self::new(
             state.binding().workspace_id(),
             state.binding().resource_id(),

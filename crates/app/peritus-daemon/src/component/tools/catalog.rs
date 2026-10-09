@@ -58,6 +58,11 @@ pub(super) fn production_catalog() -> Result<Vec<ToolDeclaration>, ToolComponent
     ] {
         take(&mut declarations, &mut git, ToolDispatcherRoute::Git(route))?;
     }
+    // C1 does not yet publish a merge effect. Its typed unsupported adapter is deliberately not a
+    // production route, so configuration cannot expose a handler which never performs the tool.
+    let _unsupported_merge = git.remove("git.merge").ok_or_else(|| {
+        catalog_failure("construct Git descriptor catalog", "git.merge descriptor is absent")
+    })?;
     reject_catalog_remainder("Git", &git)?;
 
     insert(

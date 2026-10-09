@@ -5,10 +5,7 @@
 //! Git argv API and never grants workspace mutation authority.
 
 mod baseline;
-mod cancellation;
 mod command;
-
-pub use cancellation::GitCancellation;
 mod diff;
 mod error;
 mod history;
@@ -24,8 +21,7 @@ mod worktree;
 
 pub use baseline::Baseline;
 pub use diff::{
-    DiffChange, DiffCursor, DiffEntry, DiffRequest, GitDiffObservation, MAX_DIFF_BYTES,
-    MAX_DIFF_ENTRIES,
+    DiffChange, DiffEntry, DiffRequest, GitDiffObservation, MAX_DIFF_BYTES, MAX_DIFF_ENTRIES,
 };
 pub use error::{ErrorKind, GitError, Operation, RecoveryClass};
 pub use history::{CommitObservation, GitHistoryObservation, HistoryRequest, MAX_HISTORY_COMMITS};

@@ -48,7 +48,7 @@ pub fn sandbox(
     let terminal_limits = TerminalLimits::new(
         None,
         ResourceQuantity::new(512),
-        ResourceQuantity::new(resources.output_bytes().expect("finite output limit")),
+        ResourceQuantity::new(resources.output_bytes()),
     )
     .expect("terminal limits");
     let terminal = TerminalContract::new(
@@ -82,7 +82,7 @@ pub fn sandbox(
             TerminalSignalPermission::Allowed,
             None,
             ResourceQuantity::new(512),
-            ResourceQuantity::new(resources.output_bytes().expect("finite output limit")),
+            ResourceQuantity::new(resources.output_bytes()),
         )
         .expect("terminal requirements"),
     )
@@ -141,11 +141,11 @@ fn execution_process(executable: &SandboxPath) -> ProcessContract {
 
 fn resource_limits(resources: ProcessResourcePolicy) -> ResourceLimits {
     ResourceLimits::new(
-        ResourceQuantity::new(resources.wall_millis().expect("finite wall-time limit")),
-        ResourceQuantity::new(resources.cpu_millis().expect("finite CPU limit")),
+        ResourceQuantity::new(resources.wall_millis()),
+        ResourceQuantity::new(resources.cpu_millis()),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
-        ResourceQuantity::new(resources.output_bytes().expect("finite output limit")),
+        ResourceQuantity::new(resources.output_bytes()),
         ResourceQuantity::new(resources.file_descriptors()),
         ResourceQuantity::new(resources.process_count()),
         ResourceQuantity::new(resources.concurrent_slots()),

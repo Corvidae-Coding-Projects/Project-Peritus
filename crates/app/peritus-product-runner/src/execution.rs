@@ -140,8 +140,7 @@ impl ProductRunner {
                         accounting,
                         &execution.recorder,
                         &execution.obligations,
-                    )
-                    .await?;
+                    )?;
                     execution.gate_report = Some(checked.gates.clone());
                     execution.evidence = checked.evidence.clone();
                     if checked.conversation_changed {

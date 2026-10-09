@@ -87,12 +87,12 @@ pub(super) fn compile(
 ) -> Result<CheckedSandboxPlan, String> {
     let filesystem = filesystem(directory, executable, weights)?;
     let executable = path(executable)?;
-    let resources = ResourceLimits::with_optional_wall_and_output(
-        resources.wall_millis().map(ResourceQuantity::new),
-        resources.output_bytes().map(ResourceQuantity::new),
-        ResourceQuantity::new(resources.cpu_millis().expect("finite compactor CPU limit")),
+    let resources = ResourceLimits::new(
+        ResourceQuantity::new(resources.wall_millis()),
+        ResourceQuantity::new(resources.cpu_millis()),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
+        ResourceQuantity::new(resources.output_bytes()),
         ResourceQuantity::new(resources.file_descriptors()),
         ResourceQuantity::new(resources.process_count()),
         ResourceQuantity::new(resources.concurrent_slots()),

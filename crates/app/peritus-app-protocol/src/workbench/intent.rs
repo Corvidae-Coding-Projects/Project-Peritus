@@ -9,8 +9,7 @@ use super::{
     WorkbenchGuidancePin, WorkbenchGuidanceRevision, WorkbenchGuidanceSave,
     WorkbenchGuidanceScopeChange, WorkbenchImagePreview, WorkbenchInputText,
     WorkbenchLaunchProfile, WorkbenchLaunchText, WorkbenchPermissionChange, WorkbenchPreviewInput,
-    WorkbenchQueueIntent, WorkbenchReviewAnchor, WorkbenchReviewFeedback,
-    WorkbenchRewindConfirmation, WorkbenchRewindPreview,
+    WorkbenchQueueIntent, WorkbenchReviewAnchor, WorkbenchReviewFeedback, WorkbenchRewindPreview,
 };
 
 /// Closed typed metadata changes; none start or resume inference.
@@ -175,8 +174,6 @@ pub enum WorkbenchIntent {
     CreateCheckpoint(WorkbenchCheckpointName),
     /// Applies only an exact inspected restore preview after explicit confirmation.
     ApplyRewind(WorkbenchRewindPreview),
-    /// Applies a full-checkpoint-bound paged restore confirmation.
-    ConfirmRewind(WorkbenchRewindConfirmation),
     /// Narrows or restores one capability within the immutable host ceiling.
     SetPermissions(WorkbenchPermissionChange),
     /// Saves exact explicitly user-approved project-local guidance.

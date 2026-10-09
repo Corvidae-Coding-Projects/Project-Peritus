@@ -1,9 +1,6 @@
 //! Selected-window capture, artifact publication, and host capability discovery.
 
 use super::*;
-mod pending;
-
-use pending::{CapturePublisher, CapturedImage, publish_pending_capture_at};
 
 impl ProductRunService {
     #[allow(clippy::too_many_arguments, reason = "authenticated transfer bindings remain explicit")]
@@ -48,48 +45,33 @@ impl ProductRunService {
             })
         })?;
         if !admitted {
-            let prior = {
-                let records =
-                    self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
-                let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-                require_launch(&record.preview, request.launch())?
-                    .captures()
-                    .iter()
-                    .find(|capture| capture.operation() == command.operation())
-                    .map(WorkbenchCaptureReceipt::state)
-            };
-            if prior != Some(WorkbenchCaptureState::Failed) {
-                self.qualify_graphical_goal(run, command, request.launch())?;
-                return Ok(receipt);
-            }
+            self.qualify_graphical_goal(run, command, request.launch())?;
+            return Ok(receipt);
         }
         if state == WorkbenchCaptureState::Denied {
             return Ok(receipt);
         }
-        let mut publisher = DaemonCapturePublisher {
-            service: self,
-            authority,
-            actor,
-            session,
-            correlation,
-            maximum_chunk_bytes,
-            scope,
-            operation: command.operation(),
-        };
-        let (_, completed) = publish_pending_capture_at(
-            &self.preview_state_root(),
-            command.operation(),
-            || self.capture_window(run, command.operation(), request),
-            &mut publisher,
-        )
-        .await?;
-        self.update_capture(run, request.launch(), command.operation(), completed)?;
-        pending::settle_pending_capture_at(&self.preview_state_root(), command.operation());
-        self.qualify_graphical_goal(run, command, request.launch())?;
+        let capture = self.capture_window(run, command.operation(), request)?;
+        let published = self
+            .publish_capture(
+                authority,
+                actor,
+                session,
+                correlation,
+                maximum_chunk_bytes,
+                scope,
+                command.operation(),
+                capture,
+            )
+            .await;
+        if let Ok(completed) = published {
+            self.update_capture(run, request.launch(), command.operation(), completed)?;
+            self.qualify_graphical_goal(run, command, request.launch())?;
+        }
         Ok(receipt)
     }
 
-    fn capture_window(
+    pub(super) fn capture_window(
         &self,
         run: RunId,
         operation: ControlOperationId,
@@ -112,8 +94,7 @@ impl ProductRunService {
         let directory = self.preview_state_root().join("captures");
         fs::create_dir_all(&directory).map_err(|_| app_error(Code::Backpressure))?;
         let path = directory.join(format!("{}.png", hex(operation.as_bytes())));
-        let _cleanup = CaptureFileCleanup(path.clone());
-        let helper = PreviewCommand::new_optional(
+        let helper = PreviewCommand::new(
             import.to_string_lossy().into_owned(),
             vec![
                 "-display".to_owned(),
@@ -127,7 +108,7 @@ impl ProductRunService {
                 .get(&active_launch_run(self, run, request.launch())?)
                 .cloned()
                 .ok_or_else(|| app_error(Code::InvalidIdentifier))?,
-            None,
+            Duration::from_secs(10),
             false,
             24,
             80,
@@ -143,25 +124,23 @@ impl ProductRunService {
             return Err(app_error(Code::Backpressure));
         }
         let metadata = fs::metadata(&path).map_err(|_| app_error(Code::Backpressure))?;
-        if !metadata.is_file() || metadata.len() == 0 {
+        if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_CAPTURE_BYTES {
             return Err(app_error(Code::LimitExceeded));
         }
         let bytes = fs::read(&path).map_err(|_| app_error(Code::Backpressure))?;
-        let validated =
-            peritus_product_runner::attachment::ValidatedImage::decode_original_with_policy(
-                bytes,
-                peritus_product_runner::attachment::ImageDecodePolicy::default(),
-            )
+        let _ = fs::remove_file(&path);
+        let image = image::load_from_memory_with_format(&bytes, image::ImageFormat::Png)
             .map_err(|_| app_error(Code::MalformedFrame))?;
-        let digest = validated.digest();
-        let dimensions = validated.dimensions();
-        let bytes =
-            validated.into_original_bytes().ok_or_else(|| app_error(Code::MalformedFrame))?;
-        Ok(CapturedImage { digest, dimensions, bytes, captured_unix_millis: unix_millis()? })
+        Ok(CapturedImage {
+            digest: peritus_codec::sha256(&bytes),
+            dimensions: image.dimensions(),
+            bytes,
+            captured_unix_millis: unix_millis()?,
+        })
     }
 
     #[allow(clippy::too_many_arguments, reason = "artifact authority bindings remain explicit")]
-    async fn publish_capture(
+    pub(super) async fn publish_capture(
         &self,
         authority: &AuthorityHandle,
         actor: ActorId,
@@ -170,7 +149,7 @@ impl ProductRunService {
         maximum_chunk_bytes: usize,
         scope: ArtifactScope,
         operation: ControlOperationId,
-        capture: &CapturedImage,
+        capture: CapturedImage,
     ) -> Result<CompletedCapture, AppProtocolError> {
         let artifact = ArtifactId::new(derived_id(b"preview-capture", operation, capture.digest))
             .map_err(|_| app_error(Code::Internal))?;
@@ -274,43 +253,11 @@ impl ProductRunService {
     }
 }
 
-struct DaemonCapturePublisher<'a> {
-    service: &'a ProductRunService,
-    authority: &'a AuthorityHandle,
-    actor: ActorId,
-    session: SessionId,
-    correlation: CorrelationId,
-    maximum_chunk_bytes: usize,
-    scope: ArtifactScope,
-    operation: ControlOperationId,
-}
-
-impl CapturePublisher for DaemonCapturePublisher<'_> {
-    async fn publish(
-        &mut self,
-        capture: &CapturedImage,
-    ) -> Result<CompletedCapture, AppProtocolError> {
-        self.service
-            .publish_capture(
-                self.authority,
-                self.actor,
-                self.session,
-                self.correlation,
-                self.maximum_chunk_bytes,
-                self.scope,
-                self.operation,
-                capture,
-            )
-            .await
-    }
-}
-
-struct CaptureFileCleanup(PathBuf);
-
-impl Drop for CaptureFileCleanup {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.0);
-    }
+pub(super) struct CapturedImage {
+    bytes: Vec<u8>,
+    digest: Sha256Digest,
+    dimensions: (u32, u32),
+    captured_unix_millis: u64,
 }
 
 #[derive(Clone, Copy)]

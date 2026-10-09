@@ -6,12 +6,10 @@ mod authority_support;
 mod support;
 
 use peritus_patch::{FileMode, LineEndingPolicy, Preimage};
-use peritus_tool_router::tool_action_intent;
 use peritus_tools_fs::{
     CompiledMutation, CreateInput, FsDispatchKind, PatchEdit, PatchInput, RemoveInput,
     ReplaceInput, WriteInput,
 };
-use peritus_workspace::patch_authorization_payload_for_caller;
 use tempfile::TempDir;
 
 use authority_support::{Ids, workspace_fixture};
@@ -32,100 +30,11 @@ fn router_dispatches_remove_replace_and_atomic_multi_file_patch() {
 }
 
 #[test]
-fn recreated_dispatcher_replays_the_retained_lower_action_outcome() {
-    let temp = TempDir::new().expect("temporary root");
-    let lower = Ids::new();
-    let parent = lower.for_tool_action(92, "fs.create");
-    assert_ne!(lower.action, parent.action);
-    let fixture = workspace_fixture(&temp, &lower, "mutation-replay");
-    let json = final_json("replayed.txt", "once\\n");
-    let input = CreateInput::new(
-        "replayed.txt",
-        b"once\n".to_vec(),
-        FileMode::Regular,
-        LineEndingPolicy::Preserve,
-    )
-    .expect("create input");
-    let patch = CompiledMutation::create(support::workspace_version(&lower), input)
-        .expect("compiled create")
-        .into_patch();
-    let (router, prepared) = support::prepare(&parent, "fs.create", support::arguments(&json));
-    let prepared_digest = prepared.prepared_digest();
-    let caller = support::caller(&prepared, &parent);
-    assert_eq!(caller.action_id(), parent.action);
-    let lower_intent =
-        authority_support::intent(&lower, patch_authorization_payload_for_caller(&patch, &caller));
-    let lower_receipts = authority_support::receipts(&temp, &lower, &lower_intent);
-    let lower_request = authority_support::exact_request(&lower_intent, &lower_receipts, &lower)
-        .with_caller_binding(caller);
-    let parent_intent = tool_action_intent(
-        &prepared,
-        parent.actor,
-        peritus_policy::ActorRole::Writer,
-        parent.environment,
-        parent.resource,
-    );
-    let parent_receipts = authority_support::receipts(&temp, &parent, &parent_intent);
-    let parent_request =
-        support::tool_request(&parent, &parent_intent, &parent_receipts, &prepared);
-
-    let first = {
-        let mut dispatcher = peritus_tools_fs::FsDispatcher::mutation(
-            FsDispatchKind::Create,
-            std::sync::Arc::clone(&fixture.gateway),
-            &lower_request,
-        )
-        .expect("first dispatcher");
-        let outcome =
-            support::dispatch_prepared(router, prepared, &parent_request, &mut dispatcher);
-        support::assert_success(outcome);
-        dispatcher.take_mutation_outcome().expect("first mutation outcome")
-    };
-    let (lower_consumed, parent_consumed) = {
-        let gateway = fixture.gateway.lock().expect("gateway");
-        (
-            gateway.state().action_consumed(lower.action),
-            gateway.state().action_consumed(parent.action),
-        )
-    };
-    assert!(lower_consumed);
-    assert!(!parent_consumed);
-
-    let (replay_router, replay_prepared) =
-        support::prepare(&parent, "fs.create", support::arguments(&json));
-    assert_eq!(replay_prepared.prepared_digest(), prepared_digest);
-    let mut replay_dispatcher = peritus_tools_fs::FsDispatcher::mutation(
-        FsDispatchKind::Create,
-        std::sync::Arc::clone(&fixture.gateway),
-        &lower_request,
-    )
-    .expect("recreated dispatcher");
-    let replay = support::dispatch_prepared(
-        replay_router,
-        replay_prepared,
-        &parent_request,
-        &mut replay_dispatcher,
-    );
-    support::assert_success(replay);
-    let replayed = replay_dispatcher.take_mutation_outcome().expect("replayed outcome");
-
-    assert_eq!(first.action_id(), lower.action);
-    assert_eq!(replayed.action_id(), first.action_id());
-    assert_eq!(replayed.patch_identity(), first.patch_identity());
-    assert_eq!(
-        replayed.applied_patch().installed_manifest(),
-        first.applied_patch().installed_manifest(),
-    );
-    let root = fixture.gateway.lock().expect("gateway").state().binding().root().to_owned();
-    assert_eq!(std::fs::read(root.join("replayed.txt")).expect("created once"), b"once\n");
-}
-
-#[test]
 fn authorized_preimage_conflict_is_failed_without_effect() {
     let temp = TempDir::new().expect("temporary root");
     let lower = Ids::new();
     let parent = lower.for_tool_action(91, "fs.replace");
-    let fixture = workspace_fixture(&temp, &lower, "conflict");
+    let mut fixture = workspace_fixture(&temp, &lower, "conflict");
     let wrong = Preimage::from_bytes(b"not baseline\n", FileMode::Regular);
     let input = ReplaceInput::new(
         "README.md",
@@ -146,7 +55,7 @@ fn authorized_preimage_conflict_is_failed_without_effect() {
         &temp,
         &lower,
         &parent,
-        &fixture.gateway,
+        &mut fixture.gateway,
         FsDispatchKind::Replace,
         prepared,
         router,
@@ -155,29 +64,17 @@ fn authorized_preimage_conflict_is_failed_without_effect() {
     support::assert_failure(outcome);
     assert!(mutation.is_none());
     assert_eq!(
-        std::fs::read(
-            fixture.gateway.lock().expect("gateway").state().binding().root().join("README.md"),
-        )
-        .expect("baseline remains"),
+        std::fs::read(fixture.gateway.state().binding().root().join("README.md"))
+            .expect("baseline remains"),
         b"baseline\n"
     );
-    assert!(
-        !fixture
-            .gateway
-            .lock()
-            .expect("gateway")
-            .state()
-            .binding()
-            .root()
-            .join("should-not-land")
-            .exists()
-    );
+    assert!(!fixture.gateway.state().binding().root().join("should-not-land").exists());
 }
 
 fn run_create(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
     let lower = Ids::new();
     let parent = lower.for_tool_action(51, name);
-    let fixture = workspace_fixture(temp, &lower, label);
+    let mut fixture = workspace_fixture(temp, &lower, label);
     let (arguments, compiled, path) = if name == "fs.create" {
         let input = CreateInput::new(
             "created.txt",
@@ -214,7 +111,7 @@ fn run_create(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
         temp,
         &lower,
         &parent,
-        &fixture.gateway,
+        &mut fixture.gateway,
         kind,
         prepared,
         router,
@@ -222,13 +119,13 @@ fn run_create(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
     );
     support::assert_success(outcome);
     assert!(mutation.is_some());
-    assert!(fixture.gateway.lock().expect("gateway").state().binding().root().join(path).is_file());
+    assert!(fixture.gateway.state().binding().root().join(path).is_file());
 }
 
 fn run_existing(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
     let lower = Ids::new();
     let parent = lower.for_tool_action(61, name);
-    let fixture = workspace_fixture(temp, &lower, label);
+    let mut fixture = workspace_fixture(temp, &lower, label);
     let preimage = Preimage::from_bytes(b"baseline\n", FileMode::Regular);
     let (arguments, compiled) = if name == "fs.remove" {
         (
@@ -264,7 +161,7 @@ fn run_existing(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
         temp,
         &lower,
         &parent,
-        &fixture.gateway,
+        &mut fixture.gateway,
         kind,
         prepared,
         router,
@@ -272,7 +169,7 @@ fn run_existing(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
     );
     support::assert_success(outcome);
     assert!(mutation.is_some());
-    let path = fixture.gateway.lock().expect("gateway").state().binding().root().join("README.md");
+    let path = fixture.gateway.state().binding().root().join("README.md");
     if name == "fs.remove" {
         assert!(!path.exists());
     } else {
@@ -283,7 +180,7 @@ fn run_existing(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
 fn run_multi_patch(temp: &TempDir) {
     let lower = Ids::new();
     let parent = lower.for_tool_action(71, "fs.patch");
-    let fixture = workspace_fixture(temp, &lower, "multi-patch");
+    let mut fixture = workspace_fixture(temp, &lower, "multi-patch");
     let preimage = Preimage::from_bytes(b"baseline\n", FileMode::Regular);
     let input = PatchInput::new(vec![
         PatchEdit::Create(
@@ -329,7 +226,7 @@ fn run_multi_patch(temp: &TempDir) {
         temp,
         &lower,
         &parent,
-        &fixture.gateway,
+        &mut fixture.gateway,
         FsDispatchKind::Patch,
         prepared,
         router,
@@ -337,7 +234,7 @@ fn run_multi_patch(temp: &TempDir) {
     );
     support::assert_success(outcome);
     assert!(mutation.is_some());
-    let root = fixture.gateway.lock().expect("gateway").state().binding().root().to_owned();
+    let root = fixture.gateway.state().binding().root();
     assert_eq!(std::fs::read(root.join("a.txt")).expect("a"), b"a\n");
     assert_eq!(std::fs::read(root.join("b.txt")).expect("b"), b"b\n");
     assert_eq!(std::fs::read(root.join("README.md")).expect("README"), b"patched\n");

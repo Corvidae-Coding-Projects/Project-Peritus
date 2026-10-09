@@ -210,9 +210,7 @@ fn domain_operation_resolved(
         | WorkbenchIntent::AddArtifactFeedback { .. } => {
             return Err(ControlError::UnsupportedSchema.into());
         }
-        WorkbenchIntent::CreateCheckpoint(_)
-        | WorkbenchIntent::ApplyRewind(_)
-        | WorkbenchIntent::ConfirmRewind(_) => {
+        WorkbenchIntent::CreateCheckpoint(_) | WorkbenchIntent::ApplyRewind(_) => {
             return Err(ControlError::InvalidInput.into());
         }
         WorkbenchIntent::SetPermissions(change) => ControlIntent::SetPermissions {

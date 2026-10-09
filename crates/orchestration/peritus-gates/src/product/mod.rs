@@ -5,4 +5,4 @@ mod plan;
 mod report;
 
 pub use plan::{AffectedProject, GateCommandSpec, ProjectKind, TargetGatePlan};
-pub use report::{GateExecutionRecord, GateObservation, TargetGateReport};
+pub use report::{GateExecutionRecord, TargetGateReport};

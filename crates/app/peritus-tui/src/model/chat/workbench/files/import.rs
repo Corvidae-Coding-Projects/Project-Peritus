@@ -32,8 +32,12 @@ impl AppModel {
             );
             return Vec::new();
         };
-        let Some(provider) =
-            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer)
+        let Some(provider) = self
+            .product
+            .as_ref()
+            .filter(|product| product.launch.workspace_id() == snapshot.query().workspace())
+            .and_then(crate::model::product::ProductUi::providers)
+            .map(peritus_app_protocol::ProductProviderSelection::writer)
         else {
             self.notice(
                 NoticeLevel::Warning,
@@ -85,9 +89,6 @@ impl AppModel {
         if !self.files_available()
             || self.chat.workbench.selected != Some(binding.query)
             || self.chat.workbench.files.path != binding.path
-            || self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer)
-                != Some(binding.provider)
-            || self.chat.models.writer() != &binding.model
         {
             return Vec::new();
         }
@@ -223,14 +224,10 @@ impl AppModel {
         request: &WorkbenchFileImportRequest,
         preview: WorkbenchFileImportPreview,
     ) {
-        let active_provider =
-            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
         let file = &mut self.chat.workbench.files;
         if file.import_request.as_ref() != Some(request)
             || preview.request() != request
             || self.chat.workbench.selected != Some(request.selection().query())
-            || active_provider != Some(request.selection().provider())
-            || self.chat.models.writer() != request.selection().model()
             || file
                 .expected
                 .as_ref()
@@ -253,12 +250,14 @@ impl AppModel {
         let Some(preview) = self.chat.workbench.files.import_preview.clone() else {
             return Vec::new();
         };
-        let provider =
-            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
+        let provider = self
+            .product
+            .as_ref()
+            .and_then(crate::model::product::ProductUi::providers)
+            .map(peritus_app_protocol::ProductProviderSelection::writer);
         if provider != Some(preview.request().selection().provider())
             || self.chat.models.writer() != preview.request().selection().model()
         {
-            self.chat.workbench.files.discard_preview();
             self.notice(
                 NoticeLevel::Warning,
                 "Provider/model changed after preview. Preview again before confirmation.",

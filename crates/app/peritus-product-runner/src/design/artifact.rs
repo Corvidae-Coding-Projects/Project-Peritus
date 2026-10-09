@@ -17,7 +17,6 @@ struct InventoryEntry {
 
 struct Inventory {
     entries: Vec<InventoryEntry>,
-    omissions: Vec<String>,
     truncated: bool,
 }
 
@@ -26,7 +25,7 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
         check_cancelled(input)?;
         let revision = input.conversation.revision();
         let transcript = input.conversation.stable_request_context();
-        let inventory = inventory(&input.workspace_root, || check_cancelled(input))?;
+        let inventory = inventory(&input.workspace_root)?;
         if input.conversation.revision() != revision {
             continue;
         }
@@ -38,63 +37,34 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
     }
 }
 
-fn inventory(
-    root: &Path,
-    mut check_cancelled: impl FnMut() -> Result<(), ProductRunnerError>,
-) -> Result<Inventory, ProductRunnerError> {
-    inventory_cancellable(root, MAX_INVENTORY_ENTRIES, &mut check_cancelled)
+fn inventory(root: &Path) -> Result<Inventory, ProductRunnerError> {
+    inventory_with_limit(root, MAX_INVENTORY_ENTRIES)
 }
 
-#[cfg(test)]
 fn inventory_with_limit(root: &Path, maximum: usize) -> Result<Inventory, ProductRunnerError> {
-    inventory_cancellable(root, maximum, &mut || Ok(()))
-}
-
-fn inventory_cancellable(
-    root: &Path,
-    maximum: usize,
-    check_cancelled: &mut impl FnMut() -> Result<(), ProductRunnerError>,
-) -> Result<Inventory, ProductRunnerError> {
     let mut pending = VecDeque::from([root.to_path_buf()]);
     let mut entries = Vec::new();
-    let mut omissions = Vec::new();
-    let mut ordinal = 0_usize;
     while let Some(directory) = pending.pop_front() {
-        check_cancelled()?;
-        let read_dir = match fs::read_dir(&directory) {
-            Ok(read_dir) => read_dir,
-            Err(error) if directory == root => {
-                return Err(repository("inventory artifact workspace", error.to_string()));
-            }
-            Err(error) => {
-                if ordinal == maximum {
-                    return Ok(Inventory { entries, omissions, truncated: true });
-                }
-                omissions.push(format!("{}: read directory: {error}", directory.display()));
-                ordinal = ordinal.saturating_add(1);
-                continue;
-            }
-        };
-        let remaining = maximum.saturating_sub(ordinal).saturating_add(1).max(1);
-        let candidates = scan_directory(root, read_dir, remaining, check_cancelled)?;
-        for child in candidates.children {
-            if ordinal == maximum {
-                return Ok(Inventory { entries, omissions, truncated: true });
-            }
+        let mut children = fs::read_dir(&directory)
+            .map_err(|error| repository("inventory artifact workspace", error.to_string()))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| repository("inventory artifact workspace", error.to_string()))?;
+        children.sort_by_key(fs::DirEntry::file_name);
+        for child in children {
             let path = child.path();
             let relative = path
                 .strip_prefix(root)
                 .map_err(|_| repository("inventory artifact workspace", "path escaped workspace"))?
                 .to_path_buf();
-            check_cancelled()?;
-            let metadata = match fs::symlink_metadata(&path) {
-                Ok(metadata) => metadata,
-                Err(error) => {
-                    omissions.push(format!("{}: inspect entry: {error}", relative.display()));
-                    ordinal = ordinal.saturating_add(1);
-                    continue;
-                }
-            };
+            if ignored(&relative) {
+                continue;
+            }
+            if entries.len() == maximum {
+                entries.sort_by(|left: &InventoryEntry, right| left.path.cmp(&right.path));
+                return Ok(Inventory { entries, truncated: true });
+            }
+            let metadata = fs::symlink_metadata(&path)
+                .map_err(|error| repository("inspect artifact input", error.to_string()))?;
             let kind = if metadata.is_dir() {
                 pending.push_back(path);
                 "directory"
@@ -108,72 +78,10 @@ fn inventory_cancellable(
                 kind,
                 bytes: metadata.is_file().then_some(metadata.len()),
             });
-            ordinal = ordinal.saturating_add(1);
-        }
-        for error in candidates.iterator_errors {
-            if ordinal == maximum {
-                return Ok(Inventory { entries, omissions, truncated: true });
-            }
-            omissions.push(format!("{}: enumerate child: {error}", directory.display()));
-            ordinal = ordinal.saturating_add(1);
-        }
-        if candidates.overflow && ordinal >= maximum {
-            return Ok(Inventory { entries, omissions, truncated: true });
         }
     }
-    Ok(Inventory { entries, omissions, truncated: false })
-}
-
-struct DirectoryCandidates {
-    children: Vec<fs::DirEntry>,
-    iterator_errors: Vec<String>,
-    overflow: bool,
-}
-
-fn scan_directory(
-    root: &Path,
-    read_dir: fs::ReadDir,
-    remaining: usize,
-    check_cancelled: &mut impl FnMut() -> Result<(), ProductRunnerError>,
-) -> Result<DirectoryCandidates, ProductRunnerError> {
-    let mut children = Vec::new();
-    let mut iterator_errors = Vec::new();
-    let mut overflow = false;
-    for child in read_dir {
-        check_cancelled()?;
-        match child {
-            Ok(child) => {
-                let path = child.path();
-                let relative = path.strip_prefix(root).map_err(|_| {
-                    repository("inventory artifact workspace", "path escaped workspace")
-                })?;
-                if ignored(relative) {
-                    continue;
-                }
-                let name = child.file_name();
-                let index = children
-                    .binary_search_by(|entry: &fs::DirEntry| entry.file_name().cmp(&name))
-                    .unwrap_or_else(|index| index);
-                if children.len() < remaining {
-                    children.insert(index, child);
-                } else if index < remaining {
-                    children.insert(index, child);
-                    children.pop();
-                    overflow = true;
-                } else {
-                    overflow = true;
-                }
-            }
-            Err(error) => {
-                if iterator_errors.len() < remaining {
-                    iterator_errors.push(error.to_string());
-                } else {
-                    overflow = true;
-                }
-            }
-        }
-    }
-    Ok(DirectoryCandidates { children, iterator_errors, overflow })
+    entries.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(Inventory { entries, truncated: false })
 }
 
 fn render(
@@ -213,23 +121,10 @@ Produce the complete requested artifacts in this explicit artifact workspace. Th
     }
     if inventory.truncated {
         design.push_str("\nThe design inventory is a deterministic navigation sample truncated after the first ");
+        design.push_str(&inventory.entries.len().to_string());
         design.push_str(
-            &inventory.entries.len().saturating_add(inventory.omissions.len()).to_string(),
+            " non-ignored entries. Omission from this sample does not prove that a path is absent. Use the bounded workspace listing, search, and read tools to inspect exact paths relevant to the request.\n",
         );
-        design.push_str(
-            " visible entries and omissions. Omission from this sample does not prove that a path is absent. Use the bounded workspace listing, search, and read tools to inspect exact paths relevant to the request.\n",
-        );
-        design.push_str(
-            "Restart exact inspection from the first page with `workspace_list` using `path=\".\"` and the needed depth, with no cursor. The inventory sample's internal ordinal is not a workspace-list cursor; follow only the cursor returned by `workspace_list` for later pages.\n",
-        );
-    }
-    if !inventory.omissions.is_empty() {
-        design.push_str("\n## Inventory omissions\n\n");
-        for omission in &inventory.omissions {
-            design.push_str("- ");
-            design.push_str(omission);
-            design.push('\n');
-        }
     }
     design.push_str(
         "\n## Architecture and interfaces\n\nThe original request is the input/output contract. Input paths remain read-only unless the request explicitly requires editing them in place. The writer owns only the explicitly requested output or in-place edit paths and uses `workspace_list`, `workspace_read`, `workspace_write`, `workspace_patch`, `workspace_remove`, and non-destructive `run_command` calls as needed. No package scaffold, retained producer, dependency, network access, or extra artifact is introduced unless the request explicitly requires it.\n\n\
@@ -278,7 +173,6 @@ mod tests {
                     },
                     InventoryEntry { path: "out".to_owned(), kind: "directory", bytes: None },
                 ],
-                omissions: Vec::new(),
                 truncated: false,
             },
             ExternalEffectRequirement::Optional,
@@ -302,7 +196,7 @@ mod tests {
         let request = "Fix in/program.py in place; preserve in/source.json.";
         let design = render(
             request,
-            &Inventory { entries: Vec::new(), omissions: Vec::new(), truncated: false },
+            &Inventory { entries: Vec::new(), truncated: false },
             ExternalEffectRequirement::Optional,
         );
 
@@ -317,7 +211,7 @@ mod tests {
     fn operational_design_requires_live_effect_and_fresh_verification() {
         let design = render(
             "Start the local service and leave it running.",
-            &Inventory { entries: Vec::new(), omissions: Vec::new(), truncated: false },
+            &Inventory { entries: Vec::new(), truncated: false },
             ExternalEffectRequirement::Required,
         );
 

@@ -1,0 +1,2 @@
+FINDING-0002: Environment projection used incompatible case and ordering rules
+The root reviewer reproduced the mismatch with a lowercase `peritus_ci_order` input. After repair, the relevant Linux suite reported 492 passed, 0 failed, 5 ignored, and strict Linux Clippy passed. Source inspection confirmed the plan and sandbox projections now share the same canonical set and collision rule. Candidate-wide formal gate evidence is retained separately in PCR-0009.

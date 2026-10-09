@@ -25,7 +25,7 @@ impl MacosRecoveryRecord {
         {
             return Err(recovery_error("runtime record checksum does not match"));
         }
-        let mut reader = Reader::new(&input[..checksum_offset]);
+        let mut reader = Reader::new(&input[..checksum_offset])?;
         if reader.fixed::<8>()? != MAGIC || reader.u16()? != VERSION {
             return Err(recovery_error("unknown runtime record magic or version"));
         }

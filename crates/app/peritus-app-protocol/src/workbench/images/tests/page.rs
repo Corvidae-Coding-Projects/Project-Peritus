@@ -23,9 +23,7 @@ fn image_page_requires_exact_cardinality_unique_operations_and_committed_revisio
     assert!(WorkbenchImagePage::new(page.query(), 2, vec![row.clone(), row.clone()]).is_err());
     assert!(WorkbenchImagePage::new(page.query(), 2, vec![row.clone()]).is_err());
     assert!(WorkbenchImagePage::new(page.query(), 1, page.rows().to_vec()).is_err());
-    let beyond_former_limit = WorkbenchImageQuery::new(page.query().query(), 12, 257)
-        .expect("unrestricted retained-reference offset");
-    assert!(WorkbenchImagePage::new(beyond_former_limit, 257, vec![]).is_ok());
+    assert!(WorkbenchImagePage::new(page.query(), 257, vec![]).is_err());
     let unfenced = WorkbenchImageQuery::new(page.query().query(), 0, 0).expect("latest request");
     assert!(WorkbenchImagePage::new(unfenced, 1, vec![row]).is_err());
     let end = WorkbenchImageQuery::new(page.query().query(), 12, 2).expect("at end");

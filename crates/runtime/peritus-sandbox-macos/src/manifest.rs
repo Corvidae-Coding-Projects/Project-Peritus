@@ -17,13 +17,15 @@ mod fields;
 
 use fields::{
     encode_containment, encode_proxy, encode_resources, encode_strings, encode_terminal,
-    expected_preparation, validate_control_environment, validate_executable_path,
+    expected_preparation, path_text, validate_control_environment, validate_executable_path,
     validate_executable_text, validate_protected_handles, validate_working_directory,
 };
 
 const MAGIC: [u8; 8] = *b"PRTSMAC1";
 const VERSION: u16 = 1;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
+const MAX_FRAME_BYTES: usize = 512 * 1_024;
+const MAX_ARGUMENTS: usize = 4_096;
 const PREPARATION_DOMAIN: &[u8] = b"PERITUS-SANDBOX-PREPARATION-V1\0";
 
 /// The protected manifest frame arrives on helper standard input.
@@ -294,10 +296,10 @@ impl HelperManifest {
         body.fixed(self.preparation_digest.as_bytes())?;
         body.fixed(self.profile_digest.as_bytes())?;
         body.string(&self.profile)?;
-        body.path(&self.seatbelt_executable)?;
+        body.string(path_text(&self.seatbelt_executable)?)?;
         body.string(&self.target_executable)?;
         encode_strings(&mut body, &self.target_arguments)?;
-        body.path(&self.working_directory)?;
+        body.string(path_text(&self.working_directory)?)?;
         body.count(self.environment.len())?;
         for entry in &self.environment {
             entry.encode(&mut body)?;
@@ -322,9 +324,9 @@ impl HelperManifest {
         let mut bytes = envelope.finish();
         let checksum = peritus_codec::sha256(&bytes);
         bytes.extend_from_slice(checksum.as_bytes());
-        u32::try_from(bytes.len()).map_err(|_| {
-            error::limited(MacosOperation::Manifest, "manifest exceeds wire length representation")
-        })?;
+        if bytes.len() > MAX_FRAME_BYTES {
+            return Err(error::limited(MacosOperation::Manifest, "manifest exceeds frame bound"));
+        }
         Ok(bytes)
     }
 }

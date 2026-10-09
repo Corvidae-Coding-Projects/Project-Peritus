@@ -1,4 +1,4 @@
-//! Effect-receipt replay, conflict, corruption, and framing tests.
+//! Effect-receipt replay, conflict, corruption, and capacity tests.
 
 use std::{
     fs::{self, OpenOptions},
@@ -132,8 +132,6 @@ fn durable_receipt_state_rejects_inconsistent_result_fields() {
         "tool": "workspace_write",
         "request_sha256": "00",
         "state": "started",
-        "native_owner": null,
-        "owner_inactive": false,
         "output": true,
         "is_error": false,
     });
@@ -166,22 +164,44 @@ fn receipt_read_errors_are_not_treated_as_an_empty_ledger() {
 }
 
 #[test]
-fn incomplete_huge_declared_receipt_frame_is_recovered_without_preallocation() {
+fn ledger_byte_bound_accepts_exact_limit_and_rejects_one_byte_over() {
     let directory = tempfile::tempdir().expect("state");
-    let path = directory.path().join("effects.bin");
-    let mut file = fs::File::create(&path).expect("create interrupted ledger");
-    let length = u64::try_from(usize::MAX).expect("usize frame length fits u64");
-    file.write_all(&length.to_le_bytes()).expect("large frame length");
-    file.write_all(b"{").expect("partial frame payload");
-    file.sync_data().expect("persist interrupted frame");
-    drop(file);
     let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
-    let mut ledger = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
-    assert!(matches!(
-        ledger.begin(&call).expect("recover incomplete tail"),
-        ReceiptDecision::Execute
-    ));
-    assert!(fs::metadata(path).expect("recovered ledger metadata").len() > 8);
+    for (length, expected) in [
+        (MAX_LEDGER_BYTES as u64, "decode effect receipt"),
+        (MAX_LEDGER_BYTES as u64 + 1, "effect receipt ledger exceeds its byte bound"),
+    ] {
+        let path = directory.path().join(format!("ledger-{length}.bin"));
+        let file = fs::File::create(&path).expect("create bounded sparse ledger");
+        file.set_len(length).expect("size bounded sparse ledger");
+        drop(file);
+        let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+        let Err(error) = ledger.begin(&call) else {
+            panic!("synthetic ledger must fail closed");
+        };
+        assert!(error.to_string().contains(expected), "{error}");
+    }
+}
+
+#[test]
+fn record_byte_bound_accepts_exact_limit_and_rejects_one_byte_over() {
+    let directory = tempfile::tempdir().expect("state");
+    let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+    for (length, expected) in [
+        (MAX_RECORD_BYTES as u64, "decode effect receipt"),
+        (MAX_RECORD_BYTES as u64 + 1, "effect receipt record exceeds its byte bound"),
+    ] {
+        let path = directory.path().join(format!("record-{length}.bin"));
+        let mut file = fs::File::create(&path).expect("create bounded record ledger");
+        file.write_all(&length.to_le_bytes()).expect("record length");
+        file.set_len(length + 8).expect("size bounded sparse record");
+        drop(file);
+        let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+        let Err(error) = ledger.begin(&call) else {
+            panic!("synthetic record must fail closed");
+        };
+        assert!(error.to_string().contains(expected), "{error}");
+    }
 }
 
 #[test]

@@ -1,0 +1,2 @@
+FINDING-0024: Old behavior evidence could retarget a newer edited goal
+The native changed-goal regression admits behavior, crashes and restarts, then pauses/edits the goal before retrying the same receipt twice. The graphical criterion remains Unavailable and the goal remains Paused. The persistence tamper loop independently changes goal ID, index, user revision, and input generation and rejects every mutation. Both ignored native goal-fence tests passed.

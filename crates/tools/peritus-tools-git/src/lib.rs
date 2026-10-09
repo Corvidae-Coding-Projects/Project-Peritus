@@ -6,7 +6,6 @@ mod dispatch_support;
 mod dispatcher;
 mod error;
 mod input;
-mod operation;
 mod read;
 mod render;
 mod schemas;

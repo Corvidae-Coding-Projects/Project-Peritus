@@ -266,6 +266,9 @@ fn configure(connection: &Connection, busy_timeout: Duration) -> Result<(), Jour
         .set_db_config(DbConfig::SQLITE_DBCONFIG_TRUSTED_SCHEMA, false)
         .map_err(|error| JournalError::sqlite("disable trusted schema", error))?;
     connection
+        .set_limit(Limit::SQLITE_LIMIT_LENGTH, 32 * 1024 * 1024)
+        .map_err(|error| JournalError::sqlite("configure SQLite length limit", error))?;
+    connection
         .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
         .map_err(|error| JournalError::sqlite("disable attached databases", error))?;
     Ok(())
@@ -292,8 +295,7 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             "store identity does not match the existing database",
         ));
     }
-    let mut version = version;
-    if matches!(version, 1 | 2) {
+    if version == 1 {
         let migration_owned: bool = connection.query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'schema_migrations')",
             [], |row| row.get(0),
@@ -305,8 +307,6 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
                 "run the application migration owner before opening this journal",
             ));
         }
-    }
-    if version == 1 {
         // Logical attachments have independent identities and ownership even when their
         // content-addressed bytes are shared. Keep every original receipt during migration.
         connection
@@ -322,15 +322,7 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
                  UPDATE store_meta SET schema_version = 2 WHERE singleton = 1;",
             )
             .map_err(|error| JournalError::sqlite("migrate artifact identities", error))?;
-        version = 2;
-    }
-    if version == 2 {
-        connection
-            .execute_batch(super::schema::GROW_STATE_HISTORY)
-            .map_err(|error| JournalError::sqlite("migrate state history capacity", error))?;
-        version = 3;
-    }
-    if version != super::schema::SCHEMA_VERSION {
+    } else if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(
             JournalErrorKind::UnsupportedSchema,
             "open journal",

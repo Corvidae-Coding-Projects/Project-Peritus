@@ -97,7 +97,6 @@ impl CommandRuntime {
         let limits =
             RouterLimits::new(64, 4_096).map_err(|error| runtime_open(error.to_string()))?;
         let recovered = super::projections::load(&state_root).map_err(runtime_open)?;
-        let process_store_for_recovery = process_store.clone();
         Ok(Self {
             local_context: crate::LocalContextConfig::default(),
             inner: Arc::new(RuntimeInner {
@@ -105,7 +104,6 @@ impl CommandRuntime {
                 workspace_root,
                 state_root,
                 artifacts,
-                process_store: process_store_for_recovery,
                 gateway: ExecutionGateway::new(process_store),
                 state: Mutex::new(RuntimeState {
                     router: ToolRouter::new(registry, limits),
@@ -113,8 +111,7 @@ impl CommandRuntime {
                     next_folder_patch_ordinal: 0,
                     active: BTreeMap::new(),
                     terminal: BTreeMap::new(),
-                    recovered: recovered.values,
-                    recovered_owners: recovered.owners,
+                    recovered,
                 }),
                 #[cfg(test)]
                 state_guard: None,

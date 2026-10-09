@@ -1,6 +1,6 @@
-//! Canonical patch sets with native representation bounds.
+//! Bounded canonical patch sets.
 
-use peritus_codec::CanonicalWriter;
+use peritus_codec::{CanonicalWriter, CodecLimits};
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
 
 use crate::{
@@ -8,14 +8,11 @@ use crate::{
     Preimage, RecoveryClass, RollbackStatus,
 };
 
-/// Historical per-file recommendation retained for source compatibility; it is not an admission
-/// limit.
+/// Maximum exact final bytes carried by one file.
 pub const MAX_FILE_BYTES: usize = 8 * 1024 * 1024;
-/// Historical aggregate recommendation retained for source compatibility; it is not an admission
-/// limit.
+/// Maximum aggregate final bytes in one patch.
 pub const MAX_PATCH_BYTES: usize = 8 * 1024 * 1024;
-/// Historical operation recommendation retained for source compatibility; it is not an admission
-/// limit.
+/// Maximum operations in one patch.
 pub const MAX_PATCH_OPERATIONS: usize = 1_024;
 
 /// Nonempty bounded patch set in deterministic target-path order.
@@ -29,12 +26,11 @@ pub struct PatchSet {
 }
 
 impl PatchSet {
-    /// Validates native representation bounds and target conflicts, sorts by path, and computes
-    /// stable identity.
+    /// Validates bounds and target conflicts, sorts by path, and computes stable identity.
     ///
     /// # Errors
     ///
-    /// Returns a typed error for empty, unrepresentable, duplicate, or ancestor-conflicting input.
+    /// Returns a typed error for empty/oversized, duplicate, or ancestor-conflicting targets.
     pub fn new(
         workspace_id: WorkspaceId,
         expected_generation: Generation,
@@ -49,9 +45,17 @@ impl PatchSet {
         if !crate::verified::patch_bounds_valid(
             operations.len(),
             total_bytes,
-            usize::MAX,
-            usize::MAX,
+            MAX_PATCH_OPERATIONS,
+            MAX_PATCH_BYTES,
         ) {
+            return Err(bounds_error());
+        }
+        if operations.iter().any(|operation| {
+            matches!(
+                operation.preimage(),
+                Preimage::Present { size, .. } if size > MAX_FILE_BYTES as u64
+            )
+        }) {
             return Err(bounds_error());
         }
         operations.sort_unstable_by(|left, right| left.path().cmp(right.path()));
@@ -151,7 +155,7 @@ fn canonical_identity(
     revision: RevisionNumber,
     operations: &[PatchOperation],
 ) -> Result<PatchIdentity, PatchError> {
-    let mut writer = CanonicalWriter::new(crate::local_record_codec_limits());
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
     let encoded = (|| {
         writer.write_fixed(b"peritus-patch-set-v1")?;
         writer.write_fixed(workspace_id.as_bytes())?;
@@ -198,7 +202,7 @@ const fn bounds_error() -> PatchError {
         RecoveryClass::CorrectPatch,
         PatchOperationContext::Plan,
         RollbackStatus::NotRequired,
-        "patch is empty or exceeds native canonical representation limits",
+        "patch is empty or exceeds a configured resource bound",
     )
 }
 

@@ -3,21 +3,19 @@
 use super::{ControlStore, Error, ProductRunService, error_response};
 use peritus_app_protocol::{
     AppErrorCode, AppProtocolError, AppResponsePayload, ControlOperationId,
-    WorkbenchCheckpointCoveragePage, WorkbenchCheckpointFileMode, WorkbenchCheckpointName,
-    WorkbenchCheckpointPageRequest, WorkbenchCheckpointPath, WorkbenchCheckpointReceipt,
-    WorkbenchCheckpointReferences, WorkbenchCheckpointVersion, WorkbenchCommand,
-    WorkbenchCoverageCursor, WorkbenchCoverageSection, WorkbenchIntent, WorkbenchRestoreReceipt,
-    WorkbenchRestoreStatus, WorkbenchRestoreSummary, WorkbenchRewindConfirmation,
-    WorkbenchRewindCoveragePage, WorkbenchRewindDisposition, WorkbenchRewindPageRequest,
-    WorkbenchRewindPath, WorkbenchRewindPreview, WorkbenchRewindRequest,
+    WorkbenchCheckpointFileMode, WorkbenchCheckpointName, WorkbenchCheckpointPath,
+    WorkbenchCheckpointReceipt, WorkbenchCheckpointReferences, WorkbenchCheckpointVersion,
+    WorkbenchCommand, WorkbenchIntent, WorkbenchRestoreReceipt, WorkbenchRestoreStatus,
+    WorkbenchRewindDisposition, WorkbenchRewindPath, WorkbenchRewindPreview,
+    WorkbenchRewindRequest,
 };
 use peritus_patch::{
     FileMode, FinalFile, LineEndingPolicy, PatchOperation, PatchSet, Preimage, WorkspacePath,
 };
 use peritus_product_runner::control::{
-    CheckpointExclusion, CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath,
-    CheckpointReferences, ControlError, ControlIntent, ControlOperation, ConversationId,
-    ConversationRecord, OperationId, RestoreId, RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath, CheckpointReferences,
+    ControlError, ControlIntent, ControlOperation, ConversationId, ConversationRecord, OperationId,
+    RestoreId, RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 use peritus_types::{ActorId, Generation, RevisionNumber, Sha256Digest};
 use peritus_workspace::{FileReadSelection, FolderIdentity, FolderInspection};
@@ -26,15 +24,13 @@ use std::{collections::BTreeSet, fs, io, path::Path};
 mod capture;
 mod logical;
 mod lookup;
-mod pages;
 mod projection;
 mod recovery;
 mod rewind;
-pub(in crate::product_run::workbench) use projection::WorkbenchRestoreProjection;
+use capture::{check_protected, observe_path};
 use projection::{
     app_error, checkpoint_references, derived_id, digest_id, external_effects, noop_manifest,
     patch_input, patch_mode, patch_preimage, public_checkpoint, public_restore, public_version,
-    reconstruct_rewind_preview,
 };
 #[cfg(test)]
 #[allow(
@@ -56,7 +52,7 @@ struct CapturedPath {
 
 struct CapturedCoverage {
     paths: Vec<CapturedPath>,
-    exclusions: Vec<CheckpointExclusion>,
+    exclusions: Vec<String>,
 }
 
 impl ProductRunService {
@@ -156,7 +152,7 @@ impl ProductRunService {
             .iter()
             .map(|captured| CheckpointPath::new(captured.path.clone(), captured.version))
             .collect::<Result<Vec<_>, _>>()?;
-        let checkpoint_value = UserCheckpoint::new_with_exclusions(
+        let checkpoint_value = UserCheckpoint::new(
             checkpoint,
             name.as_str().to_owned(),
             references,

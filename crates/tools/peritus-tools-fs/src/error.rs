@@ -15,8 +15,6 @@ pub enum FsToolErrorKind {
     Workspace,
     /// Tool protocol construction or rendering failed.
     Protocol,
-    /// Immutable artifact resolution or ownership verification failed.
-    Artifact,
     /// The requested operation is intentionally unsupported.
     Unsupported,
 }
@@ -32,7 +30,6 @@ impl FsToolErrorKind {
             Self::Workspace => "PERITUS-FS-TOOL-004",
             Self::Protocol => "PERITUS-FS-TOOL-005",
             Self::Unsupported => "PERITUS-FS-TOOL-006",
-            Self::Artifact => "PERITUS-FS-TOOL-007",
         }
     }
 }
@@ -84,7 +81,6 @@ pub struct FsToolError {
     operation: FsToolOperation,
     recovery: RecoveryClass,
     detail: &'static str,
-    external_code: Option<&'static str>,
 }
 
 impl FsToolError {
@@ -94,12 +90,7 @@ impl FsToolError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { kind, operation, recovery, detail, external_code: None }
-    }
-
-    pub(crate) const fn with_external_code(mut self, code: &'static str) -> Self {
-        self.external_code = Some(code);
-        self
+        Self { kind, operation, recovery, detail }
     }
 
     pub(crate) const fn invalid(operation: FsToolOperation, detail: &'static str) -> Self {
@@ -129,15 +120,6 @@ impl FsToolError {
     pub const fn detail(&self) -> &'static str {
         self.detail
     }
-
-    /// Returns the lower-boundary stable code when one is preserved, otherwise the tool code.
-    #[must_use]
-    pub const fn code(&self) -> &'static str {
-        match self.external_code {
-            Some(code) => code,
-            None => self.kind.code(),
-        }
-    }
 }
 
 impl fmt::Display for FsToolError {
@@ -147,16 +129,3 @@ impl fmt::Display for FsToolError {
 }
 
 impl std::error::Error for FsToolError {}
-
-/// Closed lower-boundary failure from a host's existing artifact authority.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ArtifactInputFailure {
-    /// The reference is not authorized for the bound caller and workspace.
-    Unauthorized,
-    /// The exact immutable artifact is unavailable.
-    Missing,
-    /// Stored content or reference metadata failed integrity checks.
-    Corrupt,
-    /// The authority cannot establish a safe resolution result.
-    Indeterminate,
-}

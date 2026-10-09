@@ -9,7 +9,6 @@ pub enum ControlStoreError {
     Journal(JournalError),
     Io(std::io::Error),
     Workspace(peritus_workspace::WorkspaceError),
-    Patch(peritus_patch::PatchError),
     Runner(peritus_product_runner::ProductRunnerError),
     PermissionDenied,
     Corrupt(&'static str),
@@ -35,11 +34,6 @@ impl From<peritus_workspace::WorkspaceError> for ControlStoreError {
         Self::Workspace(error)
     }
 }
-impl From<peritus_patch::PatchError> for ControlStoreError {
-    fn from(error: peritus_patch::PatchError) -> Self {
-        Self::Patch(error)
-    }
-}
 impl From<peritus_product_runner::ProductRunnerError> for ControlStoreError {
     fn from(error: peritus_product_runner::ProductRunnerError) -> Self {
         Self::Runner(error)
@@ -54,9 +48,6 @@ impl std::fmt::Display for ControlStoreError {
             }
             Self::Io(_) => f.write_str("control storage unavailable or already owned"),
             Self::Workspace(_) => f.write_str("workspace mutation failed; inspect before retrying"),
-            Self::Patch(_) => {
-                f.write_str("workspace patch rejected; inspect the selected paths before retrying")
-            }
             Self::Runner(_) => f.write_str("workspace mutation authority unavailable"),
             Self::PermissionDenied => {
                 f.write_str("workspace writes are disabled by effective policy")
@@ -72,7 +63,6 @@ impl std::error::Error for ControlStoreError {
             Self::Journal(error) => Some(error),
             Self::Io(error) => Some(error),
             Self::Workspace(error) => Some(error),
-            Self::Patch(error) => Some(error),
             Self::Runner(error) => Some(error),
             Self::Corrupt(_) | Self::PermissionDenied => None,
         }

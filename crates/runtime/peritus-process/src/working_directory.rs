@@ -35,7 +35,8 @@ impl WorkingDirectory {
     ///
     /// # Errors
     ///
-    /// Returns an error when the path is missing, not a directory, or cannot be canonicalized.
+    /// Returns an error when the path is missing, not a directory, cannot be canonicalized, or
+    /// cannot be represented in the version-one canonical execution format.
     #[allow(clippy::too_many_arguments)]
     pub fn open(
         path: impl AsRef<Path>,
@@ -53,6 +54,11 @@ impl WorkingDirectory {
         }
         let canonical_path = fs::canonicalize(path.as_ref())
             .map_err(|_| cwd_error("working directory cannot be canonicalized"))?;
+        if canonical_path.to_str().is_none() {
+            return Err(cwd_error(
+                "working directory is not representable in canonical version one",
+            ));
+        }
         Ok(Self {
             canonical_path,
             workspace_id,

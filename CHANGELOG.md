@@ -1,49 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Fixed
-
-- Negotiate lightweight review summaries and stream contiguous structured/raw diff pages with exact current-source navigation and safe control-character previews.
-- Persist preview behavior checks with exact command, byte offsets, stream identities, and source digests; replay goal evidence after restart without rescanning or counting a duplicate check.
-- Keep attachment range types and preview output methods consistent across ordinary and Verus builds.
-- Keep filesystem diagnostics unique and bounded across directory pages; stabilize Git history against shared replacement, shallow, graft, and encoding settings; retain subjects beyond the former 4 KiB limit.
-- Record only successfully spooled process bytes after output I/O failures, search live preview streams according to their actual I/O mode, and align environment-name projections and native platform fixtures.
-- Retain large original attachments, stream selected file ranges, and expose exact version-bound attachment reads without independent host size or history-count ceilings. Bind previews and confirmation to the active conversation's writer provider and model (L126, L128, L142, L162, L261, L707–L710, L736, L798).
-- Preserve full process output and native command/environment representations; carry absent preview deadlines and resource quotas through execution, recovery records, and exact output-range reads (L090, L095, L096, L169, L193, L206).
-- Retain request archives and capture retry bytes above the former serialization limits; budget reviewer context against provider capacity and make all original review evidence available through digest-bound byte pages (L127, L170, L180, L192).
-- Page complete Git history and structured/raw diffs, preserve native paths and long lines, and bind TUI navigation and comment anchors to the displayed page (L008, L249, L254, L255, L528, L643).
-- Recover exact candidate and rollback outcomes after interrupted reference publication; remove unsupported merge advertisement and the configured-tool count gate (L644, L645, L734).
-- Synchronize cancellation tests with the actual stalled reviewer start and separately verify prompt cancellation settlement on native runners.
-- Remove workspace source/range ceilings and continue exact ranged reads and filesystem discovery/search through encoded-byte-sized pages (L007, L634, L635, L636).
-- Remove local-context archive limits and support absent aggregate artifact quotas while retaining referenced history and checked storage accounting (L057, L062, L065, L067).
-- Remove the discard-state size policy and recognize interrupted owned preparation without deleting foreign files (L148, L149).
-- Stream effect receipt frames without per-record or lifetime quotas, retain full results once, and reject unsupported receipt versions explicitly (L165, L167).
-- Bind command receipts to exact native owners, preserve receipt-linked live commands across observer replacement and startup recovery, reconcile terminal output before daemon control decisions, and require confirmed inactive ownership before acknowledging unknown effects (L166, L183).
-- Remove Git output and status quotas, preserve native status path bytes, represent unborn HEAD, and propagate index failures (L525, L527).
-- Retain patch preparation and terminal outcomes before cleanup, recover exact mutation handoff, and honor cancellation before the first target change (L552, L553, L554, L637).
-- Remove checkpoint capture file and aggregate byte quotas while retaining path safety (L003; Crosslink #104).
-- Remove patch file, byte, and operation quotas while retaining preimage checks and atomic application (L006; Crosslink #106).
-- Remove u16 checkpoint collection and index ceilings while preserving legacy identities and complete exclusion facts (L010; Crosslink #110).
-- Derive valid UTF-8 checkpoint titles without rejecting work because of generated text (L012; Crosslink #112).
-- Align checkpoint capture and restore capacity and retain typed patch errors (L013; Crosslink #113).
-- Recover complete transaction manifests above the former 16 MiB limit and deduplicate retained ancestors (L016; Crosslink #118).
-- Remove journal batch and state-history ceilings, migrate existing storage to schema 3 without changing digests, and preserve checkpoint key ordering beyond 65,535 paths (L020; Crosslink #120).
-- Remove workspace write and receipt size refusals, and stream receipt hashing (L035; Crosslink #134).
-- Preserve exact automatic-checkpoint retry lookup before recapture; no additional implementation was needed (L036; Crosslink #135).
-- Page workspace listing and search with scoped cursors, incremental inspection, and explicit omissions (L041; Crosslink #140).
-- Continue bounded workspace and reference reads without silent truncation or repeating cursors (L045; Crosslink #144).
-- Hash artifacts incrementally without the former 64 MiB refusal (L076; Crosslink #175).
-- Continue retrieval within sources using actual encoded page bounds rather than query, handle, or source-size cutoffs (L078; Crosslink #177).
-- Sample design inventory incrementally with cancellation, truthful omissions, and real workspace-list continuation (L124; Crosslink #223).
-- Page explicitly authorized references with native case rules, preserved path punctuation, and symlink confinement (L168; Crosslink #264).
-- Stream CSV validation using the selected delimiter, encoding, and row-shape contract; absent optional contracts do not block work (L172; Crosslink #307).
-- Stream JSON and YAML validation with cancellation and without whole-file size or empty-document refusals (L173; Crosslink #308).
-- Qualify SQLite migrations against explicit initial state and ordered paths, requiring repeatability, rollback, or postchecks only when selected (L174; Crosslink #309).
-- Stream source readability, report selected missing or unreadable paths, and honor Python source encodings (L175; Crosslink #310).
-- Page checkpoint and rewind coverage with full confirmation binding, durable restore summaries, stale-input protection, recovery, and TUI navigation (L712; Crosslink #744).
-- Deliver the selected 20-repair round with validated code and tracked results (Crosslink continuation #826).
-
 ## 0.0.5
 
 - Use one durable conversation and operation path across the terminal interface, CLI, WebUI,

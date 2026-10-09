@@ -14,6 +14,9 @@ type SealedProjection = (WorkbenchContextSeal, u64, Vec<WorkbenchContextRow>);
 pub(in crate::product_control) fn inspect_manifest(
     bytes: &[u8],
 ) -> Result<SealedProjection, Error> {
+    if bytes.len() > peritus_journal::MAX_STATE_BYTES {
+        return Err(ControlError::Capacity.into());
+    }
     let manifest: Manifest =
         serde_json::from_slice(bytes).map_err(|_| Error::Corrupt("invalid context manifest"))?;
     let id = invocation(*manifest.invocation.as_bytes())?;

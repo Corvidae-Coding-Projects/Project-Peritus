@@ -14,6 +14,7 @@ use crate::{
 };
 
 const CANONICAL_MAGIC: [u8; 4] = *b"P5MR";
+const MAX_CANONICAL_REQUEST_BYTES: usize = 512 * 1024 * 1024;
 
 /// Decodes exact canonical v1 request bytes against their immutable profile revision.
 ///
@@ -32,6 +33,12 @@ pub fn decode_request(
     request_id: RequestId,
     limits: ProtocolLimits,
 ) -> Result<ModelRequest, ProtocolError> {
+    if bytes.len() > MAX_CANONICAL_REQUEST_BYTES {
+        return Err(invalid(
+            "canonical_request",
+            "canonical request exceeds its maximum byte bound",
+        ));
+    }
     let mut reader = CanonicalReader::new(bytes, reader_limits(limits));
     decode_magic_and_profile(&mut reader, profile)?;
     let negotiated = decode_negotiated(&mut reader, profile)?;
@@ -117,7 +124,7 @@ pub fn decode_messages(
     limits: ProtocolLimits,
 ) -> Result<Vec<Message>, ProtocolError> {
     let count = read_collection_len(reader, limits.max_messages(), "messages")?;
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(count);
     for _ in 0..count {
         messages.push(content::message(reader, limits)?);
     }
@@ -129,7 +136,7 @@ fn decode_tools(
     limits: ProtocolLimits,
 ) -> Result<Vec<ToolDefinition>, ProtocolError> {
     let count = read_collection_len(reader, limits.max_tools(), "tools")?;
-    let mut tools = Vec::new();
+    let mut tools = Vec::with_capacity(count);
     for _ in 0..count {
         let name = ToolName::new(reader.read_str().map_err(codec)?.to_owned())?;
         let description = primitive::optional_text(reader, limits)?;

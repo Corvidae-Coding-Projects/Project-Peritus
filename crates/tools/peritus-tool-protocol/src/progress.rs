@@ -47,7 +47,7 @@ impl ToolProgress {
     ) -> Result<Self, ProtocolError> {
         if sequence >= prepared.call().limits().progress_events()
             || model_rendering.as_str().len() > prepared.call().limits().model_bytes() as usize
-            || observed_at.epoch() != prepared.call().authority_epoch()
+            || observed_at.epoch() != prepared.call().deadline().epoch()
         {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidEnvelope,

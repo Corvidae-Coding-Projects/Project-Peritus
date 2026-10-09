@@ -4,41 +4,9 @@ use std::collections::VecDeque;
 
 use serde_json::Value;
 
-/// Exact immutable source sections from one independent reviewer request.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct ReviewerEvidenceSources {
-    transcript: String,
-    diff: String,
-    gates: String,
-    developer_commands: String,
-    prior: String,
-    correction: String,
-}
-
-impl ReviewerEvidenceSources {
-    pub const fn new(
-        transcript: String,
-        diff: String,
-        gates: String,
-        developer_commands: String,
-        prior: String,
-        correction: String,
-    ) -> Self {
-        Self { transcript, diff, gates, developer_commands, prior, correction }
-    }
-
-    pub fn section(&self, name: &str) -> Option<&str> {
-        match name {
-            "transcript" => Some(&self.transcript),
-            "diff" => Some(&self.diff),
-            "gates" => Some(&self.gates),
-            "developer_commands" => Some(&self.developer_commands),
-            "prior" => Some(&self.prior),
-            "correction" => Some(&self.correction),
-            _ => None,
-        }
-    }
-}
+const MAX_RECORDS: usize = 32;
+const MAX_RECORD_BYTES: usize = 16 * 1024;
+const MAX_RENDERED_BYTES: usize = 128 * 1024;
 
 /// Declared role of one successful structured command in delivery acceptance.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -61,6 +29,7 @@ pub struct SuccessfulCommand {
 #[derive(Default)]
 pub(super) struct CommandEvidence {
     records: VecDeque<String>,
+    bytes: usize,
     successful: Vec<SuccessfulCommand>,
 }
 
@@ -73,8 +42,19 @@ impl CommandEvidence {
         let request = serde_json::to_string(arguments).unwrap_or_else(|_| "<invalid JSON>".into());
         let rendered_result =
             serde_json::to_string(result).unwrap_or_else(|_| "<invalid JSON>".into());
-        let record = format!("request: {request}\nresult: {rendered_result}");
+        let record = format!(
+            "request: {}\nresult: {}",
+            preview(&request, MAX_RECORD_BYTES / 4),
+            preview(&rendered_result, MAX_RECORD_BYTES * 3 / 4),
+        );
+        self.bytes = self.bytes.saturating_add(record.len());
         self.records.push_back(record);
+        while self.records.len() > MAX_RECORDS || self.bytes > MAX_RENDERED_BYTES {
+            let Some(removed) = self.records.pop_front() else {
+                break;
+            };
+            self.bytes = self.bytes.saturating_sub(removed.len());
+        }
         if result.get("success").and_then(Value::as_bool) == Some(true)
             && let Some(purpose) = CommandPurpose::from_arguments(arguments)
         {
@@ -115,6 +95,12 @@ pub(super) fn merge_rendered(retained: &mut String, incoming: &str) {
         retained.push_str("\n\n");
     }
     retained.push_str(incoming);
+    if retained.len() > MAX_RENDERED_BYTES {
+        let start = retained.len() - MAX_RENDERED_BYTES;
+        let boundary = retained.ceil_char_boundary(start);
+        *retained =
+            format!("[earlier developer command evidence omitted]\n{}", &retained[boundary..]);
+    }
 }
 
 /// Merges successful commands while preserving their execution order.
@@ -122,12 +108,20 @@ pub fn merge_successful(retained: &mut Vec<SuccessfulCommand>, incoming: &[Succe
     retained.extend_from_slice(incoming);
 }
 
+fn preview(value: &str, maximum: usize) -> String {
+    if value.len() <= maximum {
+        return value.to_owned();
+    }
+    let boundary = value.floor_char_boundary(maximum);
+    format!("{}...[truncated]", &value[..boundary])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn evidence_retains_complete_command_observations_beyond_the_old_window() {
+    fn evidence_retains_recent_bounded_command_observations() {
         let mut evidence = CommandEvidence::default();
         let result: Value =
             serde_json::from_str(r#"{"success":true,"stdout":"verified"}"#).expect("result");
@@ -140,9 +134,9 @@ mod tests {
         }
 
         let rendered = evidence.render();
-        assert!(rendered.contains("check-0.py"));
+        assert!(!rendered.contains("check-0.py"));
         assert!(rendered.contains("check-39.py"));
-        assert!(!rendered.contains("[truncated]"));
+        assert!(rendered.len() <= MAX_RENDERED_BYTES);
     }
 
     #[test]
@@ -189,15 +183,5 @@ mod tests {
         assert_eq!(retained.len(), 40);
         assert!(retained.first().expect("first command").command.contains("check-0"));
         assert!(retained.last().expect("last command").command.contains("check-39"));
-    }
-
-    #[test]
-    fn merged_review_evidence_preserves_older_observations_without_an_omission_window() {
-        let mut retained = String::new();
-        merge_rendered(&mut retained, &"early evidence".repeat(12_000));
-        merge_rendered(&mut retained, "latest evidence");
-        assert!(retained.starts_with("early evidence"));
-        assert!(retained.ends_with("latest evidence"));
-        assert!(!retained.contains("omitted"));
     }
 }

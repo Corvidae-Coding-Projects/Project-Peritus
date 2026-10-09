@@ -225,12 +225,8 @@ pub fn launch(
 ) -> Result<OwnedProcess, ProcessConformanceError> {
     let action = intent(ids, &execution);
     let mut journal = open_journal(root);
-    let receipts = commit_authority(
-        &mut journal,
-        ids,
-        &action,
-        execution.resource_policy().wall_millis().expect("finite wall limit"),
-    );
+    let receipts =
+        commit_authority(&mut journal, ids, &action, execution.resource_policy().wall_millis());
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).map_err(|_| infrastructure())?,
     );
