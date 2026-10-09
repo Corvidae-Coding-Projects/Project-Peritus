@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4242,
-        "tip_oid": "6f217327dd7c509b49e5386f3236c2ff2ea6dfc7",
-        "prefix_sha256": "c7ec57d937f684dcea600ee93127631e01114c2446459b5cd7c4cd5e8b8cacb0"
+        "sequence": 4243,
+        "tip_oid": "cbbfc1edc89bc7b3326c12700b7e6631afebfeb3",
+        "prefix_sha256": "1f414caa34932890fc5cb4f2e34853c82b16a3f540c075b464aa0ac616f898fd"
       },
       "NWAR": {
         "sequence": 39,
@@ -8068,12 +8068,13 @@
       "display_id": 315,
       "title": "[L180] Durable request admission caps the entire serialized model request at 16 MiB",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L180.\n\n- Source: `crates/app/peritus-daemon/src/product_control/inputs/archive.rs:69-143,175-237`; `inputs/files.rs:7-61`; `inputs/manifest.rs:59-84`.\n- After context capture, request archival applies another **16 MiB ceiling to the complete canonical ModelRequest**, including message encoding, media, tool definitions and other request metadata. A text/media selection admitted by its separate raw-byte limits can still fail at this enclosing representation bound. InvalidLimit is mapped to Capacity; other encoding failures become InvalidInput.\n- The immutable manifest has its own journal state-byte ceiling, schema version **1**, deny_unknown_fields, at most **4 brief bindings**, protocol message limits, source input size **1–8,192 bytes**, existing image selection bounds and guidance-render bounds. No version migration or segmented request archive is present in these files. These are persisted data envelopes; they must not become an unexplained lifetime cutoff.\n- File references are loaded from immutable authenticated artifacts and JSON-wrapped with source/version/digest/range fields; the wrapper also has a 16 MiB aggregate check. Included images must exactly match the request image sequence, and file/guidance text must be present before incorporation. Those are provenance checks, separate from artificial capacity policy.\n- **Complete source read; exact encoded overhead for a maximum attachment selection has not been measured.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.725806556Z",
-      "updated_at": "2026-10-09T02:13:33.915232900Z",
+      "updated_at": "2026-10-09T06:03:19.156254829Z",
+      "closed_at": "2026-10-09T06:03:19.153242162Z",
       "labels": [
         "daily-driving-limiter"
       ],
