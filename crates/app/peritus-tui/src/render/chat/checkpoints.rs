@@ -2,8 +2,8 @@
 
 use crate::model::{AppModel, format_id};
 use peritus_app_protocol::{
-    WorkbenchCheckpointFileMode, WorkbenchCheckpointVersion, WorkbenchRestoreStatus,
-    WorkbenchRewindDisposition,
+    WorkbenchCheckpointFileMode, WorkbenchCheckpointVersion, WorkbenchCoverageSection,
+    WorkbenchRestoreStatus, WorkbenchRewindDisposition,
 };
 use ratatui::{Frame, layout::Rect};
 
@@ -14,41 +14,17 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         model,
         content(model),
         " Checkpoint · safe rewind ",
-        "Esc back · ↑↓/PgUp/PgDn scroll · Home/End · c confirm · r refresh",
+        "Esc back · ↑↓/PgUp/PgDn scroll · n/p coverage page · c confirm · r refresh",
     );
 }
 
 pub(super) fn content(model: &AppModel) -> Vec<String> {
     let panel = &model.chat.workbench;
     let mut lines = vec![panel.message.clone()];
-    if let Some(preview) = &panel.rewind_preview {
-        lines.push(format!(
-            "Checkpoint {} · inspected revision {}",
-            format_id(preview.request().checkpoint().as_bytes()),
-            preview.request().revision()
-        ));
-        append_scope(&mut lines, preview.request());
-        lines.push(format!("Exact preview SHA256 {}", hex(preview.preview_digest().as_bytes())));
-        for path in preview.paths() {
-            lines.push(format!("[{}] {}", disposition(path.disposition()), path.path()));
-            lines.push(format!(
-                "  checkpoint {} · expected current {} · observed {}",
-                version(path.checkpoint()),
-                path.expected_current().map_or_else(|| "unsealed".to_owned(), version),
-                version(path.observed_current())
-            ));
-        }
-        append_named(&mut lines, "Excluded", preview.exclusions());
-        append_named(&mut lines, "Not restored", preview.external_effects());
-        lines.push(format!(
-            "Conversation history preserved: {} · cumulative accounting preserved: {}",
-            preview.conversation_history_preserved(),
-            preview.accounting_preserved()
-        ));
-        lines.push(String::from(
-            "Press c to confirm this exact preview. Conflicts and unsealed paths are never overwritten; Esc cancels without a request.",
-        ));
-    } else if let Some(receipt) = &panel.restore_receipt {
+    if append_rewind_content(model, &mut lines) {
+        return lines;
+    }
+    if let Some(receipt) = &panel.restore_receipt {
         lines.extend([
             format!(
                 "Restore {} · status {} · durable revision {}",
@@ -68,6 +44,62 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
         lines.push(String::from(
             "Original conversation history and cumulative accounting remain preserved.",
         ));
+    } else if let Some(summary) = &panel.restore_summary {
+        lines.extend([
+            format!(
+                "Restore {} · status {} · durable revision {}",
+                format_id(summary.restore().as_bytes()),
+                restore_status(summary.status()),
+                summary.accepted_revision()
+            ),
+            format!(
+                "Source checkpoint {} · recovery checkpoint {}",
+                format_id(summary.checkpoint().as_bytes()),
+                format_id(summary.recovery_checkpoint().as_bytes())
+            ),
+            format!(
+                "Restored {} path(s) · retained {} conflict(s) · full coverage fingerprint {}",
+                summary.restored_paths(),
+                summary.conflicting_paths(),
+                hex(summary.fingerprint().as_bytes())
+            ),
+            String::from("Open the rewind pages to inspect every retained path and exclusion."),
+        ]);
+    } else if let Some(page) = &panel.checkpoint_page {
+        let references = page.references();
+        lines.extend([
+            format!(
+                "Checkpoint {} · {} · accepted revision {} · selected revision {}",
+                format_id(page.checkpoint().as_bytes()),
+                page.name().as_str(),
+                page.accepted_revision(),
+                page.selected_revision()
+            ),
+            format!(
+                "References: conversation {} · context {} · brief {} · goal {}",
+                references.source_conversation_revision(),
+                references.context_generation(),
+                references.brief_revision(),
+                references
+                    .goal_revision()
+                    .map_or_else(|| "none".to_owned(), |value| value.to_string())
+            ),
+            format!("Complete coverage fingerprint SHA256 {}", hex(page.fingerprint().as_bytes())),
+            format!(
+                "Complete scope: {} path(s), {} exclusion(s), {} external-effect fact(s).",
+                page.total_paths(),
+                page.total_exclusions(),
+                page.total_external_effects()
+            ),
+        ]);
+        append_coverage_page(
+            &mut lines,
+            page.section(),
+            page.offset(),
+            page.paths(),
+            page.exclusions(),
+            page.external_effects(),
+        );
     } else if let Some(receipt) = &panel.checkpoint_receipt {
         append_checkpoint(&mut lines, receipt);
     } else {
@@ -76,6 +108,116 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
         ));
     }
     lines
+}
+
+fn append_rewind_content(model: &AppModel, lines: &mut Vec<String>) -> bool {
+    let panel = &model.chat.workbench;
+    if let Some(page) = &panel.rewind_page {
+        let confirmation = page.confirmation();
+        let request = confirmation.request();
+        lines.push(format!(
+            "Checkpoint {} · selected revision {} · scope {:?}",
+            format_id(request.checkpoint().as_bytes()),
+            request.revision(),
+            request.mode()
+        ));
+        append_scope(lines, request);
+        lines.push(format!(
+            "Full-checkpoint confirmation SHA256 {}",
+            hex(confirmation.preview_digest().as_bytes())
+        ));
+        lines.push(format!(
+            "Complete preview: {} path(s), {} exclusion(s), {} external-effect fact(s). Current conflicts reject the whole confirmation.",
+            page.total_paths(), page.total_exclusions(), page.total_external_effects()
+        ));
+        append_rewind_coverage_page(
+            lines,
+            page.section(),
+            page.offset(),
+            page.paths(),
+            page.exclusions(),
+            page.external_effects(),
+        );
+        lines.push(String::from(
+            "Press c to confirm the full checkpoint binding. Apply rechecks every expected-current preimage; any conflict or unsealed path rejects without changing files. Use n/p to inspect coverage pages.",
+        ));
+        true
+    } else if let Some(preview) = &panel.rewind_preview {
+        lines.push(format!(
+            "Checkpoint {} · inspected revision {}",
+            format_id(preview.request().checkpoint().as_bytes()),
+            preview.request().revision()
+        ));
+        append_scope(lines, preview.request());
+        lines.push(format!("Exact preview SHA256 {}", hex(preview.preview_digest().as_bytes())));
+        for path in preview.paths() {
+            lines.push(format!("[{}] {}", disposition(path.disposition()), path.path()));
+            lines.push(format!(
+                "  checkpoint {} · expected current {} · observed {}",
+                version(path.checkpoint()),
+                path.expected_current().map_or_else(|| "unsealed".to_owned(), version),
+                version(path.observed_current())
+            ));
+        }
+        append_named(lines, "Excluded", preview.exclusions());
+        append_named(lines, "Not restored", preview.external_effects());
+        lines.push(format!(
+            "Conversation history preserved: {} · cumulative accounting preserved: {}",
+            preview.conversation_history_preserved(),
+            preview.accounting_preserved()
+        ));
+        lines.push(String::from(
+            "Press c to confirm this exact preview. Conflicts and unsealed paths are never overwritten; Esc cancels without a request.",
+        ));
+        true
+    } else {
+        false
+    }
+}
+
+fn append_coverage_page(
+    lines: &mut Vec<String>,
+    section: WorkbenchCoverageSection,
+    offset: u64,
+    paths: &[peritus_app_protocol::WorkbenchCheckpointPath],
+    exclusions: &[String],
+    effects: &[String],
+) {
+    let count = paths.len() + exclusions.len() + effects.len();
+    lines.push(format!("Coverage page: {section:?} · offset {offset} · {count} fact(s)"));
+    for path in paths {
+        lines.push(format!(
+            "Covered {} · checkpoint {} · expected current {}",
+            path.path(),
+            version(path.checkpoint()),
+            path.expected_current().map_or_else(|| "unsealed".to_owned(), version)
+        ));
+    }
+    append_named(lines, "Excluded", exclusions);
+    append_named(lines, "Not restored", effects);
+}
+
+fn append_rewind_coverage_page(
+    lines: &mut Vec<String>,
+    section: WorkbenchCoverageSection,
+    offset: u64,
+    paths: &[peritus_app_protocol::WorkbenchRewindPath],
+    exclusions: &[String],
+    effects: &[String],
+) {
+    let count = paths.len() + exclusions.len() + effects.len();
+    lines.push(format!("Preview page: {section:?} · offset {offset} · {count} fact(s)"));
+    for path in paths {
+        lines.push(format!("[{}] {}", disposition(path.disposition()), path.path()));
+        lines.push(format!(
+            "  checkpoint {} · expected current {} · observed {}",
+            version(path.checkpoint()),
+            path.expected_current().map_or_else(|| "unsealed".to_owned(), version),
+            version(path.observed_current())
+        ));
+    }
+    append_named(lines, "Excluded", exclusions);
+    append_named(lines, "Not restored", effects);
 }
 
 fn append_checkpoint(

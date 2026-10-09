@@ -3,10 +3,7 @@
 use super::{
     ControlError, ControlText, InputId, InputLedger, InputSelection, OperationId, QueueIntent,
 };
-use crate::attachment::{
-    MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_IMAGE_FRAMES, MAX_IMAGE_PIXELS,
-    MAX_IMAGE_SELECTION_BYTES, MAX_IMAGE_SIDE, ValidatedImage,
-};
+use crate::attachment::ValidatedImage;
 use peritus_types::{ActorId, ArtifactId, Sha256Digest};
 use serde::Deserialize;
 use serde::Serialize;
@@ -194,14 +191,9 @@ impl ImageAttachment {
         if self.artifact == [0; 16]
             || self.input != source_input(self.operation)?
             || self.bytes == 0
-            || self.bytes > MAX_IMAGE_BYTES
             || self.frames == 0
-            || self.frames > MAX_IMAGE_FRAMES
             || self.width == 0
             || self.height == 0
-            || self.width > MAX_IMAGE_SIDE
-            || self.height > MAX_IMAGE_SIDE
-            || u64::from(self.width) * u64::from(self.height) > MAX_IMAGE_PIXELS
         {
             return Err(ControlError::InvalidInput);
         }
@@ -291,10 +283,7 @@ impl ImageAttachments {
         self.validate(inputs)
     }
     pub(super) fn validate(&self, inputs: &InputLedger) -> Result<(), ControlError> {
-        let capture = inputs.capture()?;
         let mut operations = std::collections::BTreeSet::new();
-        let mut bytes = 0_u64;
-        let mut count = 0_usize;
         for entry in &self.entries {
             entry.image.validate()?;
             if !operations.insert(entry.image.operation)
@@ -302,15 +291,6 @@ impl ImageAttachments {
             {
                 return Err(ControlError::InvalidInput);
             }
-            if entry.selected
-                && capture.included().iter().any(|input| input.id() == entry.image.input)
-            {
-                count += 1;
-                bytes = bytes.checked_add(entry.image.bytes).ok_or(ControlError::Capacity)?;
-            }
-        }
-        if count > MAX_IMAGE_COUNT || bytes > MAX_IMAGE_SELECTION_BYTES {
-            return Err(ControlError::Capacity);
         }
         Ok(())
     }

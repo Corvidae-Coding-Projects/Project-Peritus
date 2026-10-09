@@ -1,59 +1,163 @@
-//! Deterministic structural validation for changed CSV artifacts.
+//! Contract-selected, incremental structural validation for changed CSV artifacts.
 
-use std::{fs, path::Path};
+use std::{
+    fmt::Write as _,
+    fs,
+    path::{Path, PathBuf},
+};
 
-use peritus_gates::GateExecutionRecord;
+use peritus_gates::{GateExecutionRecord, GateObservation};
 
-const MAX_CSV_BYTES: u64 = 64 * 1024 * 1024;
+use super::{GateOutcome, cancellation::GateCancellation};
+mod parser;
+use parser::{CsvParser, CsvSummary, Encoding};
 
-#[allow(
-    clippy::format_push_string,
-    reason = "formal-boundary policy models format! but not writeln!"
-)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct CsvContract {
+    delimiter: char,
+    encoding: Encoding,
+    rectangular: bool,
+}
+
+enum ContractSelection {
+    Absent,
+    Incomplete,
+    Complete(CsvContract),
+}
+
 pub fn run(
     workspace_root: &Path,
     project_root: &Path,
-    changed_paths: &[std::path::PathBuf],
+    changed_paths: &[PathBuf],
     command: String,
-) -> GateExecutionRecord {
+    request_context: &str,
+    cancellation: &GateCancellation,
+) -> GateOutcome {
     let csv_paths = changed_paths
         .iter()
         .filter(|path| path.starts_with(project_root) && is_csv(path))
         .collect::<Vec<_>>();
     let mut output = String::new();
     let mut passed = true;
+    let mut unevaluated = false;
+    let mut required = false;
+
+    if csv_paths.is_empty() {
+        return GateOutcome::Optional(GateObservation {
+            command,
+            label: "Artifact CSV structure".to_owned(),
+            output:
+                "NOT APPLICABLE: no changed CSV artifact selected a structural acceptance check"
+                    .to_owned(),
+        });
+    }
 
     for relative in &csv_paths {
-        let path = workspace_root.join(relative);
-        let result = validate_file(&path);
-        match result {
+        let contract = match contract_for(workspace_root, relative, request_context) {
+            Ok(ContractSelection::Complete(contract)) => {
+                required = true;
+                contract
+            }
+            Ok(ContractSelection::Absent) => {
+                let _ = writeln!(
+                    output,
+                    "{}: NOT EVALUATED (no CSV structural acceptance check was selected for this file)",
+                    relative.display(),
+                );
+                continue;
+            }
+            Ok(ContractSelection::Incomplete) => {
+                required = true;
+                let _ = writeln!(
+                    output,
+                    "{}: NOT EVALUATED (the selected CSV contract does not declare delimiter, encoding, and row shape)",
+                    relative.display(),
+                );
+                unevaluated = true;
+                continue;
+            }
+            Err(detail) => {
+                required = true;
+                passed = false;
+                let _ = writeln!(
+                    output,
+                    "{}: FAIL: invalid CSV contract: {detail}",
+                    relative.display(),
+                );
+                continue;
+            }
+        };
+        if cancellation.is_cancelled() {
+            let _ = writeln!(output, "{}: NOT EVALUATED (run was cancelled)", relative.display());
+            unevaluated = true;
+            break;
+        }
+        match validate_file(&workspace_root.join(relative), contract, cancellation) {
             Ok(summary) => {
-                output.push_str(&format!(
-                    "{}: PASS ({} records, {} fields)",
+                let _ = writeln!(
+                    output,
+                    "{}: PASS ({} records, {} fields in first record; delimiter {:?}, {:?})",
                     relative.display(),
                     summary.records,
                     summary.fields,
-                ));
-                output.push('\n');
+                    contract.delimiter,
+                    contract.encoding,
+                );
             }
             Err(detail) => {
+                if cancellation.is_cancelled() {
+                    let _ = writeln!(
+                        output,
+                        "{}: NOT EVALUATED (run was cancelled while reading or parsing)",
+                        relative.display(),
+                    );
+                    unevaluated = true;
+                    break;
+                }
                 passed = false;
-                output.push_str(&format!("{}: FAIL: {detail}\n", relative.display()));
+                let _ = writeln!(output, "{}: FAIL: {detail}", relative.display());
             }
         }
     }
 
-    if csv_paths.is_empty() {
-        output.push_str("No changed CSV artifacts require structural validation.\n");
-    }
-    output.push_str(if passed { "CSV structure: PASS\n" } else { "CSV structure: FAIL\n" });
+    outcome(command, output, required, passed, unevaluated)
+}
 
-    GateExecutionRecord {
+fn outcome(
+    command: String,
+    mut output: String,
+    required: bool,
+    passed: bool,
+    unevaluated: bool,
+) -> GateOutcome {
+    if !required {
+        return GateOutcome::Optional(GateObservation {
+            command,
+            label: "Artifact CSV structure".to_owned(),
+            output: format!(
+                "NOT EVALUATED: no CSV structural acceptance check was selected\n{output}"
+            ),
+        });
+    }
+    output.push_str(if !passed {
+        "CSV structure: FAIL\n"
+    } else if unevaluated {
+        "CSV structure: NOT EVALUATED\n"
+    } else {
+        "CSV structure: PASS\n"
+    });
+    GateOutcome::Required(GateExecutionRecord {
         command,
         label: "Artifact CSV structure".to_owned(),
-        exit_code: Some(i32::from(!passed)),
+        exit_code: if !passed {
+            Some(1)
+        } else if unevaluated {
+            None
+        } else {
+            Some(0)
+        },
         output,
-    }
+    })
 }
 
 fn is_csv(path: &Path) -> bool {
@@ -62,243 +166,173 @@ fn is_csv(path: &Path) -> bool {
         .is_some_and(|extension| extension.eq_ignore_ascii_case("csv"))
 }
 
-fn validate_file(path: &Path) -> Result<CsvSummary, String> {
-    let metadata = fs::metadata(path).map_err(|error| format!("inspect file: {error}"))?;
-    if metadata.len() > MAX_CSV_BYTES {
-        return Err(format!("file exceeds the {MAX_CSV_BYTES}-byte validation limit"));
+fn contract_for(
+    workspace_root: &Path,
+    path: &Path,
+    request_context: &str,
+) -> Result<ContractSelection, String> {
+    let mut active = false;
+    let mut found = false;
+    let mut delimiter = None;
+    let mut encoding = None;
+    let mut rectangular = None;
+    for line in request_context.lines() {
+        let line = line.trim().trim_start_matches(['-', '*']).trim();
+        let lower = line.to_ascii_lowercase();
+        if lower.starts_with("csv contract for ") {
+            let declared = &line["CSV contract for ".len()..];
+            active = declared
+                .strip_suffix(':')
+                .map(|declared| unquote(declared).unwrap_or(declared))
+                .and_then(|declared| resolve_contract_path(workspace_root, declared))
+                .is_some_and(|declared| declared == path);
+            if active {
+                if found {
+                    return Err("more than one contract names this file".to_owned());
+                }
+                found = true;
+            }
+            continue;
+        }
+        if !active {
+            continue;
+        }
+        let Some((key, value)) = line.split_once(':') else { continue };
+        let value = unquote(value.trim()).unwrap_or_else(|| value.trim());
+        match key.trim().to_ascii_lowercase().as_str() {
+            "delimiter" => delimiter = Some(parse_delimiter(value)?),
+            "encoding" => encoding = Some(parse_encoding(value)?),
+            "row shape" | "rows" => {
+                rectangular = Some(parse_row_shape(value)?);
+            }
+            _ => {}
+        }
     }
-    let bytes = fs::read(path).map_err(|error| format!("read file: {error}"))?;
-    validate(&bytes)
+    if !found {
+        return Ok(ContractSelection::Absent);
+    }
+    match (delimiter, encoding, rectangular) {
+        (Some(delimiter), Some(encoding), Some(rectangular)) => {
+            Ok(ContractSelection::Complete(CsvContract { delimiter, encoding, rectangular }))
+        }
+        _ => Ok(ContractSelection::Incomplete),
+    }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct CsvSummary {
-    records: usize,
-    fields: usize,
+fn resolve_contract_path(root: &Path, declared: &str) -> Option<PathBuf> {
+    let declared = PathBuf::from(declared);
+    if declared.is_absolute() {
+        return declared.strip_prefix(root).ok().map(Path::to_path_buf);
+    }
+    let mut normalized = PathBuf::new();
+    for component in declared.components() {
+        match component {
+            std::path::Component::Normal(part) => normalized.push(part),
+            std::path::Component::CurDir => {}
+            std::path::Component::RootDir
+            | std::path::Component::ParentDir
+            | std::path::Component::Prefix(_) => return None,
+        }
+    }
+    Some(normalized)
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum FieldState {
-    Start,
-    Unquoted,
-    Quoted,
-    AfterQuote,
+fn unquote(value: &str) -> Option<&str> {
+    let value = value.trim();
+    let first = value.chars().next()?;
+    let last = value.chars().next_back()?;
+    (value.len() >= 2 && matches!(first, '`' | '\'' | '"') && first == last)
+        .then(|| &value[first.len_utf8()..value.len() - last.len_utf8()])
 }
 
-fn validate(bytes: &[u8]) -> Result<CsvSummary, String> {
-    let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(bytes);
-    if bytes.is_empty() {
-        return Err("file is empty".to_owned());
-    }
-    std::str::from_utf8(bytes).map_err(|error| format!("file is not UTF-8: {error}"))?;
-    CsvParser::new(bytes).parse()
-}
-
-struct CsvParser<'a> {
-    bytes: &'a [u8],
-    state: FieldState,
-    index: usize,
-    record: usize,
-    fields: usize,
-    expected_fields: Option<usize>,
-    completed_records: usize,
-    record_started: bool,
-}
-
-impl<'a> CsvParser<'a> {
-    const fn new(bytes: &'a [u8]) -> Self {
-        Self {
-            bytes,
-            state: FieldState::Start,
-            index: 0,
-            record: 1,
-            fields: 1,
-            expected_fields: None,
-            completed_records: 0,
-            record_started: false,
-        }
-    }
-
-    fn parse(mut self) -> Result<CsvSummary, String> {
-        while self.index < self.bytes.len() {
-            let byte = self.bytes[self.index];
-            match self.state {
-                FieldState::Start => self.consume_start(byte)?,
-                FieldState::Unquoted => self.consume_unquoted(byte)?,
-                FieldState::Quoted => self.consume_quoted(byte),
-                FieldState::AfterQuote => self.consume_after_quote(byte)?,
-            }
-        }
-
-        if self.state == FieldState::Quoted {
-            return Err(format!("record {} has an unterminated quoted field", self.record));
-        }
-        if self.record_started {
-            self.finish_record()?;
-        }
-        let fields = self.expected_fields.ok_or_else(|| "file has no records".to_owned())?;
-        Ok(CsvSummary { records: self.completed_records, fields })
-    }
-
-    fn consume_start(&mut self, byte: u8) -> Result<(), String> {
-        match byte {
-            b',' => {
-                self.fields += 1;
-                self.record_started = true;
-                self.index += 1;
-            }
-            b'"' => {
-                self.state = FieldState::Quoted;
-                self.record_started = true;
-                self.index += 1;
-            }
-            b'\r' | b'\n' => self.finish_line(self.record_started)?,
-            _ => {
-                self.state = FieldState::Unquoted;
-                self.record_started = true;
-                self.index += 1;
-            }
-        }
-        Ok(())
-    }
-
-    fn consume_unquoted(&mut self, byte: u8) -> Result<(), String> {
-        match byte {
-            b',' => {
-                self.fields += 1;
-                self.state = FieldState::Start;
-                self.index += 1;
-            }
-            b'\r' | b'\n' => self.finish_line(true)?,
-            b'"' => {
-                return Err(format!(
-                    "record {} contains a quote inside an unquoted field",
-                    self.record
-                ));
-            }
-            _ => self.index += 1,
-        }
-        Ok(())
-    }
-
-    fn consume_quoted(&mut self, byte: u8) {
-        if byte == b'"' {
-            if self.bytes.get(self.index + 1) == Some(&b'"') {
-                self.index += 2;
+fn parse_delimiter(value: &str) -> Result<char, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "comma" | "," => Ok(','),
+        "semicolon" | ";" => Ok(';'),
+        "tab" | "\\t" => Ok('\t'),
+        "pipe" | "|" => Ok('|'),
+        _ => {
+            let mut chars = value.chars();
+            let delimiter = chars.next().ok_or_else(|| "delimiter is empty".to_owned())?;
+            if chars.next().is_some() || matches!(delimiter, '\r' | '\n' | '"') {
+                Err("delimiter must be one non-quote character".to_owned())
             } else {
-                self.state = FieldState::AfterQuote;
-                self.index += 1;
-            }
-        } else {
-            self.index += 1;
-        }
-    }
-
-    fn consume_after_quote(&mut self, byte: u8) -> Result<(), String> {
-        match byte {
-            b',' => {
-                self.fields += 1;
-                self.state = FieldState::Start;
-                self.index += 1;
-            }
-            b'\r' | b'\n' => self.finish_line(true)?,
-            _ => {
-                return Err(format!("record {} contains data after a closing quote", self.record));
+                Ok(delimiter)
             }
         }
-        Ok(())
-    }
-
-    fn finish_line(&mut self, has_record: bool) -> Result<(), String> {
-        if has_record {
-            self.finish_record()?;
-        }
-        self.index = skip_record_end(self.bytes, self.index);
-        self.record += 1;
-        self.fields = 1;
-        self.state = FieldState::Start;
-        self.record_started = false;
-        Ok(())
-    }
-
-    fn finish_record(&mut self) -> Result<(), String> {
-        if let Some(expected) = self.expected_fields {
-            if self.fields != expected {
-                return Err(format!(
-                    "record {} has {} fields; header has {expected}",
-                    self.record, self.fields
-                ));
-            }
-        } else {
-            self.expected_fields = Some(self.fields);
-        }
-        self.completed_records += 1;
-        Ok(())
     }
 }
 
-fn skip_record_end(bytes: &[u8], index: usize) -> usize {
-    if bytes[index] == b'\r' && bytes.get(index + 1) == Some(&b'\n') {
-        index + 2
-    } else {
-        index + 1
+fn parse_encoding(value: &str) -> Result<Encoding, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "utf-8" | "utf8" => Ok(Encoding::Utf8),
+        "latin-1" | "latin1" | "iso-8859-1" => Ok(Encoding::Latin1),
+        "utf-16le" => Ok(Encoding::Utf16Le),
+        "utf-16be" => Ok(Encoding::Utf16Be),
+        other => Err(format!("unsupported declared encoding {other:?}")),
     }
+}
+
+fn parse_row_shape(value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "rectangular" | "equal-width" | "same-width" => Ok(true),
+        "ragged" | "unrestricted" | "any" => Ok(false),
+        other => Err(format!("unsupported declared row shape {other:?}")),
+    }
+}
+
+fn validate_file(
+    path: &Path,
+    contract: CsvContract,
+    cancellation: &GateCancellation,
+) -> Result<CsvSummary, String> {
+    let file = fs::File::open(path).map_err(|error| format!("read file: {error}"))?;
+    CsvParser::new(file, contract, cancellation)?.parse()
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::PathBuf};
+    use std::io::Cursor;
 
     use super::*;
 
-    #[test]
-    fn accepts_quoted_commas_quotes_and_newlines() {
-        let csv = b"\r\nname,details\r\nalpha,plain\r\n\r\nbeta,\"comma, doubled \"\"quote\"\" and\nnewline\"\r\n";
-
-        assert_eq!(validate(csv), Ok(CsvSummary { records: 3, fields: 2 }));
+    fn parse(bytes: &[u8], delimiter: char, rectangular: bool) -> Result<CsvSummary, String> {
+        let cancellation = GateCancellation::default();
+        CsvParser::new(
+            Cursor::new(bytes.to_vec()),
+            CsvContract { delimiter, encoding: Encoding::Utf8, rectangular },
+            &cancellation,
+        )?
+        .parse()
     }
 
     #[test]
-    fn rejects_backslash_escaped_quotes_from_the_benchmark_regression() {
-        let csv = br#"error_type,citation_key,details,expected_fix,evidence_span
-doi_title_mismatch,Chen2024Duplicate,wrong DOI,replace it,"Bibliography: \"title\": \"Edge Operations Retrospective\", \"doi\": \"10.1000/wrong-doi\""
-"#;
-
-        let error = validate(csv).expect_err("backslash quote escaping must be rejected");
-
-        assert!(error.contains("data after a closing quote"));
+    fn parses_quoted_delimiters_and_multiline_fields_incrementally() {
+        let csv = b"\r\nname;details\r\nalpha;plain\r\n\r\nbeta;\"semi; doubled \"\"quote\"\" and\nnewline\"\r\n";
+        assert_eq!(parse(csv, ';', true), Ok(CsvSummary { records: 3, fields: 2 }));
     }
 
     #[test]
-    fn rejects_ragged_rows() {
-        let error = validate(b"first,second\nvalue,extra,field\n").expect_err("ragged row");
-
-        assert_eq!(error, "record 2 has 3 fields; header has 2");
+    fn row_shape_is_checked_only_when_selected_by_the_contract() {
+        assert!(parse(b"a,b\n1,2,3\n", ',', true).is_err());
+        assert_eq!(parse(b"a,b\n1,2,3\n", ',', false), Ok(CsvSummary { records: 2, fields: 2 }));
     }
 
     #[test]
-    fn gate_checks_only_changed_csv_artifacts() {
+    fn a_missing_file_contract_is_not_treated_as_pass_evidence() {
         let root = tempfile::tempdir().expect("workspace");
-        fs::create_dir(root.path().join("out")).expect("output directory");
-        fs::write(root.path().join("out/result.csv"), "a,b\n1,2,3\n").expect("CSV");
-        fs::write(root.path().join("out/readme.md"), "artifact\n").expect("Markdown");
-
-        let failed = run(
+        fs::write(root.path().join("result.csv"), "a;b\n1;2\n").expect("CSV");
+        let record = run(
             root.path(),
             Path::new(""),
-            &[PathBuf::from("out/result.csv"), PathBuf::from("out/readme.md")],
-            "peritus-internal artifact-csv-structure".to_owned(),
+            &[PathBuf::from("result.csv")],
+            "artifact-csv-structure".to_owned(),
+            "",
+            &GateCancellation::default(),
         );
-        let ignored = run(
-            root.path(),
-            Path::new(""),
-            &[PathBuf::from("out/readme.md")],
-            "peritus-internal artifact-csv-structure".to_owned(),
-        );
-
-        assert_eq!(failed.exit_code, Some(1));
-        assert!(failed.output.contains("out/result.csv: FAIL"));
-        assert_eq!(ignored.exit_code, Some(0));
-        assert!(ignored.output.contains("No changed CSV artifacts"));
+        let GateOutcome::Optional(observation) = record else {
+            panic!("missing CSV contract must be optional");
+        };
+        assert!(observation.output.contains("NOT EVALUATED"));
     }
 }

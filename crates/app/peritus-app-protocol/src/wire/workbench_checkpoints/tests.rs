@@ -4,8 +4,8 @@ use crate::{
     CorrelationId, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
     WorkbenchCheckpointVersion, WorkbenchQuery, decode_app_message, encode_app_message,
 };
-use peritus_codec::{CanonicalEncode, CodecLimits};
-use peritus_types::SessionId;
+use peritus_codec::{CanonicalEncode, CodecLimit, CodecLimits};
+use peritus_types::{SessionId, Sha256Digest};
 
 fn preview() -> WorkbenchRewindPreview {
     let query = WorkbenchQuery::new(
@@ -64,6 +64,19 @@ fn preview_round_trips_and_rejects_a_tampered_fingerprint() {
         read_preview(&mut reader).expect_err("tampered digest").kind(),
         CodecErrorKind::InvalidDomainValue
     );
+}
+
+#[test]
+fn small_preview_fingerprint_keeps_the_legacy_canonical_bytes() {
+    let expected = preview();
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    writer.write_fixed(b"peritus-workbench-rewind-preview-v1").expect("domain tag");
+    write_request(&mut writer, expected.request()).expect("request");
+    write_rewind_paths(&mut writer, expected.paths()).expect("paths");
+    write_strings(&mut writer, expected.exclusions()).expect("exclusions");
+    write_strings(&mut writer, expected.external_effects()).expect("external effects");
+
+    assert_eq!(expected.preview_digest(), peritus_codec::sha256(writer.as_slice()));
 }
 
 #[test]
@@ -128,4 +141,31 @@ fn rewind_modes_and_child_are_in_the_exact_preview_fingerprint() {
         WorkbenchRewindPreview::new(request, baseline.paths().to_vec(), Vec::new(), Vec::new())
             .is_err()
     );
+}
+
+#[test]
+fn preview_fingerprint_streams_aggregate_payloads_beyond_legacy_limit() {
+    let request = preview().request();
+    let exclusions = vec!["x".repeat(4_610); 4_000];
+    assert!(exclusions.len() < usize::from(u16::MAX));
+    assert!(
+        exclusions.len() * (4_610 + 4) > CodecLimits::PRODUCTION.max_payload_bytes,
+        "the legacy combined encoding exceeds its aggregate payload limit"
+    );
+
+    let oversized = WorkbenchRewindPreview::new(request, Vec::new(), exclusions, Vec::new())
+        .expect("valid facts remain fingerprintable beyond the legacy aggregate payload cap");
+
+    assert_ne!(oversized.preview_digest(), Sha256Digest::new([0; 32]),);
+}
+
+#[test]
+fn streaming_preview_fingerprint_preserves_individual_string_limits() {
+    let request = preview().request();
+    let exclusions = vec!["x".repeat(CodecLimits::PRODUCTION.max_string_bytes + 1)];
+
+    let error = preview_fingerprint(request, &[], &exclusions, &[])
+        .expect_err("an individually oversized fact remains invalid");
+
+    assert_eq!(error.limit(), Some(CodecLimit::StringBytes));
 }

@@ -79,6 +79,22 @@ impl ProductRunService {
             let trace_path = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
             let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
             let service = self.clone();
+            let mut tasks = loop {
+                let tasks = self.inner.tasks.lock().await;
+                let recovery_active = self
+                    .inner
+                    .command_recoveries
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .contains(&run_id);
+                if recovery_active {
+                    drop(tasks);
+                    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                    continue;
+                }
+                break tasks;
+            };
+            tasks.retain(|(_, existing)| !existing.is_finished());
             let task = tokio::spawn(async move {
                 let folder = service.inner.folders.get(&request.workspace_id());
                 let command_runtime = match runtime::open(&service, &request, &workspace_root) {
@@ -153,9 +169,7 @@ impl ProductRunService {
                     let _ = service.retry(run_id).await;
                 }
             });
-            let mut tasks = self.inner.tasks.lock().await;
-            tasks.retain(|existing| !existing.is_finished());
-            tasks.push(task);
+            tasks.push((run_id, task));
         })
     }
 }

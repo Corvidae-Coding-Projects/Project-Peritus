@@ -55,6 +55,14 @@ impl OwnedProcess {
         self.control.clone()
     }
 
+    /// Detaches this observer while retaining the process owner in its shared process store.
+    ///
+    /// Dropping an ordinary [`OwnedProcess`] requests bounded shutdown. Detach is for a C4
+    /// projection that is being replaced while the exact C2 owner remains active and recoverable.
+    pub fn detach(mut self) {
+        self.join.take();
+    }
+
     /// Waits for the unique terminal result and joins the owning supervisor.
     ///
     /// # Errors
@@ -147,6 +155,7 @@ fn start_with_native(
         Arc::clone(&shared),
         plan.stdin_policy(),
         plan.terminal_capabilities(),
+        spool_directory.clone(),
     );
     let pending_session = Arc::new(std::sync::Mutex::new(session));
     let thread_session = Arc::clone(&pending_session);
@@ -178,6 +187,7 @@ fn start_with_native(
             publish_spawn_failure(store, &plan, &shared, Instant::now(), cleanup_complete, error);
         return Err(supervisor_error("process owner thread cannot be created"));
     };
+    store.retain_control(process_id, control.clone());
     Ok(OwnedProcess { store: store.clone(), control, join: Some(join), spool_directory })
 }
 

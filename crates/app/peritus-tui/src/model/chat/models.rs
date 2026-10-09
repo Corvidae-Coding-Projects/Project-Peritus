@@ -9,7 +9,7 @@ use peritus_app_protocol::{
 
 mod effort;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModelRole {
     Writer,
     Reviewer,
@@ -256,6 +256,8 @@ impl AppModel {
                 "model-specific effort support unverified"
             },
         );
+        let writer_binding_changed =
+            self.chat.model_role == ModelRole::Writer && self.chat.models.writer() != &choice;
         let models = &self.chat.models;
         let models = match self.chat.model_role {
             ModelRole::Writer => {
@@ -293,6 +295,10 @@ impl AppModel {
             return effect.into_iter().collect();
         }
         self.chat.models = models;
+        if writer_binding_changed {
+            self.chat.workbench.files.discard_preview();
+            self.chat.workbench.images.discard_preview();
+        }
         self.notice(
             NoticeLevel::Info,
             format!(

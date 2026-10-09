@@ -7,6 +7,8 @@ mod access_policy;
 #[cfg(not(verus_only))]
 mod arguments;
 #[cfg(not(verus_only))]
+mod attachment_read;
+#[cfg(not(verus_only))]
 mod catalog;
 #[cfg(not(verus_only))]
 mod command_budget;
@@ -24,6 +26,16 @@ mod grounding;
 #[cfg(not(verus_only))]
 mod inspection;
 #[cfg(not(verus_only))]
+mod inspection_cancellation;
+#[cfg(not(verus_only))]
+pub mod inspection_cursor;
+#[cfg(not(verus_only))]
+mod inspection_list;
+#[cfg(not(verus_only))]
+mod inspection_read;
+#[cfg(not(verus_only))]
+mod inspection_search;
+#[cfg(not(verus_only))]
 mod ownership;
 #[cfg(not(verus_only))]
 mod path;
@@ -33,18 +45,28 @@ mod receipt;
 #[cfg(not(verus_only))]
 mod reference;
 #[cfg(not(verus_only))]
+mod reference_list;
+#[cfg(not(verus_only))]
+mod reference_path;
+#[cfg(not(verus_only))]
 mod removal;
 #[cfg(not(verus_only))]
 mod resources;
 #[cfg(not(verus_only))]
 mod wire;
 
+#[cfg(all(not(verus_only), test))]
+pub use catalog::definitions;
 #[cfg(not(verus_only))]
-pub use catalog::{definitions, in_place_definition, read_only_definitions};
+pub use catalog::{
+    definitions_for_attachments, in_place_definition, read_only_definitions, reviewer_definitions,
+};
 #[cfg(not(verus_only))]
 pub use command_runtime::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
 };
+#[cfg(not(verus_only))]
+pub use evidence::ReviewerEvidenceSources;
 #[cfg(not(verus_only))]
 pub use evidence::{CommandPurpose, SuccessfulCommand, merge_successful};
 #[cfg(not(verus_only))]
@@ -53,8 +75,13 @@ pub use executor::ToolCheckpointBoundary;
 pub use executor::WorkspaceDeveloperTools;
 pub use folder_patch_request::FolderPatchAuthorityPlanRequest;
 #[cfg(not(verus_only))]
+pub const DEFAULT_INSPECTION_PAGE_BYTES: usize = 16 * 1024;
+#[cfg(not(verus_only))]
 pub use ownership::WorkspaceOwnership;
-pub use preview::{PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState};
+pub use preview::{
+    PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputMatch,
+    PreviewOutputMatchSource, PreviewOutputRange, PreviewOutputStream, PreviewProcessState,
+};
 #[cfg(not(verus_only))]
 pub use receipt::{
     UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,

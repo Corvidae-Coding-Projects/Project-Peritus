@@ -6,6 +6,15 @@ use peritus_types::Sha256Digest;
 use serde::Deserialize;
 use serde::Serialize;
 
+mod exclusion;
+pub use exclusion::CheckpointExclusion;
+
+/// Concrete iterator over the visible exclusion text retained by a checkpoint.
+pub type CheckpointExclusionIter<'a> = std::iter::Map<
+    std::slice::Iter<'a, CheckpointExclusion>,
+    fn(&'a CheckpointExclusion) -> String,
+>;
+
 /// Portable file mode bound into checkpoint preconditions.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -115,6 +124,7 @@ pub struct CheckpointPath {
     checkpoint: CheckpointFileVersion,
     owned_postchange: Option<CheckpointFileVersion>,
 }
+
 impl CheckpointPath {
     /// Constructs one captured path. A later owned mutation seals its expected current version.
     ///
@@ -156,7 +166,7 @@ pub struct UserCheckpoint {
     name: ControlText<256>,
     references: CheckpointReferences,
     paths: Vec<CheckpointPath>,
-    exclusions: Vec<ControlText<512>>,
+    exclusions: Vec<CheckpointExclusion>,
     external_effects: Vec<ControlText<512>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     automatic_run: Option<[u8; 16]>,
@@ -166,21 +176,34 @@ impl UserCheckpoint {
     /// Constructs bounded visible coverage without credentials, authority, or process handles.
     ///
     /// # Errors
-    /// Rejects empty names, invalid/duplicate paths, or manifest count bounds.
+    /// Rejects empty names, invalid/duplicate paths, or invalid text.
     pub fn new(
         id: CheckpointId,
         name: String,
         references: CheckpointReferences,
-        mut paths: Vec<CheckpointPath>,
+        paths: Vec<CheckpointPath>,
         exclusions: Vec<String>,
         external_effects: Vec<String>,
     ) -> Result<Self, ControlError> {
-        if u16::try_from(paths.len()).is_err()
-            || u16::try_from(exclusions.len()).is_err()
-            || u16::try_from(external_effects.len()).is_err()
-        {
-            return Err(ControlError::Capacity);
-        }
+        let exclusions = exclusions
+            .into_iter()
+            .map(|text| ControlText::<512>::new(text).map(CheckpointExclusion::Legacy))
+            .collect::<Result<_, _>>()?;
+        Self::new_with_exclusions(id, name, references, paths, exclusions, external_effects)
+    }
+
+    /// Constructs a checkpoint with legacy or path-bearing exclusions.
+    ///
+    /// # Errors
+    /// Rejects empty names, invalid/duplicate paths, or invalid text.
+    pub fn new_with_exclusions(
+        id: CheckpointId,
+        name: String,
+        references: CheckpointReferences,
+        mut paths: Vec<CheckpointPath>,
+        exclusions: Vec<CheckpointExclusion>,
+        external_effects: Vec<String>,
+    ) -> Result<Self, ControlError> {
         paths.sort_by(|left, right| left.path().cmp(right.path()));
         if paths.windows(2).any(|pair| pair[0].path() == pair[1].path()) {
             return Err(ControlError::InvalidInput);
@@ -190,7 +213,7 @@ impl UserCheckpoint {
             name: ControlText::new(name)?,
             references,
             paths,
-            exclusions: exclusions.into_iter().map(ControlText::new).collect::<Result<_, _>>()?,
+            exclusions,
             external_effects: external_effects
                 .into_iter()
                 .map(ControlText::new)
@@ -221,6 +244,27 @@ impl UserCheckpoint {
         value.automatic_run = Some(run);
         Ok(value)
     }
+    /// Constructs an automatic checkpoint with a path-bearing exclusion when required.
+    ///
+    /// # Errors
+    /// Rejects the reserved zero run identity or invalid checkpoint fields.
+    pub fn automatic_with_exclusions(
+        id: CheckpointId,
+        name: String,
+        references: CheckpointReferences,
+        paths: Vec<CheckpointPath>,
+        exclusions: Vec<CheckpointExclusion>,
+        external_effects: Vec<String>,
+        run: [u8; 16],
+    ) -> Result<Self, ControlError> {
+        if run == [0; 16] {
+            return Err(ControlError::InvalidInput);
+        }
+        let mut value =
+            Self::new_with_exclusions(id, name, references, paths, exclusions, external_effects)?;
+        value.automatic_run = Some(run);
+        Ok(value)
+    }
     /// Returns checkpoint identity.
     #[must_use]
     pub const fn id(&self) -> CheckpointId {
@@ -242,8 +286,8 @@ impl UserCheckpoint {
         &self.paths
     }
     /// Borrows visible exclusions.
-    pub fn exclusions(&self) -> super::ControlTextIter<'_, 512> {
-        self.exclusions.iter().map(ControlText::as_str)
+    pub fn exclusions(&self) -> CheckpointExclusionIter<'_> {
+        self.exclusions.iter().map(CheckpointExclusion::rendered)
     }
     /// Borrows external effects that rewind cannot undo.
     pub fn external_effects(&self) -> super::ControlTextIter<'_, 512> {
@@ -311,15 +355,16 @@ impl UserCheckpoint {
         Ok(())
     }
     fn validate(&self) -> Result<(), ControlError> {
-        if u16::try_from(self.paths.len()).is_err()
-            || u16::try_from(self.exclusions.len()).is_err()
-            || u16::try_from(self.external_effects.len()).is_err()
-            || self.paths.windows(2).any(|pair| pair[0].path() >= pair[1].path())
-        {
+        if self.paths.windows(2).any(|pair| pair[0].path() >= pair[1].path()) {
             return Err(ControlError::Capacity);
         }
         if self.automatic_run == Some([0; 16]) {
             return Err(ControlError::InvalidInput);
+        }
+        for exclusion in &self.exclusions {
+            if let CheckpointExclusion::PathReason { path, .. } = exclusion {
+                WorkspacePath::new(path.as_str()).map_err(|_| ControlError::InvalidInput)?;
+            }
         }
         for path in &self.paths {
             path.validate()?;
@@ -332,41 +377,5 @@ mod restore;
 pub use restore::{RestoreOperation, RestoreStatus};
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn same_run_can_advance_the_exact_owned_postimage_but_another_run_cannot() {
-        let mut checkpoint = UserCheckpoint::new(
-            CheckpointId::new([1; 16]).expect("checkpoint ID"),
-            "before mutation".to_owned(),
-            CheckpointReferences::new(1, 1, 1, None),
-            vec![
-                CheckpointPath::new("artifact.txt".to_owned(), CheckpointFileVersion::Absent)
-                    .expect("path"),
-            ],
-            Vec::new(),
-            Vec::new(),
-        )
-        .expect("checkpoint");
-        let first = CheckpointFileVersion::present(
-            Sha256Digest::new([2; 32]),
-            5,
-            CheckpointFileMode::Regular,
-        );
-        let second = CheckpointFileVersion::present(
-            Sha256Digest::new([3; 32]),
-            6,
-            CheckpointFileMode::Regular,
-        );
-
-        checkpoint.seal([4; 16], &[("artifact.txt".to_owned(), first)]).expect("first seal");
-        checkpoint.seal([4; 16], &[("artifact.txt".to_owned(), second)]).expect("same run");
-
-        assert_eq!(checkpoint.paths()[0].owned_postchange(), Some(second));
-        assert_eq!(
-            checkpoint.seal([5; 16], &[("artifact.txt".to_owned(), first)]),
-            Err(ControlError::IdempotencyConflict)
-        );
-    }
-}
+#[path = "checkpoint/tests.rs"]
+mod tests;

@@ -13,6 +13,7 @@ pub struct UncertainEffect {
     tool: String,
     state: UncertainEffectState,
     requirements_revision: Option<u64>,
+    owner_inactive: bool,
 }
 
 /// Verification-only shape of the durable uncertain-effect states.
@@ -45,6 +46,11 @@ impl UncertainEffect {
     /// Requirements revision that admitted the effect, when present.
     pub const fn requirements_revision(&self) -> Option<u64> {
         self.requirements_revision
+    }
+
+    /// Verification-only builds cannot confirm that the native owner is inactive.
+    pub const fn owner_inactive(&self) -> bool {
+        self.owner_inactive
     }
 }
 

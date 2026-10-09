@@ -31,8 +31,8 @@ pub(in crate::wire) fn write_profile(
         writer.write_str(build.path().as_str())?;
         write_digest(writer, build.digest())?;
     }
-    writer.write_u64(value.readiness_millis())?;
-    writer.write_u64(value.wall_millis())?;
+    writer.write_u64(value.readiness_millis().unwrap_or(0))?;
+    writer.write_u64(value.wall_millis().unwrap_or(0))?;
     writer.write_bool(value.interactive())?;
     writer.write_u16(1)?; // inherited-host network posture
     writer.write_u16(1) // terminate-owned-tree stop policy
@@ -61,8 +61,8 @@ pub(in crate::wire) fn read_profile(
     } else {
         None
     };
-    let readiness = reader.read_u64()?;
-    let wall = reader.read_u64()?;
+    let readiness = optional_millis(reader.read_u64()?);
+    let wall = optional_millis(reader.read_u64()?);
     let interactive = reader.read_bool()?;
     let network_offset = reader.offset();
     if reader.read_u16()? != 1 {
@@ -87,6 +87,10 @@ pub(in crate::wire) fn read_profile(
             interactive,
         ),
     )
+}
+
+fn optional_millis(value: u64) -> Option<u64> {
+    (value != 0).then_some(value)
 }
 
 fn write_source(

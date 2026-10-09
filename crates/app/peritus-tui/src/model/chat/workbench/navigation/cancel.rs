@@ -64,12 +64,17 @@ const fn is_inspection(pending: &PendingRequest) -> bool {
             | PendingRequest::WorkbenchImageUpload { .. }
             | PendingRequest::WorkbenchFiles(_)
             | PendingRequest::WorkbenchReview(_)
+            | PendingRequest::WorkbenchReviewSummary(_)
+            | PendingRequest::WorkbenchReviewDiff(_)
+            | PendingRequest::WorkbenchReviewDiffBytes(_)
             | PendingRequest::WorkbenchContext(_)
             | PendingRequest::WorkbenchQueue(_)
             | PendingRequest::WorkbenchQueueCommand { .. }
             | PendingRequest::WorkbenchCompaction(_)
             | PendingRequest::WorkbenchCheckpointInspect(_)
             | PendingRequest::WorkbenchRewind(_)
+            | PendingRequest::WorkbenchCheckpointPage(_)
+            | PendingRequest::WorkbenchRewindPage(_)
             | PendingRequest::WorkbenchBrief(_)
             | PendingRequest::WorkbenchGoal(_)
             | PendingRequest::WorkbenchResult(_)

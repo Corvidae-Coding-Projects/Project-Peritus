@@ -29,6 +29,7 @@ fn capture_requires_delivered_input_before_pixels_and_a_later_check() {
                     accepted_revision: 7,
                     result_sequence,
                     completed_sequence,
+                    behavior_evidence: None,
                 },
             );
         }

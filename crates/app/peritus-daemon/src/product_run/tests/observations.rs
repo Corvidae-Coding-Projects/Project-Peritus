@@ -161,23 +161,97 @@ fn uncertain_command_requires_explicit_review_and_never_admits_blind_retry() {
             "peritus-{:032x}-writer-1-revision-1-invocation-1-test",
             u128::from_be_bytes(run.into_bytes())
         );
-        let receipt = serde_json::json!({
-            "version": 1,
-            "scope": scope,
-            "ordinal": 1,
-            "call_id": "call-1",
-            "tool": "run_command",
-            "request_sha256": "00",
-            "state": "started",
-        });
-        let payload = serde_json::to_vec(&receipt).expect("receipt");
-        let mut bytes =
-            u64::try_from(payload.len()).expect("receipt length").to_le_bytes().to_vec();
-        bytes.extend(payload);
-        fs::write(&effects, bytes).expect("write interrupted receipt");
+        let native_owner = support::exact_command_owner_fixture(run);
+        support::write_command_receipt(&effects, &scope, 1, None, false);
+        let legacy = service
+            .query_observations(ProductRunQuery::exact(run))
+            .expect("query legacy unknown command");
+        let operation = legacy[0].snapshot().operation();
+        assert_eq!(operation.kind(), ProductRunOperationKind::Command);
+        assert_eq!(operation.state(), ProductRunOperationState::OutcomeUnknown);
+        assert!(!operation.legal_controls().acknowledge());
+        assert!(!operation.legal_controls().retry());
+        let before = fs::read(&effects).expect("legacy receipt before rejected acknowledgement");
+        assert!(
+            service
+                .control(ProductRunControl::new(run, ProductRunControlAction::Acknowledge))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            fs::read(&effects).expect("legacy receipt after rejected acknowledgement"),
+            before
+        );
 
-        let observed =
-            service.query_observations(ProductRunQuery::exact(run)).expect("query unknown command");
+        support::write_command_receipt(&effects, &scope, 2, None, false);
+        let unowned = service
+            .query_observations(ProductRunQuery::exact(run))
+            .expect("query unowned unknown command");
+        assert_eq!(
+            unowned[0].snapshot().operation().state(),
+            ProductRunOperationState::OutcomeUnknown
+        );
+        assert!(!unowned[0].snapshot().operation().legal_controls().acknowledge());
+        let before = fs::read(&effects).expect("unowned receipt before rejected acknowledgement");
+        assert!(
+            service
+                .control(ProductRunControl::new(run, ProductRunControlAction::Acknowledge))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            fs::read(&effects).expect("unowned receipt after rejected acknowledgement"),
+            before
+        );
+
+        {
+            let mut records = service.inner.records.write().expect("records");
+            let record = records.get_mut(&run).expect("record");
+            record.snapshot = crate::product_run::snapshot::replace_snapshot(
+                &terminal,
+                ProductRunPhase::Writing,
+                "A command owner is still live",
+                terminal.summary(),
+            )
+            .expect("live command snapshot");
+            crate::product_run::persistence::persist_record(&service.inner.directory, record)
+                .expect("persist live command state");
+        }
+        support::write_command_receipt(&effects, &scope, 2, Some(native_owner.clone()), false);
+        let live = service
+            .query_observations(ProductRunQuery::exact(run))
+            .expect("query live command owner");
+        assert_eq!(live[0].snapshot().operation().state(), ProductRunOperationState::Running);
+        assert!(!live[0].snapshot().operation().legal_controls().acknowledge());
+        let before = fs::read(&effects).expect("live receipt before rejected acknowledgement");
+        assert!(
+            service
+                .control(ProductRunControl::new(run, ProductRunControlAction::Acknowledge))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            fs::read(&effects).expect("live receipt after rejected acknowledgement"),
+            before
+        );
+
+        {
+            let mut records = service.inner.records.write().expect("records");
+            let record = records.get_mut(&run).expect("record");
+            record.snapshot = crate::product_run::snapshot::replace_snapshot(
+                &terminal,
+                ProductRunPhase::RecoveryRequired,
+                "Interrupted after command admission",
+                terminal.summary(),
+            )
+            .expect("recovery snapshot");
+            crate::product_run::persistence::persist_record(&service.inner.directory, record)
+                .expect("persist recovery state");
+        }
+        support::write_command_receipt(&effects, &scope, 2, Some(native_owner), true);
+        let observed = service
+            .query_observations(ProductRunQuery::exact(run))
+            .expect("query exact inactive command owner");
         let operation = observed[0].snapshot().operation();
         assert_eq!(operation.kind(), ProductRunOperationKind::Command);
         assert_eq!(operation.state(), ProductRunOperationState::OutcomeUnknown);
@@ -198,10 +272,19 @@ fn uncertain_command_requires_explicit_review_and_never_admits_blind_retry() {
             .expect("review unknown command outcome");
         assert_eq!(acknowledged.operation().kind(), ProductRunOperationKind::Execution);
         assert_eq!(acknowledged.operation().state(), ProductRunOperationState::RecoveryRequired);
-        assert!(acknowledged.operation().legal_controls().retry());
+        assert!(!acknowledged.operation().legal_controls().retry());
         assert!(!acknowledged.operation().legal_controls().acknowledge());
         assert!(acknowledged.status().contains("remains unknown"));
         assert!(acknowledged.operation().uncertainty().contains("mutations"));
+        let reviewed_bytes = fs::read(&effects).expect("reviewed receipt bytes");
+        assert!(
+            service
+                .control(ProductRunControl::new(run, ProductRunControlAction::Retry))
+                .await
+                .is_err(),
+            "reviewed same-revision uncertainty must continue fencing mutations",
+        );
+        assert_eq!(fs::read(&effects).expect("receipt after rejected retry"), reviewed_bytes);
         let reviewed_effects =
             peritus_product_runner::uncertain_effects(&effects).expect("inspect reviewed");
         assert_eq!(reviewed_effects.len(), 1);

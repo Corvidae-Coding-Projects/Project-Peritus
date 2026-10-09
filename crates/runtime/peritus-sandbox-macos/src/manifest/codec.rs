@@ -1,6 +1,6 @@
 //! Checksummed manifest decoding and protected frame reading.
 
-use std::{io::Read, path::PathBuf};
+use std::io::Read;
 
 use peritus_process::CommandSpec;
 use peritus_types::{ProcessId, Sha256Digest};
@@ -8,7 +8,7 @@ use peritus_types::{ProcessId, Sha256Digest};
 use crate::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction, canonical::Reader, error};
 
 use super::{
-    CHECKSUM_BYTES, HelperManifest, MAGIC, MAX_FRAME_BYTES, VERSION,
+    CHECKSUM_BYTES, HelperManifest, MAGIC, VERSION,
     fields::{
         decode_containment, decode_environment, decode_proxy, decode_resources, decode_secrets,
         decode_strings, decode_terminal, expected_preparation, validate_control_environment,
@@ -24,7 +24,7 @@ impl HelperManifest {
     /// Returns a stable protocol error for malformed, noncanonical, or mismatched bytes.
     #[allow(clippy::too_many_lines, reason = "closed schema decode keeps field order auditable")]
     pub fn decode(input: &[u8]) -> Result<Self, MacosError> {
-        if input.len() > MAX_FRAME_BYTES || input.len() < MAGIC.len() + 2 + 4 + CHECKSUM_BYTES {
+        if input.len() < MAGIC.len() + 2 + 4 + CHECKSUM_BYTES {
             return Err(error::invalid(MacosOperation::Manifest, "invalid manifest frame size"));
         }
         let checksum_offset = input.len() - CHECKSUM_BYTES;
@@ -40,7 +40,7 @@ impl HelperManifest {
                 "helper manifest checksum does not match",
             ));
         }
-        let mut envelope = Reader::new(&input[..checksum_offset])?;
+        let mut envelope = Reader::new(&input[..checksum_offset]);
         if envelope.fixed::<8>()? != MAGIC || envelope.u16()? != VERSION {
             return Err(error::invalid(
                 MacosOperation::Manifest,
@@ -55,7 +55,7 @@ impl HelperManifest {
             return Err(error::invalid(MacosOperation::Manifest, "manifest length disagrees"));
         }
         envelope.finish()?;
-        let mut reader = Reader::new(body)?;
+        let mut reader = Reader::new(body);
         let process_id = ProcessId::new(reader.fixed()?)
             .map_err(|_| error::invalid(MacosOperation::Manifest, "process identity is zero"))?;
         let plan_digest = Sha256Digest::new(reader.fixed()?);
@@ -64,10 +64,10 @@ impl HelperManifest {
         let preparation_digest = Sha256Digest::new(reader.fixed()?);
         let profile_digest = Sha256Digest::new(reader.fixed()?);
         let profile = reader.string()?;
-        let seatbelt_executable = PathBuf::from(reader.string()?);
+        let seatbelt_executable = reader.path()?;
         let target_executable = reader.string()?;
         let target_arguments = decode_strings(&mut reader)?;
-        let working_directory = PathBuf::from(reader.string()?);
+        let working_directory = reader.path()?;
         let environment = decode_environment(&mut reader)?;
         let exec_status_descriptor = reader.u32()?;
         let proxy = decode_proxy(&mut reader)?;
@@ -150,13 +150,14 @@ impl HelperManifest {
             .map_err(|source| error::io_error(MacosOperation::Manifest, &source))?;
         let length = usize::try_from(u32::from_le_bytes(length))
             .map_err(|_| error::limited(MacosOperation::Manifest, "manifest frame is too large"))?;
-        if length == 0 || length > MAX_FRAME_BYTES {
-            return Err(error::limited(
-                MacosOperation::Manifest,
-                "manifest frame is empty or exceeds its bound",
-            ));
+        if length == 0 {
+            return Err(error::limited(MacosOperation::Manifest, "manifest frame is empty"));
         }
-        let mut input = vec![0_u8; length];
+        let mut input = Vec::new();
+        input.try_reserve_exact(length).map_err(|_| {
+            error::limited(MacosOperation::Manifest, "manifest frame storage cannot be reserved")
+        })?;
+        input.resize(length, 0);
         reader
             .read_exact(&mut input)
             .map_err(|source| error::io_error(MacosOperation::Manifest, &source))?;

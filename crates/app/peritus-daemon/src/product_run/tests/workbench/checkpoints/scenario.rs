@@ -2,12 +2,18 @@
 
 use super::*;
 
+mod entrypoints;
+mod paged_confirmation;
+mod recovery;
 mod restart;
 
-pub(super) async fn checkpoint_scenario(
+pub(super) use entrypoints::{checkpoint_scenario, paged_confirmation_conflict_scenario};
+
+async fn checkpoint_scenario_with_paging(
     user_conflict: bool,
     crash: Option<crate::product_run::workbench::RewindFaultPoint>,
     mode: WorkbenchRewindMode,
+    paged_confirmation: bool,
 ) {
     let container = tempfile::tempdir().expect("container");
     let folder = container.path().join("folder");
@@ -196,6 +202,19 @@ pub(super) async fn checkpoint_scenario(
         );
     }
 
+    if paged_confirmation {
+        paged_confirmation::verify_paged_conflict_and_replay(
+            &service,
+            &folder,
+            workspace,
+            rewind_request,
+            revision,
+        )
+        .await;
+        service.shutdown(Duration::from_secs(5)).await;
+        return;
+    }
+
     let restore_seed = match (user_conflict, crash) {
         (true, _) => 11,
         (false, None) => 12,
@@ -348,29 +367,13 @@ pub(super) async fn checkpoint_scenario(
 
     if mode == WorkbenchRewindMode::FilesOnly && expected_status == WorkbenchRestoreStatus::Applied
     {
-        let current = service
-            .with_controls(false, |store| store.load(DomainConversationId::new([2; 16])?))
-            .unwrap()
-            .unwrap()
-            .revision();
-        let request =
-            WorkbenchRewindRequest::new(query(workspace), current, restore.recovery_checkpoint())
-                .unwrap();
-        let AppResponsePayload::WorkbenchRewindPreview(preview) =
-            service.preview_workbench_rewind(actor(), &request).await
-        else {
-            panic!("recovery checkpoint preview");
-        };
-        assert_eq!(preview.paths()[0].disposition(), WorkbenchRewindDisposition::Restore);
-        let undo = command(workspace, 0xe1, current, WorkbenchIntent::ApplyRewind(preview));
-        let AppResponsePayload::WorkbenchRestore(undone) = service
-            .workbench_folder_command(actor(), SessionId::new([0xd1; 16]).unwrap(), &undo)
-            .await
-        else {
-            panic!("undo rewind receipt");
-        };
-        assert_eq!(undone.status(), WorkbenchRestoreStatus::Applied);
-        assert_eq!(fs::read(folder.join("note.txt")).unwrap(), b"Peritus owned edit\n");
+        recovery::verify_files_only_undo(
+            &service,
+            workspace,
+            &folder,
+            restore.recovery_checkpoint(),
+        )
+        .await;
     }
 
     service.shutdown(Duration::from_secs(5)).await;

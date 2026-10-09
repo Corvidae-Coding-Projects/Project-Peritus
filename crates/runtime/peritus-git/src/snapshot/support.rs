@@ -13,8 +13,6 @@ use crate::{
 
 use super::{CandidateSnapshot, CandidateTree, SnapshotRef};
 
-const MAX_SCAN_ENTRIES: usize = 200_000;
-
 pub(super) fn validate_candidate_binding(
     repository: &GitRepository,
     worktree: &RegisteredWorktree,
@@ -77,6 +75,199 @@ pub(super) fn retain_ref(
             "snapshot reference raced with another value",
         ))
     }
+}
+
+/// Durably retains canonical snapshot evidence before the active snapshot reference is published.
+pub(super) fn retain_manifest(
+    repository: &GitRepository,
+    workspace_id: WorkspaceId,
+    snapshot_id: SnapshotId,
+    bytes: &[u8],
+) -> Result<(), GitError> {
+    let reference = snapshot_manifest_ref(workspace_id, snapshot_id);
+    if let Some(existing) = observe_blob_ref(repository, &reference, Operation::CreateSnapshot)? {
+        if existing == bytes {
+            return Ok(());
+        }
+        return Err(GitError::new(
+            ErrorKind::SnapshotConflict,
+            Operation::CreateSnapshot,
+            RecoveryClass::CorrectRequest,
+            "snapshot manifest reference already contains different bytes",
+        ));
+    }
+    let hash_arguments =
+        vec![OsString::from("hash-object"), OsString::from("-w"), OsString::from("--stdin")];
+    let output = repository.runner.checked(
+        repository.control_cwd(),
+        Some(repository.common_location()),
+        CommandAccess::Write,
+        Operation::CreateSnapshot,
+        &hash_arguments,
+        Some(bytes),
+    )?;
+    let object = ObjectId::parse(
+        repository.identity.object_format(),
+        one_line(&output.stdout, Operation::CreateSnapshot)?,
+        Operation::CreateSnapshot,
+    )?;
+    let arguments = vec![
+        OsString::from("update-ref"),
+        OsString::from("--create-reflog"),
+        OsString::from(reference.as_str()),
+        OsString::from(object.to_hex()),
+        OsString::from(ObjectId::zero_hex(repository.identity.object_format())),
+    ];
+    let output = repository.runner.observe(
+        repository.control_cwd(),
+        Some(repository.common_location()),
+        CommandAccess::Write,
+        Operation::CreateSnapshot,
+        &arguments,
+        None,
+    )?;
+    if output.status.success()
+        || observe_blob_ref(repository, &reference, Operation::CreateSnapshot)?.as_deref()
+            == Some(bytes)
+    {
+        Ok(())
+    } else {
+        Err(GitError::new(
+            ErrorKind::SnapshotConflict,
+            Operation::CreateSnapshot,
+            RecoveryClass::Reobserve,
+            "snapshot manifest reference raced with another value",
+        ))
+    }
+}
+
+pub(super) fn read_manifest(
+    repository: &GitRepository,
+    workspace_id: WorkspaceId,
+    snapshot_id: SnapshotId,
+    operation: Operation,
+) -> Result<Option<Vec<u8>>, GitError> {
+    observe_blob_ref(repository, &snapshot_manifest_ref(workspace_id, snapshot_id), operation)
+}
+
+pub(super) fn release_snapshot_refs(
+    repository: &GitRepository,
+    snapshot: &CandidateSnapshot,
+) -> Result<(), GitError> {
+    let active = snapshot.reference();
+    let manifest_ref = snapshot_manifest_ref(snapshot.workspace_id(), snapshot.snapshot_id());
+    let Some(bytes) = observe_blob_ref(repository, &manifest_ref, Operation::ReleaseSnapshot)?
+    else {
+        let args = vec![
+            OsString::from("update-ref"),
+            OsString::from("-d"),
+            OsString::from(active.as_str()),
+            OsString::from(snapshot.commit().to_string()),
+        ];
+        repository.checked_repo_command(
+            Operation::ReleaseSnapshot,
+            CommandAccess::Write,
+            &args,
+            None,
+        )?;
+        return Ok(());
+    };
+    if bytes != snapshot.manifest().bytes() {
+        return Err(GitError::new(
+            ErrorKind::SnapshotConflict,
+            Operation::ReleaseSnapshot,
+            RecoveryClass::Reconcile,
+            "snapshot manifest reference differs during atomic release",
+        ));
+    }
+    let hash_args = vec![OsString::from("hash-object"), OsString::from("--stdin")];
+    let hash = repository.runner.checked(
+        repository.control_cwd(),
+        Some(repository.common_location()),
+        CommandAccess::Read,
+        Operation::ReleaseSnapshot,
+        &hash_args,
+        Some(&bytes),
+    )?;
+    let object = one_line(&hash.stdout, Operation::ReleaseSnapshot)?;
+    let script = format!(
+        "delete {} {}\ndelete {} {}\n",
+        active.as_str(),
+        snapshot.commit(),
+        manifest_ref.as_str(),
+        object
+    );
+    repository.checked_repo_command(
+        Operation::ReleaseSnapshot,
+        CommandAccess::Write,
+        &[OsString::from("update-ref"), OsString::from("--stdin")],
+        Some(script.as_bytes()),
+    )?;
+    Ok(())
+}
+
+fn snapshot_manifest_ref(workspace_id: WorkspaceId, snapshot_id: SnapshotId) -> SnapshotRef {
+    SnapshotRef(format!(
+        "refs/peritus/workspaces/{}/snapshot-manifests/{}",
+        identifier_hex(workspace_id.as_bytes()),
+        identifier_hex(snapshot_id.as_bytes())
+    ))
+}
+
+fn observe_blob_ref(
+    repository: &GitRepository,
+    reference: &SnapshotRef,
+    operation: Operation,
+) -> Result<Option<Vec<u8>>, GitError> {
+    let quiet_arguments = vec![
+        OsString::from("show-ref"),
+        OsString::from("--verify"),
+        OsString::from("--quiet"),
+        OsString::from(reference.as_str()),
+    ];
+    let quiet = repository.runner.observe(
+        repository.control_cwd(),
+        Some(repository.common_location()),
+        CommandAccess::Read,
+        operation,
+        &quiet_arguments,
+        None,
+    )?;
+    match quiet.status.code() {
+        Some(1) => return Ok(None),
+        Some(0) => {}
+        _ => return Err(GitError::command(operation, quiet.status.code(), &quiet.stderr)),
+    }
+    let hash_args = vec![
+        OsString::from("show-ref"),
+        OsString::from("--verify"),
+        OsString::from("--hash"),
+        OsString::from(reference.as_str()),
+    ];
+    let hash = repository.runner.checked(
+        repository.control_cwd(),
+        Some(repository.common_location()),
+        CommandAccess::Read,
+        operation,
+        &hash_args,
+        None,
+    )?;
+    let object = ObjectId::parse(
+        repository.identity.object_format(),
+        one_line(&hash.stdout, operation)?,
+        operation,
+    )?;
+    let args =
+        vec![OsString::from("cat-file"), OsString::from("blob"), OsString::from(object.to_hex())];
+    let blob = repository.runner.checked(
+        repository.control_cwd(),
+        Some(repository.common_location()),
+        CommandAccess::Read,
+        operation,
+        &args,
+        None,
+    )?;
+    Ok(Some(blob.stdout))
 }
 
 pub(super) fn verify_retained(
@@ -167,11 +358,12 @@ pub(super) fn identifier_hex(bytes: &[u8; 16]) -> String {
 }
 
 pub(super) fn reject_nested_git_metadata(
+    repository: &GitRepository,
+    worktree: &RegisteredWorktree,
     root: &Path,
     operation: Operation,
 ) -> Result<(), GitError> {
     let mut directories = vec![root.to_owned()];
-    let mut seen = 0_usize;
     while let Some(directory) = directories.pop() {
         for entry in std::fs::read_dir(&directory).map_err(|source| {
             GitError::io(operation, RecoveryClass::Reconcile, "scan worktree entries", source)
@@ -179,10 +371,6 @@ pub(super) fn reject_nested_git_metadata(
             let entry = entry.map_err(|source| {
                 GitError::io(operation, RecoveryClass::Reconcile, "read worktree entry", source)
             })?;
-            seen = seen.checked_add(1).ok_or_else(|| scan_error(operation))?;
-            if seen > MAX_SCAN_ENTRIES {
-                return Err(scan_error(operation));
-            }
             let path = entry.path();
             let metadata = std::fs::symlink_metadata(&path).map_err(|source| {
                 GitError::io(operation, RecoveryClass::Reconcile, "inspect worktree entry", source)
@@ -196,7 +384,10 @@ pub(super) fn reject_nested_git_metadata(
                     "nested Git repository or worktree metadata is not supported",
                 ));
             }
-            if metadata.is_dir() && !is_root_git {
+            if metadata.is_dir()
+                && !is_root_git
+                && !is_ignored(repository, worktree, root, &path, operation)?
+            {
                 directories.push(path);
             }
         }
@@ -204,13 +395,46 @@ pub(super) fn reject_nested_git_metadata(
     Ok(())
 }
 
-fn scan_error(operation: Operation) -> GitError {
-    GitError::new(
-        ErrorKind::InvalidInput,
+fn is_ignored(
+    repository: &GitRepository,
+    worktree: &RegisteredWorktree,
+    root: &Path,
+    path: &Path,
+    operation: Operation,
+) -> Result<bool, GitError> {
+    let relative = path.strip_prefix(root).map_err(|_| {
+        GitError::new(
+            ErrorKind::WorktreeConflict,
+            operation,
+            RecoveryClass::Reconcile,
+            "worktree child escaped its registered root during candidate inspection",
+        )
+    })?;
+    let arguments = vec![
+        OsString::from("check-ignore"),
+        OsString::from("--quiet"),
+        OsString::from("--no-index"),
+        OsString::from("--"),
+        relative.as_os_str().to_owned(),
+    ];
+    let output = repository.runner.observe(
+        root,
+        Some(GitRepository::worktree_location(worktree.root(), worktree.git_dir())),
+        CommandAccess::ReadWithoutLiteralPathspecs,
         operation,
-        RecoveryClass::CorrectRequest,
-        "worktree entry count exceeds the candidate scan limit",
-    )
+        &arguments,
+        None,
+    )?;
+    match output.status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(GitError::new(
+            ErrorKind::WorktreeConflict,
+            operation,
+            RecoveryClass::Reconcile,
+            "Git could not classify candidate directory ownership",
+        )),
+    }
 }
 
 pub(super) fn object_mismatch(operation: Operation, detail: &'static str) -> GitError {

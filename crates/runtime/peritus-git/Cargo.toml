@@ -14,7 +14,11 @@ categories = ["development-tools", "filesystem"]
 [dependencies]
 peritus-codec = { path = "../../foundation/peritus-codec", version = "=0.0.5" }
 peritus-types = { path = "../../foundation/peritus-types", version = "=0.0.5" }
+process-wrap.workspace = true
 vstd.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

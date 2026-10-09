@@ -65,11 +65,7 @@ impl ProductRunService {
             .select_provider(selection.provider(), selection.model())
             .map_err(|_| app_error(Code::MissingRequiredFeature))?;
         let (catalog, bytes) = authority
-            .read_scoped_artifact(
-                scope,
-                request.artifact(),
-                peritus_app_protocol::MAX_WORKBENCH_FILE_BYTES,
-            )
+            .read_scoped_artifact(scope, request.artifact(), u64::MAX)
             .await
             .map_err(daemon_error)?;
         if !matches!(catalog.media_type(), "text/plain" | "application/octet-stream") {

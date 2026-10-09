@@ -2,7 +2,7 @@
 
 use crate::{
     AppErrorCode, AppProtocolError, ControlOperationId, WorkbenchInputRow, WorkbenchInputState,
-    WorkbenchInputText, WorkbenchInvocationId, WorkbenchQuery,
+    WorkbenchInvocationId, WorkbenchQuery,
 };
 use peritus_types::Sha256Digest;
 
@@ -12,7 +12,6 @@ mod tests;
 /// Maximum explicit fields in one task brief.
 pub const MAX_WORKBENCH_BRIEF_FIELDS: usize = 4;
 /// Maximum exact agent reply candidates shown without silent truncation.
-pub const MAX_WORKBENCH_BRIEF_PROPOSALS: usize = 8;
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
@@ -43,7 +42,7 @@ pub struct WorkbenchBriefProposal {
     operation: ControlOperationId,
     invocation: WorkbenchInvocationId,
     digest: Sha256Digest,
-    text: WorkbenchInputText,
+    text: String,
 }
 impl WorkbenchBriefProposal {
     /// Validates that the bounded public text matches the retained reply digest.
@@ -54,9 +53,12 @@ impl WorkbenchBriefProposal {
         operation: ControlOperationId,
         invocation: WorkbenchInvocationId,
         digest: Sha256Digest,
-        text: WorkbenchInputText,
+        text: String,
     ) -> Result<Self, AppProtocolError> {
-        if peritus_codec::sha256(text.as_str().as_bytes()) != digest {
+        if text.trim().is_empty()
+            || text.chars().any(|ch| ch.is_control() && !matches!(ch, '\n' | '\t'))
+            || peritus_codec::sha256(text.as_bytes()) != digest
+        {
             return Err(invalid());
         }
         Ok(Self { operation, invocation, digest, text })
@@ -78,7 +80,7 @@ impl WorkbenchBriefProposal {
     }
     /// Borrows exact bounded agent text; it is not a requirement until explicitly accepted.
     #[must_use]
-    pub const fn text(&self) -> &WorkbenchInputText {
+    pub fn text(&self) -> &str {
         &self.text
     }
 }
@@ -120,8 +122,7 @@ impl WorkbenchBriefObservation {
         if label.trim().is_empty()
             || label.len() > 4096
             || label.chars().any(char::is_control)
-            || bytes == 0
-            || bytes > 64 * 1024 * 1024
+            || (matches!(kind, WorkbenchBriefObservationKind::Image) && bytes == 0)
             || matches!(kind, WorkbenchBriefObservationKind::File) != version.is_some()
         {
             return Err(invalid());
@@ -244,9 +245,7 @@ impl WorkbenchBrief {
         excluded_proposals: u32,
     ) -> Result<Self, AppProtocolError> {
         let mut value = Self::new(query, revision, entries)?;
-        if proposals.len() > MAX_WORKBENCH_BRIEF_PROPOSALS
-            || u16::try_from(observations.len()).is_err()
-            || proposals.windows(2).any(|pair| pair[0].invocation >= pair[1].invocation)
+        if proposals.windows(2).any(|pair| pair[0].invocation >= pair[1].invocation)
             || observations.windows(2).any(|pair| pair[0].operation >= pair[1].operation)
         {
             return Err(invalid());

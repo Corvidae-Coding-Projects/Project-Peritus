@@ -23,6 +23,36 @@ impl ConversationView for LiveConversation {
         // An unavailable control binding must not permit a fallback to ambient file discovery.
         self.service.governed_run(self.run_id).unwrap_or(true)
     }
+    fn has_selected_file_attachments(&self) -> bool {
+        let Ok(records) = self.service.inner.records.read() else { return false };
+        let Some(record) = records.get(&self.run_id) else { return false };
+        let start = &record.interaction.workbench;
+        self.service
+            .with_controls(false, |store| {
+                let control = store
+                    .load(start.conversation())?
+                    .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
+                Ok(control
+                    .files()
+                    .entries()
+                    .iter()
+                    .any(peritus_product_runner::control::FileSelection::selected))
+            })
+            .unwrap_or(false)
+    }
+    fn read_attachment_range(
+        &self,
+        request: peritus_product_runner::AttachmentReadRequest,
+    ) -> Result<peritus_product_runner::AttachmentReadResponse, String> {
+        let records =
+            self.service.inner.records.read().map_err(|_| "conversation unavailable".to_owned())?;
+        let record =
+            records.get(&self.run_id).ok_or_else(|| "conversation unavailable".to_owned())?;
+        let start = &record.interaction.workbench;
+        self.service
+            .with_controls(false, |store| store.read_file_page(start, request))
+            .map_err(|_| "selected immutable attachment is unavailable or changed".to_owned())
+    }
     fn stable_request_context(&self) -> String {
         let result = (|| {
             let records = self
@@ -37,7 +67,11 @@ impl ConversationView for LiveConversation {
                 store.capture_execution(start)?;
                 let record = store.load(start.conversation())?.ok_or(peritus_product_runner::control::ControlError::NotFound)?;
                 let text = record.inputs().incorporated_conversation()?;
-                Ok(if text.is_empty() { "Current user instructions are supplied by the host at the request admission boundary.".to_owned() } else { text })
+                Ok(if text.is_empty() {
+                    "Current user instructions are supplied by the host at the request admission boundary.".to_owned()
+                } else {
+                    text
+                })
             }).map_err(ProductRunServiceError::from)
         })();
         result.unwrap_or_else(|_| {

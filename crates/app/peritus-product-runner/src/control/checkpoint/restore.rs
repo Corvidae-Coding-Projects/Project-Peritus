@@ -129,8 +129,7 @@ impl RestoreOperation {
         if self.status != RestoreStatus::Prepared || status == RestoreStatus::Prepared {
             return Err(ControlError::InvalidInput);
         }
-        if u16::try_from(conflicts.len()).is_err()
-            || (status == RestoreStatus::Conflict) == conflicts.is_empty()
+        if (status == RestoreStatus::Conflict) == conflicts.is_empty()
             || status == RestoreStatus::Applied && transaction_manifest_digest.is_none()
         {
             return Err(ControlError::InvalidInput);

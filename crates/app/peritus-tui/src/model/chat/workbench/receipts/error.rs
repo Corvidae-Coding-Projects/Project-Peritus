@@ -165,6 +165,18 @@ impl AppModel {
                     "Checkpoint inspection failed: {detail}. Refresh for exact historical references; draft retained."
                 );
             }
+            PendingRequest::WorkbenchCheckpointPage(_) => {
+                self.chat.workbench.checkpoint_page = None;
+                self.chat.workbench.message = format!(
+                    "Checkpoint coverage page failed: {detail}. Refresh to retrieve the exact page; draft retained."
+                );
+            }
+            PendingRequest::WorkbenchRewindPage(_) => {
+                self.chat.workbench.rewind_page = None;
+                self.chat.workbench.message = format!(
+                    "Rewind coverage page failed: {detail}. Refresh before confirming; no workspace bytes changed."
+                );
+            }
             _ => {}
         }
     }

@@ -13,10 +13,6 @@ use crate::{BoxFuture, CancellationToken, ProviderCoreError};
 
 pub use tokio_transport::TokioProcessTransport;
 
-const MAX_ARGUMENTS: usize = 256;
-const MAX_ARGUMENT_BYTES: usize = 2 * 1024 * 1024;
-const MAX_ENVIRONMENT_REMOVALS: usize = 128;
-
 /// A canonical, immutable executable path.
 #[derive(Clone, Eq, PartialEq)]
 pub struct ProcessExecutable(PathBuf);
@@ -83,19 +79,16 @@ impl fmt::Debug for ProcessExecutable {
 pub struct EnvironmentName(String);
 
 impl EnvironmentName {
-    /// Creates an ASCII environment-variable name.
+    /// Creates an environment-variable name representable by the native process API.
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, or non-identifier names.
+    /// Rejects empty names and names containing `=` or NUL.
     pub fn new(value: String) -> Result<Self, ProviderCoreError> {
-        if value.is_empty()
-            || value.len() > 128
-            || !value.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
-        {
+        if value.is_empty() || value.contains(['=', '\0']) {
             return Err(ProviderCoreError::configuration(
                 "process_environment",
-                "environment name is empty, invalid, or exceeds its bound",
+                "environment name is empty or contains a native delimiter",
             ));
         }
         Ok(Self(value))
@@ -105,6 +98,17 @@ impl EnvironmentName {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    fn identity(&self) -> String {
+        #[cfg(windows)]
+        {
+            self.0.to_uppercase()
+        }
+        #[cfg(not(windows))]
+        {
+            self.0.clone()
+        }
     }
 }
 
@@ -174,12 +178,13 @@ pub struct ProcessRequest {
 }
 
 impl ProcessRequest {
-    /// Creates a bounded request with explicit argv, stdin, cwd, and environment removals.
+    /// Creates a request with explicit argv, bounded stdin, cwd, and environment removals.
     ///
     /// # Errors
     ///
-    /// Rejects oversized/NUL-containing argv or stdin, duplicate environment names, excessive
-    /// removals, or a configured current directory that is not a directory.
+    /// Rejects NUL-containing argv, oversized stdin, duplicate environment names, or a configured
+    /// current directory that is not a directory. Native process creation reports host argument
+    /// and environment limits.
     pub fn new(
         executable: ProcessExecutable,
         arguments: Vec<String>,
@@ -188,15 +193,10 @@ impl ProcessRequest {
         environment_removals: Vec<EnvironmentName>,
         limits: ProcessLimits,
     ) -> Result<Self, ProviderCoreError> {
-        let argument_bytes =
-            arguments.iter().try_fold(0_usize, |total, argument| total.checked_add(argument.len()));
-        if arguments.len() > MAX_ARGUMENTS
-            || argument_bytes.is_none_or(|bytes| bytes > MAX_ARGUMENT_BYTES)
-            || arguments.iter().any(|argument| argument.as_bytes().contains(&0))
-        {
+        if arguments.iter().any(|argument| argument.as_bytes().contains(&0)) {
             return Err(ProviderCoreError::limit_exceeded(
                 "process_request",
-                "process arguments are invalid or exceed their bound",
+                "process arguments contain NUL",
             ));
         }
         if stdin.len() > limits.max_stdin_bytes {
@@ -211,13 +211,12 @@ impl ProcessRequest {
                 "process current directory is not a directory",
             ));
         }
-        if environment_removals.len() > MAX_ENVIRONMENT_REMOVALS
-            || environment_removals.iter().collect::<BTreeSet<_>>().len()
-                != environment_removals.len()
-        {
+        let unique_environment_removals =
+            environment_removals.iter().map(EnvironmentName::identity).collect::<BTreeSet<_>>();
+        if unique_environment_removals.len() != environment_removals.len() {
             return Err(ProviderCoreError::configuration(
                 "process_request",
-                "environment removals are duplicate or exceed their bound",
+                "environment removals contain duplicate names",
             ));
         }
         Ok(Self {
@@ -374,4 +373,44 @@ pub trait ProcessTransport: Send + Sync {
         request: ProcessRequest,
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<ProcessOutput, ProviderCoreError>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn process_request_defers_argv_and_environment_size_to_native_spawn() {
+        let executable = ProcessExecutable::pin(std::env::current_exe().expect("test executable"))
+            .expect("pinned test executable");
+        let arguments = std::iter::once("x".repeat(2 * 1024 * 1024 + 1))
+            .chain((0..256).map(|_| "arg".to_owned()))
+            .collect();
+        let removals = (0..129)
+            .map(|index| EnvironmentName::new(format!("VARIABLE_{index}")))
+            .collect::<Result<Vec<_>, _>>()
+            .expect("environment names");
+
+        let request = ProcessRequest::new(
+            executable,
+            arguments,
+            Vec::new(),
+            None,
+            removals,
+            ProcessLimits::PRODUCTION,
+        )
+        .expect("no application argv or removal count ceiling");
+
+        assert_eq!(request.arguments().len(), 257);
+        assert_eq!(request.arguments()[0].len(), 2 * 1024 * 1024 + 1);
+        assert_eq!(request.environment_removals().len(), 129);
+    }
+
+    #[test]
+    fn environment_name_accepts_native_text_but_rejects_delimiters() {
+        let long_name = EnvironmentName::new("V".repeat(512)).expect("long native name");
+        assert_eq!(long_name.as_str().len(), 512);
+        assert!(EnvironmentName::new("A=B".to_owned()).is_err());
+        assert!(EnvironmentName::new("A\0B".to_owned()).is_err());
+    }
 }

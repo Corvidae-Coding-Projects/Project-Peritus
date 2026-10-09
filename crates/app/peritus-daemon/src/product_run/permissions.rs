@@ -222,9 +222,12 @@ const fn request_permissions(
         AppRequestPayload::PreviewWorkbenchFile(value) => (value.query(), &[Read]),
         AppRequestPayload::QueryWorkbenchFiles(value) => (value.query(), &[Read]),
         AppRequestPayload::QueryWorkbenchImages(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchPreviewOutput(value) => (value.query(), &[Read]),
         AppRequestPayload::PreviewWorkbenchImage(value) => (value.query(), &[Read]),
         AppRequestPayload::InspectWorkbenchCheckpoint(value)
         | AppRequestPayload::PreviewWorkbenchRewind(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchCheckpointPage(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchRewindPage(value) => (value.request().query(), &[Read]),
         AppRequestPayload::DiscoverInit(value) => (value.query(), &[Read]),
         AppRequestPayload::WorkbenchCommand(command) => {
             let required = command_permissions(command.intent());
@@ -245,6 +248,11 @@ pub(super) const fn command_permissions(
     match intent {
         WorkbenchIntent::CreateCheckpoint(_) | WorkbenchIntent::ForkConversation(_) => &[Read],
         WorkbenchIntent::ApplyRewind(preview) => match preview.request().mode() {
+            peritus_app_protocol::WorkbenchRewindMode::ConversationOnly => &[Read],
+            peritus_app_protocol::WorkbenchRewindMode::FilesOnly
+            | peritus_app_protocol::WorkbenchRewindMode::Combined => &[Read, Write],
+        },
+        WorkbenchIntent::ConfirmRewind(confirmation) => match confirmation.request().mode() {
             peritus_app_protocol::WorkbenchRewindMode::ConversationOnly => &[Read],
             peritus_app_protocol::WorkbenchRewindMode::FilesOnly
             | peritus_app_protocol::WorkbenchRewindMode::Combined => &[Read, Write],

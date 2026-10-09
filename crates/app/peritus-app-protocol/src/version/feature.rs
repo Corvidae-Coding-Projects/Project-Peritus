@@ -52,12 +52,18 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_GOALS: &'static str = "app.workbench-goals";
     /// Structured candidate review with content-bound conversational feedback.
     pub const WORKBENCH_REVIEW: &'static str = "app.workbench-review";
+    /// Bounded digest-bound structured review diff paging.
+    pub const WORKBENCH_REVIEW_PAGES: &'static str = "app.workbench-review-pages";
+    /// Complete review metadata followed by negotiated bounded diff pages.
+    pub const WORKBENCH_REVIEW_SUMMARY: &'static str = "app.workbench-review-summary";
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     pub const WORKBENCH_PREVIEW_OUTPUT: &'static str = "app.workbench-preview-output";
     /// Daemon-owned preview launch and evidence.
     pub const WORKBENCH_PREVIEW: &'static str = "app.workbench-preview";
     /// Covered-path checkpoints, preview-bound rewind and durable restore receipts.
     pub const WORKBENCH_CHECKPOINTS: &'static str = "app.workbench-checkpoints";
+    /// Bounded checkpoint coverage paging with complete-manifest rewind confirmation.
+    pub const WORKBENCH_CHECKPOINT_PAGES: &'static str = "app.workbench-checkpoint-pages";
     /// Local literal search and durable conversation navigation.
     pub const CONVERSATION_LIBRARY: &'static str = "app.conversation-library";
     /// Non-running forks with explicit workspace and budget bindings.
@@ -151,12 +157,18 @@ pub enum WellKnownProtocolFeature {
     WorkbenchGoals,
     /// Structured candidate review and exact anchored feedback.
     WorkbenchReview,
+    /// Bounded digest-bound structured review diff paging.
+    WorkbenchReviewPages,
+    /// Complete review metadata followed by negotiated bounded diff pages.
+    WorkbenchReviewSummary,
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     WorkbenchPreview,
     /// Bounded retained live preview streams.
     WorkbenchPreviewOutput,
     /// Covered-path checkpoints and safe preview-bound rewind.
     WorkbenchCheckpoints,
+    /// Bounded checkpoint coverage pages and full-checkpoint confirmation.
+    WorkbenchCheckpointPages,
     /// Local searchable conversation library.
     ConversationLibrary,
     /// Checked conversation fork creation.
@@ -198,9 +210,12 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchFiles => ProtocolFeatureName::WORKBENCH_FILES,
             Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
             Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
+            Self::WorkbenchReviewPages => ProtocolFeatureName::WORKBENCH_REVIEW_PAGES,
+            Self::WorkbenchReviewSummary => ProtocolFeatureName::WORKBENCH_REVIEW_SUMMARY,
             Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
             Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,
+            Self::WorkbenchCheckpointPages => ProtocolFeatureName::WORKBENCH_CHECKPOINT_PAGES,
             Self::ConversationLibrary => ProtocolFeatureName::CONVERSATION_LIBRARY,
             Self::ConversationForks => ProtocolFeatureName::CONVERSATION_FORKS,
             Self::WorkbenchPermissions => ProtocolFeatureName::WORKBENCH_PERMISSIONS,

@@ -5,9 +5,7 @@ mod kernel;
 mod lease;
 mod workspace;
 
-pub use workspace::{
-    artifact_store, authorized_patch, exact_request, intent, receipts, workspace_fixture,
-};
+pub use workspace::{artifact_store, authorized_patch, intent, receipts, workspace_fixture};
 
 use std::fs;
 

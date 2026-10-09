@@ -46,6 +46,10 @@ fn schema() -> Schema {
 }
 
 fn descriptor() -> Arc<ToolDescriptor> {
+    descriptor_with_limits(ToolLimits::new(5_000, 65_536, 2_048, 4_096, 16, 4, 1_024).unwrap())
+}
+
+fn descriptor_with_limits(limits: ToolLimits) -> Arc<ToolDescriptor> {
     let name = CapabilityName::new("fixture.inspect".to_owned()).unwrap();
     let operation = OperationDescriptor::new(
         name.clone(),
@@ -63,13 +67,76 @@ fn descriptor() -> Arc<ToolDescriptor> {
             LeaseRequirement::None,
             IdempotencySemantics::ReplayTerminal,
             ImplementationIdentity::new("fixture:0.0.0:p1:catalog".to_owned()).unwrap(),
-            ToolLimits::new(5_000, 65_536, 2_048, 4_096, 16, 4, 1_024).unwrap(),
+            limits,
             ControlSet::new(false, false, false, true, true),
             ProtocolCompatibility::V1,
             BoundedText::new("Fixture inspection".to_owned()).unwrap(),
         )
         .unwrap(),
     )
+}
+
+#[test]
+fn untimed_calls_require_descriptor_support_and_keep_exact_epoch_binding() {
+    use peritus_tool_protocol::CallLifetime;
+    let prior = prepared();
+    let call = prior.call();
+    let untimed = ToolCall::new_with_lifetime(
+        call.action_id(),
+        call.name().clone(),
+        call.version(),
+        call.arguments().clone(),
+        CallLimits::new_optional(None, 4_096, 512, 1_024, 8, 2).unwrap(),
+        call.revision(),
+        CallLifetime::UntilCancelled { epoch: call.authority_epoch() },
+        call.idempotency_key().clone(),
+    );
+    assert!(prepare_call(descriptor(), untimed.clone()).is_err());
+    let capable = descriptor_with_limits(descriptor().limits().without_timeout());
+    let ready = prepare_call(capable, untimed).expect("explicit untimed capability");
+    assert_eq!(ready.call().deadline(), None);
+    assert_ne!(ready.prepared_digest(), prior.prepared_digest());
+    let bytes = ready.call().canonical_bytes();
+    assert_eq!(CanonicalEnvelope::parse(&bytes, bytes.len()).unwrap().version(), 2);
+    for (epoch, accepted) in [(Generation::first(), true), (Generation::new(2).unwrap(), false)] {
+        assert_eq!(
+            ToolProgress::new(
+                &ready,
+                0,
+                ProgressKind::Update,
+                AuthorityInstant::new(epoch, u64::MAX),
+                None,
+                BoundedText::new("still running".to_owned()).unwrap(),
+            )
+            .is_ok(),
+            accepted
+        );
+    }
+}
+
+#[test]
+fn finite_call_limits_cannot_lose_their_deadline_during_preparation() {
+    use peritus_tool_protocol::CallLifetime;
+    let prepared = prepared();
+    let call = prepared.call();
+    let without_deadline = ToolCall::new_with_lifetime(
+        call.action_id(),
+        call.name().clone(),
+        call.version(),
+        call.arguments().clone(),
+        call.limits(),
+        call.revision(),
+        CallLifetime::UntilCancelled { epoch: call.authority_epoch() },
+        call.idempotency_key().clone(),
+    );
+    assert!(
+        prepare_call(
+            descriptor_with_limits(descriptor().limits().without_timeout()),
+            without_deadline
+        )
+        .is_err()
+    );
+    assert!(CallLimits::new_optional(Some(0), 4_096, 512, 1_024, 8, 2).is_err());
 }
 
 fn prepared() -> peritus_tool_protocol::PreparedToolCall {
@@ -176,17 +243,16 @@ fn canonical_json_rejects_duplicate_keys_at_every_depth() {
 }
 
 #[test]
-fn json_limit_construction_can_only_narrow_production_ceilings() {
+fn json_limit_construction_accepts_explicit_nonzero_capacities() {
     assert!(JsonLimits::new(1024, 8, 64, 256).is_ok());
-    assert!(
-        JsonLimits::new(
-            JsonLimits::PRODUCTION.max_bytes() + 1,
-            JsonLimits::PRODUCTION.max_depth(),
-            JsonLimits::PRODUCTION.max_members(),
-            JsonLimits::PRODUCTION.max_string_bytes(),
-        )
-        .is_err(),
-    );
+    let expanded = JsonLimits::new(
+        JsonLimits::PRODUCTION.max_bytes() + 1,
+        JsonLimits::PRODUCTION.max_depth() + 1,
+        JsonLimits::PRODUCTION.max_members() + 1,
+        JsonLimits::PRODUCTION.max_string_bytes() + 1,
+    )
+    .expect("explicit wider output capacity");
+    assert_eq!(expanded.max_bytes(), JsonLimits::PRODUCTION.max_bytes() + 1);
 }
 
 #[test]

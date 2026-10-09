@@ -26,7 +26,7 @@ impl WorkbenchImageQuery {
         revision: u64,
         offset: u32,
     ) -> Result<Self, AppProtocolError> {
-        if offset > 256 || (revision == 0 && offset != 0) {
+        if revision == 0 && offset != 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, offset })
@@ -147,7 +147,6 @@ impl WorkbenchImagePage {
         rows: Vec<WorkbenchImageRow>,
     ) -> Result<Self, AppProtocolError> {
         if query.revision() == 0
-            || total > 256
             || query.offset() > total
             || rows.len()
                 != usize::try_from(total - query.offset())

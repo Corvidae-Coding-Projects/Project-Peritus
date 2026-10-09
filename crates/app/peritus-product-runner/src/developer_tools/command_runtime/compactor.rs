@@ -86,11 +86,11 @@ impl CommandRuntime {
         let work = directory.join("work");
         let output_bytes = config.max_output_bytes as u64;
         let resources = ProcessResourcePolicy::new(
-            config.timeout_millis,
-            config.timeout_millis.saturating_mul(4),
+            Some(config.timeout_millis),
+            Some(config.timeout_millis.saturating_mul(4)),
             config.memory_bytes,
             16 * 1024 * 1024,
-            output_bytes,
+            Some(output_bytes),
             32,
             256,
             1,

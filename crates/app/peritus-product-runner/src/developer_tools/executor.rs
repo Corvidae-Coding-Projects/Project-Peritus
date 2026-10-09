@@ -1,20 +1,22 @@
 //! Concrete bounded filesystem and structured-command developer tools.
 
-use std::{fs, path::PathBuf};
+use std::{fmt::Write as _, fs, path::PathBuf};
 
 use peritus_agent::{
     DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
 };
 use peritus_model_protocol::{CompletedToolCall, Message};
 use serde_json::Value;
+use sha2::{Digest as _, Sha256};
 
 use super::{
     access_policy::WorkspaceAccessPolicy,
     command_budget::CommandBudget,
     effect::atomic_write,
-    evidence::CommandEvidence,
+    evidence::{CommandEvidence, ReviewerEvidenceSources},
     grounding::GroundingEvidence,
     inspection,
+    inspection_cancellation::InspectionCancellation,
     ownership::WorkspaceOwnership,
     path::{checked, tool},
     receipt::{EffectReceiptLedger, ReceiptDecision},
@@ -24,7 +26,6 @@ use super::{
     wire::{object, observation, required_string, string},
 };
 use crate::control::{HostPermissions, PermissionCapability};
-const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
 const MAX_PROGRESS_NUDGES: u8 = 2;
 const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
@@ -57,9 +58,11 @@ pub struct WorkspaceDeveloperTools {
     mode: WorkspaceToolMode,
     in_place_scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
     command_evidence: CommandEvidence,
+    reviewer_evidence: Option<ReviewerEvidenceSources>,
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
     resources: CommandResources,
+    inspection_cancellation: InspectionCancellation,
     command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
     tools_without_delivery_progress: u16,
@@ -72,6 +75,36 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    #[cfg(test)]
+    pub(crate) fn with_reviewer_evidence(mut self, evidence: String) -> Self {
+        self.reviewer_evidence = Some(ReviewerEvidenceSources::new(
+            String::new(),
+            String::new(),
+            String::new(),
+            evidence,
+            String::new(),
+            String::new(),
+        ));
+        self
+    }
+
+    pub(crate) fn with_reviewer_evidence_sources(
+        mut self,
+        evidence: ReviewerEvidenceSources,
+    ) -> Self {
+        self.reviewer_evidence = Some(evidence);
+        self
+    }
+
+    pub(crate) fn with_inspection_cancellation(
+        mut self,
+        cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        provider: peritus_provider_core::CancellationToken,
+    ) -> Self {
+        self.inspection_cancellation = InspectionCancellation::new(cancelled, provider);
+        self
+    }
+
     pub(crate) fn with_in_place_scope(
         mut self,
         scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
@@ -99,6 +132,37 @@ impl WorkspaceDeveloperTools {
 
     pub(crate) fn successful_commands(&self) -> Vec<super::SuccessfulCommand> {
         self.command_evidence.successful()
+    }
+
+    fn read_reviewer_evidence(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+        let archive = self
+            .reviewer_evidence
+            .as_ref()
+            .ok_or_else(|| tool("full developer evidence is unavailable in this reviewer turn"))?;
+        let section = match arguments.get("section") {
+            None => "developer_commands",
+            Some(Value::String(section)) => section.as_str(),
+            Some(_) => return Err(tool("section must be a named string")),
+        };
+        let evidence =
+            archive.section(section).ok_or_else(|| tool("unknown reviewer evidence section"))?;
+        let offset = arguments
+            .get("offset")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| tool("offset must be a nonnegative integer"))?;
+        let maximum = match arguments.get("max_bytes") {
+            None => super::DEFAULT_INSPECTION_PAGE_BYTES,
+            Some(value) => value
+                .as_u64()
+                .and_then(|value| usize::try_from(value).ok())
+                .filter(|value| (1..=inspection::MAX_PAGE_BYTES).contains(value))
+                .ok_or_else(|| tool("max_bytes must be between 1 and 524288"))?,
+        };
+        let start = usize::try_from(offset).map_err(|_| tool("offset exceeds addressable size"))?;
+        if start > evidence.len() || !evidence.is_char_boundary(start) {
+            return Err(tool("offset is outside the evidence or not a UTF-8 boundary"));
+        }
+        reviewer_evidence_page(section, evidence, offset, start, maximum)
     }
 
     fn permission_denial(&self, tool_name: &str) -> Option<String> {
@@ -129,6 +193,83 @@ impl WorkspaceDeveloperTools {
     }
 }
 
+fn reviewer_evidence_page(
+    section: &str,
+    evidence: &str,
+    offset: u64,
+    start: usize,
+    maximum: usize,
+) -> Result<Value, DeveloperLoopError> {
+    let digest = Sha256::digest(evidence.as_bytes());
+    let mut sha256 = String::with_capacity(64);
+    for byte in digest {
+        write!(sha256, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    let total_bytes =
+        u64::try_from(evidence.len()).map_err(|_| tool("evidence length overflow"))?;
+    let mut raw_end = start.saturating_add(maximum).min(evidence.len());
+    while raw_end > start && !evidence.is_char_boundary(raw_end) {
+        raw_end -= 1;
+    }
+    let mut boundaries = vec![start];
+    boundaries.extend(
+        evidence[start..raw_end].char_indices().skip(1).map(|(relative, _)| start + relative),
+    );
+    if raw_end > start {
+        boundaries.push(raw_end);
+    }
+
+    let make_page = |end: usize| -> Result<Value, DeveloperLoopError> {
+        let next_offset = if end < evidence.len() {
+            Value::from(u64::try_from(end).map_err(|_| tool("next offset overflow"))?)
+        } else {
+            Value::Null
+        };
+        Ok(object(vec![
+            ("bytes", Value::String(evidence[start..end].to_owned())),
+            ("next_offset", next_offset),
+            ("offset", Value::from(offset)),
+            ("section", Value::String(section.to_owned())),
+            ("sha256", Value::String(sha256.clone())),
+            ("total_bytes", Value::from(total_bytes)),
+        ]))
+    };
+    // EOF replaces the numeric continuation with null, which can shrink the envelope.
+    // Check that endpoint before searching the monotonically growing nonterminal pages.
+    if raw_end == evidence.len() {
+        let complete_page = make_page(raw_end)?;
+        if inspection::encoded_len(&complete_page)? <= maximum {
+            return Ok(complete_page);
+        }
+    }
+    let mut low = 0;
+    let mut high = boundaries.len().saturating_sub(1);
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        let candidate = make_page(boundaries[middle])?;
+        if inspection::encoded_len(&candidate)? <= maximum {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    let end = boundaries[low];
+    if end == start
+        && (start < evidence.len() || inspection::encoded_len(&make_page(end)?)? > maximum)
+    {
+        let next_boundary = evidence[start..]
+            .char_indices()
+            .nth(1)
+            .map_or(evidence.len(), |(relative, _)| start + relative);
+        let minimum_end = next_boundary.max(start);
+        let required = inspection::encoded_len(&make_page(minimum_end)?)?;
+        return Err(tool(format!(
+            "max_bytes is too small to return a progressing page; request at least {required} bytes"
+        )));
+    }
+    make_page(end)
+}
+
 fn first_missing_permission(
     tool_name: &str,
     permissions: HostPermissions,
@@ -142,7 +283,11 @@ fn first_missing_permission(
 fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
     use PermissionCapability::{Process, Read, Write};
     match tool_name {
-        "workspace_list" | "workspace_search" | "workspace_read" => Some(&[Read]),
+        "workspace_list"
+        | "workspace_search"
+        | "workspace_read"
+        | "attachment_read"
+        | "developer_evidence_read" => Some(&[Read]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
@@ -179,8 +324,14 @@ fn test_command_runtime(root: &std::path::Path) -> crate::CommandRuntime {
 
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
-        if matches!(call.name().as_str(), "workspace_list" | "workspace_search" | "workspace_read")
-        {
+        if matches!(
+            call.name().as_str(),
+            "workspace_list"
+                | "workspace_search"
+                | "workspace_read"
+                | "attachment_read"
+                | "developer_evidence_read"
+        ) {
             DeveloperToolEffect::ReadOnly
         } else {
             DeveloperToolEffect::MutationCapable
@@ -209,7 +360,11 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if self.mode == WorkspaceToolMode::ReadOnly
             && !matches!(
                 call.name().as_str(),
-                "workspace_list" | "workspace_search" | "workspace_read"
+                "workspace_list"
+                    | "workspace_search"
+                    | "workspace_read"
+                    | "attachment_read"
+                    | "developer_evidence_read"
             )
         {
             return observation(

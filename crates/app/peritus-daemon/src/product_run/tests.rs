@@ -124,9 +124,12 @@ async fn candidate_cancellation_scenario() {
     .expect("request");
 
     service.start(request).await.expect("start run");
-    wait_for_phase(&service, run_id, ProductRunPhase::Reviewing).await;
+    wait_for_review_stall(&service, run_id, &reviewer).await;
     service.cancel(run_id).expect("cancel run");
-    let cancelled = wait_for_terminal(&service, run_id).await;
+    let cancelled =
+        tokio::time::timeout(Duration::from_secs(5), wait_for_terminal(&service, run_id))
+            .await
+            .expect("run did not settle after reviewer cancellation");
 
     assert_eq!(cancelled.phase(), ProductRunPhase::Cancelled);
     assert_eq!(
@@ -170,6 +173,7 @@ fn service(
             folders: BTreeMap::new(),
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),
+            command_recoveries: std::sync::Mutex::new(std::collections::BTreeSet::new()),
             model_catalogs: super::catalog::ModelCatalogs::default(),
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),
@@ -201,18 +205,14 @@ async fn wait_for_terminal(
     panic!("product run did not settle within ten seconds")
 }
 
-async fn wait_for_phase(service: &ProductRunService, run_id: RunId, phase: ProductRunPhase) {
-    for _ in 0..400 {
-        let snapshot = service
-            .query(ProductRunQuery::exact(run_id))
-            .expect("query run")
-            .into_iter()
-            .next()
-            .expect("run snapshot");
-        if snapshot.phase() == phase {
-            return;
-        }
-        tokio::time::sleep(Duration::from_millis(25)).await;
-    }
-    panic!("product run did not reach {phase:?} within ten seconds")
+async fn wait_for_review_stall(
+    service: &ProductRunService,
+    run_id: RunId,
+    reviewer: &ScriptedProvider,
+) {
+    tokio::time::timeout(Duration::from_secs(30), reviewer.wait_for_stalled_response())
+        .await
+        .expect("reviewer did not start its deliberately stalled response");
+    let phase = service.query(ProductRunQuery::exact(run_id)).expect("review snapshot")[0].phase();
+    assert_eq!(phase, ProductRunPhase::Reviewing, "reviewer stalled in {phase:?}");
 }

@@ -102,6 +102,10 @@ pub enum AppRequestPayload {
     PreviewWorkbenchRewind(crate::WorkbenchRewindRequest),
     /// Inspects one exact durable checkpoint manifest without mutating current state.
     InspectWorkbenchCheckpoint(crate::WorkbenchRewindRequest),
+    /// Reads one bounded page of a durable checkpoint's complete immutable coverage.
+    QueryWorkbenchCheckpointPage(crate::WorkbenchCheckpointPageRequest),
+    /// Reads one bounded page of immutable facts bound to a full rewind confirmation.
+    QueryWorkbenchRewindPage(crate::WorkbenchRewindPageRequest),
     /// Inspects bounded active guidance and optional content-free tombstones.
     QueryWorkbenchMemory(crate::WorkbenchMemoryQuery),
     /// Discovers bounded local project controls and an exact inert instruction-file proposal.
@@ -118,8 +122,16 @@ pub enum AppRequestPayload {
     QueryWorkbenchResult(crate::WorkbenchResultQuery),
     /// Observes live retained output for an authorized preview.
     QueryWorkbenchPreview(crate::WorkbenchResultQuery),
+    /// Reads one exact bounded range from an authorized preview output stream.
+    QueryWorkbenchPreviewOutput(crate::WorkbenchPreviewOutputQuery),
     /// Inspects the exact structured candidate diff, anchored comments, and evidence freshness.
     QueryWorkbenchReview(crate::WorkbenchReviewQuery),
+    /// Opens bounded review metadata before requesting structured diff pages.
+    QueryWorkbenchReviewSummary(crate::WorkbenchReviewQuery),
+    /// Reads one bounded structured-diff page bound to a review revision and exact digest.
+    QueryWorkbenchReviewDiff(crate::WorkbenchReviewDiffQuery),
+    /// Reads one exact safe byte range from the digest-bound retained raw diff.
+    QueryWorkbenchReviewDiffBytes(crate::WorkbenchReviewDiffBytesQuery),
     /// Begins explicit selected-text transfer scoped to the conversation.
     BeginWorkbenchFileUpload(crate::WorkbenchFileUpload),
     /// Validates an uploaded immutable text snapshot, without reopening its source label.
@@ -207,6 +219,9 @@ impl AppRequestPayload {
             Self::PreviewWorkbenchRewind(_) | Self::InspectWorkbenchCheckpoint(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCheckpoints)
             }
+            Self::QueryWorkbenchCheckpointPage(_) | Self::QueryWorkbenchRewindPage(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchCheckpointPages)
+            }
             Self::QueryWorkbenchMemory(_) => Some(crate::WellKnownProtocolFeature::WorkbenchMemory),
             Self::DiscoverInit(_) => Some(crate::WellKnownProtocolFeature::WorkbenchInit),
             Self::QueryWorkbenchPermissions(_) => {
@@ -215,13 +230,19 @@ impl AppRequestPayload {
             Self::PreviewWorkbenchCompaction(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCompaction)
             }
-            Self::QueryWorkbenchPreview(_) => {
+            Self::QueryWorkbenchPreview(_) | Self::QueryWorkbenchPreviewOutput(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPreviewOutput)
             }
             Self::QueryWorkbenchResult(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPreview)
             }
             Self::QueryWorkbenchReview(_) => Some(crate::WellKnownProtocolFeature::WorkbenchReview),
+            Self::QueryWorkbenchReviewDiff(_) | Self::QueryWorkbenchReviewDiffBytes(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchReviewPages)
+            }
+            Self::QueryWorkbenchReviewSummary(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchReviewSummary)
+            }
             Self::QueryConversationLibrary(_) => {
                 Some(crate::WellKnownProtocolFeature::ConversationLibrary)
             }
@@ -294,6 +315,7 @@ const fn required_workbench_intent_feature(
         | Intent::StopPreview { .. }
         | Intent::CheckPreviewBehavior { .. }
         | Intent::AddArtifactFeedback { .. } => Feature::WorkbenchPreview,
+        Intent::ConfirmRewind(_) => Feature::WorkbenchCheckpointPages,
         Intent::CreateCheckpoint(_) | Intent::ApplyRewind(_) => Feature::WorkbenchCheckpoints,
         Intent::CreateConversation(_)
         | Intent::RenameConversation(_)

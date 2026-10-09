@@ -8,8 +8,13 @@ use crate::{
     WorkbenchRewindDisposition, WorkbenchRewindMode, WorkbenchRewindPath, WorkbenchRewindPreview,
     WorkbenchRewindRequest,
 };
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
-use peritus_types::Sha256Digest;
+use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
+
+mod fingerprints;
+pub use fingerprints::{
+    checkpoint_fingerprint, checkpoint_page_fingerprint, preview_fingerprint,
+    rewind_confirmation_fingerprint,
+};
 
 #[cfg(test)]
 mod tests;
@@ -38,7 +43,7 @@ pub(super) fn read_checkpoint_receipt(
     let name = invalid(offset, WorkbenchCheckpointName::new(r.read_str()?.to_owned()))?;
     let references = read_references(r)?;
     let paths = read_checkpoint_paths(r)?;
-    let exclusions = read_strings(r, 512)?;
+    let exclusions = read_strings(r, 4_610)?;
     let external = read_strings(r, 512)?;
     invalid(
         offset,
@@ -108,7 +113,7 @@ pub(super) fn read_preview(
     let request = read_request(r)?;
     let digest = read_digest(r)?;
     let paths = read_rewind_paths(r)?;
-    let exclusions = read_strings(r, 512)?;
+    let exclusions = read_strings(r, 4_610)?;
     let external = read_strings(r, 512)?;
     if !r.read_bool()? || !r.read_bool()? {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
@@ -171,22 +176,7 @@ pub(super) fn read_restore_receipt(
     )
 }
 
-pub fn preview_fingerprint(
-    request: WorkbenchRewindRequest,
-    paths: &[WorkbenchRewindPath],
-    exclusions: &[String],
-    external: &[String],
-) -> Result<Sha256Digest, CodecError> {
-    let mut w = CanonicalWriter::new(CodecLimits::PRODUCTION);
-    w.write_fixed(b"peritus-workbench-rewind-preview-v1")?;
-    write_request(&mut w, request)?;
-    write_rewind_paths(&mut w, paths)?;
-    write_strings(&mut w, exclusions)?;
-    write_strings(&mut w, external)?;
-    Ok(peritus_codec::sha256(w.as_slice()))
-}
-
-fn write_references(
+pub(super) fn write_references(
     w: &mut CanonicalWriter,
     value: WorkbenchCheckpointReferences,
 ) -> Result<(), CodecError> {
@@ -200,7 +190,7 @@ fn write_references(
     Ok(())
 }
 
-fn read_references(
+pub(super) fn read_references(
     r: &mut CanonicalReader<'_>,
 ) -> Result<WorkbenchCheckpointReferences, CodecError> {
     let source = r.read_u64()?;
@@ -216,12 +206,7 @@ fn write_checkpoint_paths(
 ) -> Result<(), CodecError> {
     write_count(w, paths.len())?;
     for path in paths {
-        w.write_str(path.path())?;
-        write_version(w, path.checkpoint())?;
-        w.write_bool(path.expected_current().is_some())?;
-        if let Some(version) = path.expected_current() {
-            write_version(w, version)?;
-        }
+        write_checkpoint_path(w, path)?;
     }
     Ok(())
 }
@@ -233,62 +218,96 @@ fn read_checkpoint_paths(
     let count = read_count(r, offset)?;
     let mut values = Vec::with_capacity(count);
     for _ in 0..count {
-        let path = r.read_str()?.to_owned();
-        let checkpoint = read_version(r)?;
-        let expected = if r.read_bool()? { Some(read_version(r)?) } else { None };
-        values.push(invalid(offset, WorkbenchCheckpointPath::new(path, checkpoint, expected))?);
+        let _ = offset;
+        values.push(read_checkpoint_path(r)?);
     }
     Ok(values)
 }
 
-fn write_rewind_paths(
+pub(super) fn write_rewind_paths(
     w: &mut CanonicalWriter,
     paths: &[WorkbenchRewindPath],
 ) -> Result<(), CodecError> {
     write_count(w, paths.len())?;
     for path in paths {
-        w.write_str(path.path())?;
-        write_version(w, path.checkpoint())?;
-        w.write_bool(path.expected_current().is_some())?;
-        if let Some(version) = path.expected_current() {
-            write_version(w, version)?;
-        }
-        write_version(w, path.observed_current())?;
-        w.write_u16(match path.disposition() {
-            WorkbenchRewindDisposition::Restore => 1,
-            WorkbenchRewindDisposition::Unchanged => 2,
-            WorkbenchRewindDisposition::Conflict => 3,
-            WorkbenchRewindDisposition::Unsealed => 4,
-        })?;
+        write_rewind_path(w, path)?;
     }
     Ok(())
 }
 
-fn read_rewind_paths(r: &mut CanonicalReader<'_>) -> Result<Vec<WorkbenchRewindPath>, CodecError> {
+pub(super) fn write_rewind_path(
+    w: &mut CanonicalWriter,
+    path: &WorkbenchRewindPath,
+) -> Result<(), CodecError> {
+    w.write_str(path.path())?;
+    write_version(w, path.checkpoint())?;
+    w.write_bool(path.expected_current().is_some())?;
+    if let Some(version) = path.expected_current() {
+        write_version(w, version)?;
+    }
+    write_version(w, path.observed_current())?;
+    w.write_u16(match path.disposition() {
+        WorkbenchRewindDisposition::Restore => 1,
+        WorkbenchRewindDisposition::Unchanged => 2,
+        WorkbenchRewindDisposition::Conflict => 3,
+        WorkbenchRewindDisposition::Unsealed => 4,
+    })
+}
+
+pub(super) fn read_rewind_paths(
+    r: &mut CanonicalReader<'_>,
+) -> Result<Vec<WorkbenchRewindPath>, CodecError> {
     let offset = r.offset();
     let count = read_count(r, offset)?;
     let mut values = Vec::with_capacity(count);
     for _ in 0..count {
-        let path = r.read_str()?.to_owned();
-        let checkpoint = read_version(r)?;
-        let expected = if r.read_bool()? { Some(read_version(r)?) } else { None };
-        let observed = read_version(r)?;
-        let disposition = match r.read_u16()? {
-            1 => WorkbenchRewindDisposition::Restore,
-            2 => WorkbenchRewindDisposition::Unchanged,
-            3 => WorkbenchRewindDisposition::Conflict,
-            4 => WorkbenchRewindDisposition::Unsealed,
-            _ => return unknown(offset),
-        };
-        values.push(invalid(
-            offset,
-            WorkbenchRewindPath::new(path, checkpoint, expected, observed, disposition),
-        )?);
+        values.push(read_rewind_path(r)?);
     }
     Ok(values)
 }
 
-fn write_version(w: &mut CanonicalWriter, value: Version) -> Result<(), CodecError> {
+pub(super) fn read_rewind_path(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchRewindPath, CodecError> {
+    let offset = r.offset();
+    let path = r.read_str()?.to_owned();
+    let checkpoint = read_version(r)?;
+    let expected = if r.read_bool()? { Some(read_version(r)?) } else { None };
+    let observed = read_version(r)?;
+    let disposition = match r.read_u16()? {
+        1 => WorkbenchRewindDisposition::Restore,
+        2 => WorkbenchRewindDisposition::Unchanged,
+        3 => WorkbenchRewindDisposition::Conflict,
+        4 => WorkbenchRewindDisposition::Unsealed,
+        _ => return unknown(offset),
+    };
+    invalid(offset, WorkbenchRewindPath::new(path, checkpoint, expected, observed, disposition))
+}
+
+pub(super) fn write_checkpoint_path(
+    w: &mut CanonicalWriter,
+    path: &WorkbenchCheckpointPath,
+) -> Result<(), CodecError> {
+    w.write_str(path.path())?;
+    write_version(w, path.checkpoint())?;
+    w.write_bool(path.expected_current().is_some())?;
+    if let Some(version) = path.expected_current() {
+        write_version(w, version)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_checkpoint_path(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchCheckpointPath, CodecError> {
+    let offset = r.offset();
+    let path = r.read_str()?.to_owned();
+    let checkpoint = read_version(r)?;
+    let expected = if r.read_bool()? { Some(read_version(r)?) } else { None };
+    invalid(offset, WorkbenchCheckpointPath::new(path, checkpoint, expected))
+}
+
+pub(super) fn write_version(w: &mut CanonicalWriter, value: Version) -> Result<(), CodecError> {
     match value {
         Version::Absent => w.write_u16(0),
         Version::Present { digest, bytes, mode } => {
@@ -303,7 +322,7 @@ fn write_version(w: &mut CanonicalWriter, value: Version) -> Result<(), CodecErr
     }
 }
 
-fn read_version(r: &mut CanonicalReader<'_>) -> Result<Version, CodecError> {
+pub(super) fn read_version(r: &mut CanonicalReader<'_>) -> Result<Version, CodecError> {
     let offset = r.offset();
     match r.read_u16()? {
         0 => Ok(Version::Absent),

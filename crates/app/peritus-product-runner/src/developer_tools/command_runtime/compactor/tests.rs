@@ -19,11 +19,11 @@ fn compiled_compactor_contract_admits_exact_inputs_only() {
     let contract = contract::command_contract(RunId::new([1; 16]).unwrap(), 1).unwrap();
     let ids = identity::CommandIds::new(RunId::new([1; 16]).unwrap(), 1, &contract).unwrap();
     let resources = ProcessResourcePolicy::new(
-        1000,
-        4000,
+        Some(1000),
+        Some(4000),
         16 * 1024 * 1024,
         16 * 1024 * 1024,
-        8192,
+        Some(8192),
         32,
         256,
         1,

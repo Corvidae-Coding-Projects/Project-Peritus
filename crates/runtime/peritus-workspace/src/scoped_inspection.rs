@@ -13,9 +13,6 @@ mod selection;
 mod tests;
 pub use selection::FileReadSelection;
 
-/// Maximum source file scanned to establish a complete digest for an explicit range.
-pub const MAX_INSPECTION_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
-
 /// A root-bound read-only capability for explicitly selected relative files.
 ///
 /// The host must first authorize the actor, selected workspace, and protected-path policy.
@@ -37,6 +34,7 @@ pub struct InspectedFile {
     source_bytes: u64,
     source_digest: Sha256Digest,
     range: (u64, u64),
+    continuation_offset: Option<u64>,
     bytes: Vec<u8>,
 }
 impl InspectedFile {
@@ -62,6 +60,12 @@ impl InspectedFile {
     #[must_use]
     pub const fn range(&self) -> (u64, u64) {
         self.range
+    }
+    /// Returns the next source byte to request when a selected line range exceeded its inclusion
+    /// bound. The offset can resume the exact line even when it was longer than one page.
+    #[must_use]
+    pub const fn continuation_offset(&self) -> Option<u64> {
+        self.continuation_offset
     }
     /// Borrows exactly the selected bytes; no silent truncation occurs.
     #[must_use]
@@ -107,6 +111,21 @@ impl FolderInspection {
     #[must_use]
     pub const fn identity(&self) -> &FolderIdentity {
         &self.identity
+    }
+
+    pub(crate) fn open_directory(
+        &self,
+        path: Option<&WorkspacePath>,
+    ) -> Result<Dir, WorkspaceError> {
+        let mut directory = self.root.try_clone().map_err(|error| read_error(&error))?;
+        if let Some(path) = path {
+            for component in path.as_str().split('/') {
+                directory =
+                    directory.open_dir_nofollow(component).map_err(|error| read_error(&error))?;
+                reject_cap_reparse(&directory.dir_metadata().map_err(|error| read_error(&error))?)?;
+            }
+        }
+        Ok(directory)
     }
 
     fn open_file(&self, path: &WorkspacePath) -> Result<File, WorkspaceError> {

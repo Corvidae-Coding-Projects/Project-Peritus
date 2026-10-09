@@ -6,6 +6,8 @@ use peritus_product_runner::{
     attachment::ValidatedFileText,
     control::{ControlIntent, FileVersion},
 };
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 const FILE_NAMESPACE: u16 = 3409;
 const CONSENT_NAMESPACE: u16 = 3410;
@@ -73,7 +75,8 @@ impl ControlStore {
             .journal
             .state_record(FILE_NAMESPACE, version.operation().as_bytes())?
             .ok_or(Error::Corrupt("selected file version artifact missing"))?;
-        verify_text(version, artifact.bytes())
+        verify_text(version, artifact.bytes())?;
+        Ok(ValidatedFileText::new(artifact.bytes().to_vec())?)
     }
 }
 
@@ -84,19 +87,26 @@ fn version(operation: &ControlOperation) -> Result<&FileVersion, Error> {
         _ => Err(ControlError::InvalidInput.into()),
     }
 }
-fn verify_text(version: &FileVersion, bytes: &[u8]) -> Result<ValidatedFileText, Error> {
-    let text = ValidatedFileText::new(bytes.to_vec())?;
-    if !version.observation().matches(&text) {
+fn verify_text(version: &FileVersion, bytes: &[u8]) -> Result<(), Error> {
+    let digest = ValidatedFileText::validate_bytes(bytes)?;
+    if bytes.len() as u64 != version.observation().bytes()
+        || digest != version.observation().digest()
+    {
         return Err(Error::Corrupt("file artifact differs from its exact selected-byte binding"));
     }
-    Ok(text)
+    Ok(())
 }
 fn verify_consent(version: &FileVersion, bytes: &[u8]) -> Result<(), Error> {
-    if bytes.is_empty()
-        || bytes.len() > 16 * 1024
-        || peritus_codec::sha256(bytes) != version.consent_digest()
-    {
+    if bytes.is_empty() || digest_content(bytes) != version.consent_digest() {
         return Err(Error::Corrupt("file version proof differs from its immutable binding"));
     }
     Ok(())
+}
+
+fn digest_content(bytes: &[u8]) -> Sha256Digest {
+    let mut digest = Sha256::new();
+    for chunk in bytes.chunks(64 * 1024) {
+        digest.update(chunk);
+    }
+    Sha256Digest::new(digest.finalize().into())
 }

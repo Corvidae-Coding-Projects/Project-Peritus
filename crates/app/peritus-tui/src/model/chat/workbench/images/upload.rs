@@ -28,7 +28,12 @@ impl AppModel {
         let Some(binding) = self.chat.workbench.images.reading.take() else {
             return Vec::new();
         };
-        if !self.images_available() || self.chat.workbench.selected != Some(binding.query) {
+        if !self.images_available()
+            || self.chat.workbench.selected != Some(binding.query)
+            || self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer)
+                != Some(binding.provider)
+            || self.chat.models.writer() != &binding.model
+        {
             return Vec::new();
         }
         let image = match result {

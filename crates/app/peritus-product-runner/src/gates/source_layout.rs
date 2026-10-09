@@ -1,9 +1,10 @@
 //! Deterministic source-file readability verification for product candidates.
 
-use std::{fmt::Write as _, fs, path::Path};
+use std::{fmt::Write as _, fs, io, path::Path};
 
 use peritus_gates::{GateExecutionRecord, ProjectKind};
 
+use super::cancellation::GateCancellation;
 use crate::developer_tools::WorkspaceOwnership;
 
 pub fn run(
@@ -13,14 +14,11 @@ pub fn run(
     kind: ProjectKind,
     command: String,
     ownership: Option<&WorkspaceOwnership>,
+    cancellation: &GateCancellation,
 ) -> GateExecutionRecord {
     let mut source_files = changed_paths
         .iter()
         .filter(|path| path.starts_with(project_root) && is_source(path, kind))
-        .filter(|path| {
-            fs::symlink_metadata(workspace_root.join(path))
-                .is_ok_and(|metadata| metadata.file_type().is_file())
-        })
         .cloned()
         .collect::<Vec<_>>();
     source_files.sort();
@@ -35,10 +33,28 @@ pub fn run(
     files.sort();
     files.dedup();
     let mut errors = Vec::new();
+    let mut unevaluated = false;
 
     for path in &files {
-        if let Err(error) = fs::read_to_string(workspace_root.join(path)) {
-            errors.push(format!("{}: read source: {error}", path.display()));
+        if cancellation.is_cancelled() {
+            unevaluated = true;
+            break;
+        }
+        let full_path = workspace_root.join(path);
+        match fs::symlink_metadata(&full_path) {
+            Ok(metadata) if metadata.file_type().is_file() => {
+                if let Err(error) = read_source(&full_path, cancellation) {
+                    if cancellation.is_cancelled() {
+                        unevaluated = true;
+                        break;
+                    }
+                    errors.push(format!("{}: read source: {error}", path.display()));
+                }
+            }
+            Ok(_) => {
+                errors.push(format!("{}: selected source is not a regular file", path.display()));
+            }
+            Err(error) => errors.push(format!("{}: inspect source: {error}", path.display())),
         }
     }
 
@@ -57,18 +73,31 @@ pub fn run(
         output.push_str(error);
         output.push('\n');
     }
-    output.push_str(if passed {
-        "Source readability: PASS\n"
-    } else {
+    output.push_str(if !passed {
         "Source readability: FAIL\n"
+    } else if unevaluated {
+        "Source readability: NOT EVALUATED (run was cancelled)\n"
+    } else {
+        "Source readability: PASS\n"
     });
 
     GateExecutionRecord {
         command,
         label: "Source readability".to_owned(),
-        exit_code: Some(i32::from(!passed)),
+        exit_code: if !passed {
+            Some(1)
+        } else if unevaluated {
+            None
+        } else {
+            Some(0)
+        },
         output,
     }
+}
+
+fn read_source(path: &Path, cancellation: &GateCancellation) -> Result<u64, io::Error> {
+    let file = fs::File::open(path)?;
+    io::copy(&mut cancellation.reader(file), &mut io::sink())
 }
 
 fn is_source(path: &Path, kind: ProjectKind) -> bool {
@@ -105,6 +134,7 @@ mod tests {
             ProjectKind::Rust,
             "source-readability".to_owned(),
             None,
+            &GateCancellation::default(),
         );
 
         assert_eq!(record.exit_code, Some(0));
@@ -129,6 +159,7 @@ mod tests {
             ProjectKind::Rust,
             "source-readability".to_owned(),
             None,
+            &GateCancellation::default(),
         );
 
         assert_eq!(record.exit_code, Some(0));
@@ -162,6 +193,7 @@ mod tests {
             ProjectKind::Artifact,
             "source-readability".to_owned(),
             Some(&ownership),
+            &GateCancellation::default(),
         );
 
         assert_eq!(record.exit_code, Some(0));

@@ -5,11 +5,12 @@ use peritus_git::{CandidateRequest, CandidateSnapshot, SnapshotRequest};
 use peritus_patch::PatchIdentity;
 use peritus_types::{ActionId, Generation, ResourceId, RevisionNumber, SnapshotId, WorkspaceId};
 
+use crate::consumption::{self, ActionConsumptionBinding, ActionTerminalRecord};
 use crate::{
     ErrorCode, MutationOutcome, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest,
     WorkspaceCondition, WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
 };
-use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
+use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest_recoverable};
 
 /// Retained immutable candidate and its finalized C0 artifact observation.
 pub struct CandidateOutcome {
@@ -22,6 +23,16 @@ pub struct CandidateOutcome {
 }
 
 impl CandidateOutcome {
+    pub(crate) const fn from_receipt(
+        action_id: ActionId,
+        patch_id: PatchIdentity,
+        snapshot: CandidateSnapshot,
+        identity: SnapshotIdentity,
+        manifest: WorkspaceManifest,
+        artifact: FinalizedArtifact,
+    ) -> Self {
+        Self { action_id, patch_id, snapshot, identity, manifest, artifact }
+    }
     /// Returns the exact authorized action.
     #[must_use]
     pub const fn action_id(&self) -> ActionId {
@@ -61,6 +72,10 @@ impl WorkspaceGateway {
     /// # Errors
     ///
     /// On any Git or artifact failure, the live workspace remains dirty and requires inspection.
+    #[allow(
+        clippy::too_many_lines,
+        reason = "candidate publication keeps pre-effect planning and terminal receipt ordering visible"
+    )]
     pub fn create_candidate(
         &mut self,
         authorization: &WorkspaceAuthorizationRequest<'_>,
@@ -69,9 +84,32 @@ impl WorkspaceGateway {
         artifacts: &ArtifactStore,
     ) -> Result<CandidateOutcome, WorkspaceError> {
         validate_mutation_input(self.state(), mutation)?;
+        let action_binding = ActionConsumptionBinding::from_state(self.state());
         let payload = candidate_payload(mutation, snapshot_id, authorization.caller_binding());
         let permit =
             self.authorize_in_condition(authorization, &payload, WorkspaceCondition::Dirty)?;
+        let prior = self.state().current_snapshot().clone();
+        let next_revision = prior.revision().checked_next().map_err(|_| {
+            candidate_error(
+                ErrorCode::RevisionExhausted,
+                RecoveryClass::Quarantine,
+                "workspace revision is exhausted",
+            )
+        })?;
+        self.workspace_mut().prepare_action_consumption(
+            permit.action_id(),
+            permit.action_digest(),
+            &consumption::ActionPlan {
+                operation: 3,
+                snapshot_id,
+                payload_digest: peritus_codec::sha256(&payload),
+                installed_revision: next_revision,
+                dispatch_event: permit.dispatch_event(),
+                patch_identity: Some(mutation.patch_identity()),
+                patch_manifest_digest: Some(mutation.applied_patch().manifest_digest()),
+                target_snapshot_id: None,
+            },
+        )?;
         validate_mutation_input(self.state(), mutation)?;
         if mutation.generation() != permit.generation() || mutation.revision() != permit.revision()
         {
@@ -81,7 +119,6 @@ impl WorkspaceGateway {
                 "patch outcome differs from candidate permit",
             ));
         }
-        let prior = self.state().current_snapshot().clone();
         let repository = self.workspace_mut().repository().clone();
         let worktree = self.workspace_mut().worktree().clone();
         let candidate = repository
@@ -111,13 +148,6 @@ impl WorkspaceGateway {
                     "Git could not retain the candidate snapshot",
                 )
             })?;
-        let next_revision = prior.revision().checked_next().map_err(|_| {
-            candidate_error(
-                ErrorCode::RevisionExhausted,
-                RecoveryClass::Quarantine,
-                "workspace revision is exhausted",
-            )
-        })?;
         let identity = SnapshotIdentity::new(
             prior.workspace_id(),
             prior.generation(),
@@ -139,7 +169,7 @@ impl WorkspaceGateway {
             snapshot.tree(),
             detail_digest,
         );
-        let artifact = finalize_snapshot_manifest(
+        let artifact = finalize_snapshot_manifest_recoverable(
             &repository,
             &snapshot,
             &manifest,
@@ -147,6 +177,24 @@ impl WorkspaceGateway {
             permit.dispatch_event(),
         )
         .map_err(|failure| candidate_publication_error(self, &failure))?;
+        let receipt = ActionTerminalRecord::Candidate {
+            patch_identity: mutation.patch_identity(),
+            detail_digest,
+            artifact_digest: artifact.digest(),
+            artifact_size: artifact.size(),
+            snapshot_manifest: snapshot.manifest().bytes().to_vec(),
+            workspace_manifest: manifest.canonical_bytes().to_vec(),
+        };
+        if let Err(error) = consumption::complete_action(
+            self.workspace_mut().transaction_root(),
+            action_binding,
+            permit.action_id(),
+            permit.action_digest(),
+            &receipt,
+        ) {
+            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Indeterminate);
+            return Err(error);
+        }
         self.workspace_mut().state_mut().install(identity.clone());
         Ok(CandidateOutcome {
             action_id: permit.action_id(),
@@ -163,19 +211,19 @@ const fn candidate_publication_error(
     gateway: &mut WorkspaceGateway,
     failure: &SnapshotPublicationFailure,
 ) -> WorkspaceError {
-    let compensated = failure.compensation_failure().is_none();
-    gateway.workspace_mut().state_mut().set_condition(if compensated {
+    let retained = failure.snapshot_retained();
+    gateway.workspace_mut().state_mut().set_condition(if retained {
         WorkspaceCondition::Dirty
     } else {
         WorkspaceCondition::Indeterminate
     });
     candidate_error(
-        if compensated { ErrorCode::Artifact } else { ErrorCode::Git },
+        if retained { ErrorCode::Artifact } else { ErrorCode::Git },
         RecoveryClass::Reconcile,
-        if compensated {
-            "candidate manifest was not finalized; its retained snapshot was released"
+        if retained {
+            "candidate manifest was not finalized; its retained snapshot is available for action recovery"
         } else {
-            "candidate manifest failed and retained snapshot cleanup was inconclusive"
+            "candidate manifest failed and exact snapshot release was inconclusive"
         },
     )
 }
@@ -302,7 +350,7 @@ fn validate_mutation_input(
     Ok(())
 }
 
-fn combined_detail(
+pub fn combined_detail(
     left: peritus_types::Sha256Digest,
     right: peritus_types::Sha256Digest,
 ) -> peritus_types::Sha256Digest {

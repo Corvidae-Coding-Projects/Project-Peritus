@@ -34,6 +34,16 @@ impl ProductRunService {
         run: RunId,
         mutate: impl FnOnce(&mut super::super::super::PreviewAggregate) -> Result<(), AppProtocolError>,
     ) -> Result<(WorkbenchReceipt, bool), AppProtocolError> {
+        self.admit_preview_with_evidence(command, run, None, mutate)
+    }
+
+    pub(super) fn admit_preview_with_evidence(
+        &self,
+        command: &WorkbenchCommand,
+        run: RunId,
+        behavior_evidence: Option<super::super::super::preview_evidence::PreviewBehaviorEvidence>,
+        mutate: impl FnOnce(&mut super::super::super::PreviewAggregate) -> Result<(), AppProtocolError>,
+    ) -> Result<(WorkbenchReceipt, bool), AppProtocolError> {
         let fingerprint = command.fingerprint().map_err(|_| app_error(Code::MalformedFrame))?;
         let mut records = self.inner.records.write().map_err(|_| app_error(Code::Backpressure))?;
         let record = records.get_mut(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
@@ -57,6 +67,7 @@ impl ProductRunService {
                     .as_ref()
                     .map_or(0, WorkbenchResultPage::result_revision),
                 completed_sequence: 0,
+                behavior_evidence,
             },
         );
         if super::super::super::persist_record(&self.inner.directory, record).is_err() {

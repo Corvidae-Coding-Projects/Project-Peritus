@@ -86,7 +86,7 @@ impl ProductRunService {
                 .map_err(|_| ProductRunServiceError::Unavailable)
                 .and_then(|records| {
                     let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
-                    super::super::operation::may_start_execution(&self.inner.directory, record)
+                    super::super::operation::may_start_execution(self, record)
                 }) {
                 Ok(retryable) => retryable,
                 Err(error) => return error.response(),

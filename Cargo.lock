@@ -2297,6 +2297,7 @@ dependencies = [
  "peritus-run-settlement",
  "peritus-test-support",
  "peritus-types",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
 ]
@@ -2632,8 +2633,10 @@ dependencies = [
 name = "peritus-git"
 version = "0.0.5"
 dependencies = [
+ "libc",
  "peritus-codec",
  "peritus-types",
+ "process-wrap",
  "tempfile",
  "vstd",
 ]
@@ -2842,6 +2845,7 @@ version = "0.0.5"
 dependencies = [
  "peritus-codec",
  "peritus-types",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
 ]
@@ -3495,6 +3499,7 @@ dependencies = [
  "peritus-tool-router",
  "peritus-types",
  "peritus-workspace",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
 ]
@@ -3519,6 +3524,7 @@ dependencies = [
  "peritus-tool-router",
  "peritus-types",
  "peritus-workspace",
+ "serde_json",
  "tempfile",
  "vstd",
 ]

@@ -3,7 +3,7 @@
 use super::super::error;
 use super::{FRAME_FAMILY, LocalStore, STATE_KEY, STATE_NAMESPACE};
 use peritus_agent::DeveloperLoopError;
-use peritus_codec::{CodecLimits, encode_frame, sha256};
+use peritus_codec::{encode_frame, sha256};
 use peritus_journal::{
     AppendRequest, ArtifactDependency, EventDraft, ExactFrame, HeadExpectation, StateInstall,
 };
@@ -20,7 +20,7 @@ impl LocalStore {
             self.sequence().checked_add(1).ok_or_else(|| error("event sequence overflow"))?;
         let event = self.identity.event(sequence)?;
         let frame = ExactFrame::new(
-            encode_frame(FRAME_FAMILY, 1, payload, CodecLimits::PRODUCTION)
+            encode_frame(FRAME_FAMILY, 1, payload, super::record_codec_limits())
                 .map_err(|_| error("encode local journal event"))?,
         )
         .map_err(|_| error("validate local journal frame"))?;

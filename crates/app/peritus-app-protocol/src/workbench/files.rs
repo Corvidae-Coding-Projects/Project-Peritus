@@ -12,9 +12,6 @@ pub use preview::{WorkbenchFileMetadata, WorkbenchFilePreview};
 mod page;
 pub use page::{WorkbenchFilePage, WorkbenchFileQuery, WorkbenchFileRow};
 
-/// Maximum selected UTF-8 file bytes; larger sources require an explicit range.
-pub const MAX_WORKBENCH_FILE_BYTES: u64 = 256 * 1024;
-
 pub(super) const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
@@ -22,7 +19,7 @@ pub(super) const fn invalid() -> AppProtocolError {
 /// Exact source selection, resolved to bytes only by the authorized host.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WorkbenchFileRange {
-    /// Complete source under the inclusion ceiling.
+    /// Complete source.
     All,
     /// Nonempty half-open byte range.
     Bytes {
@@ -43,16 +40,12 @@ impl WorkbenchFileRange {
     /// Validates structural bounds, not source existence or authorization.
     ///
     /// # Errors
-    /// Rejects empty/reversed or out-of-ceiling ranges.
+    /// Rejects empty or reversed ranges.
     pub const fn validate(self) -> Result<(), AppProtocolError> {
         match self {
             Self::All => Ok(()),
-            Self::Bytes { start, end } if start < end && end <= 64 * 1024 * 1024 => Ok(()),
-            Self::Lines { first, last }
-                if first > 0 && first <= last && last <= 64 * 1024 * 1024 =>
-            {
-                Ok(())
-            }
+            Self::Bytes { start, end } if start < end => Ok(()),
+            Self::Lines { first, last } if first > 0 && first <= last => Ok(()),
             _ => Err(invalid()),
         }
     }

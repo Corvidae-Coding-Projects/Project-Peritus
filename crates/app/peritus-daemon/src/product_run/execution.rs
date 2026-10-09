@@ -1,6 +1,16 @@
 //! Active product-run task ownership and terminal projection.
 mod runtime;
 
+use super::Path;
+
+pub(super) fn open_command_runtime(
+    service: &ProductRunService,
+    request: &super::ProductRunRequest,
+    root: &Path,
+) -> Result<peritus_product_runner::CommandRuntime, peritus_product_runner::ProductRunnerError> {
+    runtime::open(service, request, root)
+}
+
 use peritus_app_protocol::{ProductDeliverable, ProductRunPhase, ProductRunSnapshot};
 use peritus_product_runner::ProductRunOutcome;
 use peritus_product_runner::control::GoalSettlement;

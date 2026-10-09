@@ -94,6 +94,23 @@ impl AppModel {
         {
             return self.confirm_rewind();
         }
+        if self.chat.workbench.mode == WorkbenchMode::Checkpoints {
+            match key.code {
+                KeyCode::Char('n') if self.chat.workbench.rewind_page.is_some() => {
+                    return self.next_rewind_page();
+                }
+                KeyCode::Char('p') if self.chat.workbench.rewind_page.is_some() => {
+                    return self.previous_rewind_page();
+                }
+                KeyCode::Char('n') if self.chat.workbench.checkpoint_page.is_some() => {
+                    return self.next_checkpoint_page();
+                }
+                KeyCode::Char('p') if self.chat.workbench.checkpoint_page.is_some() => {
+                    return self.previous_checkpoint_page();
+                }
+                _ => {}
+            }
+        }
         if matches!(
             key.code,
             KeyCode::Up
@@ -161,11 +178,16 @@ impl AppModel {
                         | PendingRequest::WorkbenchFileUpload { .. }
                         | PendingRequest::WorkbenchFiles(_)
                         | PendingRequest::WorkbenchReview(_)
+                        | PendingRequest::WorkbenchReviewSummary(_)
+                        | PendingRequest::WorkbenchReviewDiff(_)
+                        | PendingRequest::WorkbenchReviewDiffBytes(_)
                         | PendingRequest::WorkbenchImageUpload { .. }
                         | PendingRequest::WorkbenchContext(_)
                         | PendingRequest::WorkbenchCompaction(_)
                         | PendingRequest::WorkbenchCheckpointInspect(_)
                         | PendingRequest::WorkbenchRewind(_)
+                        | PendingRequest::WorkbenchCheckpointPage(_)
+                        | PendingRequest::WorkbenchRewindPage(_)
                         | PendingRequest::WorkbenchBrief(_)
                         | PendingRequest::WorkbenchGoal(_)
                         | PendingRequest::WorkbenchResult(_)

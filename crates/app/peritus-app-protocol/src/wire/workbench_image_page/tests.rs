@@ -24,8 +24,9 @@ fn image_page_rejects_oversized_row_count_before_reading_any_rows() {
 }
 
 #[test]
-fn image_query_rejects_unfenced_continuation_and_excessive_offsets_on_the_wire() {
-    for (revision, offset) in [(0, 1), (1, 257)] {
+fn image_query_rejects_unfenced_continuation_and_accepts_large_fenced_offsets() {
+    {
+        let (revision, offset) = (0, 1);
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
         super::super::workbench::write_query(&mut writer, scope()).expect("scope");
         writer.write_u64(revision).expect("revision");
@@ -37,4 +38,14 @@ fn image_query_rejects_unfenced_continuation_and_excessive_offsets_on_the_wire()
             CodecErrorKind::InvalidDomainValue
         );
     }
+
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    super::super::workbench::write_query(&mut writer, scope()).expect("scope");
+    writer.write_u64(1).expect("revision");
+    writer.write_u32(257).expect("offset beyond legacy page cap");
+    let bytes = writer.into_bytes();
+    let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
+    let query = read_query(&mut reader).expect("valid fenced continuation beyond legacy cap");
+    assert_eq!(query.revision(), 1);
+    assert_eq!(query.offset(), 257);
 }

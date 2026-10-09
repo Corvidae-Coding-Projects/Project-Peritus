@@ -19,13 +19,17 @@ impl ToolIntentPayload {
         let descriptor = prepared.descriptor();
         let call = prepared.call();
         let mut bytes = Vec::with_capacity(256);
-        bytes.extend_from_slice(b"peritus.tool-intent.v1\0");
+        bytes.extend_from_slice(if call.limits().timeout_millis().is_some() {
+            b"peritus.tool-intent.v1\0"
+        } else {
+            b"peritus.tool-intent.v2\0"
+        });
         bytes.extend_from_slice(call.action_id().as_bytes());
         bytes.extend_from_slice(descriptor.descriptor_digest().as_bytes());
         bytes.extend_from_slice(prepared.prepared_digest().as_bytes());
         bytes.extend_from_slice(prepared.arguments_digest().as_bytes());
         bytes.push(operation_tag(descriptor.operation().operation_class()));
-        bytes.extend_from_slice(&call.limits().timeout_millis().to_be_bytes());
+        bytes.extend_from_slice(&call.limits().timeout_millis().unwrap_or(0).to_be_bytes());
         bytes.extend_from_slice(&call.limits().output_bytes().to_be_bytes());
         bytes.extend_from_slice(&call.limits().model_bytes().to_be_bytes());
         bytes.extend_from_slice(&call.limits().human_bytes().to_be_bytes());

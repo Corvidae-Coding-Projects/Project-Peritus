@@ -1,8 +1,5 @@
 //! Explicit client-imported snapshots. Source labels are never reopened by the daemon.
-use super::{
-    MAX_WORKBENCH_FILE_BYTES, WorkbenchFileMetadata, WorkbenchFileMode, WorkbenchFileRequest,
-    invalid,
-};
+use super::{WorkbenchFileMetadata, WorkbenchFileMode, WorkbenchFileRequest, invalid};
 use crate::{AppProtocolError, ArtifactMetadata, WorkbenchQuery};
 use peritus_types::ArtifactId;
 
@@ -14,16 +11,16 @@ pub struct WorkbenchFileUpload {
     metadata: ArtifactMetadata,
 }
 impl WorkbenchFileUpload {
-    /// Validates ownership revision and the text transfer ceiling, including empty text.
+    /// Validates ownership revision for the selected text transfer, including empty text.
     ///
     /// # Errors
-    /// Rejects an absent revision or an oversized selection.
+    /// Rejects an absent revision.
     pub fn new(
         query: WorkbenchQuery,
         revision: u64,
         metadata: ArtifactMetadata,
     ) -> Result<Self, AppProtocolError> {
-        if revision == 0 || metadata.byte_size() > MAX_WORKBENCH_FILE_BYTES {
+        if revision == 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, metadata })
@@ -62,10 +59,7 @@ impl WorkbenchFileImportRequest {
         artifact: ArtifactId,
         file: WorkbenchFileMetadata,
     ) -> Result<Self, AppProtocolError> {
-        if selection.mode() != WorkbenchFileMode::Snapshot
-            || selection.path().len() > 1024
-            || !file.matches(selection.range())
-        {
+        if selection.mode() != WorkbenchFileMode::Snapshot || !file.matches(selection.range()) {
             return Err(invalid());
         }
         Ok(Self { selection, artifact, file })

@@ -5,7 +5,7 @@
 
 mod decode;
 mod text;
-pub use text::{MAX_FILE_BYTES, MAX_FILE_COUNT, MAX_FILE_SELECTION_BYTES, ValidatedFileText};
+pub use text::ValidatedFileText;
 #[cfg(test)]
 mod tests;
 
@@ -17,20 +17,25 @@ use sha2::{Digest, Sha256};
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-/// Maximum encoded bytes per explicit image, further constrained by the provider.
-pub const MAX_IMAGE_BYTES: u64 = 4 * 1024 * 1024;
-/// Maximum aggregate encoded image bytes per request.
-pub const MAX_IMAGE_SELECTION_BYTES: u64 = 12 * 1024 * 1024;
-/// Maximum number of explicit images in one request.
-pub const MAX_IMAGE_COUNT: usize = 16;
-/// Maximum width or height, checked before decoding pixels.
-pub const MAX_IMAGE_SIDE: u32 = 8192;
-/// Maximum pixels in each decoded image canvas.
-pub const MAX_IMAGE_PIXELS: u64 = 16 * 1024 * 1024;
-/// Maximum decoded frames per encoded image, including animation frames.
-pub const MAX_IMAGE_FRAMES: u32 = 64;
-/// Maximum aggregate decoded output per encoded image (not a process RSS guarantee).
-pub const MAX_IMAGE_DECODED_BYTES: u64 = 128 * 1024 * 1024;
+/// Optional decoder allocation policy. `None` delegates allocation failure to the decoder/host.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ImageDecodePolicy {
+    max_allocation_bytes: Option<u64>,
+}
+
+impl ImageDecodePolicy {
+    /// Creates an explicit allocation policy; `None` places no synthetic decoder ceiling.
+    #[must_use]
+    pub const fn new(max_allocation_bytes: Option<u64>) -> Self {
+        Self { max_allocation_bytes }
+    }
+
+    /// Returns the caller-selected decoder allocation ceiling.
+    #[must_use]
+    pub const fn max_allocation_bytes(self) -> Option<u64> {
+        self.max_allocation_bytes
+    }
+}
 
 /// Exact original bytes whose detected format and complete pixel frames passed validation.
 /// No public constructor or deserializer can manufacture validation from a claimed digest.
@@ -45,27 +50,49 @@ pub struct ValidatedImage {
 }
 
 impl ValidatedImage {
-    /// Detects format from bytes and decodes all frames under host and provider bounds.
+    /// Detects format, validates all frames incrementally, and retains original bytes.
     ///
     /// # Errors
-    /// Rejects missing provider capability, invalid/unsupported image data, or any limit breach.
+    /// Rejects missing provider capability or invalid/unsupported image data.
     pub fn decode(bytes: Vec<u8>, profile: &ProviderProfile) -> Result<Self, ProductRunnerError> {
+        Self::decode_with_policy(bytes, profile, ImageDecodePolicy::default())
+    }
+
+    /// Decodes with an explicit optional allocation policy and provider capacity.
+    ///
+    /// # Errors
+    /// Rejects missing provider capability, an image over provider capacity, or invalid image data.
+    pub fn decode_with_policy(
+        bytes: Vec<u8>,
+        profile: &ProviderProfile,
+        policy: ImageDecodePolicy,
+    ) -> Result<Self, ProductRunnerError> {
         check_provider(profile)?;
+        Self::decode_original_with_policy(bytes, policy)
+    }
+
+    /// Validates exact original image bytes without binding admission to a provider profile.
+    ///
+    /// The resulting image may be archived. Before sending it, callers must apply the selected
+    /// provider's capability and per-image capacity policy with [`validate_image_selection`].
+    ///
+    /// # Errors
+    /// Rejects an empty or unsupported image or a failed complete-frame validation.
+    pub fn decode_original_with_policy(
+        bytes: Vec<u8>,
+        policy: ImageDecodePolicy,
+    ) -> Result<Self, ProductRunnerError> {
         let byte_len = u64::try_from(bytes.len()).map_err(|_| invalid("image length overflow"))?;
-        if byte_len == 0
-            || byte_len > MAX_IMAGE_BYTES.min(profile.limits().max_inline_media_bytes())
-        {
-            return Err(invalid(
-                "image exceeds the host or selected provider byte limit, or is empty",
-            ));
+        if byte_len == 0 {
+            return Err(invalid("image is empty"));
         }
-        let decoded = decode::validate(&bytes)?;
+        let decoded = decode::validate(&bytes, policy)?;
         let digest = Sha256Digest::new(Sha256::digest(&bytes).into());
         let media = MediaInput::inline(
             MediaKind::Image,
             MediaType::new(decoded.mime.to_owned()).map_err(|error| invalid(error.to_string()))?,
             bytes,
-            ProtocolLimits::PRODUCTION,
+            ProtocolLimits::ARCHIVE,
         )
         .map_err(|error| invalid(error.to_string()))?;
         Ok(Self {
@@ -103,13 +130,19 @@ impl ValidatedImage {
     pub const fn byte_len(&self) -> u64 {
         self.byte_len
     }
+
+    /// Consumes the validation proof and returns the exact original encoded bytes.
+    #[must_use]
+    pub fn into_original_bytes(self) -> Option<Vec<u8>> {
+        self.media.into_inline_bytes()
+    }
 }
 
-/// Revalidates a complete selection against current provider capability and aggregate ceilings.
+/// Revalidates a complete selection against current provider capability.
 /// The caller must apply this to the whole selected request, not independent batches.
 ///
 /// # Errors
-/// Rejects unsupported media or an individual, count, or aggregate limit breach. Nothing is omitted.
+/// Rejects unsupported media or a provider-capacity breach. Nothing is omitted.
 pub fn validate_image_selection(
     images: &[ValidatedImage],
     profile: &ProviderProfile,
@@ -118,20 +151,10 @@ pub fn validate_image_selection(
         return Ok(());
     }
     check_provider(profile)?;
-    if images.len() > MAX_IMAGE_COUNT {
-        return Err(invalid("image selection exceeds the image count limit"));
-    }
-    let mut total = 0_u64;
     for image in images {
         if image.byte_len > profile.limits().max_inline_media_bytes() {
             return Err(invalid("selected image exceeds the current provider byte limit"));
         }
-        total = total
-            .checked_add(image.byte_len)
-            .ok_or_else(|| invalid("image selection length overflow"))?;
-    }
-    if total > MAX_IMAGE_SELECTION_BYTES {
-        return Err(invalid("image selection exceeds the aggregate byte limit"));
     }
     Ok(())
 }

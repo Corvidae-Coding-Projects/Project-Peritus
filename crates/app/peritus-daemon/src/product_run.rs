@@ -13,6 +13,7 @@ mod lifecycle;
 mod operation;
 mod permissions;
 mod persistence;
+mod preview_evidence;
 mod progress;
 mod recovery;
 mod request;
@@ -25,7 +26,7 @@ mod test_support;
 mod tests;
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
     sync::{Arc, RwLock, atomic::AtomicBool},
@@ -39,7 +40,7 @@ use peritus_process::ProcessStore;
 use peritus_product_runner::{CommandRuntime, PreviewLaunch, ProductRunResume, RoleProviders};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
-use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
+use peritus_types::{ActionId, ProcessId, ProviderProfileId, RunId, WorkspaceId};
 use tokio::{sync::Mutex, task::JoinHandle};
 
 use crate::{DaemonComponents, DaemonError, startup::workspace::WorkspaceCatalog};
@@ -63,6 +64,8 @@ pub struct ProductRunService {
     inner: Arc<Inner>,
 }
 
+type OpenedProductRunService = (ProductRunService, Vec<(RunId, ActionId, ProcessId)>);
+
 struct Inner {
     improvements: std::sync::Mutex<improvements::Store>,
     improvement_launch: Mutex<()>,
@@ -76,7 +79,8 @@ struct Inner {
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
     folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
     processes: ProcessStore,
-    tasks: Mutex<Vec<JoinHandle<()>>>,
+    tasks: Mutex<Vec<(RunId, JoinHandle<()>)>>,
+    command_recoveries: std::sync::Mutex<BTreeSet<RunId>>,
     model_catalogs: catalog::ModelCatalogs,
     image_decodes: Arc<tokio::sync::Semaphore>,
     host_permissions: permissions::HostPermissionCatalog,
@@ -102,15 +106,16 @@ struct PreviewAggregate {
     operations: BTreeMap<ControlOperationId, PreviewOperationRecord>,
     outputs: BTreeMap<ControlOperationId, String>,
     errors: BTreeMap<ControlOperationId, String>,
-    truncated: std::collections::BTreeSet<ControlOperationId>,
+    truncated: BTreeSet<ControlOperationId>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct PreviewOperationRecord {
     fingerprint: peritus_types::Sha256Digest,
     accepted_revision: u64,
     result_sequence: u64,
     completed_sequence: u64,
+    behavior_evidence: Option<preview_evidence::PreviewBehaviorEvidence>,
 }
 
 #[derive(Clone)]
@@ -255,14 +260,14 @@ impl ProductRunService {
         if let Some(run_id) = query.run_id() {
             return records
                 .get(&run_id)
-                .map(|record| live_snapshot(&self.inner.directory, record))
+                .map(|record| live_snapshot(self, record))
                 .transpose()
                 .map(|snapshot| snapshot.into_iter().collect());
         }
         recent_records(&records, query.offset())
             .into_iter()
             .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
-            .map(|record| live_snapshot(&self.inner.directory, record))
+            .map(|record| live_snapshot(self, record))
             .collect()
     }
 
@@ -272,7 +277,7 @@ impl ProductRunService {
     ) -> Result<AppResponsePayload, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&snapshot.run_id()).ok_or(ProductRunServiceError::NotFound)?;
-        project_snapshot(&self.inner.directory, record, snapshot)
+        project_snapshot(self, record, snapshot)
     }
 
     fn resolve_providers(

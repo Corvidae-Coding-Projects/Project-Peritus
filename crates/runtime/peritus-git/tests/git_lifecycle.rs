@@ -109,13 +109,13 @@ fn parses_tracked_untracked_ignored_and_renamed_status() {
     checked_git(worktree.root(), &["add", "--", ".gitignore", "renamed.txt", "tracked.txt"]);
     let status = repository.status(&worktree).expect("status");
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "renamed.txt" && matches!(entry.kind(), StatusKind::Renamed { .. })
+        entry.path() == b"renamed.txt" && matches!(entry.kind(), StatusKind::Renamed { .. })
     }));
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "untracked.txt" && matches!(entry.kind(), StatusKind::Untracked)
+        entry.path() == b"untracked.txt" && matches!(entry.kind(), StatusKind::Untracked)
     }));
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "ignored.log" && matches!(entry.kind(), StatusKind::Ignored)
+        entry.path() == b"ignored.log" && matches!(entry.kind(), StatusKind::Ignored)
     }));
     repository
         .remove_worktree(&worktree, RemovalPolicy::ForceRegistered)
@@ -148,7 +148,7 @@ fn parses_real_unmerged_index_as_indeterminate_reconciliation() {
     let status = repository.status(&worktree).expect("conflicted porcelain status");
     assert!(status.index_tree().is_none());
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "tracked.txt" && matches!(entry.kind(), StatusKind::Unmerged { .. })
+        entry.path() == b"tracked.txt" && matches!(entry.kind(), StatusKind::Unmerged { .. })
     }));
     let reconciled = repository
         .reconcile(ReconcileExpectation::new(&worktree, baseline.commit(), baseline.tree()))
@@ -194,6 +194,11 @@ fn candidate_snapshot_restart_and_restore_preserve_head_and_history() {
         ))
         .expect("snapshot");
     assert_eq!(snapshot.tree(), candidate.tree());
+    let recovered_by_identity = repository
+        .reopen_snapshot_id(workspace_id, snapshot_id)
+        .expect("recover retained snapshot manifest")
+        .expect("snapshot manifest is retained");
+    assert_eq!(recovered_by_identity, snapshot);
     assert_eq!(repository.inspect_worktree(&worktree).expect("head").head(), baseline.commit());
 
     std::fs::write(worktree.root().join("tracked.txt"), b"candidate two\n").expect("second");
@@ -255,9 +260,25 @@ fn candidate_snapshot_restart_and_restore_preserve_head_and_history() {
     assert!(reopened.status(&review).expect("review status").is_clean());
     assert!(reopened.create_candidate(CandidateRequest::new(&review, snapshot.commit())).is_err());
     reopened.remove_worktree(&review, RemovalPolicy::RequireClean).expect("remove review worktree");
-    reopened.release_snapshot(&snapshot).expect("release snapshot ref");
-    reopened.remove_worktree(&worktree, RemovalPolicy::ForceRegistered).expect("remove writer");
+    verify_release_and_writer_cleanup(&reopened, &snapshot, workspace_id, snapshot_id, &worktree);
     assert_eq!(checked_git(&fixture.root, &["rev-parse", "HEAD"]), baseline.commit().to_string());
+}
+
+fn verify_release_and_writer_cleanup(
+    repository: &peritus_git::GitRepository,
+    snapshot: &peritus_git::CandidateSnapshot,
+    workspace_id: WorkspaceId,
+    snapshot_id: SnapshotId,
+    worktree: &peritus_git::RegisteredWorktree,
+) {
+    repository.release_snapshot(snapshot).expect("release snapshot ref and manifest");
+    assert!(
+        repository
+            .reopen_snapshot_id(workspace_id, snapshot_id)
+            .expect("manifest released")
+            .is_none()
+    );
+    repository.remove_worktree(worktree, RemovalPolicy::ForceRegistered).expect("remove writer");
 }
 
 #[test]

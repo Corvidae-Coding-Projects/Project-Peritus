@@ -45,9 +45,18 @@ pub(super) fn project_comment(
     files: &[WorkbenchDiffFile],
 ) -> Result<WorkbenchReviewComment, Error> {
     let anchor = project_anchor(value.anchor())?;
+    let is_current = contains(files, &anchor);
+    project_comment_with_current(value, is_current)
+}
+
+pub(super) fn project_comment_with_current(
+    value: &peritus_product_runner::control::ReviewComment,
+    is_current: bool,
+) -> Result<WorkbenchReviewComment, Error> {
+    let anchor = project_anchor(value.anchor())?;
     let state = if value.state() == ReviewCommentState::Dismissed {
         WorkbenchReviewCommentState::Dismissed
-    } else if !contains(files, &anchor) {
+    } else if !is_current {
         WorkbenchReviewCommentState::Stale
     } else if value.state() == ReviewCommentState::Addressed {
         WorkbenchReviewCommentState::Addressed

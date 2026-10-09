@@ -8,7 +8,7 @@
   "properties": {
     "family": { "enum": [94, 95, 96, 97, 98, 99] },
     "schemaVersion": { "const": 1 },
-    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "harness-improvements", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "update-models", "interact-with-effort", "update-models-with-effort", "doctor", "workbench-command", "query-workbench", "query-workbench-receipt", "query-workbench-queue", "query-workbench-context", "query-workbench-brief", "begin-workbench-image-upload", "preview-workbench-image", "query-workbench-images", "preview-workbench-file", "query-workbench-files", "begin-workbench-file-upload", "preview-workbench-file-import", "preview-workbench-compaction", "query-workbench-execution", "continue-workbench-execution", "query-interaction-binding", "query-workbench-goal", "query-workbench-review", "query-workbench-result", "query-workbench-preview", "query-product-run-observations", "preview-workbench-rewind", "inspect-workbench-checkpoint", "query-conversation-library", "query-workbench-permissions", "query-workbench-memory", "discover-init", "harness-improvements", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "terminal-pipe-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-run-conversation", "product-run-settled", "interaction", "models", "interaction-with-effort", "doctor-report", "workbench-snapshot", "workbench-receipt", "workbench-queue", "workbench-context", "workbench-brief", "workbench-image-preview", "workbench-images", "workbench-file-preview", "workbench-files", "workbench-file-import-preview", "workbench-compaction-preview", "workbench-execution", "interaction-binding", "workbench-goal", "workbench-review", "workbench-result", "workbench-preview", "product-run-observations", "workbench-checkpoint", "workbench-rewind-preview", "workbench-restore", "conversation-library", "workbench-permissions", "workbench-memory", "init-proposal", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "terminal-unavailable", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "harness-improvements", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "update-models", "interact-with-effort", "update-models-with-effort", "doctor", "workbench-command", "query-workbench", "query-workbench-receipt", "query-workbench-queue", "query-workbench-context", "query-workbench-brief", "begin-workbench-image-upload", "preview-workbench-image", "query-workbench-images", "preview-workbench-file", "query-workbench-files", "begin-workbench-file-upload", "preview-workbench-file-import", "preview-workbench-compaction", "query-workbench-execution", "continue-workbench-execution", "query-interaction-binding", "query-workbench-goal", "query-workbench-review", "query-workbench-result", "query-workbench-preview", "query-product-run-observations", "preview-workbench-rewind", "inspect-workbench-checkpoint", "query-workbench-checkpoint-page", "query-workbench-rewind-page", "query-conversation-library", "query-workbench-permissions", "query-workbench-memory", "discover-init", "harness-improvements", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "terminal-pipe-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-run-conversation", "product-run-settled", "interaction", "models", "interaction-with-effort", "doctor-report", "workbench-snapshot", "workbench-receipt", "workbench-queue", "workbench-context", "workbench-brief", "workbench-image-preview", "workbench-images", "workbench-file-preview", "workbench-files", "workbench-file-import-preview", "workbench-compaction-preview", "workbench-execution", "interaction-binding", "workbench-goal", "workbench-review", "workbench-result", "workbench-preview", "product-run-observations", "workbench-checkpoint", "workbench-rewind-preview", "workbench-restore", "workbench-checkpoint-page", "workbench-rewind-page", "workbench-restore-summary", "conversation-library", "workbench-permissions", "workbench-memory", "init-proposal", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "terminal-unavailable", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
     "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
   },
   "$defs": {
@@ -874,6 +874,20 @@
       },
       "required": ["query", "run"]
     },
+    "WorkbenchPreviewOutputQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutputQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "stream": { "$ref": "#/$defs/WorkbenchPreviewOutputStream", "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPreviewOutputStream" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "maximumBytes": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] }
+      },
+      "required": ["query", "run", "launch", "stream", "offset", "maximumBytes"]
+    },
     "WorkbenchLaunchSource": {
       "type": "object",
       "additionalProperties": false,
@@ -1025,6 +1039,29 @@
         "truncated": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
       },
       "required": ["launch", "stdout", "stderr", "truncated"]
+    },
+    "WorkbenchPreviewOutputStream": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutputStream",
+      "properties": {
+        "tag": { "type": "string", "enum": ["stdout", "stderr", "terminal"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPreviewOutputStream" }
+      },
+      "required": ["tag"]
+    },
+    "WorkbenchPreviewOutputRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutputRange",
+      "properties": {
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "stream": { "$ref": "#/$defs/WorkbenchPreviewOutputStream", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchPreviewOutputStream" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "totalBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "artifactDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<[u8; 32]>" },
+        "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>" }
+      },
+      "required": ["launch", "stream", "offset", "totalBytes", "bytes"]
     },
     "WorkbenchPreviewSnapshot": {
       "type": "object",
@@ -1806,9 +1843,9 @@
         "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
         "name": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchCheckpointName", "x-bounds": ["workbench.max-checkpoint-name-bytes (256)"] },
         "references": { "$ref": "#/$defs/WorkbenchCheckpointReferences", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointReferences" },
-        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchCheckpointPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchCheckpointPath>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "strictly-sorted-unique"] },
-        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] },
-        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] }
+        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchCheckpointPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchCheckpointPath>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "strictly-sorted-unique"] },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-checkpoint-text-bytes (512)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-checkpoint-text-bytes (512)"] }
       },
       "required": ["checkpoint", "query", "acceptedRevision", "name", "references", "paths", "exclusions", "externalEffects"]
     },
@@ -1846,9 +1883,9 @@
       "properties": {
         "request": { "$ref": "#/$defs/WorkbenchRewindRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindRequest" },
         "previewDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
-        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchRewindPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchRewindPath>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "strictly-sorted-unique"] },
-        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] },
-        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] },
+        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchRewindPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchRewindPath>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "strictly-sorted-unique"] },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-checkpoint-text-bytes (512)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-checkpoint-text-bytes (512)"] },
         "conversationHistoryPreserved": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
         "accountingPreserved": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
       },
@@ -1885,11 +1922,127 @@
         "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
         "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
         "status": { "type": "string", "enum": ["applied", "conflict", "recoveryRequired"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchRestoreStatus" },
-        "restored": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-restore-text-bytes (4096)"] },
-        "conflicts": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-restore-text-bytes (4096)"] },
-        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-restore-text-bytes (4096)"] }
+        "restored": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-restore-text-bytes (4096)"] },
+        "conflicts": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-restore-text-bytes (4096)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["wire.u16-count (legacy full-list message only)", "workbench.max-restore-text-bytes (4096)"] }
       },
       "required": ["restore", "checkpoint", "recoveryCheckpoint", "query", "acceptedRevision", "status", "restored", "conflicts", "externalEffects"]
+    },
+    "WorkbenchRewindConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRewindConfirmation",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchRewindRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindRequest" },
+        "previewDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["request", "previewDigest"]
+    },
+    "WorkbenchConfirmRewindIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["confirmRewind"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "confirmation": { "$ref": "#/$defs/WorkbenchRewindConfirmation", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindConfirmation" }
+      },
+      "required": ["kind", "confirmation"]
+    },
+    "WorkbenchCoverageCursor": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCoverageCursor",
+      "properties": {
+        "section": { "type": "string", "enum": ["paths", "exclusions", "externalEffects"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCoverageSection" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["section", "offset", "fingerprint"]
+    },
+    "WorkbenchCheckpointPageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointPageRequest",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "hasCursor": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "cursor": { "$ref": "#/$defs/WorkbenchCoverageCursor", "x-canonical-wire": "option+value", "x-rust-type": "WorkbenchCoverageCursor" }
+      },
+      "required": ["query", "revision", "checkpoint", "hasCursor"]
+    },
+    "WorkbenchRewindPageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRewindPageRequest",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchRewindRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindRequest" },
+        "hasCursor": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "cursor": { "$ref": "#/$defs/WorkbenchCoverageCursor", "x-canonical-wire": "option+value", "x-rust-type": "WorkbenchCoverageCursor" }
+      },
+      "required": ["request", "hasCursor"]
+    },
+    "WorkbenchCheckpointCoveragePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointCoveragePage",
+      "properties": {
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "selectedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "name": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchCheckpointName", "x-bounds": ["workbench.max-checkpoint-name-bytes (256)"] },
+        "references": { "$ref": "#/$defs/WorkbenchCheckpointReferences", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointReferences" },
+        "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "totalPaths": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "totalExclusions": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "totalExternalEffects": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "section": { "type": "string", "enum": ["paths", "exclusions", "externalEffects"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCoverageSection" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchCheckpointPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchCheckpointPath>", "x-bounds": ["codec.max-collection-items", "strictly-sorted-unique"] },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["codec.max-collection-items", "workbench.max-checkpoint-text-bytes (512)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["codec.max-collection-items", "workbench.max-checkpoint-text-bytes (512)"] },
+        "hasNext": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "next": { "$ref": "#/$defs/WorkbenchCoverageCursor", "x-canonical-wire": "option+value", "x-rust-type": "WorkbenchCoverageCursor" }
+      },
+      "required": ["checkpoint", "query", "selectedRevision", "acceptedRevision", "name", "references", "fingerprint", "totalPaths", "totalExclusions", "totalExternalEffects", "section", "offset", "paths", "exclusions", "externalEffects", "hasNext"]
+    },
+    "WorkbenchRewindCoveragePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRewindCoveragePage",
+      "properties": {
+        "confirmation": { "$ref": "#/$defs/WorkbenchRewindConfirmation", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindConfirmation" },
+        "totalPaths": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "totalExclusions": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "totalExternalEffects": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "section": { "type": "string", "enum": ["paths", "exclusions", "externalEffects"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCoverageSection" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchRewindPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchRewindPath>", "x-bounds": ["codec.max-collection-items", "strictly-sorted-unique"] },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["codec.max-collection-items", "workbench.max-checkpoint-text-bytes (512)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["codec.max-collection-items", "workbench.max-checkpoint-text-bytes (512)"] },
+        "hasNext": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "next": { "$ref": "#/$defs/WorkbenchCoverageCursor", "x-canonical-wire": "option+value", "x-rust-type": "WorkbenchCoverageCursor" }
+      },
+      "required": ["confirmation", "totalPaths", "totalExclusions", "totalExternalEffects", "section", "offset", "paths", "exclusions", "externalEffects", "hasNext"]
+    },
+    "WorkbenchRestoreSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRestoreSummary",
+      "properties": {
+        "restore": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "recoveryCheckpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "status": { "type": "string", "enum": ["applied", "conflict", "recoveryRequired"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchRestoreStatus" },
+        "restoredPaths": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "conflictingPaths": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["restore", "checkpoint", "recoveryCheckpoint", "query", "acceptedRevision", "status", "restoredPaths", "conflictingPaths", "fingerprint"]
     },
     "WorkbenchCompactionRequest": {
       "type": "object",

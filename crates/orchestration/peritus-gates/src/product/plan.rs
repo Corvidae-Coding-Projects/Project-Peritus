@@ -67,6 +67,7 @@ pub struct GateCommandSpec {
     pub(super) arguments: Vec<String>,
     pub(super) current_dir: PathBuf,
     pub(super) project: AffectedProject,
+    pub(super) optional_when_not_selected: bool,
 }
 
 impl GateCommandSpec {
@@ -98,6 +99,12 @@ impl GateCommandSpec {
     #[must_use]
     pub const fn project(&self) -> &AffectedProject {
         &self.project
+    }
+
+    /// Whether this gate may be an optional observation when its criterion was not selected.
+    #[must_use]
+    pub const fn optional_when_not_selected(&self) -> bool {
+        self.optional_when_not_selected
     }
 
     /// Shell-like display form for user evidence. Execution still uses structured argv.

@@ -54,6 +54,15 @@ fn write_payload(
         AppResponsePayload::WorkbenchRestore(value) => {
             super::workbench_checkpoints::write_restore_receipt(writer, value)
         }
+        AppResponsePayload::WorkbenchRestoreSummary(value) => {
+            super::workbench_checkpoint_pages::write_restore_summary(writer, value)
+        }
+        AppResponsePayload::WorkbenchCheckpointPage(value) => {
+            super::workbench_checkpoint_pages::write_checkpoint_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchRewindPage(value) => {
+            super::workbench_checkpoint_pages::write_rewind_page(writer, value)
+        }
         AppResponsePayload::WorkbenchMemory(value) => {
             super::workbench_memory::write_memory(writer, value)
         }
@@ -75,11 +84,23 @@ fn write_payload(
         AppResponsePayload::WorkbenchPreview(value) => {
             super::workbench_launch::write_preview(writer, value)
         }
+        AppResponsePayload::WorkbenchPreviewOutput(value) => {
+            super::workbench_launch::write_output_range(writer, value)
+        }
         AppResponsePayload::WorkbenchResult(value) => {
             super::workbench_launch::write_page(writer, value)
         }
         AppResponsePayload::WorkbenchReview(value) => {
             super::workbench_review::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewSummary(value) => {
+            super::workbench_review::write_summary(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewDiff(value) => {
+            super::workbench_review::write_diff_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewDiffBytes(value) => {
+            super::workbench_review::write_diff_bytes(writer, value)
         }
         AppResponsePayload::WorkbenchFileImportPreview(value) => {
             super::workbench_files::write_import_preview(writer, value)
@@ -144,13 +165,20 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchCheckpoint(_) => 120,
         AppResponsePayload::WorkbenchRewindPreview(_) => 121,
         AppResponsePayload::WorkbenchRestore(_) => 122,
+        AppResponsePayload::WorkbenchRestoreSummary(_) => 125,
+        AppResponsePayload::WorkbenchCheckpointPage(_) => 123,
+        AppResponsePayload::WorkbenchRewindPage(_) => 124,
         AppResponsePayload::WorkbenchMemory(_) => 161,
         AppResponsePayload::InitProposal(_) => 162,
         AppResponsePayload::WorkbenchPermissions(_) => 160,
         AppResponsePayload::WorkbenchCompactionPreview(_) => 29,
         AppResponsePayload::WorkbenchResult(_) => 100,
         AppResponsePayload::WorkbenchPreview(_) => 101,
+        AppResponsePayload::WorkbenchPreviewOutput(_) => 104,
         AppResponsePayload::WorkbenchReview(_) => 80,
+        AppResponsePayload::WorkbenchReviewSummary(_) => 110,
+        AppResponsePayload::WorkbenchReviewDiff(_) => 106,
+        AppResponsePayload::WorkbenchReviewDiffBytes(_) => 108,
         AppResponsePayload::ConversationLibrary(_) => 140,
         AppResponsePayload::CommandResult(_) => 1,
         AppResponsePayload::SubscriptionStarted(_) => 2,
@@ -210,8 +238,20 @@ pub(super) fn read_response(
     let tag_offset = reader.offset();
     let payload = match reader.read_u16()? {
         101 => AppResponsePayload::WorkbenchPreview(super::workbench_launch::read_preview(reader)?),
+        104 => AppResponsePayload::WorkbenchPreviewOutput(
+            super::workbench_launch::read_output_range(reader)?,
+        ),
         100 => AppResponsePayload::WorkbenchResult(super::workbench_launch::read_page(reader)?),
         80 => AppResponsePayload::WorkbenchReview(super::workbench_review::read_page(reader)?),
+        110 => AppResponsePayload::WorkbenchReviewSummary(super::workbench_review::read_summary(
+            reader,
+        )?),
+        106 => AppResponsePayload::WorkbenchReviewDiff(super::workbench_review::read_diff_page(
+            reader,
+        )?),
+        108 => AppResponsePayload::WorkbenchReviewDiffBytes(
+            super::workbench_review::read_diff_bytes(reader)?,
+        ),
         120 => AppResponsePayload::WorkbenchCheckpoint(
             super::workbench_checkpoints::read_checkpoint_receipt(reader)?,
         ),
@@ -220,6 +260,15 @@ pub(super) fn read_response(
         ),
         122 => AppResponsePayload::WorkbenchRestore(
             super::workbench_checkpoints::read_restore_receipt(reader)?,
+        ),
+        125 => AppResponsePayload::WorkbenchRestoreSummary(
+            super::workbench_checkpoint_pages::read_restore_summary(reader)?,
+        ),
+        123 => AppResponsePayload::WorkbenchCheckpointPage(
+            super::workbench_checkpoint_pages::read_checkpoint_page(reader)?,
+        ),
+        124 => AppResponsePayload::WorkbenchRewindPage(
+            super::workbench_checkpoint_pages::read_rewind_page(reader)?,
         ),
         140 => {
             AppResponsePayload::ConversationLibrary(super::workbench_library::read_page(reader)?)
