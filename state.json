@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4280,
-        "tip_oid": "de887275c913b1ca97e64fce1b36b2a8499a8bb7",
-        "prefix_sha256": "9b4a945efb13728a4262cf6046281774899eefe3d02f0824df2ee9ec9187dc6b"
+        "sequence": 4281,
+        "tip_oid": "8996362c1ee820ea441fe983172e0ef81b2c957f",
+        "prefix_sha256": "b73380b8166211277464bae81fff427a95c69072411ac5fef35affad4819cc58"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3362,
+  "next_comment_id": 3363,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T20:08:26.711244882Z",
+      "updated_at": "2026-10-09T20:19:17.598566024Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42782,6 +42782,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC3ShB9rQtFUEYQscWnG6EQZXtULXvr7Lg1MZkwrqmw6z1abNtkRdPQMSqz65CRfl/6flbI5/lI6akpgkbdbpCA=="
+        },
+        "857570bb-334f-42a9-97ec-96bd5a9d5e04": {
+          "display_id": 3362,
+          "author": "6ME5",
+          "content": "Committed and pushed diagnostic e2a2237eae643cb31efe23c635a8146e085c03c9: test-only native inheritance inventory and independent concurrency fixture principals. Three-file diff independently source-cleared, integrated xtask all (5029 sources), strict Linux/GNU Windows linting, formatting and diff checks passed. Production comparison unchanged. Native hosted execution will identify expected-versus-actual descriptor controls and ACE tuples; full132 remains stopped until the remaining detector failure is understood. Existing PR113/develop target preserved; no formal approval or authority action.",
+          "created_at": "2026-10-09T20:19:17.583461256Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASoBwirK+T/BhTlq+oGfwpiCt9CxFKcOoi2oYqmQq+KH1FVXV6lytvYLv9TIGOZaLtkzLbZRMwNiVpnNhf7cgAg=="
         },
         "8a87b9b8-e156-4cba-8509-cf53fd0ef633": {
           "display_id": 2145,
