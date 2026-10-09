@@ -5,6 +5,7 @@
     reason = "Windows token, Job Object, attribute-list, and process APIs require audited FFI"
 )]
 
+pub(crate) mod acl;
 mod handle;
 mod job;
 mod launch;

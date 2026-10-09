@@ -399,3 +399,7 @@ fn channel_error(kind: WindowsErrorKind, detail: &'static str) -> WindowsError {
 #[cfg(test)]
 #[path = "channels_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../tests/support/mod.rs"]
+pub(crate) mod test_support;

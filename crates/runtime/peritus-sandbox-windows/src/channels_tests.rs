@@ -58,8 +58,7 @@ fn failed_cleanup_retains_exact_secret_owner_and_original_typed_cause_for_retry(
     assert!(error.retry_cleanup());
 }
 
-#[path = "../tests/support/mod.rs"]
-mod support;
+use super::test_support as support;
 
 #[test]
 fn deny_all_ignores_available_proxy_without_consuming_its_owner() {

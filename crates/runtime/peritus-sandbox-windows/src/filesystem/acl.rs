@@ -242,8 +242,16 @@ impl AclPlan {
 
     /// Saves and applies each exact ACL entry on Windows.
     ///
+    /// Reserves every affected volume across cooperating Peritus processes before reading
+    /// pristine descriptors. A busy volume returns `Replan` without preparing files. The
+    /// movable owner holds reservations through verified restoration and backup removal.
+    /// Failed final-owner cleanup quarantines its volumes until process exit. Process death
+    /// releases reservations without restoring ACLs; durable crash recovery is not provided.
+    /// Out-of-band ACL writers and namespace changes during initial inventory must be quiescent.
+    ///
     /// # Errors
-    /// Any save or mutation failure restores already-mutated entries before returning.
+    /// Save or mutation failures attempt rollback. Incomplete cleanup ownership stays in
+    /// `WindowsError` for `retry_cleanup`; losing its final owner quarantines the live volume.
     #[cfg(target_os = "windows")]
     pub fn install(&self, backup_root: &std::path::Path) -> Result<AclTransaction, WindowsError> {
         AclTransaction::install(self, backup_root)

@@ -66,7 +66,7 @@ impl StagedPreparation {
         if acl_restore {
             let digest = self.acl.digest();
             let acl = core::mem::replace(&mut self.acl, AclTransaction::planned(digest));
-            original.retain_cleanup(crate::error::CleanupOwner::Acl(acl))
+            original.retain_cleanup(crate::error::CleanupOwner::Acl(Box::new(acl)))
         } else {
             original
         }

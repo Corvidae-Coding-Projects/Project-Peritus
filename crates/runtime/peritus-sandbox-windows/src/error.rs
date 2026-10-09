@@ -262,6 +262,24 @@ impl WindowsError {
         self
     }
 
+    #[cfg(target_os = "windows")]
+    pub(crate) fn during_acl_install(mut self, incomplete: bool) -> Self {
+        if self.kind == WindowsErrorKind::Acl {
+            self.operation = WindowsOperation::InstallAcl;
+            self.recovery = if incomplete {
+                WindowsRecovery::RetryCleanup
+            } else if matches!(
+                self.recovery,
+                WindowsRecovery::Replan | WindowsRecovery::ConfigureHost
+            ) {
+                self.recovery
+            } else {
+                WindowsRecovery::CorrectRequest
+            };
+        }
+        self
+    }
+
     pub(crate) fn retain_cleanup(self, owner: CleanupOwner) -> Self {
         self.retained.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(owner);
         self
@@ -398,7 +416,7 @@ impl Eq for RetainedCleanup {}
 
 #[derive(Debug)]
 pub(crate) enum CleanupOwner {
-    Acl(crate::AclTransaction),
+    Acl(Box<crate::AclTransaction>),
     Channels(Box<crate::channels::PreparedChannels>),
 }
 impl CleanupOwner {

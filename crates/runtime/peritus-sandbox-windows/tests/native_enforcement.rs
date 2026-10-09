@@ -4,6 +4,18 @@
 mod acl_snapshot;
 
 #[cfg(target_os = "windows")]
+#[path = "native_enforcement/acl_fixture.rs"]
+mod acl_fixture;
+
+#[cfg(target_os = "windows")]
+#[path = "native_enforcement/acl_concurrency.rs"]
+mod acl_concurrency;
+
+#[cfg(target_os = "windows")]
+#[path = "native_enforcement/acl_restoration.rs"]
+mod acl_restoration;
+
+#[cfg(target_os = "windows")]
 #[test]
 fn native_probe_reports_real_helper_platform_and_architecture() {
     use peritus_sandbox_windows::{ProbeRequest, TokenProfile, WindowsProbe};
@@ -48,6 +60,7 @@ fn native_probe_derives_and_verifies_an_exact_app_container_identity() {
 #[test]
 fn native_probes_exercise_acl_round_trip_and_independent_job_limits() {
     use peritus_sandbox_windows::{EnforcementLevel, ProbeRequest, TokenProfile, WindowsProbe};
+    let _serial = acl_fixture::serial();
     let root = tempfile::tempdir().unwrap();
     let request = ProbeRequest::new(
         std::env::current_exe().unwrap(),
@@ -96,6 +109,7 @@ mod support;
 fn native_acl_creates_and_reverses_only_the_missing_deny_anchor() {
     use peritus_sandbox::{PathScope, RuleEffect};
     use peritus_sandbox_windows::{AclAccess, PathPolicy, WindowsPath, compile_acl_plan};
+    let _serial = acl_fixture::serial();
     let root = tempfile::tempdir().unwrap();
     let workspace = root.path().join("workspace");
     std::fs::create_dir_all(workspace.join("bin")).unwrap();

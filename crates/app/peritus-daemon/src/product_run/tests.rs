@@ -302,9 +302,20 @@ async fn wait_for_review_stall(
     run_id: RunId,
     reviewer: &ScriptedProvider,
 ) {
-    tokio::time::timeout(Duration::from_secs(30), reviewer.wait_for_stalled_response())
-        .await
-        .expect("reviewer did not start its deliberately stalled response");
+    tokio::select! {
+        () = reviewer.wait_for_stalled_response() => {}
+        result = wait_for_terminal_with_timeout(service, run_id, PRODUCT_RUN_TERMINAL_WAIT) => {
+            match result {
+                Ok(snapshot) => panic!(
+                    "run settled before the reviewer started its deliberately stalled response: {snapshot:?}",
+                ),
+                Err(snapshot) => panic!(
+                    "reviewer did not start its deliberately stalled response: {}; snapshot={snapshot:?}",
+                    terminal_wait_timeout_diagnostic(&snapshot, PRODUCT_RUN_TERMINAL_WAIT),
+                ),
+            }
+        }
+    }
     let phase = service.query(ProductRunQuery::exact(run_id)).expect("review snapshot")[0].phase();
     assert_eq!(phase, ProductRunPhase::Reviewing, "reviewer stalled in {phase:?}");
 }
