@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4244,
-        "tip_oid": "86208ba927dcece85659bb35a14f12cadc46c27d",
-        "prefix_sha256": "77792bc08ff0d4d798f0230430628c6095de5ff7b96b51beae2fe5fcdb5b28ea"
+        "sequence": 4245,
+        "tip_oid": "1b4643c437665a9ac7adfadb3e6bcee6b016c99f",
+        "prefix_sha256": "e7776d2ea1cc6bb8998aedb1a6c0e4e535599cbc868af73a1ce58134d7630d68"
       },
       "NWAR": {
         "sequence": 39,
@@ -28383,12 +28383,13 @@
       "display_id": 328,
       "title": "[L193] Preview behavior evidence must be found in the retained stdout tail and only after terminal state",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L193.\n\n- Source: `crates/app/peritus-daemon/src/product_run/workbench/launch/output.rs:12-13,33-61`; `launch/evidence.rs:10-43,171-258,270-291`.\n- Each preview retains only the last **128 KiB per stream**, then the public snapshot applies its separate protocol output bound. CheckPreviewBehavior rejects Accepted/Running launches and requires the observed text as a literal substring of that retained stdout. An earlier valid output omitted from the tail cannot satisfy the check through its durable full-output artifact in this method.\n- Graphical goal qualification additionally requires a bound build digest, process ID, ready launch, Exited/Stopped state, a positive behavior-check count, completed interaction before captured pixels and a later check. The check note must exactly equal one GraphicalPlaytest criterion description, and the live preview runtime map must still own that process. Duplicate matching criteria are rejected.\n- These are acceptance/provenance policies, not elapsed deadlines. Exact ordering, source/build freshness and user consent are integrity requirements; mandatory terminal state, literal tail-only verification and loss of the live owner after restart can prevent otherwise retained observations from qualifying. Correctness must be judged against the actual requested criterion.\n- Source/build hashing streams **64 KiB buffers without a total-file byte cap**; that buffer is not a limiter. **Full source and ordering tests read; no lost-tail/restart qualification case run.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.785732219Z",
-      "updated_at": "2026-10-09T02:16:49.494355853Z",
+      "updated_at": "2026-10-09T06:06:20.650394345Z",
+      "closed_at": "2026-10-09T06:06:20.647596168Z",
       "labels": [
         "daily-driving-limiter"
       ],
