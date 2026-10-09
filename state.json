@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4213,
-        "tip_oid": "89026bf502dc85cd5ca726e016601c407e395adf",
-        "prefix_sha256": "e03b84320a99e9fed55f981a32c0103641c234d2f0415cac894dec7a81de7087"
+        "sequence": 4214,
+        "tip_oid": "75faa337e01272820067ac8a5b726bc26a92aa15",
+        "prefix_sha256": "055f88fc0033fa19f67267865ebf4a9a36dc0a70d6e5cba8765dc7f88a8bd690"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3321,
+  "next_comment_id": 3322,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -14780,7 +14780,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.847494164Z",
-      "updated_at": "2026-10-06T13:24:48.849819180Z",
+      "updated_at": "2026-10-09T02:18:30.496096511Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -14791,6 +14791,15 @@
           "content": "Systemic repair plan for L206: Preview protocol exposes 8 KiB output tails and accepts collections beyond downstream process bounds.\n\nOwning contract and implementation boundary: crates/app/peritus-app-protocol/src/workbench/launch.rs:5-6; launch/output.rs:6-33,68-79; launch/profile.rs:16-23,50-54,194-230; launch/result.rs:33-51,193-203. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUse one preview protocol/host/process admissibility contract before launch, and expose output via exact artifact cursors with a bounded live tail. Broader UI vectors cannot be accepted only to fail a narrower downstream process constructor. Preserve terminal dimensions, actual OS argv/environment constraints and exact launch receipts.\n\nPreserve: definitely-unaccepted versus ambiguously-accepted request state, exact native thread/profile identity, ordered provider observations, tool-result protocol, explicit cancellation and real provider/model capabilities. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long provider outages and Retry-After, split transport chunks and large streams, ambiguous acceptance and duplicate events, cancellation during recovery, adapter restart and route changes, proving same-thread reconnection and no duplicated accepted request/effect. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:24:48.544Z",
           "kind": "decision"
+        },
+        "7349d5c5-da1c-4092-a426-9aee9bf70642": {
+          "display_id": 3321,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Added bounded exact preview output range protocol and optional resource policy propagation to downstream process execution. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:18:30.486656575Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlcPahCN8XRM8DMRHFG2a8zvK2Edp6KXFjqQbpDWSLdFfe+OvJRsPwgB0Kudc3ivhOnxwLgIIrlYvsWSeiwi1DQ=="
         }
       }
     },
