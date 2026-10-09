@@ -9,6 +9,9 @@ use tokio::io::AsyncReadExt as _;
 
 use crate::LauncherError;
 
+#[cfg(target_os = "macos")]
+mod macos;
+
 /// Owns a child until it has been reaped, including cancellation by dropping its future.
 struct ChildOwner(
     #[cfg(not(windows))] tokio::process::Child,
@@ -25,7 +28,9 @@ impl ChildOwner {
                 })?;
             let pid = nix::unistd::Pid::from_raw(pid);
             loop {
-                if root_exited(pid.as_raw())? {
+                if root_exited(pid.as_raw()).map_err(|error| {
+                    std::io::Error::new(error.kind(), format!("observe updater root exit: {error}"))
+                })? {
                     break;
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
@@ -35,7 +40,15 @@ impl ChildOwner {
             // that identity to be reused, then reap the exact root through its Tokio owner.
             match nix::sys::signal::killpg(pid, nix::sys::signal::Signal::SIGKILL) {
                 Ok(()) | Err(nix::errno::Errno::ESRCH) => {}
-                Err(error) => return Err(std::io::Error::from_raw_os_error(error as i32)),
+                #[cfg(target_os = "macos")]
+                Err(nix::errno::Errno::EPERM) if macos::only_group_member(pid.as_raw()) => {}
+                Err(error) => {
+                    let error = std::io::Error::from_raw_os_error(error as i32);
+                    return Err(std::io::Error::new(
+                        error.kind(),
+                        format!("terminate updater process group: {error}"),
+                    ));
+                }
             }
             self.0.wait().await
         }
