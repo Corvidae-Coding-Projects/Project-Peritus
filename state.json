@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4235,
-        "tip_oid": "0954ffe5cc775d6111263a6656fd3343cc178e5e",
-        "prefix_sha256": "282833a6ae263e222f92e98b2ede063d81a1f7db92b09bfa681705603c5f1b89"
+        "sequence": 4236,
+        "tip_oid": "a7a44b857532ad663f87bab976204fe9158b9038",
+        "prefix_sha256": "cd56a3d645fe6bb81655447b17b1846e132324c0152ed714ee732c85cda64ce4"
       },
       "NWAR": {
         "sequence": 39,
@@ -25154,12 +25154,13 @@
       "display_id": 225,
       "title": "[L126] Image attachments have independent host ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L126.\n\n- `peritus-product-runner/src/attachment.rs` declares **4 MiB per encoded image**, **12 MiB aggregate encoded images**, **16 images**, **8,192 pixels per side**, **16 Mi pixels per image**, **64 animation frames**, and **128 MiB decoded bytes**.\n- The per-image byte check uses the smaller of the host 4 MiB limit and the provider's inline-media allowance. Image count and aggregate host byte admission reject the request rather than resizing, splitting, or dropping an attachment. The complete `attachment/decode.rs` read verifies nonzero dimensions, side and pixel admission at lines 80-89, cumulative decoded output at lines 92-126, and a 64-frame maximum at lines 108-111. The image-library 128 MiB allocation allowance is explicitly best-effort, not a hard process-memory ceiling. PNG default-image bytes are charged in addition to animation frames; unsupported formats outside PNG/JPEG/GIF/WebP are rejected.\n- These are host media/resource bounds independent of session persistence or an elapsed run limit. Daily-driving consequence: a provider that could otherwise accept a larger image cannot bypass the lower host cap. Exact provider aggregate-media admission is tracked separately in L017.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.678539580Z",
-      "updated_at": "2026-10-09T01:46:47.029514291Z",
+      "updated_at": "2026-10-09T05:52:41.759087433Z",
+      "closed_at": "2026-10-09T05:52:41.755972929Z",
       "labels": [
         "daily-driving-limiter"
       ],
