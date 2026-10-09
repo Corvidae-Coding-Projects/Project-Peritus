@@ -79,6 +79,7 @@ fn native_acl_restores_legacy_inherited_protected_and_nested_objects_exactly() {
     assert_ne!(fixture::control(&before[2]) & 0x0400, 0, "child must start inherited");
     assert_ne!(fixture::control(&before[5]) & 0x1000, 0, "custom child must be protected");
     let parent_before = fixture::snapshot(&tree.workspace);
+    let parent_sddl_before = fixture::sddl(&tree.workspace);
     let mut transaction = tree.plan().install(&tree.backup).unwrap();
     let new_child = tree.workspace.join("workspace/new-during-session");
     std::fs::write(&new_child, b"new").unwrap();
@@ -86,7 +87,20 @@ fn native_acl_restores_legacy_inherited_protected_and_nested_objects_exactly() {
         fixture::sddl(&new_child).contains(";;;BU)"),
         "new child must inherit the temporary principal"
     );
-    transaction.restore().unwrap();
+    let outcome = transaction.restore();
+    assert!(
+        outcome.is_ok(),
+        "ordinary child cleanup {outcome:?}; outer_parent_before={parent_sddl_before}; outer_parent_after={}; parent_after={}; child_after={}; {}",
+        fixture::sddl(&tree.workspace),
+        fixture::sddl(&tree.workspace.join("workspace")),
+        fixture::sddl(&new_child),
+        inheritance_probe::inspect(
+            &tree.workspace.join("workspace"),
+            &new_child,
+            false,
+            "S-1-5-32-545"
+        )
+    );
     assert!(transaction.restored());
     for (path, expected) in originals.iter().zip(&before) {
         assert_eq!(
