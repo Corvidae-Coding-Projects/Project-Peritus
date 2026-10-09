@@ -122,7 +122,7 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         let live_receipt = running.workbench_command(actor(), &live_check).await;
         assert!(matches!(live_receipt, AppResponsePayload::WorkbenchReceipt(_)));
         let observed_start = evidence::assert_retained(&running, run, &live_check, false);
-        let terminal_attachment = terminal::attach_and_reconnect(&running, &live);
+        let terminal_attachment = terminal::attach_and_reconnect(&running, &live).await;
         terminal_attachment.check_permission_changes(&running, workspace).await;
         let input = command(
             workspace,
