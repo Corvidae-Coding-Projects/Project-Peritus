@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4218,
-        "tip_oid": "480aea192c6532cef370cb87a9d5cc17ba96403b",
-        "prefix_sha256": "0383b05d2050ab2d324b74d356403f6408052f83db08fe13c40eb41283309cbc"
+        "sequence": 4219,
+        "tip_oid": "79cf4e9e618d9f7c4886e31e4be9ccfa2c02a00f",
+        "prefix_sha256": "37806232f455ba7884c9530f6135b8e7d6fa4e8cdac675eb828fc6c538efecae"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3326,
+  "next_comment_id": 3327,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23425,11 +23425,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.943555624Z",
-      "updated_at": "2026-10-06T13:27:50.946090689Z",
+      "updated_at": "2026-10-09T02:26:41.482990978Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "13e346ee-9c4e-46aa-980e-81639caf7ce1": {
+          "display_id": 3326,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Added immutable Git diff/history continuation, including complete patch, native path, subject and parent data. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:26:41.472954014Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE14AdoL7yaz0CJhdub7LnNX7hSjPKD41u9Y7/mgMEJhVDxRZpSKK7BIGS8DrNbDxrb01AN6WKrlIL9WCfzhXDw=="
+        },
         "21c5be90-9ff6-4135-8ef3-032a8915e73c": {
           "display_id": 2670,
           "author": "6ME5",
