@@ -10,15 +10,14 @@ pub(super) fn only_group_member(root: i32) -> bool {
     // Two slots distinguish an exact singleton from a full (possibly truncated) listing.
     // proc_listpids includes both live processes and zombies under the process-list lock.
     let mut members = [0_i32; 2];
-    let size = i32::try_from(std::mem::size_of_val(&members)).expect("two PID slots fit i32");
+    let size = i32::try_from(size_of_val(&members)).expect("two PID slots fit i32");
     // SAFETY: the aligned, initialized array is writable for exactly size bytes. libproc
     // only borrows it for this call; the root PID remains pinned by the unreaped child.
     let written = unsafe {
         nix::libc::proc_listpids(PROC_PGRP_ONLY, group, members.as_mut_ptr().cast(), size)
     };
     // Errors, empty results, and additional members all retain the original signal error.
-    written == i32::try_from(std::mem::size_of::<i32>()).expect("PID size fits i32")
-        && members[0] == root
+    written == i32::try_from(size_of::<i32>()).expect("PID size fits i32") && members[0] == root
 }
 
 #[cfg(test)]
