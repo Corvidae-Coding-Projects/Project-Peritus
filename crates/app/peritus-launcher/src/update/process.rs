@@ -46,14 +46,18 @@ impl ChildOwner {
         #[cfg(windows)]
         {
             // Await the root without starting process-wrap's detached completion-port waiter.
-            // The owned kill-on-close job terminates any remaining descendants on drop.
             #[allow(
                 unsafe_code,
                 reason = "uniquely borrow only the root while retaining its job wrapper"
             )]
             // SAFETY: the root is neither moved nor replaced; the wrapper stays alive through await.
             let root = unsafe { self.0.inner_child_mut() };
-            root.wait().await
+            let status = root.wait().await?;
+            // Terminate the owned Job explicitly before reporting success. process-wrap 9.1.0
+            // empties its wrapper registry during spawn, so its KillOnDrop lookup cannot enable
+            // the Job's kill-on-close flag even when the marker wrapper was configured.
+            self.0.start_kill()?;
+            Ok(status)
         }
     }
 }
@@ -96,6 +100,9 @@ impl Drop for ChildOwner {
                 nix::sys::signal::Signal::SIGKILL,
             );
         }
+        #[cfg(windows)]
+        // Dispatches to JobObjectChild::start_kill, terminating the whole owned tree.
+        let _ = self.0.start_kill();
         // Tokio's kill-on-drop also arranges child reaping after future cancellation.
     }
 }
@@ -233,8 +240,7 @@ mod tests {
 mod windows_tests {
     use super::*;
 
-    #[tokio::test]
-    async fn cancelling_updater_kills_its_already_started_descendant() {
+    fn descendant_fixture(exit_after_ready: bool) -> (tempfile::TempDir, Command) {
         let root = tempfile::tempdir().unwrap();
         let marker = root.path().join("descendant-finished");
         let ready = root.path().join("descendant-ready");
@@ -249,9 +255,25 @@ mod windows_tests {
             ),
         )
         .unwrap();
-        std::fs::write(&parent_script, format!("Start-Process -FilePath powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '\"{}\"') -NoNewWindow\nStart-Sleep -Seconds 30", quote(&child_script))).unwrap();
+        let continuation = if exit_after_ready {
+            format!(
+                "while (-not (Test-Path -LiteralPath '{}')) {{ Start-Sleep -Milliseconds 10 }}\nexit 0",
+                quote(&ready)
+            )
+        } else {
+            "Start-Sleep -Seconds 30".to_owned()
+        };
+        std::fs::write(&parent_script, format!("Start-Process -FilePath powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '\"{}\"') -NoNewWindow\n{continuation}", quote(&child_script))).unwrap();
         let mut command = Command::new("powershell.exe");
         command.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]).arg(&parent_script);
+        (root, command)
+    }
+
+    #[tokio::test]
+    async fn cancelling_updater_kills_its_already_started_descendant() {
+        let (root, mut command) = descendant_fixture(false);
+        let ready = root.path().join("descendant-ready");
+        let marker = root.path().join("descendant-finished");
         {
             let execution = status(&mut command, "Windows cancel fixture");
             tokio::pin!(execution);
@@ -272,6 +294,25 @@ mod windows_tests {
         }
         tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
         assert!(!marker.exists(), "cancelled updater descendant survived its Job Object");
+    }
+
+    #[tokio::test]
+    async fn successful_updater_root_exit_terminates_its_already_started_descendant() {
+        let (root, mut command) = descendant_fixture(true);
+        let status = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            status(&mut command, "Windows root-exit fixture"),
+        )
+        .await
+        .expect("updater root did not observe descendant readiness")
+        .unwrap();
+        assert!(status.success());
+        assert!(root.path().join("descendant-ready").exists(), "descendant never started");
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        assert!(
+            !root.path().join("descendant-finished").exists(),
+            "updater descendant survived successful root exit"
+        );
     }
 }
 

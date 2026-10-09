@@ -16,8 +16,8 @@ use windows_sys::Win32::{
             CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateProcessW,
             DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT,
             InitializeProcThreadAttributeList, LPPROC_THREAD_ATTRIBUTE_LIST,
-            PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, PROCESS_INFORMATION, ResumeThread, STARTUPINFOEXW,
-            TerminateProcess, UpdateProcThreadAttribute,
+            PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, PROCESS_INFORMATION, ResumeThread,
+            STARTF_USESTDHANDLES, STARTUPINFOEXW, TerminateProcess, UpdateProcThreadAttribute,
         },
     },
 };
@@ -47,6 +47,13 @@ pub(in crate::platform) fn launch(
     let mut startup = STARTUPINFOEXW::default();
     startup.StartupInfo.cb =
         u32::try_from(size_of::<STARTUPINFOEXW>()).expect("Windows structure size");
+    // Redirected parent standard handles otherwise override the pseudoconsole's handles even
+    // with handle inheritance disabled. Explicit null values select ConPTY's own handles:
+    // https://github.com/microsoft/terminal/discussions/15814
+    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    startup.StartupInfo.hStdInput = ptr::null_mut();
+    startup.StartupInfo.hStdOutput = ptr::null_mut();
+    startup.StartupInfo.hStdError = ptr::null_mut();
     startup.lpAttributeList = attributes.pointer;
     let mut info = PROCESS_INFORMATION::default();
     // SAFETY: all UTF-16 strings are NUL terminated, the environment is double-NUL terminated,

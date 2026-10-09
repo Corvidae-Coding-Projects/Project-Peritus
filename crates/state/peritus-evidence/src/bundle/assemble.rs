@@ -417,7 +417,14 @@ fn exact_existing(path: &Path, expected: BundleReceipt) -> Result<(), EvidenceEr
     if !metadata.file_type().is_file() || metadata.len() != expected.byte_count {
         return Err(invalid("published bundle path owns different content"));
     }
-    let mut file = File::open(path)
+    let mut options = File::options();
+    options.read(true);
+    // Windows requires a writable handle for FlushFileBuffers, used by sync_all.
+    // Opening the existing destination must never create or truncate its bytes.
+    #[cfg(windows)]
+    options.write(true);
+    let mut file = options
+        .open(path)
         .map_err(|error| EvidenceError::io("open published evidence bundle", error))?;
     let mut digest = Sha256::new();
     let mut count = 0_u64;

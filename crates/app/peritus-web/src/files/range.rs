@@ -59,12 +59,13 @@ pub fn text(root: &Path, relative: &str, offset: u64, expected: &str) -> Result<
 }
 
 fn version(metadata: &Metadata) -> Result<String> {
-    let mut identity =
+    let identity =
         format!("{}:{:?}:{:?}", metadata.len(), metadata.modified()?, metadata.created().ok());
     #[cfg(unix)]
-    {
+    let identity = {
         use std::fmt::Write as _;
         use std::os::unix::fs::MetadataExt as _;
+        let mut identity = identity;
         write!(
             identity,
             ":{}:{}:{}:{}",
@@ -74,7 +75,8 @@ fn version(metadata: &Metadata) -> Result<String> {
             metadata.ctime_nsec()
         )
         .map_err(problem)?;
-    }
+        identity
+    };
     Ok(super::revision(identity.as_bytes()))
 }
 

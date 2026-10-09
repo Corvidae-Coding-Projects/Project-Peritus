@@ -266,7 +266,9 @@ function Write-Outcome([string]$state, [string]$detail) {{
     $temporary = $outcome + '.' + [guid]::NewGuid().ToString('N')
     $stream = [IO.File]::Open($temporary, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
     try {{ $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) }} finally {{ $stream.Dispose() }}
-    if ([IO.File]::Exists($outcome)) {{ [IO.File]::Replace($temporary, $outcome, $null) }} else {{ [IO.File]::Move($temporary, $outcome) }}
+    # PowerShell 5.1 converts $null to an empty string for .NET string parameters.
+    # NullString preserves a genuine null backup path while retaining atomic replacement.
+    if ([IO.File]::Exists($outcome)) {{ [IO.File]::Replace($temporary, $outcome, [System.Management.Automation.Language.NullString]::Value) }} else {{ [IO.File]::Move($temporary, $outcome) }}
 }}
 function Wait-ExactParent {{
     $process = $null
