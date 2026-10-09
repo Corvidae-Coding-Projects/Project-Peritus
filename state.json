@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4265,
-        "tip_oid": "bde6e5a137e04a2ee68ac38da5908f4d816d8319",
-        "prefix_sha256": "6d7a3e7d48b1560f3dc9e689d5c949a8f7698540342972d5efae44132709ba00"
+        "sequence": 4266,
+        "tip_oid": "650e382606b1ae6d3dd29fe993381c7bedba2cbd",
+        "prefix_sha256": "95037c724facf1efd2a77445ed432c0230f65c6cddee99abade9f64bc214af95"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3347,
+  "next_comment_id": 3348,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T09:24:05.040990161Z",
+      "updated_at": "2026-10-09T09:30:06.539510577Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42260,6 +42260,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC+BL8ZfGdgMnddtmS1ygqAHdNKrfVZ9qaXZDwJvPP2XVFb1h2QsWcSVkugKS7RGzRmu8PiBDlNsHCGfHg4b7DA=="
+        },
+        "03181eef-0a6d-46f8-88bf-359c79749cff": {
+          "display_id": 3347,
+          "author": "6ME5",
+          "content": "Signed implementation commit 90ff9494c9e62cf6195f95d47691b1f219290258 is pushed at origin/fix/command-ordinal-contention; direct parent is published authorization 2d8ad67ededf9273e89d09264fc6919d0c561570. Exact C11 reviewed source applied, full A/I tree and signature audits pass, all 752 historical artifacts preserved, no obligation discharged. Implementation exact-A verify-trust passed4957; xtask all passed86packages4957source3916formal15361entry305docs147actions. Main fast-forward preserved194untracked files byte/mode-identically. PR115 remains draft, base authorization/pcr-0010. Final seven hosted runs37911495385,37911495448,37911495417,37911495425,37911495391,37911495406,37911495407 have independently checked exactA/I metadata and are pending qualification. GitHub rejected closed-PR base editing; atomic reopen+base PATCH succeeded, with superseded C11 reopen events kept separate. No merge; final CI still in progress.",
+          "created_at": "2026-10-09T09:30:06.529858776Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuv2f6GO2S3+rJeUji2ASII6yYsBK4J27FWbXx3FQA36BrynI6hJdHlLWEalQ4cnhfWyH68Dilb7Cz++IBnn/DQ=="
         },
         "04b922e5-6291-4a84-ae9c-b56fbd19f5fd": {
           "display_id": 3303,
