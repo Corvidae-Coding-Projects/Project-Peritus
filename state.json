@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4254,
-        "tip_oid": "871875b5d054a668ac1e011ba7abb0c9ee439148",
-        "prefix_sha256": "9fa0433104a38a5c21a94589d5ed5d52e400e306450ce3f3c2e27fb270d27d43"
+        "sequence": 4255,
+        "tip_oid": "a4dd715b54713b7971452d524faeecad8f9de19a",
+        "prefix_sha256": "ac3b46baae465aa659eaad060e4b5c8026a02355f4bf779a181686d4cd8a0d65"
       },
       "NWAR": {
         "sequence": 39,
@@ -25799,12 +25799,13 @@
       "display_id": 741,
       "title": "[L709] File selection cannot address any source beyond 64 MiB and has a narrower import-label gate",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L709.\n\n- Evidence: `crates/app/peritus-app-protocol/src/workbench/files.rs:15-16,47-56,86-103`; `src/workbench/files/preview.rs:20-33,60-67,85-100`; `src/workbench/files/import.rs:21-29,60-71,102-114`; `src/wire/workbench_files.rs:18-24,66-82,119-135` in the same crate.\n- Behavior: Selected UTF-8 text is limited to 256 KiB; complete source metadata is limited to 64 MiB, byte-range end is limited to 64 MiB, and line-range last is capped at 64 million. Consequently an explicit small range cannot represent a source larger than 64 MiB through this metadata. Workspace path/label permits 4,096 bytes while import requires at most 1,024. Model identifiers are at most 512 bytes. Empty file transfers/selections are allowed. Whole selection identities/digests and provider revision are confirmation-bound; external imported labels are not reopened as paths.\n- Consequence: Large logs/generated files cannot be attached even as a small explicitly selected range, and valid workspace descriptors can fail after switching to import. These are fixed product representation policies rather than measured provider or storage capacity.\n- Repair direction: Separate complete-source metadata/addressability from chosen model-input chunk size; provide scalable ranged selection and consistent inert labels while retaining authority/digest fences. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.609922657Z",
-      "updated_at": "2026-10-09T02:33:13.373092903Z",
+      "updated_at": "2026-10-09T06:21:45.512266523Z",
+      "closed_at": "2026-10-09T06:21:45.509867565Z",
       "labels": [
         "daily-driving-limiter"
       ],
