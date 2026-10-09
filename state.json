@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4234,
-        "tip_oid": "ceadbc1911fc7d3f56705c5e9bc2289d246ff843",
-        "prefix_sha256": "493585dd336d8376607db1c03984d3c2b14a0a648827b5e4d8365cfff7eea195"
+        "sequence": 4235,
+        "tip_oid": "0954ffe5cc775d6111263a6656fd3343cc178e5e",
+        "prefix_sha256": "282833a6ae263e222f92e98b2ede063d81a1f7db92b09bfa681705603c5f1b89"
       },
       "NWAR": {
         "sequence": 39,
@@ -26523,12 +26523,13 @@
       "display_id": 195,
       "title": "[L096] Structured command/environment admission has fixed size and portability restrictions",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L096.\n\n- `command.rs:5-8,29-53` caps executable text at **4,096 bytes**, each argument at **64 KiB**, argument count at **4,096**, and complete argv at **2 MiB**. These are application constructor limits, separate from the operating system's actual argv/environment limits. Empty executable/NUL checks are format constraints.\n- `environment.rs:7-10,132-189` caps allowlisted/final variable count at **1,024**, names at **255 bytes**, each value at **64 KiB**, and aggregate environment at **2 MiB**. Names must follow a portable ASCII identifier grammar. Names are folded to uppercase for collisions on every platform, so differently cased Unix environment names cannot coexist through this representation.\n- Non-Unicode allowlisted ambient values reject the entire environment (`147-151`). A non-Unicode canonical working directory also rejects execution (`working_directory.rs:55-60`); these portability restrictions can block otherwise representable native Unix paths/environments.\n- Backend name/version tokens have a **128-byte ASCII-token** limit (`plan.rs:22,357-363`). `plan_canonical.rs:241-249` adds u32 representation limits for lengths but no independent total canonical-byte ceiling. Exact target/revision, selected backend enforcement, and policy projection checks are authority/integrity constraints rather than elapsed cutoffs.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.243309871Z",
-      "updated_at": "2026-10-09T01:45:08.363841600Z",
+      "updated_at": "2026-10-09T05:51:08.374638020Z",
+      "closed_at": "2026-10-09T05:51:08.371539300Z",
       "labels": [
         "daily-driving-limiter"
       ],
