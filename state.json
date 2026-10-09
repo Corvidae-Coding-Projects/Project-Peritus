@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4252,
-        "tip_oid": "86ac245c9727c1178ef0cda5b0e35733f5151df3",
-        "prefix_sha256": "fc75c8da5a065929ebda4bcc2e1991c9d22c828ebf91bc4a4372a1a01b9f87da"
+        "sequence": 4253,
+        "tip_oid": "c03880dd13e07df6da7f8a4383acaf139eb3fb5e",
+        "prefix_sha256": "31d15165e21891ba6b0246567c8fcb3cb32d702a7fbb44996e06d12385486eed"
       },
       "NWAR": {
         "sequence": 39,
@@ -34690,12 +34690,13 @@
       "display_id": 739,
       "title": "[L707] Brief projection limits exact proposals and rejects empty file observations",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L707.\n\n- Evidence: `crates/app/peritus-app-protocol/src/workbench/brief.rs:12-15,53-62,111-127,208-224,238-257,284-287`; `src/wire/workbench_brief.rs:81-138`; `src/workbench/brief/tests.rs:20-79`; `src/wire/workbench_brief/tests.rs:4-29` in the same crate.\n- Behavior: Four closed user-confirmed fields and eight exact agent reply proposals are allowed. Proposal text uses the queue's 8,192-byte cap and its digest is checked; omitted proposals are reported as a count. Attachment observations require 1..64 MiB, labels at most 4,096 bytes, and at most 65,535 observations. Empty-file metadata accepted by context rows (L704) is rejected here. Wire prechecks field/proposal counts but allocates the whole observation vector from raw u16 count without a separate page limit. Confirmed, proposed, and observed authority are kept distinct.\n- Consequence: Brief construction/display can fail for otherwise meaningful empty files or excessive retained observations. Proposal omission is disclosed but the brief itself has no continuation page. Tests check small projections/count rejection, not large-history feasibility or native resume.\n- Repair direction: Page optional source history, represent empty files consistently, and preserve exact user confirmation and inert observation boundaries. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.601371873Z",
-      "updated_at": "2026-10-09T02:30:01.508864003Z",
+      "updated_at": "2026-10-09T06:18:37.830056088Z",
+      "closed_at": "2026-10-09T06:18:37.827103421Z",
       "labels": [
         "daily-driving-limiter"
       ],
