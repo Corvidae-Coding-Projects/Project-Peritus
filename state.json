@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4271,
-        "tip_oid": "55fe5774ce075f40623b768859a2baf81701d064",
-        "prefix_sha256": "aebef62bb8d126188560d34919db98c50adca1eccc9dec3dcdd41f1cb1c91258"
+        "sequence": 4272,
+        "tip_oid": "758f2bb5734a397fde5ccb817aa07d5fa46a092e",
+        "prefix_sha256": "9a60802944e1796ea749667f10be62e9802508453a73f53fd22f6297246a6d04"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3353,
+  "next_comment_id": 3354,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T13:29:52.433273510Z",
+      "updated_at": "2026-10-09T15:41:08.566420432Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42476,6 +42476,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKitCMxm/LnY3Oer8E+l0R47aNsScexILN8aIrr0kYwRx6WIZf+KY+AX+OP2798mkvaVL0npURU8u3lzY+5jxCg=="
+        },
+        "3cf58865-9d51-4269-bdd5-c0d081220bae": {
+          "display_id": 3353,
+          "author": "6ME5",
+          "content": "[action] User authorized finish remaining23 smaller-list blockers with subagents, commit/push to EXISTING PR113 fix/minimum-repair targeting develop, ensure runners pass. Scope /tmp/peritus-final23/scope.json. Root six integration findings; final23_attachments_ui ten; final23_evidence four; final23_windows three. Baseline96eec678d trackedclean. Critical correction: PR113 restoreddevelop909257948,976files19commits; prior authorization-base seven-workflow578success+3skip campaign is SCOPED only. Full develop-base verify-trust currentlyFAIL1027(1026preauthorization+PCR10base mismatch), no weakening/self-approval permitted. Need legitimate full-base qualification/integration. No merge authorized. Preserve history/untracked; no new PR or retargeting. Taskactive; all23needactualbehavior+review+local/hostedverification.",
+          "created_at": "2026-10-09T15:41:08.541309531Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAV0XvgwrIyiiVUTHYwgT/6LKRv6vofD0yLV8PFY6aarXF0MMZvUd61wCPRpzO+hbgZHbMlow73KXzpU1vO2hrBw=="
         },
         "3e09f49f-c828-4657-920b-cfff66f14ca3": {
           "display_id": 2155,
