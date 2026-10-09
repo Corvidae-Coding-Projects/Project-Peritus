@@ -196,6 +196,28 @@ fn native_acl_protected_new_children_retain_conflict_without_losing_custom_aces(
         1,
         "conflict released backup owner"
     );
+    // A protected child can preserve an inherited-marked temporary ACE. The detector must
+    // inspect it even though GetExplicitEntriesFromAcl omits inherited entries entirely.
+    fixture::set(&file, "D:P(A;;FA;;;WD)(A;;FR;;;AU)(A;ID;0x10087;;;BU)");
+    fixture::set(&directory, "D:P(A;OICI;FR;;;BU)(A;OICI;FA;;;WD)(A;OICI;FR;;;AU)");
+    let marked = [fixture::snapshot(&file), fixture::snapshot(&directory)];
+    assert!(fixture::sddl(&file).contains("A;ID;"));
+    assert!(transaction.restore().is_err(), "inherited-marked temporary authority was accepted");
+    assert_eq!(transaction.cleanup_state(), CleanupState::RetryRequired);
+    assert_eq!(fixture::snapshot(&file), marked[0], "inherited-marked file ACL changed");
+    assert_eq!(fixture::snapshot(&directory), marked[1], "inherited-marked directory ACL changed");
+    assert_eq!(std::fs::read_dir(&tree.backup).unwrap().count(), 1);
+    // Keep the file legitimate while independently exercising inherited directory rejection.
+    fixture::set(&file, "D:P(A;;FR;;;BU)(A;;FA;;;WD)(A;;FR;;;AU)");
+    let file_resolved = fixture::snapshot(&file);
+    fixture::set(&directory, "D:P(A;OICI;FA;;;WD)(A;OICI;FR;;;AU)(A;OICIID;0x10087;;;BU)");
+    let directory_marked = fixture::snapshot(&directory);
+    assert!(fixture::sddl(&directory).contains("A;OICIID;"));
+    assert!(transaction.restore().is_err(), "inherited-marked directory authority was accepted");
+    assert_eq!(transaction.cleanup_state(), CleanupState::RetryRequired);
+    assert_eq!(fixture::snapshot(&file), file_resolved);
+    assert_eq!(fixture::snapshot(&directory), directory_marked);
+    assert_eq!(std::fs::read_dir(&tree.backup).unwrap().count(), 1);
     // Resolve only the fixture's conflicting principal authority, retaining its unrelated AU ACE.
     // Legitimate same-SID parent inheritance must not be mistaken for a plan residue.
     fixture::set(&file, "D:P(A;;FR;;;BU)(A;;FA;;;WD)(A;;FR;;;AU)");

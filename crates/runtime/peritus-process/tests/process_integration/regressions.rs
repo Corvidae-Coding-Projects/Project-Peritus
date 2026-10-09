@@ -24,6 +24,9 @@ mod windows_pty;
 #[path = "regressions/process_lifecycle.rs"]
 mod process_lifecycle;
 
+#[path = "regressions/spool_startup.rs"]
+mod spool_startup;
+
 #[cfg(unix)]
 #[test]
 fn disk_sampling_does_not_follow_workspace_symlink_cycles() {

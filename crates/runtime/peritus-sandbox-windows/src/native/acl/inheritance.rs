@@ -7,14 +7,13 @@ use std::collections::BTreeMap;
 use windows_sys::Win32::{
     Foundation::LocalFree,
     Security::{
-        ACL,
-        Authorization::{
-            ConvertStringSidToSidW, DENY_ACCESS, EXPLICIT_ACCESS_W, GetExplicitEntriesFromAclW,
-            TRUSTEE_IS_SID,
-        },
+        ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_SIZE_INFORMATION, AclSizeInformation,
+        Authorization::{ConvertStringSidToSidW, DENY_ACCESS, GRANT_ACCESS},
         CreatePrivateObjectSecurityEx, DestroyPrivateObjectSecurity, EqualSid, GENERIC_MAPPING,
-        GROUP_SECURITY_INFORMATION, GetSecurityDescriptorDacl, OWNER_SECURITY_INFORMATION,
-        SEF_AVOID_OWNER_CHECK, SEF_AVOID_PRIVILEGE_CHECK, SEF_DACL_AUTO_INHERIT,
+        GROUP_SECURITY_INFORMATION, GetAce, GetAclInformation, GetLengthSid,
+        GetSecurityDescriptorDacl, INHERITED_ACE, IsValidAcl, IsValidSid,
+        OWNER_SECURITY_INFORMATION, SEF_AVOID_OWNER_CHECK, SEF_AVOID_PRIVILEGE_CHECK,
+        SEF_DACL_AUTO_INHERIT,
     },
     Storage::FileSystem::{
         FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
@@ -130,36 +129,111 @@ fn entries(
     if present == 0 || acl.is_null() {
         return Ok(Vec::new());
     }
-    let mut count = 0;
-    let mut entries: *mut EXPLICIT_ACCESS_W = ptr::null_mut();
-    // SAFETY: ACL is borrowed from a valid descriptor; Win32 initializes the bounded output list.
-    if unsafe { GetExplicitEntriesFromAclW(acl, &raw mut count, &raw mut entries) } != 0 {
-        return Err(error("new-child ACE inventory cannot be decoded"));
+    // The descriptor owns a native ACL allocation; establish its declared bounds before
+    // inspecting any ACE. GetExplicitEntriesFromAcl omits inherited ACEs and cannot be used
+    // for either the original-parent baseline or the child's residual-authority inventory.
+    // SAFETY: GetSecurityDescriptorDacl returned this ACL header in a live native descriptor.
+    let allocated = usize::from(unsafe { (*acl).AclSize });
+    if allocated < size_of::<ACL>() {
+        return Err(error("new-child ACL header is truncated"));
     }
-    let owned = Local(entries.cast());
-    if count == 0 {
-        return Ok(Vec::new());
+    let mut size = ACL_SIZE_INFORMATION::default();
+    // SAFETY: the live native ACL and initialized output storage are valid for these queries.
+    if unsafe { IsValidAcl(acl) } == 0
+        || unsafe {
+            GetAclInformation(
+                acl,
+                (&raw mut size).cast(),
+                u32::try_from(size_of::<ACL_SIZE_INFORMATION>())
+                    .map_err(|_| error("ACL inventory size cannot be represented"))?,
+                AclSizeInformation,
+            )
+        } == 0
+    {
+        return Err(error("new-child ACL inventory is invalid"));
     }
-    if entries.is_null() || count > 65_535 {
-        return Err(error("new-child ACE inventory is invalid"));
+    let used = usize::try_from(size.AclBytesInUse)
+        .map_err(|_| error("ACL inventory length cannot be represented"))?;
+    if used < size_of::<ACL>() || used > allocated || size.AceCount > 65_535 {
+        return Err(error("new-child ACL inventory exceeds its allocation"));
     }
-    // SAFETY: the successful API returned count initialized records in the owned allocation.
-    let entries = unsafe { core::slice::from_raw_parts(entries, count as usize) };
     let mut result = Vec::new();
-    for entry in entries {
-        if entry.Trustee.TrusteeForm != TRUSTEE_IS_SID || entry.Trustee.ptstrName.is_null() {
-            return Err(error("new-child ACE trustee cannot be compared exactly"));
+    for index in 0..size.AceCount {
+        let mut ace = ptr::null_mut();
+        // SAFETY: validated ACL, bounded index, and initialized pointer output remain live.
+        if unsafe { GetAce(acl, index, &raw mut ace) } == 0 || ace.is_null() {
+            return Err(error("new-child ACE cannot be read"));
         }
-        // SAFETY: TRUSTEE_IS_SID from the native decoder supplies a valid SID; conversion owns sid.
-        if unsafe { EqualSid(entry.Trustee.ptstrName.cast(), sid) } != 0 {
-            result.push(Access {
-                mask: entry.grfAccessPermissions,
-                mode: entry.grfAccessMode,
-                // Protection may convert inherited ACEs to explicit while preserving authority.
-                inheritance: entry.grfInheritance & !0x10,
-            });
+        if let Some(access) = decode_ace(acl, used, ace, sid)? {
+            result.push(access);
         }
     }
-    drop(owned);
     Ok(result)
+}
+
+fn decode_ace(
+    acl: *mut ACL,
+    used: usize,
+    ace: *mut core::ffi::c_void,
+    sid: *mut core::ffi::c_void,
+) -> Result<Option<Access>, WindowsError> {
+    let offset = ace
+        .addr()
+        .checked_sub(acl.addr())
+        .ok_or_else(|| error("new-child ACE precedes its ACL"))?;
+    if offset < size_of::<ACL>() || !fits(offset, size_of::<ACE_HEADER>(), used) {
+        return Err(error("new-child ACE header exceeds its ACL"));
+    }
+    // SAFETY: the complete header lies inside the validated ACL; unaligned read is supported.
+    let header = unsafe { ptr::read_unaligned(ace.cast::<ACE_HEADER>()) };
+    let length = usize::from(header.AceSize);
+    if length < size_of::<ACCESS_ALLOWED_ACE>() || !fits(offset, length, used) {
+        return Err(error("new-child ACE exceeds its ACL"));
+    }
+    // Standard allow (0) and deny (1) ACEs share this mask/SID-prefix layout. Object,
+    // callback, and all other ACE layouts need separate parsers; never silently omit them.
+    let mode = match header.AceType {
+        0 => GRANT_ACCESS,
+        1 => DENY_ACCESS,
+        _ => return Err(error("new-child ACE type cannot be compared exactly")),
+    };
+    // SAFETY: the entire standard prefix has been bounded within this ACE/ACL allocation.
+    let basic = unsafe { ptr::read_unaligned(ace.cast::<ACCESS_ALLOWED_ACE>()) };
+    let local_base = (&raw const basic).addr();
+    let sid_offset = (&raw const basic.SidStart)
+        .addr()
+        .checked_sub(local_base)
+        .ok_or_else(|| error("standard ACE SID offset is invalid"))?;
+    if !fits(sid_offset, 8, length) {
+        return Err(error("new-child ACE SID header is truncated"));
+    }
+    // SAFETY: sid_offset plus the complete eight-byte SID header lies inside this ACE.
+    let trustee = unsafe { ace.cast::<u8>().add(sid_offset) };
+    // SAFETY: the SID header's subauthority count byte has been bounded above.
+    let subauthorities = unsafe { *trustee.add(1) };
+    let sid_length = 8_usize + 4 * usize::from(subauthorities);
+    if !fits(sid_offset, sid_length, length) {
+        return Err(error("new-child ACE SID exceeds its ACE"));
+    }
+    // SAFETY: all bytes implied by the SID header lie in this ACE, proven before native
+    // validation or length computation; the principal SID was returned by native conversion.
+    if unsafe { IsValidSid(trustee.cast()) } == 0
+        || usize::try_from(unsafe { GetLengthSid(trustee.cast()) }).ok() != Some(sid_length)
+    {
+        return Err(error("new-child ACE SID is invalid"));
+    }
+    // SAFETY: both SIDs are live and validated, including the trustee's complete byte extent.
+    if unsafe { EqualSid(trustee.cast(), sid) } == 0 {
+        return Ok(None);
+    }
+    Ok(Some(Access {
+        mask: basic.Mask,
+        mode,
+        // Protection may make an inherited ACE explicit without changing its authority.
+        inheritance: u32::from(header.AceFlags) & !INHERITED_ACE,
+    }))
+}
+
+fn fits(offset: usize, length: usize, total: usize) -> bool {
+    offset.checked_add(length).is_some_and(|end| end <= total)
 }

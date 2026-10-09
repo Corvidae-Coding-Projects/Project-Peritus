@@ -82,7 +82,12 @@ async fn disconnected_git_keeps_mutation_custody_and_cancellation_is_reachable()
     assert_eq!(serde_json::from_slice::<Value>(&bytes).unwrap()["uncertain"], true);
     std::fs::write(root.path().join(".git/hook-release"), "release").unwrap();
     until(|| app.snapshot().unwrap().operations["commit-first"].result.is_some()).await;
-    assert!(custody.try_lock().is_ok());
+    // The durable result is published before the task drops its mutation guard.
+    drop(
+        tokio::time::timeout(Duration::from_secs(30), custody.lock())
+            .await
+            .expect("completed Git operation must release mutation custody"),
+    );
     assert_eq!(git(root.path(), &["rev-list", "--count", "HEAD"]).trim(), "2");
     std::fs::remove_file(root.path().join(".git/hook-release")).unwrap();
     std::fs::remove_file(root.path().join(".git/hook-started")).unwrap();
