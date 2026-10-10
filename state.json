@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4291,
-        "tip_oid": "3cf4f01664fa9170800db358d9ffd91991389cea",
-        "prefix_sha256": "f6d5755e0a4c6cccc9438b79652e8dc934049e05d2f91680d48c70755133db02"
+        "sequence": 4292,
+        "tip_oid": "dad875dfb57332e6efa8c9887929d4b481c2ff18",
+        "prefix_sha256": "a79fda102bae24a59264187e11abdb5093771b8ee8afa45dd5a6f9d08f05b916"
       },
       "NWAR": {
         "sequence": 39,
@@ -64,7 +64,7 @@
       }
     }
   },
-  "next_display_id": 827,
+  "next_display_id": 828,
   "next_comment_id": 3373,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
@@ -880,6 +880,7 @@
     "fac5d399-4c9e-5bab-9459-6df3648b1490": 791,
     "fad0487d-6eed-5ee3-bbe5-a286b5a831b1": 197,
     "fb2c669b-199c-5120-92c2-63421c6d58d4": 293,
+    "fb6db66b-b333-4f4e-a3f7-9fdf41f253c9": 827,
     "fc2bcce1-b6dc-57b1-8d7d-eb0bc67c9291": 776,
     "fc32ec76-2a63-5413-a71d-44679c5ac7a6": 239,
     "fc9770e5-30ce-587b-b467-3843c5727f7a": 700,
@@ -43434,6 +43435,17 @@
           "kind": "decision"
         }
       }
+    },
+    "fb6db66b-b333-4f4e-a3f7-9fdf41f253c9": {
+      "uuid": "fb6db66b-b333-4f4e-a3f7-9fdf41f253c9",
+      "display_id": 827,
+      "title": "Retire Peritus CI, unit tests and verification infrastructure",
+      "description": "User authorized repository-scoped GitHub Actions shutdown and a source-only checkout. Archive reports outside repository, remove testing/formal/qualification/governance systems and runtime AI verification gates, preserve application/build/runtime functionality. Use real program behavior instead of removed suites.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-10-10T22:24:06.705181569Z",
+      "updated_at": "2026-10-10T22:24:06.705181569Z"
     },
     "fc2bcce1-b6dc-57b1-8d7d-eb0bc67c9291": {
       "uuid": "fc2bcce1-b6dc-57b1-8d7d-eb0bc67c9291",
