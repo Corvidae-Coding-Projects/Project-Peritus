@@ -1,0 +1,49 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tool-router --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tool-router", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "117-peritus-tool-router-ordinary-test.log", "owning_crate": "peritus-tool-router", "started_at": "2026-10-09T21:23:44.643768Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.12s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_tool_router-1eae12f660ff74e2)
+
+running 3 tests
+test verified::tests::authority_rejects_each_independent_missing_fact ... ok
+test verified::tests::operation_refinement_rejects_each_independent_mismatch ... ok
+test verified::tests::rejection_and_replay_never_admit_second_effect ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/target/debug/deps/production_conformance-d82b14c73ac4524b)
+
+running 1 test
+test production_router_passes_all_eight_a2_tool_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/router_authority.rs (/home/doll/Project-Peritus/target/debug/deps/router_authority-2182c0f1e5cf867f)
+
+running 6 tests
+test authority_rejection_never_calls_dispatcher ... ok
+test conflicting_and_non_idempotent_replay_never_repeat_effect ... ok
+test exact_authority_dispatches_once_and_exact_replay_returns_cached_result ... ok
+test exact_replay_still_requires_exact_authority_without_redispatch ... ok
+test rejected_control_restores_active_execution_ownership ... ok
+test wrong_prepared_digest_never_calls_dispatcher ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/router_lifecycle.rs (/home/doll/Project-Peritus/target/debug/deps/router_lifecycle-6e227f98a39bea53)
+
+running 3 tests
+test progress_then_typed_poll_failure_closes_with_observed_count ... ok
+test recovery_progress_and_terminal_are_accepted_as_one_update ... ok
+test synchronous_result_cannot_claim_unobserved_progress ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/untimed_lifecycle.rs (/home/doll/Project-Peritus/target/debug/deps/untimed_lifecycle-d58ebf9d26714cb4)
+
+running 1 test
+test long_running_untimed_call_still_cancels_explicitly_and_on_epoch_change ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tool-router --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.365, "exit_code": 0, "finished_at": "2026-10-09T21:23:45.009445Z", "invocation": ["cargo", "test", "--package", "peritus-tool-router", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "117-peritus-tool-router-ordinary-test.log", "owning_crate": "peritus-tool-router", "result": "passed", "started_at": "2026-10-09T21:23:44.643768Z"}

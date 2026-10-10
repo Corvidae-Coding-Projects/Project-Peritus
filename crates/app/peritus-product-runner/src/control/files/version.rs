@@ -1,12 +1,12 @@
 //! Exact immutable observation metadata, distinct from a claim that authorization occurred.
 
 use super::{ControlError, FileRange, FileSource, OperationId, Sha256Digest};
-use crate::attachment::{MAX_FILE_BYTES, ValidatedFileText};
+use crate::attachment::ValidatedFileText;
 use peritus_types::ArtifactId;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Metadata from one complete bounded scan and exact selected UTF-8 bytes.
+/// Metadata from one complete source scan and exact selected UTF-8 bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FileObservation {
@@ -20,7 +20,7 @@ impl FileObservation {
     /// Checks metadata bounds. The host must match these claims to the actual authorized read.
     ///
     /// # Errors
-    /// Rejects impossible ranges or excessive selected/source bytes.
+    /// Rejects impossible ranges or inconsistent full-source metadata.
     pub fn new(
         source_digest: Sha256Digest,
         source_bytes: u64,
@@ -68,10 +68,8 @@ impl FileObservation {
         self.bytes() == text.bytes() && self.digest() == text.digest()
     }
     fn validate(self) -> Result<(), ControlError> {
-        if self.source_bytes > super::source::MAX_SOURCE_BYTES
-            || self.start > self.end
+        if self.start > self.end
             || self.end > self.source_bytes
-            || self.bytes() > MAX_FILE_BYTES
             || (self.start == 0
                 && self.end == self.source_bytes
                 && self.source_digest != self.digest)
@@ -140,7 +138,13 @@ impl FileVersion {
             }
             FileRange::Lines { .. } => start < end,
         };
-        if self.artifact == [0; 16] || !range_matches {
+        if self.artifact == [0; 16]
+            || !range_matches
+            || source.proposal().is_some_and(|reply| {
+                reply.digest() != self.observation.digest()
+                    || reply.bytes() != self.observation.bytes()
+            })
+        {
             return Err(ControlError::InvalidInput);
         }
         Ok(())

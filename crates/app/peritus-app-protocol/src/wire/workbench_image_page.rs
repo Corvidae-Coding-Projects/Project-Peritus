@@ -2,8 +2,8 @@
 
 use super::primitive::{invalid, read_id, write_id};
 use crate::{
-    ControlOperationId, MAX_WORKBENCH_IMAGE_LABEL_BYTES, MAX_WORKBENCH_IMAGE_PAGE,
-    WorkbenchImageLabel, WorkbenchImagePage, WorkbenchImageQuery, WorkbenchImageRow,
+    ControlOperationId, MAX_WORKBENCH_IMAGE_PAGE, WorkbenchImageLabel, WorkbenchImagePage,
+    WorkbenchImageQuery, WorkbenchImageRow,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ArtifactId;
@@ -58,9 +58,6 @@ pub(super) fn read_page(r: &mut CanonicalReader<'_>) -> Result<WorkbenchImagePag
         let operation = read_id(r, ControlOperationId::new)?;
         let artifact = read_id(r, ArtifactId::new)?;
         let label = r.read_str()?;
-        if label.len() > MAX_WORKBENCH_IMAGE_LABEL_BYTES {
-            return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-        }
         let label = invalid(offset, WorkbenchImageLabel::new(label.to_owned()))?;
         let image = super::workbench_images::read_metadata(r)?;
         let source = super::workbench_inputs::read_row(r)?;

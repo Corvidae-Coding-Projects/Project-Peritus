@@ -32,6 +32,39 @@ pub(in super::super) const RESULT_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
+        name: "WorkbenchPreviewOutputStream",
+        rust_type: "WorkbenchPreviewOutputStream",
+        fields: &[field(
+            "tag",
+            W::U16,
+            &[],
+            "WorkbenchPreviewOutputStream",
+            "\"stdout\" | \"stderr\" | \"terminal\"",
+            J::Enum(&["stdout", "stderr", "terminal"]),
+            true,
+        )],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchPreviewOutputRange",
+        rust_type: "WorkbenchPreviewOutputRange",
+        fields: &[
+            id("launch", "ControlOperationId"),
+            nested("stream", "WorkbenchPreviewOutputStream"),
+            field("offset", W::U64, &[], "u64", "UInt64", J::U64String, true),
+            field("totalBytes", W::U64, &[], "u64", "UInt64", J::U64String, true),
+            field(
+                "artifactDigest",
+                W::Option,
+                &[],
+                "Option<[u8; 32]>",
+                "Sha256Digest",
+                J::Digest,
+                false,
+            ),
+            field("bytes", W::Bytes, &[], "Vec<u8>", "string", J::Base64, true),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchPreviewSnapshot",
         rust_type: "WorkbenchPreviewSnapshot",
         fields: &[

@@ -32,7 +32,7 @@ fn brief(query: WorkbenchQuery) -> WorkbenchBrief {
         ControlOperationId::new([69; 16]).expect("proposal"),
         WorkbenchInvocationId::new([70; 16]).expect("invocation"),
         peritus_codec::sha256(proposal_text.as_str().as_bytes()),
-        proposal_text,
+        proposal_text.as_str().to_owned(),
     )
     .expect("proposal");
     WorkbenchBrief::with_sources(
@@ -156,3 +156,5 @@ fn brief_panel_keeps_composer_and_escape_visible_and_labels_exact_source_state()
         }
     }
 }
+
+mod pages;

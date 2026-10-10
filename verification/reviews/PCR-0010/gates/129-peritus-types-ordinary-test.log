@@ -1,0 +1,72 @@
+{"candidate_commit": "e5c4ec47414daa75ecd2e3b2d17a279ee38d7132", "candidate_tree": "dab27248c3f671224a9d480abcdce2a5edad7174", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-types --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-types", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "129-peritus-types-ordinary-test.log", "owning_crate": "peritus-types", "started_at": "2026-10-09T07:56:57.112594Z"}, "plan_sha256": "0747aeadb65ca3bffa3cb1033b156e056fb5b4a16a3e9a1c8898faf12bcd9118"}
+
+   Compiling peritus-types v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/foundation/peritus-types)
+    Finished `test` profile [unoptimized] target(s) in 1.91s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_types-ff5fab589c436640)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/capability.rs (/home/doll/Project-Peritus/target/debug/deps/capability-ad9d95a458f40027)
+
+running 5 tests
+test accepts_the_complete_grammar_and_length_boundaries ... ok
+test canonical_comparison_is_exact_ascii_lexicographic_order ... ok
+test rejects_empty_overlong_and_empty_segments ... ok
+test rejects_invalid_segment_starts ... ok
+test rejects_non_ascii_and_disallowed_ascii ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/digest.rs (/home/doll/Project-Peritus/target/debug/deps/digest-1698c2c77cab1fa4)
+
+running 1 test
+test digest_preserves_every_exact_byte_pattern ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/errors.rs (/home/doll/Project-Peritus/target/debug/deps/errors-3a812f40ba032567)
+
+running 1 test
+test error_codes_are_stable_and_category_specific ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ids.rs (/home/doll/Project-Peritus/target/debug/deps/ids-c54dd28ddfeeb979)
+
+running 3 tests
+test every_byte_position_can_make_an_identifier_nonzero ... ok
+test every_nominal_identifier_enforces_the_shared_boundary ... ok
+test identifiers_have_value_semantics_and_nominal_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/numbers.rs (/home/doll/Project-Peritus/target/debug/deps/numbers-ae2030d463bfb416)
+
+running 3 tests
+test event_sequences_are_one_based_and_checked ... ok
+test generations_are_one_based_and_checked ... ok
+test revision_numbers_are_one_based_and_checked ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/resource.rs (/home/doll/Project-Peritus/target/debug/deps/resource-14531955e4ad8fba)
+
+running 3 tests
+test addition_is_exact_or_reports_overflow ... ok
+test subtraction_is_exact_or_reports_underflow ... ok
+test zero_and_all_resource_dimensions_are_representable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/revision.rs (/home/doll/Project-Peritus/target/debug/deps/revision-d67a41c504c4f9e1)
+
+running 2 tests
+test changing_any_component_changes_tuple_identity ... ok
+test revision_tuple_preserves_every_nominal_component ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-types --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 2.023, "exit_code": 0, "finished_at": "2026-10-09T07:56:59.137626Z", "invocation": ["cargo", "test", "--package", "peritus-types", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "129-peritus-types-ordinary-test.log", "owning_crate": "peritus-types", "result": "passed", "started_at": "2026-10-09T07:56:57.112594Z"}

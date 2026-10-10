@@ -1,0 +1,2 @@
+FINDING-0020: Preview behavior checks returned a boolean after loading the complete output
+Source review traced `CommandRuntime::preview_output_contains` and daemon admission before repair. Final tests cover early matches beyond the former display tail, cross-chunk matches, a large miss with bounded scanning, active PTY/pipes, and finalized artifact verification. The evidence records stream, absolute range, matched digest, observed length/prefix digest or finalized artifact digest.

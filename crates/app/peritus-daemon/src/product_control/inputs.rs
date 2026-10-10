@@ -139,6 +139,22 @@ impl ControlStore {
         bytes[0] |= 1;
         self.prepare_inputs(&captured, InvocationId::new(bytes)?, request)
     }
+    /// Expands only authenticated user-message and accepted-proposal references for read policy.
+    /// The caller must authenticate the record before using its contract as authority.
+    pub(crate) fn user_instruction_context(
+        &self,
+        record: &peritus_product_runner::control::ConversationRecord,
+    ) -> Result<String, Error> {
+        let inputs = record.inputs().capture()?;
+        let mut context = inputs.conversation().to_owned();
+        for source in record.eligible_files(inputs.included()) {
+            if source.file().source().is_user_instruction() {
+                context.push('\n');
+                context.push_str(self.file_text(source.current())?.text());
+            }
+        }
+        Ok(context)
+    }
     /// Captures current inputs after checking the authenticated owner and exact workspace.
     /// Does not create absent state, start work, or consume any queue entries.
     pub fn capture_inputs(
@@ -153,7 +169,7 @@ impl ControlStore {
         {
             return Err(ControlError::ScopeMismatch.into());
         }
-        let user_context = record.inputs().capture()?.conversation().to_owned();
+        let user_context = self.user_instruction_context(&record)?;
         let metadata = record
             .replies()
             .iter()
@@ -206,16 +222,6 @@ impl ControlStore {
             .collect();
         let image_sources: Vec<_> =
             record.eligible_images(inputs.included()).into_iter().cloned().collect();
-        if image_sources.len() > peritus_product_runner::attachment::MAX_IMAGE_COUNT
-            || image_sources
-                .iter()
-                .try_fold(0_u64, |total, image| total.checked_add(image.bytes()))
-                .is_none_or(|total| {
-                    total > peritus_product_runner::attachment::MAX_IMAGE_SELECTION_BYTES
-                })
-        {
-            return Err(ControlError::Capacity.into());
-        }
         let images =
             image_sources.iter().map(|image| self.image_media(image)).collect::<Result<_, _>>()?;
         let file_sources = record
@@ -223,20 +229,11 @@ impl ControlStore {
             .into_iter()
             .map(manifest::FileSource::selected)
             .collect::<Vec<_>>();
-        if file_sources.len() > peritus_product_runner::attachment::MAX_FILE_COUNT
-            || file_sources
-                .iter()
-                .try_fold(0_u64, |total, file| {
-                    total.checked_add(file.version.observation().bytes())
-                })
-                .is_none_or(|total| {
-                    total > peritus_product_runner::attachment::MAX_FILE_SELECTION_BYTES
-                })
-        {
-            return Err(ControlError::Capacity.into());
-        }
-        let file_context = self.file_context(&file_sources)?;
-        let inputs = inputs.with_file_context(&file_context)?;
+        let metadata_context = self.file_reference_context(&file_sources)?;
+        // Provider capacity is not known at capture time, so only bounded exact references enter
+        // the live prompt. The provider can retrieve any selected text through attachment_read.
+        let inputs = inputs.with_file_context(&metadata_context)?;
+        let file_context = metadata_context;
         let app_conversation = peritus_app_protocol::ConversationId::new(*conversation.as_bytes())
             .map_err(|_| ControlError::InvalidInput)?;
         let guidance = self.guidance_for_request(workspace, app_conversation)?;

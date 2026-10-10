@@ -108,6 +108,10 @@ pub enum FieldBound {
     WorkbenchBriefFields,
     /// Maximum agent-proposed public replies shown in a brief.
     WorkbenchBriefProposals,
+    /// Maximum metadata rows per brief transport page.
+    WorkbenchBriefPageItems,
+    /// Maximum UTF-8 bytes per exact proposal transport page.
+    WorkbenchBriefBodyBytes,
     /// Maximum host-observed attachment facts shown in a brief.
     WorkbenchBriefObservations,
     /// Maximum public-reply source handles in one compaction preview.
@@ -232,6 +236,8 @@ impl FieldBound {
             Self::WorkbenchContextRows => "workbench.max-context-rows (8192)",
             Self::WorkbenchContextSourceBytes => "workbench.max-context-source-bytes (67108864)",
             Self::WorkbenchBriefFields => "workbench.max-brief-fields (4)",
+            Self::WorkbenchBriefPageItems => "workbench.brief-page-items (16)",
+            Self::WorkbenchBriefBodyBytes => "workbench.brief-body-bytes (32768)",
             Self::WorkbenchBriefProposals => "workbench.max-brief-proposals (8)",
             Self::WorkbenchBriefObservations => "workbench.max-brief-observations (32)",
             Self::WorkbenchCompactionEntries => "workbench.max-compaction-entries (1024)",
@@ -239,7 +245,7 @@ impl FieldBound {
             Self::WorkbenchGoalCriteria => "workbench.max-goal-criteria (16)",
             Self::WorkbenchGoalRoles => "workbench.goal-roles (3)",
             Self::WorkbenchGoalReasonBytes => "workbench.max-goal-reason-bytes (512)",
-            Self::WorkbenchCheckpointPaths => "workbench.max-checkpoint-paths (64)",
+            Self::WorkbenchCheckpointPaths => "wire.u16-count (legacy full-list message only)",
             Self::WorkbenchCheckpointNameBytes => "workbench.max-checkpoint-name-bytes (256)",
             Self::WorkbenchCheckpointTextBytes => "workbench.max-checkpoint-text-bytes (512)",
             Self::WorkbenchRestoreTextBytes => "workbench.max-restore-text-bytes (4096)",

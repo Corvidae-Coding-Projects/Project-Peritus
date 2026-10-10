@@ -23,6 +23,36 @@ impl ConversationView for LiveConversation {
         // An unavailable control binding must not permit a fallback to ambient file discovery.
         self.service.governed_run(self.run_id).unwrap_or(true)
     }
+    fn has_selected_file_attachments(&self) -> bool {
+        let Ok(records) = self.service.inner.records.read() else { return false };
+        let Some(record) = records.get(&self.run_id) else { return false };
+        let start = &record.interaction.workbench;
+        self.service
+            .with_controls(false, |store| {
+                let control = store
+                    .load(start.conversation())?
+                    .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
+                Ok(control
+                    .files()
+                    .entries()
+                    .iter()
+                    .any(peritus_product_runner::control::FileSelection::selected))
+            })
+            .unwrap_or(false)
+    }
+    fn read_attachment_range(
+        &self,
+        request: peritus_product_runner::AttachmentReadRequest,
+    ) -> Result<peritus_product_runner::AttachmentReadResponse, String> {
+        let records =
+            self.service.inner.records.read().map_err(|_| "conversation unavailable".to_owned())?;
+        let record =
+            records.get(&self.run_id).ok_or_else(|| "conversation unavailable".to_owned())?;
+        let start = &record.interaction.workbench;
+        self.service
+            .with_controls(false, |store| store.read_file_page(start, request))
+            .map_err(|_| "selected immutable attachment is unavailable or changed".to_owned())
+    }
     fn stable_request_context(&self) -> String {
         let result = (|| {
             let records = self
@@ -37,7 +67,11 @@ impl ConversationView for LiveConversation {
                 store.capture_execution(start)?;
                 let record = store.load(start.conversation())?.ok_or(peritus_product_runner::control::ControlError::NotFound)?;
                 let text = record.inputs().incorporated_conversation()?;
-                Ok(if text.is_empty() { "Current user instructions are supplied by the host at the request admission boundary.".to_owned() } else { text })
+                Ok(if text.is_empty() {
+                    "Current user instructions are supplied by the host at the request admission boundary.".to_owned()
+                } else {
+                    text
+                })
             }).map_err(ProductRunServiceError::from)
         })();
         result.unwrap_or_else(|_| {
@@ -201,6 +235,22 @@ impl DeveloperInteraction for LiveConversation {
                 .unwrap_or_else(|| "the previous persistence operation failed".to_owned());
             return Err(port_internal("read the governing conversation", &detail));
         }
+        let start = record.interaction.workbench.clone();
+        let provider = record.request.providers().writer();
+        let model = record.interaction.models.writer().clone();
+        drop(records);
+        self.service
+            .refresh_request_files(&start, provider, &model)
+            .map_err(|error| port_error("capture selected source snapshot", error))?;
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal(
+                "read the governing conversation",
+                "the product-run record lock was poisoned",
+            )
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("read the governing conversation", "the product-run record was not found")
+        })?;
         self.service
             .record_input(record)
             .map_err(|error| port_error("read the governing conversation", error))

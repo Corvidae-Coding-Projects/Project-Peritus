@@ -4,6 +4,7 @@
 //! already-resolved provider and workspace capabilities.
 mod accounting;
 pub mod attachment;
+mod attachment_read;
 #[cfg(not(verus_only))]
 mod budget;
 #[cfg(not(verus_only))]
@@ -57,6 +58,8 @@ mod workspace_filter;
 mod workspace_kind;
 #[cfg(not(verus_only))]
 mod workspace_media;
+#[cfg(not(verus_only))]
+pub use workspace_media::{WorkspaceImageDiscovery, WorkspaceImagePage};
 
 mod api;
 mod api_parity;

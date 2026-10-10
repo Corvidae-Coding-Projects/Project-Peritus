@@ -154,6 +154,14 @@ impl ManagedProxy {
         self.join_owner()
     }
 
+    /// Cancels and joins while preserving the proxy owner for failure reconciliation.
+    ///
+    /// # Errors
+    /// Reports incomplete teardown or an already consumed join without inferring cleanup.
+    pub fn reconcile_shutdown(&mut self) -> Result<ProxyShutdown, NetworkError> {
+        self.join_owner()
+    }
+
     fn join_owner(&mut self) -> Result<ProxyShutdown, NetworkError> {
         let _ = self.cancellation.cancel();
         let join = self

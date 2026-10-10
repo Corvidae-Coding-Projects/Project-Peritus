@@ -1,0 +1,3 @@
+# FINDING-0026: ACL propagation replay could merge authority from an outside ancestor
+
+A predecessor applied the saved immediate-parent DACL without first protecting it for propagation. Windows could merge an unchanged outside ancestor's inheritable ACE into that parent, and a new ordinary child retained the unrelated authority even though the saved immediate-parent baseline excluded it. The final candidate applies every saved DACL with `PROTECTED_DACL_SECURITY_INFORMATION` for propagation and then performs the existing exact descriptor replay and final readback. The deterministic outer-parent fixture proves removal, exact original and ancestor equality, empty backup ownership, and idempotent retry.

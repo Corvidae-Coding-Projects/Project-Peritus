@@ -238,7 +238,7 @@ speculative distributed-consensus or unrelated release-qualification work.
 - **E3-R071:** Errors/debug output are bounded and redaction-safe: no task bodies, answers, hidden
   tests, credentials, raw output, environment values, or artifact bytes.
 - **E3-R072:** Public fields stay private; roots only declare/re-export intentional modules;
-  production modules target 400 and stay below 700 lines without review; forbidden generic module
+  production modules stay at or below 500 lines without a reviewed exception; forbidden generic module
   names are not used.
 - **E3-R073:** No production TODO/FIXME, placeholders, unchecked success, fake production adapter,
   unsafe, ignored test, `assume`, `admit`, axiom, `external_body`, or hidden proof precondition.

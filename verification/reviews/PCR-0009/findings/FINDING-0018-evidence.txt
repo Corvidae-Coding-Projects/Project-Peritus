@@ -1,0 +1,2 @@
+FINDING-0018: Active preview evidence probed streams that do not exist for the launch mode
+The external process fixture observed a public `PERITUS-PROCESS-015` missing-spool error when probing terminal on a pipe launch. Focused production-runner tests now execute live PTY and pipe launches and verify both a true match and a false miss without error. Source inspection confirmed no nonexistent stream is probed.

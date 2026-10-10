@@ -1,0 +1,2 @@
+FINDING-0016: Git history output depended on user encoding, notes, signatures, and color configuration
+The `encoding` binary under `/tmp/peritus-batch3/formal-review/git-history-cap` observed `yen-¥` become `yen-\` with the same repository/request and exited 101 before repair. With the final GitRunner flags it preserved the original subject and exited 0. `history_identity` also covers ISO-8859-1/SHIFT-JIS, notes, and signature configuration.

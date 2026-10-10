@@ -1,0 +1,38 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-spec --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-spec", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "109-peritus-spec-ordinary-test.log", "owning_crate": "peritus-spec", "started_at": "2026-10-09T04:07:40.002595Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_spec-91822aa28510c9e7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/binding.rs (/home/doll/Project-Peritus/target/debug/deps/binding-a3eeadd6b6f4fb96)
+
+running 1 test
+test binding_requires_the_tuple_to_name_the_exact_contract ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contract_validation.rs (/home/doll/Project-Peritus/target/debug/deps/contract_validation-7e3a3155f93a81f5)
+
+running 5 tests
+test contract_preserves_checked_components ... ok
+test contract_rejects_dangling_and_mistyped_evidence ... ok
+test contract_rejects_duplicate_requirements_exclusions_and_assumptions ... ok
+test contract_rejects_quorum_that_cannot_fit_in_review_cycles ... ok
+test review_and_completion_policies_reject_zero_or_ambiguous_inputs ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/gate_graph.rs (/home/doll/Project-Peritus/target/debug/deps/gate_graph-5a8b8c5aa420e805)
+
+running 3 tests
+test gate_and_graph_constructors_reject_ambiguous_ordering ... ok
+test graph_rejects_unknown_dependencies_and_cycles ... ok
+test graph_returns_a_deterministic_dependency_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-spec --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.366, "exit_code": 0, "finished_at": "2026-10-09T04:07:40.370100Z", "invocation": ["cargo", "test", "--package", "peritus-spec", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "109-peritus-spec-ordinary-test.log", "owning_crate": "peritus-spec", "result": "passed", "started_at": "2026-10-09T04:07:40.002595Z"}

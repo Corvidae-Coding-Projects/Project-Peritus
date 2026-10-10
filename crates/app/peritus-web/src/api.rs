@@ -95,11 +95,23 @@ struct QueryArgs {
     #[serde(default)]
     profile: String,
     #[serde(default)]
+    inventory: String,
+    #[serde(default)]
+    version: String,
+    #[serde(default)]
     operation: String,
 }
 async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Result<Json<Value>> {
     let value = match args.kind.as_str() {
-        "files" => files::list(&app.project(&args.project)?.root, &args.path, args.offset)?,
+        "files" => {
+            let root = app.project(&args.project)?.root;
+            let app = Arc::clone(&app);
+            tokio::task::spawn_blocking(move || {
+                app.directories.page(&root, &args.path, args.offset, &args.inventory)
+            })
+            .await
+            .map_err(problem)??
+        }
         "pdf" => {
             let path = files::resolve(&app.project(&args.project)?.root, &args.path)?;
             let bytes = tokio::task::spawn_blocking(move || files::pdf::inspect(&path))
@@ -108,6 +120,19 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
             json!({"bytes": bytes})
         }
         "text" => {
+            let root = app.project(&args.project)?.root;
+            tokio::task::spawn_blocking(move || {
+                files::range::text(
+                    &root,
+                    &args.path,
+                    u64::try_from(args.offset).map_err(problem)?,
+                    &args.version,
+                )
+            })
+            .await
+            .map_err(problem)??
+        }
+        "text-edit" => {
             let root = app.project(&args.project)?.root;
             tokio::task::spawn_blocking(move || files::text(&root, &args.path))
                 .await
@@ -119,7 +144,7 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
         "facts" => daemon::ready_facts(&app, &app.project(&args.project)?).await?,
         "conversation" => daemon::conversation(&app, &args.session).await?,
         "models" => daemon::models(&app, &args.profile).await?,
-        "runs" => daemon::runs(&app).await?,
+        "runs" => daemon::runs(&app, u64::try_from(args.offset).map_err(problem)?).await?,
         "improvements" => daemon::improvements::list(&app, &args.project).await?,
         "consoles" => crate::consoles::list(&app)?,
         "operation" => operations::observe(&app, &args.operation).await?,
@@ -146,25 +171,34 @@ async fn action(State(app): State<Arc<App>>, Json(input): Json<Value>) -> Result
         }
         return Ok(Json(prior.result.clone().unwrap_or_else(|| json!({"error":"Outcome uncertain. Inspect the original conversation or repository before submitting another action.","uncertain":true}))));
     }
-    let _resource_guard = mutation_guard(&app, &input).await?;
+    let resource_guard = mutation_guard(&app, &input).await?;
+    let execution_owner = crate::state::OperationOwner::new(&app, &operation)?;
     app.record_operation(operation.clone(), input.clone())?;
-    let result = match dispatch(&app, &input).await {
-        Ok(value) => value,
-        Err(error) if error.1 => {
-            return Ok(Json(json!({"error":error.0,"uncertain":true,"operation":operation})));
-        }
-        Err(error) => json!({"error":error.0}),
-    };
-    app.update(|state| {
-        state
-            .operations
-            .get_mut(&operation)
-            .ok_or_else(|| problem("Operation record missing"))?
-            .result = Some(result.clone());
-        Ok(())
+    let owned_app = Arc::clone(&app);
+    tokio::spawn(async move {
+        let _execution_owner = execution_owner;
+        let _resource_guard = resource_guard;
+        let app = owned_app;
+        let result = match dispatch(&app, &input).await {
+            Ok(value) => value,
+            Err(error) if error.1 => {
+                return Ok(Json(json!({"error":error.0,"uncertain":true,"operation":operation})));
+            }
+            Err(error) => json!({"error":error.0}),
+        };
+        app.update(|state| {
+            state
+                .operations
+                .get_mut(&operation)
+                .ok_or_else(|| problem("Operation record missing"))?
+                .result = Some(result.clone());
+            Ok(())
+        })
+        .map_err(|error| crate::error::uncertain(error.0))?;
+        Ok(Json(result))
     })
-    .map_err(|error| crate::error::uncertain(error.0))?;
-    Ok(Json(result))
+    .await
+    .map_err(crate::error::uncertain)?
 }
 async fn operation_review(
     State(app): State<Arc<App>>,
@@ -232,7 +266,7 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
                 title: if string("title").is_empty() {
                     "New conversation".into()
                 } else {
-                    string("title").into()
+                    crate::sessions::title(string("title"))?.as_str().to_owned()
                 },
                 closed: false,
             };
@@ -274,6 +308,7 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         }
         "git" => {
             git::action(
+                app,
                 &app.project(string("project"))?,
                 string("action"),
                 input["paths"]
@@ -287,6 +322,7 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         }
         "ignore" => git::ignore(&app.project(string("project"))?, string("path"), true).await,
         "attach-file" => files::attachments::stage(app, input),
+        "remove-attachment" => files::attachments::remove(app, input),
         "send" => daemon::send(app, input).await,
         "control" => {
             daemon::control(app, string("session"), string("action"), string("operation")).await
@@ -304,13 +340,24 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             save(&app.options.config_file, text.as_bytes())?;
             Ok(json!({"preferences":preferences,"config":text}))
         }
+        "cancel-operation" => cancel_operation(app, string("original")),
         "console" => crate::consoles::start(app, input),
-        "close-console" => {
-            app.terminals.lock().map_err(problem)?.remove(string("id"));
-            Ok(json!({"closed":true}))
-        }
+        "close-console" => crate::consoles::close(app, string("id")),
         _ => Err(problem("Unknown command")),
     }
+}
+fn cancel_operation(app: &App, original: &str) -> Result<Value> {
+    let record = app
+        .snapshot()?
+        .operations
+        .get(original)
+        .cloned()
+        .ok_or_else(|| problem("Original operation missing"))?;
+    if record.input["command"] != "git" {
+        return Err(problem("This operation is not an owned Git command"));
+    }
+    crate::processes::ManagedCommand::get(app, &format!("git:{original}"))?.cancel()?;
+    Ok(json!({"cancellationRequested":true,"operation":original}))
 }
 fn edit_session(app: &App, input: &Value) -> Result<Value> {
     app.update(|state| {
@@ -328,10 +375,7 @@ fn edit_session(app: &App, input: &Value) -> Result<Value> {
             }
         }
         if let Some(title) = input["title"].as_str() {
-            if title.trim().is_empty() || title.len() > 256 {
-                return Err(problem("Use a session title between 1 and 256 characters"));
-            }
-            session.title = title.into();
+            crate::sessions::title(title)?.as_str().clone_into(&mut session.title);
         }
         if let Some(closed) = input["closed"].as_bool() {
             session.closed = closed;
@@ -359,13 +403,7 @@ async fn terminal_read(
     Path(id): Path<String>,
     Query(query): Query<TerminalQuery>,
 ) -> Result<Json<Value>> {
-    let terminal = app
-        .terminals
-        .lock()
-        .map_err(problem)?
-        .get(&id)
-        .cloned()
-        .ok_or_else(|| problem("Console ended; open a new console"))?;
+    let terminal = crate::terminal::Terminal::get(&app, &id)?;
     Ok(Json(terminal.read(query.after)?))
 }
 async fn terminal_write(
@@ -373,18 +411,16 @@ async fn terminal_write(
     Path(id): Path<String>,
     Json(value): Json<Value>,
 ) -> Result<Json<Value>> {
-    let terminal = app
-        .terminals
-        .lock()
-        .map_err(problem)?
-        .get(&id)
-        .cloned()
-        .ok_or_else(|| problem("Console ended"))?;
+    let terminal = crate::terminal::Terminal::get(&app, &id)?;
     if let Some(text) = value["text"].as_str() {
         terminal.input(text)?;
     }
     if let (Some(cols), Some(rows)) = (value["cols"].as_u64(), value["rows"].as_u64()) {
-        terminal.resize(cols.min(400) as u16, rows.min(200) as u16)?;
+        terminal
+            .resize(u16::try_from(cols).map_err(problem)?, u16::try_from(rows).map_err(problem)?)?;
     }
     Ok(Json(json!({"ok":true})))
 }
+
+#[cfg(all(test, unix))]
+mod owned_tests;

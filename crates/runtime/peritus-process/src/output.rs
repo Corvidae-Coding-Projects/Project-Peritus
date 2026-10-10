@@ -67,7 +67,7 @@ impl StreamAccounting {
     pub const fn retained(self) -> u64 {
         self.retained
     }
-    /// Returns exact bytes not retained after a ceiling.
+    /// Returns exact observed bytes not retained because of a ceiling or I/O failure.
     #[must_use]
     pub const fn dropped(self) -> u64 {
         self.dropped
@@ -81,7 +81,7 @@ impl StreamAccounting {
 
 pub(crate) struct OutputAccounting {
     stream: OutputStream,
-    ceiling: u64,
+    ceiling: Option<u64>,
     observed: u64,
     retained: u64,
     dropped: u64,
@@ -89,18 +89,27 @@ pub(crate) struct OutputAccounting {
 }
 
 impl OutputAccounting {
-    pub(crate) const fn new(stream: OutputStream, ceiling: u64) -> Self {
+    pub(crate) const fn new(stream: OutputStream, ceiling: Option<u64>) -> Self {
         Self { stream, ceiling, observed: 0, retained: 0, dropped: 0, failed: false }
     }
 
     pub(crate) fn observe(&mut self, bytes: usize, external_available: u64) -> usize {
         let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
         self.observed = self.observed.saturating_add(bytes);
-        let available = self.ceiling.saturating_sub(self.retained).min(external_available);
+        let available = self
+            .ceiling
+            .map_or(u64::MAX, |ceiling| ceiling.saturating_sub(self.retained))
+            .min(external_available);
         let accepted = available.min(bytes);
-        self.retained = self.retained.saturating_add(accepted);
-        self.dropped = self.dropped.saturating_add(bytes.saturating_sub(accepted));
+        // Observation alone does not prove durable retention. The spool writer commits the
+        // successfully written prefix separately, including any prefix before an I/O error.
+        self.dropped = self.dropped.saturating_add(bytes);
         usize::try_from(accepted).unwrap_or(usize::MAX)
+    }
+
+    pub(crate) const fn retain_written(&mut self, bytes: u64) {
+        self.retained = self.retained.saturating_add(bytes);
+        self.dropped = self.dropped.saturating_sub(bytes);
     }
 
     pub(crate) const fn exceeded(&self) -> bool {
@@ -127,5 +136,35 @@ impl OutputAccounting {
                 OutputCompleteness::Complete
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn failed_spool_write_retains_only_the_successfully_written_prefix() {
+        let mut accounting = OutputAccounting::new(OutputStream::Stdout, None);
+        assert_eq!(accounting.observe(8, u64::MAX), 8);
+        accounting.retain_written(3);
+        accounting.fail();
+        let result = accounting.finish();
+        assert_eq!(result.observed(), 8);
+        assert_eq!(result.retained(), 3);
+        assert_eq!(result.dropped(), 5);
+        assert_eq!(result.completeness(), OutputCompleteness::Incomplete);
+    }
+
+    #[test]
+    fn absent_output_quota_retains_every_observed_byte() {
+        let mut accounting = OutputAccounting::new(OutputStream::Stdout, None);
+        assert_eq!(accounting.observe(32 * 1024 * 1024, u64::MAX), 32 * 1024 * 1024);
+        accounting.retain_written(32 * 1024 * 1024);
+        let result = accounting.finish();
+        assert_eq!(result.observed(), 32 * 1024 * 1024);
+        assert_eq!(result.retained(), result.observed());
+        assert_eq!(result.dropped(), 0);
+        assert_eq!(result.completeness(), OutputCompleteness::Complete);
     }
 }

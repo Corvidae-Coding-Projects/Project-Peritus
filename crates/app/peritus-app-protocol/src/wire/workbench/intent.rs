@@ -20,6 +20,8 @@ pub(super) const fn tag(intent: &WorkbenchIntent) -> u16 {
         WorkbenchIntent::AttachFile { .. } => 10,
         WorkbenchIntent::SelectFile { .. } => 11,
         WorkbenchIntent::AttachFileImport { .. } => 12,
+        WorkbenchIntent::EnqueueMessage { .. } => 16,
+        WorkbenchIntent::EnqueueMessageBundle { .. } => 17,
         WorkbenchIntent::AcceptBriefProposal { .. } => 13,
         WorkbenchIntent::SetContext { .. } => 14,
         WorkbenchIntent::ApplyCompaction(_) => 15,
@@ -38,6 +40,7 @@ pub(super) const fn tag(intent: &WorkbenchIntent) -> u16 {
         WorkbenchIntent::AddArtifactFeedback { .. } => 75,
         WorkbenchIntent::CreateCheckpoint(_) => 90,
         WorkbenchIntent::ApplyRewind(_) => 91,
+        WorkbenchIntent::ConfirmRewind(_) => 92,
         WorkbenchIntent::ForkConversation(_) => 110,
         WorkbenchIntent::SetPermissions(_) => 130,
         WorkbenchIntent::SaveGuidance(_) => 131,
@@ -46,6 +49,7 @@ pub(super) const fn tag(intent: &WorkbenchIntent) -> u16 {
         WorkbenchIntent::ScopeGuidance(_) => 134,
         WorkbenchIntent::ForgetGuidance(_) => 135,
         WorkbenchIntent::ApplyInitDiff(_) => 136,
+        WorkbenchIntent::ApplyInitArtifact(_) => 137,
     }
 }
 
@@ -69,6 +73,8 @@ pub(super) fn write(
         | WorkbenchIntent::SelectImage { .. }
         | WorkbenchIntent::AttachFile { .. }
         | WorkbenchIntent::AttachFileImport { .. }
+        | WorkbenchIntent::EnqueueMessage { .. }
+        | WorkbenchIntent::EnqueueMessageBundle { .. }
         | WorkbenchIntent::SelectFile { .. } => encode::preparation(writer, intent),
         WorkbenchIntent::StartGoal { .. }
         | WorkbenchIntent::PauseGoal { .. }
@@ -83,15 +89,16 @@ pub(super) fn write(
         | WorkbenchIntent::StopPreview { .. }
         | WorkbenchIntent::CheckPreviewBehavior { .. }
         | WorkbenchIntent::AddArtifactFeedback { .. } => encode::preview(writer, intent),
-        WorkbenchIntent::CreateCheckpoint(_) | WorkbenchIntent::ApplyRewind(_) => {
-            encode::checkpoint(writer, intent)
-        }
+        WorkbenchIntent::CreateCheckpoint(_)
+        | WorkbenchIntent::ApplyRewind(_)
+        | WorkbenchIntent::ConfirmRewind(_) => encode::checkpoint(writer, intent),
         WorkbenchIntent::SetPermissions(_)
         | WorkbenchIntent::SaveGuidance(_)
         | WorkbenchIntent::ReviseGuidance(_)
         | WorkbenchIntent::PinGuidance(_)
         | WorkbenchIntent::ScopeGuidance(_)
         | WorkbenchIntent::ForgetGuidance(_)
+        | WorkbenchIntent::ApplyInitArtifact(_)
         | WorkbenchIntent::ApplyInitDiff(_) => encode::policy(writer, intent),
     }
 }
@@ -103,12 +110,12 @@ pub(super) fn read(
 ) -> Result<WorkbenchIntent, CodecError> {
     match tag {
         1..=6 | 110 => decode::control(reader, tag, offset),
-        7..=15 => decode::preparation(reader, tag, offset),
+        7..=17 => decode::preparation(reader, tag, offset),
         30..=32 | 34 => decode::goal(reader, tag, offset),
         50..=52 => decode::review(reader, tag, offset),
         70..=75 => decode::preview(reader, tag, offset),
-        90..=91 => decode::checkpoint(reader, tag, offset),
-        130..=136 => decode::policy(reader, tag, offset),
+        90..=92 => decode::checkpoint(reader, tag, offset),
+        130..=137 => decode::policy(reader, tag, offset),
         _ => crate::wire::primitive::unknown(offset),
     }
 }

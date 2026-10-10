@@ -10,7 +10,7 @@ use peritus_leases::LeaseClaim;
 use peritus_types::{ProcessId, Sha256Digest};
 
 use crate::{
-    ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, StopTrigger,
+    ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessControl, ProcessError, StopTrigger,
     platform::ProcessTreeIdentity,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
     registry_storage::{
@@ -38,6 +38,7 @@ struct StoreState {
     manifests: BTreeMap<ProcessId, ExecutionManifest>,
     claims: BTreeMap<ProcessId, ConsumptionClaim>,
     quarantined_records: Vec<PathBuf>,
+    controls: BTreeMap<ProcessId, ProcessControl>,
 }
 
 struct StoreInner {
@@ -69,7 +70,22 @@ impl ProcessStore {
         root: impl AsRef<Path>,
         agent_workspace_root: impl AsRef<Path>,
     ) -> Result<Self, ProcessError> {
-        Self::open_configured(root.as_ref(), agent_workspace_root.as_ref(), None)
+        Self::open_configured(root.as_ref(), agent_workspace_root.as_ref(), None, false)
+    }
+
+    /// Opens a registry for explicitly trusted raw local-user commands in a direct folder.
+    ///
+    /// A home directory may contain private application state. This entry point makes no
+    /// isolation claim and must not be used for an agent-visible managed workspace. All
+    /// one-use claims, native identities, and recovery validation remain enforced.
+    ///
+    /// # Errors
+    /// Rejects a workspace inside the registry or unsafe/corrupt durable storage.
+    pub fn open_direct(
+        root: impl AsRef<Path>,
+        workspace_root: impl AsRef<Path>,
+    ) -> Result<Self, ProcessError> {
+        Self::open_configured(root.as_ref(), workspace_root.as_ref(), None, true)
     }
 
     /// Opens a registry whose launched process groups are guarded by an installed crash watchdog.
@@ -92,6 +108,7 @@ impl ProcessStore {
             root.as_ref(),
             agent_workspace_root.as_ref(),
             Some(crash_watchdog.as_ref()),
+            false,
         )
     }
 
@@ -99,6 +116,7 @@ impl ProcessStore {
         root: &Path,
         agent_workspace_root: &Path,
         crash_watchdog: Option<&Path>,
+        direct: bool,
     ) -> Result<Self, ProcessError> {
         std::fs::create_dir_all(root)
             .map_err(|_| store_error("process registry root cannot be created"))?;
@@ -106,7 +124,7 @@ impl ProcessStore {
             .map_err(|_| store_error("process registry root cannot be canonicalized"))?;
         let workspace = std::fs::canonicalize(agent_workspace_root)
             .map_err(|_| store_error("agent workspace root cannot be canonicalized"))?;
-        if root.starts_with(&workspace) || workspace.starts_with(&root) {
+        if (!direct && root.starts_with(&workspace)) || workspace.starts_with(&root) {
             return Err(overlap_error());
         }
         let manifests = root.join("manifests-v1");
@@ -121,6 +139,7 @@ impl ProcessStore {
             manifests: BTreeMap::new(),
             claims: BTreeMap::new(),
             quarantined_records: load_quarantine(&quarantine)?,
+            controls: BTreeMap::new(),
         };
         load_claims(&claims, &quarantine, &mut state.claims, &mut state.quarantined_records)?;
         load_manifests(
@@ -156,6 +175,78 @@ impl ProcessStore {
     #[must_use]
     pub fn root(&self) -> &Path {
         &self.inner.root
+    }
+
+    /// Returns a live control handle only for one exact durable process owner.
+    ///
+    /// The process, action, and run identities must all match the retained manifest and its
+    /// consumption claim. Reopened stores do not synthesize controls for processes they do not
+    /// still own in memory.
+    #[must_use]
+    pub fn control_exact(
+        &self,
+        run_id: peritus_types::RunId,
+        action_id: peritus_types::ActionId,
+        process_id: ProcessId,
+    ) -> Option<ProcessControl> {
+        let (manifests, mut claims) = self.recovery_records();
+        let manifest =
+            manifests.into_iter().find(|manifest| manifest.identity.process_id() == process_id)?;
+        let claim_matches =
+            claims.remove(&process_id).is_some_and(|claim| claim.matches_manifest(&manifest));
+        if !claim_matches
+            || manifest.identity.run_id() != run_id
+            || manifest.identity.action_id() != action_id
+        {
+            return None;
+        }
+        self.lock_state().controls.get(&process_id).cloned()
+    }
+
+    /// Reads a bounded spool range only after matching the durable manifest and one-use claim.
+    ///
+    /// This is an observation of retained bytes, not a terminal-success assertion or live input
+    /// attachment. It remains available after the application observer has restarted.
+    ///
+    /// # Errors
+    /// Rejects mismatched identities, missing output, or out-of-range offsets.
+    pub fn spooled_stream_range_exact(
+        &self,
+        run_id: peritus_types::RunId,
+        action_id: peritus_types::ActionId,
+        process_id: ProcessId,
+        stream: crate::OutputStream,
+        offset: u64,
+        maximum_bytes: usize,
+    ) -> Result<(u64, Vec<u8>), ProcessError> {
+        let exact = {
+            let state = self.lock_state();
+            state.manifests.get(&process_id).is_some_and(|manifest| {
+                manifest.identity.run_id() == run_id
+                    && manifest.identity.action_id() == action_id
+                    && state
+                        .claims
+                        .get(&process_id)
+                        .is_some_and(|claim| claim.matches_manifest(manifest))
+            })
+        };
+        if !exact {
+            return Err(store_error("output binding differs from durable process ownership"));
+        }
+        crate::control::read_spool_range(
+            &self.inner.spools.join(hex(process_id.as_bytes())),
+            stream,
+            offset,
+            maximum_bytes,
+        )
+    }
+
+    pub(crate) fn retain_control(&self, process_id: ProcessId, control: ProcessControl) {
+        self.lock_state().controls.insert(process_id, control);
+    }
+
+    pub(crate) fn release_control(&self, process_id: ProcessId) {
+        self.lock_state().controls.remove(&process_id);
     }
 
     pub(crate) fn crash_watchdog(&self) -> Option<&Path> {

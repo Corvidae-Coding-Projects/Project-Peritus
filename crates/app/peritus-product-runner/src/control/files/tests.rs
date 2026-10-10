@@ -212,3 +212,101 @@ fn text_is_exact_and_invalid_ranges_binary_or_rebound_sources_reject() {
         Err(ControlError::InvalidInput)
     );
 }
+
+#[test]
+fn pinned_and_excluded_file_preference_use_the_same_effective_projection() {
+    let (mut record, file) = attach(FileMode::Snapshot);
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            3,
+            record.revision(),
+            ControlIntent::SelectFile { attachment: file.operation(), selected: false },
+        ),
+    )
+    .expect("deselect")
+    .0;
+    let included = record.inputs().capture().expect("capture").included().to_vec();
+    assert!(record.eligible_files(&included).is_empty());
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            4,
+            record.revision(),
+            ControlIntent::SetContext {
+                target: crate::control::ContextTarget::File(file.operation()),
+                preference: Some(crate::control::ContextPreference::Pinned),
+            },
+        ),
+    )
+    .expect("pin")
+    .0;
+    let included = record.inputs().capture().expect("capture").included().to_vec();
+    assert_eq!(record.eligible_files(&included).len(), 1);
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            5,
+            record.revision(),
+            ControlIntent::SetContext {
+                target: crate::control::ContextTarget::File(file.operation()),
+                preference: Some(crate::control::ContextPreference::Excluded),
+            },
+        ),
+    )
+    .expect("exclude")
+    .0;
+    let included = record.inputs().capture().expect("capture").included().to_vec();
+    assert!(record.eligible_files(&included).is_empty());
+}
+
+#[test]
+fn more_than_thirty_two_file_references_remain_valid_and_can_be_released() {
+    let mut record = attach(FileMode::Snapshot).0;
+    for index in 3..=35 {
+        let source = FileSource::imported(
+            ControlText::new(format!("file-{index}.txt")).expect("label"),
+            FileRange::All,
+        )
+        .expect("source");
+        let file = FileAttachment::new(source, version(index, "x")).expect("file");
+        record = ConversationRecord::apply(
+            Some(&record),
+            &operation(
+                index,
+                record.revision(),
+                ControlIntent::AttachFile {
+                    file,
+                    text: ControlText::new(format!("caption-{index}")).expect("caption"),
+                },
+            ),
+        )
+        .expect("attachment count has no host quota")
+        .0;
+    }
+    assert_eq!(record.files().entries().len(), 34);
+    let selection = record.inputs().capture().expect("capture").included()[0];
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            36,
+            record.revision(),
+            ControlIntent::Queue(QueueIntent::Hold { selected: selection, held: true }),
+        ),
+    )
+    .expect("hold")
+    .0;
+    let (released, _) = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            37,
+            record.revision(),
+            ControlIntent::Queue(QueueIntent::Hold { selected: selection, held: false }),
+        ),
+    )
+    .expect("release is independent of attachment history length");
+    assert_eq!(
+        released.eligible_files(released.inputs().capture().expect("capture").included()).len(),
+        34
+    );
+}

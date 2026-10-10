@@ -1,0 +1,3 @@
+# FINDING-0022: Windows ACL replay could report success before later propagation changed originals
+
+A predecessor replayed exact descriptors but did not correctly request auto-inheritance and checked each object only immediately after its own write. A later parent write could therefore change an already checked child. The final candidate applies the required set-only auto-inheritance request to a private descriptor copy, keeps the captured oracle immutable, and performs a separate final readback of every original after all writes and before releasing the backup and lease. Native cases cover modern, legacy, protected, nested, moved, deleted, and fault-injected objects.

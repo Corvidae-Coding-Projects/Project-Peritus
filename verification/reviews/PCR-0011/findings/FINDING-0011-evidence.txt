@@ -1,0 +1,18 @@
+failing_candidate=51274d82315682b63a1d0c9e877a17b1d1e9a619
+replacement_candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/windows-512-app-shell.log
+bytes=185812
+sha256=97bdeb2015b24c34971ad1f7cecda229f6aea2b629bcc3bd32f6754b2c1da553
+/tmp/peritus-final23/windows-512-monitor.md
+bytes=6248
+sha256=edc2f1df59629a632e4b0a92a9600e4f13160f3d08393991ecf55e85a02bdcdd
+/tmp/peritus-final23/ci-repairs-launcher-tests.log
+bytes=9197
+sha256=558b24a2982271f45687930291129abdd105626d575ee02edeceeb87c3089997
+Final launcher result: 53 passed, 0 failed.
+/tmp/peritus-final23/windows-6889-native-pass.json
+bytes=1826
+sha256=3be86c02a7c4d135dc3662f308e9d8057056b9cee17cde5cc85c2269b756bf5b
+/tmp/peritus-final23/windows-6889-h0-artifact/artifacts/h0-10140-1-1791580697716138200/probe-evidence.json
+bytes=12932
+sha256=cac1a911ebd15d2fe055a5ee0c1e8e3251f2ed4eea00b0badc869bc91a3880ba

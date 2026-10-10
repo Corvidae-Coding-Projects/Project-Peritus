@@ -73,8 +73,8 @@ fn policy(class: &str) -> ArchitecturePolicy {
     toml::from_str(&format!(
         r#"
 schema = 3
-soft_source_lines = 400
-hard_source_lines = 700
+soft_source_lines = 500
+hard_source_lines = 500
 root_module_lines = 80
 required_license = "MIT"
 ignored_directories = []

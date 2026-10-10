@@ -10,6 +10,9 @@ use serde::Serialize;
 
 pub(in crate::product_control) mod inspect;
 
+#[cfg(test)]
+mod tests;
+
 pub(in crate::product_control) struct RequestArchive {
     request: Vec<u8>,
     manifest: Manifest,
@@ -100,7 +103,7 @@ impl RequestArchive {
         {
             return Err(ControlError::InvalidInput.into());
         }
-        let bytes = request.canonical_bytes_bounded(16 * 1024 * 1024).map_err(|error| {
+        let bytes = request.canonical_bytes().map_err(|error| {
             if error.kind() == peritus_model_protocol::ProtocolErrorKind::InvalidLimit {
                 ControlError::Capacity
             } else {
@@ -164,7 +167,10 @@ pub(in crate::product_control) fn validate_archive(
             | ControlIntent::PublishReply(_)
             | ControlIntent::AttachImage { .. }
             | ControlIntent::AttachFile { .. }
-            | ControlIntent::RefreshFile { .. },
+            | ControlIntent::RefreshFile { .. }
+            | ControlIntent::SubmitMessage { .. }
+            | ControlIntent::AcceptBriefProposal { .. }
+            | ControlIntent::RefreshFiles { .. },
             None,
         )
         | (_, Some(_)) => Err(ControlError::InvalidInput.into()),
@@ -177,9 +183,6 @@ pub(in crate::product_control) fn verify_manifest(
     bytes: &[u8],
     before: Option<&peritus_product_runner::control::ConversationRecord>,
 ) -> Result<(), Error> {
-    if bytes.len() > peritus_journal::MAX_STATE_BYTES {
-        return Err(ControlError::Capacity.into());
-    }
     let manifest: Manifest =
         serde_json::from_slice(bytes).map_err(|_| Error::Corrupt("invalid request manifest"))?;
     let ControlIntent::Queue(QueueIntent::Incorporate {
@@ -203,28 +206,18 @@ pub(in crate::product_control) fn verify_manifest(
         || manifest.request_id.is_empty()
         || !manifest.included.ends_with(items)
         || manifest.sources.len() != manifest.included.len()
-        || manifest.sources.iter().zip(&manifest.included).any(|(source, selection)| {
-            source.selection != *selection || source.bytes == 0 || source.bytes > 8192
-        })
-        || manifest.messages.is_empty()
-        || manifest.messages.len()
-            > peritus_model_protocol::ProtocolLimits::PRODUCTION.max_messages()
-        || manifest.request_bytes == 0
-        || manifest.request_bytes > 16 * 1024 * 1024
-        || manifest.brief.len() > 4
-        || manifest.images.len() > peritus_product_runner::attachment::MAX_IMAGE_COUNT
         || manifest
-            .images
+            .sources
             .iter()
-            .try_fold(0_u64, |total, image| total.checked_add(image.bytes()))
-            .is_none_or(|total| {
-                total > peritus_product_runner::attachment::MAX_IMAGE_SELECTION_BYTES
-            })
+            .zip(&manifest.included)
+            .any(|(source, selection)| source.selection != *selection || source.bytes == 0)
+        || manifest.messages.is_empty()
+        || manifest.request_bytes == 0
+        || manifest.brief.len() > 4
         || manifest.guidance.as_ref().is_some_and(|guidance| {
             guidance.dependency_revision == 0
                 || guidance.identities.is_empty()
                 || guidance.bytes == 0
-                || guidance.bytes > peritus_app_protocol::MAX_WORKBENCH_GUIDANCE_RENDER_BYTES as u64
                 || guidance.identities.contains(&[0; 16])
                 || guidance
                     .identities

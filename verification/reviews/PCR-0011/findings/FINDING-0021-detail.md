@@ -1,0 +1,3 @@
+# FINDING-0021: Windows ACL rollback lacked exact retained identity and cross-process ownership
+
+The reviewed ACL transaction could lose exact object identity, race another Peritus transaction on the same volume, and release failed cleanup state. The final candidate retains full file identities, raw descriptors, delete-sharing object handles, volume-scoped cross-process leases, and an owned deny anchor through execution, retry, and process-lifetime quarantine. Cleanup restores through retained handles, verifies exact bytes, preserves the first concrete error while continuing independent cleanup, and retains ownership on failure. Durable owner-loss recovery remains separately tracked as L608.

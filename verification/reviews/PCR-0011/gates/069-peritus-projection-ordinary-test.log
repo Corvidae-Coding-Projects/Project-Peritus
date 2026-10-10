@@ -1,0 +1,41 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-projection --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-projection", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "069-peritus-projection-ordinary-test.log", "owning_crate": "peritus-projection", "started_at": "2026-10-09T21:23:08.416866Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_projection-f39416ebaaf35485)
+
+running 1 test
+test replay::tests::scheduler_family_validation_accepts_v1_v2_and_rejects_v0_v3 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/agent.rs (/home/doll/Project-Peritus/target/debug/deps/agent-8037c032d66f1b89)
+
+running 2 tests
+test projection_rejects_turn_identity_not_derived_from_agent_aggregate ... ok
+test projection_tracks_latest_phase_digest_and_counters ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conformance.rs (/home/doll/Project-Peritus/target/debug/deps/conformance-5aeb41bb1a92be91)
+
+running 1 test
+test production_replay_passes_a2_determinism_and_restart_conformance ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/rebuild.rs (/home/doll/Project-Peritus/target/debug/deps/rebuild-6cb5bfbd9af1b5eb)
+
+running 8 tests
+test artifact_projection_uses_actual_committed_dependency_digest ... ok
+test corrupt_payload_is_replaced_by_a_new_active_generation ... ok
+test journal_corruption_is_rejected_before_projection_replay ... ok
+test lifecycle_fold_checks_envelope_and_evidence_fold_has_no_effect ... ok
+test replay_accepts_supported_scheduler_schemas_only ... ok
+test replay_rejects_unknown_typed_invalid_and_stale_revision_records ... ok
+test shadow_rebuild_restart_checksum_and_atomic_swap ... ok
+test stale_checkpoint_rebuilds_and_stale_swap_is_atomic ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-projection --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-10-09T21:23:08.681861Z", "invocation": ["cargo", "test", "--package", "peritus-projection", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "069-peritus-projection-ordinary-test.log", "owning_crate": "peritus-projection", "result": "passed", "started_at": "2026-10-09T21:23:08.416866Z"}

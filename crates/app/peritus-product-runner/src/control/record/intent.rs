@@ -217,6 +217,9 @@ pub enum ControlIntent {
         launch: crate::control::OperationId,
         /// Published selected-window capture carrying the pixel evidence.
         capture: crate::control::OperationId,
+        /// Exact output-search provenance for the original behavior check; absent only in legacy records.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        evidence: Option<crate::control::GraphicalOutputEvidence>,
         /// Host-observed boundary timestamp.
         now_unix_millis: u64,
     },
@@ -242,6 +245,31 @@ pub enum ControlIntent {
         file: crate::control::FileAttachment,
         /// User-confirmed caption, governed by the ordinary queue lifecycle.
         text: crate::control::ControlText<8192>,
+    },
+    /// Atomically publishes a user message and all of its immutable text references. Host-only.
+    SubmitMessage {
+        /// Exact inline text or a host-generated reference to the full user-authored text.
+        text: crate::control::ControlText<8192>,
+        /// Sources sharing this operation's single durable queue input identity.
+        files: Vec<crate::control::FileAttachment>,
+    },
+    /// Accepts an exact model-authored proposal into a user-confirmed brief field. Host-only.
+    AcceptBriefProposal {
+        /// Explicitly selected field.
+        field: crate::control::BriefField,
+        /// Original immutable model authorship and source digest.
+        reply: crate::control::PublicReplyReference,
+        /// Exact bytes and user acceptance proof installed atomically with the brief edit.
+        version: crate::control::FileVersion,
+    },
+    /// Appends one coherent set of request-boundary file observations. Host-only.
+    RefreshFiles {
+        /// Exact attachment, predecessor, and immutable successor for each changed source.
+        versions: Vec<(
+            crate::control::OperationId,
+            crate::control::OperationId,
+            crate::control::FileVersion,
+        )>,
     },
     /// Revises future file inclusion without modifying any historical request.
     SelectFile {
@@ -376,4 +404,20 @@ pub enum ControlIntent {
         /// Digest of the retained installed C1 transaction manifest.
         transaction_manifest_digest: [u8; 32],
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ControlIntent;
+
+    #[test]
+    fn legacy_graphical_evidence_json_keeps_identical_bytes_without_new_evidence() {
+        let legacy = r#"{"observe_graphical_goal_evidence":{"criterion_index":1,"goal":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"attempt":2,"evidence_user_revision":3,"evidence_input_generation":4,"launch":[5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5],"capture":[6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],"now_unix_millis":7}}"#;
+        let intent: ControlIntent = serde_json::from_str(legacy).expect("legacy intent decodes");
+        assert!(matches!(
+            intent,
+            ControlIntent::ObserveGraphicalGoalEvidence { evidence: None, .. }
+        ));
+        assert_eq!(serde_json::to_string(&intent).expect("re-encode"), legacy);
+    }
 }

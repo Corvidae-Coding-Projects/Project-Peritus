@@ -1,0 +1,17 @@
+failing_candidate=51274d82315682b63a1d0c9e877a17b1d1e9a619
+replacement_candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/ci-job-113936926223.log
+bytes=231254
+sha256=b24da68dd445a5fc69991173eb066e21d2221c94af30c07fa1e20c3f133d4e37
+/tmp/peritus-final23/nonwindows-ci-51274d82.md
+bytes=3008
+sha256=78a9b16e7923f194e825a3fb29713da6c1db109f238019ce0dd2013347a5a70a
+/tmp/peritus-final23/ci-linux-pty-repro.log
+bytes=11802
+sha256=3d074b6e12e46a1c9a49a3d5342ef310df0b9a4883114af7485f94afb2013134
+/tmp/peritus-final23/ci-linux-pty-after.log
+bytes=1197
+sha256=ba88f312b510522191a2b7cb9e434971c7929d9c90fc9ef8d813d9165147bbad
+/tmp/peritus-final23/ci-linux-web-processes-final.log
+bytes=686
+sha256=73935430da46160e20df79724c1e7b71ce42094936031690093ecfbd63c76210

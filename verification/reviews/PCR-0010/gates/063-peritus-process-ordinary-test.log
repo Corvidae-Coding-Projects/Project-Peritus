@@ -1,0 +1,110 @@
+{"candidate_commit": "e5c4ec47414daa75ecd2e3b2d17a279ee38d7132", "candidate_tree": "dab27248c3f671224a9d480abcdce2a5edad7174", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-process --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "063-peritus-process-ordinary-test.log", "owning_crate": "peritus-process", "started_at": "2026-10-09T07:47:13.898814Z"}, "plan_sha256": "0747aeadb65ca3bffa3cb1033b156e056fb5b4a16a3e9a1c8898faf12bcd9118"}
+
+   Compiling peritus-process v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/runtime/peritus-process)
+    Finished `test` profile [unoptimized] target(s) in 8.18s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_process-d1af71f9e38b2aa3)
+
+running 39 tests
+test consumption::tests::recovery::claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification ... ok
+test consumption::tests::recovery::claim_without_manifest_is_an_explicit_indeterminate_recovery_entry ... ok
+test consumption::tests::recovery::complete_terminal_and_artifact_publication_survive_reopen ... ok
+test consumption::tests::recovery::completed_manifest_replacement_discards_stale_previous ... ok
+test consumption::tests::recovery::exact_absence_can_settle_ownership_after_an_incomplete_terminal_result ... ok
+test consumption::tests::recovery::exact_absence_settles_ownership_without_inventing_a_terminal_result ... ok
+test consumption::tests::recovery::interrupted_manifest_replacement_restores_previous_and_removes_staging ... ok
+test consumption::tests::recovery::manifest_storage_faults_are_reached_truthful_and_recoverable ... ok
+test consumption::tests::recovery::quarantined_process_records_remain_visible_after_reopen ... ok
+test consumption::tests::recovery::startup_reconciliation_preserves_only_receipt_linked_exact_live_owners ... ok
+test consumption::tests::recovery::unmatched_storage_fault_occurrence_is_a_negative_control ... ok
+test consumption::tests::recovery::zero_retained_publication_completion_is_durable_and_idempotent ... ok
+test consumption::tests::terminal_records_can_be_retired_without_losing_recovery_required_state ... ok
+test native::observation::tests::native_lifecycle_validation_rejects_duplicate_and_out_of_order_phases ... ok
+test output::spool::tests::counted_write_preserves_exact_partial_progress_on_failure ... ok
+test output::tests::absent_output_quota_retains_every_observed_byte ... ok
+test output::tests::failed_spool_write_retains_only_the_successfully_written_prefix ... ok
+test output::window::tests::preserves_stream_bytes_without_exceeding_the_combined_tail_limit ... ok
+test plan::projection::tests::environment_projection_compares_canonical_names_independent_of_native_order ... ok
+test plan::projection::tests::environment_projection_rejects_ambiguous_case_folded_inheritance ... ok
+test plan_canonical::tests::finite_v1_execution_plan_digest_matches_legacy_golden ... ok
+test plan_canonical::tests::finite_v1_output_and_resource_sections_match_legacy_golden_bytes ... ok
+test plan_canonical::tests::finite_v1_utf8_path_encoding_matches_legacy_golden_bytes ... ok
+test plan_canonical::tests::unix_native_path_encoding_preserves_non_unicode_bytes ... ok
+test plan_canonical::tests::v2_utf8_path_encoding_has_an_explicit_portable_tag ... ok
+test platform::resource::macos::tests::libproc_counts_preserve_optional_failures_and_buffer_bounds ... ok
+test platform::resource::macos::tests::libproc_query_clears_stale_errno_before_observing_empty_group ... ok
+test platform::resource::macos::tests::libproc_zero_with_error_is_unavailable_not_a_sampled_zero ... ok
+test resource::tests::wall_time_ceiling_can_be_absent_without_a_numeric_sentinel ... ok
+test supervisor::resource::disk::tests::enumeration_errors_are_not_treated_as_removed_files ... ok
+test supervisor::resource::disk::tests::missing_workspace_and_invalid_descendants_remain_errors ... ok
+test supervisor::resource::disk::tests::removed_entries_do_not_hide_surviving_file_usage ... ok
+test supervisor::resource::disk::tests::removed_pending_directories_do_not_hide_surviving_file_usage ... ok
+test supervisor::resource::disk::tests::unreadable_descendants_remain_errors ... ok
+test terminal::canonical_tests::complete_terminal_encoding_round_trips ... ok
+test terminal::canonical_tests::corrupt_stream_accounting_is_rejected_during_decode ... ok
+test terminal::canonical_tests::optional_resource_ceilings_round_trip_as_absent ... ok
+test terminal::canonical_tests::terminal_digest_binds_every_durable_fact_group ... ok
+test terminal::canonical_tests::terminal_signal_names_and_results_can_exceed_the_old_recovery_bound ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/bin/peritus-native-helper-fixture.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_native_helper_fixture-fc16343603cc74ba)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-process-fixture.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_process_fixture-defa949fa6586091)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_process_probe.rs (/home/doll/Project-Peritus/target/debug/deps/native_process_probe-503b9393ed7a56f5)
+
+running 3 tests
+test incomplete_birth_identity_is_never_live_or_terminable ... ok
+test linux_probe_matches_birth_token_and_terminates_only_the_exact_isolated_group ... ok
+test linux_probe_reports_a_missing_pid_as_exactly_absent ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/process_conformance.rs (/home/doll/Project-Peritus/target/debug/deps/process_conformance-a7a4cdb4bd99530d)
+
+running 1 test
+test production_process_passes_complete_a2_suite_with_fresh_case_subjects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+
+     Running tests/process_integration.rs (/home/doll/Project-Peritus/target/debug/deps/process_integration-de1014615fd3b3f6)
+
+running 25 tests
+test control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result ... ok
+test control_lifecycle::interrupt_signal_is_ordered_and_does_not_become_cancellation ... ok
+test exact_committed_authority_launches_separate_bounded_pipe_streams ... ok
+test holder_quiescence_requires_exact_terminal_correlated_manifests ... ok
+test native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session ... ok
+test native_backend::lifecycle::native_supervisor_resource_poll_uses_the_owned_resource_limit_path ... ok
+test native_backend::lifecycle::restricted_helper_receives_the_exact_protected_anonymous_handle ... ok
+test native_backend::lifecycle::restricted_pty_keeps_binary_helper_protocol_off_the_terminal_stream ... ok
+test native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority ... ok
+test native_backend::rejection::invalid_prepared_session_cleanup_failure_remains_durably_incomplete ... ok
+test native_backend::rejection::invalid_prepared_session_is_released_and_cannot_be_replayed ... ok
+test native_backend::rejection::preparation_failure_is_durable_and_cannot_be_replayed ... ok
+test native_backend::rejection::prepared_session_is_released_before_spawn_failure_is_published ... ok
+test non_dispatched_action_is_rejected_before_durable_consumption ... ok
+test regressions::artifact_failure_preserves_terminal_and_retry_resumes_per_stream ... ok
+test regressions::disk_sampling_does_not_follow_workspace_symlink_cycles ... ok
+test regressions::process_lifecycle::cancellation_after_output_preserves_first_reason_and_accounting ... ok
+test regressions::process_lifecycle::inherited_environment_authority_cannot_bind_a_literal_value ... ok
+test regressions::process_lifecycle::output_limit_reaps_a_descendant_holding_the_stream_open ... ok
+test regressions::process_lifecycle::output_limit_terminates_and_reaps_the_owned_process ... ok
+test regressions::process_lifecycle::post_spawn_control_failure_reaps_and_persists_terminal_failure ... ok
+test regressions::process_lifecycle::process_count_overrun_is_observed_cancelled_and_classified ... ok
+test regressions::process_lifecycle::resize_authority_rejects_pipe_and_denied_pty_without_stopping_owner ... ok
+test regressions::process_lifecycle::root_exit_cleans_descendant_before_waiting_for_pipe_eof ... ok
+test regressions::zero_output_artifact_publication_is_complete_and_idempotent ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.75s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-process --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 11.404, "exit_code": 0, "finished_at": "2026-10-09T07:47:25.304405Z", "invocation": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "063-peritus-process-ordinary-test.log", "owning_crate": "peritus-process", "result": "passed", "started_at": "2026-10-09T07:47:13.898814Z"}

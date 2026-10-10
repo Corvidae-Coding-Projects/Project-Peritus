@@ -1,0 +1,24 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-security-policy --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-security-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "107-peritus-security-policy-ordinary-test.log", "owning_crate": "peritus-security-policy", "started_at": "2026-10-09T21:23:41.650610Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_security_policy-c8a40400b31b4b01)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (/home/doll/Project-Peritus/target/debug/deps/policy-a6cae648b7a41008)
+
+running 7 tests
+test any_candidate_mutation_invalidates_prior_security_evidence ... ok
+test complete_exact_candidate_is_security_ready_without_release_authority ... ok
+test every_native_probe_outcome_is_required_for_final_admission ... ok
+test every_required_security_dimension_fails_closed_when_removed ... ok
+test missing_independent_review_is_not_ready ... ok
+test resolved_high_finding_requires_remediation_and_retest_evidence ... ok
+test unresolved_high_finding_blocks_readiness ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-security-policy --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.164, "exit_code": 0, "finished_at": "2026-10-09T21:23:41.815212Z", "invocation": ["cargo", "test", "--package", "peritus-security-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "107-peritus-security-policy-ordinary-test.log", "owning_crate": "peritus-security-policy", "result": "passed", "started_at": "2026-10-09T21:23:41.650610Z"}

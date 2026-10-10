@@ -1,0 +1,77 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-evidence --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-evidence", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "023-peritus-evidence-ordinary-test.log", "owning_crate": "peritus-evidence", "started_at": "2026-10-09T21:20:42.303896Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_evidence-8e61aeced3153272)
+
+running 1 test
+test provenance::tests::scheduler_schema_digests_cover_supported_versions_only ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/admission.rs (/home/doll/Project-Peritus/target/debug/deps/admission-0bf424b42470df73)
+
+running 6 tests
+test canonical_older_ancestry_is_admitted_and_future_causality_is_rejected ... ok
+test durable_catalog_corruption_is_detected_on_reopen ... ok
+test exact_retry_after_journal_advance_returns_original_record ... ok
+test missing_and_corrupt_artifact_bytes_are_rejected ... ok
+test nonexistent_cause_and_identity_conflict_are_rejected_without_partial_rows ... ok
+test valid_admission_is_atomic_idempotent_and_survives_restart ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/bundle.rs (/home/doll/Project-Peritus/target/debug/deps/bundle-64ae465144290d18)
+
+running 2 tests
+test deterministic_streaming_bundle_reverifies_offline_and_after_restart ... ok
+test offline_verification_rejects_corruption_truncation_and_trailing_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/causal_scale.rs (/home/doll/Project-Peritus/target/debug/deps/causal_scale-18f23b574ccd31d2)
+
+running 2 tests
+test metadata_over_32_mib_is_durable_and_portable_without_a_hidden_ceiling ... ok
+test more_than_4096_parents_and_bundle_entries_preserve_the_original_revisions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.73s
+
+     Running tests/domain.rs (/home/doll/Project-Peritus/target/debug/deps/domain-22a0688a9cbcacf0)
+
+running 2 tests
+test drafts_links_and_invalidations_enforce_structural_invariants ... ok
+test stable_tags_reject_noncanonical_spellings ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/freshness.rs (/home/doll/Project-Peritus/target/debug/deps/freshness-34f3e865a372f751)
+
+running 3 tests
+test every_revision_tuple_component_drifts_independently ... ok
+test explicit_later_invalidation_is_durable_and_dominates_revision_freshness ... ok
+test revision_digest_matches_the_journal_canonical_tuple_encoding ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/owned_work.rs (/home/doll/Project-Peritus/target/debug/deps/owned_work-7157d8a9d55f0ff4)
+
+running 3 tests
+test admission_hashes_without_writer_lock_and_exact_retry_precedes_missing_dependencies ... ok
+test generated_chunk_schedules_preserve_exact_framed_cursors_and_publication ... ok
+test preflight_and_source_integrity_fail_before_any_caller_output ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/quarantine_recovery.rs (/home/doll/Project-Peritus/target/debug/deps/quarantine_recovery-d5907c09e76190ef)
+
+running 5 tests
+test legacy_quarantine_migration_preserves_the_exact_audit_identity_and_bytes ... ok
+test malformed_raw_identity_is_contained_and_auditable_without_a_fake_evidence_id ... ok
+test pending_scan_preserves_cursor_under_external_writer_contention_and_resumes ... ok
+test rebuilding_with_a_changed_journal_dependency_rolls_back_every_reconstructed_row ... ok
+test restart_resumes_exact_scan_and_digest_checked_reconciliation_retains_originals ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-evidence --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 7.186, "exit_code": 0, "finished_at": "2026-10-09T21:20:49.490426Z", "invocation": ["cargo", "test", "--package", "peritus-evidence", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "023-peritus-evidence-ordinary-test.log", "owning_crate": "peritus-evidence", "result": "passed", "started_at": "2026-10-09T21:20:42.303896Z"}

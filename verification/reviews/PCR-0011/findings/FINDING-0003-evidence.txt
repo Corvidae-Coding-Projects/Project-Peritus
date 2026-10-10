@@ -1,0 +1,10 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/native-evidence-review.md
+bytes=11120
+sha256=e072717168c697f8db95abf9228e1690f0c643ac2ff066a463985ae9b7f69159
+/tmp/peritus-final23/native-git-probe-fixed.log
+bytes=503
+sha256=4abaf46d8bb5190e4591c4e553cd9a35dadddf7a5abc413d34673b4190e94e61
+/tmp/peritus-final23/native-git-final-tests.log
+bytes=1609
+sha256=67d4b370693fe8702b1af4276df0f5119baa381900e02572e9ba9c3e252eba1c

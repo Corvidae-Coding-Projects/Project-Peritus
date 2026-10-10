@@ -6,6 +6,7 @@ fn canonical_record_rejects_omitted_current_fields() {
     let record = PersistedRecord {
         format_version: 6,
         goal_resume: None,
+        message_launches: Vec::new(),
         interaction: interaction::PersistedInteraction::capture(
             &crate::product_run::interaction::InteractionOptions::test(
                 peritus_app_protocol::ProductInteractionMode::Build,

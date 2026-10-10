@@ -37,8 +37,10 @@ const LINES: &[&str] = &[
 ];
 
 pub fn lines(width: u16) -> Vec<Line<'static>> {
-    let mut lines =
-        crate::input::composer::layout(&LINES.join("\n"), 0, None, usize::from(width)).lines;
+    let mut lines = crate::render::wrapped_lines(
+        LINES.iter().map(|line| Line::from(*line)).collect(),
+        usize::from(width),
+    );
     for line in &mut lines {
         if matches!(
             line.to_string().as_str(),
@@ -51,11 +53,10 @@ pub fn lines(width: u16) -> Vec<Line<'static>> {
     lines
 }
 
-pub fn scroll(offset: &mut u16, key: KeyEvent, viewport: Option<Rect>) -> bool {
+pub fn scroll(offset: &mut usize, key: KeyEvent, viewport: Option<Rect>) -> bool {
     let viewport = viewport.unwrap_or(Rect::new(0, 0, 80, 24));
     let rows = usize::from(viewport.height.saturating_sub(6)).max(1);
-    let maximum = u16::try_from(lines(viewport.width.saturating_sub(2)).len().saturating_sub(rows))
-        .unwrap_or(u16::MAX);
+    let maximum = lines(viewport.width.saturating_sub(2)).len().saturating_sub(rows);
     let current = (*offset).min(maximum);
     *offset = match key.code {
         KeyCode::Up | KeyCode::Char('k') => current.saturating_sub(1),

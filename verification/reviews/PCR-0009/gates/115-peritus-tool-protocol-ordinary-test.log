@@ -1,0 +1,31 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tool-protocol --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "115-peritus-tool-protocol-ordinary-test.log", "owning_crate": "peritus-tool-protocol", "started_at": "2026-10-09T04:07:43.850107Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_tool_protocol-8b412c369f1b3aa5)
+
+running 1 test
+test verified::tests::bounds_reject_each_missing_fact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/protocol_envelopes.rs (/home/doll/Project-Peritus/target/debug/deps/protocol_envelopes-95bc69fb523619a3)
+
+running 13 tests
+test canonical_json_and_schema_fixtures_are_byte_stable ... ok
+test canonical_json_rejects_duplicate_keys_at_every_depth ... ok
+test common_envelope_decoder_enforces_transport_bounds_and_header ... ok
+test complete_schema_validation_rejects_wrong_and_extra_values ... ok
+test descriptor_and_prepared_generation_is_deterministic ... ok
+test every_public_envelope_has_stable_versioned_bytes ... ok
+test finite_call_limits_cannot_lose_their_deadline_during_preparation ... ok
+test json_limit_construction_accepts_explicit_nonzero_capacities ... ok
+test progress_and_terminal_output_enforce_narrowed_call_bounds ... ok
+test protocol_error_rejects_an_over_limit_path ... ok
+test recursive_schema_error_paths_are_utf8_safely_bounded ... ok
+test schema_compatibility_allows_only_additive_optional_properties ... ok
+test untimed_calls_require_descriptor_support_and_keep_exact_epoch_binding ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tool-protocol --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.366, "exit_code": 0, "finished_at": "2026-10-09T04:07:44.218150Z", "invocation": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "115-peritus-tool-protocol-ordinary-test.log", "owning_crate": "peritus-tool-protocol", "result": "passed", "started_at": "2026-10-09T04:07:43.850107Z"}

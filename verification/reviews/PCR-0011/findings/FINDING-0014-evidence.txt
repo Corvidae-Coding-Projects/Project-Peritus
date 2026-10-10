@@ -1,0 +1,8 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+path=crates/runtime/peritus-sandbox-windows/src/native/handle.rs
+source-base96 full-file sha256=40e5c28eded424fd31adeb716594868f287dcc06f4ee67c63d3b60dfc8c814a3
+final-candidate full-file sha256=dd13d92820d0a71f57fbdbb0d1922723ad29233bfb3d080138e64681a84b3a68
+Diff audit: the only production edit before added probe functions is the HPCON attribute value ABI at lines 276-289; start_io and Drop are unchanged.
+/tmp/peritus-final23/native-evidence-review.md
+bytes=11120
+sha256=e072717168c697f8db95abf9228e1690f0c643ac2ff066a463985ae9b7f69159

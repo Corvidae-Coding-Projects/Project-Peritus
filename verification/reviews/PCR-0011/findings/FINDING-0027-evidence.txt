@@ -1,0 +1,13 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/source-review-supplement-6889f8c5d.md
+bytes=2010
+sha256=286932db9cbb3639dd0ee824d518c4d0e89418e5a1329d0be5bc39e1569a0f0b
+/tmp/peritus-final23/ecr-registry-fix-report.md
+bytes=2885
+sha256=2a7c726f17b25a1f05031923ee3939730bf881f2a394a6876d7ccecb250b6c56
+/tmp/peritus-final23/ecr-posix-lifecycle-isolated.log
+bytes=337
+sha256=2dca845b12f07e5f39234b3e31980a55f7bd742eaa4f0aa65c319fdaff92088a
+/tmp/peritus-final23/ecr-discovery-replay-isolated.log
+bytes=250
+sha256=11d4f17219473b5ecb1f2132d431c93fbe0dcd59bd5c6606d151c49ff25aaacc

@@ -173,8 +173,8 @@ impl Default for Preferences {
 impl Preferences {
     pub(crate) fn parse(text: &str) -> Result<Self> {
         let value: Self = toml::from_str(text).map_err(problem)?;
-        if !(12..=22).contains(&value.font_size) || !(180..=480).contains(&value.explorer_width) {
-            return Err(problem("font_size must be 12–22; explorer_width must be 180–480"));
+        if value.font_size == 0 || value.explorer_width == 0 {
+            return Err(problem("font_size and explorer_width must be positive pixel values"));
         }
         if !["nixie", "daylight", "blueprint"].contains(&value.theme.as_str()) {
             return Err(problem("theme must be nixie, daylight, or blueprint"));
@@ -194,9 +194,6 @@ impl Preferences {
                 ));
             }
         }
-        if value.aliases.len() > 100 || value.shortcuts.len() > 100 {
-            return Err(problem("At most 100 aliases and shortcuts are supported"));
-        }
         for (name, command) in &value.aliases {
             if name.is_empty()
                 || !name.bytes().all(|b| b.is_ascii_lowercase() || b == b'-')
@@ -213,6 +210,23 @@ impl Preferences {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn presentation_accepts_widget_values_and_more_than_one_hundred_bindings() {
+        let mut value =
+            Preferences { font_size: 48, explorer_width: 1024, ..Preferences::default() };
+        for index in 0..150 {
+            let name =
+                format!("alias-{}{}", char::from(b'a' + index / 26), char::from(b'a' + index % 26));
+            value.aliases.insert(name.clone(), "/help".into());
+            value.shortcuts.insert(name, "Mod+k".into());
+        }
+        let decoded = Preferences::parse(&toml::to_string(&value).expect("serialize"))
+            .expect("valid preferences");
+        assert_eq!(decoded.aliases.len(), 150);
+        value.font_size = 0;
+        assert!(Preferences::parse(&toml::to_string(&value).expect("serialize")).is_err());
+    }
 
     #[test]
     fn presentation_path_overrides_do_not_redirect_daemon_discovery() {

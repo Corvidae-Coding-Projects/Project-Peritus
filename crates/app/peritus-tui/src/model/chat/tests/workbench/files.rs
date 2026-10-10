@@ -267,6 +267,43 @@ fn stale_file_preview_clears_confirmation_and_refreshes_revision() {
 }
 
 #[test]
+fn active_chat_provider_and_model_bind_file_preview_and_confirmation() {
+    let mut model = opened();
+    let profile = ProviderProfileId::new([0xa1; 16]).expect("chat provider");
+    active_chat_writer_binding(&mut model, profile, "selected-chat-model");
+    let preview = preview(&mut model);
+    assert_eq!(preview.request().provider(), profile);
+    assert_eq!(preview.request().model().id(), "selected-chat-model");
+    assert_ne!(
+        model.product.as_ref().unwrap().providers().unwrap().writer(),
+        profile,
+        "launcher defaults differ from this active conversation"
+    );
+    let sent = request(&key(&mut model, KeyCode::Char('c')));
+    let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("confirm") };
+    assert!(
+        matches!(command.intent(), WorkbenchIntent::AttachFile { preview: exact, .. } if exact == &preview)
+    );
+}
+
+#[test]
+fn actual_active_writer_change_invalidates_file_preview_but_same_binding_preserves_it() {
+    let mut model = opened();
+    let original = ProviderProfileId::new([0xa2; 16]).expect("provider");
+    active_chat_writer_binding(&mut model, original, "chat-model");
+    preview(&mut model);
+    active_chat_writer_binding(&mut model, original, "chat-model");
+    assert!(model.chat.workbench.files.preview.is_some(), "unchanged binding keeps exact consent");
+    active_chat_writer_binding(
+        &mut model,
+        ProviderProfileId::new([0xa3; 16]).expect("changed provider"),
+        "chat-model",
+    );
+    assert!(model.chat.workbench.files.preview.is_none());
+    assert!(key(&mut model, KeyCode::Char('c')).is_empty());
+}
+
+#[test]
 fn file_panel_and_inert_editor_preserve_composer_at_required_sizes() {
     use ratatui::{Terminal, backend::TestBackend};
     let mut model = opened();
@@ -289,4 +326,44 @@ fn file_panel_and_inert_editor_preserve_composer_at_required_sizes() {
         .features
         .retain(|feature| feature.as_str() != WellKnownProtocolFeature::WorkbenchFiles.as_str());
     assert!(key(&mut model, KeyCode::Char('p')).is_empty());
+}
+
+#[test]
+fn caption_and_cursor_edits_preserve_exact_preview_but_source_edits_invalidate_it() {
+    let mut model = opened();
+    let exact = preview(&mut model);
+    key(&mut model, KeyCode::Char('t'));
+    model.update(Action::TerminalEvent(Event::Paste("\nwith\ttabs".to_owned())));
+    key(&mut model, KeyCode::Left);
+    key(&mut model, KeyCode::Enter);
+    assert_eq!(model.chat.workbench.files.preview.as_ref(), Some(&exact));
+    let sent = request(&key(&mut model, KeyCode::Char('c')));
+    let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("confirm") };
+    assert!(matches!(command.intent(), WorkbenchIntent::AttachFile { preview, text }
+        if preview == &exact && text.as_str() == "Use the selected line\nwith\ttabs"));
+
+    let mut model = opened();
+    let exact = preview(&mut model);
+    key(&mut model, KeyCode::Char('i'));
+    key(&mut model, KeyCode::Left);
+    assert_eq!(model.chat.workbench.files.preview.as_ref(), Some(&exact));
+    key(&mut model, KeyCode::Char('x'));
+    assert!(model.chat.workbench.files.preview.is_none());
+}
+
+#[test]
+fn returning_file_preview_rejects_changed_range_mode_revision_or_closed_panel() {
+    for change in 0..4 {
+        let mut model = opened();
+        let exact = preview(&mut model);
+        model.chat.workbench.files.preview = None;
+        match change {
+            0 => model.chat.workbench.files.range = "all".to_owned(),
+            1 => model.chat.workbench.files.refresh = true,
+            2 => model.chat.workbench.snapshot = None,
+            _ => model.chat.workbench.open = false,
+        }
+        model.accept_file_preview(exact.request(), exact.clone());
+        assert!(model.chat.workbench.files.preview.is_none());
+    }
 }

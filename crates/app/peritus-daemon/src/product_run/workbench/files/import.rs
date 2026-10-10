@@ -65,11 +65,7 @@ impl ProductRunService {
             .select_provider(selection.provider(), selection.model())
             .map_err(|_| app_error(Code::MissingRequiredFeature))?;
         let (catalog, bytes) = authority
-            .read_scoped_artifact(
-                scope,
-                request.artifact(),
-                peritus_app_protocol::MAX_WORKBENCH_FILE_BYTES,
-            )
+            .read_scoped_artifact(scope, request.artifact(), u64::MAX)
             .await
             .map_err(daemon_error)?;
         if !matches!(catalog.media_type(), "text/plain" | "application/octet-stream") {
@@ -104,8 +100,15 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
     ) -> Result<WorkbenchReceipt, AppProtocolError> {
-        let WorkbenchIntent::AttachFileImport { preview, .. } = command.intent() else {
-            return Err(app_error(Code::MalformedFrame));
+        let previews: Vec<(&WorkbenchFileImportPreview, bool)> = match command.intent() {
+            WorkbenchIntent::AttachFileImport { preview, .. } => vec![(preview, false)],
+            WorkbenchIntent::EnqueueMessage { preview } => vec![(preview, true)],
+            WorkbenchIntent::EnqueueMessageBundle { message, attachments, .. } => message
+                .iter()
+                .map(|preview| (preview, true))
+                .chain(attachments.iter().map(|preview| (preview, false)))
+                .collect(),
+            _ => return Err(app_error(Code::MalformedFrame)),
         };
         self.control_workspace(command.query()).map_err(error_value)?;
         let operation = domain_operation(actor, command).map_err(error_value)?;
@@ -114,16 +117,34 @@ impl ProductRunService {
         let receipt = if let Some(receipt) = prior {
             receipt
         } else {
-            let (current, text) =
-                self.prepare_file_import(authority, actor, preview.request()).await?;
-            if current != *preview {
-                return Err(app_error(Code::StaleRevision));
+            let mut prepared = Vec::new();
+            for (preview, user_message) in previews {
+                let (current, text) =
+                    self.prepare_file_import(authority, actor, preview.request()).await?;
+                if user_message
+                    && (text.text().trim().is_empty()
+                        || text
+                            .text()
+                            .chars()
+                            .any(|ch| ch.is_control() && !matches!(ch, '\n' | '\t')))
+                {
+                    return Err(app_error(Code::MalformedFrame));
+                }
+                if current != *preview {
+                    return Err(app_error(Code::StaleRevision));
+                }
+                let consent =
+                    current.canonical_bytes().map_err(|_| app_error(Code::MalformedFrame))?;
+                prepared.push((text, consent));
             }
             if !authority.status().await.map_err(daemon_error)?.mutation_ready() {
                 return Err(app_error(Code::ReadOnly));
             }
-            let consent = current.canonical_bytes().map_err(|_| app_error(Code::MalformedFrame))?;
-            self.with_controls(false, |store| store.accept_file(&operation, &text, consent))
+            let refs = prepared
+                .iter()
+                .map(|(text, consent)| (text, consent.as_slice()))
+                .collect::<Vec<_>>();
+            self.with_controls(false, |store| store.accept_files(&operation, &refs))
                 .map_err(error_value)?
         };
         WorkbenchReceipt::new(
@@ -139,6 +160,22 @@ pub(in crate::product_run::workbench) fn domain_import(
     command: &WorkbenchCommand,
     preview: &WorkbenchFileImportPreview,
 ) -> Result<FileAttachment, Error> {
+    domain_import_part(
+        command,
+        preview,
+        command.operation().into_bytes(),
+        matches!(command.intent(), WorkbenchIntent::EnqueueMessage { .. }),
+        matches!(command.intent(), WorkbenchIntent::EnqueueMessage { .. }),
+    )
+}
+
+pub(in crate::product_run::workbench) fn domain_import_part(
+    command: &WorkbenchCommand,
+    preview: &WorkbenchFileImportPreview,
+    operation: [u8; 16],
+    user_message: bool,
+    shared: bool,
+) -> Result<FileAttachment, Error> {
     let request = preview.request();
     let selection = request.selection();
     if command.query() != selection.query() || command.expected_revision() != selection.revision() {
@@ -149,7 +186,14 @@ pub(in crate::product_run::workbench) fn domain_import(
         WorkbenchFileRange::Bytes { start, end } => FileRange::Bytes { start, end },
         WorkbenchFileRange::Lines { first, last } => FileRange::Lines { first, last },
     };
-    let source = FileSource::imported(ControlText::new(selection.path().to_owned())?, range)?;
+    let source = if user_message {
+        if range != FileRange::All || request.file().bytes() == 0 {
+            return Err(ControlError::InvalidInput.into());
+        }
+        FileSource::user_message()
+    } else {
+        FileSource::imported(ControlText::new(selection.path().to_owned())?, range)?
+    };
     let file = request.file();
     let observation = FileObservation::new(
         file.source_digest(),
@@ -158,11 +202,18 @@ pub(in crate::product_run::workbench) fn domain_import(
         file.digest(),
     )?;
     let version = FileVersion::new(
-        OperationId::new(command.operation().into_bytes())?,
-        ArtifactId::new(command.operation().into_bytes())
-            .map_err(|_| ControlError::InvalidInput)?,
+        OperationId::new(operation)?,
+        ArtifactId::new(operation).map_err(|_| ControlError::InvalidInput)?,
         observation,
         preview.fingerprint().map_err(|_| ControlError::InvalidInput)?,
     )?;
-    Ok(FileAttachment::new(source, version)?)
+    Ok(if shared {
+        FileAttachment::for_message(
+            source,
+            version,
+            peritus_product_runner::control::InputId::new(command.operation().into_bytes())?,
+        )?
+    } else {
+        FileAttachment::new(source, version)?
+    })
 }

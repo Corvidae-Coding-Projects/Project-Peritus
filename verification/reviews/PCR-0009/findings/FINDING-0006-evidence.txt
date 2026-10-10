@@ -1,0 +1,2 @@
+FINDING-0006: Filesystem traversal accumulated all unsupported diagnostics in memory
+Source inspection traced `crates/tools/peritus-tools-fs/src/read/traversal.rs` across discover and search. The repaired implementation sends `WalkEvent` diagnostics directly to bounded rendering rather than building the former global vector. The wide-directory fixture retained exactly two unique omissions and the focused tools-fs suites passed.

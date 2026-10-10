@@ -1,5 +1,7 @@
 //! Platform-neutral Windows compiler, protocol, and recovery contracts.
 
+#[path = "contracts/selected_controls.rs"]
+mod selected_controls;
 mod support;
 
 use std::{
@@ -13,7 +15,7 @@ use peritus_sandbox::{
     SandboxPath, SandboxResourceKind, admit_backend,
 };
 use peritus_sandbox_windows::{
-    AclAccess, AppContainerProfile, CleanupState, HelperExit, HelperManifest,
+    AclAccess, AppContainerProfile, CleanupState, EnvironmentEntry, HelperExit, HelperManifest,
     InheritedHandlePolicy, JobPlan, NetworkIsolation, PathEvidence, PathPolicy, ProbeEvidence,
     RecoveryClassification, RecoveryProbe, ReservedHelperExit, ResourceControlPlan,
     RuntimeIdentity, TerminalMapping, TokenProfile, WindowsBackend, WindowsBackendConfig,
@@ -74,13 +76,21 @@ fn external_inference_inputs_require_explicit_admission_and_cannot_be_writable()
             .is_err()
         );
     }
+    let nested = policy
+        .clone()
+        .with_read_only_inputs(vec![WindowsPath::new("C:/workspace/private").unwrap()])
+        .unwrap();
+    let readonly_acl = compile_acl_plan(
+        &read,
+        &nested.with_read_only_inputs(vec![WindowsPath::new("D:/models").unwrap()]).unwrap(),
+        "S-1-15-2-123",
+    )
+    .unwrap();
     assert!(
-        policy
-            .clone()
-            .with_read_only_inputs(vec![WindowsPath::new("C:/workspace/private").unwrap()])
-            .is_err()
+        readonly_acl.entries().iter().any(|entry| entry.effect() == RuleEffect::Deny
+            && entry.access().contains(FileOperation::Write))
     );
-    assert!(policy.with_read_only_inputs(vec![WindowsPath::new("C:/").unwrap()]).is_err());
+    assert!(policy.with_read_only_inputs(vec![WindowsPath::new("C:/").unwrap()]).is_ok());
 }
 
 #[test]
@@ -167,6 +177,52 @@ fn manifest_round_trip_binds_every_domain_and_preserves_target_input() {
     let mut remaining = Vec::new();
     input.read_to_end(&mut remaining).unwrap();
     assert_eq!(remaining, b"target input remains unread");
+}
+
+#[test]
+fn helper_manifest_uses_wire_representations_instead_of_application_collection_ceilings() {
+    let plan = support::checked_plan(Vec::new());
+    let (descriptor, admission) = descriptor_and_admission(&plan);
+    let policy = PathPolicy::new(WindowsPath::new(r"C:\workspace").unwrap(), Vec::new()).unwrap();
+    let token = token();
+    let acl = compile_acl_plan(&plan, &policy, token.principal_sid()).unwrap();
+    let arguments =
+        (0..4_097).map(|index| format!("arg-{index}")).chain(["x".repeat(4 * 1_024 * 1_024 + 1)]);
+    let command = CommandSpec::new("/bin/tool", arguments).unwrap();
+    let environment = (0..4_097)
+        .map(|index| {
+            EnvironmentEntry::new(
+                format!("VARIABLE_{index}"),
+                if index == 0 { "v".repeat(1_048_577) } else { "v".to_owned() },
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    let resources = ResourceControlPlan::from_checked_plan(&plan, production_resource_levels());
+    let manifest = HelperManifest::build(
+        plan.binding().process_id(),
+        &plan,
+        &admission,
+        descriptor.identity().helper_digest(),
+        &acl,
+        token,
+        &command,
+        WindowsPath::new(r"C:\workspace").unwrap(),
+        environment,
+        JobPlan::from_checked_plan(&plan),
+        peritus_sandbox_windows::ProcessPolicy::from_checked_plan(&plan),
+        TerminalMapping::from_checked_plan(&plan).unwrap(),
+        resources,
+        NetworkIsolation::DenyAll,
+        Vec::new(),
+        InheritedHandlePolicy::new(Vec::new()).unwrap(),
+    )
+    .unwrap();
+
+    assert!(manifest.canonical_bytes().len() > 4 * 1_024 * 1_024);
+    let decoded = HelperManifest::decode(manifest.canonical_bytes()).unwrap();
+    assert_eq!(decoded.arguments().len(), 4_098);
+    assert_eq!(decoded.environment().len(), 4_097);
 }
 
 #[test]

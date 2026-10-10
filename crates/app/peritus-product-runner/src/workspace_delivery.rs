@@ -66,6 +66,10 @@ impl ProductRunInput {
     ) -> WorkspaceDeveloperTools {
         let reference_authority = self.conversation.reference_authority_context();
         tools
+            .with_inspection_cancellation(
+                std::sync::Arc::clone(&self.cancelled),
+                self.provider_cancellation.clone(),
+            )
             .with_reference_contract(&reference_authority)
             .with_protected_paths(self.workspace_kind.protected_paths())
             .with_protection_view(std::sync::Arc::clone(&self.conversation))
@@ -73,7 +77,9 @@ impl ProductRunInput {
     }
 
     pub(crate) fn developer_definitions(&self) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-        let mut definitions = crate::developer_tools::definitions()?;
+        let mut definitions = crate::developer_tools::definitions_for_attachments(
+            self.conversation.has_selected_file_attachments(),
+        )?;
         if self.workspace_kind.is_in_place() {
             definitions.push(scope::definition()?);
         }

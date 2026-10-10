@@ -21,7 +21,7 @@ mod conversation;
 )]
 pub(crate) use checkpoints::{RewindFaultPoint, inject_rewind_fault};
 mod execution;
-mod files;
+pub(super) mod files;
 mod folder_mutation;
 mod fork;
 mod goal;
@@ -169,7 +169,7 @@ impl ProductRunService {
                 }
                 match permission_host {
                     Some(host) => store.accept_permissions(&operation, host),
-                    None => store.accept(&operation),
+                    None => mapping::proposal::accept(store, &operation, actor, command),
                 }
                 .map(|receipt| (receipt, false))
             })
@@ -259,7 +259,7 @@ impl ProductRunService {
             | WorkbenchIntent::AddArtifactFeedback { .. } => {
                 return self.resolve_preview_receipt(actor, command);
             }
-            WorkbenchIntent::ApplyInitDiff(_) => {
+            WorkbenchIntent::ApplyInitDiff(_) | WorkbenchIntent::ApplyInitArtifact(_) => {
                 return self
                     .resolve_workbench_initialization(actor, command)
                     .map_or_else(error_response, AppResponsePayload::WorkbenchReceipt);
@@ -269,10 +269,18 @@ impl ProductRunService {
                     .resolve_workbench_checkpoint(actor, command)
                     .map_or_else(error_response, AppResponsePayload::WorkbenchCheckpoint);
             }
-            WorkbenchIntent::ApplyRewind(_) => {
-                return self
-                    .observe_workbench_restore(actor, command)
-                    .map_or_else(error_response, AppResponsePayload::WorkbenchRestore);
+            WorkbenchIntent::ApplyRewind(_) | WorkbenchIntent::ConfirmRewind(_) => {
+                return self.observe_workbench_restore(actor, command).map_or_else(
+                    error_response,
+                    |outcome| match outcome {
+                        checkpoints::WorkbenchRestoreProjection::Detailed(receipt) => {
+                            AppResponsePayload::WorkbenchRestore(receipt)
+                        }
+                        checkpoints::WorkbenchRestoreProjection::Summary(summary) => {
+                            AppResponsePayload::WorkbenchRestoreSummary(summary)
+                        }
+                    },
+                );
             }
             _ => {}
         }
@@ -379,12 +387,9 @@ pub(super) fn error_value(error: Error) -> AppProtocolError {
         Error::Control(ControlError::NotFound) => AppErrorCode::InvalidIdentifier,
         Error::Io(_) | Error::Journal(_) => AppErrorCode::Backpressure,
         Error::PermissionDenied => AppErrorCode::ReadOnly,
-        Error::Workspace(error)
-            if error.recovery() == peritus_workspace::RecoveryClass::Reobserve =>
-        {
-            AppErrorCode::StaleRevision
+        Error::Corrupt(_) | Error::Workspace(_) | Error::Patch(_) | Error::Runner(_) => {
+            AppErrorCode::NotReady
         }
-        Error::Corrupt(_) | Error::Workspace(_) | Error::Runner(_) => AppErrorCode::NotReady,
     };
     AppProtocolError::new(code, None)
 }

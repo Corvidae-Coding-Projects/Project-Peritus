@@ -295,6 +295,21 @@ pub trait NativeSandboxBackend: Send + 'static {
     /// Returns the operating-system family this implementation enforces.
     fn platform(&self) -> NativePlatform;
 
+    /// Checks backend-specific representability before durable one-use consumption.
+    /// The default adds no checks beyond the gateway's existing descriptor and plan validation.
+    /// Backends with fallible selected-control projections override this without consuming owners.
+    ///
+    /// # Errors
+    /// Rejects unsupported selected controls or drifted inert preparation bindings.
+    fn validate_preparation_capacity(
+        &self,
+        _execution: &ExecutionPlan,
+        _sandbox: &CheckedSandboxPlan,
+        _admission: &BackendAdmission,
+    ) -> Result<(), ProcessError> {
+        Ok(())
+    }
+
     /// Prepares one session from the opaque authorized context.
     ///
     /// # Errors

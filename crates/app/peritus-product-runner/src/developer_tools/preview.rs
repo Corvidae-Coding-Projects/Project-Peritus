@@ -3,12 +3,209 @@
 use std::{path::PathBuf, time::Duration};
 
 use peritus_types::ProcessId;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest as _, Sha256};
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MAX_PROGRAM_BYTES: usize = 4_096;
-const MAX_ARGUMENT_BYTES: usize = 64 * 1_024;
-const MAX_ENVIRONMENT_VALUE_BYTES: usize = 64 * 1_024;
+/// One bounded range from a preview output stream.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PreviewOutputRange {
+    pub(super) total_bytes: u64,
+    pub(super) digest: Option<[u8; 32]>,
+    pub(super) bytes: Vec<u8>,
+}
+
+/// Identifies the retained source searched for a preview output match.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
+pub enum PreviewOutputStream {
+    /// Pipe standard output.
+    Stdout,
+    /// Pipe standard error.
+    Stderr,
+    /// Combined PTY terminal stream.
+    Terminal,
+}
+
+impl PreviewOutputStream {
+    /// Converts to the process-runtime stream identifier.
+    #[must_use]
+    pub const fn process_stream(self) -> peritus_process::OutputStream {
+        match self {
+            Self::Stdout => peritus_process::OutputStream::Stdout,
+            Self::Stderr => peritus_process::OutputStream::Stderr,
+            Self::Terminal => peritus_process::OutputStream::Terminal,
+        }
+    }
+}
+
+impl From<peritus_process::OutputStream> for PreviewOutputStream {
+    fn from(value: peritus_process::OutputStream) -> Self {
+        match value {
+            peritus_process::OutputStream::Stdout => Self::Stdout,
+            peritus_process::OutputStream::Stderr => Self::Stderr,
+            peritus_process::OutputStream::Terminal => Self::Terminal,
+        }
+    }
+}
+
+/// Identifies the retained source searched for a preview output match.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
+pub enum PreviewOutputMatchSource {
+    /// The output was observed in the exact live process spool.
+    LiveSpool {
+        /// Exact owned process identifier encoded as bytes.
+        process_id: [u8; 16],
+        /// SHA-256 of every byte in the observed spool prefix.
+        observed_prefix_digest: [u8; 32],
+    },
+    /// The output was observed in the immutable artifact published at process termination.
+    FinalizedArtifact {
+        /// Exact owned process identifier encoded as bytes.
+        process_id: [u8; 16],
+        /// SHA-256 digest of the finalized output artifact.
+        artifact_digest: [u8; 32],
+    },
+}
+
+/// Exact byte evidence for a literal preview-output match.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct PreviewOutputMatch {
+    pub(crate) stream: PreviewOutputStream,
+    pub(crate) start_byte: u64,
+    pub(crate) end_byte: u64,
+    pub(crate) observed_stream_bytes: u64,
+    pub(crate) matched_bytes_digest: [u8; 32],
+    pub(crate) source: PreviewOutputMatchSource,
+}
+
+impl PreviewOutputMatch {
+    /// Output stream containing the match.
+    #[must_use]
+    pub const fn stream(self) -> PreviewOutputStream {
+        self.stream
+    }
+
+    /// Inclusive start byte offset of the match in the full stream.
+    #[must_use]
+    pub const fn start_byte(self) -> u64 {
+        self.start_byte
+    }
+
+    /// Exclusive end byte offset of the match in the full stream.
+    #[must_use]
+    pub const fn end_byte(self) -> u64 {
+        self.end_byte
+    }
+
+    /// Number of stream bytes observed by this search.
+    #[must_use]
+    pub const fn observed_stream_bytes(self) -> u64 {
+        self.observed_stream_bytes
+    }
+
+    /// SHA-256 digest of the exact UTF-8 needle bytes that matched.
+    #[must_use]
+    pub const fn matched_bytes_digest(self) -> [u8; 32] {
+        self.matched_bytes_digest
+    }
+
+    /// Live-spool or finalized-artifact identity for the searched source.
+    #[must_use]
+    pub const fn source(self) -> PreviewOutputMatchSource {
+        self.source
+    }
+
+    /// Exact process identifier bytes bound to this observation.
+    #[must_use]
+    pub const fn process_id_bytes(self) -> [u8; 16] {
+        match self.source {
+            PreviewOutputMatchSource::LiveSpool { process_id, .. }
+            | PreviewOutputMatchSource::FinalizedArtifact { process_id, .. } => process_id,
+        }
+    }
+
+    /// Finalized output artifact digest, or `None` for a live spool observation.
+    #[must_use]
+    pub const fn artifact_digest(self) -> Option<[u8; 32]> {
+        match self.source {
+            PreviewOutputMatchSource::LiveSpool { .. } => None,
+            PreviewOutputMatchSource::FinalizedArtifact { artifact_digest, .. } => {
+                Some(artifact_digest)
+            }
+        }
+    }
+
+    /// SHA-256 digest binding all bytes in the observed source snapshot.
+    #[must_use]
+    pub const fn observed_source_digest(self) -> [u8; 32] {
+        match self.source {
+            PreviewOutputMatchSource::LiveSpool { observed_prefix_digest, .. } => {
+                observed_prefix_digest
+            }
+            PreviewOutputMatchSource::FinalizedArtifact { artifact_digest, .. } => artifact_digest,
+        }
+    }
+
+    /// Rejects malformed serialized match evidence before it is bound to a process record.
+    ///
+    /// # Errors
+    /// Returns an error for an invalid process identifier or range outside the observed stream.
+    pub const fn validate(self) -> Result<(), &'static str> {
+        let process_id = self.process_id_bytes();
+        if ProcessId::new(process_id).is_err() {
+            return Err("preview output match process identifier is invalid");
+        }
+        if self.start_byte >= self.end_byte || self.end_byte > self.observed_stream_bytes {
+            return Err("preview output match range is invalid");
+        }
+        Ok(())
+    }
+
+    /// Checks that this evidence binds the exact process and literal UTF-8 search text.
+    ///
+    /// # Errors
+    /// Returns an error when the process, byte length, or needle digest does not match.
+    pub fn validate_for_needle(
+        self,
+        process_id: ProcessId,
+        needle: &str,
+    ) -> Result<(), &'static str> {
+        self.validate()?;
+        if needle.is_empty()
+            || self.process_id_bytes() != *process_id.as_bytes()
+            || self.end_byte - self.start_byte != u64::try_from(needle.len()).unwrap_or(u64::MAX)
+        {
+            return Err("preview output match does not bind the requested process and needle");
+        }
+        let expected_digest: [u8; 32] = Sha256::digest(needle.as_bytes()).into();
+        if self.matched_bytes_digest != expected_digest {
+            return Err("preview output match digest differs from the requested needle");
+        }
+        Ok(())
+    }
+}
+
+impl PreviewOutputRange {
+    /// Current or finalized stream size.
+    #[must_use]
+    pub const fn total_bytes(&self) -> u64 {
+        self.total_bytes
+    }
+    /// Final artifact digest, absent while the process is live.
+    #[must_use]
+    pub const fn digest(&self) -> Option<[u8; 32]> {
+        self.digest
+    }
+    /// Exact requested byte range.
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+}
 
 /// A direct executable launch admitted through the existing command and process gateways.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,7 +213,7 @@ pub struct PreviewCommand {
     pub(in crate::developer_tools) program: String,
     pub(in crate::developer_tools) arguments: Vec<String>,
     pub(in crate::developer_tools) cwd: PathBuf,
-    pub(in crate::developer_tools) timeout: Duration,
+    pub(in crate::developer_tools) timeout: Option<Duration>,
     pub(in crate::developer_tools) interactive: bool,
     pub(in crate::developer_tools) rows: u16,
     pub(in crate::developer_tools) columns: u16,
@@ -41,25 +238,47 @@ impl PreviewCommand {
         idempotency_key: String,
         environment: Vec<(String, String)>,
     ) -> Result<Self, ProductRunnerError> {
-        let invalid_program = program.is_empty()
-            || program.len() > MAX_PROGRAM_BYTES
-            || program.as_bytes().contains(&0);
-        let invalid_arguments = u16::try_from(arguments.len()).is_err()
-            || arguments
-                .iter()
-                .any(|value| value.len() > MAX_ARGUMENT_BYTES || value.as_bytes().contains(&0));
-        let invalid_environment = u16::try_from(environment.len()).is_err()
-            || environment.iter().any(|(name, value)| {
-                !valid_environment_name(name)
-                    || value.len() > MAX_ENVIRONMENT_VALUE_BYTES
-                    || value.as_bytes().contains(&0)
-            });
+        Self::new_optional(
+            program,
+            arguments,
+            cwd,
+            Some(timeout),
+            interactive,
+            rows,
+            columns,
+            idempotency_key,
+            environment,
+        )
+    }
+
+    /// Creates a preview command with an optional wall-clock timeout.
+    #[allow(clippy::too_many_arguments, reason = "each launch-policy input remains explicit")]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a command field violates native launch constraints.
+    pub fn new_optional(
+        program: String,
+        arguments: Vec<String>,
+        cwd: PathBuf,
+        timeout: Option<Duration>,
+        interactive: bool,
+        rows: u16,
+        columns: u16,
+        idempotency_key: String,
+        environment: Vec<(String, String)>,
+    ) -> Result<Self, ProductRunnerError> {
+        let invalid_program = program.is_empty() || program.as_bytes().contains(&0);
+        let invalid_arguments = arguments.iter().any(|value| value.as_bytes().contains(&0));
+        let invalid_environment = environment
+            .iter()
+            .any(|(name, value)| !valid_environment_name(name) || value.as_bytes().contains(&0));
         if invalid_program
             || invalid_arguments
             || invalid_environment
             || cwd.as_os_str().is_empty()
-            || timeout.is_zero()
-            || timeout.as_millis() > u128::from(u64::MAX)
+            || timeout.is_some_and(|value| value.is_zero())
+            || timeout.is_some_and(|value| value.as_millis() > u128::from(u64::MAX))
             || rows == 0
             || columns == 0
             || idempotency_key.is_empty()
@@ -79,6 +298,48 @@ impl PreviewCommand {
             idempotency_key,
             environment,
         })
+    }
+}
+
+/// Persistable observation identity for an owned preview. It grants no launch authority.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PreviewOwner {
+    source_run: peritus_types::RunId,
+    execution_run: peritus_types::RunId,
+    action: peritus_types::ActionId,
+    process: ProcessId,
+}
+
+impl PreviewOwner {
+    /// Reconstructs an untrusted saved binding; the runtime validates it against durable authority.
+    #[must_use]
+    pub const fn new(
+        source_run: peritus_types::RunId,
+        execution_run: peritus_types::RunId,
+        action: peritus_types::ActionId,
+        process: ProcessId,
+    ) -> Self {
+        Self { source_run, execution_run, action, process }
+    }
+    /// Returns the source runtime identity.
+    #[must_use]
+    pub const fn source_run(self) -> peritus_types::RunId {
+        self.source_run
+    }
+    /// Returns the exact execution run.
+    #[must_use]
+    pub const fn execution_run(self) -> peritus_types::RunId {
+        self.execution_run
+    }
+    /// Returns the one-use action identity.
+    #[must_use]
+    pub const fn action(self) -> peritus_types::ActionId {
+        self.action
+    }
+    /// Returns the owned native process identity.
+    #[must_use]
+    pub const fn process(self) -> ProcessId {
+        self.process
     }
 }
 

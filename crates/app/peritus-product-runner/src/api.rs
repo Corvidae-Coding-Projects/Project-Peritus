@@ -1,5 +1,6 @@
 //! Explicit public facade; implementation modules retain their existing ownership.
 
+pub use crate::attachment_read::{AttachmentReadRequest, AttachmentReadResponse};
 #[cfg(not(verus_only))]
 pub use crate::budget::ProductRunProgress;
 pub use crate::context_config::{
@@ -15,7 +16,8 @@ pub use crate::developer_tools::{
 };
 pub use crate::developer_tools::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
-    PreviewProcessState,
+    PreviewOutputMatch, PreviewOutputMatchSource, PreviewOutputRange, PreviewOutputStream,
+    PreviewOwner, PreviewProcessState,
 };
 pub use crate::discard_recovery::DiscardTransactionState;
 pub use crate::error::{ProductRunnerError, ProductRunnerErrorKind};

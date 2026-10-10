@@ -31,6 +31,7 @@ fn exact_bytes_ranges_and_full_source_digests_are_independent_and_never_truncate
         assert_eq!(result.source_bytes(), source.len() as u64);
         assert_eq!(result.source_digest(), peritus_codec::sha256(source));
         assert_eq!(result.digest(), peritus_codec::sha256(expected));
+        assert_eq!(result.continuation_offset(), None);
         assert!(!format!("{result:?}").contains("λ line"), "debug hides source content");
     }
     assert!(reader.read_file(&path("src/reference.txt"), FileReadSelection::all(), 5).is_err());
@@ -63,13 +64,19 @@ fn empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results() {
     assert!(empty.bytes().is_empty());
     assert_eq!(empty.range(), (0, 0));
     assert!(reader.read_file(&target, FileReadSelection::lines(1, 1).expect("line"), 1).is_err());
+    let long_line = reader
+        .read_file(&target, FileReadSelection::bytes(0, 0).expect("empty range"), 1)
+        .expect("empty range continuation");
+    assert_eq!(long_line.range(), (0, 0));
+    assert_eq!(long_line.continuation_offset(), None);
     let file = fs::File::create(directory.path().join("reference")).expect("file");
-    file.set_len(crate::MAX_INSPECTION_FILE_BYTES + 1).expect("large");
-    assert!(
-        reader
-            .read_file(&target, FileReadSelection::all(), crate::MAX_INSPECTION_FILE_BYTES)
-            .is_err()
-    );
+    let large_size = 8 * 1024 * 1024 + 1;
+    file.set_len(large_size).expect("large");
+    let complete = reader
+        .read_file(&target, FileReadSelection::all(), large_size)
+        .expect("caller-bounded whole-file read above the former inclusion ceiling");
+    assert_eq!(complete.source_bytes(), large_size);
+    assert_eq!(complete.bytes().len() as u64, large_size);
     assert_eq!(
         reader
             .read_file(&target, FileReadSelection::bytes(0, 1).expect("range"), 1)
@@ -77,15 +84,26 @@ fn empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results() {
             .bytes(),
         &[0]
     );
-    file.set_len(MAX_INSPECTION_SOURCE_BYTES + 1).expect("excessive");
-    assert!(reader.read_file(&target, FileReadSelection::bytes(0, 1).expect("range"), 1).is_err());
-    for bound in [0, crate::MAX_INSPECTION_FILE_BYTES + 1] {
-        assert!(reader.read_file(&target, FileReadSelection::all(), bound).is_err());
-    }
-    for (start, end) in [(0, 0), (2, 1), (0, MAX_INSPECTION_SOURCE_BYTES + 1)] {
-        assert!(FileReadSelection::bytes(start, end).is_err());
-    }
-    for (first, last) in [(0, 1), (2, 1), (1, u32::MAX)] {
+    let large_source = 64 * 1024 * 1024 + 1;
+    file.set_len(large_source).expect("large source");
+    assert!(
+        reader
+            .read_file(
+                &target,
+                FileReadSelection::bytes(large_source - 1, large_source).expect("range"),
+                1,
+            )
+            .is_ok()
+    );
+    let partial_line = reader
+        .read_file(&target, FileReadSelection::lines(1, 1).expect("line"), 1)
+        .expect("oversized line page");
+    assert_eq!(partial_line.bytes(), &[0]);
+    assert_eq!(partial_line.continuation_offset(), Some(1));
+    assert!(reader.read_file(&target, FileReadSelection::all(), 0).is_err());
+    assert!(FileReadSelection::bytes(2, 1).is_err());
+    assert!(FileReadSelection::lines(1, u64::MAX).is_ok());
+    for (first, last) in [(0, 1), (2, 1)] {
         assert!(FileReadSelection::lines(first, last).is_err());
     }
 }

@@ -110,7 +110,7 @@ impl InspectionProgress {
 }
 
 fn is_inspection(name: &str) -> bool {
-    matches!(name, "workspace_list" | "workspace_read" | "workspace_search")
+    matches!(name, "workspace_list" | "workspace_read" | "workspace_search" | "attachment_read")
 }
 
 fn fingerprint(name: &str, arguments: &Value, result: &Value) -> Sha256Digest {

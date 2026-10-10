@@ -1,0 +1,2 @@
+FINDING-0013: Raw diff rendering was lossy and non-injective across chunk boundaries
+Reviewer tests placed `é` across a range boundary and exercised the long per-line fallback. A direct collision assertion distinguishes `[0xC3]` from ASCII `\xC3`. After the final helper was shared by whole-stream and per-line views, TUI review tests passed 19/19 and render tests passed 2/2.

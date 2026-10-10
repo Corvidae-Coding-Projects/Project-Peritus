@@ -1,0 +1,31 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+hosted_run=37992279524 attempt1_job=114029594073 result=failure
+/tmp/peritus-final23/browser-workspace-6889-attempt1-failed.log
+bytes=7248
+sha256=d488bf31f344e99d506b1bb5926501df91cf96f9ffc54a4fc7b5a92f7c17ffc7
+/tmp/peritus-final23/ci-job-114029594073.log
+bytes=240138
+sha256=9dee629e87023081958b7bc15badfe433761e514907fc24016b5980096e6aea6
+/tmp/peritus-final23/browser-6889-investigation.md
+bytes=3700
+sha256=507eafa896b9688d24df223d37052749734f2a0b3d99c0daff0e032ce7eb8aaa
+/tmp/peritus-final23/browser-6889-repro.log
+bytes=2331
+sha256=866b673052afacd71668d30b9e3a7b48b9b869f86186bfc5ff49133566fa0b22
+/tmp/peritus-final23/browser-6889-repeated.log
+bytes=11056
+sha256=e203aa9743bf9bc2beaf631bf0bed454c8359c610b27db860208c4661a616588
+/tmp/peritus-final23/browser-6889-attempt2-pass.json
+bytes=2370
+sha256=5c3e9f03f5c44c5a0ce151a81972020072a1735269acaf2a564bd6e73cfcd304
+/tmp/peritus-final23/browser-6889-attempt2.log
+bytes=380559
+sha256=f1f14940c30a572afa1cd75c790ad23d9fe4cadf8d161bb2599f8ceb236b2ed3
+The preceding log is gh-formatted combined output; the following is the separately archived raw job log.
+/tmp/peritus-final23/attachments-ui/ci-job-114032905083.log
+bytes=237486
+sha256=0b592f906726995f878aae58059d98183fb7ccc23b602ba176a08190c1fe079e
+/tmp/peritus-final23/attachments-ui/browser-6889-attempt2.json
+bytes=15012
+sha256=5d3121344f7368fe30db930fb1aa7033f6c4c8549913d19a0acad75260c43e60
+No root cause was established and no candidate bytes changed between attempts.

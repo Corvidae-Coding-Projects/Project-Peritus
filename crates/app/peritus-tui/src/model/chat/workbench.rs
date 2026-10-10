@@ -24,37 +24,8 @@ mod queue;
 mod receipts;
 mod refresh;
 mod sessions;
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-enum WorkbenchMode {
-    #[default]
-    Sessions,
-    Library,
-    Queue,
-    Brief,
-    Compaction,
-    Checkpoints,
-    Permissions,
-    Init,
-    Memory,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-enum WorkbenchMemoryView {
-    #[default]
-    Current,
-    History,
-}
-
-impl WorkbenchMemoryView {
-    const fn from_include_forgotten(include_forgotten: bool) -> Self {
-        if include_forgotten { Self::History } else { Self::Current }
-    }
-
-    const fn include_forgotten(self) -> bool {
-        matches!(self, Self::History)
-    }
-}
+mod state;
+use state::{WorkbenchMemoryView, WorkbenchMode};
 
 #[derive(Debug, Default)]
 pub struct WorkbenchUi {
@@ -76,6 +47,9 @@ pub struct WorkbenchUi {
     pub(crate) compaction_request: Option<peritus_app_protocol::WorkbenchCompactionRequest>,
     pub(crate) compaction_preview: Option<peritus_app_protocol::WorkbenchCompactionPreview>,
     pub(crate) brief: Option<peritus_app_protocol::WorkbenchBrief>,
+    pub(crate) brief_page: Option<peritus_app_protocol::WorkbenchBriefPage>,
+    pub(crate) brief_body: Option<peritus_app_protocol::WorkbenchBriefProposalPage>,
+    pub(crate) brief_body_history: Vec<u64>,
     pub(crate) goal_mode: bool,
     pub(crate) goal: Option<peritus_app_protocol::WorkbenchGoalSnapshot>,
     pub(crate) goal_draft: Option<goal::GoalDraft>,
@@ -85,11 +59,21 @@ pub struct WorkbenchUi {
     goal_refresh_command: Option<(ControlOperationId, String)>,
     pub(in crate::model::chat) snapshot_refresh_command: Option<(WorkbenchQuery, String, String)>,
     pub(crate) checkpoint_receipt: Option<peritus_app_protocol::WorkbenchCheckpointReceipt>,
+    pub(crate) checkpoint_page: Option<peritus_app_protocol::WorkbenchCheckpointCoveragePage>,
+    pub(crate) checkpoint_page_request:
+        Option<peritus_app_protocol::WorkbenchCheckpointPageRequest>,
+    pub(crate) checkpoint_page_history: Vec<Option<peritus_app_protocol::WorkbenchCoverageCursor>>,
     pub(crate) rewind_request: Option<peritus_app_protocol::WorkbenchRewindRequest>,
     pub(crate) rewind_preview: Option<peritus_app_protocol::WorkbenchRewindPreview>,
+    pub(crate) rewind_page: Option<peritus_app_protocol::WorkbenchRewindCoveragePage>,
+    pub(crate) rewind_page_request: Option<peritus_app_protocol::WorkbenchRewindPageRequest>,
+    pub(crate) rewind_page_history: Vec<Option<peritus_app_protocol::WorkbenchCoverageCursor>>,
     pub(crate) restore_receipt: Option<peritus_app_protocol::WorkbenchRestoreReceipt>,
+    pub(crate) restore_summary: Option<peritus_app_protocol::WorkbenchRestoreSummary>,
     pub(crate) permissions: Option<peritus_app_protocol::WorkbenchPermissions>,
     pub(crate) init: Option<peritus_app_protocol::InitProposal>,
+    pub(crate) init_artifact: Option<peritus_app_protocol::InitArtifactProposal>,
+    pub(crate) init_artifact_page: Option<peritus_app_protocol::InitArtifactPage>,
     pub(crate) memory: Option<peritus_app_protocol::WorkbenchMemory>,
     memory_view: WorkbenchMemoryView,
     pub(crate) unresolved: Option<(WorkbenchCommand, String)>,
@@ -236,7 +220,13 @@ impl AppModel {
             | WorkbenchIntent::ResumeGoal { .. }
             | WorkbenchIntent::ClearGoal { .. } => self.goal_command_binding(workspace),
             WorkbenchIntent::ApplyRewind(preview) => self.rewind_binding(preview, workspace),
+            WorkbenchIntent::ConfirmRewind(confirmation) => {
+                self.rewind_confirmation_binding(*confirmation, workspace)
+            }
             WorkbenchIntent::SetPermissions(_) => self.permission_command_binding(workspace),
+            WorkbenchIntent::ApplyInitArtifact(proposal) => {
+                self.init_artifact_binding(*proposal, workspace)
+            }
             WorkbenchIntent::ApplyInitDiff(proposal) => {
                 self.init_command_binding(proposal, workspace)
             }

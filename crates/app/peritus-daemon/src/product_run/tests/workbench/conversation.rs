@@ -73,22 +73,17 @@ fn pending_input_waits_for_unknown_command_reconciliation_before_provider_resume
             .directory
             .join(format!("{:032x}.trace", u128::from_be_bytes(run.into_bytes())))
             .with_extension("effects.bin");
-        let receipt = serde_json::json!({
-            "version": 1,
-            "scope": format!(
-                "peritus-{:032x}-writer-1-revision-1-invocation-1-test",
-                u128::from_be_bytes(run.into_bytes())
-            ),
-            "ordinal": 1,
-            "call_id": "call-1",
-            "tool": "run_command",
-            "request_sha256": "00",
-            "state": "started",
-        });
-        let payload = serde_json::to_vec(&receipt).expect("receipt");
-        let mut bytes = u64::try_from(payload.len()).expect("length").to_le_bytes().to_vec();
-        bytes.extend(payload);
-        fs::write(&effects, bytes).expect("write interrupted receipt");
+        let scope = format!(
+            "peritus-{:032x}-writer-1-revision-1-invocation-1-test",
+            u128::from_be_bytes(run.into_bytes())
+        );
+        support::write_command_receipt(
+            &effects,
+            &scope,
+            2,
+            Some(support::exact_command_owner_fixture(run)),
+            true,
+        );
 
         let continuation = peritus_app_protocol::WorkbenchContinuation::new(
             query(workspace),
@@ -206,9 +201,10 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             service
                 .continue_workbench_execution(
                     ActorId::new([99; 16]).expect("actor"),
-                    peritus_app_protocol::WorkbenchContinuation::new(
+                    peritus_app_protocol::WorkbenchContinuation::bound(
                         query(workspace),
-                        ProductInteractionMode::Plan
+                        ProductInteractionMode::Plan,
+                        input.operation()
                     )
                 )
                 .await,
@@ -217,9 +213,10 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
         let continued = service
             .continue_workbench_execution(
                 actor(),
-                peritus_app_protocol::WorkbenchContinuation::new(
+                peritus_app_protocol::WorkbenchContinuation::bound(
                     query(workspace),
                     ProductInteractionMode::Plan,
+                    input.operation(),
                 ),
             )
             .await;
@@ -229,9 +226,10 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             service
                 .continue_workbench_execution(
                     actor(),
-                    peritus_app_protocol::WorkbenchContinuation::new(
+                    peritus_app_protocol::WorkbenchContinuation::bound(
                         query(workspace),
-                        ProductInteractionMode::Plan
+                        ProductInteractionMode::Plan,
+                        input.operation()
                     )
                 )
                 .await,
@@ -248,12 +246,8 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             panic!("multiple replies must not make the brief unreadable: {brief:?}")
         };
         assert_eq!(brief.proposals().len(), 2);
-        assert!(
-            brief.proposals().iter().any(|proposal| proposal.text().as_str() == "First answer.")
-        );
-        assert!(
-            brief.proposals().iter().any(|proposal| proposal.text().as_str() == "Revised answer.")
-        );
+        assert!(brief.proposals().iter().any(|proposal| proposal.text() == "First answer."));
+        assert!(brief.proposals().iter().any(|proposal| proposal.text() == "Revised answer."));
         let requests = writer.requests.lock().expect("requests").clone();
         assert_eq!(
             requests.len(),
@@ -291,6 +285,64 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
                 .phase(),
             ProductRunPhase::Cancelled
         );
+        assert!(
+            matches!(
+                service
+                    .continue_workbench_execution(
+                        actor(),
+                        peritus_app_protocol::WorkbenchContinuation::bound(
+                            query(workspace),
+                            ProductInteractionMode::Build,
+                            input.operation()
+                        )
+                    )
+                    .await,
+                AppResponsePayload::Error(_)
+            ),
+            "same operation cannot authorize a different launch mode"
+        );
+        assert_eq!(
+            service.inner.records.read().expect("records")[&run].message_launches,
+            vec![(input.operation().into_bytes(), ProductInteractionMode::Plan.tag())]
+        );
         service.shutdown(Duration::from_secs(5)).await;
+        drop(service);
+        let recovered = super::service(
+            state.path(),
+            repository.path(),
+            workspace,
+            [&writer, &reviewer, &fixer],
+        );
+        let controls = crate::product_control::ControlStore::open(
+            &state.path().join("workbench-v1"),
+            peritus_journal::StoreId::new([0x7f; 16]).expect("store"),
+        )
+        .expect("reopen controls");
+        let records = crate::product_run::persistence::load_workbench_records(
+            &state.path().join("workbench-v1"),
+            Some(&controls),
+        )
+        .expect("recover run projections");
+        *recovered.inner.controls.lock().expect("controls") = Some(controls);
+        *recovered.inner.records.write().expect("records") = records;
+        assert_eq!(
+            recovered.inner.records.read().expect("recovered records")[&run].message_launches,
+            vec![(input.operation().into_bytes(), ProductInteractionMode::Plan.tag())]
+        );
+        let replayed = recovered
+            .continue_workbench_execution(
+                actor(),
+                peritus_app_protocol::WorkbenchContinuation::bound(
+                    query(workspace),
+                    ProductInteractionMode::Plan,
+                    input.operation(),
+                ),
+            )
+            .await;
+        assert!(matches!(replayed, AppResponsePayload::Interaction(_)), "{replayed:?}");
+        assert_eq!(writer.requests.lock().expect("requests").len(), 2);
+        recovered.shutdown(Duration::from_secs(5)).await;
     });
 }
+
+mod bound;

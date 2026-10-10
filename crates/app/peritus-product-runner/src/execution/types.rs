@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use crate::{AttachmentReadRequest, AttachmentReadResponse};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
@@ -86,9 +87,28 @@ pub trait ConversationView: Send + Sync {
     fn uses_explicit_media(&self) -> bool {
         false
     }
+    /// Whether the authenticated current input contains a selected immutable file attachment.
+    ///
+    /// This gates advertisement of the exact-version attachment reader. Hosts return `false`
+    /// when file metadata is unavailable; they must not infer attachments from arbitrary prompt
+    /// text.
+    fn has_selected_file_attachments(&self) -> bool {
+        false
+    }
     /// Optional daemon-owned live input and public activity port.
     fn interaction(&self) -> Option<&dyn peritus_agent::DeveloperInteraction> {
         None
+    }
+    /// Reads a bounded page from an exact selected immutable attachment version.
+    ///
+    /// # Errors
+    /// Returns unavailable unless the host can authenticate the conversation and bind the
+    /// requested attachment, version, source digest, selected digest, and range.
+    fn read_attachment_range(
+        &self,
+        _request: AttachmentReadRequest,
+    ) -> Result<AttachmentReadResponse, String> {
+        Err("immutable attachment reads are unavailable".to_owned())
     }
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;

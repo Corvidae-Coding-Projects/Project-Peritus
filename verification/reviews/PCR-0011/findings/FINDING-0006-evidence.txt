@@ -1,0 +1,21 @@
+failing_candidate=51274d82315682b63a1d0c9e877a17b1d1e9a619 tree=78303de4ffdf01e4a83f3c74765726cbdfbc3499
+replacement_candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/windows-512-foundation-state.log
+bytes=136379
+sha256=fd8d9a9f02e3e3f1eab9a1fd3f384aa9e69ab2c954acca185fe162b7fc41f957
+Failure: synchronize published evidence bundle: Access is denied. (os error 5).
+/tmp/peritus-final23/evidence-sync-fix.md
+bytes=1715
+sha256=fd548cf16d9ed2fcd321c0da0b4c4772c8316e1c9844103b184d96a752569198
+/tmp/peritus-final23/evidence-sync-tests.log
+bytes=3606
+sha256=fd915d71e034c4a8349f09a54eaeb89e4e79e481652cc754cf5f7cd60c6790dd
+/tmp/peritus-final23/evidence-sync-windows-clippy.log
+bytes=4136
+sha256=70c11d33c65151e94e240bf383f5d90ae11ca74aeeabb49eb11da70b924d5a7e
+/tmp/peritus-final23/windows-6889-native-pass.json
+bytes=1826
+sha256=3be86c02a7c4d135dc3662f308e9d8057056b9cee17cde5cc85c2269b756bf5b
+/tmp/peritus-final23/windows-6889-h0-artifact/artifacts/h0-10140-1-1791580697716138200/probe-evidence.json
+bytes=12932
+sha256=cac1a911ebd15d2fe055a5ee0c1e8e3251f2ed4eea00b0badc869bc91a3880ba

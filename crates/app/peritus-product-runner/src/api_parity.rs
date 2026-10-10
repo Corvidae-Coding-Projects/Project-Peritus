@@ -4,14 +4,15 @@ use std::{path::PathBuf, time::Duration};
 
 use peritus_process::ProcessStore;
 use peritus_run_settlement::CandidateCheckpoint;
-use peritus_types::{RevisionTuple, RunId};
+use peritus_types::{ActionId, ProcessId, RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
-    CommandRuntime, ConversationView, FolderPatchAuthority, FolderPatchAuthorityPlan,
-    FolderPatchAuthorityPlanRequest, LocalContextConfig, PreviewCommand, PreviewLaunch,
-    PreviewObservation, PreviewProcessState, ProductRunResume, ProductRunnerError, UncertainEffect,
-    UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
+    AttachmentReadRequest, AttachmentReadResponse, CommandRuntime, ConversationView,
+    FolderPatchAuthority, FolderPatchAuthorityPlan, FolderPatchAuthorityPlanRequest,
+    LocalContextConfig, PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputMatch,
+    PreviewOutputMatchSource, PreviewProcessState, ProductRunResume, ProductRunnerError,
+    UncertainEffect, UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
     checked_protected_file, uncertain_effects,
 };
 
@@ -27,6 +28,12 @@ fn constructors(
     direct_process_store: ProcessStore,
     local_context: LocalContextConfig,
 ) {
+    let _: Result<Vec<(RunId, ActionId, ProcessId)>, ProductRunnerError> =
+        CommandRuntime::receipt_linked_live_owners(
+            std::path::Path::new("effects.bin"),
+            run_id,
+            &process_store,
+        );
     let _: Result<CommandRuntime, ProductRunnerError> =
         CommandRuntime::open(state_root, workspace_root, run_id, process_store)
             .and_then(|runtime| runtime.with_local_context(local_context));
@@ -46,6 +53,8 @@ fn command_effects(
     command: &PreviewCommand,
     launch: &PreviewLaunch,
 ) {
+    let _: Result<(), ProductRunnerError> =
+        runtime.reconcile_effect_receipts(std::path::Path::new("effects.bin"));
     let _: Result<FolderPatchAuthorityPlan, ProductRunnerError> =
         runtime.plan_folder_patch_authority(request);
     let _: RevisionTuple = plan.revision();
@@ -56,11 +65,48 @@ fn command_effects(
         runtime.commit_folder_patch_authority(plan, Vec::new());
     let _: Result<PreviewLaunch, ProductRunnerError> = runtime.launch_preview(command);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.observe_preview(launch);
+    let _: Result<crate::PreviewOutputRange, ProductRunnerError> = runtime.preview_output_range(
+        launch.process_id(),
+        peritus_process::OutputStream::Stdout,
+        0,
+        1024,
+    );
+    let _: Result<bool, ProductRunnerError> =
+        runtime.preview_output_contains(launch.process_id(), "ready");
+    let _: Result<Option<PreviewOutputMatch>, ProductRunnerError> =
+        runtime.preview_output_match(launch.process_id(), "ready");
+    let evidence = runtime.preview_output_match(launch.process_id(), "ready");
+    let _ = evidence.and_then(|evidence| {
+        evidence.map_or(Ok(()), |value| runtime.verify_preview_output_match(value, "ready"))
+    });
     let _: Result<crate::PreviewTerminal, ProductRunnerError> = runtime.preview_terminal(launch);
     let _: Result<PreviewObservation, ProductRunnerError> =
         runtime.interact_preview(launch, Vec::new());
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.stop_preview(launch);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.run_preview_helper(command);
+}
+
+#[allow(dead_code)]
+fn preview_output_match(value: PreviewOutputMatch, process_id: ProcessId) {
+    let _: crate::PreviewOutputStream = value.stream();
+    let _: u64 = value.start_byte();
+    let _: u64 = value.end_byte();
+    let _: u64 = value.observed_stream_bytes();
+    let _: [u8; 32] = value.matched_bytes_digest();
+    let _: [u8; 16] = value.process_id_bytes();
+    let _: Option<[u8; 32]> = value.artifact_digest();
+    let _: [u8; 32] = value.observed_source_digest();
+    let _: Result<(), &'static str> = value.validate();
+    let _: Result<(), &'static str> = value.validate_for_needle(process_id, "needle");
+    let source = value.source();
+    match source {
+        PreviewOutputMatchSource::LiveSpool { process_id, .. } => {
+            let _ = process_id;
+        }
+        PreviewOutputMatchSource::FinalizedArtifact { process_id, artifact_digest } => {
+            let _ = (process_id, artifact_digest);
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -102,8 +148,10 @@ fn preview_values(
 }
 
 #[allow(dead_code)]
-fn conversation(view: &dyn ConversationView) {
+fn conversation(view: &dyn ConversationView, request: AttachmentReadRequest) {
     let _: bool = view.uses_explicit_media();
+    let _: bool = view.has_selected_file_attachments();
+    let _: Result<AttachmentReadResponse, String> = view.read_attachment_range(request);
     let _: u64 = view.revision();
     let _: u64 = view.incorporated_revision();
     let _: String = view.render();
@@ -135,6 +183,7 @@ fn uncertain_effect(effect: &UncertainEffect, path: &std::path::Path) {
     let _: &str = effect.tool();
     let _: UncertainEffectState = effect.state();
     let _: Option<u64> = effect.requirements_revision();
+    let _: bool = effect.owner_inactive();
     let _: Result<Vec<UncertainEffect>, ProductRunnerError> = uncertain_effects(path);
     let _: Result<(), ProductRunnerError> = acknowledge_uncertain_effect(path, effect.identity());
 }

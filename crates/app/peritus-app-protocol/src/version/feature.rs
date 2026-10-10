@@ -44,20 +44,32 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_COMPACTION: &'static str = "app.workbench-compaction";
     /// Explicit user-confirmed brief edits and exact source inspection.
     pub const WORKBENCH_BRIEF: &'static str = "app.workbench-brief";
+    /// Revision-fenced brief metadata and immutable proposal-body pages.
+    pub const WORKBENCH_BRIEF_PAGES: &'static str = "app.workbench-brief-pages";
     /// Scoped image upload, local preview and exact confirmed inclusion controls.
     pub const WORKBENCH_IMAGES: &'static str = "app.workbench-images";
     /// Authorized explicit file preview and immutable source selection.
     pub const WORKBENCH_FILES: &'static str = "app.workbench-files";
+    /// Immutable staged user messages with exact author provenance and paged retrieval.
+    pub const WORKBENCH_REFERENCED_TEXT: &'static str = "app.workbench-referenced-text";
+    /// Revision-fenced incremental pending input ordering.
+    pub const WORKBENCH_QUEUE_MOVES: &'static str = "app.workbench-queue-moves";
     /// Persistent goal lifecycle and safe-boundary pause/resume controls.
     pub const WORKBENCH_GOALS: &'static str = "app.workbench-goals";
     /// Structured candidate review with content-bound conversational feedback.
     pub const WORKBENCH_REVIEW: &'static str = "app.workbench-review";
+    /// Bounded digest-bound structured review diff paging.
+    pub const WORKBENCH_REVIEW_PAGES: &'static str = "app.workbench-review-pages";
+    /// Complete review metadata followed by negotiated bounded diff pages.
+    pub const WORKBENCH_REVIEW_SUMMARY: &'static str = "app.workbench-review-summary";
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     pub const WORKBENCH_PREVIEW_OUTPUT: &'static str = "app.workbench-preview-output";
     /// Daemon-owned preview launch and evidence.
     pub const WORKBENCH_PREVIEW: &'static str = "app.workbench-preview";
     /// Covered-path checkpoints, preview-bound rewind and durable restore receipts.
     pub const WORKBENCH_CHECKPOINTS: &'static str = "app.workbench-checkpoints";
+    /// Bounded checkpoint coverage paging with complete-manifest rewind confirmation.
+    pub const WORKBENCH_CHECKPOINT_PAGES: &'static str = "app.workbench-checkpoint-pages";
     /// Local literal search and durable conversation navigation.
     pub const CONVERSATION_LIBRARY: &'static str = "app.conversation-library";
     /// Non-running forks with explicit workspace and budget bindings.
@@ -65,6 +77,9 @@ impl ProtocolFeatureName {
     /// Inspectable enforced workspace permission restrictions.
     pub const WORKBENCH_PERMISSIONS: &'static str = "app.workbench-permissions";
     /// Approval-first project discovery and exact reviewed instruction patch.
+    /// Immutable initialization manifests and bounded review artifact pages.
+    pub const WORKBENCH_INIT_ARTIFACTS: &'static str = "app.workbench-init-artifacts";
+    /// Legacy exact initialization proposals.
     pub const WORKBENCH_INIT: &'static str = "app.workbench-init";
     /// Explicit project-local guidance lifecycle and future-request retrieval.
     pub const WORKBENCH_MEMORY: &'static str = "app.workbench-memory";
@@ -143,20 +158,32 @@ pub enum WellKnownProtocolFeature {
     WorkbenchCompaction,
     /// Explicit user-confirmed brief edits and exact source inspection.
     WorkbenchBrief,
+    /// Bounded metadata inventory and complete immutable proposal-body paging.
+    WorkbenchBriefPages,
     /// Scoped image upload, local preview and exact confirmed inclusion controls.
     WorkbenchImages,
     /// Authorized explicit file preview and immutable source selection.
     WorkbenchFiles,
+    /// Immutable staged user messages with exact author provenance and paged retrieval.
+    WorkbenchReferencedText,
+    /// Revision-fenced incremental pending input ordering.
+    WorkbenchQueueMoves,
     /// Persistent goal lifecycle and safe-boundary pause/resume controls.
     WorkbenchGoals,
     /// Structured candidate review and exact anchored feedback.
     WorkbenchReview,
+    /// Bounded digest-bound structured review diff paging.
+    WorkbenchReviewPages,
+    /// Complete review metadata followed by negotiated bounded diff pages.
+    WorkbenchReviewSummary,
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     WorkbenchPreview,
     /// Bounded retained live preview streams.
     WorkbenchPreviewOutput,
     /// Covered-path checkpoints and safe preview-bound rewind.
     WorkbenchCheckpoints,
+    /// Bounded checkpoint coverage pages and full-checkpoint confirmation.
+    WorkbenchCheckpointPages,
     /// Local searchable conversation library.
     ConversationLibrary,
     /// Checked conversation fork creation.
@@ -165,6 +192,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchPermissions,
     /// Approval-first project discovery and exact reviewed instruction patch.
     WorkbenchInit,
+    /// Immutable initialization manifests and bounded review artifact pages.
+    WorkbenchInitArtifacts,
     /// Explicit project-local guidance lifecycle and future-request retrieval.
     WorkbenchMemory,
     /// Graceful daemon shutdown controls.
@@ -193,17 +222,24 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchExecution => ProtocolFeatureName::WORKBENCH_EXECUTION,
             Self::WorkbenchContext => ProtocolFeatureName::WORKBENCH_CONTEXT,
             Self::WorkbenchCompaction => ProtocolFeatureName::WORKBENCH_COMPACTION,
+            Self::WorkbenchBriefPages => ProtocolFeatureName::WORKBENCH_BRIEF_PAGES,
             Self::WorkbenchBrief => ProtocolFeatureName::WORKBENCH_BRIEF,
             Self::WorkbenchImages => ProtocolFeatureName::WORKBENCH_IMAGES,
             Self::WorkbenchFiles => ProtocolFeatureName::WORKBENCH_FILES,
+            Self::WorkbenchReferencedText => ProtocolFeatureName::WORKBENCH_REFERENCED_TEXT,
+            Self::WorkbenchQueueMoves => ProtocolFeatureName::WORKBENCH_QUEUE_MOVES,
             Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
             Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
+            Self::WorkbenchReviewPages => ProtocolFeatureName::WORKBENCH_REVIEW_PAGES,
+            Self::WorkbenchReviewSummary => ProtocolFeatureName::WORKBENCH_REVIEW_SUMMARY,
             Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
             Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,
+            Self::WorkbenchCheckpointPages => ProtocolFeatureName::WORKBENCH_CHECKPOINT_PAGES,
             Self::ConversationLibrary => ProtocolFeatureName::CONVERSATION_LIBRARY,
             Self::ConversationForks => ProtocolFeatureName::CONVERSATION_FORKS,
             Self::WorkbenchPermissions => ProtocolFeatureName::WORKBENCH_PERMISSIONS,
+            Self::WorkbenchInitArtifacts => ProtocolFeatureName::WORKBENCH_INIT_ARTIFACTS,
             Self::WorkbenchInit => ProtocolFeatureName::WORKBENCH_INIT,
             Self::WorkbenchMemory => ProtocolFeatureName::WORKBENCH_MEMORY,
             Self::GracefulShutdown => ProtocolFeatureName::GRACEFUL_SHUTDOWN,

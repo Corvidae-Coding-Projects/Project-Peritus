@@ -198,7 +198,13 @@ pub fn recover_snapshot_after_crash(
     let (expected_tree, expected_reference) = read_intent(&root)?;
     let manifest_bytes = fs::read(root.join(MANIFEST_FILE)).map_err(filesystem_error)?;
     let manifest = CandidateSnapshotManifest::decode(&manifest_bytes).map_err(git_error)?;
-    let snapshot = repository.reopen_snapshot(&manifest).map_err(git_error)?;
+    let snapshot = repository
+        .reopen_snapshot_id(manifest.workspace_id(), manifest.snapshot_id())
+        .map_err(git_error)?
+        .ok_or_else(|| snapshot_error("retained snapshot companion manifest is missing"))?;
+    if snapshot.manifest().bytes() != manifest_bytes {
+        return Err(snapshot_error("retained snapshot companion differs from durable manifest"));
+    }
     let commit = snapshot.commit().to_string();
     let tree = snapshot.tree().to_string();
     let reference = snapshot.reference().as_str().to_owned();
@@ -206,7 +212,8 @@ pub fn recover_snapshot_after_crash(
     if tree != expected_tree
         || reference != expected_reference
         || reference_value(&source, &reference)?.as_deref() != Some(&commit)
-        || snapshot_refs != 1
+        // The commit and its exact recovery manifest are retained under separate refs.
+        || snapshot_refs != 2
     {
         return Err(snapshot_error("reopened snapshot identity differs from durable state"));
     }

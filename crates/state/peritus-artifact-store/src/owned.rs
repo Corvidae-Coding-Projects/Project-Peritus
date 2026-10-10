@@ -146,7 +146,7 @@ pub struct ArtifactWriteHandle {
     hasher: Sha256,
     written: u64,
     failed: bool,
-    quota_limit: u64,
+    quota_limit: Option<u64>,
 }
 
 impl ArtifactWriteHandle {
@@ -154,7 +154,7 @@ impl ArtifactWriteHandle {
         paths: &StorePaths,
         request: WriteRequest,
         configured_limit: u64,
-        quota_limit: u64,
+        quota_limit: Option<u64>,
     ) -> Result<Self, ArtifactStoreError> {
         if !crate::verified::write_bounds_valid(
             request.expected_size(),

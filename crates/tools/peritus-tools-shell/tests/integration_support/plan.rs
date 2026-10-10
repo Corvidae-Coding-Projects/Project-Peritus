@@ -72,11 +72,11 @@ fn inputs(
     let deadlines = DeadlinePolicy::new(Some(5_000), GracefulAction::Terminate, 100, 1_000)
         .expect("deadline policy");
     let resources = ProcessResourcePolicy::new(
-        5_000,
-        5_000,
+        Some(5_000),
+        Some(5_000),
         64 * 1_024 * 1_024,
         1_024 * 1_024,
-        4_096,
+        Some(4_096),
         1,
         32,
         1,

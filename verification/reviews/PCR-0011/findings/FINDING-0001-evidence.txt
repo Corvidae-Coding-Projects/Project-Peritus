@@ -1,0 +1,8 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/independent-review.md
+bytes=7831
+sha256=8b4b53fa35a8f1a44b9ca0d3442907c5bbfddc2325f227244badfebf50df6961
+/tmp/peritus-final23/ui-bound-races-final.log
+bytes=793
+sha256=9172bb9f87c20d4a6a5ca0b9201487cf078a47fc3360612239274581280d7c3d
+Independent application review finding 1 records five repaired race regressions passing.

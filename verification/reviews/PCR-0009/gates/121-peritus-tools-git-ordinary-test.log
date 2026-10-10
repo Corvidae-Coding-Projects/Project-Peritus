@@ -1,0 +1,41 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tools-git --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "121-peritus-tools-git-ordinary-test.log", "owning_crate": "peritus-tools-git", "started_at": "2026-10-09T04:07:56.884344Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.26s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_tools_git-6a7227c274554b0d)
+
+running 2 tests
+test dispatch_support::tests::quarantined_git_result_retains_its_human_recovery_route_and_cause ... ok
+test verified::tests::diff_dimensions_are_independent ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/diff_pages.rs (/home/doll/Project-Peritus/target/debug/deps/diff_pages-9855ad1826d8c53d)
+
+running 3 tests
+test diff_paths_and_patch_reconstruct_through_small_encoded_pages_with_native_name ... ok
+test diff_paths_and_patch_reconstruct_through_small_encoded_pages_without_native_name ... ok
+test runtime_patch_larger_than_eight_mib_is_available_without_whole_diff_rejection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 108.61s
+
+     Running tests/git_dispatch.rs (/home/doll/Project-Peritus/target/debug/deps/git_dispatch-bc9ecbb1db373ffc)
+
+running 3 tests
+test dropping_router_joins_worker_before_returning_workspace_ownership ... ok
+test router_cancellation_releases_worker_waiting_for_workspace_ownership ... ok
+test router_dispatches_candidate_snapshot_and_history_preserving_rollback ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.29s
+
+     Running tests/git_tools.rs (/home/doll/Project-Peritus/target/debug/deps/git_tools-07ea8ec2263ba59e)
+
+running 4 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test history_subject_bytes_continue_without_skipping_the_commit ... ok
+test last_subject_fragment_has_no_false_continuation ... ok
+test structured_status_diff_history_and_snapshot_use_real_git_observations ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.60s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tools-git --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 113.937, "exit_code": 0, "finished_at": "2026-10-09T04:09:50.823236Z", "invocation": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "121-peritus-tools-git-ordinary-test.log", "owning_crate": "peritus-tools-git", "result": "passed", "started_at": "2026-10-09T04:07:56.884344Z"}

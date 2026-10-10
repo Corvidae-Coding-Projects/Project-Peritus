@@ -1,0 +1,2 @@
+FINDING-0023: Persisted preview evidence lacked complete corruption and retry fences
+Persistence tests mutate launch, text, process, stream, range, matched digest, observed-prefix/artifact digest, goal fields, and the binding digest; each altered record is rejected. Legacy records with absent optional evidence still round-trip without granting qualification. Repeating the same admitted command after restart returns the same receipt without requiring output access.

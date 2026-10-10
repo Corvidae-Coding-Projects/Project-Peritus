@@ -1,0 +1,114 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-eval --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "021-peritus-eval-ordinary-test.log", "owning_crate": "peritus-eval", "started_at": "2026-10-09T21:20:41.558644Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.13s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_eval-443eb70537e58e79)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/accounting_properties.rs (/home/doll/Project-Peritus/target/debug/deps/accounting_properties-4452552e22dfcacf)
+
+running 2 tests
+test exact_duplicates_are_idempotent_and_conflicting_terminals_quarantine ... ok
+test ledger_conserves_every_expected_rollout_and_retains_attempts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation.rs (/home/doll/Project-Peritus/target/debug/deps/cancellation-e452fab75986b908)
+
+running 1 test
+test cancellation_waits_for_each_external_rollout_before_terminal_completion ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/dataset_profile.rs (/home/doll/Project-Peritus/target/debug/deps/dataset_profile-3372e8194c0616e6)
+
+running 4 tests
+test canonical_dataset_is_reproducible_and_keeps_evaluator_roots_sealed ... ok
+test cross_corpus_candidate_evaluator_collision_is_rejected ... ok
+test extended_provider_snapshot_binds_supported_and_unknown_reasoning_replay ... ok
+test frozen_profile_and_plan_inputs_are_stable ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_effects.rs (/home/doll/Project-Peritus/target/debug/deps/durability_effects-402ed615b263bb4c)
+
+running 1 test
+test cancellation_settlement_atomically_acknowledges_the_existing_effect_and_restarts ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/target/debug/deps/durability_restart-c885b5419b31db1d)
+
+running 1 test
+test genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/execution_isolation.rs (/home/doll/Project-Peritus/target/debug/deps/execution_isolation-bf002cdd9ff9f891)
+
+running 3 tests
+test candidate_failure_is_infrastructure_and_skips_evaluator ... ok
+test evaluator_outage_never_masquerades_as_task_failure ... ok
+test evaluator_runs_only_after_finalized_candidate_output ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/planning_scheduling.rs (/home/doll/Project-Peritus/target/debug/deps/planning_scheduling-fca11f469cc1ab07)
+
+running 2 tests
+test complete_plan_is_deterministic_and_pair_seeds_match ... ok
+test planned_rollout_builds_exact_d3_coordination_work ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/target/debug/deps/production_conformance-2e7269fc48de7ed1)
+
+running 1 test
+test production_evaluation_satisfies_the_complete_a2_catalog ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/publication_integration.rs (/home/doll/Project-Peritus/target/debug/deps/publication_integration-83d94d6217835e7e)
+
+running 1 test
+test complete_campaign_publishes_evidence_and_replays_without_duplicate_effects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/replay_wire.rs (/home/doll/Project-Peritus/target/debug/deps/replay_wire-1a5dcb46b0de4e58)
+
+running 2 tests
+test families_85_86_and_87_round_trip_through_semantic_checks ... ok
+test frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/report_analysis.rs (/home/doll/Project-Peritus/target/debug/deps/report_analysis-6c43af0f8ab28302)
+
+running 2 tests
+test complete_ledger_produces_deterministic_non_authoritative_report ... ok
+test incomplete_ledger_cannot_begin_analysis ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/statistics_vectors.rs (/home/doll/Project-Peritus/target/debug/deps/statistics_vectors-2ecb43bbffe021e1)
+
+running 3 tests
+test paired_bootstrap_and_sign_diagnostic_are_reproducible ... ok
+test pass_at_k_matches_exact_combinatorial_edges ... ok
+test wilson_distribution_and_stability_retain_raw_inputs ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/verified_refinement.rs (/home/doll/Project-Peritus/target/debug/deps/verified_refinement-eb4c8bb9a5df0875)
+
+running 2 tests
+test accounting_and_statistical_preconditions_match_runtime_boundaries ... ok
+test frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-eval --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.314, "exit_code": 0, "finished_at": "2026-10-09T21:20:41.873248Z", "invocation": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "021-peritus-eval-ordinary-test.log", "owning_crate": "peritus-eval", "result": "passed", "started_at": "2026-10-09T21:20:41.558644Z"}

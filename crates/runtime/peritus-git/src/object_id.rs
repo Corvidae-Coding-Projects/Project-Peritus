@@ -139,6 +139,18 @@ impl fmt::Display for ObjectId {
 pub struct CommitId(ObjectId);
 
 impl CommitId {
+    /// Parses an exact commit identifier for the selected object format.
+    ///
+    /// # Errors
+    /// Returns a typed error for malformed or wrong-format hexadecimal input.
+    pub fn parse(
+        format: ObjectFormat,
+        value: &str,
+        operation: Operation,
+    ) -> Result<Self, GitError> {
+        ObjectId::parse(format, value, operation).map(Self::checked)
+    }
+
     pub(crate) const fn checked(value: ObjectId) -> Self {
         Self(value)
     }

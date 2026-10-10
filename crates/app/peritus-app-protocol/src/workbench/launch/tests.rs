@@ -20,8 +20,8 @@ fn evidence_classes_remain_independent() {
             Sha256Digest::new([2; 32]),
         ),
         Some(WorkbenchBuildIdentity::new(text("sample.pyc"), Sha256Digest::new([3; 32]))),
-        2_000,
-        10_000,
+        Some(2_000),
+        Some(10_000),
         true,
     )
     .unwrap();
@@ -61,13 +61,13 @@ fn launch_profile_accepts_a_wall_horizon_above_ten_minutes() {
             Sha256Digest::new([2; 32]),
         ),
         None,
-        2_000,
-        1_000_000,
+        Some(2_000),
+        Some(1_000_000),
         false,
     )
     .expect("positive caller-selected wall horizon");
 
-    assert_eq!(profile.wall_millis(), 1_000_000);
+    assert_eq!(profile.wall_millis(), Some(1_000_000));
 }
 
 #[test]
@@ -86,8 +86,8 @@ fn launch_profile_accepts_collections_beyond_the_old_limits() {
             Sha256Digest::new([2; 32]),
         ),
         None,
-        2_000,
-        10_000,
+        Some(2_000),
+        Some(10_000),
         false,
     )
     .expect("protocol-representable launch profile");
@@ -222,8 +222,8 @@ fn plain_python_profile(run: RunId) -> WorkbenchLaunchProfile {
             Sha256Digest::new([2; 32]),
         ),
         None,
-        2_000,
-        10_000,
+        Some(2_000),
+        Some(10_000),
         true,
     )
     .expect("plain Python fixture")

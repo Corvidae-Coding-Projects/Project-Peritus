@@ -4,11 +4,7 @@ use std::collections::HashSet;
 
 use peritus_types::{CommandId, EventId, Sha256Digest};
 
-use super::{
-    AppendRequest, HeadExpectation, MAX_ARTIFACT_DEPENDENCIES, MAX_BATCH_AGGREGATES,
-    MAX_BATCH_EVENTS, MAX_OUTBOX_ACKNOWLEDGEMENTS, MAX_OUTBOX_ENTRIES, MAX_STATE_INSTALLS,
-    PlannedEvent,
-};
+use super::{AppendRequest, HeadExpectation, PlannedEvent};
 use crate::{
     ArtifactDependency, EventDraft, JournalError, JournalErrorKind, OutboxAcknowledgement,
     OutboxDraft, StateInstall, hash_chain::event_hash,
@@ -22,18 +18,11 @@ pub(super) const fn validate_bounds(request: &AppendRequest) -> Result<(), Journ
             "an append must contain at least one event",
         ));
     }
-    if request.events.len() > MAX_BATCH_EVENTS
-        || request.heads.is_empty()
-        || request.heads.len() > MAX_BATCH_AGGREGATES
-        || request.state_installs.len() > MAX_STATE_INSTALLS
-        || request.outbox.len() > MAX_OUTBOX_ENTRIES
-        || request.outbox_acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS
-        || request.artifact_dependencies.len() > MAX_ARTIFACT_DEPENDENCIES
-    {
+    if request.heads.is_empty() {
         return Err(JournalError::new(
             JournalErrorKind::InvalidInput,
             "plan append",
-            "append collection bound exceeded or no aggregate precondition supplied",
+            "no aggregate precondition supplied",
         ));
     }
     Ok(())

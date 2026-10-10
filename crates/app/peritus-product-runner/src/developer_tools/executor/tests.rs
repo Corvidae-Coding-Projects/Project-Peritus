@@ -16,6 +16,128 @@ mod removal;
 static NEXT_CALL_ID: AtomicU64 = AtomicU64::new(1);
 
 #[test]
+fn reviewer_can_retrieve_every_byte_of_the_original_command_log_in_utf8_pages() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let expected = format!("{}🌱{}", "first-record\n".repeat(3000), "last-record\n".repeat(3000));
+    let tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reviewer_evidence(expected.clone());
+    let mut offset = 0_u64;
+    let mut reconstructed = String::new();
+    let mut digest: Option<String> = None;
+    loop {
+        let page = tools
+            .read_reviewer_evidence(&serde_json::json!({"offset":offset,"max_bytes":32768}))
+            .expect("evidence page");
+        reconstructed.push_str(page["bytes"].as_str().expect("page text"));
+        let page_digest = page["sha256"].as_str().expect("digest").to_owned();
+        if let Some(expected) = &digest {
+            assert_eq!(&page_digest, expected);
+        } else {
+            digest = Some(page_digest);
+        }
+        assert_eq!(
+            page["total_bytes"].as_u64(),
+            Some(u64::try_from(expected.len()).expect("expected length"))
+        );
+        match page["next_offset"].as_u64() {
+            Some(next) => offset = next,
+            None => break,
+        }
+    }
+    assert_eq!(reconstructed, expected);
+    let mut expected_digest = String::with_capacity(64);
+    for byte in Sha256::digest(expected.as_bytes()) {
+        write!(expected_digest, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    assert_eq!(digest.as_deref(), Some(expected_digest.as_str()));
+}
+
+#[test]
+fn reviewer_can_retrieve_every_named_historical_source_in_default_pages() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let sections = ["transcript", "diff", "gates", "developer_commands", "prior", "correction"];
+    let expected: Vec<String> = sections
+        .iter()
+        .map(|section| {
+            format!(
+                "{section}-start🌱\"quoted\"\ncontrol=\u{1}{}-{section}-end",
+                section.repeat(20_000)
+            )
+        })
+        .collect();
+    let tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reviewer_evidence_sources(ReviewerEvidenceSources::new(
+            expected[0].clone(),
+            expected[1].clone(),
+            expected[2].clone(),
+            expected[3].clone(),
+            expected[4].clone(),
+            expected[5].clone(),
+        ));
+
+    for (section, expected) in sections.iter().zip(&expected) {
+        let mut offset = 0_u64;
+        let mut reconstructed = String::new();
+        let mut digest: Option<String> = None;
+        loop {
+            let page = tools
+                .read_reviewer_evidence(&serde_json::json!({"section":section,"offset":offset}))
+                .expect("evidence page");
+            assert!(
+                super::inspection::encoded_len(&page).expect("encoded page size")
+                    <= super::super::DEFAULT_INSPECTION_PAGE_BYTES
+            );
+            assert_eq!(page["section"], *section);
+            reconstructed.push_str(page["bytes"].as_str().expect("page text"));
+            let page_digest = page["sha256"].as_str().expect("digest").to_owned();
+            if let Some(expected) = &digest {
+                assert_eq!(&page_digest, expected);
+            } else {
+                digest = Some(page_digest);
+            }
+            assert_eq!(
+                page["total_bytes"].as_u64(),
+                Some(u64::try_from(expected.len()).expect("expected length"))
+            );
+            match page["next_offset"].as_u64() {
+                Some(next) => offset = next,
+                None => break,
+            }
+        }
+        assert_eq!(&reconstructed, expected);
+        let mut expected_digest = String::with_capacity(64);
+        for byte in Sha256::digest(expected.as_bytes()) {
+            write!(expected_digest, "{byte:02x}").expect("writing to String cannot fail");
+        }
+        assert_eq!(digest.as_deref(), Some(expected_digest.as_str()));
+    }
+}
+
+#[test]
+fn reviewer_evidence_page_rejects_a_budget_that_cannot_advance_utf8() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reviewer_evidence("🌱tail".to_owned());
+
+    let error = tools
+        .read_reviewer_evidence(&serde_json::json!({"offset":0,"max_bytes":1}))
+        .expect_err("page must not return a stuck continuation");
+    assert!(error.to_string().contains("request at least"));
+}
+
+#[test]
+fn reviewer_evidence_page_rejects_a_nonstring_section() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reviewer_evidence("exact command log".to_owned());
+
+    let error = tools
+        .read_reviewer_evidence(&serde_json::json!({"section":1,"offset":0,"max_bytes":16}))
+        .expect_err("invalid section type must not select the default source");
+    assert!(error.to_string().contains("section must be a named string"));
+}
+
+#[test]
 fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     let workspace = tempfile::tempdir().expect("workspace");
     let mut tools = writable_tools(workspace.path());

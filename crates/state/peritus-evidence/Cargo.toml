@@ -21,13 +21,14 @@ peritus-quality-policy = { version = "=0.0.5", path = "../../foundation/peritus-
 peritus-spec = { version = "=0.0.5", path = "../../foundation/peritus-spec" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 rusqlite.workspace = true
+fs4.workspace = true
+tempfile.workspace = true
 sha2.workspace = true
 vstd.workspace = true
 
 [dev-dependencies]
 peritus-kernel = { version = "=0.0.5", path = "../../foundation/peritus-kernel" }
 peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -1,0 +1,2 @@
+FINDING-0009: The streaming diff parser retained unbounded state and deferred validation
+Source inspection followed the parser's retained vectors, finalization paths, and anchor hashing. External differential fixture `/tmp/peritus-batch3/formal-review/stream-page-differential` compared the streaming pages against complete parsing across 200 deterministic LF/CRLF, preamble, metadata, multifile, multihunk, long-line, and no-final-newline cases; it passed 2,165 pages after repair.

@@ -109,3 +109,59 @@ fn init_refreshes_the_selected_conversation_before_discovery() {
     assert_eq!(request.revision(), 4);
     assert_eq!(model.chat.workbench.snapshot.as_ref().expect("fresh snapshot").revision(), 4);
 }
+
+#[test]
+fn artifact_init_paginates_review_and_submits_only_its_complete_manifest_reference() {
+    use peritus_app_protocol::{InitArtifactPage, InitArtifactProposal, InitContentReference};
+    let mut model = init_model();
+    model.features.push(
+        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchInitArtifacts)
+            .expect("feature"),
+    );
+    let command = open_conversation(&mut model);
+    let discover = discover_request(&mut model, command.query(), 1);
+    let AppRequestPayload::DiscoverInitArtifacts(discovery) = discover.payload() else {
+        panic!("artifact discovery")
+    };
+    let reference = InitArtifactProposal::new(
+        discovery.request(),
+        InitContentReference::new(peritus_types::Sha256Digest::new([7; 32]), 100),
+        InitContentReference::new(peritus_types::Sha256Digest::new([8; 32]), 70_000),
+    );
+    let first = request(&respond(
+        &mut model,
+        &discover,
+        AppResponsePayload::InitArtifactProposal(reference),
+    ));
+    let AppRequestPayload::QueryInitArtifactPage(page_request) = first.payload() else {
+        panic!("page request")
+    };
+    assert_eq!(page_request.offset(), 0);
+    respond(
+        &mut model,
+        &first,
+        AppResponsePayload::InitArtifactPage(
+            InitArtifactPage::new(*page_request, vec![b'x'; page_request.maximum() as usize])
+                .expect("page"),
+        ),
+    );
+    key(&mut model, KeyCode::Esc);
+    let second = request(&model.slash_command("/init next"));
+    let AppRequestPayload::QueryInitArtifactPage(next_request) = second.payload() else {
+        panic!("next page")
+    };
+    assert_eq!(next_request.offset(), 32 * 1024);
+    respond(
+        &mut model,
+        &second,
+        AppResponsePayload::InitArtifactPage(
+            InitArtifactPage::new(*next_request, vec![b'y'; next_request.maximum() as usize])
+                .expect("page"),
+        ),
+    );
+    key(&mut model, KeyCode::Esc);
+    let apply = request(&model.slash_command("/init apply"));
+    let AppRequestPayload::WorkbenchCommand(apply) = apply.payload() else { panic!("apply") };
+    assert_eq!(apply.intent(), &WorkbenchIntent::ApplyInitArtifact(reference));
+    assert_eq!(apply.expected_revision(), 1);
+}

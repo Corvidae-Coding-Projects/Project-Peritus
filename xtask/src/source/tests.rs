@@ -228,8 +228,8 @@ fn source_layout_preserves_unowned_crates_diagnostic() {
 #[test]
 fn metadata_declared_non_rust_lib_and_bin_roots_enforce_layout() {
     let fixture = TestDirectory::new();
-    write(&fixture, "xtask/src/lib.txt", &padded_source(428, "pub struct Hidden;\n"));
-    write(&fixture, "xtask/src/bin.txt", &padded_source(428, "fn main() { let _ = (); }\n"));
+    write(&fixture, "xtask/src/lib.txt", &padded_source(501, "pub struct Hidden;\n"));
+    write(&fixture, "xtask/src/bin.txt", &padded_source(501, "fn main() { let _ = (); }\n"));
     let cargo = cargo(
         fixture.path(),
         vec![
@@ -243,11 +243,11 @@ fn metadata_declared_non_rust_lib_and_bin_roots_enforce_layout() {
     for path in ["xtask/src/lib.txt", "xtask/src/bin.txt"] {
         assert!(error.diagnostics().iter().any(|diagnostic| {
             diagnostic.path() == Some(Path::new(path))
-                && diagnostic.message().contains("source has 428 lines")
+                && diagnostic.message().contains("source has 501 lines")
         }));
         assert!(error.diagnostics().iter().any(|diagnostic| {
             diagnostic.path() == Some(Path::new(path))
-                && diagnostic.message().contains("crate root has 428 lines")
+                && diagnostic.message().contains("crate root has 501 lines")
         }));
     }
     assert!(error.diagnostics().iter().any(|diagnostic| {
@@ -268,7 +268,7 @@ fn non_rust_includes_enforce_budget_module_name_and_origin_ownership() {
         "xtask/src/lib.txt",
         "include!(\"helpers\");\ninclude!(\"../../detached/foreign.inc\");\n",
     );
-    write(&fixture, "xtask/src/helpers", &"// included\n".repeat(401));
+    write(&fixture, "xtask/src/helpers", &"// included\n".repeat(501));
     write(&fixture, "detached/foreign.inc", "fn foreign() { let _ = (); }\n");
     let cargo = cargo(fixture.path(), vec![target(fixture.path(), "xtask/src/lib.txt", "lib")]);
 
@@ -276,7 +276,7 @@ fn non_rust_includes_enforce_budget_module_name_and_origin_ownership() {
         .expect_err("referenced non-Rust inputs must be owned and layout-checked");
     assert!(error.diagnostics().iter().any(|diagnostic| {
         diagnostic.path() == Some(Path::new("xtask/src/helpers"))
-            && diagnostic.message().contains("source has 401 lines")
+            && diagnostic.message().contains("source has 501 lines")
     }));
     assert!(error.diagnostics().iter().any(|diagnostic| {
         diagnostic.path() == Some(Path::new("xtask/src/helpers"))

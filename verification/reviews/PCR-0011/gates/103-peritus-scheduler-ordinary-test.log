@@ -1,0 +1,216 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-scheduler --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-scheduler", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "103-peritus-scheduler-ordinary-test.log", "owning_crate": "peritus-scheduler", "started_at": "2026-10-09T21:23:39.954129Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.12s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_scheduler-afad49c7189fc286)
+
+running 12 tests
+test identity::tests::dispatch_id_precedes_matches_derived_order_at_every_byte ... ok
+test identity::tests::work_id_precedes_matches_derived_order_at_every_byte ... ok
+test identity::tests::worker_id_precedes_matches_derived_order_at_every_byte ... ok
+test reducer::apply::cancellation::tests::disconnected_parent_cycle_is_not_selected ... ok
+test reducer::apply::cancellation::tests::missing_parent_is_safe_whether_or_not_it_is_the_requested_root ... ok
+test reducer::apply::cancellation::tests::reached_parent_cycle_is_finite_and_selects_the_whole_component ... ok
+test reducer::apply::cancellation::tests::shuffled_input_preserves_the_exact_selected_subsequence ... ok
+test reducer::apply::cancellation::tests::terminal_ancestor_carries_reachability_but_is_not_selected ... ok
+test resource::subtraction::tests::zero_quantity_preserves_absent_dimension_and_underflow_precedence ... ok
+test state::queue::tests::legacy_decoder_counts_active_ownership_even_when_reservations_are_missing ... ok
+test state::queue::tests::strict_decoder_counts_each_waiting_and_recoverable_active_category_under_every_policy ... ok
+test wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/binding_digest.rs (/home/doll/Project-Peritus/target/debug/deps/binding_digest-f2a0548a7ae2264e)
+
+running 1 test
+test canonical_binding_digest_is_stable_and_commits_every_binding_dimension ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation_tree.rs (/home/doll/Project-Peritus/target/debug/deps/cancellation_tree-eca7d649fc8185a8)
+
+running 3 tests
+test active_descendants_keep_ownership_until_each_cancellation_is_acknowledged ... ok
+test reverse_order_tree_crosses_terminal_ancestor_and_preserves_other_branches ... ok
+test single_cancel_is_root_only_and_rejections_leave_state_unchanged ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/canonical_lookup.rs (/home/doll/Project-Peritus/target/debug/deps/canonical_lookup-15999c2aef6c1237)
+
+running 1 test
+test admission_and_dispatch_lookups_cover_every_identity_byte_and_search_boundary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/command_fences.rs (/home/doll/Project-Peritus/target/debug/deps/command_fences-d3347ea44f58b6ff)
+
+running 5 tests
+test current_unused_non_genesis_fences_are_accepted ... ok
+test every_identity_and_digest_byte_participates_in_fence_equality ... ok
+test every_revision_component_is_fenced_independently ... ok
+test every_stale_fence_dimension_and_start_payload_is_rejected ... ok
+test terminal_state_rejection_has_priority_over_every_stale_fence ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_transitions.rs (/home/doll/Project-Peritus/target/debug/deps/domain_transitions-ebfcd3c2cb1c6015)
+
+running 5 tests
+test cancellation_tree_preserves_active_ownership_until_acknowledgement ... ok
+test dependency_failure_propagates_and_never_manufactures_readiness ... ok
+test pause_drain_and_terminal_truth_are_closed_and_explicit ... ok
+test retryable_failure_is_explicit_and_attempt_bound_exhausts ... ok
+test worker_loss_classifies_retry_ambiguity_failure_and_cancellation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/target/debug/deps/durability_restart-39e43894c0151681)
+
+running 2 tests
+test commit_restart_resolution_and_conflicting_command_are_exact ... ok
+test missing_checkpoint_fails_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/legacy_recovery.rs (/home/doll/Project-Peritus/target/debug/deps/legacy_recovery-c4f9711c9e3861fd)
+
+running 2 tests
+test historical_admission_and_recovery_replay_with_exact_bytes_and_remain_writable ... ok
+test old_benign_history_requires_legacy_admission_while_new_aggregates_reserve_recovery ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/queue_recovery.rs (/home/doll/Project-Peritus/target/debug/deps/queue_recovery-f083c03422cc2efe)
+
+running 5 tests
+test final_attempt_and_cancelling_work_release_recovery_pressure ... ok
+test full_queue_rejection_precedes_duplicate_identity ... ok
+test repeated_explicit_recovery_preserves_the_queue_until_the_exact_final_attempt ... ok
+test retryable_failure_cannot_overfill_the_queue_after_admission ... ok
+test worker_loss_cannot_overfill_the_queue_after_admission ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/refresh_composition.rs (/home/doll/Project-Peritus/target/debug/deps/refresh_composition-4084013089c9b99d)
+
+running 2 tests
+test dependency_refresh_reaches_reverse_order_cascade_and_selects_first_failed_dependency ... ok
+test worker_refresh_counts_cancelling_ownership_and_preserves_inactive_phases ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay_codec.rs (/home/doll/Project-Peritus/target/debug/deps/replay_codec-fd0d0f96fd960ff2)
+
+running 2 tests
+test genesis_frames_roundtrip_and_replay_exactly ... ok
+test reordered_or_tampered_stream_fails_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay_reconstruction.rs (/home/doll/Project-Peritus/target/debug/deps/replay_reconstruction-ede66df07e6873ef)
+
+running 2 tests
+test replay_rejects_tampered_derived_cancellation_affected_set ... ok
+test replay_rejects_tampered_successor_digest_not_used_by_reconstruction ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reservation_preservation.rs (/home/doll/Project-Peritus/target/debug/deps/reservation_preservation-ebede6f7dbcfe304)
+
+running 4 tests
+test cancellation_acknowledgement_and_abandonment_reject_without_partial_mutation ... ok
+test dispatch_rejections_preserve_error_precedence_and_state ... ok
+test every_release_path_frees_only_its_exact_capacity_and_replays ... ok
+test retry_releases_capacity_and_reserves_a_fresh_dispatch_identity ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/resource_invariants.rs (/home/doll/Project-Peritus/target/debug/deps/resource_invariants-94d737bcda71b918)
+
+running 3 tests
+test identities_limits_and_vectors_reject_invalid_values ... ok
+test indexed_quantity_preserves_present_and_absent_dimensions ... ok
+test resource_addition_and_subtraction_are_exact_and_checked ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/selection_fairness.rs (/home/doll/Project-Peritus/target/debug/deps/selection_fairness-d800ed75b7d855ef)
+
+running 1 test
+test implementation_matches_independent_reference_and_forces_aged_work ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/session.rs (/home/doll/Project-Peritus/target/debug/deps/session-fcea381fb7cfb0e0)
+
+running 7 tests
+test commit_without_matching_replay_and_invalid_pure_commands_do_not_advance_state ... ok
+test corruption_after_session_planning_is_rejected_at_the_actual_append_boundary ... ok
+test live_external_corruption_is_not_hidden_by_a_warm_session ... ok
+test ordinary_same_owner_and_external_commits_invalidate_the_old_state ... ok
+test racing_writer_rejects_planned_transition_and_then_replays_its_actual_successor ... ok
+test switching_runs_and_failed_storage_cannot_publish_a_planned_successor ... ok
+test warm_successors_and_restarted_replay_preserve_every_canonical_byte ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/terminal_summary.rs (/home/doll/Project-Peritus/target/debug/deps/terminal_summary-30531c96b2f8fab5)
+
+running 4 tests
+test empty_scheduler_completes_with_an_empty_non_success_list ... ok
+test every_terminal_pair_uses_declared_priority_and_exact_non_success_ids ... ok
+test missing_terminal_evidence_cannot_finalize_or_change_input ... ok
+test mixed_terminal_preserves_the_v1_digest_of_canonical_work_ids ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/versioned_durability.rs (/home/doll/Project-Peritus/target/debug/deps/versioned_durability-082df98365eeea27)
+
+running 6 tests
+test authentic_legacy_histories_import_reopen_and_rebuild_exactly ... ok
+test checkpoint_schema_guard_rejects_both_mixed_version_directions ... ok
+test durable_load_rejects_a_mixed_event_schema_chain_before_rebuild ... ok
+test durable_load_rejects_checkpoint_event_schema_mismatch_before_rebuild ... ok
+test fresh_legacy_genesis_is_purely_replayable_but_not_durably_creatable ... ok
+test legacy_exact_retry_resolution_and_continuation_remain_version_sticky ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/versioned_wire.rs (/home/doll/Project-Peritus/target/debug/deps/versioned_wire-6cd90522ca66f607)
+
+running 3 tests
+test current_frames_are_schema_v2_and_roundtrip_through_dual_helpers ... ok
+test dual_helpers_reject_invalid_headers_lengths_and_trailing_bytes ... ok
+test historical_v1_frames_decode_and_reencode_byte_exactly ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/work_admission.rs (/home/doll/Project-Peritus/target/debug/deps/work_admission-cb64477f54f71942)
+
+running 3 tests
+test admission_references_and_resources_are_checked_before_worker_eligibility ... ok
+test draining_and_duplicate_checks_keep_their_rejection_priority ... ok
+test unavailable_workers_remain_admission_witnesses_until_removed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/worker_descriptor_admission.rs (/home/doll/Project-Peritus/target/debug/deps/worker_descriptor_admission-a320a7d7fd4d6bf1)
+
+running 4 tests
+test capacity_limit_is_exact_and_class_rejection_keeps_priority ... ok
+test concurrency_accepts_its_maximum_and_rejects_zero_or_excess ... ok
+test empty_duplicate_and_descending_classes_are_rejected ... ok
+test every_execution_class_pair_agrees_with_derived_canonical_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/worker_loss_outcomes.rs (/home/doll/Project-Peritus/target/debug/deps/worker_loss_outcomes-9f02575cd783801a)
+
+running 2 tests
+test empty_worker_loss_has_exact_admission_errors_and_replays ... ok
+test mixed_loss_reports_each_owned_dispatch_once_in_order_and_preserves_other_worker ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-scheduler --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.566, "exit_code": 0, "finished_at": "2026-10-09T21:23:40.520315Z", "invocation": ["cargo", "test", "--package", "peritus-scheduler", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "103-peritus-scheduler-ordinary-test.log", "owning_crate": "peritus-scheduler", "result": "passed", "started_at": "2026-10-09T21:23:39.954129Z"}

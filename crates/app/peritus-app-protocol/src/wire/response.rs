@@ -54,8 +54,23 @@ fn write_payload(
         AppResponsePayload::WorkbenchRestore(value) => {
             super::workbench_checkpoints::write_restore_receipt(writer, value)
         }
+        AppResponsePayload::WorkbenchRestoreSummary(value) => {
+            super::workbench_checkpoint_pages::write_restore_summary(writer, value)
+        }
+        AppResponsePayload::WorkbenchCheckpointPage(value) => {
+            super::workbench_checkpoint_pages::write_checkpoint_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchRewindPage(value) => {
+            super::workbench_checkpoint_pages::write_rewind_page(writer, value)
+        }
         AppResponsePayload::WorkbenchMemory(value) => {
             super::workbench_memory::write_memory(writer, value)
+        }
+        AppResponsePayload::InitArtifactProposal(value) => {
+            super::workbench_init_artifacts::write_proposal(writer, *value)
+        }
+        AppResponsePayload::InitArtifactPage(value) => {
+            super::workbench_init_artifacts::write_page(writer, value)
         }
         AppResponsePayload::InitProposal(value) => {
             super::workbench_init::write_proposal(writer, value)
@@ -75,11 +90,23 @@ fn write_payload(
         AppResponsePayload::WorkbenchPreview(value) => {
             super::workbench_launch::write_preview(writer, value)
         }
+        AppResponsePayload::WorkbenchPreviewOutput(value) => {
+            super::workbench_launch::write_output_range(writer, value)
+        }
         AppResponsePayload::WorkbenchResult(value) => {
             super::workbench_launch::write_page(writer, value)
         }
         AppResponsePayload::WorkbenchReview(value) => {
             super::workbench_review::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewSummary(value) => {
+            super::workbench_review::write_summary(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewDiff(value) => {
+            super::workbench_review::write_diff_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewDiffBytes(value) => {
+            super::workbench_review::write_diff_bytes(writer, value)
         }
         AppResponsePayload::WorkbenchFileImportPreview(value) => {
             super::workbench_files::write_import_preview(writer, value)
@@ -95,6 +122,12 @@ fn write_payload(
         }
         AppResponsePayload::WorkbenchFiles(value) => {
             super::workbench_files::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchBriefPage(value) => {
+            super::workbench_brief_pages::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchBriefProposal(value) => {
+            super::workbench_brief_pages::write_proposal_page(writer, value)
         }
         AppResponsePayload::WorkbenchBrief(value) => {
             super::workbench_brief::write_brief(writer, value)
@@ -144,13 +177,22 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchCheckpoint(_) => 120,
         AppResponsePayload::WorkbenchRewindPreview(_) => 121,
         AppResponsePayload::WorkbenchRestore(_) => 122,
+        AppResponsePayload::WorkbenchRestoreSummary(_) => 125,
+        AppResponsePayload::WorkbenchCheckpointPage(_) => 123,
+        AppResponsePayload::WorkbenchRewindPage(_) => 124,
         AppResponsePayload::WorkbenchMemory(_) => 161,
         AppResponsePayload::InitProposal(_) => 162,
+        AppResponsePayload::InitArtifactProposal(_) => 164,
+        AppResponsePayload::InitArtifactPage(_) => 165,
         AppResponsePayload::WorkbenchPermissions(_) => 160,
         AppResponsePayload::WorkbenchCompactionPreview(_) => 29,
         AppResponsePayload::WorkbenchResult(_) => 100,
         AppResponsePayload::WorkbenchPreview(_) => 101,
+        AppResponsePayload::WorkbenchPreviewOutput(_) => 104,
         AppResponsePayload::WorkbenchReview(_) => 80,
+        AppResponsePayload::WorkbenchReviewSummary(_) => 110,
+        AppResponsePayload::WorkbenchReviewDiff(_) => 106,
+        AppResponsePayload::WorkbenchReviewDiffBytes(_) => 108,
         AppResponsePayload::ConversationLibrary(_) => 140,
         AppResponsePayload::CommandResult(_) => 1,
         AppResponsePayload::SubscriptionStarted(_) => 2,
@@ -181,6 +223,8 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchQueue(_) => 21,
         AppResponsePayload::WorkbenchContext(_) => 22,
         AppResponsePayload::WorkbenchBrief(_) => 23,
+        AppResponsePayload::WorkbenchBriefPage(_) => 45,
+        AppResponsePayload::WorkbenchBriefProposal(_) => 46,
         AppResponsePayload::WorkbenchImagePreview(_) => 24,
         AppResponsePayload::WorkbenchImages(_) => 25,
         AppResponsePayload::WorkbenchFilePreview(_) => 26,
@@ -209,23 +253,20 @@ pub(super) fn read_response(
     let correlation_id = read_id(reader, CorrelationId::new)?;
     let tag_offset = reader.offset();
     let payload = match reader.read_u16()? {
-        101 => AppResponsePayload::WorkbenchPreview(super::workbench_launch::read_preview(reader)?),
-        100 => AppResponsePayload::WorkbenchResult(super::workbench_launch::read_page(reader)?),
-        80 => AppResponsePayload::WorkbenchReview(super::workbench_review::read_page(reader)?),
-        120 => AppResponsePayload::WorkbenchCheckpoint(
-            super::workbench_checkpoints::read_checkpoint_receipt(reader)?,
-        ),
-        121 => AppResponsePayload::WorkbenchRewindPreview(
-            super::workbench_checkpoints::read_preview(reader)?,
-        ),
-        122 => AppResponsePayload::WorkbenchRestore(
-            super::workbench_checkpoints::read_restore_receipt(reader)?,
-        ),
+        tag @ (80 | 100 | 101 | 104 | 106 | 108 | 110 | 120..=125) => {
+            read_workbench_response(reader, tag, tag_offset)?
+        }
         140 => {
             AppResponsePayload::ConversationLibrary(super::workbench_library::read_page(reader)?)
         }
         161 => AppResponsePayload::WorkbenchMemory(super::workbench_memory::read_memory(reader)?),
         180 => AppResponsePayload::Improvements(super::improvements::read_inbox(reader)?),
+        164 => AppResponsePayload::InitArtifactProposal(
+            super::workbench_init_artifacts::read_proposal(reader)?,
+        ),
+        165 => AppResponsePayload::InitArtifactPage(super::workbench_init_artifacts::read_page(
+            reader,
+        )?),
         162 => AppResponsePayload::InitProposal(super::workbench_init::read_proposal(reader)?),
         160 => AppResponsePayload::WorkbenchPermissions(
             super::workbench_permissions::read_permissions(reader)?,
@@ -258,6 +299,12 @@ pub(super) fn read_response(
         20 => AppResponsePayload::WorkbenchReceipt(super::workbench::read_receipt(reader)?),
         21 => AppResponsePayload::WorkbenchQueue(super::workbench_inputs::read_page(reader)?),
         22 => AppResponsePayload::WorkbenchContext(super::workbench_context::read_page(reader)?),
+        45 => {
+            AppResponsePayload::WorkbenchBriefPage(super::workbench_brief_pages::read_page(reader)?)
+        }
+        46 => AppResponsePayload::WorkbenchBriefProposal(
+            super::workbench_brief_pages::read_proposal_page(reader)?,
+        ),
         23 => AppResponsePayload::WorkbenchBrief(super::workbench_brief::read_brief(reader)?),
         28 => AppResponsePayload::WorkbenchFileImportPreview(
             super::workbench_files::read_import_preview(reader)?,
@@ -329,4 +376,47 @@ fn validate_response_binding(
         _ => true,
     };
     if matches { Ok(()) } else { Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset)) }
+}
+
+fn read_workbench_response(
+    reader: &mut CanonicalReader<'_>,
+    tag: u16,
+    tag_offset: usize,
+) -> Result<AppResponsePayload, CodecError> {
+    Ok(match tag {
+        101 => AppResponsePayload::WorkbenchPreview(super::workbench_launch::read_preview(reader)?),
+        104 => AppResponsePayload::WorkbenchPreviewOutput(
+            super::workbench_launch::read_output_range(reader)?,
+        ),
+        100 => AppResponsePayload::WorkbenchResult(super::workbench_launch::read_page(reader)?),
+        80 => AppResponsePayload::WorkbenchReview(super::workbench_review::read_page(reader)?),
+        110 => AppResponsePayload::WorkbenchReviewSummary(super::workbench_review::read_summary(
+            reader,
+        )?),
+        106 => AppResponsePayload::WorkbenchReviewDiff(super::workbench_review::read_diff_page(
+            reader,
+        )?),
+        108 => AppResponsePayload::WorkbenchReviewDiffBytes(
+            super::workbench_review::read_diff_bytes(reader)?,
+        ),
+        120 => AppResponsePayload::WorkbenchCheckpoint(
+            super::workbench_checkpoints::read_checkpoint_receipt(reader)?,
+        ),
+        121 => AppResponsePayload::WorkbenchRewindPreview(
+            super::workbench_checkpoints::read_preview(reader)?,
+        ),
+        122 => AppResponsePayload::WorkbenchRestore(
+            super::workbench_checkpoints::read_restore_receipt(reader)?,
+        ),
+        125 => AppResponsePayload::WorkbenchRestoreSummary(
+            super::workbench_checkpoint_pages::read_restore_summary(reader)?,
+        ),
+        123 => AppResponsePayload::WorkbenchCheckpointPage(
+            super::workbench_checkpoint_pages::read_checkpoint_page(reader)?,
+        ),
+        124 => AppResponsePayload::WorkbenchRewindPage(
+            super::workbench_checkpoint_pages::read_rewind_page(reader)?,
+        ),
+        _ => return unknown(tag_offset),
+    })
 }

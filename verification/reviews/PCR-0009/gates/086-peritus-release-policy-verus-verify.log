@@ -1,0 +1,94 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-release-policy", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "086-peritus-release-policy-verus-verify.log", "owning_crate": "peritus-release-policy", "started_at": "2026-10-09T04:07:21.498432Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-release-policy/src/evaluator/artifacts.rs:152:1
+    |
+152 | / pub(super) fn assess_all_evidence(
+153 | |     candidate: &ReleaseCandidate,
+154 | |     evaluated_at: u64,
+155 | |     evidence: &ReleaseEvidence,
+156 | | ) -> (assessments: [EvidenceAssessment; 44])
+    | |___________________________________________^
+
+note: function body check finished in 34 seconds
+   --> crates/foundation/peritus-release-policy/src/evaluator/artifacts.rs:152:1
+    |
+152 | / pub(super) fn assess_all_evidence(
+153 | |     candidate: &ReleaseCandidate,
+154 | |     evaluated_at: u64,
+155 | |     evidence: &ReleaseEvidence,
+156 | | ) -> (assessments: [EvidenceAssessment; 44])
+    | |___________________________________________^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-release-policy/src/evaluator/artifacts/criteria.rs:132:1
+    |
+132 | / pub(in crate::evaluator) proof fn criteria_cover_all_requirements(
+133 | |     evidence: &ReleaseEvidence,
+134 | |     candidate: ReleaseCandidate,
+135 | |     evaluated_at: u64,
+136 | | )
+    | |_^
+
+note: function body check finished in 7 seconds
+   --> crates/foundation/peritus-release-policy/src/evaluator/artifacts/criteria.rs:132:1
+    |
+132 | / pub(in crate::evaluator) proof fn criteria_cover_all_requirements(
+133 | |     evidence: &ReleaseEvidence,
+134 | |     candidate: ReleaseCandidate,
+135 | |     evaluated_at: u64,
+136 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-release-policy/src/evaluator/diagnostics/emission.rs:168:1
+    |
+168 | pub(in crate::evaluator) fn push_reviews(value: ReviewAssessment, diagnostics: &mut Vec<Diagnostic>)
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: function body check finished in 2 seconds
+   --> crates/foundation/peritus-release-policy/src/evaluator/diagnostics/emission.rs:168:1
+    |
+168 | pub(in crate::evaluator) fn push_reviews(value: ReviewAssessment, diagnostics: &mut Vec<Diagnostic>)
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-release-policy/src/model.rs:79:17
+   |
+79 |       let index = choose |index: int| 0 <= index < left.len()
+   |  _________________^
+80 | |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-release-policy/src/model.rs:80:12
+   |
+80 |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   |            ^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/foundation/peritus-release-policy/src/model.rs:79:17
+   |
+79 |       let index = choose |index: int| 0 <= index < left.len()
+   |  _________________^
+80 | |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   | |________________________________________________________________________________^
+
+    Finished `dev` profile [unoptimized] target(s) in 0.25s
+
+GATE DRIVER RESULT: {"command": "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "elapsed_seconds": 0.718, "exit_code": 0, "finished_at": "2026-10-09T04:07:22.218128Z", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-release-policy", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "086-peritus-release-policy-verus-verify.log", "owning_crate": "peritus-release-policy", "result": "passed", "started_at": "2026-10-09T04:07:21.498432Z"}

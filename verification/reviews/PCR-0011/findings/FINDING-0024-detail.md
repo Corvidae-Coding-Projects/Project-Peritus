@@ -1,0 +1,3 @@
+# FINDING-0024: A successful process launch exposed streams before their spool files existed
+
+The process supervisor returned its public control handle before the owner thread created the selected stream spools, so an immediate valid read could fail with `PERITUS-PROCESS-015`. The final candidate constructs the actual pipe or PTY `SpoolSet` synchronously before returning the control, then moves the result into the sole owner thread. Genuine construction failure remains on the asynchronous failure and native-cleanup path. Immediate full, range, exact-owner, wrong-stream, cancel, and join regressions cover both modes.

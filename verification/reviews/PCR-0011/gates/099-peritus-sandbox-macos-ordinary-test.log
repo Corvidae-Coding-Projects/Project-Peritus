@@ -1,0 +1,53 @@
+{"candidate_commit": "6889f8c5dcca335b71c572865d5483c8e68c0890", "candidate_tree": "8f952188d114ce3d2446fa085a84b95cfd57b143", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-sandbox-macos --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-sandbox-macos", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "099-peritus-sandbox-macos-ordinary-test.log", "owning_crate": "peritus-sandbox-macos", "started_at": "2026-10-09T21:23:29.286997Z"}, "plan_sha256": "875c746cf01fa6e0af94d49925a2c897772251ed7c698b8b48c0714ee499fae3"}
+
+   Compiling peritus-process v0.0.5 (/home/doll/Project-Peritus-proof-final23-887317fa4/crates/runtime/peritus-process)
+   Compiling peritus-sandbox-macos v0.0.5 (/home/doll/Project-Peritus-proof-final23-887317fa4/crates/runtime/peritus-sandbox-macos)
+    Finished `test` profile [unoptimized] target(s) in 3.20s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_sandbox_macos-9f03d758fff017f6)
+
+running 17 tests
+test canonical::tests::canonical_fields_accept_wire_sized_strings_and_collections ... ok
+test canonical::tests::native_path_round_trip_preserves_non_utf8_bytes_and_utf8_encoding ... ok
+test canonical::tests::portable_path_round_trip_preserves_wire_bytes ... ok
+test conformance_tests::macos_adapter_passes_complete_fresh_subject_a2_sandbox_suite ... ok
+test environment::tests::environment_projection_has_no_host_name_count_or_value_ceiling ... ok
+test exec_status::tests::authenticated_exec_failure_is_not_a_target_exit ... ok
+test exec_status::tests::close_on_exec_eof_confirms_target_replacement ... ok
+test resource_monitor::pids::tests::libproc_success_and_capacity_bound_are_distinct_from_query_errors ... ok
+test resource_monitor::pids::tests::libproc_zero_with_error_cannot_be_a_complete_resource_sample ... ok
+test resource_monitor::tests::resource_ceiling_comparison_is_exact_and_dimension_complete ... ok
+test runner::materialized::tests::failed_activation_rolls_back_every_materialized_file ... ok
+test secret::tests::canonical_secret_handles_reject_duplicate_destinations ... ok
+test secret::tests::protected_secret_metadata_round_trips_without_payload_bytes ... ok
+test session::cleanup::tests::release_cleanup_removes_materialized_file_for_any_preterminal_phase ... ok
+test session::tests::lifecycle_is_ordered_bounded_and_release_is_idempotent ... ok
+test session::tests::prepared_abandonment_cleans_without_normal_release_observation ... ok
+test session::tests::target_reserved_range_exit_remains_exact_after_activation ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/bin/peritus-macos-sandbox-helper.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_macos_sandbox_helper-b806f67e5aa67f30)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (/home/doll/Project-Peritus/target/debug/deps/contracts-ae5e1139ab452aa3)
+
+running 5 tests
+test compiler_rejects_unrepresentable_metadata_split_and_requires_proxy_for_egress ... ok
+test manifest_round_trip_is_canonical_and_tamper_evident ... ok
+test non_macos_system_probe_is_strictly_unsupported ... ok
+test profile_is_deterministic_escapes_paths_and_protects_metadata ... ok
+test recovery_classification_never_claims_mismatched_ownership ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_probe.rs (/home/doll/Project-Peritus/target/debug/deps/native_probe-5c225b6fc51cf377)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-sandbox-macos --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 3.272, "exit_code": 0, "finished_at": "2026-10-09T21:23:32.559670Z", "invocation": ["cargo", "test", "--package", "peritus-sandbox-macos", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "099-peritus-sandbox-macos-ordinary-test.log", "owning_crate": "peritus-sandbox-macos", "result": "passed", "started_at": "2026-10-09T21:23:29.286997Z"}

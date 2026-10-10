@@ -11,8 +11,12 @@ fn descriptor_drift_never_calls_prepare_or_consumes_authority() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -30,6 +34,7 @@ fn descriptor_drift_never_calls_prepare_or_consumes_authority() {
         probe: drift_probe.clone(),
         helper: native_helper_binary(),
         fail_prepare: false,
+        fail_preflight: false,
         fail_release: false,
         invalidate_prepared_observation: false,
         limit_on_poll: false,
@@ -62,6 +67,50 @@ fn descriptor_drift_never_calls_prepare_or_consumes_authority() {
 }
 
 #[test]
+fn selected_capacity_rejection_preserves_the_exact_one_use_authority() {
+    let root = TestRoot::new();
+    let ids = Ids::new(212);
+    let (execution, sandbox, admission) =
+        native_plan(&root, &ids, options(Vec::new(), StdinPolicy::Closed)).unwrap();
+    let action = intent(&ids, &execution);
+    let mut journal = open_journal(&root);
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().unwrap(),
+    );
+    let gateway =
+        ExecutionGateway::new(ProcessStore::open(root.registry(), root.workspace()).unwrap());
+    let request = request(&ids, &execution, &action, &receipts);
+    let probe = LifecycleProbe::new();
+    let mut backend = TestBackend::admitted(&admission, probe.clone());
+    backend.fail_preflight = true;
+    let error = launch_error(gateway.launch_with_backend(
+        &request,
+        execution.clone(),
+        &sandbox,
+        &admission,
+        backend,
+    ));
+    assert_eq!(error.code(), ErrorCode::Unsupported);
+    assert_eq!(probe.prepare_calls(), 0);
+    let terminal = gateway
+        .launch_with_backend(
+            &request,
+            execution,
+            &sandbox,
+            &admission,
+            TestBackend::admitted(&admission, probe.clone()),
+        )
+        .unwrap()
+        .wait()
+        .unwrap();
+    assert_eq!(terminal.disposition(), TerminalDisposition::Exited);
+    assert_eq!(probe.prepare_calls(), 1);
+}
+
+#[test]
 fn preparation_failure_is_durable_and_cannot_be_replayed() {
     let root = TestRoot::new();
     let ids = Ids::new(221);
@@ -70,8 +119,12 @@ fn preparation_failure_is_durable_and_cannot_be_replayed() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -110,8 +163,12 @@ fn prepared_session_is_released_before_spawn_failure_is_published() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -140,8 +197,12 @@ fn invalid_prepared_session_is_released_and_cannot_be_replayed() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -178,8 +239,12 @@ fn invalid_prepared_session_cleanup_failure_remains_durably_incomplete() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );

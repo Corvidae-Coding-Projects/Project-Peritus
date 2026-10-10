@@ -1,0 +1,2 @@
+FINDING-0008: Raw diff ranges used offsets that excluded the preamble and depended on structured parsing
+The `preamble` binary in `/tmp/peritus-batch3/formal-review/review-page-cap` observed expected offset 79 and actual offset 60, a 19-byte loss, before repair. Final parser and daemon tests cover preambles and malformed structured input; the TUI regression uses a deliberately stale cached snapshot and confirms that fresh raw endpoint bytes are rendered instead. Focused protocol/TUI suites passed.

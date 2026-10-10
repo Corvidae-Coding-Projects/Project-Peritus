@@ -46,6 +46,36 @@ fn configured_external_filter_is_rejected_before_execution_or_staging() {
 }
 
 #[test]
+fn candidate_scan_prunes_ignored_trees_but_still_rejects_owned_nested_metadata() {
+    let fixture = RepositoryFixture::sha1();
+    let repository = fixture.open();
+    let baseline = repository.resolve_baseline("HEAD").expect("baseline");
+    let worktree = repository
+        .create_worktree(CreateWorktree::new(
+            WorktreeName::new("scan_run").expect("name"),
+            fixture.worktree_path("scan_run"),
+            baseline,
+            WorktreeAccess::Writable,
+        ))
+        .expect("worktree");
+    std::fs::write(worktree.root().join(".gitignore"), b"ignored/\n")
+        .expect("ignore owned generated tree");
+    let ignored_repository = worktree.root().join("ignored/.git");
+    std::fs::create_dir_all(&ignored_repository).expect("ignored nested metadata");
+    std::fs::write(ignored_repository.join("config"), b"unowned\n").expect("metadata");
+    repository
+        .create_candidate(CandidateRequest::new(&worktree, baseline.commit()))
+        .expect("ignored tree is outside the candidate inventory");
+
+    let owned_repository = worktree.root().join("owned/.git");
+    std::fs::create_dir_all(&owned_repository).expect("owned nested metadata");
+    let error = repository
+        .create_candidate(CandidateRequest::new(&worktree, baseline.commit()))
+        .expect_err("candidate-owned nested repository is rejected");
+    assert_eq!(error.kind(), peritus_git::ErrorKind::WorktreeConflict);
+}
+
+#[test]
 fn status_overrides_local_submodule_ignore_configuration() {
     let fixture = RepositoryFixture::sha1();
     let child = fixture.temporary.path().join("submodule-source");
@@ -88,15 +118,20 @@ fn status_overrides_local_submodule_ignore_configuration() {
 
     let status = repository.status(&worktree).expect("status");
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "child"
+        entry.path() == b"child"
             && matches!(
                 entry.kind(),
                 StatusKind::Ordinary { submodule, .. } if submodule.modified_content()
             )
     }));
-    repository
+    let error = repository
         .remove_worktree(&worktree, RemovalPolicy::ForceRegistered)
-        .expect("cleanup worktree");
+        .expect_err("parent removal cannot delete independently owned submodule");
+    assert_eq!(error.kind(), peritus_git::ErrorKind::WorktreeConflict);
+    assert_eq!(
+        std::fs::read(worktree.root().join("child/child.txt")).expect("child remains"),
+        b"dirty\n"
+    );
 }
 
 #[test]
@@ -128,7 +163,7 @@ fn attached_head_at_same_commit_is_not_accepted_as_managed_topology() {
 
     let status = repository.status(&worktree).expect("attached status");
     assert!(!status.is_detached());
-    assert_eq!(status.head(), baseline.commit());
+    assert_eq!(status.head(), Some(baseline.commit()));
     let reconciled = repository
         .reconcile(ReconcileExpectation::new(&worktree, baseline.commit(), baseline.tree()))
         .expect("reconcile attached topology");

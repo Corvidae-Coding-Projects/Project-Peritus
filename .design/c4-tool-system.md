@@ -191,7 +191,7 @@ checks and return evidence without claiming D1 acceptance.
 39. `REF-C4-B1-AUTHORITY-GATE` is discharged by the router authority proof, private constructor/API
     checks, exact receipt fixtures, one-use ledger, and integration tests proving no dispatcher is
     called after malformed, stale, forged, duplicate, or mismatched evidence.
-40. Every crate root is composition-only and at most 80 lines. Source files stay at or below 400
+40. Every crate root is composition-only and at most 80 lines. Source files stay at or below 500
     lines. No generic helper/common modules, catch-all errors, public dependency leakage, unsafe
     code, ignored tests, placeholder success, or reachable unfinished branch is permitted.
 
@@ -279,7 +279,7 @@ peritus-tools-quality/src/
   dispatcher.rs observation.rs render.rs error.rs
 ```
 
-Files are split further before crossing 400 lines. Roots contain module declarations and public
+Files are split further before crossing 500 lines. Roots contain module declarations and public
 re-exports only.
 
 ### Two-phase call lifecycle

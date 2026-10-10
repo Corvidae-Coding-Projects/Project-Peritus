@@ -48,10 +48,15 @@ fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
     assert!(!recovered.is_error, "{}", wire(&recovered));
     let recovered: Value = serde_json::from_str(&wire(&recovered)).expect("recovery result");
     assert_eq!(recovered["handle"], handle);
+    #[cfg(windows)]
+    let input_text = "hello from peritus\r";
+    #[cfg(not(windows))]
+    let input_text = "hello from peritus\n";
+    let input_text = serde_json::to_string(input_text).expect("terminal input text");
     let input = execute(
         &mut tools,
         "command_stdin",
-        &format!(r#"{{"handle":"{handle}","text":"hello from peritus\n"}}"#),
+        &format!(r#"{{"handle":"{handle}","text":{input_text}}}"#),
     );
     assert!(!input.is_error, "{}", wire(&input));
     let terminal = poll_terminal(&mut tools, handle);
@@ -145,7 +150,7 @@ fn commands_accept_a_workspace_reached_through_a_filesystem_alias() {
 }
 
 #[test]
-fn structured_commands_drain_and_bound_both_output_streams() {
+fn structured_commands_drain_and_retain_both_complete_output_streams() {
     let workspace = tempfile::tempdir().expect("workspace");
     let mut tools = writable_tools(workspace.path());
     let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
@@ -162,22 +167,18 @@ fn structured_commands_drain_and_bound_both_output_streams() {
     let result: Value = serde_json::from_str(&wire(&command)).expect("command result JSON");
     assert_eq!(result["timed_out"].as_bool(), Some(false));
     assert!(result["recovery_hint"].is_null());
-    assert!(
-        result["stdout"].as_str().is_some_and(|value| value.contains("[output truncated]")),
-        "{}",
-        wire(&command)
-    );
-    assert!(result["stderr"].as_str().is_some_and(|value| value.contains("[output truncated]")));
-    assert!(
-        result["stdout"]
-            .as_str()
-            .is_some_and(|value| value.contains("stdout-begin") && value.contains("stdout-final"))
-    );
-    assert!(
-        result["stderr"]
-            .as_str()
-            .is_some_and(|value| value.contains("stderr-begin") && value.contains("stderr-final"))
-    );
+    assert!(result["stdout"].as_str().is_some_and(|value| {
+        value.contains("stdout-begin\n")
+            && value.contains("\nstdout-final")
+            && value.bytes().filter(|byte| *byte == b'x').count() >= 600 * 1024
+            && !value.contains("[output truncated]")
+    }),);
+    assert!(result["stderr"].as_str().is_some_and(|value| {
+        value.contains("stderr-begin\n")
+            && value.contains("\nstderr-final")
+            && value.bytes().filter(|byte| *byte == b'x').count() >= 600 * 1024
+            && !value.contains("[output truncated]")
+    }));
 }
 
 #[test]

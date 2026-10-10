@@ -49,7 +49,7 @@ impl ProductRunService {
             .values()
             .filter(|record| record.request.workspace_id() == query.workspace())
             .try_fold((false, false), |(live, unresolved), record| {
-                let state = super::operation::project(&self.inner.directory, record)?.state();
+                let state = self.project_operation(record)?.state();
                 Ok::<_, ProductRunServiceError>((
                     live || matches!(
                         state,

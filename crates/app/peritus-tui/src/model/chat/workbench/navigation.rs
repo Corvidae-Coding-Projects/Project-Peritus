@@ -94,6 +94,23 @@ impl AppModel {
         {
             return self.confirm_rewind();
         }
+        if self.chat.workbench.mode == WorkbenchMode::Checkpoints {
+            match key.code {
+                KeyCode::Char('n') if self.chat.workbench.rewind_page.is_some() => {
+                    return self.next_rewind_page();
+                }
+                KeyCode::Char('p') if self.chat.workbench.rewind_page.is_some() => {
+                    return self.previous_rewind_page();
+                }
+                KeyCode::Char('n') if self.chat.workbench.checkpoint_page.is_some() => {
+                    return self.next_checkpoint_page();
+                }
+                KeyCode::Char('p') if self.chat.workbench.checkpoint_page.is_some() => {
+                    return self.previous_checkpoint_page();
+                }
+                _ => {}
+            }
+        }
         if matches!(
             key.code,
             KeyCode::Up
@@ -159,20 +176,31 @@ impl AppModel {
                         | PendingRequest::WorkbenchFilePreview(_)
                         | PendingRequest::WorkbenchFileImportPreview(_)
                         | PendingRequest::WorkbenchFileUpload { .. }
+                        | PendingRequest::WorkbenchMessageUpload { .. }
+                        | PendingRequest::WorkbenchMessagePreview(_)
                         | PendingRequest::WorkbenchFiles(_)
                         | PendingRequest::WorkbenchReview(_)
+                        | PendingRequest::WorkbenchReviewSummary(_)
+                        | PendingRequest::WorkbenchReviewDiff(_)
+                        | PendingRequest::WorkbenchReviewDiffBytes(_)
                         | PendingRequest::WorkbenchImageUpload { .. }
                         | PendingRequest::WorkbenchContext(_)
                         | PendingRequest::WorkbenchCompaction(_)
                         | PendingRequest::WorkbenchCheckpointInspect(_)
                         | PendingRequest::WorkbenchRewind(_)
+                        | PendingRequest::WorkbenchCheckpointPage(_)
+                        | PendingRequest::WorkbenchRewindPage(_)
                         | PendingRequest::WorkbenchBrief(_)
+                        | PendingRequest::WorkbenchBriefPage(_)
+                        | PendingRequest::WorkbenchBriefProposal(_)
                         | PendingRequest::WorkbenchGoal(_)
                         | PendingRequest::WorkbenchResult(_)
                         | PendingRequest::WorkbenchQueue(_)
                         | PendingRequest::WorkbenchControl(_)
                         | PendingRequest::WorkbenchReceipt(_)
                         | PendingRequest::WorkbenchPermissions(_)
+                        | PendingRequest::WorkbenchInitArtifacts(_)
+                        | PendingRequest::WorkbenchInitArtifactPage(_)
                         | PendingRequest::WorkbenchInit(_)
                         | PendingRequest::WorkbenchMemory(_)
                 )

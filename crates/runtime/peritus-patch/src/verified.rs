@@ -4,14 +4,12 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Checks the complete byte/component bounds of a nonempty path representation.
+/// Checks the portable byte bound of a nonempty path representation.
 #[must_use]
-pub const fn path_bounds_valid(bytes: usize, components: usize) -> (valid: bool)
-    ensures valid == (
-        bytes > 0 && bytes <= 4_096 && components > 0 && components <= 256
-    )
+pub const fn path_bounds_valid(bytes: usize) -> (valid: bool)
+    ensures valid == (bytes > 0 && bytes <= 4_096)
 {
-    bytes > 0 && bytes <= 4_096 && components > 0 && components <= 256
+    bytes > 0 && bytes <= 4_096
 }
 
 /// Checks nonempty operation and aggregate final-byte bounds.

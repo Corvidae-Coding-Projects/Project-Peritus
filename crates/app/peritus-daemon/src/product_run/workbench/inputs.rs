@@ -89,6 +89,10 @@ pub(super) fn domain_intent(value: &WorkbenchQueueIntent) -> Result<QueueIntent,
         }
         WorkbenchQueueIntent::Withdraw(selected) => QueueIntent::Withdraw(selection(*selected)?),
         WorkbenchQueueIntent::Reorder(value) => QueueIntent::Reorder(ids(value)?),
+        WorkbenchQueueIntent::Move { selected, before } => QueueIntent::Move {
+            selected: selection(*selected)?,
+            before: before.map(|id| InputId::new(id.into_bytes())).transpose()?,
+        },
     })
 }
 pub(super) fn project_row(value: &InputRevision) -> Result<WorkbenchInputRow, Error> {

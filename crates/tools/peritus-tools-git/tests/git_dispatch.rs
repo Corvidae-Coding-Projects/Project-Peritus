@@ -7,6 +7,7 @@ mod support;
 
 use peritus_tools_git::GitMutationOutcome;
 use peritus_types::{RevisionNumber, SnapshotId};
+use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 
 use authority_support::{Ids, artifact_store, authorized_patch, workspace_fixture};
@@ -19,6 +20,10 @@ fn router_dispatches_candidate_snapshot_and_history_preserving_rollback() {
     let artifacts = artifact_store(&temp, "git-dispatch-artifacts", 1_048_576);
     let mutation = authorized_patch(&temp, &base, &mut fixture.gateway, fixture.patch);
 
+    let gateway = Arc::new(Mutex::new(fixture.gateway));
+    let artifacts = Arc::new(Mutex::new(artifacts));
+    let mutation = Arc::new(mutation);
+
     let candidate_snapshot = SnapshotId::new([81; 16]).expect("candidate snapshot");
     let candidate_parent = base.for_tool_action(51, "git.candidate");
     let candidate_lower = base.for_action_revision(21, RevisionNumber::first());
@@ -30,20 +35,26 @@ fn router_dispatches_candidate_snapshot_and_history_preserving_rollback() {
         &temp,
         &candidate_lower,
         &candidate_parent,
-        &mut fixture.gateway,
+        &gateway,
         &mutation,
         candidate_snapshot,
         &artifacts,
         prepared,
         router,
+        support::Completion::Wait,
     );
     support::assert_success(outcome);
     let Some(GitMutationOutcome::Candidate(candidate)) = candidate else {
         panic!("candidate outcome was not retained");
     };
     assert_eq!(candidate.snapshot().snapshot_id(), candidate_snapshot);
-    assert_eq!(fixture.gateway.state().revision(), RevisionNumber::new(2).expect("revision two"));
-    assert!(fixture.gateway.state().binding().root().join("authorized.txt").is_file());
+    assert_eq!(
+        gateway.lock().expect("gateway").state().revision(),
+        RevisionNumber::new(2).expect("revision two")
+    );
+    assert!(
+        gateway.lock().expect("gateway").state().binding().root().join("authorized.txt").is_file()
+    );
 
     let revision_two = RevisionNumber::new(2).expect("revision two");
     let rollback_base = base.for_action_revision(22, revision_two);
@@ -60,7 +71,7 @@ fn router_dispatches_candidate_snapshot_and_history_preserving_rollback() {
         &temp,
         &rollback_base,
         &rollback_parent,
-        &mut fixture.gateway,
+        &gateway,
         &fixture.initial,
         successor,
         &artifacts,
@@ -73,11 +84,85 @@ fn router_dispatches_candidate_snapshot_and_history_preserving_rollback() {
     };
     assert_eq!(rollback.snapshot().snapshot_id(), successor);
     assert_eq!(rollback.restored_from(), fixture.initial.commit());
-    assert_eq!(fixture.gateway.state().revision(), RevisionNumber::new(3).expect("revision three"));
-    assert!(!fixture.gateway.state().binding().root().join("authorized.txt").exists());
     assert_eq!(
-        std::fs::read(fixture.gateway.state().binding().root().join("README.md"))
+        gateway.lock().expect("gateway").state().revision(),
+        RevisionNumber::new(3).expect("revision three")
+    );
+    assert!(
+        !gateway.lock().expect("gateway").state().binding().root().join("authorized.txt").exists()
+    );
+    assert_eq!(
+        std::fs::read(gateway.lock().expect("gateway").state().binding().root().join("README.md"))
             .expect("restored README"),
         b"baseline\n"
     );
+}
+
+#[test]
+fn router_cancellation_releases_worker_waiting_for_workspace_ownership() {
+    let temp = TempDir::new().expect("temporary root");
+    let base = Ids::new();
+    let mut fixture = workspace_fixture(&temp, &base, "cancel-dispatch");
+    let mutation = Arc::new(authorized_patch(&temp, &base, &mut fixture.gateway, fixture.patch));
+    let gateway = Arc::new(Mutex::new(fixture.gateway));
+    let artifacts = Arc::new(Mutex::new(artifact_store(&temp, "cancel-artifacts", 1_048_576)));
+    let snapshot = SnapshotId::new([81; 16]).expect("snapshot");
+    let parent = base.for_tool_action(51, "git.candidate");
+    let lower = base.for_action_revision(21, RevisionNumber::first());
+    let args = format!(r#"{{"snapshot_id":"{}"}}"#, support::snapshot_hex(snapshot));
+    let (router, prepared) = support::prepare(&parent, "git.candidate", support::arguments(&args));
+    let guard = gateway.lock().expect("hold target to force cancellable wait");
+    let (outcome, mutation) = support::dispatch_candidate(
+        &temp,
+        &lower,
+        &parent,
+        &gateway,
+        &mutation,
+        snapshot,
+        &artifacts,
+        prepared,
+        router,
+        support::Completion::Cancel,
+    );
+    let peritus_tool_router::DispatchOutcome::Completed(result) = outcome else {
+        panic!("cancellation did not settle")
+    };
+    assert_eq!(result.status(), peritus_tool_protocol::ResultStatus::Cancelled);
+    assert!(mutation.is_none());
+    assert_eq!(guard.state().revision(), RevisionNumber::first());
+    drop(guard);
+}
+
+#[test]
+fn dropping_router_joins_worker_before_returning_workspace_ownership() {
+    let temp = TempDir::new().expect("temporary root");
+    let base = Ids::new();
+    let mut fixture = workspace_fixture(&temp, &base, "drop-dispatch");
+    let mutation = Arc::new(authorized_patch(&temp, &base, &mut fixture.gateway, fixture.patch));
+    let gateway = Arc::new(Mutex::new(fixture.gateway));
+    let artifacts = Arc::new(Mutex::new(artifact_store(&temp, "drop-artifacts", 1_048_576)));
+    let snapshot = SnapshotId::new([81; 16]).expect("snapshot");
+    let parent = base.for_tool_action(51, "git.candidate");
+    let lower = base.for_action_revision(21, RevisionNumber::first());
+    let args = format!(r#"{{"snapshot_id":"{}"}}"#, support::snapshot_hex(snapshot));
+    let (router, prepared) = support::prepare(&parent, "git.candidate", support::arguments(&args));
+    let guard = gateway.lock().expect("hold target to force cancellable wait");
+    let (_, retained) = support::dispatch_candidate(
+        &temp,
+        &lower,
+        &parent,
+        &gateway,
+        &mutation,
+        snapshot,
+        &artifacts,
+        prepared,
+        router,
+        support::Completion::DropRouter,
+    );
+    assert!(retained.is_none());
+    assert_eq!(guard.state().revision(), RevisionNumber::first());
+    drop(guard);
+    assert_eq!(Arc::strong_count(&gateway), 1, "joined worker released workspace");
+    assert_eq!(Arc::strong_count(&artifacts), 1, "joined worker released artifact owner");
+    assert_eq!(Arc::strong_count(&mutation), 1, "joined worker released mutation input");
 }

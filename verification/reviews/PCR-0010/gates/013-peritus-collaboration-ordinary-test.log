@@ -1,0 +1,53 @@
+{"candidate_commit": "e5c4ec47414daa75ecd2e3b2d17a279ee38d7132", "candidate_tree": "dab27248c3f671224a9d480abcdce2a5edad7174", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-collaboration --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "013-peritus-collaboration-ordinary-test.log", "owning_crate": "peritus-collaboration", "started_at": "2026-10-09T07:26:20.341955Z"}, "plan_sha256": "0747aeadb65ca3bffa3cb1033b156e056fb5b4a16a3e9a1c8898faf12bcd9118"}
+
+   Compiling peritus-artifact-store v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/state/peritus-artifact-store)
+   Compiling peritus-leases v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/state/peritus-leases)
+   Compiling peritus-journal v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/state/peritus-projection)
+   Compiling peritus-evidence v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/state/peritus-evidence)
+   Compiling peritus-scheduler v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/orchestration/peritus-scheduler)
+   Compiling peritus-role v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/orchestration/peritus-role)
+   Compiling peritus-collaboration v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/orchestration/peritus-collaboration)
+    Finished `test` profile [unoptimized] target(s) in 11.12s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_collaboration-d3a8cefff7023fb7)
+
+running 1 test
+test wire::fixture_tests::canonical_corpus_is_exact_and_rejects_tag_and_trailing_corruption ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation_causality.rs (/home/doll/Project-Peritus/target/debug/deps/cancellation_causality-ff4e5776ffeda89c)
+
+running 2 tests
+test cancellation_propagates_canonically_and_cannot_resurrect_success ... ok
+test pause_blocks_only_new_delegation_and_resume_restores_it ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_lifecycle.rs (/home/doll/Project-Peritus/target/debug/deps/domain_lifecycle-81cdf98ab3e979a7)
+
+running 4 tests
+test all_required_lifecycle_message_handoff_and_finalization_are_exact ... ok
+test any_required_needs_one_declared_success_and_optional_failure_does_not_manufacture_it ... ok
+test identities_limits_and_causal_message_shape_are_checked ... ok
+test missing_required_child_wrong_owner_and_stale_reservation_are_rejected_without_transition ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/target/debug/deps/durability_restart-ebc9bb849c4bcd91)
+
+running 2 tests
+test exact_transition_survives_restart_and_resolves_idempotently ... ok
+test reused_command_identity_with_different_bytes_is_a_conflict ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/replay_semantics.rs (/home/doll/Project-Peritus/target/debug/deps/replay_semantics-40a1e7960adb3779)
+
+running 1 test
+test replay_is_exact_and_rejects_empty_duplicate_and_reordered_streams ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-collaboration --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 11.257, "exit_code": 0, "finished_at": "2026-10-09T07:26:31.600619Z", "invocation": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "013-peritus-collaboration-ordinary-test.log", "owning_crate": "peritus-collaboration", "result": "passed", "started_at": "2026-10-09T07:26:20.341955Z"}

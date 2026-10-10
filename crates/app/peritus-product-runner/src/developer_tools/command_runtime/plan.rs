@@ -3,7 +3,6 @@
 use std::path::{Path, PathBuf};
 
 use peritus_policy::AuthorityInstant;
-#[cfg(not(windows))]
 use peritus_process::TerminalSize;
 use peritus_process::{
     CommandSpec, DeadlinePolicy, EnvironmentPlan, EnvironmentVariable, ExecutionCallerBinding,
@@ -11,8 +10,8 @@ use peritus_process::{
     OutputPolicy, ProcessResourcePolicy, StdinPolicy, WorkingDirectory, WorkspaceAccess,
 };
 use peritus_tool_protocol::{
-    BoundedJson, CallLimits, IdempotencyKey, JsonLimits, PreparedToolCall, SemanticVersion,
-    ToolCall,
+    BoundedJson, CallLifetime, CallLimits, IdempotencyKey, JsonLimits, PreparedToolCall,
+    SemanticVersion, ToolCall,
 };
 use peritus_tool_router::ToolRouter;
 use serde_json::Value;
@@ -39,7 +38,7 @@ pub(super) struct CommandRequest<'a> {
     pub(super) program: &'a str,
     pub(super) arguments: &'a [String],
     pub(super) cwd: &'a Path,
-    pub(super) timeout_millis: u64,
+    pub(super) timeout_millis: Option<u64>,
     pub(super) interactive: bool,
     pub(super) rows: u16,
     pub(super) columns: u16,
@@ -63,7 +62,7 @@ pub(super) fn compile(
     ]);
     let arguments = BoundedJson::parse(&wire_arguments.to_string(), JsonLimits::PRODUCTION)
         .map_err(|error| format!("encode command tool arguments: {error}"))?;
-    let limits = CallLimits::new(
+    let limits = CallLimits::new_optional(
         request.timeout_millis,
         OUTPUT_BYTES,
         MODEL_OUTPUT_BYTES,
@@ -72,7 +71,16 @@ pub(super) fn compile(
         3,
     )
     .map_err(|error| format!("construct command call limits: {error}"))?;
-    let call = ToolCall::new(
+    let lifetime = request.timeout_millis.map_or_else(
+        || CallLifetime::UntilCancelled { epoch: peritus_types::Generation::first() },
+        |timeout| {
+            CallLifetime::Deadline(AuthorityInstant::new(
+                peritus_types::Generation::first(),
+                timeout.saturating_add(21),
+            ))
+        },
+    );
+    let call = ToolCall::new_with_lifetime(
         ids.action,
         ids.capability.clone(),
         SemanticVersion::new(1, 0, 0)
@@ -80,24 +88,13 @@ pub(super) fn compile(
         arguments,
         limits,
         ids.revision,
-        AuthorityInstant::new(
-            peritus_types::Generation::first(),
-            request.timeout_millis.saturating_add(21),
-        ),
+        lifetime,
         IdempotencyKey::new(request.idempotency_key)
             .map_err(|error| format!("construct command idempotency key: {error}"))?,
     );
     let prepared =
         router.prepare(call).map_err(|error| format!("prepare command call: {error}"))?;
     let environment = environment(request.environment)?;
-    #[cfg(windows)]
-    let io = {
-        // Raw C2 launches cannot supply a contained ConPTY session. Keep interactive input
-        // functional through bounded pipes; restricted daemon launches retain native ConPTY.
-        let _ = (request.rows, request.columns);
-        IoMode::Pipes
-    };
-    #[cfg(not(windows))]
     let io = if request.interactive {
         IoMode::Pty(
             TerminalSize::new(request.rows, request.columns, 0, 0)
@@ -112,23 +109,19 @@ pub(super) fn compile(
     } else {
         StdinPolicy::Closed
     };
-    let output = OutputPolicy::new(
+    let output = OutputPolicy::unbounded(
         16 * 1_024,
         512 * 1_024,
-        OUTPUT_BYTES,
         16_384,
-        OUTPUT_BYTES,
-        OUTPUT_BYTES,
-        OUTPUT_BYTES,
         OutputOverflowAction::ContinueIncomplete,
     )
     .map_err(|error| format!("construct command output policy: {error}"))?;
     let resources = ProcessResourcePolicy::new(
         request.timeout_millis,
-        request.timeout_millis.saturating_mul(64),
+        request.timeout_millis.map(|timeout| timeout.saturating_mul(64)),
         MEMORY_BYTES,
         DISK_BYTES,
-        OUTPUT_BYTES,
+        None,
         PROCESS_COUNT,
         FILE_DESCRIPTORS,
         1,
@@ -167,7 +160,7 @@ pub(super) fn compile(
         io,
         stdin,
         output,
-        DeadlinePolicy::new(Some(request.timeout_millis), GracefulAction::Terminate, 500, 5_000)
+        DeadlinePolicy::new(request.timeout_millis, GracefulAction::Terminate, 500, 5_000)
             .map_err(|error| format!("construct command deadline policy: {error}"))?,
         resources,
         &checked,

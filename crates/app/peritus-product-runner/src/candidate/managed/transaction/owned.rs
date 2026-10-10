@@ -156,14 +156,18 @@ impl Asset {
         if names.is_empty() {
             return Ok(());
         }
+        let consumed = names.len() == 1 && names[0] == ".owner";
         let marker = read_marker(&self.path.join(".owner"))?;
-        if marker != self.marker && !(names.len() == 1 && self.marker.starts_with(&marker)) {
+        if marker != self.marker
+            && !(self.sealed.is_none() && consumed && self.marker.starts_with(&marker))
+        {
             return Err(failure("discard staging ownership is invalid"));
         }
-        if names.iter().any(|name| name != ".owner")
-            && self.sealed != Some(super::validation_directory_digest(&self.path)?)
+        if let Some(sealed) = self.sealed
+            && !consumed
+            && sealed != super::validation_directory_digest(&self.path)?
         {
-            return Err(failure("discard staging is incomplete or changed; it was preserved"));
+            return Err(failure("discard staging changed after preparation; it was preserved"));
         }
         Ok(())
     }

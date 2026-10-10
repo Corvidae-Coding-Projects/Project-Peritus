@@ -201,12 +201,20 @@ impl ConversationRecord {
             attempt,
             evidence_user_revision,
             evidence_input_generation,
+            launch,
+            capture,
+            evidence,
             now_unix_millis,
-            ..
         } = intent
         else {
             return Err(ControlError::InvalidInput);
         };
+        if let Some(evidence) = evidence {
+            evidence.validate()?;
+            if evidence.check() == *launch || evidence.check() == *capture {
+                return Err(ControlError::InvalidInput);
+            }
+        }
         self.goal_mut(*goal)?.observe_graphical_evidence(
             *criterion_index,
             *attempt,

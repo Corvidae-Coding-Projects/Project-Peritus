@@ -1,15 +1,18 @@
 //! Fail-closed projection of effectful command-runtime ownership.
 
-use std::{convert::Infallible, path::PathBuf};
+use std::{
+    convert::Infallible,
+    path::{Path, PathBuf},
+};
 
 use peritus_leases::LeaseHolder;
 use peritus_process::{ExecutionPlan, ProcessControl, ProcessStore, TerminalResult};
-use peritus_types::{EnvironmentId, ResourceId, RevisionTuple, RunId};
+use peritus_types::{ActionId, EnvironmentId, ProcessId, ResourceId, RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
-    ProductRunnerError, ProductRunnerErrorKind,
+    PreviewOutputMatch, PreviewOutputRange, ProductRunnerError, ProductRunnerErrorKind,
 };
 
 /// Verification-only command runtime. No safe constructor can create this effect owner.
@@ -87,6 +90,22 @@ impl FolderPatchAuthority {
 }
 
 impl CommandRuntime {
+    /// Verification-only builds cannot inspect native command receipt owners.
+    pub fn receipt_linked_live_owners(
+        receipt_path: &Path,
+        source_run: RunId,
+        processes: &ProcessStore,
+    ) -> Result<Vec<(RunId, ActionId, ProcessId)>, ProductRunnerError> {
+        let _ = (receipt_path, source_run, processes);
+        Err(unavailable("inspect receipt-linked native command owners"))
+    }
+
+    /// Verification-only builds cannot inspect or reconcile native command receipts.
+    pub fn reconcile_effect_receipts(&self, receipt_path: &Path) -> Result<(), ProductRunnerError> {
+        let _ = (self, receipt_path);
+        Err(unavailable("reconcile native command receipts"))
+    }
+
     /// Projects terminal borrowing without constructing an effect owner during verification.
     pub fn preview_terminal(
         &self,
@@ -154,6 +173,42 @@ impl CommandRuntime {
         Err(unavailable("launch preview process"))
     }
 
+    /// Projects prelaunch registration without constructing an effect owner.
+    pub fn launch_preview_registered(
+        &self,
+        _command: &PreviewCommand,
+        _register: &mut dyn FnMut(crate::PreviewOwner) -> Result<(), String>,
+    ) -> Result<PreviewLaunch, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects reconnection without constructing an effect owner.
+    pub fn reconnect_preview(
+        &self,
+        _owner: crate::PreviewOwner,
+    ) -> Result<PreviewLaunch, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects native lifecycle observation; this effect owner is uninhabited.
+    pub fn observe_retained_preview(
+        &self,
+        _owner: crate::PreviewOwner,
+    ) -> Result<PreviewObservation, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects an exact retained spool read; this effect owner is uninhabited.
+    pub fn retained_preview_range(
+        &self,
+        _owner: crate::PreviewOwner,
+        _stream: peritus_process::OutputStream,
+        _offset: u64,
+        _maximum_bytes: usize,
+    ) -> Result<PreviewOutputRange, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
     /// Verification-only builds cannot observe a preview process.
     pub fn observe_preview(
         &self,
@@ -161,6 +216,44 @@ impl CommandRuntime {
     ) -> Result<PreviewObservation, ProductRunnerError> {
         let _ = launch;
         Err(unavailable("observe preview process"))
+    }
+
+    /// Projects a bounded output read; this verification-only effect owner is uninhabited.
+    pub fn preview_output_range(
+        &self,
+        _process_id: ProcessId,
+        _stream: peritus_process::OutputStream,
+        _offset: u64,
+        _maximum_bytes: usize,
+    ) -> Result<PreviewOutputRange, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects an output evidence search; this verification-only effect owner is uninhabited.
+    pub fn preview_output_contains(
+        &self,
+        _process_id: ProcessId,
+        _needle: &str,
+    ) -> Result<bool, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects exact output match evidence; this verification-only effect owner is uninhabited.
+    pub fn preview_output_match(
+        &self,
+        _process_id: ProcessId,
+        _needle: &str,
+    ) -> Result<Option<PreviewOutputMatch>, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects retained-source evidence verification; this effect owner is uninhabited.
+    pub fn verify_preview_output_match(
+        &self,
+        _evidence: PreviewOutputMatch,
+        _needle: &str,
+    ) -> Result<(), ProductRunnerError> {
+        match self.unavailable {}
     }
 
     /// Verification-only builds cannot interact with a preview process.

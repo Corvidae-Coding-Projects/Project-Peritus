@@ -110,7 +110,7 @@ impl ChatUi {
 }
 impl AppModel {
     fn submit_chat(&mut self) -> Vec<Effect> {
-        let text = self.chat.buffer.trim().to_owned();
+        let text = self.chat.buffer.trim();
         if text.is_empty() {
             return Vec::new();
         }
@@ -120,12 +120,14 @@ impl AppModel {
                     "Pasted commands do not execute. Type the command or select it with Tab; draft retained.");
                 return Vec::new();
             }
-            return self.slash_command(&text);
+            let command = text.to_owned();
+            return self.slash_command(&command);
         }
         if let Some(path) = text.strip_prefix('@') {
-            return self.file_command(path);
+            let path = path.to_owned();
+            return self.file_command(&path);
         }
-        self.send_chat_message(text)
+        self.send_chat_message(self.chat.buffer.clone())
     }
     pub(super) fn send_chat_message(&mut self, text: String) -> Vec<Effect> {
         if self.chat_submission_pending() {
@@ -225,6 +227,16 @@ impl AppModel {
                     .map_or(0, peritus_app_protocol::ProductActivity::sequence)
         }) {
             return;
+        }
+        let old_writer = (
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer),
+            self.chat.models.writer().clone(),
+        );
+        let new_writer =
+            (Some(snapshot.snapshot().providers().writer()), snapshot.models().writer().clone());
+        if old_writer != new_writer {
+            self.chat.workbench.files.discard_preview();
+            self.chat.workbench.images.discard_preview();
         }
         self.chat.models = snapshot.models().clone();
         self.accept_product_run(snapshot.snapshot().clone());

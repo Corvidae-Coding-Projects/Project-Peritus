@@ -7,7 +7,6 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use image::GenericImageView as _;
 use peritus_app_protocol::{
     AppErrorCode as Code, AppProtocolError, AppResponsePayload, ArtifactCancellation,
     ArtifactChunk, ArtifactCompletion, ArtifactMetadata, CanonicalMediaType, ControlOperationId,
@@ -43,8 +42,6 @@ use aggregate::{
 use capture::{capture_capability_for, hex, receipt, region_within};
 use evidence::{active_launch_run, capture_capability, preview_launches, resolve_workspace_path};
 use process::{PreviewTarget, app_error, launch_state, text};
-
-const MAX_CAPTURE_BYTES: u64 = 16 * 1_024 * 1_024;
 
 impl ProductRunService {
     pub(crate) async fn workbench_preview_command(

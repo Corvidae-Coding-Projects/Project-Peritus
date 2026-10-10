@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 let temporary:string,root:string,server:ChildProcess,token:string,project:string,session:string,run:string;
 const origin='http://127.0.0.1:4174';
 async function startServer(){
-  server=spawn(resolve('../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(temporary,'webui.toml'),'--state',join(temporary,'workspace.json'),'--daemon-config',join(temporary,'absent.toml'),'--endpoint',join(temporary,'absent.sock'),'--product-state',join(temporary,'absent-state'),'--assets',resolve('dist'),'--cli',join(temporary,'cli')],{stdio:['ignore','pipe','pipe']});
+  server=spawn(resolve(process.env.PERITUS_WEB_TEST_BIN??'../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(temporary,'webui.toml'),'--state',join(temporary,'workspace.json'),'--daemon-config',join(temporary,'absent.toml'),'--endpoint',join(temporary,'absent.sock'),'--product-state',join(temporary,'absent-state'),'--assets',resolve('dist'),'--cli',join(temporary,'cli')],{stdio:['ignore','pipe','pipe']});
   await new Promise<void>((done,reject)=>{let errors='';server.stderr!.on('data',chunk=>errors+=String(chunk));server.stdout!.on('data',chunk=>{if(String(chunk).includes('Peritus console:'))done();});server.once('error',reject);server.once('exit',code=>reject(new Error(`gateway exited ${code}: ${errors}`)));});
 }
 async function stopServer(){if(server&&server.exitCode===null&&server.signalCode===null){server.kill('SIGINT');await new Promise<void>(done=>server.once('exit',()=>done()));}}

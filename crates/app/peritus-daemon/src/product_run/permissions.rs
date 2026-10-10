@@ -220,11 +220,18 @@ const fn request_permissions(
             (value.selection().query(), &[Read])
         }
         AppRequestPayload::PreviewWorkbenchFile(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchBriefPage(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchBriefProposal(value) => (value.query(), &[Read]),
         AppRequestPayload::QueryWorkbenchFiles(value) => (value.query(), &[Read]),
         AppRequestPayload::QueryWorkbenchImages(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchPreviewOutput(value) => (value.query(), &[Read]),
         AppRequestPayload::PreviewWorkbenchImage(value) => (value.query(), &[Read]),
         AppRequestPayload::InspectWorkbenchCheckpoint(value)
         | AppRequestPayload::PreviewWorkbenchRewind(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchCheckpointPage(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchRewindPage(value) => (value.request().query(), &[Read]),
+        AppRequestPayload::DiscoverInitArtifacts(value) => (value.request().query(), &[Read]),
+        AppRequestPayload::QueryInitArtifactPage(value) => (value.proposal().query(), &[Read]),
         AppRequestPayload::DiscoverInit(value) => (value.query(), &[Read]),
         AppRequestPayload::WorkbenchCommand(command) => {
             let required = command_permissions(command.intent());
@@ -249,9 +256,16 @@ pub(super) const fn command_permissions(
             peritus_app_protocol::WorkbenchRewindMode::FilesOnly
             | peritus_app_protocol::WorkbenchRewindMode::Combined => &[Read, Write],
         },
-        WorkbenchIntent::ApplyInitDiff(_) => &[Read, Write],
+        WorkbenchIntent::ConfirmRewind(confirmation) => match confirmation.request().mode() {
+            peritus_app_protocol::WorkbenchRewindMode::ConversationOnly => &[Read],
+            peritus_app_protocol::WorkbenchRewindMode::FilesOnly
+            | peritus_app_protocol::WorkbenchRewindMode::Combined => &[Read, Write],
+        },
+        WorkbenchIntent::ApplyInitDiff(_) | WorkbenchIntent::ApplyInitArtifact(_) => &[Read, Write],
         WorkbenchIntent::AttachFile { .. }
         | WorkbenchIntent::AttachFileImport { .. }
+        | WorkbenchIntent::EnqueueMessage { .. }
+        | WorkbenchIntent::EnqueueMessageBundle { .. }
         | WorkbenchIntent::AttachImage { .. } => &[Read],
         WorkbenchIntent::StartPreview(_)
         | WorkbenchIntent::InteractPreview { .. }

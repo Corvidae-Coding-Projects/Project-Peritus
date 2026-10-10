@@ -25,16 +25,24 @@ impl PendingRequest {
             | Self::TerminalLineInput(_) => Recovery::Read,
             Self::WorkbenchCheckpointInspect(_)
             | Self::WorkbenchRewind(_)
+            | Self::WorkbenchCheckpointPage(_)
+            | Self::WorkbenchRewindPage(_)
             | Self::WorkbenchMemory(_)
+            | Self::WorkbenchInitArtifacts(_)
+            | Self::WorkbenchInitArtifactPage(_)
             | Self::WorkbenchInit(_)
             | Self::WorkbenchPermissions(_)
             | Self::WorkbenchCompaction(_)
             | Self::WorkbenchFileImportPreview(_)
+            | Self::WorkbenchMessagePreview(_)
             | Self::WorkbenchImagePreview(_)
             | Self::WorkbenchImages(_)
             | Self::WorkbenchFilePreview(_)
             | Self::WorkbenchFiles(_)
             | Self::WorkbenchReview(_)
+            | Self::WorkbenchReviewSummary(_)
+            | Self::WorkbenchReviewDiff(_)
+            | Self::WorkbenchReviewDiffBytes(_)
             | Self::WorkbenchQuery(_)
             | Self::WorkbenchExecution(_)
             | Self::ConversationLibrary(_)
@@ -43,10 +51,13 @@ impl PendingRequest {
             | Self::WorkbenchQueueCommand { .. }
             | Self::WorkbenchContext(_)
             | Self::WorkbenchBrief(_)
+            | Self::WorkbenchBriefPage(_)
+            | Self::WorkbenchBriefProposal(_)
             | Self::WorkbenchGoal(_)
             | Self::WorkbenchResult(_) => Recovery::WorkbenchRead,
             Self::ArtifactCancel
             | Self::WorkbenchFileUpload { .. }
+            | Self::WorkbenchMessageUpload { .. }
             | Self::WorkbenchImageUpload { .. }
             | Self::WorkbenchChatContinue { .. }
             | Self::WorkbenchChatStarted { .. }

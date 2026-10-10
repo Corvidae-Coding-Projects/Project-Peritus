@@ -28,10 +28,14 @@ peritus-secrets = { version = "=0.0.5", path = "../peritus-secrets" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 zeroize.workspace = true
+sha2.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { workspace = true, features = [
+    "Wdk_Foundation",
+    "Wdk_Storage_FileSystem",
     "Win32_Foundation",
+    "Win32_Globalization",
     "Win32_NetworkManagement_WindowsFilteringPlatform",
     "Win32_Security",
     "Win32_Security_Authorization",
@@ -39,6 +43,7 @@ windows-sys = { workspace = true, features = [
     "Win32_Storage_FileSystem",
     "Win32_System_Console",
     "Win32_System_JobObjects",
+    "Win32_System_IO",
     "Win32_System_LibraryLoader",
     "Win32_System_Memory",
     "Win32_System_Pipes",

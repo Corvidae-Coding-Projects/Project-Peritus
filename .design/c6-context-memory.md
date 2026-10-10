@@ -155,8 +155,8 @@ surfaces must expose consistently:
   read-only accessors. Errors shall be typed, stable, actionable, and comparable in tests.
 - **C6-R052:** Production source shall contain no `unsafe`, reachable placeholder success path,
   `todo!`, ambient I/O, global mutable state, wall-clock lookup, provider call, or effect handle.
-- **C6-R053:** Each crate shall keep the root module below 80 lines, ordinary source files below
-  the 400-line soft limit where practical and below the 700-line hard limit without exception.
+- **C6-R053:** Each crate shall keep the root module below 80 lines, ordinary source files at or below
+  the 500-line limit without exception.
 - **C6-R054:** The crates shall pass formatting, build, all-target/all-feature tests, strict
   Clippy, rustdoc warnings, architecture, ordinary-API audit, focused no-cheating Verus
   verification, and verified release build.

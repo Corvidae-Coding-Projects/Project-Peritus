@@ -73,28 +73,38 @@ fn reconnect_resolves_the_exact_confirmed_preview_and_never_creates_a_second_imp
 #[test]
 fn provider_change_requires_new_preview_and_stale_confirmation_retains_caption() {
     let mut model = opened();
+    let original = ProviderProfileId::new([0xb4; 16]).expect("original provider");
+    active_chat_writer_binding(&mut model, original, "original-model");
     let (sent, preview) = upload(&mut model, b"fixture pixels");
     respond(&mut model, &sent, AppResponsePayload::WorkbenchImagePreview(preview));
     model.chat.workbench.images.caption = "retained caption".to_owned();
-    let previous = model.chat.models.clone();
-    let changed = peritus_app_protocol::ProductModelChoice::new("changed-model".to_owned(), true)
-        .expect("model");
-    model.chat.models = ProductRoleModels::new(changed.clone(), changed.clone(), changed);
+    assert!(model.chat.workbench.images.preview.is_some());
+
+    let changed = ProviderProfileId::new([0xb5; 16]).expect("changed provider");
+    active_chat_writer_binding(&mut model, changed, "changed-model");
+    assert!(model.chat.workbench.images.preview.is_none());
     assert!(key(&mut model, KeyCode::Char('c')).is_empty());
-    model.chat.models = previous;
-    let sent = request(&key(&mut model, KeyCode::Char('c')));
+
+    let mut confirmation = opened();
+    active_chat_writer_binding(&mut confirmation, changed, "changed-model");
+    let (sent, preview) = upload(&mut confirmation, b"fixture pixels");
+    assert_eq!(preview.request().provider(), changed);
+    assert_eq!(preview.request().model().id(), "changed-model");
+    respond(&mut confirmation, &sent, AppResponsePayload::WorkbenchImagePreview(preview));
+    confirmation.chat.workbench.images.caption = "retained caption".to_owned();
+    let sent = request(&key(&mut confirmation, KeyCode::Char('c')));
     respond(
-        &mut model,
+        &mut confirmation,
         &sent,
         AppResponsePayload::Error(peritus_app_protocol::AppProtocolError::new(
             peritus_app_protocol::AppErrorCode::StaleRevision,
             None,
         )),
     );
-    assert!(model.chat.workbench.images.preview.is_none());
-    assert!(model.chat.workbench.snapshot.is_none());
-    assert_eq!(model.chat.workbench.images.caption, "retained caption");
-    assert_eq!(model.chat.buffer, "/attach /explicit/reference.gif");
+    assert!(confirmation.chat.workbench.images.preview.is_none());
+    assert!(confirmation.chat.workbench.snapshot.is_none());
+    assert_eq!(confirmation.chat.workbench.images.caption, "retained caption");
+    assert_eq!(confirmation.chat.buffer, "/attach /explicit/reference.gif");
 }
 
 #[test]

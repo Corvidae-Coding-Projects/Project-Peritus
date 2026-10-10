@@ -1,0 +1,7 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/source-review-supplement-fb50c7534.md
+bytes=2629
+sha256=f389821822b0ef2078a994fffc015491498953cc89db13141a48b6dccfd6b3d1
+/tmp/peritus-final23/formal-review-macos-exact-lints-rerun.log
+bytes=163
+sha256=52d1eeefb463948a3931087daa8eb3f560a4624db1e06533ad043d6015bba663

@@ -3,24 +3,25 @@
 use super::{
     ActorId, ControlError, ControlIntent, ControlOperation, ConversationId, Error, OperationId,
     ProductRunService, RestoreId, RestoreOperation, RestoreStatus, Sha256Digest, WorkbenchCommand,
-    WorkbenchIntent, WorkbenchRestoreReceipt, WorkbenchRewindDisposition, check_record, derived_id,
-    public_restore,
+    WorkbenchIntent, WorkbenchRestoreProjection, WorkbenchRewindConfirmation,
+    WorkbenchRewindDisposition, check_record, derived_id, public_checkpoint, public_restore,
+    reconstruct_rewind_preview,
 };
 
 impl ProductRunService {
-    pub(crate) fn resolve_workbench_restore(
+    pub(in crate::product_run::workbench) fn resolve_workbench_restore(
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
-    ) -> Result<WorkbenchRestoreReceipt, Error> {
+    ) -> Result<WorkbenchRestoreProjection, Error> {
         self.restore_receipt(actor, command, true)
     }
 
-    pub(crate) fn observe_workbench_restore(
+    pub(in crate::product_run::workbench) fn observe_workbench_restore(
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
-    ) -> Result<WorkbenchRestoreReceipt, Error> {
+    ) -> Result<WorkbenchRestoreProjection, Error> {
         self.restore_receipt(actor, command, false)
     }
 
@@ -29,13 +30,17 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
         resume: bool,
-    ) -> Result<WorkbenchRestoreReceipt, Error> {
-        let WorkbenchIntent::ApplyRewind(confirmed) = command.intent() else {
-            return Err(ControlError::InvalidInput.into());
+    ) -> Result<WorkbenchRestoreProjection, Error> {
+        let (request, binding_digest) = match command.intent() {
+            WorkbenchIntent::ApplyRewind(confirmed) => {
+                (confirmed.request(), confirmed.preview_digest())
+            }
+            WorkbenchIntent::ConfirmRewind(confirmation) => {
+                (confirmation.request(), confirmation.preview_digest())
+            }
+            _ => return Err(ControlError::InvalidInput.into()),
         };
-        if confirmed.request().query() != command.query()
-            || confirmed.request().revision() != command.expected_revision()
-        {
+        if request.query() != command.query() || request.revision() != command.expected_revision() {
             return Err(ControlError::StaleRevision.into());
         }
         self.control_workspace(command.query())?;
@@ -50,8 +55,8 @@ impl ProductRunService {
                 .find(|restore| restore.id() == restore_id)
                 .cloned()
                 .ok_or(ControlError::NotFound)?;
-            if restore.checkpoint().as_bytes() != confirmed.request().checkpoint().as_bytes()
-                || restore.preview_digest() != confirmed.preview_digest()
+            if restore.checkpoint().as_bytes() != request.checkpoint().as_bytes()
+                || restore.preview_digest() != binding_digest
             {
                 return Err(ControlError::IdempotencyConflict.into());
             }
@@ -64,6 +69,26 @@ impl ProductRunService {
             let checkpoint = store
                 .load_checkpoint(conversation, restore.checkpoint())?
                 .ok_or(Error::Corrupt("restore source checkpoint missing"))?;
+            if let WorkbenchIntent::ConfirmRewind(confirmation) = command.intent() {
+                let checkpoint_operation = store
+                    .operation(conversation, OperationId::new(request.checkpoint().into_bytes())?)?
+                    .ok_or(Error::Corrupt("source checkpoint operation missing"))?;
+                let checkpoint_receipt = store
+                    .resolve(&checkpoint_operation)?
+                    .ok_or(Error::Corrupt("source checkpoint receipt missing"))?;
+                let public = public_checkpoint(
+                    request.query(),
+                    checkpoint_receipt.accepted_revision(),
+                    &checkpoint,
+                )?;
+                let original_preview = reconstruct_rewind_preview(request, &checkpoint, &recovery)?;
+                if WorkbenchRewindConfirmation::for_preview(request, &public, &original_preview)
+                    .map_err(|_| ControlError::InvalidInput)?
+                    != *confirmation
+                {
+                    return Err(ControlError::IdempotencyConflict.into());
+                }
+            }
             let replay_only =
                 !record.checkpoints().iter().any(|value| value.id() == restore.checkpoint());
             let checkpoint_versions = checkpoint
@@ -108,9 +133,7 @@ impl ProductRunService {
                 if !resume {
                     return Err(ControlError::NotFound.into());
                 }
-                if confirmed.request().mode()
-                    != peritus_app_protocol::WorkbenchRewindMode::ConversationOnly
-                {
+                if request.mode() != peritus_app_protocol::WorkbenchRewindMode::ConversationOnly {
                     self.require_folder_write(store, actor, command, record.revision())?;
                 }
                 let recovered = self.recover_prepared_restore(
@@ -198,7 +221,15 @@ impl ProductRunService {
                 let receipt = store.resolve(&settle)?.ok_or(ControlError::NotFound)?;
                 (restore.status(), conflicts.clone(), receipt.accepted_revision())
             };
-            let restored = confirmed
+            let reconstructed = match command.intent() {
+                WorkbenchIntent::ApplyRewind(preview) => Some(preview.clone()),
+                WorkbenchIntent::ConfirmRewind(_) => {
+                    Some(reconstruct_rewind_preview(request, &checkpoint, &recovery)?)
+                }
+                _ => None,
+            };
+            let preview = reconstructed.as_ref().ok_or(ControlError::InvalidInput)?;
+            let restored = preview
                 .paths()
                 .iter()
                 .filter(|path| path.disposition() == WorkbenchRewindDisposition::Restore)
@@ -211,6 +242,7 @@ impl ProductRunService {
                 accepted_revision,
                 restored,
                 conflicts,
+                checkpoint.external_effects().map(str::to_owned).collect(),
             )
         })?;
         if resume {

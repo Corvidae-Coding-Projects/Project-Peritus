@@ -1,0 +1,2 @@
+FINDING-0011: Control-character expansion hid preview truncation
+The `control` binary in `/tmp/peritus-batch3/formal-review/stream-page-edge` initially failed its assertion for 500 ESC bytes. After repair it reported `source_bytes=500 preview_bytes=1026 raw_length=500 truncated=true` and exited 0. The focused protocol review suite includes the regression.

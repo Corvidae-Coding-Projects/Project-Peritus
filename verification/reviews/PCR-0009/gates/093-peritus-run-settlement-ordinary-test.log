@@ -1,0 +1,36 @@
+{"candidate_commit": "2353e5dffc12430cfdc727b61cabcb13d3eda984", "candidate_tree": "00f6c888ea957a669a7e39706bf7200282161391", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-run-settlement --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-run-settlement", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "093-peritus-run-settlement-ordinary-test.log", "owning_crate": "peritus-run-settlement", "started_at": "2026-10-09T04:07:26.231988Z"}, "plan_sha256": "c5a4116eaff5ec5699a98e65ab7960f80546a759fbf600acc4e60963a0f8aa8c"}
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_run_settlement-6433be9a34684d5c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/observations.rs (/home/doll/Project-Peritus/target/debug/deps/observations-3b3aff86d61c6659)
+
+running 4 tests
+test exact_reversion_reconciles_retained_observations_without_rewriting_their_origin ... ok
+test matching_future_evidence_and_nonadvancing_reobservations_are_rejected ... ok
+test only_evidence_depending_on_a_changed_axis_becomes_stale ... ok
+test unchanged_candidate_preserves_provenance_but_new_review_failure_revokes_qualification ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reducer.rs (/home/doll/Project-Peritus/target/debug/deps/reducer-166806cfe85afcd0)
+
+running 9 tests
+test accepted_requires_a_fully_qualified_current_candidate ... ok
+test cancellation_recovery_and_user_wait_retain_a_qualified_candidate_without_accepting_it ... ok
+test candidate_comparison_uses_every_identity_byte_and_ignores_only_checkpoint_sequence ... ok
+test candidate_is_delivered_without_being_accepted ... ok
+test every_stable_tag_round_trips_and_unknown_tags_reject ... ok
+test every_terminal_cause_is_expressible_with_and_without_a_candidate ... ok
+test evidence_from_another_candidate_is_rejected_or_stale ... ok
+test reducer_allows_new_incomplete_evidence_and_rejects_post_terminal_updates ... ok
+test rejected_observations_and_terminal_updates_preserve_the_complete_reducer ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-run-settlement --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.366, "exit_code": 0, "finished_at": "2026-10-09T04:07:26.599773Z", "invocation": ["cargo", "test", "--package", "peritus-run-settlement", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "093-peritus-run-settlement-ordinary-test.log", "owning_crate": "peritus-run-settlement", "result": "passed", "started_at": "2026-10-09T04:07:26.231988Z"}

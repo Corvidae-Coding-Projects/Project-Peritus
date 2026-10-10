@@ -3,10 +3,12 @@
 mod support;
 
 use peritus_artifact_store::{
-    ArtifactReferenceSet, CollectionGeneration, ErrorCode, GcAction, GcInventoryEntry, GcPlan,
-    QuarantineState, QuotaPlan, QuotaSnapshot, ReferenceOwner, ReferenceRoots,
+    ArtifactReferenceSet, ArtifactStore, CollectionGeneration, ErrorCode, GcAction,
+    GcInventoryEntry, GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot, ReferenceOwner,
+    ReferenceRoots, StoreConfig,
 };
 use peritus_types::Sha256Digest;
+use tempfile::TempDir;
 
 use support::{digest, request, store};
 
@@ -42,6 +44,60 @@ fn writer_admission_uses_durable_catalog_quota() {
 
     let Err(error) = store.begin_write(request(b"abc", 10, 2)) else {
         panic!("durable quota must reject the additional artifact");
+    };
+    assert_eq!(error.code(), ErrorCode::QuotaExceeded);
+}
+
+#[test]
+fn optional_quota_preserves_per_artifact_limit_and_reopens_referenced_usage() {
+    let directory = TempDir::new().expect("optional-quota store root");
+    let config = StoreConfig::new_with_quota_policy(directory.path(), 8, None)
+        .expect("store config without aggregate quota");
+    let store = ArtifactStore::open(config).expect("store opens");
+    let first = b"artifact";
+    let second = b"second!!";
+
+    for (bytes, event) in [(first.as_slice(), 11), (second.as_slice(), 12)] {
+        let mut writer = store.begin_write(request(bytes, 8, event)).expect("writer begins");
+        writer.write_chunk(bytes).expect("artifact bytes");
+        writer.finalize().expect("artifact finalizes");
+    }
+    let first_digest = digest(first);
+    let second_digest = digest(second);
+    store
+        .add_reference(ReferenceOwner::journal(Sha256Digest::new([21; 32])), first_digest)
+        .expect("first reference persists");
+    store
+        .add_reference(ReferenceOwner::journal(Sha256Digest::new([22; 32])), second_digest)
+        .expect("second reference persists");
+    assert_eq!(store.quota_snapshot(0).expect("usage").used_bytes(), 16);
+
+    drop(store);
+    let reopened = ArtifactStore::open(
+        StoreConfig::new_with_quota_policy(directory.path(), 8, None)
+            .expect("reopened config without aggregate quota"),
+    )
+    .expect("store reopens");
+    assert_eq!(reopened.quota_snapshot(0).expect("reopened usage").used_bytes(), 16);
+    assert!(reopened.verify(first_digest).is_ok());
+    assert!(reopened.verify(second_digest).is_ok());
+    assert_eq!(reopened.read(first_digest, 8).expect("first artifact bytes"), first);
+    assert_eq!(reopened.read(second_digest, 8).expect("second artifact bytes"), second);
+    let roots = reopened.reference_roots().expect("reopened references");
+    assert!(roots.journal().contains(&first_digest));
+    assert!(roots.journal().contains(&second_digest));
+
+    let quota_directory = TempDir::new().expect("explicit-quota store root");
+    let quota_store = ArtifactStore::open(
+        StoreConfig::new_with_quota_policy(quota_directory.path(), 8, Some(12))
+            .expect("explicit quota config"),
+    )
+    .expect("explicit-quota store opens");
+    let mut first_writer = quota_store.begin_write(request(first, 8, 13)).expect("first writer");
+    first_writer.write_chunk(first).expect("first bytes");
+    first_writer.finalize().expect("first artifact");
+    let Err(error) = quota_store.begin_write(request(second, 8, 14)) else {
+        panic!("explicit aggregate quota rejects the same total");
     };
     assert_eq!(error.code(), ErrorCode::QuotaExceeded);
 }
@@ -85,10 +141,9 @@ fn durable_references_drive_quarantine_then_later_sweep() {
     assert!(store.verify(digest(kept)).is_ok());
 
     drop(store);
-    let reopened = peritus_artifact_store::ArtifactStore::open(
-        peritus_artifact_store::StoreConfig::new(directory.path(), 128, 512).expect("config"),
-    )
-    .expect("restart");
+    let reopened =
+        ArtifactStore::open(StoreConfig::new(directory.path(), 128, 512).expect("config"))
+            .expect("restart");
     assert!(reopened.reference_roots().expect("roots").journal().contains(&digest(kept)));
 }
 

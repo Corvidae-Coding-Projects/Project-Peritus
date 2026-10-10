@@ -17,8 +17,15 @@ use peritus_types::EventId;
 
 use super::support::{Ids, PlanOptions, TestRoot, commit_authority, intent, open_journal, plan};
 
+#[cfg(windows)]
+#[path = "regressions/windows_pty.rs"]
+mod windows_pty;
+
 #[path = "regressions/process_lifecycle.rs"]
 mod process_lifecycle;
+
+#[path = "regressions/spool_startup.rs"]
+mod spool_startup;
 
 #[cfg(unix)]
 #[test]
@@ -48,8 +55,12 @@ fn unavailable_claimed_resource_enforcement_is_rejected_before_consumption() {
     let execution = plan(&root, &ids, options).expect("supervisor-fidelity plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("process store"),
     );
@@ -168,8 +179,12 @@ fn launch(
 ) -> (peritus_process::OwnedProcess, ProcessStore) {
     let action = intent(ids, &execution);
     let mut journal = open_journal(root);
-    let receipts =
-        commit_authority(&mut journal, ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let store = ProcessStore::open(root.registry(), root.workspace()).expect("process store");
     let gateway = ExecutionGateway::new(store.clone());
     let request = ExecutionAuthorizationRequest::new(

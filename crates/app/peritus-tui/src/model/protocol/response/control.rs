@@ -7,6 +7,26 @@ pub(super) fn project(
     payload: &AppResponsePayload,
     pending: Option<PendingRequest>,
 ) -> Vec<Effect> {
+    if let AppResponsePayload::WorkbenchFileImportPreview(preview) = payload {
+        match pending {
+            Some(PendingRequest::WorkbenchMessagePreview(request)) => {
+                return model.accept_message_preview(&request, preview.clone());
+            }
+            Some(PendingRequest::WorkbenchFileImportPreview(request)) => {
+                model.accept_file_import_preview(&request, preview.clone());
+            }
+            _ => {}
+        }
+        return Vec::new();
+    }
+    if matches!(
+        payload,
+        AppResponsePayload::InitArtifactProposal(_)
+            | AppResponsePayload::InitArtifactPage(_)
+            | AppResponsePayload::InitProposal(_)
+    ) {
+        return project_init(model, payload, pending);
+    }
     if is_setup_payload(payload) {
         project_setup(model, payload, pending)
     } else {
@@ -36,6 +56,21 @@ fn project_setup(
             ),
         ) => return model.accept_workbench_checkpoint(&command, receipt),
         (
+            AppResponsePayload::WorkbenchCheckpointPage(page),
+            Some(PendingRequest::WorkbenchCheckpointPage(request)),
+        ) => model.accept_workbench_checkpoint_page(request, page.clone()),
+        (
+            AppResponsePayload::WorkbenchCheckpointPage(page),
+            Some(
+                PendingRequest::WorkbenchControl(command)
+                | PendingRequest::WorkbenchReceipt(command),
+            ),
+        ) => return model.accept_workbench_checkpoint_command_page(&command, page),
+        (
+            AppResponsePayload::WorkbenchRewindPage(page),
+            Some(PendingRequest::WorkbenchRewindPage(request)),
+        ) => model.accept_workbench_rewind_page(request, page.clone()),
+        (
             AppResponsePayload::WorkbenchRestore(receipt),
             Some(
                 PendingRequest::WorkbenchControl(command)
@@ -43,13 +78,16 @@ fn project_setup(
             ),
         ) => return model.accept_workbench_restore(&command, receipt),
         (
+            AppResponsePayload::WorkbenchRestoreSummary(summary),
+            Some(
+                PendingRequest::WorkbenchControl(command)
+                | PendingRequest::WorkbenchReceipt(command),
+            ),
+        ) => return model.accept_workbench_restore_summary(&command, summary),
+        (
             AppResponsePayload::WorkbenchPermissions(permissions),
             Some(PendingRequest::WorkbenchPermissions(query)),
         ) => model.accept_workbench_permissions(query, permissions.clone()),
-        (
-            AppResponsePayload::InitProposal(proposal),
-            Some(PendingRequest::WorkbenchInit(request)),
-        ) => model.accept_init_proposal(request, proposal.clone()),
         (
             AppResponsePayload::WorkbenchMemory(memory),
             Some(PendingRequest::WorkbenchMemory(query)),
@@ -69,13 +107,27 @@ fn project_setup(
             model.accept_library_page(page);
         }
         (
-            AppResponsePayload::WorkbenchFileImportPreview(preview),
-            Some(PendingRequest::WorkbenchFileImportPreview(request)),
-        ) => model.accept_file_import_preview(&request, preview.clone()),
-        (
             AppResponsePayload::WorkbenchReview(page),
             Some(PendingRequest::WorkbenchReview(query)),
-        ) => model.accept_review_page(query, page.clone()),
+        ) => return model.accept_review_page(query, page.clone()),
+        (
+            AppResponsePayload::WorkbenchReviewSummary(summary),
+            Some(PendingRequest::WorkbenchReviewSummary(query)),
+        ) if summary.query().query() == query.query()
+            && summary.query().run() == query.run()
+            && summary.query().offset() == query.offset()
+            && (query.revision() == 0 || query.revision() == summary.query().revision()) =>
+        {
+            return model.accept_review_summary(query, summary);
+        }
+        (
+            AppResponsePayload::WorkbenchReviewDiff(page),
+            Some(PendingRequest::WorkbenchReviewDiff(query)),
+        ) => return model.accept_review_diff_page(query, page.clone()),
+        (
+            AppResponsePayload::WorkbenchReviewDiffBytes(bytes),
+            Some(PendingRequest::WorkbenchReviewDiffBytes(query)),
+        ) => model.accept_review_diff_bytes(query, bytes),
         _ => {}
     }
     Vec::new()
@@ -102,6 +154,14 @@ fn project_live(
             AppResponsePayload::WorkbenchImagePreview(preview),
             Some(PendingRequest::WorkbenchImagePreview(request)),
         ) => model.accept_image_preview(&request, preview.clone()),
+        (
+            AppResponsePayload::WorkbenchBriefPage(page),
+            Some(PendingRequest::WorkbenchBriefPage(request)),
+        ) => return model.accept_brief_page(request, page.clone()),
+        (
+            AppResponsePayload::WorkbenchBriefProposal(page),
+            Some(PendingRequest::WorkbenchBriefProposal(request)),
+        ) => model.accept_brief_body(request, page.clone()),
         (
             AppResponsePayload::WorkbenchBrief(brief),
             Some(PendingRequest::WorkbenchBrief(query)),
@@ -175,13 +235,44 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
         payload,
         AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchCheckpoint(_)
+            | AppResponsePayload::WorkbenchCheckpointPage(_)
+            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
+            | AppResponsePayload::InitArtifactProposal(_)
+            | AppResponsePayload::InitArtifactPage(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewSummary(_)
+            | AppResponsePayload::WorkbenchReviewDiff(_)
+            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
     )
+}
+
+fn project_init(
+    model: &mut AppModel,
+    payload: &AppResponsePayload,
+    pending: Option<PendingRequest>,
+) -> Vec<Effect> {
+    match (payload, pending) {
+        (
+            AppResponsePayload::InitArtifactProposal(proposal),
+            Some(PendingRequest::WorkbenchInitArtifacts(request)),
+        ) => return model.accept_init_artifact(&request, *proposal),
+        (
+            AppResponsePayload::InitArtifactPage(page),
+            Some(PendingRequest::WorkbenchInitArtifactPage(request)),
+        ) => model.accept_init_artifact_page(request, page.clone()),
+        (
+            AppResponsePayload::InitProposal(proposal),
+            Some(PendingRequest::WorkbenchInit(request)),
+        ) => model.accept_init_proposal(request, proposal.clone()),
+        _ => {}
+    }
+    Vec::new()
 }

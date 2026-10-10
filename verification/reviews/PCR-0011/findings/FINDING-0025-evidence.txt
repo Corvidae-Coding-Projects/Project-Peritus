@@ -1,0 +1,10 @@
+candidate=6889f8c5dcca335b71c572865d5483c8e68c0890 tree=8f952188d114ce3d2446fa085a84b95cfd57b143
+/tmp/peritus-final23/webui-owned-failure-f230.log
+bytes=109885
+sha256=cd0c39c5edf703e0e2df4df95863a341c96af2fa3eec2ebea6219c1c88427713
+/tmp/peritus-final23/web-owned-tests.log
+bytes=8481
+sha256=73917d1ed8dd6043a7893cfac49e09b6107016f9537c39444e8d59fdf71fbc87
+/tmp/peritus-final23/source-review-supplement-5a6bb9528.md
+bytes=4742
+sha256=6e5d47853b7ba1191388dea76db5fad4a970542c794f3c33268eec8a009ce1a9

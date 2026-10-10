@@ -9,7 +9,8 @@ use super::{
     WorkbenchGuidancePin, WorkbenchGuidanceRevision, WorkbenchGuidanceSave,
     WorkbenchGuidanceScopeChange, WorkbenchImagePreview, WorkbenchInputText,
     WorkbenchLaunchProfile, WorkbenchLaunchText, WorkbenchPermissionChange, WorkbenchPreviewInput,
-    WorkbenchQueueIntent, WorkbenchReviewAnchor, WorkbenchReviewFeedback, WorkbenchRewindPreview,
+    WorkbenchQueueIntent, WorkbenchReviewAnchor, WorkbenchReviewFeedback,
+    WorkbenchRewindConfirmation, WorkbenchRewindPreview,
 };
 
 /// Closed typed metadata changes; none start or resume inference.
@@ -81,6 +82,21 @@ pub enum WorkbenchIntent {
         preview: WorkbenchFileImportPreview,
         /// User-confirmed caption and queue instruction.
         text: WorkbenchInputText,
+    },
+    /// Enqueues complete staged user-authored text with immutable user-message provenance.
+    /// The imported bytes remain retrievable through the exact file-reference paging path.
+    EnqueueMessage {
+        /// Exact validated whole-message upload; no source path authority is granted.
+        preview: WorkbenchFileImportPreview,
+    },
+    /// Atomically admits a message and all exact snapshots under one queue identity.
+    EnqueueMessageBundle {
+        /// Inline instructions or an explicit reference-reading instruction.
+        text: WorkbenchInputText,
+        /// Optional complete user-authored message snapshot.
+        message: Option<WorkbenchFileImportPreview>,
+        /// Exact source snapshots, admitted with the message as one operation.
+        attachments: Vec<WorkbenchFileImportPreview>,
     },
     /// Revises only future file inclusion.
     SelectFile {
@@ -174,6 +190,8 @@ pub enum WorkbenchIntent {
     CreateCheckpoint(WorkbenchCheckpointName),
     /// Applies only an exact inspected restore preview after explicit confirmation.
     ApplyRewind(WorkbenchRewindPreview),
+    /// Applies a full-checkpoint-bound paged restore confirmation.
+    ConfirmRewind(WorkbenchRewindConfirmation),
     /// Narrows or restores one capability within the immutable host ceiling.
     SetPermissions(WorkbenchPermissionChange),
     /// Saves exact explicitly user-approved project-local guidance.
@@ -188,4 +206,6 @@ pub enum WorkbenchIntent {
     ForgetGuidance(WorkbenchGuidanceForget),
     /// Applies only the exact initialization file diff that the user inspected.
     ApplyInitDiff(InitProposal),
+    /// Applies only the exact immutable reviewed initialization manifest.
+    ApplyInitArtifact(super::InitArtifactProposal),
 }

@@ -170,7 +170,7 @@ separately in `.design/e0-actor-orchestrator.md`.
   caller precondition, placeholder, ignored test, or state-machine macro. Ordinary Rust executes
   the same checked bodies after ghost erasure and returns typed errors.
 - **D3-R042:** Public fields remain private. `lib.rs` files are composition/export surfaces below
-  80 lines. Production files target 400 lines and never exceed 700; domain, wire, durability,
+  80 lines. Production files stay at or below 500 lines; domain, wire, durability,
   projection, and tests remain focused modules without generic `manager`/`utils` buckets.
 - **D3-R043:** Neither production crate depends on a provider adapter, process/shell implementation,
   workspace mutator, approval issuer, or acceptance authority.

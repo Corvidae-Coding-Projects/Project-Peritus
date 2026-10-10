@@ -39,7 +39,7 @@ pub(super) fn raw_effect(
     let environment_contract = EnvironmentContract::new(environment_mode, literals.clone())
         .map_err(|error| format!("construct command environment contract: {error}"))?;
     let limits = resource_limits(resources)?;
-    let (terminal, terminal_requirements) = terminal(io, stdin, resources)?;
+    let (terminal, terminal_requirements) = terminal(io, stdin)?;
     let filesystem = FilesystemContract::new(vec![
         FilesystemRule::new(
             RuleEffect::Allow,
@@ -146,7 +146,6 @@ fn environment_names(
 fn terminal(
     io: IoMode,
     stdin: StdinPolicy,
-    resources: ProcessResourcePolicy,
 ) -> Result<(TerminalContract, TerminalRequirements), String> {
     let input = if matches!(stdin, StdinPolicy::Closed) {
         InputPermission::Denied
@@ -165,7 +164,7 @@ fn terminal(
         ),
     };
     let event_count = ResourceQuantity::new(16_384);
-    let output_bytes = ResourceQuantity::new(resources.output_bytes());
+    let output_bytes = ResourceQuantity::new(super::plan::OUTPUT_BYTES);
     let limits = TerminalLimits::new(size, event_count, output_bytes)
         .map_err(|error| format!("construct command terminal limits: {error}"))?;
     let contract = TerminalContract::new(
@@ -190,12 +189,12 @@ fn terminal(
 }
 
 fn resource_limits(resources: ProcessResourcePolicy) -> Result<ResourceLimits, String> {
-    ResourceLimits::new(
-        ResourceQuantity::new(resources.wall_millis()),
-        ResourceQuantity::new(resources.cpu_millis()),
+    ResourceLimits::with_optional_wall_output_cpu(
+        resources.wall_millis().map(ResourceQuantity::new),
+        resources.output_bytes().map(ResourceQuantity::new),
+        resources.cpu_millis().map(ResourceQuantity::new),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
-        ResourceQuantity::new(resources.output_bytes()),
         ResourceQuantity::new(resources.file_descriptors()),
         ResourceQuantity::new(resources.process_count()),
         ResourceQuantity::new(resources.concurrent_slots()),
