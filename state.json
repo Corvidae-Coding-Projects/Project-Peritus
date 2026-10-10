@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4290,
-        "tip_oid": "8f7d9fc938fdf89ef5abe3babea081c602ac34a5",
-        "prefix_sha256": "0ad22171d94a10049a72d08b8a76e10b4b8521a946a5214c61ca5144c3a8f87e"
+        "sequence": 4291,
+        "tip_oid": "3cf4f01664fa9170800db358d9ffd91991389cea",
+        "prefix_sha256": "f6d5755e0a4c6cccc9438b79652e8dc934049e05d2f91680d48c70755133db02"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3372,
+  "next_comment_id": 3373,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-10T00:58:59.416656360Z",
+      "updated_at": "2026-10-10T01:03:23.269372396Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42584,6 +42584,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9wvcDOTiDZGiFEzq44Ly3Qm2QV4kCwYuZU1II01RORxcAqCVFJdoYgi7PRQk65JUqz4As/oha3UxbVae+tmyCA=="
+        },
+        "52315aa4-423d-41bc-a1ed-aa0439ce4d7f": {
+          "display_id": 3372,
+          "author": "6ME5",
+          "content": "Committed/pushed 9666d0902afe9f52e6b063d9ebfa9aea7b2aaf5c test(process): validate append-only terminal startup output to existing PR113. Immediate control/full/exact-owner range reads now check bounded lengths and preserved append-only prefixes; pipes remain empty; absent-stream/cancel/tree/support-task assertions retained. PTY budget8192 matches existing native regressions. Root+independent Sol source review PASS. Exact verification55a9fb380169208b1b0c7214d77d7086523dd962a49cfd0e6e94a6f925b501d7 confirms focused2 + process72 tests, Windows GNU strict Clippy, policy/layout/fmt/diff. Scoped sibling audit10full files+1targeted read retained. Fresh reconciliation independently passes:6Gitpaths,5formaltransitions,4054candidate sources,1076historical artifacts preserved,157in-progress obligations,132gates. New exact-head campaign running; no PCR12 approval, no protected branch/ruleset mutation. Earlier0d87 hosted failures preserved.\n",
+          "created_at": "2026-10-10T01:03:23.251644805Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlAGYIB6f3CpOVKGp6TlEaVGLTHrDVp1o30Cgeaemogzhe1AGtKs1A5mHzXL2pFhCb4ie6jFResuM2FWowDvuCg=="
         },
         "53f0b35a-151a-4bd5-a09d-1e73121b6580": {
           "display_id": 2156,
