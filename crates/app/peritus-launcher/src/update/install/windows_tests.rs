@@ -95,7 +95,51 @@ impl Attempt {
         Self { helper, outcome }
     }
     fn outcome(&self) -> serde_json::Value {
-        serde_json::from_slice(&std::fs::read(&self.outcome).unwrap()).unwrap()
+        let bytes = std::fs::read(&self.outcome).unwrap_or_else(|error| {
+            panic!("read completed updater outcome {}: {error}", self.outcome.display())
+        });
+        serde_json::from_slice(&bytes).unwrap_or_else(|error| {
+            panic!("invalid completed updater outcome {}: {error}", self.outcome.display())
+        })
+    }
+    async fn wait_for_outcome(&self, helper: &Helper, detail: &str) -> serde_json::Value {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        loop {
+            let (matching, observation) = match std::fs::read(&self.outcome) {
+                Ok(bytes) => {
+                    let outcome: serde_json::Value =
+                        serde_json::from_slice(&bytes).unwrap_or_else(|error| {
+                            panic!(
+                                "invalid live updater outcome {}: {error}",
+                                self.outcome.display()
+                            )
+                        });
+                    let observation =
+                        format!("state={}, detail={}", outcome["state"], outcome["detail"]);
+                    ((outcome["detail"] == detail).then_some(outcome), observation)
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    (None, error.to_string())
+                }
+                Err(error) => {
+                    panic!("read live updater outcome {}: {error}", self.outcome.display());
+                }
+            };
+            assert!(
+                !helper.0.is_finished(),
+                "updater helper ended before outcome {} reached {detail:?}: last observation: {observation}",
+                self.outcome.display()
+            );
+            if let Some(outcome) = matching {
+                return outcome;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "updater outcome {} did not reach {detail:?}: last observation: {observation}",
+                self.outcome.display()
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
     }
     fn start(&self) -> Helper {
         let mut command = Command::new("powershell.exe");
@@ -199,10 +243,9 @@ async fn simultaneous_deferred_attempts_hold_one_installation_owner_through_both
     let mut first_helper = first.start();
     wait_for(|| installed.join("active").exists()).await;
     let mut second_helper = second.start();
-    wait_for(|| second.outcome()["detail"] == "waiting for installation owner").await;
+    let waiting = second.wait_for_outcome(&second_helper, "waiting for installation owner").await;
     assert_eq!(
-        second.outcome()["state"],
-        "pending",
+        waiting["state"], "pending",
         "second attempt must not enter installation while the first owns it"
     );
     std::fs::write(installed.join("gate"), b"release first installer").unwrap();
