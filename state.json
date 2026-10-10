@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4289,
-        "tip_oid": "2860bc1c0121969727fad57349833bdd87a5b847",
-        "prefix_sha256": "1c372fced9d87d918cdab5adce33ed7cab8ce1dbf4187c21137e9ff3d7ede058"
+        "sequence": 4290,
+        "tip_oid": "8f7d9fc938fdf89ef5abe3babea081c602ac34a5",
+        "prefix_sha256": "0ad22171d94a10049a72d08b8a76e10b4b8521a946a5214c61ca5144c3a8f87e"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3371,
+  "next_comment_id": 3372,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-10T00:30:04.426026502Z",
+      "updated_at": "2026-10-10T00:58:59.416656360Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42404,6 +42404,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZyHBL+GNWZ3qtlusyhIFgSLBGvFKrJoNKpKk1F8SoeMWXEOppAE6pP0sCmUm/8HKKIF/p7arhGi/bZDLyRGoDA=="
+        },
+        "1d782673-44a3-4130-a6fe-d0d3046c2c81": {
+          "display_id": 3371,
+          "author": "6ME5",
+          "content": "Committed and pushed 39c47dee6b9caa8302c37a03972dfa78300d5def (test(launcher): observe live Windows updater receipts safely) to existing PR113 fix/minimum-repair. Test-only live receipt polling retries only NotFound while helper active, preserves strict terminal receipts, exact ownership order and versions. Independent Sol source review passed. Exact-source verification record099bde6b286eb2e289b3f9d041ead8c2921ffeda719ddc06327f0f2b5283be2e: Windows GNU strict launcher Clippy, 53 Linux launcher tests, policy/layout/fmt/diff passed. Native execution pending. Diagnostic intermediate: an additional prior-head0d87 GateA runtime-tools failure arrived after push (terminal startup spool wrongly assumed empty despite ConPTY control bytes); correction in progress before fresh complete PCR12 qualification. All132 local0d87 gates passed but0d87 hosted qualification failed; no approval generated. Protected main/develop and ruleset unchanged.\n",
+          "created_at": "2026-10-10T00:58:59.370080844Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJ5eIevAAXwpvbMJLJw1RXNVryRA5tbdKYRXlqXTyHHDUZFZGvVUZ8jNCC3myiH2mzLSAyyBOOWtwWp3kgw9CBQ=="
         },
         "1e046d93-a4ba-4d44-99cd-fc2448cc6461": {
           "display_id": 2159,
