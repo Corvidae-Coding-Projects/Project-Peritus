@@ -9,7 +9,7 @@ const TRAILING_OUTPUT: &str = "TAIL_RELEASED";
 const DEADLINE: Duration = Duration::from_secs(10);
 
 pub(super) fn split_prompt() {
-    print!("NAME?");
+    std::io::stdout().write_all(b"NAME?").expect("partial prompt bytes");
     std::io::stdout().flush().expect("partial prompt");
     let release = std::env::current_dir().expect("fixture working directory").join(RELEASE_FILE);
     let began = std::time::Instant::now();
