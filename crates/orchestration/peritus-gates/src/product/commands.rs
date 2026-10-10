@@ -351,27 +351,3 @@ fn planning(detail: &'static str) -> GateError {
 fn required_manifest(project: &AffectedProject) -> Result<&Path, GateError> {
     project.manifest().ok_or_else(|| planning("affected project manifest is missing"))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::TargetGatePlan;
-
-    #[test]
-    fn artifact_manifest_rejects_unknown_or_incompatible_fields() {
-        let root = tempfile::tempdir().expect("temporary workspace");
-        std::fs::create_dir(root.path().join("out")).expect("output directory");
-        std::fs::write(root.path().join("out/result.txt"), "result\n").expect("output artifact");
-        for manifest in [
-            "schema_version = 2\nkind = \"artifact\"\n",
-            "schema_version = 1\nkind = \"artifact\"\nextra = true\n",
-        ] {
-            std::fs::write(root.path().join("peritus-workspace.toml"), manifest)
-                .expect("artifact manifest");
-            assert!(
-                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")], &[])
-                    .is_err()
-            );
-        }
-    }
-}

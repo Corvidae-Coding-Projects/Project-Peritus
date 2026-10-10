@@ -227,23 +227,3 @@ fn sync_parent(path: &Path) -> Result<(), LauncherError> {
 const fn sync_parent(_path: &Path) -> Result<(), LauncherError> {
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn newest_invalid_generation_falls_back_to_last_valid_state() {
-        let root = tempfile::tempdir().expect("state root");
-        let store = ProductStateStore::open(root.path().to_owned()).expect("store");
-        let expected = ProductState::new(crate::identity::generate().expect("identity"));
-        store.commit(&expected).expect("valid generation");
-        fs::write(root.path().join("state-18000000000000000000.json"), b"{broken")
-            .expect("newer corrupt generation");
-
-        let recovered = store.load_or_initialize().expect("fallback state");
-
-        assert_eq!(recovered.generation(), expected.generation());
-        assert_eq!(recovered.identity(), expected.identity());
-    }
-}

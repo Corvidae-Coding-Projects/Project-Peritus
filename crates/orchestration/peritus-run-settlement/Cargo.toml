@@ -7,19 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 
 [dependencies]
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[package.metadata.peritus]
-owner = "E0"
-layer = "orchestration"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

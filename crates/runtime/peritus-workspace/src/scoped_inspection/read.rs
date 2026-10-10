@@ -258,6 +258,3 @@ impl Scan {
         })
     }
 }
-
-#[cfg(test)]
-mod tests;

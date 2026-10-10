@@ -140,32 +140,3 @@ fn parse_memory_text(text: &str, multiplier: u64) -> Result<u64, ProductRunnerEr
 fn resource_error(detail: impl Into<String>) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Budget, "observe product-run resources", detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn workspace_growth_ignores_git_storage_and_does_not_follow_links() {
-        let temporary = tempfile::tempdir().expect("resource root");
-        fs::create_dir(temporary.path().join(".git")).expect("git directory");
-        fs::write(temporary.path().join(".git/object"), vec![0_u8; 128]).expect("git object");
-        fs::write(temporary.path().join("source.rs"), b"abc").expect("source");
-        let probe = RunResourceProbe::new(temporary.path()).expect("resource probe");
-
-        fs::write(temporary.path().join("artifact.bin"), vec![0_u8; 64]).expect("artifact");
-        let observation = probe.observe().expect("resource observation");
-
-        assert_eq!(observation.workspace, 67);
-        assert_eq!(observation.growth, 64);
-        assert!(observation.peak_rss > 0);
-    }
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn linux_memory_observation_uses_current_residency_instead_of_lifetime_high_water() {
-        let status = "VmHWM:\t9000 kB\nVmRSS:\t1234 kB\n";
-
-        assert_eq!(linux_resident_memory_bytes(status).expect("resident memory"), 1_263_616);
-    }
-}

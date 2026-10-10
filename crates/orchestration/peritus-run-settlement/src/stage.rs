@@ -1,40 +1,23 @@
 //! Currently supported qualification stage for one exact candidate.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Qualification currently supported by observations for one exact candidate.
+#[doc = " Qualification currently supported by observations for one exact candidate."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CandidateStage {
-    /// Candidate content was observed.
+    #[doc = " Candidate content was observed."]
     Observed,
-    /// Workspace content differs from the run baseline.
+    #[doc = " Workspace content differs from the run baseline."]
     Changed,
-    /// The producing role reported a self-check.
+    #[doc = " The producing role reported a self-check."]
     SelfChecked,
-    /// Required deterministic gates passed for this candidate.
+    #[doc = " Required deterministic gates passed for this candidate."]
     GatesPassed,
-    /// Gates passed and independent review has not yet completed.
+    #[doc = " Gates passed and independent review has not yet completed."]
     ReviewPending,
-    /// Gates, public obligations, and independent review all passed.
+    #[doc = " Gates, public obligations, and independent review all passed."]
     Qualified,
 }
-
 impl CandidateStage {
-    /// Mathematical order of qualification strength, not observation chronology.
-    pub open spec fn spec_rank(self) -> u8 {
-        match self {
-            Self::Observed => 1,
-            Self::Changed => 2,
-            Self::SelfChecked => 3,
-            Self::GatesPassed => 4,
-            Self::ReviewPending => 5,
-            Self::Qualified => 6,
-        }
-    }
-
-    /// Stable protocol tag.
+    #[doc = " Stable protocol tag."]
     #[must_use]
     pub const fn tag(self) -> u16 {
         match self {
@@ -46,8 +29,7 @@ impl CandidateStage {
             Self::Qualified => 6,
         }
     }
-
-    /// Decodes a stable protocol tag.
+    #[doc = " Decodes a stable protocol tag."]
     #[must_use]
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
@@ -60,12 +42,9 @@ impl CandidateStage {
             _ => None,
         }
     }
-
-    /// Stable increasing qualification rank.
+    #[doc = " Stable increasing qualification rank."]
     #[must_use]
-    pub const fn rank(self) -> (rank: u8)
-        ensures rank == self.spec_rank(),
-    {
+    pub const fn rank(self) -> u8 {
         match self {
             Self::Observed => 1,
             Self::Changed => 2,
@@ -75,10 +54,9 @@ impl CandidateStage {
             Self::Qualified => 6,
         }
     }
-
-    /// Compares qualification strength; this does not authorize a state transition.
+    #[doc = " Compares qualification strength; this does not authorize a state transition."]
     #[must_use]
-    pub const fn permits(self, next: Self) -> bool { self.rank() <= next.rank() }
+    pub const fn permits(self, next: Self) -> bool {
+        self.rank() <= next.rank()
+    }
 }
-
-} // verus!

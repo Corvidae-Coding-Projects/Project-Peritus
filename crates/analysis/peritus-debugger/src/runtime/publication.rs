@@ -15,9 +15,6 @@ use crate::{
 
 use super::{CommittedDebuggerTransition, FinalizedReportArtifact, TransitionIds};
 
-#[cfg(test)]
-mod tests;
-
 /// Evidence admission plus the exact atomic C0 publication settlement.
 #[derive(Debug)]
 pub struct PublicationExecution {

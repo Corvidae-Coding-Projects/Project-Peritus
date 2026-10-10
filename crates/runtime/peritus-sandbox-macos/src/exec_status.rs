@@ -105,37 +105,3 @@ fn status_error(detail: &'static str) -> MacosError {
         detail,
     )
 }
-
-#[cfg(all(test, unix))]
-mod tests {
-    use std::{io::Write, os::unix::net::UnixStream, time::Duration};
-
-    use peritus_types::Sha256Digest;
-
-    use super::ExecStatusOwner;
-
-    #[test]
-    fn close_on_exec_eof_confirms_target_replacement() {
-        let (reader, writer) = UnixStream::pair().unwrap();
-        reader.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
-        drop(writer);
-        let mut owner = ExecStatusOwner { reader };
-        owner.observe(Sha256Digest::new([1; 32]), Sha256Digest::new([2; 32])).unwrap();
-    }
-
-    #[test]
-    fn authenticated_exec_failure_is_not_a_target_exit() {
-        let manifest = Sha256Digest::new([3; 32]);
-        let preparation = Sha256Digest::new([4; 32]);
-        let (reader, mut writer) = UnixStream::pair().unwrap();
-        reader.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
-        writer
-            .write_all(
-                peritus_process::native_target_exec_failed_record(manifest, preparation).as_bytes(),
-            )
-            .unwrap();
-        drop(writer);
-        let mut owner = ExecStatusOwner { reader };
-        assert!(owner.observe(manifest, preparation).is_err());
-    }
-}

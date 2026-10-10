@@ -14,9 +14,6 @@ use accounting::GoalAttemptProgress;
 pub use accounting::{GoalAdmission, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport};
 pub use evidence::GraphicalOutputEvidence;
 
-#[cfg(test)]
-mod tests;
-
 /// User-visible lifecycle of one logical goal, independent of an individual run attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

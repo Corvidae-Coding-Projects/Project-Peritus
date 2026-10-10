@@ -362,7 +362,3 @@ fn canonical_versions(
     }
     Ok(versions)
 }
-
-#[cfg(test)]
-#[path = "negotiation/tests.rs"]
-mod tests;

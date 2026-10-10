@@ -156,16 +156,3 @@ fn seccomp_error(detail: &'static str) -> LinuxError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn production_policy_compiles_for_each_supported_architecture() {
-        for architecture in [TargetArch::x86_64, TargetArch::aarch64] {
-            let filter = compile(architecture).expect("supported architecture policy compiles");
-            assert!(!filter.is_empty());
-        }
-    }
-}

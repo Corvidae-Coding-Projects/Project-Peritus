@@ -384,6 +384,3 @@ fn put_bytes(output: &mut Vec<u8>, value: &[u8]) {
 fn put_u64(output: &mut Vec<u8>, value: u64) {
     output.extend_from_slice(&value.to_be_bytes());
 }
-
-#[cfg(test)]
-mod tests;

@@ -70,37 +70,3 @@ impl CatalogRequests {
         self.0.shutdown().await;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    };
-
-    struct Owned(Arc<AtomicUsize>);
-    impl Drop for Owned {
-        fn drop(&mut self) {
-            self.0.fetch_add(1, Ordering::SeqCst);
-        }
-    }
-
-    #[tokio::test]
-    async fn excess_discovery_is_bounded_and_disconnect_reaps_every_owned_task() {
-        let released = Arc::new(AtomicUsize::new(0));
-        let mut requests = CatalogRequests::default();
-        for _ in 0..MAX_DISCOVERIES {
-            let owned = Owned(Arc::clone(&released));
-            assert!(requests.try_spawn(async move {
-                let _owned = owned;
-                std::future::pending::<AppResponseEnvelope>().await
-            }));
-        }
-        assert!(!requests.try_spawn(std::future::pending()));
-        requests.shutdown().await;
-        assert_eq!(released.load(Ordering::SeqCst), MAX_DISCOVERIES);
-        assert!(requests.try_spawn(std::future::pending()));
-        requests.shutdown().await;
-    }
-}

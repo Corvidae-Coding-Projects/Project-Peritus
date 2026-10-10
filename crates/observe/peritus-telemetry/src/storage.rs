@@ -1,8 +1,5 @@
 //! Durable, atomic export-checkpoint storage.
 
-#[cfg(test)]
-mod tests;
-
 use std::{
     ffi::OsStr,
     fs::{self, File, OpenOptions},

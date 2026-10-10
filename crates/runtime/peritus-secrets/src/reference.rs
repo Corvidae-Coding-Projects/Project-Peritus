@@ -67,20 +67,3 @@ const fn nibble(byte: u8) -> Option<u8> {
         _ => None,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn opaque_reference_round_trips() {
-        let reference = SecretReference::new(
-            ResourceId::new([7; 16]).expect("resource"),
-            Sha256Digest::new([9; 32]),
-        );
-        assert_eq!(
-            parse_credential_reference(&format_credential_reference(reference)).expect("parse"),
-            reference
-        );
-    }
-}

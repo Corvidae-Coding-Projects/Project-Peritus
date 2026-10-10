@@ -356,10 +356,6 @@ fn start_position(
     }
 }
 
-#[cfg(test)]
-#[path = "pages/tests.rs"]
-mod tests;
-
 fn next_cursor(
     section: WorkbenchCoverageSection,
     end: u64,

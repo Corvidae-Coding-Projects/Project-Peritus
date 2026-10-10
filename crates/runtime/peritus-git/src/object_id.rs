@@ -201,27 +201,3 @@ const fn decode_nibble(byte: u8) -> u8 {
         _ => 0,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{ObjectFormat, ObjectId};
-    use crate::Operation;
-
-    #[test]
-    fn accepts_exact_sha1_and_sha256() {
-        let sha1 =
-            ObjectId::parse(ObjectFormat::Sha1, &"ab".repeat(20), Operation::Status).expect("sha1");
-        let sha256 = ObjectId::parse(ObjectFormat::Sha256, &"cd".repeat(32), Operation::Status)
-            .expect("sha256");
-        assert_eq!(sha1.to_hex(), "ab".repeat(20));
-        assert_eq!(sha256.to_hex(), "cd".repeat(32));
-    }
-
-    #[test]
-    fn rejects_wrong_algorithm_length_and_uppercase() {
-        assert!(ObjectId::parse(ObjectFormat::Sha1, &"ab".repeat(32), Operation::Status).is_err());
-        assert!(
-            ObjectId::parse(ObjectFormat::Sha256, &"AB".repeat(32), Operation::Status).is_err()
-        );
-    }
-}

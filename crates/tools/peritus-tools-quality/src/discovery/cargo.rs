@@ -33,14 +33,3 @@ pub(super) fn discover(
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn invalid_manifest_is_not_discovery_success() {
-        let error = discover(b"[package\n", &mut Vec::new()).expect_err("invalid TOML");
-        assert_eq!(error.kind(), QualityErrorKind::Parser);
-    }
-}

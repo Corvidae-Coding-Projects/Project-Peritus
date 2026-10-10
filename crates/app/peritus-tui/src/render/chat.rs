@@ -17,20 +17,17 @@ mod permissions;
 mod queue;
 mod status;
 mod transcript;
-#[cfg(test)]
-use transcript::append_tool;
+
 pub use transcript::transcript_rows;
 pub(super) use transcript::wrapped_lines;
-#[cfg(test)]
-mod tests;
+
 mod workbench;
 use super::{ACCENT, BAD, GOOD, MUTED, WARN};
 use crate::{
     input::composer,
     model::{AppModel, ConnectionStatus},
 };
-#[cfg(test)]
-use peritus_app_protocol::ProductActivityKind;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},

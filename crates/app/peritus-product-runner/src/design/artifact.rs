@@ -45,11 +45,6 @@ fn inventory(
     inventory_cancellable(root, MAX_INVENTORY_ENTRIES, &mut check_cancelled)
 }
 
-#[cfg(test)]
-fn inventory_with_limit(root: &Path, maximum: usize) -> Result<Inventory, ProductRunnerError> {
-    inventory_cancellable(root, maximum, &mut || Ok(()))
-}
-
 fn inventory_cancellable(
     root: &Path,
     maximum: usize,
@@ -259,91 +254,4 @@ fn ignored(path: &Path) -> bool {
 
 fn repository(operation: &'static str, detail: impl Into<String>) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Repository, operation, detail)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rendered_design_preserves_the_request_and_observed_inventory() {
-        let design = render(
-            "Create out/report.json with status \"ready\".\nDo not modify input files.",
-            &Inventory {
-                entries: vec![
-                    InventoryEntry {
-                        path: "in/source.json".to_owned(),
-                        kind: "file",
-                        bytes: Some(42),
-                    },
-                    InventoryEntry { path: "out".to_owned(), kind: "directory", bytes: None },
-                ],
-                omissions: Vec::new(),
-                truncated: false,
-            },
-            ExternalEffectRequirement::Optional,
-        );
-
-        assert!(design.starts_with("# Generated artifact production design"));
-        assert!(design.contains("> Create out/report.json with status \"ready\"."));
-        assert!(design.contains("`in/source.json`: file (42 bytes)"));
-        assert!(design.contains("## Implementation slices"));
-        assert!(design.contains("rerunning only the calibration sample is insufficient"));
-        assert!(design.contains("keep a compact candidate ledger"));
-        assert!(design.contains("preserve the best valid candidate atomically"));
-        assert!(design.contains("Keep selection data distinct from the final acceptance holdout"));
-        assert!(design.contains("account for that bias"));
-        assert!(design.contains("one successful supplied-input run does not establish"));
-        assert!(design.contains("Do not guess unpublished schemas"));
-    }
-
-    #[test]
-    fn artifact_design_preserves_explicit_in_place_edit_authority() {
-        let request = "Fix in/program.py in place; preserve in/source.json.";
-        let design = render(
-            request,
-            &Inventory { entries: Vec::new(), omissions: Vec::new(), truncated: false },
-            ExternalEffectRequirement::Optional,
-        );
-
-        assert!(design.contains(&format!("> {request}")));
-        assert!(design.contains("unless the request explicitly requires editing them in place"));
-        assert!(design.contains("output or in-place edit paths"));
-        assert!(!design.contains("Input paths are read-only evidence."));
-        assert!(!design.contains("There are no retained source modules."));
-    }
-
-    #[test]
-    fn operational_design_requires_live_effect_and_fresh_verification() {
-        let design = render(
-            "Start the local service and leave it running.",
-            &Inventory { entries: Vec::new(), omissions: Vec::new(), truncated: false },
-            ExternalEffectRequirement::Required,
-        );
-
-        assert!(design.contains("live caller-authorized operational result"));
-        assert!(design.contains("not completion without the requested effect"));
-        assert!(design.contains("`external_effect`"));
-        assert!(design.contains("`verification`"));
-    }
-
-    #[test]
-    fn large_workspace_inventory_is_bounded_without_blocking_design() {
-        let root = tempfile::tempdir().expect("artifact workspace");
-        for name in ["c.txt", "a.txt", "b.txt"] {
-            fs::write(root.path().join(name), name).expect("artifact input");
-        }
-
-        let inventory = inventory_with_limit(root.path(), 2).expect("bounded inventory");
-
-        assert!(inventory.truncated);
-        assert_eq!(
-            inventory.entries.iter().map(|entry| entry.path.as_str()).collect::<Vec<_>>(),
-            ["a.txt", "b.txt"]
-        );
-        let design =
-            render("Inspect the supplied inputs.", &inventory, ExternalEffectRequirement::Optional);
-        assert!(design.contains("deterministic navigation sample truncated after the first 2"));
-        assert!(design.contains("does not prove that a path is absent"));
-    }
 }

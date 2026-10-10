@@ -1,1 +1,0 @@
-{"model":"gpt-test","input":[{"content":[{"text":"hello","type":"input_text"}],"role":"user","type":"message"}],"stream":true,"store":false,"background":false,"max_output_tokens":64,"parallel_tool_calls":false,"text":{"format":{"type":"text"}}}

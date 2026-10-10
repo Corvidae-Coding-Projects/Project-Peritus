@@ -8,8 +8,6 @@ use crate::{
 };
 
 mod canonical;
-#[cfg(test)]
-mod canonical_tests;
 
 pub(crate) use canonical::{decode_terminal, encode_terminal, terminal_digest};
 

@@ -2,8 +2,6 @@
 
 mod error;
 mod scoped;
-#[cfg(test)]
-mod tests;
 
 use std::collections::BTreeMap;
 

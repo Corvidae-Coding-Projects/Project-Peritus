@@ -195,14 +195,6 @@ impl OpenAiConfig {
     pub(crate) const fn retry_policy(&self) -> RetryPolicy {
         self.retry_policy
     }
-
-    #[cfg(test)]
-    pub(crate) fn for_test(
-        endpoint: Endpoint,
-        credential: CredentialReference,
-    ) -> Result<Self, ProviderCoreError> {
-        Self::from_endpoint(endpoint, credential)
-    }
 }
 
 impl fmt::Debug for OpenAiConfig {

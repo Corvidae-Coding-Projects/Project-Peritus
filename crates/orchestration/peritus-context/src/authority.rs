@@ -1,24 +1,19 @@
 //! Authority classes are independent from the source provenance label.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Authority attached to content without interpreting the content text.
+#[doc = " Authority attached to content without interpreting the content text."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum AuthorityClass {
-    /// Non-overridable system policy.
+    #[doc = " Non-overridable system policy."]
     SystemPolicy,
-    /// Application-level policy below system policy.
+    #[doc = " Application-level policy below system policy."]
     ApplicationPolicy,
-    /// Immutable acceptance criteria and specifications.
+    #[doc = " Immutable acceptance criteria and specifications."]
     AcceptanceSpecification,
-    /// The active user's explicit instruction.
+    #[doc = " The active user\'s explicit instruction."]
     UserInstruction,
-    /// Evidence or derived text that carries no instruction authority.
+    #[doc = " Evidence or derived text that carries no instruction authority."]
     NonAuthoritative,
 }
-
 impl AuthorityClass {
     pub(crate) const fn precedence(self) -> u8 {
         match self {
@@ -30,5 +25,3 @@ impl AuthorityClass {
         }
     }
 }
-
-} // verus!

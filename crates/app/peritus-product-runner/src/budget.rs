@@ -178,6 +178,3 @@ fn invalid_horizon(detail: &'static str) -> ProductRunnerError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests;

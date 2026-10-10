@@ -59,40 +59,6 @@ impl InteractionOptions {
         }
     }
 
-    #[cfg(test)]
-    pub(super) fn test(mode: ProductInteractionMode, models: ProductRoleModels) -> Self {
-        Self::test_for_run(
-            mode,
-            models,
-            RunId::new([5; 16]).expect("run"),
-            peritus_types::WorkspaceId::new([4; 16]).expect("workspace"),
-        )
-    }
-
-    #[cfg(test)]
-    pub(super) fn test_for_run(
-        mode: ProductInteractionMode,
-        models: ProductRoleModels,
-        run: RunId,
-        workspace: peritus_types::WorkspaceId,
-    ) -> Self {
-        use peritus_product_runner::control::{ControlIntent, ConversationId, OperationId};
-        use peritus_types::ActorId;
-
-        Self::new(
-            peritus_product_runner::control::ControlOperation::new(
-                OperationId::new([1; 16]).expect("operation"),
-                ConversationId::new([2; 16]).expect("conversation"),
-                ActorId::new([3; 16]).expect("actor"),
-                workspace,
-                0,
-                ControlIntent::StartExecution { run: run.into_bytes(), settings_digest: [6; 32] },
-            ),
-            mode,
-            models,
-        )
-    }
-
     pub(super) fn record_persistence_failure(&self, error: String) {
         if let Ok(mut stored) = self.persistence_error.write() {
             *stored = Some(error);
@@ -364,6 +330,3 @@ fn bounded(text: &str) -> String {
     }
     format!("{}...", &text[..end])
 }
-
-#[cfg(test)]
-mod tests;

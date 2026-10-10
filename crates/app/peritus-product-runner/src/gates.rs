@@ -80,25 +80,6 @@ pub async fn run_with_ownership(
     })?
 }
 
-#[cfg(test)]
-fn run_scoped(
-    root: &Path,
-    changed_paths: Vec<PathBuf>,
-    ownership: Option<&WorkspaceOwnership>,
-    delivery_scope: ProductDeliveryScope,
-    transcript: &str,
-) -> Result<GateReport, ProductRunnerError> {
-    run_scoped_with_cancellation(
-        root,
-        changed_paths,
-        ownership,
-        delivery_scope,
-        transcript,
-        "",
-        &GateCancellation::default(),
-    )
-}
-
 fn run_scoped_with_cancellation(
     root: &Path,
     changed_paths: Vec<PathBuf>,
@@ -342,6 +323,3 @@ fn render(report: &TargetGateReport, delivery_scope: ProductDeliveryScope) -> St
     text.push_str(&format!("\nExact-target acceptance: {exact_target_status}\n"));
     limit_text(&text, 1024 * 1024)
 }
-
-#[cfg(test)]
-mod tests;

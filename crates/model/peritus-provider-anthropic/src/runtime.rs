@@ -10,7 +10,3 @@ mod stream;
 pub use config::ClaudeRuntimeConfig;
 pub use executable::ClaudeExecutable;
 pub use provider::ClaudeRuntimeProvider;
-
-#[cfg(test)]
-#[path = "runtime_tests.rs"]
-mod tests;

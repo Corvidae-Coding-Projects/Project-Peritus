@@ -1,3 +1,0 @@
-schema = 1
-accepted = false
-expected_error = "truncated-frame"

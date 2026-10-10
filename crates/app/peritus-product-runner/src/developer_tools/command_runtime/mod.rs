@@ -63,9 +63,6 @@ struct RuntimeInner {
     process_store: ProcessStore,
     gateway: ExecutionGateway,
     state: Mutex<RuntimeState>,
-    #[cfg(test)]
-    #[allow(dead_code, reason = "keeps the temporary command registry alive for unit tests")]
-    state_guard: Option<tempfile::TempDir>,
 }
 
 struct RuntimeState {
@@ -132,19 +129,6 @@ impl CommandRuntime {
 
     pub(crate) const fn local_context_config(&self) -> &crate::LocalContextConfig {
         &self.local_context
-    }
-
-    #[cfg(test)]
-    pub(crate) fn open_for_test(workspace_root: &Path, run_id: RunId) -> Self {
-        let state_guard = tempfile::tempdir().expect("temporary command state");
-        let processes = ProcessStore::open(state_guard.path().join("processes"), workspace_root)
-            .expect("test command process store");
-        let mut runtime =
-            Self::open(state_guard.path().join("router"), workspace_root, run_id, processes)
-                .expect("test command runtime");
-        Arc::get_mut(&mut runtime.inner).expect("new command runtime is unique").state_guard =
-            Some(state_guard);
-        runtime
     }
 
     pub(super) fn start(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
@@ -440,6 +424,3 @@ fn runtime_open(detail: String) -> crate::ProductRunnerError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests;

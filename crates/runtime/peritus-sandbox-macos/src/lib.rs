@@ -12,8 +12,7 @@
 
 mod activation;
 mod canonical;
-#[cfg(all(test, unix))]
-mod conformance_tests;
+
 mod descriptor;
 mod environment;
 mod error;
@@ -27,14 +26,13 @@ mod preparation;
 mod probe;
 mod process;
 mod recovery;
-mod refinement;
+
 mod resource;
 mod resource_monitor;
 mod runner;
 mod secret;
 mod session;
-#[cfg(all(test, unix))]
-mod test_support;
+
 mod verified;
 
 pub use activation::{ACTIVATION_RECORD_BYTES, ActivationRecord};

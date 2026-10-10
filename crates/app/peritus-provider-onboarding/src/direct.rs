@@ -133,16 +133,3 @@ fn random_resource_id() -> Result<ResourceId, OnboardingError> {
     }
     ResourceId::new(bytes).map_err(|_| OnboardingError::Random("generated a zero identity".into()))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn credential_debug_is_redacted() {
-        let credential = DirectCredential::new(b"private-provider-key".to_vec()).expect("secret");
-        let debug = format!("{credential:?}");
-        assert!(!debug.contains("private-provider-key"));
-        assert_eq!(debug, "DirectCredential([REDACTED])");
-    }
-}

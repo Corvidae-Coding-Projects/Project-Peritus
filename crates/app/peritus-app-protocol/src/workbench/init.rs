@@ -11,9 +11,6 @@ use render::{managed_content, render_exact_diff};
 mod validation;
 use validation::{valid_command_part, valid_relative_path};
 
-#[cfg(test)]
-mod tests;
-
 /// The sole instruction file managed by the first initialization flow.
 pub const INIT_INSTRUCTION_PATH: &str = "AGENTS.md";
 /// Opening marker for the replaceable Peritus-owned instruction section.

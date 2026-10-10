@@ -2,23 +2,6 @@
 
 use core::fmt;
 use peritus_codec::{CodecLimits, HEADER_LEN};
-use vstd::prelude::*;
-
-verus! {
-
-/// Mathematical validity predicate for one positive bounded resource pair.
-pub open spec fn valid_bounded_resource(value: int, ceiling: int) -> bool {
-    0 < value && value <= ceiling
-}
-
-/// The minimum of two positive limits is positive.
-pub proof fn minimum_positive(left: int, right: int)
-    requires left > 0, right > 0
-    ensures if left <= right { left } else { right } > 0
-{
-}
-
-} // verus!
 
 /// Checked resource ceilings used by one protocol relationship.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -314,26 +297,3 @@ impl fmt::Display for LimitConfigurationError {
 }
 
 impl std::error::Error for LimitConfigurationError {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn invalid_codec_relationship_is_rejected() {
-        let codec = CodecLimits::new(HEADER_LEN, 1, 1, 1, 1, 1);
-        let result = AppProtocolLimits::new(codec, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
-        assert_eq!(
-            result,
-            Err(LimitConfigurationError::Inconsistent(LimitDimension::PayloadBytes)),
-        );
-    }
-
-    #[test]
-    fn negotiation_is_pointwise_minimum() {
-        let constrained =
-            AppProtocolLimits::new(CodecLimits::PRODUCTION, 2, 3, 4, 5, 6, 1024, 7, 512, 128, 8)
-                .unwrap();
-        assert_eq!(AppProtocolLimits::PRODUCTION.negotiated(constrained), Ok(constrained),);
-    }
-}

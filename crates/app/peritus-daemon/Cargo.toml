@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["agents", "daemon", "ipc", "orchestration"]
 categories = ["development-tools"]
 
@@ -70,7 +70,6 @@ sha2.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 toml.workspace = true
-vstd.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
@@ -84,22 +83,9 @@ windows-sys = { workspace = true, features = [
     "Win32_System_Threading",
 ] }
 
-[dev-dependencies]
-futures-util.workspace = true
-peritus-conformance = { version = "=0.0.5", path = "../testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.5", path = "../testing/peritus-test-support" }
-
 [[bin]]
 name = "peritusd"
 path = "src/bin/peritusd.rs"
-
-[package.metadata.peritus]
-owner = "G0"
-layer = "app"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

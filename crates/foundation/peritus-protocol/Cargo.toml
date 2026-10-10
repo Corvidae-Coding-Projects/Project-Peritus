@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 description = "Stable canonical domain protocol for Peritus"
 
 [dependencies]
@@ -17,18 +17,6 @@ peritus-policy = { version = "=0.0.5", path = "../peritus-policy" }
 peritus-quality-policy = { version = "=0.0.5", path = "../peritus-quality-policy" }
 peritus-spec = { version = "=0.0.5", path = "../peritus-spec" }
 peritus-types = { version = "=0.0.5", path = "../peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-
-[package.metadata.peritus]
-owner = "B3"
-layer = "foundation"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

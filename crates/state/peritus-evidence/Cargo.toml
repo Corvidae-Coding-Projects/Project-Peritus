@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["evidence", "provenance", "artifacts", "formal-verification"]
 categories = ["database", "data-structures"]
 
@@ -24,19 +24,7 @@ rusqlite.workspace = true
 fs4.workspace = true
 tempfile.workspace = true
 sha2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-kernel = { version = "=0.0.5", path = "../../foundation/peritus-kernel" }
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
 
 [lints]
 workspace = true
 
-[package.metadata.peritus]
-owner = "C0"
-layer = "state"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true

@@ -9,8 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 mod metadata;
-#[cfg(test)]
-mod tests;
+
 pub use metadata::ImageMetadata;
 
 /// Detected format of validated raster bytes; not an extension or a client MIME claim.

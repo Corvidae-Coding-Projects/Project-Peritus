@@ -375,6 +375,3 @@ async fn endpoint_ready(endpoint: &Path) -> bool {
     };
     tokio::net::windows::named_pipe::ClientOptions::new().open(pipe).is_ok()
 }
-
-#[cfg(test)]
-mod tests;

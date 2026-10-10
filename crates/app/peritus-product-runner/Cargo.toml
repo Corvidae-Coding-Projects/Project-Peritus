@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 description = "Daemon-owned writer-reviewer-fixer product run coordinator for Peritus"
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
@@ -50,11 +50,6 @@ tempfile.workspace = true
 tokio.workspace = true
 toml.workspace = true
 yaml-rust2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-provider-anthropic = { version = "=0.0.5", path = "../../model/peritus-provider-anthropic" }
-peritus-provider-openai = { version = "=0.0.5", path = "../../model/peritus-provider-openai" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 peritus-sandbox-linux = { version = "=0.0.5", path = "../../runtime/peritus-sandbox-linux" }
@@ -64,19 +59,6 @@ peritus-sandbox-macos = { version = "=0.0.5", path = "../../runtime/peritus-sand
 
 [target.'cfg(target_os = "windows")'.dependencies]
 peritus-sandbox-windows = { version = "=0.0.5", path = "../../runtime/peritus-sandbox-windows" }
-
-[[example]]
-name = "live-account-product-run"
-path = "examples/live_account_product_run.rs"
-test = false
-
-[package.metadata.peritus]
-owner = "G4"
-layer = "app"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

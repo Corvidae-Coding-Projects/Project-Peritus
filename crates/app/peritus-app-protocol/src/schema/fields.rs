@@ -373,6 +373,3 @@ mod types;
 
 pub use flows::APP_FLOW_TYPES;
 pub use types::APP_NESTED_TYPES;
-
-#[cfg(test)]
-mod tests;

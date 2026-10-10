@@ -10,9 +10,6 @@ use crate::{
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::Sha256Digest;
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn write_query(
     w: &mut CanonicalWriter,
     value: WorkbenchContextQuery,

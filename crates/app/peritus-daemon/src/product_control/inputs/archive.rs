@@ -10,9 +10,6 @@ use serde::Serialize;
 
 pub(in crate::product_control) mod inspect;
 
-#[cfg(test)]
-mod tests;
-
 pub(in crate::product_control) struct RequestArchive {
     request: Vec<u8>,
     manifest: Manifest,

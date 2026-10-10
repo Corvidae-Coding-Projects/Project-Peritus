@@ -3,8 +3,6 @@
 mod output;
 pub(super) use output::{read_output_range, read_preview, write_output_range, write_preview};
 mod profile;
-#[cfg(test)]
-mod tests;
 
 pub(super) use profile::{read_profile, write_profile};
 

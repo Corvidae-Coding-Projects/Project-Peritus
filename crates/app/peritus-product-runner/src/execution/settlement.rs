@@ -354,7 +354,3 @@ fn developer_findings(state: &RunState) -> Result<String, ProductRunnerError> {
 fn default_run_instructions() -> String {
     "Resume this Peritus run to finish verification and acceptance.".to_owned()
 }
-
-#[cfg(test)]
-#[path = "settlement/tests.rs"]
-mod tests;

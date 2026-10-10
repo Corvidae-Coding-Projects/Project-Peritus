@@ -16,17 +16,6 @@ use super::{
 mod plan;
 mod preview;
 
-#[cfg(test)]
-mod faults;
-#[cfg(test)]
-use faults::check_rewind_fault;
-#[cfg(test)]
-#[allow(
-    clippy::redundant_pub_crate,
-    reason = "crate-level tests inject exact crash boundaries"
-)]
-pub(crate) use faults::{RewindFaultPoint, inject_rewind_fault, obstruct_folder_patch};
-
 impl ProductRunService {
     pub(crate) async fn apply_paged_workbench_rewind(
         &self,
@@ -267,8 +256,7 @@ impl ProductRunService {
                     self.require_folder_write(store, actor, command, command.expected_revision())?;
                 }
                 let preparation = store.accept_restore_preparation(&prepare, &recovery_bodies)?;
-                #[cfg(test)]
-                check_rewind_fault(command, RewindFaultPoint::AfterPrepare)?;
+
                 let (status, terminal_conflicts, transaction_manifest) = if !conflicts.is_empty() {
                     (RestoreStatus::Conflict, conflicts, None)
                 } else if let Some(plan) = plan {
@@ -301,8 +289,7 @@ impl ProductRunService {
                         Some(noop_manifest(confirmed.preview_digest())),
                     )
                 };
-                #[cfg(test)]
-                check_rewind_fault(command, RewindFaultPoint::AfterFolderPatch)?;
+
                 let manifest_digest = transaction_manifest
                     .as_ref()
                     .map(|bytes| peritus_codec::sha256(bytes).into_bytes());

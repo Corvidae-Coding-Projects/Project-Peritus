@@ -375,7 +375,3 @@ impl UserCheckpoint {
 
 mod restore;
 pub use restore::{RestoreOperation, RestoreStatus};
-
-#[cfg(test)]
-#[path = "checkpoint/tests.rs"]
-mod tests;

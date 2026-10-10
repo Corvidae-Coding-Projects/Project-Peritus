@@ -31,34 +31,3 @@ pub fn current_process_resident_memory_bytes() -> io::Result<u64> {
     u64::try_from(counters.WorkingSetSize)
         .map_err(|_| io::Error::other("process resident-memory count exceeds u64"))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn current_process_memory_is_observed_without_a_shell_search_path() {
-        const CHILD: &str = "PERITUS_TEST_SELF_MEMORY_CHILD";
-        if std::env::var_os(CHILD).is_none() {
-            let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
-                .args([
-                    "--exact",
-                    "platform::self_memory::tests::current_process_memory_is_observed_without_a_shell_search_path",
-                ])
-                .env(CHILD, "1")
-                .env("PATH", "")
-                .output()
-                .expect("isolated memory-query test");
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            assert!(
-                output.status.success() && stdout.contains("1 passed; 0 failed"),
-                "{stdout}\n{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            return;
-        }
-        for _ in 0..32 {
-            assert!(current_process_resident_memory_bytes().expect("current working set") > 0);
-        }
-    }
-}

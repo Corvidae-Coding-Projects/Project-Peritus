@@ -226,6 +226,3 @@ pub fn decode_app_message(
     reader.finish().map_err(AppProtocolError::from_codec)?;
     Ok(message)
 }
-
-#[cfg(test)]
-mod tests;

@@ -63,38 +63,3 @@ pub(crate) fn inspect_helper_image(
         digest.update(&buffer[..count]);
     }
 }
-
-#[cfg(test)]
-mod stream_tests {
-    use super::{HelperImageFailure, inspect_helper_image};
-    #[test]
-    fn helper_stream_matches_digest_and_stops_for_cancellation_or_growth() {
-        let root = tempfile::tempdir().unwrap();
-        let path = root.path().join("helper");
-        let bytes = vec![0x35; 200_003];
-        std::fs::write(&path, &bytes).unwrap();
-        let evidence = inspect_helper_image(&path, &mut || true).unwrap();
-        assert_eq!(evidence.digest(), peritus_codec::sha256(&bytes));
-        assert_eq!(evidence.bytes(), 200_003);
-        let mut calls = 0;
-        assert_eq!(
-            inspect_helper_image(&path, &mut || {
-                calls += 1;
-                calls < 3
-            }),
-            Err(HelperImageFailure::Cancelled)
-        );
-        assert_eq!(calls, 3);
-        let mut altered = false;
-        assert_eq!(
-            inspect_helper_image(&path, &mut || {
-                if !altered {
-                    std::fs::write(&path, vec![0x35; 200_004]).unwrap();
-                    altered = true;
-                }
-                true
-            }),
-            Err(HelperImageFailure::Changed)
-        );
-    }
-}

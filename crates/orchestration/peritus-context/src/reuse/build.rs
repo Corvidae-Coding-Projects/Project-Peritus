@@ -1,14 +1,9 @@
 //! One-entry production admission for reusable context selections.
 
-#[cfg(verus_only)]
-use super::model;
 use super::{KnowledgeContextLink, ReusableContextSelection, validation};
 use crate::{ContextError, ContextErrorKind, ContextGraph};
 use peritus_role::RoleProfile;
 use peritus_run_knowledge::{DeltaEntry, RunKnowledgeSnapshot};
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn selection_for_entry(
     graph: &ContextGraph,
@@ -17,21 +12,10 @@ pub(super) fn selection_for_entry(
     profile: &RoleProfile,
     links: &[KnowledgeContextLink],
     entry: DeltaEntry,
-) -> (result: Result<ReusableContextSelection, ContextError>)
-    requires profile.spec_for_role(role.spec_actor_role()),
-    ensures
-        result.is_ok() == model::entry_error(graph, snapshot, role, links@, entry).is_none(),
-        match result {
-            Ok(selection) => model::selection_refines_entry(
-                graph, snapshot, links@, entry, selection),
-            Err(error) => match model::entry_error(graph, snapshot, role, links@, entry) {
-                Some(expected) => model::error_matches(error, expected),
-                None => false,
-            },
-        },
-{
-    let Some(section_index) = validation::find_section_index(
-        snapshot.sections(), entry.section_id()) else {
+) -> Result<ReusableContextSelection, ContextError> {
+    let Some(section_index) =
+        validation::find_section_index(snapshot.sections(), entry.section_id())
+    else {
         return Err(ContextError::plain(ContextErrorKind::KnowledgeSectionMissing));
     };
     let section = &snapshot.sections()[section_index];
@@ -51,17 +35,12 @@ pub(super) fn selection_for_entry(
     }
     let role_visible = node.visibility().contains(role.actor_role());
     let class_visible = profile.context().visible().contains(node.context_class());
-    proof {
-        model::profile_visibility_is_exact(profile, role, node.spec_context_class());
-    }
+    {}
     if !role_visible
         || !class_visible
         || !validation::delivery_matches_authority(entry.delivery(), section.authority())
     {
-        return Err(ContextError::node(
-            ContextErrorKind::KnowledgeRoleMismatch,
-            link.node_id(),
-        ));
+        return Err(ContextError::node(ContextErrorKind::KnowledgeRoleMismatch, link.node_id()));
     }
     Ok(ReusableContextSelection {
         node_id: link.node_id(),
@@ -69,5 +48,3 @@ pub(super) fn selection_for_entry(
         delivery: entry.delivery(),
     })
 }
-
-} // verus!

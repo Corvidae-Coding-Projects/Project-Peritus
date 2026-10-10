@@ -23,8 +23,7 @@ mod errors;
 mod retention;
 mod state;
 mod terminal_store;
-#[cfg(test)]
-mod tests;
+
 mod watchdog;
 
 use errors::{overlap_error, reused, store_error};

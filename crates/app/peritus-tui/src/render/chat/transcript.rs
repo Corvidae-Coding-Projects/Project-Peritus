@@ -81,16 +81,6 @@ fn append_lines(lines: &mut Vec<Line<'static>>, text: &str) {
     lines.extend(text.lines().map(|line| Line::from(line.to_owned())));
 }
 
-#[cfg(test)]
-pub(super) fn append_tool(
-    lines: &mut Vec<Line<'static>>,
-    activity: &peritus_app_protocol::ProductActivity,
-    expanded: bool,
-    width: usize,
-) {
-    lines.extend(tool_rows(activity, expanded, width).into_iter().map(|row| row.line));
-}
-
 fn tool_rows(
     activity: &peritus_app_protocol::ProductActivity,
     expanded: bool,

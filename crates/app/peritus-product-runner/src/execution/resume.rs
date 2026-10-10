@@ -239,6 +239,3 @@ impl ProductRunResume {
         self.fixer_cycles
     }
 }
-
-#[cfg(test)]
-mod tests;

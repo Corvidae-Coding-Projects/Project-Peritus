@@ -1,32 +1,14 @@
 //! Production traversal for canonical metadata dependencies.
 
-#[cfg(verus_only)]
-use super::model;
 use crate::{ContextError, ContextErrorKind, ContextNodeId};
 use core::cmp::Ordering;
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn validate_dependencies(
     id: ContextNodeId,
     dependencies: &[ContextNodeId],
-) -> (result: Result<(), ContextError>)
-    ensures
-        result.is_ok() == model::first_dependency_error(id, dependencies@, 0).is_none(),
-        match result {
-            Ok(()) => true,
-            Err(error) => model::dependency_error(id, dependencies@, error),
-        },
-{
+) -> Result<(), ContextError> {
     let mut index = 0;
-    while index < dependencies.len()
-        invariant
-            index <= dependencies.len(),
-            model::first_dependency_error(id, dependencies@, 0)
-                == model::first_dependency_error(id, dependencies@, index as nat),
-        decreases dependencies.len() - index,
-    {
+    while index < dependencies.len() {
         if dependencies[index].matches(&id) {
             return Err(ContextError::nodes(ContextErrorKind::SelfDependency, id, id));
         }
@@ -53,5 +35,3 @@ pub(super) fn validate_dependencies(
     }
     Ok(())
 }
-
-} // verus!

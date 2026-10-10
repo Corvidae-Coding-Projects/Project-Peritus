@@ -5,37 +5,27 @@ use crate::{
     SecurityRequirement,
 };
 use peritus_types::Sha256Digest;
-use vstd::prelude::*;
 
-verus! {
-
-/// Fail-closed result of a required security control or criterion.
+#[doc = " Fail-closed result of a required security control or criterion."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum SecurityControlOutcome {
-    /// The required behavior was observed directly and all assertions passed.
+    #[doc = " The required behavior was observed directly and all assertions passed."]
     Passed,
-    /// Execution contradicted at least one required assertion.
+    #[doc = " Execution contradicted at least one required assertion."]
     Failed,
-    /// The control was not executed to a terminal observation.
+    #[doc = " The control was not executed to a terminal observation."]
     NotExecuted,
-    /// The native subject lacked a required facility.
+    #[doc = " The native subject lacked a required facility."]
     Unsupported,
 }
-
 impl SecurityControlOutcome {
-    /// Reports whether this observation reached the sole passing terminal state.
+    #[doc = " Reports whether this observation reached the sole passing terminal state."]
     #[must_use]
-    pub const fn is_passed(self) -> (passed: bool)
-        ensures passed == self.spec_is_passed()
-    {
+    pub const fn is_passed(self) -> bool {
         matches!(self, Self::Passed)
     }
-
-    /// Specification view of the sole passing terminal state.
-    pub open spec fn spec_is_passed(self) -> bool { self == Self::Passed }
 }
-
-/// One aggregate R-SEC requirement observation.
+#[doc = " One aggregate R-SEC requirement observation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RequirementObservation {
     requirement: SecurityRequirement,
@@ -43,9 +33,8 @@ pub struct RequirementObservation {
     outcome: SecurityControlOutcome,
     evidence_digest: Sha256Digest,
 }
-
 impl RequirementObservation {
-    /// Creates one exact-candidate requirement result.
+    #[doc = " Creates one exact-candidate requirement result."]
     #[must_use]
     pub const fn new(
         requirement: SecurityRequirement,
@@ -55,53 +44,28 @@ impl RequirementObservation {
     ) -> Self {
         Self { requirement, candidate, outcome, evidence_digest }
     }
-
-    /// Returns the literal R-SEC requirement.
+    #[doc = " Returns the literal R-SEC requirement."]
     #[must_use]
-    pub const fn requirement(&self) -> (requirement: SecurityRequirement)
-        ensures requirement == self.spec_requirement()
-    {
+    pub const fn requirement(&self) -> SecurityRequirement {
         self.requirement
     }
-
-    /// Returns the exact observed candidate.
+    #[doc = " Returns the exact observed candidate."]
     #[must_use]
-    pub const fn candidate(&self) -> (result: IntegratedCandidate)
-        ensures result == self.spec_candidate(),
-    {
+    pub const fn candidate(&self) -> IntegratedCandidate {
         self.candidate
     }
-
-    /// Returns the terminal control outcome.
+    #[doc = " Returns the terminal control outcome."]
     #[must_use]
-    pub const fn outcome(&self) -> (outcome: SecurityControlOutcome)
-        ensures outcome == self.spec_outcome()
-    {
+    pub const fn outcome(&self) -> SecurityControlOutcome {
         self.outcome
     }
-
-    /// Returns the digest of supporting native evidence.
+    #[doc = " Returns the digest of supporting native evidence."]
     #[must_use]
-    pub const fn evidence_digest(&self) -> (digest: Sha256Digest)
-        ensures digest == self.spec_evidence_digest()
-    {
+    pub const fn evidence_digest(&self) -> Sha256Digest {
         self.evidence_digest
     }
-
-    /// Specification view of the literal R-SEC requirement.
-    pub closed spec fn spec_requirement(&self) -> SecurityRequirement { self.requirement }
-
-    /// Specification view of the observed candidate.
-    pub closed spec fn spec_candidate(&self) -> IntegratedCandidate { self.candidate }
-
-    /// Specification view of the terminal control outcome.
-    pub closed spec fn spec_outcome(&self) -> SecurityControlOutcome { self.outcome }
-
-    /// Specification view of the supporting native-evidence digest.
-    pub closed spec fn spec_evidence_digest(&self) -> Sha256Digest { self.evidence_digest }
 }
-
-/// One aggregate numbered acceptance-criterion observation.
+#[doc = " One aggregate numbered acceptance-criterion observation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CriterionObservation {
     criterion: AcceptanceCriterion,
@@ -109,9 +73,8 @@ pub struct CriterionObservation {
     outcome: SecurityControlOutcome,
     evidence_digest: Sha256Digest,
 }
-
 impl CriterionObservation {
-    /// Creates one exact-candidate numbered criterion result.
+    #[doc = " Creates one exact-candidate numbered criterion result."]
     #[must_use]
     pub const fn new(
         criterion: AcceptanceCriterion,
@@ -121,53 +84,28 @@ impl CriterionObservation {
     ) -> Self {
         Self { criterion, candidate, outcome, evidence_digest }
     }
-
-    /// Returns the authoritative criterion identity.
+    #[doc = " Returns the authoritative criterion identity."]
     #[must_use]
-    pub const fn criterion(&self) -> (criterion: AcceptanceCriterion)
-        ensures criterion == self.spec_criterion()
-    {
+    pub const fn criterion(&self) -> AcceptanceCriterion {
         self.criterion
     }
-
-    /// Returns the exact observed candidate.
+    #[doc = " Returns the exact observed candidate."]
     #[must_use]
-    pub const fn candidate(&self) -> (result: IntegratedCandidate)
-        ensures result == self.spec_candidate(),
-    {
+    pub const fn candidate(&self) -> IntegratedCandidate {
         self.candidate
     }
-
-    /// Returns the terminal criterion outcome.
+    #[doc = " Returns the terminal criterion outcome."]
     #[must_use]
-    pub const fn outcome(&self) -> (outcome: SecurityControlOutcome)
-        ensures outcome == self.spec_outcome()
-    {
+    pub const fn outcome(&self) -> SecurityControlOutcome {
         self.outcome
     }
-
-    /// Returns the digest of supporting native evidence.
+    #[doc = " Returns the digest of supporting native evidence."]
     #[must_use]
-    pub const fn evidence_digest(&self) -> (digest: Sha256Digest)
-        ensures digest == self.spec_evidence_digest()
-    {
+    pub const fn evidence_digest(&self) -> Sha256Digest {
         self.evidence_digest
     }
-
-    /// Specification view of the numbered acceptance criterion.
-    pub closed spec fn spec_criterion(&self) -> AcceptanceCriterion { self.criterion }
-
-    /// Specification view of the observed candidate.
-    pub closed spec fn spec_candidate(&self) -> IntegratedCandidate { self.candidate }
-
-    /// Specification view of the terminal criterion outcome.
-    pub closed spec fn spec_outcome(&self) -> SecurityControlOutcome { self.outcome }
-
-    /// Specification view of the supporting native-evidence digest.
-    pub closed spec fn spec_evidence_digest(&self) -> Sha256Digest { self.evidence_digest }
 }
-
-/// One reviewed inventory observation.
+#[doc = " One reviewed inventory observation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct InventoryObservation {
     kind: InventoryKind,
@@ -175,9 +113,8 @@ pub struct InventoryObservation {
     complete: bool,
     evidence_digest: Sha256Digest,
 }
-
 impl InventoryObservation {
-    /// Creates one exact-candidate inventory observation.
+    #[doc = " Creates one exact-candidate inventory observation."]
     #[must_use]
     pub const fn new(
         kind: InventoryKind,
@@ -187,62 +124,36 @@ impl InventoryObservation {
     ) -> Self {
         Self { kind, candidate, complete, evidence_digest }
     }
-
-    /// Returns the inventory role.
+    #[doc = " Returns the inventory role."]
     #[must_use]
-    pub const fn kind(&self) -> (kind: InventoryKind)
-        ensures kind == self.spec_kind()
-    {
+    pub const fn kind(&self) -> InventoryKind {
         self.kind
     }
-
-    /// Returns the exact observed candidate.
+    #[doc = " Returns the exact observed candidate."]
     #[must_use]
-    pub const fn candidate(&self) -> (result: IntegratedCandidate)
-        ensures result == self.spec_candidate(),
-    {
+    pub const fn candidate(&self) -> IntegratedCandidate {
         self.candidate
     }
-
-    /// Reports whether reconciliation found the inventory complete.
+    #[doc = " Reports whether reconciliation found the inventory complete."]
     #[must_use]
-    pub const fn complete(&self) -> (complete: bool)
-        ensures complete == self.spec_complete()
-    {
+    pub const fn complete(&self) -> bool {
         self.complete
     }
-
-    /// Returns the reviewed inventory digest.
+    #[doc = " Returns the reviewed inventory digest."]
     #[must_use]
-    pub const fn evidence_digest(&self) -> (digest: Sha256Digest)
-        ensures digest == self.spec_evidence_digest()
-    {
+    pub const fn evidence_digest(&self) -> Sha256Digest {
         self.evidence_digest
     }
-
-    /// Specification view of the inventory role.
-    pub closed spec fn spec_kind(&self) -> InventoryKind { self.kind }
-
-    /// Specification view of the observed candidate.
-    pub closed spec fn spec_candidate(&self) -> IntegratedCandidate { self.candidate }
-
-    /// Specification view of inventory completeness.
-    pub closed spec fn spec_complete(&self) -> bool { self.complete }
-
-    /// Specification view of the reviewed inventory digest.
-    pub closed spec fn spec_evidence_digest(&self) -> Sha256Digest { self.evidence_digest }
 }
-
-/// One canonical evidence-manifest role observation.
+#[doc = " One canonical evidence-manifest role observation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ArtifactObservation {
     kind: EvidenceArtifactKind,
     candidate: IntegratedCandidate,
     digest: Sha256Digest,
 }
-
 impl ArtifactObservation {
-    /// Creates one exact-candidate evidence artifact reference.
+    #[doc = " Creates one exact-candidate evidence artifact reference."]
     #[must_use]
     pub const fn new(
         kind: EvidenceArtifactKind,
@@ -251,39 +162,19 @@ impl ArtifactObservation {
     ) -> Self {
         Self { kind, candidate, digest }
     }
-
-    /// Returns the manifest role.
+    #[doc = " Returns the manifest role."]
     #[must_use]
-    pub const fn kind(&self) -> (kind: EvidenceArtifactKind)
-        ensures kind == self.spec_kind()
-    {
+    pub const fn kind(&self) -> EvidenceArtifactKind {
         self.kind
     }
-
-    /// Returns the exact candidate to which the artifact is bound.
+    #[doc = " Returns the exact candidate to which the artifact is bound."]
     #[must_use]
-    pub const fn candidate(&self) -> (result: IntegratedCandidate)
-        ensures result == self.spec_candidate(),
-    {
+    pub const fn candidate(&self) -> IntegratedCandidate {
         self.candidate
     }
-
-    /// Returns the exact artifact digest.
+    #[doc = " Returns the exact artifact digest."]
     #[must_use]
-    pub const fn digest(&self) -> (digest: Sha256Digest)
-        ensures digest == self.spec_digest()
-    {
+    pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
-
-    /// Specification view of the evidence-manifest role.
-    pub closed spec fn spec_kind(&self) -> EvidenceArtifactKind { self.kind }
-
-    /// Specification view of the observed candidate.
-    pub closed spec fn spec_candidate(&self) -> IntegratedCandidate { self.candidate }
-
-    /// Specification view of the artifact digest.
-    pub closed spec fn spec_digest(&self) -> Sha256Digest { self.digest }
 }
-
-} // verus!

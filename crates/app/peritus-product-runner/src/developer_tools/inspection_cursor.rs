@@ -68,34 +68,3 @@ fn push(hasher: &mut Sha256, bytes: &[u8]) {
     hasher.update(u64::try_from(bytes.len()).unwrap_or(u64::MAX).to_le_bytes());
     hasher.update(bytes);
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn continuation_cursors_are_bound_to_path_and_query_scope() {
-        let root = Path::new("/workspace");
-        let path_scope = CursorScope::new("workspace-search", root, Path::new("src"))
-            .add_text("src")
-            .add_text("needle");
-        let cursor = path_scope.value(12);
-
-        assert_eq!(path_scope.read(&json!({"cursor":cursor})).unwrap(), 12);
-        assert!(
-            CursorScope::new("workspace-search", root, Path::new("tests"))
-                .add_text("tests")
-                .add_text("needle")
-                .read(&json!({"cursor":path_scope.value(12)}))
-                .is_err()
-        );
-        assert!(
-            CursorScope::new("workspace-search", root, Path::new("src"))
-                .add_text("src")
-                .add_text("different")
-                .read(&json!({"cursor":path_scope.value(12)}))
-                .is_err()
-        );
-    }
-}

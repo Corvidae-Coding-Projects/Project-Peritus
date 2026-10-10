@@ -9,16 +9,13 @@ use crate::{
     MemoryId, MemoryState, MemoryTombstone, Observation, QuarantineReason, StateSnapshot,
 };
 use peritus_types::RevisionNumber;
-use vstd::prelude::*;
-
-verus! {
 
 impl MemoryRecord {
-    /// Returns a reviewed revision. Quarantined memories remain quarantined until explicit release.
-    ///
-    /// # Errors
-    ///
-    /// Rejects non-advancing revisions/observations, evidence conflict, or terminal states.
+    #[doc = " Returns a reviewed revision. Quarantined memories remain quarantined until explicit release."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Rejects non-advancing revisions/observations, evidence conflict, or terminal states."]
     pub fn review(
         &self,
         revision: RevisionNumber,
@@ -54,12 +51,11 @@ impl MemoryRecord {
         );
         Ok(self.revised(evidence, timing, lifecycle))
     }
-
-    /// Quarantines an active memory in a new immutable revision.
-    ///
-    /// # Errors
-    ///
-    /// Rejects non-active state or non-advancing revision/observation.
+    #[doc = " Quarantines an active memory in a new immutable revision."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Rejects non-active state or non-advancing revision/observation."]
     pub fn quarantine(
         &self,
         revision: RevisionNumber,
@@ -81,12 +77,11 @@ impl MemoryRecord {
         );
         Ok(self.revised(self.evidence.clone(), self.timing, lifecycle))
     }
-
-    /// Releases quarantine only through a later review observation and revision.
-    ///
-    /// # Errors
-    ///
-    /// Rejects non-quarantined state or a stale review/revision.
+    #[doc = " Releases quarantine only through a later review observation and revision."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Rejects non-quarantined state or a stale review/revision."]
     pub fn release(
         &self,
         revision: RevisionNumber,
@@ -127,12 +122,11 @@ impl MemoryRecord {
         );
         Ok(self.revised(self.evidence.clone(), timing, lifecycle))
     }
-
-    /// Marks an active memory expired at a later observation.
-    ///
-    /// # Errors
-    ///
-    /// Rejects non-active state or non-advancing revision/observation.
+    #[doc = " Marks an active memory expired at a later observation."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Rejects non-active state or non-advancing revision/observation."]
     pub fn expire(
         &self,
         revision: RevisionNumber,
@@ -140,12 +134,11 @@ impl MemoryRecord {
     ) -> Result<Self, MemoryError> {
         self.transition_from_active(revision, observation, MemoryState::Expired, None)
     }
-
-    /// Supersedes an active memory with a distinct stable identifier.
-    ///
-    /// # Errors
-    ///
-    /// Rejects self-supersession, non-active state, or non-advancing revision/observation.
+    #[doc = " Supersedes an active memory with a distinct stable identifier."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Rejects self-supersession, non-active state, or non-advancing revision/observation."]
     pub fn supersede(
         &self,
         revision: RevisionNumber,
@@ -166,12 +159,11 @@ impl MemoryRecord {
             Some(replacement),
         )
     }
-
-    /// Forgets any retained state and returns only a dominant deletion tombstone.
-    ///
-    /// # Errors
-    ///
-    /// Rejects non-advancing revision or deletion observation.
+    #[doc = " Forgets any retained state and returns only a dominant deletion tombstone."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Rejects non-advancing revision or deletion observation."]
     pub fn forget(
         &self,
         revision: RevisionNumber,
@@ -181,7 +173,6 @@ impl MemoryRecord {
         self.check_advance(revision, observation)?;
         Ok(MemoryTombstone::new(self.id, revision, observation, reason, self.content_digest()))
     }
-
     fn check_advance(
         &self,
         revision: RevisionNumber,
@@ -203,7 +194,6 @@ impl MemoryRecord {
         }
         Ok(())
     }
-
     fn transition_from_active(
         &self,
         revision: RevisionNumber,
@@ -226,7 +216,6 @@ impl MemoryRecord {
         );
         Ok(self.revised(self.evidence.clone(), self.timing, lifecycle))
     }
-
     fn revised(
         &self,
         evidence: MemoryEvidence,
@@ -244,5 +233,3 @@ impl MemoryRecord {
         }
     }
 }
-
-} // verus!

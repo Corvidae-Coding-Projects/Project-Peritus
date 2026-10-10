@@ -1,34 +1,28 @@
 //! Stable whole-request policy denial reasons.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Stable reason that policy denied a complete request.
+#[doc = " Stable reason that policy denied a complete request."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AuthorizationDenialReason {
-    /// The request named a policy other than the evaluated immutable policy.
+    #[doc = " The request named a policy other than the evaluated immutable policy."]
     PolicyMismatch,
-    /// The request exceeded the policy's complete parent boundary.
+    #[doc = " The request exceeded the policy\'s complete parent boundary."]
     OutsideAuthorityBoundary,
-    /// An exact capability name had no authenticated operation descriptor.
+    #[doc = " An exact capability name had no authenticated operation descriptor."]
     UnknownOperation,
-    /// A compiled actor-role restriction rejected an operation class.
+    #[doc = " A compiled actor-role restriction rejected an operation class."]
     RoleSeparation,
-    /// One or more exact permission pairs had no applicable ceiling grant.
+    #[doc = " One or more exact permission pairs had no applicable ceiling grant."]
     IncompleteCeilingCoverage,
-    /// An immutable ceiling denial matched at least one requested pair.
+    #[doc = " An immutable ceiling denial matched at least one requested pair."]
     ImmutableDeny,
-    /// A lower restriction-layer denial matched at least one requested pair.
+    #[doc = " A lower restriction-layer denial matched at least one requested pair."]
     RestrictionDeny,
-    /// Applicable time constraints had an empty intersection.
+    #[doc = " Applicable time constraints had an empty intersection."]
     EmptyConstraintIntersection,
-    /// Approval role or validity constraints could not all be satisfied.
+    #[doc = " Approval role or validity constraints could not all be satisfied."]
     ApprovalConstraintConflict,
-    /// Evaluation occurred before the effective validity window.
+    #[doc = " Evaluation occurred before the effective validity window."]
     NotYetValid,
-    /// Evaluation occurred at or after the effective expiry.
+    #[doc = " Evaluation occurred at or after the effective expiry."]
     Expired,
 }
-
-} // verus!

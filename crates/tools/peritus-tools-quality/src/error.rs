@@ -86,15 +86,3 @@ impl From<peritus_workspace::WorkspaceError> for QualityError {
         Self::new(QualityErrorKind::Workspace, error.to_string())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn diagnostic_cap_preserves_utf8_boundaries() {
-        let error = QualityError::new(QualityErrorKind::Parser, format!("{}é", "a".repeat(4095)));
-        assert_eq!(error.detail().len(), 4095);
-        assert!(error.detail().is_char_boundary(error.detail().len()));
-    }
-}

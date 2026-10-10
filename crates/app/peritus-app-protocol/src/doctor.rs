@@ -3,9 +3,6 @@
 use crate::{AppErrorCode, AppProtocolError};
 use peritus_types::{ProviderProfileId, WorkspaceId};
 
-#[cfg(test)]
-mod tests;
-
 /// Maximum UTF-8 bytes in a finding's summary or suggested action.
 pub const MAX_DOCTOR_TEXT_BYTES: usize = 1024;
 

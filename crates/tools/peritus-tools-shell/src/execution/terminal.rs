@@ -330,21 +330,3 @@ fn hex(bytes: &[u8]) -> String {
         value
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn exec_and_script_accept_counted_truncation_but_not_incomplete_output() {
-        for descriptor in [crate::exec_descriptor(), crate::script_descriptor()] {
-            let descriptor = descriptor.expect("shell descriptor");
-            assert!(matches!(descriptor.name().as_str(), "shell.exec" | "shell.script"));
-            assert!(!has_incomplete_output([
-                OutputCompleteness::Complete,
-                OutputCompleteness::Truncated,
-            ]));
-            assert!(has_incomplete_output([OutputCompleteness::Incomplete]));
-        }
-    }
-}

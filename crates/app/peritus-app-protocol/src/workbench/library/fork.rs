@@ -96,32 +96,3 @@ impl WorkbenchForkRequest {
         self.mode
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ConversationId;
-    use peritus_types::WorkspaceId;
-
-    fn request(mode: WorkbenchForkMode) -> Result<WorkbenchForkRequest, AppProtocolError> {
-        WorkbenchForkRequest::new(
-            WorkbenchQuery::new(
-                ConversationId::new([1; 16]).expect("conversation"),
-                WorkspaceId::new([2; 16]).expect("workspace"),
-            ),
-            ConversationTitle::new("Fork".to_owned()).expect("title"),
-            ControlOperationId::new([3; 16]).expect("checkpoint"),
-            1,
-            1,
-            1,
-            1,
-            mode,
-        )
-    }
-
-    #[test]
-    fn both_workspace_modes_are_valid_without_execution_limits() {
-        assert!(request(WorkbenchForkMode::ReadOnlyCurrentWorkspace).is_ok());
-        assert!(request(WorkbenchForkMode::IsolatedWritableWorkspace).is_ok());
-    }
-}

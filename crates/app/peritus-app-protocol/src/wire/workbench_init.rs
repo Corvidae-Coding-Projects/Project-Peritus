@@ -7,9 +7,6 @@ use crate::{
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn write_discovery_request(
     writer: &mut CanonicalWriter,
     value: InitDiscoveryRequest,

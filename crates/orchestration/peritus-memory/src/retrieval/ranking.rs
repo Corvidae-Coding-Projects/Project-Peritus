@@ -6,9 +6,6 @@ use super::filter::contradiction_ratio;
 use super::output::RankScore;
 use super::types::{RetrievalPolicy, RetrievalQuery};
 use crate::{BasisPoints, MemoryError, MemoryErrorKind, MemoryField, MemoryRecord};
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn score(
     record: &MemoryRecord,
@@ -30,17 +27,8 @@ pub(super) fn score(
     weighted = weighted_component(weighted, recency, weights.recency())?;
     weighted = weighted_component(weighted, feedback, weights.feedback())?;
     let total = bounded_u64(weighted / 10_000)?;
-    Ok(RankScore::from_components(
-        scope,
-        relevance,
-        confidence,
-        evidence,
-        recency,
-        feedback,
-        total,
-    ))
+    Ok(RankScore::from_components(scope, relevance, confidence, evidence, recency, feedback, total))
 }
-
 fn feature_relevance(
     record: &MemoryRecord,
     query: &RetrievalQuery,
@@ -50,18 +38,12 @@ fn feature_relevance(
     let mut total = 0_u64;
     let mut matched = 0_u64;
     let mut index = 0;
-    while index < features_len
-        invariant
-            index <= features_len,
-            features_len == features@.len(),
-        decreases features_len - index,
-    {
+    while index < features_len {
         let query_feature = features[index];
         let weight = u64::from(query_feature.weight().basis_points().get());
-        total = total.checked_add(weight).ok_or(MemoryError::field(
-            MemoryErrorKind::ArithmeticOverflow,
-            MemoryField::Score,
-        ))?;
+        total = total
+            .checked_add(weight)
+            .ok_or(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score))?;
         if let Some(record_feature) = record.features().get(query_feature.key()) {
             if record_feature.digest() == query_feature.digest() {
                 matched = matched.checked_add(weight).ok_or(MemoryError::field(
@@ -75,13 +57,12 @@ fn feature_relevance(
     if total == 0 {
         return Ok(BasisPoints::ZERO);
     }
-    let value = matched.checked_mul(10_000).ok_or(MemoryError::field(
-        MemoryErrorKind::ArithmeticOverflow,
-        MemoryField::Score,
-    ))? / total;
+    let value = matched
+        .checked_mul(10_000)
+        .ok_or(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score))?
+        / total;
     bounded_u64(value)
 }
-
 fn evidence_balance(record: &MemoryRecord) -> Result<BasisPoints, MemoryError> {
     let contradiction = contradiction_ratio(record)?;
     let contradiction_value = contradiction.get();
@@ -90,11 +71,7 @@ fn evidence_balance(record: &MemoryRecord) -> Result<BasisPoints, MemoryError> {
     }
     bounded(10_000 - contradiction_value)
 }
-
-fn recency(
-    record: &MemoryRecord,
-    query: &RetrievalQuery,
-) -> Result<BasisPoints, MemoryError> {
+fn recency(record: &MemoryRecord, query: &RetrievalQuery) -> Result<BasisPoints, MemoryError> {
     let observation = record.timing().reviewed().unwrap_or_else(|| record.timing().created());
     if observation.epoch() != query.observation().epoch() {
         return Ok(BasisPoints::ZERO);
@@ -122,33 +99,23 @@ fn recency(
     };
     bounded(10_000 - penalty)
 }
-
 fn weighted_component(
     sum: u64,
     component: BasisPoints,
     weight: BasisPoints,
 ) -> Result<u64, MemoryError> {
-    let product = u64::from(component.get()).checked_mul(u64::from(weight.get())).ok_or(
-        MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score),
-    )?;
-    sum.checked_add(product).ok_or(MemoryError::field(
-        MemoryErrorKind::ArithmeticOverflow,
-        MemoryField::Score,
-    ))
+    let product = u64::from(component.get())
+        .checked_mul(u64::from(weight.get()))
+        .ok_or(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score))?;
+    sum.checked_add(product)
+        .ok_or(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score))
 }
-
 const fn bounded(value: u16) -> Result<BasisPoints, MemoryError> {
     BasisPoints::new(value)
 }
-
 fn bounded_u64(value: u64) -> Result<BasisPoints, MemoryError> {
     let Ok(converted) = u16::try_from(value) else {
-        return Err(MemoryError::field(
-            MemoryErrorKind::ArithmeticOverflow,
-            MemoryField::Score,
-        ));
+        return Err(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score));
     };
     bounded(converted)
 }
-
-} // verus!

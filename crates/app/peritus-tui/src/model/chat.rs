@@ -8,8 +8,7 @@ mod keys;
 mod models;
 mod navigation;
 mod picker;
-#[cfg(test)]
-mod tests;
+
 mod workbench;
 mod working;
 

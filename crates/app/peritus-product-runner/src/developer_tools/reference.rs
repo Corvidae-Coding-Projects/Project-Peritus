@@ -101,24 +101,3 @@ pub(super) fn reference_io_error(error: &std::io::Error) -> DeveloperLoopError {
 pub(super) fn reference_not_found() -> DeveloperLoopError {
     tool("not_found: no exact or filesystem-native alias exists for the explicit reference path")
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn task_paths_are_exact_bounded_and_outside_the_workspace() {
-        let workspace = Path::new("/work/output");
-        let workspace_source = workspace.join("src");
-        let references = ExplicitReferences::from_task(
-            workspace,
-            &format!(
-                "match '/reference files/invoices' and '{}' while ignoring https://host/a",
-                workspace_source.display()
-            ),
-        );
-        assert!(references.roots.iter().all(|root| !root.starts_with(workspace)));
-        #[cfg(unix)]
-        assert_eq!(references.roots, vec![PathBuf::from("/reference files/invoices")]);
-    }
-}

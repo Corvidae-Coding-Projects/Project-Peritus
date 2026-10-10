@@ -1,4 +1,0 @@
-schema = 1
-accepted = false
-expected_family = 93
-expected_error = "unsupported-family"

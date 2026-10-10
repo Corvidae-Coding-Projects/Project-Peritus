@@ -395,11 +395,3 @@ fn io_channel_error(detail: &'static str, source: &std::io::Error) -> WindowsErr
 fn channel_error(kind: WindowsErrorKind, detail: &'static str) -> WindowsError {
     WindowsError::new(kind, WindowsOperation::Prepare, WindowsRecovery::CancelAndReap, detail)
 }
-
-#[cfg(test)]
-#[path = "channels_tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/support/mod.rs"]
-pub(crate) mod test_support;

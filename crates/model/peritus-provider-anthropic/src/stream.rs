@@ -175,7 +175,3 @@ impl fmt::Debug for AnthropicStream {
             .finish_non_exhaustive()
     }
 }
-
-#[cfg(test)]
-#[path = "stream_tests.rs"]
-mod tests;

@@ -14,9 +14,6 @@ use std::{
 const MAX_JOURNAL_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_PREVIEW_BYTES: usize = 16 * 1024;
 
-#[cfg(test)]
-mod tests;
-
 /// Durable scope descriptor, with a journal location supplied by the daemon-owned trace.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]

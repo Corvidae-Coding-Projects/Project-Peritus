@@ -10,15 +10,6 @@ mod profile;
 mod request;
 mod stream;
 
-#[cfg(test)]
-mod test_support;
-
-#[cfg(test)]
-mod conformance_tests;
-
-#[cfg(test)]
-mod fixture_tests;
-
 pub use client::GoogleClient;
 pub use config::GoogleConfig;
 pub use profile::validate_google_profile;

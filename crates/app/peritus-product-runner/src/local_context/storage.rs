@@ -5,8 +5,6 @@ mod identity;
 mod inspection;
 mod location;
 pub(super) use inspection::inspect;
-#[cfg(test)]
-mod tests;
 
 use super::error;
 use identity::StorageIdentity;

@@ -9,9 +9,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Write;
 
-#[cfg(test)]
-mod tests;
-
 /// User-editable brief field. Execution mode and observed facts are separate projections.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

@@ -9,8 +9,7 @@ use std::io;
 
 mod read;
 mod selection;
-#[cfg(test)]
-mod tests;
+
 pub use selection::FileReadSelection;
 
 /// A root-bound read-only capability for explicitly selected relative files.

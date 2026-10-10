@@ -87,9 +87,4 @@ impl DestinationRouter {
         })?;
         handler.deliver(message, &claim).await
     }
-
-    #[cfg(test)]
-    pub(crate) fn contains(&self, destination: &str) -> bool {
-        self.handlers.contains_key(destination)
-    }
 }

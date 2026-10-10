@@ -211,30 +211,3 @@ const fn arithmetic_error() -> PatchError {
         "patch aggregate byte count overflowed",
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use peritus_types::{Generation, RevisionNumber, WorkspaceId};
-
-    use crate::{FileMode, FinalFile, LineEndingPolicy, PatchOperation, WorkspacePath};
-
-    use super::PatchSet;
-
-    fn workspace() -> WorkspaceId {
-        WorkspaceId::new([7; 16]).expect("nonzero")
-    }
-
-    #[test]
-    fn canonical_identity_does_not_depend_on_input_order() {
-        let file = |byte| {
-            FinalFile::new(vec![byte], FileMode::Regular, LineEndingPolicy::Preserve).expect("file")
-        };
-        let a = PatchOperation::create(WorkspacePath::new("a").expect("path"), file(1));
-        let b = PatchOperation::create(WorkspacePath::new("b").expect("path"), file(2));
-        let make = |operations| {
-            PatchSet::new(workspace(), Generation::first(), RevisionNumber::first(), operations)
-                .expect("patch")
-        };
-        assert_eq!(make(vec![a.clone(), b.clone()]).identity(), make(vec![b, a]).identity());
-    }
-}

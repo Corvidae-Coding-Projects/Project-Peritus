@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["workspace", "git", "authorization", "formal-verification"]
 categories = ["filesystem", "development-tools"]
 
@@ -25,24 +25,6 @@ peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" 
 peritus-protocol = { version = "=0.0.5", path = "../../foundation/peritus-protocol" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 sha2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-budget = { version = "=0.0.5", path = "../../foundation/peritus-budget" }
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-tempfile.workspace = true
-
-[target.'cfg(unix)'.dev-dependencies]
-nix = { workspace = true, features = ["fs"] }
-
-[package.metadata.peritus]
-owner = "C1"
-layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

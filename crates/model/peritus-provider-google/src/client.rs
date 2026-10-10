@@ -38,15 +38,6 @@ impl GoogleClient {
         Ok(Self { config, credentials: credentials.into(), transport: transport.into() })
     }
 
-    #[cfg(test)]
-    pub(crate) fn with_transport(
-        config: GoogleConfig,
-        credentials: Box<dyn CredentialSource>,
-        transport: Box<dyn HttpTransport>,
-    ) -> Self {
-        Self { config, credentials: credentials.into(), transport: transport.into() }
-    }
-
     /// Returns this instance's exact immutable profile.
     #[must_use]
     pub const fn profile(&self) -> &ProviderProfile {
@@ -377,7 +368,3 @@ fn next_attempt(attempt: u32) -> Result<u32, ProviderCoreError> {
         ProviderCoreError::limit_exceeded("google_retry", "retry attempt count overflowed")
     })
 }
-
-#[cfg(test)]
-#[path = "client_tests.rs"]
-mod tests;

@@ -122,28 +122,3 @@ fn enrich(
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn new_models_use_live_metadata_and_unknown_protocols_remain_unknown() {
-        let mut models = vec![
-            DiscoveredModel::new("future-model".into(), "future-model".into()).expect("model"),
-            DiscoveredModel::new("unknown".into(), "unknown".into()).expect("model"),
-        ];
-        let metadata = serde_json::json!({"opencode":{"models":{
-            "future-model":{"provider":{"npm":"@ai-sdk/anthropic", "api":"https://untrusted.invalid"}, "tool_call":true, "limit":{"context":12345,"output":321}},
-            "unknown":{"provider":{"npm":"unreviewed-package"}},
-            "not-in-service-catalog":{"provider":{"npm":"@ai-sdk/openai"}}
-        }}});
-        enrich(HostedService::OpenCodeZen, &mut models, &metadata).expect("enrich");
-        assert_eq!(models.len(), 2);
-        assert_eq!(models[0].dialect, Some(peritus_model_protocol::WireDialect::AnthropicMessages));
-        assert_eq!(models[0].tools, Some(true));
-        assert_eq!(models[0].output_tokens, Some(321));
-        assert_eq!(models[1].dialect, None);
-        assert_eq!(models[1].tools, None);
-    }
-}

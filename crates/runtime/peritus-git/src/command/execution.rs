@@ -16,9 +16,6 @@ use super::{
     CommandAccess, CommandOutput, GitCancellation, GitError, Operation, RecoveryClass, protocol,
 };
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn run(
     command: Command,
     input: Option<&[u8]>,

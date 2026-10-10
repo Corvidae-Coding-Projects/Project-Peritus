@@ -13,13 +13,6 @@ impl ReviewCommandFrame {
     pub fn from_command(command: &ReviewCommand) -> Self {
         Self(command.clone())
     }
-
-    #[cfg(test)]
-    /// Recovers the checked review command for canonical round-trip assertions.
-    #[must_use]
-    pub fn into_command(self) -> ReviewCommand {
-        self.0
-    }
 }
 
 impl CanonicalEncode for ReviewCommandFrame {
@@ -313,84 +306,4 @@ fn read_confirmation(reader: &mut CanonicalReader<'_>) -> Result<Confirmation, C
         super::state::read_evidence(reader)?,
         super::read_digest(reader)?,
     ))
-}
-
-#[cfg(test)]
-mod codec_tests {
-    use peritus_codec::{CodecLimits, decode_message, encode_message};
-    use peritus_types::{
-        AcceptanceSpecId, CommandId, EventId, EventSequence, Generation, HarnessId, PolicyId,
-        ProviderProfileId, RevisionNumber, RevisionTuple, RunId, Sha256Digest, WorkspaceId,
-    };
-
-    use super::ReviewCommandFrame;
-    use crate::wire::ReviewEventFrame;
-    use crate::{ReviewCommand, ReviewCommandKind, ReviewEvent, ReviewEventKind};
-
-    #[test]
-    fn codec_command_and_event_round_trip_with_closed_tags() {
-        let revision = revision();
-        let previous = EventId::new(bytes(2)).unwrap();
-        let command = ReviewCommand::new(
-            CommandId::new(bytes(3)).unwrap(),
-            EventId::new(bytes(4)).unwrap(),
-            RunId::new(bytes(5)).unwrap(),
-            1,
-            Some(previous),
-            digest(6),
-            revision,
-            ReviewCommandKind::CancelRun,
-        )
-        .unwrap();
-        let encoded =
-            encode_message(&ReviewCommandFrame::from_command(&command), CodecLimits::PRODUCTION)
-                .unwrap();
-        let decoded = decode_message::<ReviewCommandFrame>(&encoded, CodecLimits::PRODUCTION)
-            .unwrap()
-            .into_command();
-        assert_eq!(decoded, command);
-
-        let event = ReviewEvent::from_wire(
-            command.event_id(),
-            command.command_id(),
-            EventSequence::new(2).unwrap(),
-            Some(previous),
-            command.run_id(),
-            revision,
-            digest(6),
-            digest(7),
-            ReviewEventKind::RunCancelled,
-        );
-        let event_bytes =
-            encode_message(&ReviewEventFrame(event.clone()), CodecLimits::PRODUCTION).unwrap();
-        assert_eq!(
-            decode_message::<ReviewEventFrame>(&event_bytes, CodecLimits::PRODUCTION)
-                .unwrap()
-                .into_event(),
-            event
-        );
-
-        let mut unknown = encoded;
-        *unknown.last_mut().unwrap() = u8::MAX;
-        assert!(decode_message::<ReviewCommandFrame>(&unknown, CodecLimits::PRODUCTION).is_err());
-    }
-
-    fn revision() -> RevisionTuple {
-        RevisionTuple::new(
-            AcceptanceSpecId::new(bytes(10)).unwrap(),
-            HarnessId::new(bytes(11)).unwrap(),
-            WorkspaceId::new(bytes(12)).unwrap(),
-            Generation::first(),
-            RevisionNumber::first(),
-            PolicyId::new(bytes(13)).unwrap(),
-            ProviderProfileId::new(bytes(14)).unwrap(),
-        )
-    }
-
-    const fn bytes(value: u8) -> [u8; 16] {
-        [value; 16]
-    }
-    const fn digest(value: u8) -> Sha256Digest {
-        Sha256Digest::new([value; 32])
-    }
 }

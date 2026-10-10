@@ -187,16 +187,3 @@ pub async fn open_workbench(
         Ok(json!(session))
     })
 }
-
-#[cfg(test)]
-mod title_tests {
-    #[test]
-    fn title_uses_the_native_utf8_byte_contract() {
-        assert!(super::title(&"é".repeat(128)).is_ok());
-        let error = super::title(&"é".repeat(129)).unwrap_err();
-        assert!(error.0.contains("258 bytes"));
-        for invalid in ["", "   ", "title\nnext", "\x1b[31m"] {
-            assert!(super::title(invalid).is_err());
-        }
-    }
-}

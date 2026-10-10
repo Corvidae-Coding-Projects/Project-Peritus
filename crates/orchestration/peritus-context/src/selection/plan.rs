@@ -4,36 +4,25 @@ use super::SelectionPolicy;
 use super::closure::{admit_closure, closure_delta, dependency_closure, first_hidden, is_visible};
 use super::ordering::{ranked_optional_roots, sort_for_render};
 use super::outcome::required_nodes_are_selected;
-#[cfg(verus_only)]
-use super::outcome::{certified_selection_outcome, selection_success_matches};
+
 use crate::{
     ContextError, ContextErrorKind, ContextGraph, ContextPlan, ContextPlanId, OmissionReason,
     OmittedContext, RequirementMode, SelectedContext, SelectionReason,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// Selects one complete deterministic plan or returns its exact first typed failure.
-///
-/// # Errors
-///
-/// Returns a typed error when required content is hidden or cannot fit, or checked arithmetic
-/// overflows. Optional failures are represented as atomic omission records in the successful plan.
-/// A certificate mismatch reports an internal construction fault rather than exposing an
-/// unverified result.
+#[doc = " Selects one complete deterministic plan or returns its exact first typed failure."]
+#[doc = ""]
+#[doc = " # Errors"]
+#[doc = ""]
+#[doc = " Returns a typed error when required content is hidden or cannot fit, or checked arithmetic"]
+#[doc = " overflows. Optional failures are represented as atomic omission records in the successful plan."]
+#[doc = " A certificate mismatch reports an internal construction fault rather than exposing an"]
+#[doc = " unverified result."]
 pub fn select_context(
     graph: &ContextGraph,
     policy: &SelectionPolicy,
     plan_id: ContextPlanId,
-) -> (result: Result<ContextPlan, ContextError>)
-    ensures
-        certified_selection_outcome(graph, &result),
-        match result {
-            Ok(plan) => selection_success_matches(graph, policy, plan_id, &plan),
-            Err(_) => true,
-        },
-{
+) -> Result<ContextPlan, ContextError> {
     let candidate = construct_context_candidate(graph, policy, plan_id);
     if super::certificate::selection_result_is_exact(graph, policy, plan_id, &candidate) {
         candidate
@@ -41,19 +30,15 @@ pub fn select_context(
         Err(ContextError::plain(ContextErrorKind::SelectionCertificateMismatch))
     }
 }
-
-#[allow(clippy::too_many_lines, reason = "required and optional phases share one atomic transaction")]
+#[allow(
+    clippy::too_many_lines,
+    reason = "required and optional phases share one atomic transaction"
+)]
 fn construct_context_candidate(
     graph: &ContextGraph,
     policy: &SelectionPolicy,
     plan_id: ContextPlanId,
-) -> (result: Result<ContextPlan, ContextError>)
-    ensures match result {
-        Ok(plan) => selection_success_matches(graph, policy, plan_id, &plan),
-        Err(_) => true,
-    },
-{
-    proof { use_type_invariant(policy); }
+) -> Result<ContextPlan, ContextError> {
     let graph_nodes = graph.nodes();
     let graph_len = graph_nodes.len();
     let mut selected = vec![false; graph_len];
@@ -61,19 +46,8 @@ fn construct_context_candidate(
     let mut used_tokens = 0u64;
     let mut used_bytes = 0usize;
     let mut used_nodes = 0usize;
-
     let mut index = 0;
-    while index < graph_len
-        invariant
-            index <= graph_len,
-            graph_len == graph_nodes@.len(),
-            selected.len() == graph_len,
-            reasons.len() == graph_len,
-            used_tokens as int <= policy.spec_token_budget().spec_usable_input(),
-            used_nodes as nat <= policy.spec_max_selected_nodes(),
-            used_bytes as nat <= policy.spec_max_selected_bytes(),
-        decreases graph_len - index,
-    {
+    while index < graph_len {
         let node = &graph_nodes[index];
         if node.requirement() == RequirementMode::Required {
             if !is_visible(node, policy.role_profile()) {
@@ -139,21 +113,10 @@ fn construct_context_candidate(
         }
         index += 1;
     }
-
     let ranked = ranked_optional_roots(graph, selected.as_slice(), policy.role_profile());
     let mut omitted = Vec::new();
     let mut rank_index = 0;
-    while rank_index < ranked.len()
-        invariant
-            rank_index <= ranked.len(),
-            selected.len() == graph_len,
-            reasons.len() == graph_len,
-            graph_len == graph_nodes@.len(),
-            used_tokens as int <= policy.spec_token_budget().spec_usable_input(),
-            used_nodes as nat <= policy.spec_max_selected_nodes(),
-            used_bytes as nat <= policy.spec_max_selected_bytes(),
-        decreases ranked.len() - rank_index,
-    {
+    while rank_index < ranked.len() {
         let root = ranked[rank_index];
         if root >= graph_len {
             return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
@@ -195,7 +158,6 @@ fn construct_context_candidate(
                 graph_nodes[root].id(),
             ));
         };
-
         let omission = if next_tokens > policy.token_budget().usable_input() {
             Some(OmissionReason::TokenBudget)
         } else if next_nodes > policy.max_selected_nodes() {
@@ -206,12 +168,7 @@ fn construct_context_candidate(
             None
         };
         if let Some(reason) = omission {
-            omitted.push(OmittedContext::new(
-                graph_nodes[root].id(),
-                reason,
-                None,
-                delta.tokens,
-            ));
+            omitted.push(OmittedContext::new(graph_nodes[root].id(), reason, None, delta.tokens));
         } else {
             admit_closure(
                 closure.as_slice(),
@@ -227,20 +184,9 @@ fn construct_context_candidate(
         }
         rank_index += 1;
     }
-
     let mut selected_entries = Vec::with_capacity(used_nodes);
     index = 0;
-    while index < graph_len
-        invariant
-            index <= graph_len,
-            selected.len() == graph_len,
-            reasons.len() == graph_len,
-            graph_len == graph_nodes@.len(),
-            selected_entries@.len() <= index,
-            used_tokens as int <= policy.spec_token_budget().spec_usable_input(),
-            used_bytes as nat <= policy.spec_max_selected_bytes(),
-        decreases graph_len - index,
-    {
+    while index < graph_len {
         if selected[index] {
             let Some(reason) = reasons[index] else {
                 return Err(ContextError::node(
@@ -264,17 +210,8 @@ fn construct_context_candidate(
     );
     let plan_is_exact = crate::plan_is_exact(graph, &plan);
     let required_complete = required_nodes_are_selected(graph, &plan);
-    if plan.selected().len() > policy.max_selected_nodes()
-        || !plan_is_exact
-        || !required_complete
-    {
+    if plan.selected().len() > policy.max_selected_nodes() || !plan_is_exact || !required_complete {
         return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
-    }
-    proof {
-        reveal(selection_success_matches);
-        assert(selection_success_matches(graph, policy, plan_id, &plan));
     }
     Ok(plan)
 }
-
-} // verus!

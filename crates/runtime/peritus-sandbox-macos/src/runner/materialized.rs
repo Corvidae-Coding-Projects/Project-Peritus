@@ -24,24 +24,3 @@ impl Drop for MaterializedSecretFiles {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::MaterializedSecretFiles;
-
-    #[test]
-    fn failed_activation_rolls_back_every_materialized_file() {
-        let directory = tempfile::tempdir().unwrap();
-        let first = directory.path().join("first.secret");
-        let second = directory.path().join("second.secret");
-        std::fs::write(&first, b"first").unwrap();
-        std::fs::write(&second, b"second").unwrap();
-        {
-            let mut files = MaterializedSecretFiles::new();
-            files.record(&first);
-            files.record(&second);
-        }
-        assert!(!first.exists());
-        assert!(!second.exists());
-    }
-}

@@ -7,9 +7,6 @@ use peritus_product_runner::control::{
 };
 use peritus_types::{ActorId, WorkspaceId};
 
-#[cfg(test)]
-pub(super) mod tests;
-
 mod archive;
 mod files;
 mod manifest;

@@ -1,45 +1,38 @@
 //! Typed canonical-evidence construction failures.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Canonical evidence collection containing an invalid value.
+#[doc = " Canonical evidence collection containing an invalid value."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum EvidenceCollection {
-    /// R-SEC requirement observations.
+    #[doc = " R-SEC requirement observations."]
     Requirements,
-    /// Numbered acceptance-criterion observations.
+    #[doc = " Numbered acceptance-criterion observations."]
     Criteria,
-    /// Threat, control, unsafe, and TCB inventories.
+    #[doc = " Threat, control, unsafe, and TCB inventories."]
     Inventories,
-    /// Canonical manifest artifacts.
+    #[doc = " Canonical manifest artifacts."]
     Artifacts,
-    /// Findings inside the external review.
+    #[doc = " Findings inside the external review."]
     Findings,
-    /// Declared independently reviewed security scopes.
+    #[doc = " Declared independently reviewed security scopes."]
     ReviewScopes,
 }
-
-/// Stable malformed-evidence category.
+#[doc = " Stable malformed-evidence category."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum EvidenceErrorKind {
-    /// Values were not supplied in ascending canonical order.
+    #[doc = " Values were not supplied in ascending canonical order."]
     NonCanonicalOrder,
-    /// A stable identity occurred more than once.
+    #[doc = " A stable identity occurred more than once."]
     DuplicateObservation,
-    /// A nested finding was bound to a different candidate than its review.
+    #[doc = " A nested finding was bound to a different candidate than its review."]
     NestedCandidateMismatch,
 }
-
-/// Checked-construction failure with deterministic location.
+#[doc = " Checked-construction failure with deterministic location."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct EvidenceError {
     kind: EvidenceErrorKind,
     collection: EvidenceCollection,
     index: usize,
 }
-
 impl EvidenceError {
     pub(crate) const fn new(
         kind: EvidenceErrorKind,
@@ -48,18 +41,19 @@ impl EvidenceError {
     ) -> Self {
         Self { kind, collection, index }
     }
-
-    /// Returns the stable error category.
+    #[doc = " Returns the stable error category."]
     #[must_use]
-    pub const fn kind(self) -> EvidenceErrorKind { self.kind }
-
-    /// Returns the invalid collection.
+    pub const fn kind(self) -> EvidenceErrorKind {
+        self.kind
+    }
+    #[doc = " Returns the invalid collection."]
     #[must_use]
-    pub const fn collection(self) -> EvidenceCollection { self.collection }
-
-    /// Returns the zero-based first offending position.
+    pub const fn collection(self) -> EvidenceCollection {
+        self.collection
+    }
+    #[doc = " Returns the zero-based first offending position."]
     #[must_use]
-    pub const fn index(self) -> usize { self.index }
+    pub const fn index(self) -> usize {
+        self.index
+    }
 }
-
-} // verus!

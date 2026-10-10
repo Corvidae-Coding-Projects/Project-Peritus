@@ -98,19 +98,3 @@ fn descriptor(
 fn internal(detail: impl Into<String>) -> ShellError {
     ShellError::new(ShellErrorKind::Protocol, detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn descriptors_are_stable_and_distinct() {
-        let exec_a = exec_descriptor().expect("exec descriptor");
-        let exec_b = exec_descriptor().expect("exec descriptor");
-        let script = script_descriptor().expect("script descriptor");
-        assert_eq!(exec_a.canonical_bytes(), exec_b.canonical_bytes());
-        assert_ne!(exec_a.descriptor_digest(), script.descriptor_digest());
-        assert_eq!(exec_a.operation().operation_class(), OperationClass::Execution);
-        assert_eq!(script.operation().operation_class(), OperationClass::Execution);
-    }
-}

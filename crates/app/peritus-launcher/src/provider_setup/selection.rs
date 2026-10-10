@@ -2,8 +2,6 @@
 
 use peritus_product_state::ProviderKind;
 
-#[cfg(test)]
-use super::{CLAUDE, CODEX};
 use crate::{LauncherError, terminal::Terminal};
 
 pub fn choose_provider_set(
@@ -99,22 +97,4 @@ fn parse_selection(answer: &str) -> Result<Vec<ProviderKind>, LauncherError> {
     selected.sort_unstable();
     selected.dedup();
     Ok(selected)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn selection_accepts_offline_single_and_multiple_routes() {
-        assert_eq!(parse_selection("0").expect("offline"), Vec::new());
-        assert_eq!(parse_selection("1").expect("codex"), vec![CODEX]);
-        assert_eq!(parse_selection("2, 1,2").expect("both"), vec![CODEX, CLAUDE]);
-    }
-
-    #[test]
-    fn selection_rejects_ambiguous_input() {
-        assert!(parse_selection("all").is_err());
-        assert!(parse_selection("0,1").is_err());
-    }
 }

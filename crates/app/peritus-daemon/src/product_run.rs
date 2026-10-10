@@ -20,11 +20,6 @@ mod request;
 mod snapshot;
 mod workbench;
 
-#[cfg(test)]
-mod test_support;
-#[cfg(test)]
-mod tests;
-
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -48,10 +43,7 @@ use crate::{DaemonComponents, DaemonError, startup::workspace::WorkspaceCatalog}
 pub use error::ProductRunServiceError;
 use error::{filesystem, invalid};
 use persistence::persist_record;
-#[cfg(test)]
-fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
-    persistence::load_records(directory)
-}
+
 use progress::RunProgress;
 use recovery::reconcile_restored_candidates;
 use request::ProductRunRequest;

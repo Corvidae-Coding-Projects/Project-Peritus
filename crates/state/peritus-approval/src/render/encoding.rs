@@ -2,24 +2,17 @@
 
 use peritus_policy::{ActorRole, AuthorityTier, IndependenceRequirement, PolicyTier, RiskClass};
 use peritus_types::Sha256Digest;
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn hex(bytes: &[u8]) -> String {
     let mut output = String::new();
     let mut index = 0;
-    while index < bytes.len()
-        invariant 0 <= index <= bytes.len(),
-        decreases bytes.len() - index,
-    {
+    while index < bytes.len() {
         output.push(hex_digit(bytes[index] >> 4));
         output.push(hex_digit(bytes[index] & 0x0f));
         index += 1;
     }
     output
 }
-
 const fn hex_digit(value: u8) -> char {
     match value {
         0 => '0',
@@ -40,7 +33,6 @@ const fn hex_digit(value: u8) -> char {
         _ => 'f',
     }
 }
-
 #[allow(
     clippy::cast_possible_truncation,
     reason = "value modulo ten is always representable as one decimal u8 digit"
@@ -50,49 +42,37 @@ pub(super) fn decimal_usize(mut value: usize) -> String {
     if value == 0 {
         reversed.push(b'0');
     } else {
-        while value > 0
-            decreases value,
-        {
+        while value > 0 {
             reversed.push(b'0' + (value % 10) as u8);
             value /= 10;
         }
     }
     let mut output = String::new();
     let mut index = reversed.len();
-    while index > 0
-        invariant 0 <= index <= reversed.len(),
-        decreases index,
-    {
+    while index > 0 {
         index -= 1;
         output.push(reversed[index] as char);
     }
     output
 }
-
 pub(super) fn decimal_u64(mut value: u64) -> String {
     let mut reversed = Vec::new();
     if value == 0 {
         reversed.push(b'0');
     } else {
-        while value > 0
-            decreases value,
-        {
+        while value > 0 {
             reversed.push(b'0' + (value % 10) as u8);
             value /= 10;
         }
     }
     let mut output = String::new();
     let mut index = reversed.len();
-    while index > 0
-        invariant 0 <= index <= reversed.len(),
-        decreases index,
-    {
+    while index > 0 {
         index -= 1;
         output.push(reversed[index] as char);
     }
     output
 }
-
 pub(super) const fn role_name(value: ActorRole) -> &'static str {
     match value {
         ActorRole::Writer => "writer",
@@ -108,7 +88,6 @@ pub(super) const fn role_name(value: ActorRole) -> &'static str {
         ActorRole::Plugin => "plugin",
     }
 }
-
 pub(super) const fn risk_name(value: RiskClass) -> &'static str {
     match value {
         RiskClass::Read => "read",
@@ -123,7 +102,6 @@ pub(super) const fn risk_name(value: RiskClass) -> &'static str {
         RiskClass::HarnessPromotion => "harness-promotion",
     }
 }
-
 pub(super) const fn authority_tier_name(value: AuthorityTier) -> &'static str {
     match value {
         AuthorityTier::Project => "project",
@@ -132,7 +110,6 @@ pub(super) const fn authority_tier_name(value: AuthorityTier) -> &'static str {
         AuthorityTier::System => "system",
     }
 }
-
 pub(super) const fn independence_name(value: IndependenceRequirement) -> &'static str {
     match value {
         IndependenceRequirement::NotRequester => "not-requester",
@@ -143,7 +120,6 @@ pub(super) const fn independence_name(value: IndependenceRequirement) -> &'stati
         IndependenceRequirement::NoReviewParticipation => "no-review-participation",
     }
 }
-
 pub(super) const fn choice_name(value: crate::ApprovalChoice) -> &'static str {
     match value {
         crate::ApprovalChoice::Deny => "deny",
@@ -151,7 +127,6 @@ pub(super) const fn choice_name(value: crate::ApprovalChoice) -> &'static str {
         crate::ApprovalChoice::Amend(_) => "amend",
     }
 }
-
 pub(super) const fn policy_tier_name(value: PolicyTier) -> &'static str {
     match value {
         PolicyTier::System => "system",
@@ -162,7 +137,6 @@ pub(super) const fn policy_tier_name(value: PolicyTier) -> &'static str {
         PolicyTier::RoleHarness => "role-harness",
     }
 }
-
 pub(super) const fn phase_name(value: crate::ApprovalPhase) -> &'static str {
     match value {
         crate::ApprovalPhase::Pending => "pending",
@@ -175,7 +149,6 @@ pub(super) const fn phase_name(value: crate::ApprovalPhase) -> &'static str {
         crate::ApprovalPhase::Cancelled => "cancelled",
     }
 }
-
-pub(super) fn digest_value(value: Sha256Digest) -> String { hex(value.as_bytes()) }
-
-} // verus!
+pub(super) fn digest_value(value: Sha256Digest) -> String {
+    hex(value.as_bytes())
+}

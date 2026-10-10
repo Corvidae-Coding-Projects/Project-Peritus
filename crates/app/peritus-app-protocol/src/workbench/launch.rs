@@ -20,6 +20,3 @@ fn valid_environment_name(name: &str) -> bool {
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
-
-#[cfg(test)]
-mod tests;

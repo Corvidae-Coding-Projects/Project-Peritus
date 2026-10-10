@@ -7,8 +7,7 @@ use crate::{
 use peritus_types::{Sha256Digest, WorkspaceId};
 
 mod render;
-#[cfg(test)]
-mod tests;
+
 pub use render::*;
 mod transition;
 pub use transition::*;

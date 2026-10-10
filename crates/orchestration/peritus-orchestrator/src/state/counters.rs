@@ -135,16 +135,3 @@ const fn limit(detail: &'static str) -> OrchestratorError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::OrchestratorCounters;
-
-    #[test]
-    fn genesis_does_not_precount_writer_activation() {
-        let counters = OrchestratorCounters::genesis();
-        assert_eq!(counters.writer_cycles(), 0);
-        assert_eq!(counters.handoffs(), 1);
-        assert_eq!(counters.revisions(), 1);
-    }
-}

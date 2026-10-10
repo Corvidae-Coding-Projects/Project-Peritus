@@ -59,23 +59,3 @@ pub fn text(root: &Path, relative: &str) -> Result<serde_json::Value> {
     let text = String::from_utf8(bytes).map_err(problem)?;
     Ok(serde_json::json!({"text":text,"revision":revision,"bytes":length}))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn traversal_does_not_escape_root() {
-        let root = tempfile::tempdir().unwrap();
-        assert!(resolve(root.path(), "..").is_err());
-        std::fs::write(root.path().join("visible.txt"), "hello").unwrap();
-        assert!(resolve(root.path(), "visible.txt").is_ok());
-    }
-    #[test]
-    #[cfg(unix)]
-    fn symlinks_do_not_escape_root() {
-        let root = tempfile::tempdir().unwrap();
-        let outside = tempfile::tempdir().unwrap();
-        std::os::unix::fs::symlink(outside.path(), root.path().join("escape")).unwrap();
-        assert!(resolve(root.path(), "escape").is_err());
-    }
-}

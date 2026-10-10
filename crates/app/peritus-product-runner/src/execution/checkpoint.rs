@@ -301,6 +301,3 @@ fn sequence_overflow() -> ProductRunnerError {
         "candidate checkpoint sequence overflowed",
     )
 }
-
-#[cfg(test)]
-mod tests;

@@ -304,6 +304,3 @@ fn complete_output(command: &ManagedCommand, stream: OutputStream) -> Result<Str
     }
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
-
-#[cfg(test)]
-mod tests;

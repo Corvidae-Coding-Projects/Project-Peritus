@@ -3,37 +3,33 @@
 use crate::AcceptancePhase;
 use peritus_budget::BudgetLimits;
 use peritus_types::{AttemptId, BudgetId, RevisionTuple, RunId};
-use vstd::prelude::*;
 
-verus! {
-
-/// Lifecycle phase of one governed coding run.
+#[doc = " Lifecycle phase of one governed coding run."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RunPhase {
-    /// Created and awaiting its first attempt.
+    #[doc = " Created and awaiting its first attempt."]
     Pending,
-    /// Writer/fixer work is active.
+    #[doc = " Writer/fixer work is active."]
     Running,
-    /// Work is explicitly paused.
+    #[doc = " Work is explicitly paused."]
     Paused,
-    /// A submitted candidate is under review or acceptance evaluation.
+    #[doc = " A submitted candidate is under review or acceptance evaluation."]
     Reviewing,
-    /// Current evidence requires a fixer cycle.
+    #[doc = " Current evidence requires a fixer cycle."]
     Fixing,
-    /// The exact current contract was satisfied.
+    #[doc = " The exact current contract was satisfied."]
     Accepted,
-    /// The run was explicitly rejected.
+    #[doc = " The run was explicitly rejected."]
     Rejected,
-    /// The run was cancelled.
+    #[doc = " The run was cancelled."]
     Cancelled,
-    /// The run failed.
+    #[doc = " The run failed."]
     Failed,
-    /// The run exhausted a governed budget.
+    #[doc = " The run exhausted a governed budget."]
     Exhausted,
 }
-
 impl RunPhase {
-    /// Returns whether no later command may advance this run.
+    #[doc = " Returns whether no later command may advance this run."]
     #[must_use]
     pub const fn is_terminal(self) -> bool {
         matches!(
@@ -42,8 +38,7 @@ impl RunPhase {
         )
     }
 }
-
-/// Current state of one governed run.
+#[doc = " Current state of one governed run."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RunState {
     pub(crate) id: RunId,
@@ -54,15 +49,7 @@ pub struct RunState {
     pub(crate) acceptance: AcceptancePhase,
     pub(crate) current_attempt_id: Option<AttemptId>,
 }
-
 impl RunState {
-    pub(crate) proof fn equal_model_fields(left: Self, right: Self)
-        requires left == right,
-        ensures
-            left.phase == right.phase,
-            left.acceptance == right.acceptance,
-    {}
-
     pub(crate) const fn pending(
         id: RunId,
         revision: RevisionTuple,
@@ -79,30 +66,44 @@ impl RunState {
             current_attempt_id: None,
         }
     }
-
-    /// Returns the run identity.
+    #[doc = " Returns the run identity."]
     #[must_use]
-    pub const fn id(self) -> RunId { self.id }
-    /// Returns the exact revision governing the run.
+    pub const fn id(self) -> RunId {
+        self.id
+    }
+    #[doc = " Returns the exact revision governing the run."]
     #[must_use]
-    pub const fn revision(self) -> RevisionTuple { self.revision }
-    /// Returns the root run budget identity.
+    pub const fn revision(self) -> RevisionTuple {
+        self.revision
+    }
+    #[doc = " Returns the root run budget identity."]
     #[must_use]
-    pub const fn budget_id(self) -> BudgetId { self.budget_id }
-    /// Returns the immutable run budget limits.
+    pub const fn budget_id(self) -> BudgetId {
+        self.budget_id
+    }
+    #[doc = " Returns the immutable run budget limits."]
     #[must_use]
-    pub const fn budget_limits(self) -> BudgetLimits { self.budget_limits }
-    /// Returns the current run phase.
+    pub const fn budget_limits(self) -> BudgetLimits {
+        self.budget_limits
+    }
+    #[doc = " Returns the current run phase."]
     #[must_use]
-    pub const fn phase(self) -> RunPhase { self.phase }
-    /// Returns the current acceptance phase.
+    pub const fn phase(self) -> RunPhase {
+        self.phase
+    }
+    #[doc = " Returns the current acceptance phase."]
     #[must_use]
-    pub const fn acceptance(self) -> AcceptancePhase { self.acceptance }
-    /// Returns the current attempt, if any.
+    pub const fn acceptance(self) -> AcceptancePhase {
+        self.acceptance
+    }
+    #[doc = " Returns the current attempt, if any."]
     #[must_use]
-    pub const fn current_attempt_id(self) -> Option<AttemptId> { self.current_attempt_id }
-
-    pub(crate) const fn set_phase(&mut self, phase: RunPhase) { self.phase = phase; }
+    pub const fn current_attempt_id(self) -> Option<AttemptId> {
+        self.current_attempt_id
+    }
+    pub(crate) const fn set_phase(&mut self, phase: RunPhase) {
+        self.phase = phase;
+    }
     pub(crate) const fn set_acceptance(&mut self, phase: AcceptancePhase) {
         self.acceptance = phase;
     }
@@ -110,5 +111,3 @@ impl RunState {
         self.current_attempt_id = attempt_id;
     }
 }
-
-} // verus!

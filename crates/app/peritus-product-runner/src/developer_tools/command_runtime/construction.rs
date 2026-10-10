@@ -116,8 +116,6 @@ impl CommandRuntime {
                     recovered: recovered.values,
                     recovered_owners: recovered.owners,
                 }),
-                #[cfg(test)]
-                state_guard: None,
             }),
         })
     }

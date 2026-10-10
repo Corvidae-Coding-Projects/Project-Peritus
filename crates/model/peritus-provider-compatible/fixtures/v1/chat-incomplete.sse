@@ -1,2 +1,0 @@
-data: {"id":"chat_incomplete","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}
-

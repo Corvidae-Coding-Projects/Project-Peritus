@@ -2,8 +2,6 @@
 
 mod backend;
 mod sandbox;
-#[cfg(test)]
-mod tests;
 
 use super::{CommandRuntime, authority, contract, identity};
 use crate::LocalProcessConfig;

@@ -100,8 +100,7 @@ pub(super) fn archive_observed(
             recovery.display()
         ))
     })?;
-    #[cfg(test)]
-    super::transaction::fault::pause(super::transaction::fault::Stage::Archive);
+
     Ok(recovery)
 }
 

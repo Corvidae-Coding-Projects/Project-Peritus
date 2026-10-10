@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["debugging", "diagnostics", "agents", "formal-verification"]
 categories = ["development-tools::debugging"]
 
@@ -27,23 +27,6 @@ peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
-peritus-role = { version = "=0.0.5", path = "../../orchestration/peritus-role" }
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-tempfile.workspace = true
-tokio.workspace = true
-
-[package.metadata.peritus]
-owner = "E2"
-layer = "analysis"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

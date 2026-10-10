@@ -3,9 +3,9 @@
 use std::ffi::{OsStr, OsString};
 
 use crate::outbox::HostRebootPhase;
-#[cfg(not(verus_only))]
+
 use crate::qualification::dependency::{DependencyFault, DependencyKind};
-#[cfg(not(verus_only))]
+
 use peritus_orchestrator::qualification::LifecyclePhase;
 
 pub(super) enum CommandLine {
@@ -17,7 +17,7 @@ pub(super) enum CommandLine {
         start: u64,
         group: u32,
     },
-    #[cfg(not(verus_only))]
+
     ContextInspect(super::context::Inspection),
     QualifyPty,
     StageBlobBeforeCrash(OsString),
@@ -64,28 +64,28 @@ pub(super) enum CommandLine {
     RecoverPromotionAfterCrash(OsString),
     StageProjectionCorruption(OsString),
     RecoverProjectionCorruption(OsString),
-    #[cfg(not(verus_only))]
+
     StageDependencyFault {
         dependency: DependencyKind,
         fault: DependencyFault,
         retry_limit: u16,
         configuration: OsString,
     },
-    #[cfg(not(verus_only))]
+
     RecoverDependencyFault {
         dependency: DependencyKind,
         fault: DependencyFault,
         retry_limit: u16,
         configuration: OsString,
     },
-    #[cfg(not(verus_only))]
+
     DependencyChild(DependencyKind),
-    #[cfg(not(verus_only))]
+
     StageDaemonLifecycle {
         phase: LifecyclePhase,
         configuration: OsString,
     },
-    #[cfg(not(verus_only))]
+
     RecoverDaemonLifecycle {
         phase: LifecyclePhase,
         configuration: OsString,
@@ -110,7 +110,7 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         "serve" => configuration_argument(arguments).map(CommandLine::Serve),
         #[cfg(target_os = "linux")]
         "--process-watchdog-v1" => process_watchdog(arguments),
-        #[cfg(not(verus_only))]
+
         "context-inspect" => super::context::parse(arguments).map(CommandLine::ContextInspect),
         "qualify-pty" if arguments.next().is_none() => Some(CommandLine::QualifyPty),
         "qualify-blob-before-stage" => configured(arguments, CommandLine::StageBlobBeforeCrash),
@@ -215,13 +215,13 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         "qualify-projection-corruption-recover" => {
             configured(arguments, CommandLine::RecoverProjectionCorruption)
         }
-        #[cfg(not(verus_only))]
+
         "qualify-dependency-stage" => {
             dependency_configured(arguments, |dependency, fault, retry_limit, configuration| {
                 CommandLine::StageDependencyFault { dependency, fault, retry_limit, configuration }
             })
         }
-        #[cfg(not(verus_only))]
+
         "qualify-dependency-recover" => {
             dependency_configured(arguments, |dependency, fault, retry_limit, configuration| {
                 CommandLine::RecoverDependencyFault {
@@ -232,13 +232,13 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
                 }
             })
         }
-        #[cfg(not(verus_only))]
+
         "qualify-dependency-child" => dependency_child(arguments),
-        #[cfg(not(verus_only))]
+
         "qualify-daemon-lifecycle-stage" => phase_configured(arguments, |phase, configuration| {
             CommandLine::StageDaemonLifecycle { phase, configuration }
         }),
-        #[cfg(not(verus_only))]
+
         "qualify-daemon-lifecycle-recover" => {
             phase_configured(arguments, |phase, configuration| {
                 CommandLine::RecoverDaemonLifecycle { phase, configuration }
@@ -304,7 +304,6 @@ fn process_watchdog(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
     arguments.next().is_none().then_some(CommandLine::ProcessWatchdog { root, start, group })
 }
 
-#[cfg(not(verus_only))]
 fn dependency_configured(
     arguments: &mut impl Iterator<Item = OsString>,
     constructor: fn(DependencyKind, DependencyFault, u16, OsString) -> CommandLine,
@@ -329,13 +328,11 @@ fn dependency_configured(
     ))
 }
 
-#[cfg(not(verus_only))]
 fn dependency_child(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> {
     let dependency = DependencyKind::parse(arguments.next()?.to_str()?)?;
     arguments.next().is_none().then_some(CommandLine::DependencyChild(dependency))
 }
 
-#[cfg(not(verus_only))]
 fn phase_configured(
     arguments: &mut impl Iterator<Item = OsString>,
     constructor: fn(LifecyclePhase, OsString) -> CommandLine,

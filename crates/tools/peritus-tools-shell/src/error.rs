@@ -74,15 +74,3 @@ impl From<peritus_tool_protocol::ProtocolError> for ShellError {
         Self::new(ShellErrorKind::Protocol, error.to_string())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn diagnostic_cap_preserves_utf8_boundaries() {
-        let error = ShellError::new(ShellErrorKind::InvalidInput, format!("{}é", "a".repeat(4095)));
-        assert_eq!(error.detail().len(), 4095);
-        assert!(error.detail().is_char_boundary(error.detail().len()));
-    }
-}

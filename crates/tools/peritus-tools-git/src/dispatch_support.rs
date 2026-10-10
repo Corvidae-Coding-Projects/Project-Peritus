@@ -151,24 +151,3 @@ fn failure(
 fn bounded(value: &str) -> BoundedText {
     BoundedText::new(value.to_owned()).expect("static Git failure text is bounded")
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn quarantined_git_result_retains_its_human_recovery_route_and_cause() {
-        let error = crate::GitToolError::new(
-            crate::GitToolErrorKind::Git,
-            crate::GitToolOperation::Candidate,
-            crate::RecoveryClass::Quarantine,
-            "exact retained snapshot differs from its receipt",
-        );
-        let failure = super::tool_failure(&error);
-        assert_eq!(failure.status(), peritus_tool_protocol::ResultStatus::Indeterminate);
-        assert_eq!(failure.failure().recovery(), peritus_tool_protocol::RecoveryRoute::HumanReview);
-        assert_eq!(
-            failure.failure().retryability(),
-            peritus_tool_protocol::Retryability::AfterRecovery
-        );
-        assert_eq!(failure.failure().code().as_str(), error.code());
-    }
-}

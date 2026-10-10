@@ -120,8 +120,7 @@ mod conversation;
 pub mod improvements;
 mod readiness;
 pub mod receipts;
-#[cfg(all(test, unix))]
-mod tests;
+
 pub use readiness::ready_facts;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

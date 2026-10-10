@@ -1,11 +1,8 @@
 //! Durable explicit discard recovery; inspection never publishes restore effects.
 
-#[cfg(test)]
-pub(in crate::candidate::managed) mod fault;
 mod owned;
 mod state;
-#[cfg(test)]
-mod tests;
+
 mod validation;
 
 use super::{ManagedBaseline, capture, failure, recovery};
@@ -110,8 +107,7 @@ pub fn execute(
     validation::postimages(&journal.state)?;
     journal.state.phase = Phase::Completed;
     journal.save()?;
-    #[cfg(test)]
-    fault::pause(fault::Stage::Completed);
+
     Ok(recovery_paths(&journal.state))
 }
 

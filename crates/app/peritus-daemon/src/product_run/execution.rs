@@ -25,8 +25,6 @@ mod goal;
 mod handoff;
 mod launch;
 use handoff::{fail_handoff, terminal_summary};
-#[cfg(test)]
-pub use launch::inject_finish_barrier;
 
 impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {

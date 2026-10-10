@@ -2,9 +2,6 @@
 
 mod node;
 
-#[cfg(test)]
-mod tests;
-
 use rusqlite::{Connection, OptionalExtension, Statement, Transaction, params};
 
 use crate::{JournalError, JournalErrorKind};

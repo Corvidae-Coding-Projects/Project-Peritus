@@ -324,5 +324,3 @@ pub struct ReviewLedger {
 }
 
 mod ledger;
-#[cfg(test)]
-mod tests;

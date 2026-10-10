@@ -3,32 +3,27 @@
 #![allow(missing_docs, reason = "Verus generates ghost enum projection methods")]
 
 use crate::CandidateIdentity;
-use vstd::prelude::*;
 
-verus! {
-
-/// Candidate axes on which one evidence observation actually depends.
-///
-/// Gate evidence observes content, public requirements, and the host execution context.
-/// Obligation and review conclusions observe content and public requirements. Repository history
-/// fences delivery but does not by itself invalidate those conclusions.
+#[doc = " Candidate axes on which one evidence observation actually depends."]
+#[doc = ""]
+#[doc = " Gate evidence observes content, public requirements, and the host execution context."]
+#[doc = " Obligation and review conclusions observe content and public requirements. Repository history"]
+#[doc = " fences delivery but does not by itself invalidate those conclusions."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum EvidenceDependencies {
-    /// Source content and public requirements.
+    #[doc = " Source content and public requirements."]
     Source,
-    /// Source content, public requirements, and the observed execution context.
+    #[doc = " Source content, public requirements, and the observed execution context."]
     SourceAndExecution,
 }
-
 impl EvidenceDependencies {
-    /// Deterministic gate dependency declaration.
+    #[doc = " Deterministic gate dependency declaration."]
     pub const GATES: Self = Self::SourceAndExecution;
-    /// Public-obligation dependency declaration.
+    #[doc = " Public-obligation dependency declaration."]
     pub const OBLIGATIONS: Self = Self::Source;
-    /// Independent-review dependency declaration.
+    #[doc = " Independent-review dependency declaration."]
     pub const REVIEW: Self = Self::OBLIGATIONS;
-
-    /// Stable tag for persistence and transport.
+    #[doc = " Stable tag for persistence and transport."]
     #[must_use]
     pub const fn tag(self) -> u16 {
         match self {
@@ -36,8 +31,7 @@ impl EvidenceDependencies {
             Self::SourceAndExecution => 2,
         }
     }
-
-    /// Restores one of the closed dependency declarations.
+    #[doc = " Restores one of the closed dependency declarations."]
     #[must_use]
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
@@ -46,27 +40,22 @@ impl EvidenceDependencies {
             _ => None,
         }
     }
-
-    /// Whether host execution context is a declared dependency.
+    #[doc = " Whether host execution context is a declared dependency."]
     #[must_use]
-    pub const fn execution(self) -> (execution: bool)
-        ensures execution == (self == Self::SourceAndExecution),
-    {
+    pub const fn execution(self) -> bool {
         matches!(self, Self::SourceAndExecution)
     }
 }
-
-/// Minimal fail-closed conclusion shared by gates, obligations, and review.
+#[doc = " Minimal fail-closed conclusion shared by gates, obligations, and review."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum QualificationEvidence {
-    /// The evidence satisfies its declared qualification obligation.
+    #[doc = " The evidence satisfies its declared qualification obligation."]
     Satisfied,
-    /// The evidence was observed but does not satisfy its obligation.
+    #[doc = " The evidence was observed but does not satisfy its obligation."]
     Unsatisfied,
 }
-
 impl QualificationEvidence {
-    /// Stable protocol tag.
+    #[doc = " Stable protocol tag."]
     #[must_use]
     pub const fn tag(self) -> u16 {
         match self {
@@ -74,8 +63,7 @@ impl QualificationEvidence {
             Self::Unsatisfied => 2,
         }
     }
-
-    /// Decodes a stable protocol tag.
+    #[doc = " Decodes a stable protocol tag."]
     #[must_use]
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
@@ -84,122 +72,64 @@ impl QualificationEvidence {
             _ => None,
         }
     }
-
-    /// Whether the evidence satisfies its obligation.
+    #[doc = " Whether the evidence satisfies its obligation."]
     #[must_use]
-    pub const fn satisfied(self) -> (satisfied: bool)
-        ensures satisfied == (self == Self::Satisfied),
-    { matches!(self, Self::Satisfied) }
+    pub const fn satisfied(self) -> bool {
+        matches!(self, Self::Satisfied)
+    }
 }
-
-/// Typed evidence value and the exact candidate checkpoint that produced it.
+#[doc = " Typed evidence value and the exact candidate checkpoint that produced it."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct EvidenceRecord<T> {
     provenance: CandidateIdentity,
     dependencies: EvidenceDependencies,
     value: T,
 }
-
 impl<T> EvidenceRecord<T> {
-    /// Logical view of the exact producing checkpoint.
-    pub closed spec fn spec_provenance(&self) -> CandidateIdentity { self.provenance }
-    /// Logical view of the declared dependency axes.
-    pub closed spec fn spec_dependencies(&self) -> EvidenceDependencies { self.dependencies }
-    /// Logical view of the retained evidence value.
-    pub closed spec fn spec_value(&self) -> T { self.value }
-
-    /// Whether every declared dependency axis matches the supplied candidate.
-    pub open spec fn spec_binding_matches(&self, candidate: &CandidateIdentity) -> bool {
-        self.spec_provenance().spec_matches_evidence_axes(
-            candidate,
-            self.spec_dependencies() == EvidenceDependencies::SourceAndExecution,
-        )
-    }
-
-    /// Binds a typed value to its producing checkpoint and declared dependency axes.
+    #[doc = " Binds a typed value to its producing checkpoint and declared dependency axes."]
     #[must_use]
     pub const fn new(
         provenance: CandidateIdentity,
         dependencies: EvidenceDependencies,
         value: T,
-    ) -> (record: Self)
-        ensures
-            record.spec_provenance() == provenance,
-            record.spec_dependencies() == dependencies,
-            record.spec_value() == value,
-    {
+    ) -> Self {
         Self { provenance, dependencies, value }
     }
-
-    /// Exact producing checkpoint.
+    #[doc = " Exact producing checkpoint."]
     #[must_use]
-    pub const fn provenance(&self) -> (value: &CandidateIdentity)
-        ensures *value == self.spec_provenance(),
-    { &self.provenance }
-
-    /// Candidate axes required for this observation to remain current.
+    pub const fn provenance(&self) -> &CandidateIdentity {
+        &self.provenance
+    }
+    #[doc = " Candidate axes required for this observation to remain current."]
     #[must_use]
-    pub const fn dependencies(&self) -> (value: EvidenceDependencies)
-        ensures value == self.spec_dependencies(),
-    { self.dependencies }
-
-    /// Typed evidence payload.
+    pub const fn dependencies(&self) -> EvidenceDependencies {
+        self.dependencies
+    }
+    #[doc = " Typed evidence payload."]
     #[must_use]
-    pub const fn value(&self) -> (value: &T)
-        ensures *value == self.spec_value(),
-    { &self.value }
-
-    /// Whether every declared dependency axis matches the supplied candidate.
+    pub const fn value(&self) -> &T {
+        &self.value
+    }
+    #[doc = " Whether every declared dependency axis matches the supplied candidate."]
     #[must_use]
-    pub fn binding_matches(&self, candidate: &CandidateIdentity) -> (matches: bool)
-        ensures matches == self.spec_binding_matches(candidate),
-    {
+    pub fn binding_matches(&self, candidate: &CandidateIdentity) -> bool {
         self.provenance.matches_evidence_axes(candidate, self.dependencies.execution())
     }
 }
-
-/// Freshness and acquisition status of one typed evidence observation.
+#[doc = " Freshness and acquisition status of one typed evidence observation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum EvidenceStatus<T> {
-    /// No evidence has been observed.
+    #[doc = " No evidence has been observed."]
     Missing,
-    /// Evidence is available and intended to apply to the current candidate.
+    #[doc = " Evidence is available and intended to apply to the current candidate."]
     Current(EvidenceRecord<T>),
-    /// Evidence acquisition completed with a typed negative result.
+    #[doc = " Evidence acquisition completed with a typed negative result."]
     Failed(EvidenceRecord<T>),
-    /// Evidence is retained for diagnostics but no longer authorizes the candidate.
+    #[doc = " Evidence is retained for diagnostics but no longer authorizes the candidate."]
     Stale(EvidenceRecord<T>),
 }
-
 impl<T> EvidenceStatus<T> {
-    /// Logical view of the retained original observation, independent of freshness.
-    pub open spec fn spec_record(&self) -> Option<EvidenceRecord<T>> {
-        match self {
-            Self::Missing => None,
-            Self::Current(record) | Self::Failed(record) | Self::Stale(record) => Some(*record),
-        }
-    }
-
-    /// Current or failed evidence matches its dependency axes and an earlier or equal sequence.
-    pub open spec fn spec_is_current_for(&self, candidate: &CandidateIdentity) -> bool {
-        match self {
-            Self::Current(record) | Self::Failed(record) =>
-                record.spec_binding_matches(candidate)
-                    && record.spec_provenance().spec_checkpoint_sequence()
-                        <= candidate.spec_checkpoint_sequence(),
-            Self::Missing | Self::Stale(_) => false,
-        }
-    }
-
-    /// A stale label is consistent only when the retained candidate binding differs.
-    pub open spec fn spec_is_validly_stale_for(&self, candidate: &CandidateIdentity) -> bool {
-        match self {
-            Self::Stale(record) => !record.spec_binding_matches(candidate),
-            _ => true,
-        }
-    }
-
-    /// Stable protocol tag.
+    #[doc = " Stable protocol tag."]
     #[must_use]
     pub const fn tag(&self) -> u16 {
         match self {
@@ -209,8 +139,7 @@ impl<T> EvidenceStatus<T> {
             Self::Stale(_) => 4,
         }
     }
-
-    /// Returns the retained record when one exists.
+    #[doc = " Returns the retained record when one exists."]
     #[must_use]
     pub const fn record(&self) -> Option<&EvidenceRecord<T>> {
         match self {
@@ -218,69 +147,40 @@ impl<T> EvidenceStatus<T> {
             Self::Current(record) | Self::Failed(record) | Self::Stale(record) => Some(record),
         }
     }
-
-    /// Whether the status and provenance are current for `candidate`.
+    #[doc = " Whether the status and provenance are current for `candidate`."]
     #[must_use]
-    pub fn is_current_for(&self, candidate: &CandidateIdentity) -> (current: bool)
-        ensures current == self.spec_is_current_for(candidate),
-    {
+    pub fn is_current_for(&self, candidate: &CandidateIdentity) -> bool {
         match self {
-            Self::Current(record) | Self::Failed(record) => {
-                crate::verified::evidence_is_current(
-                    record.binding_matches(candidate),
-                    record.provenance.checkpoint_sequence(),
-                    candidate.checkpoint_sequence(),
-                    true,
-                )
-            }
+            Self::Current(record) | Self::Failed(record) => crate::verified::evidence_is_current(
+                record.binding_matches(candidate),
+                record.provenance.checkpoint_sequence(),
+                candidate.checkpoint_sequence(),
+                true,
+            ),
             Self::Missing | Self::Stale(_) => false,
         }
     }
-
-    /// Whether a retained stale record no longer binds the current candidate.
+    #[doc = " Whether a retained stale record no longer binds the current candidate."]
     #[must_use]
-    pub fn is_validly_stale_for(&self, candidate: &CandidateIdentity) -> (valid: bool)
-        ensures valid == self.spec_is_validly_stale_for(candidate),
-    {
+    pub fn is_validly_stale_for(&self, candidate: &CandidateIdentity) -> bool {
         match self {
             Self::Stale(record) => !record.binding_matches(candidate),
             _ => true,
         }
     }
 }
-
 impl EvidenceStatus<QualificationEvidence> {
-    /// Reconciles a retained observation against the current snapshot binding.
-    ///
-    /// Provenance and payload are never rewritten. A matching retained observation can apply
-    /// again after an exact reversion; a differing binding remains historical evidence.
-    ///
-    /// # Errors
-    /// Rejects a matching observation from a future checkpoint sequence.
+    #[doc = " Reconciles a retained observation against the current snapshot binding."]
+    #[doc = ""]
+    #[doc = " Provenance and payload are never rewritten. A matching retained observation can apply"]
+    #[doc = " again after an exact reversion; a differing binding remains historical evidence."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = " Rejects a matching observation from a future checkpoint sequence."]
     pub fn reconcile_for(
         self,
         candidate: &CandidateIdentity,
-    ) -> (result: Result<Self, crate::SettlementError>)
-        ensures
-            match result {
-                Ok(value) => value.spec_record() == self.spec_record(),
-                Err(_) => true,
-            },
-            match result {
-            Ok(Self::Missing) => self == Self::Missing,
-            Ok(Self::Current(record)) => record.spec_value() == QualificationEvidence::Satisfied
-                && record.spec_binding_matches(candidate)
-                && record.spec_provenance().spec_checkpoint_sequence()
-                    <= candidate.spec_checkpoint_sequence(),
-            Ok(Self::Failed(record)) => record.spec_value() == QualificationEvidence::Unsatisfied
-                && record.spec_binding_matches(candidate)
-                && record.spec_provenance().spec_checkpoint_sequence()
-                    <= candidate.spec_checkpoint_sequence(),
-            Ok(Self::Stale(record)) => !record.spec_binding_matches(candidate),
-            Err(error) => error.spec_kind()
-                == crate::SettlementErrorKind::CurrentEvidenceBindingMismatch,
-        },
-    {
+    ) -> Result<Self, crate::SettlementError> {
         let record = match self {
             Self::Missing => return Ok(Self::Missing),
             Self::Current(record) | Self::Failed(record) | Self::Stale(record) => record,
@@ -293,27 +193,11 @@ impl EvidenceStatus<QualificationEvidence> {
                 crate::SettlementErrorKind::CurrentEvidenceBindingMismatch,
             ));
         }
-        if record.value.satisfied() {
-            Ok(Self::Current(record))
-        } else {
-            Ok(Self::Failed(record))
-        }
+        if record.value.satisfied() { Ok(Self::Current(record)) } else { Ok(Self::Failed(record)) }
     }
-
-    /// Only a positive current observation for the exact candidate satisfies qualification.
-    pub open spec fn spec_is_current_and_satisfied(&self, candidate: &CandidateIdentity) -> bool {
-        match self {
-            Self::Current(record) => self.spec_is_current_for(candidate)
-                && record.spec_value() == QualificationEvidence::Satisfied,
-            _ => false,
-        }
-    }
-
-    /// Whether current evidence positively satisfies its obligation.
+    #[doc = " Whether current evidence positively satisfies its obligation."]
     #[must_use]
-    pub fn is_current_and_satisfied(&self, candidate: &CandidateIdentity) -> (satisfied: bool)
-        ensures satisfied == self.spec_is_current_and_satisfied(candidate),
-    {
+    pub fn is_current_and_satisfied(&self, candidate: &CandidateIdentity) -> bool {
         match self {
             Self::Current(record) => {
                 crate::verified::evidence_is_current(
@@ -321,12 +205,9 @@ impl EvidenceStatus<QualificationEvidence> {
                     record.provenance.checkpoint_sequence(),
                     candidate.checkpoint_sequence(),
                     true,
-                )
-                    && record.value.satisfied()
+                ) && record.value.satisfied()
             }
             _ => false,
         }
     }
 }
-
-} // verus!

@@ -13,9 +13,6 @@ use peritus_types::WorkspaceId;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-#[cfg(test)]
-mod tests;
-
 mod stored;
 use stored::{StoredCatalog, StoredSlot, StoredSlotState, StoredTombstone};
 

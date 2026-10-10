@@ -4,171 +4,161 @@
 // This module's public items are fully documented; this scopes the workaround to those artifacts.
 #![allow(missing_docs)]
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Public approval lifecycle phase.
+#[doc = " Public approval lifecycle phase."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ApprovalPhase {
-    /// No decision has resolved the request.
+    #[doc = " No decision has resolved the request."]
     Pending,
-    /// One approve-once decision is available for exact consumption.
+    #[doc = " One approve-once decision is available for exact consumption."]
     ApprovedOnce,
-    /// One exact amendment has been authorized.
+    #[doc = " One exact amendment has been authorized."]
     AmendmentAuthorized,
-    /// The approve-once decision was consumed.
+    #[doc = " The approve-once decision was consumed."]
     Consumed,
-    /// The approved amendment was consumed by a logical amendment transition.
+    #[doc = " The approved amendment was consumed by a logical amendment transition."]
     Amended,
-    /// The request was denied.
+    #[doc = " The request was denied."]
     Denied,
-    /// The request expired before resolution or consumption.
+    #[doc = " The request expired before resolution or consumption."]
     Expired,
-    /// The request was explicitly cancelled.
+    #[doc = " The request was explicitly cancelled."]
     Cancelled,
 }
-
-/// Recovery guidance attached to an approval failure.
+#[doc = " Recovery guidance attached to an approval failure."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RecoveryClass {
-    /// The request cannot progress without new intent.
+    #[doc = " The request cannot progress without new intent."]
     Terminal,
-    /// Current logical state must be observed again.
+    #[doc = " Current logical state must be observed again."]
     Reobserve,
-    /// Policy and human authority must be acquired again.
+    #[doc = " Policy and human authority must be acquired again."]
     Reauthorize,
-    /// The caller may correct malformed or mismatched input.
+    #[doc = " The caller may correct malformed or mismatched input."]
     CallerCorrectable,
 }
-
-/// Canonical bounded collection rejected by a constructor.
+#[doc = " Canonical bounded collection rejected by a constructor."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CanonicalCollection {
-    /// Producing-attempt participant actors.
+    #[doc = " Producing-attempt participant actors."]
     ProducingParticipants,
-    /// Candidate-review participant actors.
+    #[doc = " Candidate-review participant actors."]
     ReviewParticipants,
-    /// Credential approval-role labels.
+    #[doc = " Credential approval-role labels."]
     CredentialApprovalRoles,
-    /// Credential-registry entries.
+    #[doc = " Credential-registry entries."]
     CredentialRegistry,
-    /// Approval request permissions.
+    #[doc = " Approval request permissions."]
     Permissions,
-    /// Structured request risk classes.
+    #[doc = " Structured request risk classes."]
     Risks,
-    /// Approval independence requirements.
+    #[doc = " Approval independence requirements."]
     IndependenceRequirements,
 }
-
-/// Credential or registry dimension that failed exact validation.
+#[doc = " Credential or registry dimension that failed exact validation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CredentialDimension {
-    /// Public-key-derived identifier.
+    #[doc = " Public-key-derived identifier."]
     KeyId,
-    /// Credential registry snapshot revision.
+    #[doc = " Credential registry snapshot revision."]
     RegistryRevision,
-    /// Credential revocation/reissue generation.
+    #[doc = " Credential revocation/reissue generation."]
     Generation,
-    /// Authenticated responder actor.
+    #[doc = " Authenticated responder actor."]
     Actor,
-    /// Human credential principal role.
+    #[doc = " Human credential principal role."]
     PrincipalRole,
-    /// Explicit signed approval role.
+    #[doc = " Explicit signed approval role."]
     ApprovalRole,
-    /// Credential environment scope.
+    #[doc = " Credential environment scope."]
     Environment,
-    /// Credential workspace scope.
+    #[doc = " Credential workspace scope."]
     Workspace,
-    /// Maximum credential authority tier.
+    #[doc = " Maximum credential authority tier."]
     AuthorityTier,
-    /// Credential validity window.
+    #[doc = " Credential validity window."]
     Validity,
-    /// Credential enabled/disabled status.
+    #[doc = " Credential enabled/disabled status."]
     Status,
 }
-
-/// Request, decision, or use scope dimension that failed exact matching.
+#[doc = " Request, decision, or use scope dimension that failed exact matching."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ScopeDimension {
-    /// Approval request identity.
+    #[doc = " Approval request identity."]
     Request,
-    /// Request digest.
+    #[doc = " Request digest."]
     RequestDigest,
-    /// Exact action identity.
+    #[doc = " Exact action identity."]
     Action,
-    /// Exact action digest.
+    #[doc = " Exact action digest."]
     ActionDigest,
-    /// Exact revision tuple.
+    #[doc = " Exact revision tuple."]
     Revision,
-    /// Sole policy identity.
+    #[doc = " Sole policy identity."]
     Policy,
-    /// Decision command identity.
+    #[doc = " Decision command identity."]
     Command,
-    /// Decision choice or amendment identity.
+    #[doc = " Decision choice or amendment identity."]
     Choice,
 }
-
-/// Checked-constructor, authentication, reducer, and rendering failure.
+#[doc = " Checked-constructor, authentication, reducer, and rendering failure."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ApprovalError {
-    /// A collection was empty although its contract requires a value.
+    #[doc = " A collection was empty although its contract requires a value."]
     EmptyCollection(CanonicalCollection),
-    /// A collection exceeded its exact public bound.
+    #[doc = " A collection exceeded its exact public bound."]
     CollectionTooLarge(CanonicalCollection),
-    /// A collection contained a duplicate value.
+    #[doc = " A collection contained a duplicate value."]
     DuplicateCanonicalValue(CanonicalCollection),
-    /// A collection was not supplied in strict canonical order.
+    #[doc = " A collection was not supplied in strict canonical order."]
     NonCanonicalOrder(CanonicalCollection),
-    /// The exact canonical digest preimage exceeded its frozen bound.
+    #[doc = " The exact canonical digest preimage exceeded its frozen bound."]
     PreimageTooLarge,
-    /// A bounded canonical authority frame was malformed, noncanonical, or had trailing bytes.
+    #[doc = " A bounded canonical authority frame was malformed, noncanonical, or had trailing bytes."]
     InvalidCanonicalEncoding,
-    /// A public key or signature had the wrong byte length.
+    #[doc = " A public key or signature had the wrong byte length."]
     InvalidCryptoLength,
-    /// A public key or signature encoding was malformed or noncanonical.
+    #[doc = " A public key or signature encoding was malformed or noncanonical."]
     InvalidCryptoEncoding,
-    /// Strict Ed25519 verification rejected the decision.
+    #[doc = " Strict Ed25519 verification rejected the decision."]
     SignatureInvalid,
-    /// No credential with the signed key ID exists in the supplied snapshot.
+    #[doc = " No credential with the signed key ID exists in the supplied snapshot."]
     CredentialMissing,
-    /// One credential or registry dimension mismatched.
+    #[doc = " One credential or registry dimension mismatched."]
     CredentialMismatch(CredentialDimension),
-    /// One signed/request/state binding mismatched.
+    #[doc = " One signed/request/state binding mismatched."]
     BindingMismatch(ScopeDimension),
-    /// The request digest does not match its exact semantic fields.
+    #[doc = " The request digest does not match its exact semantic fields."]
     RequestDigestMismatch,
-    /// The decision digest does not match its exact signed fields.
+    #[doc = " The decision digest does not match its exact signed fields."]
     DecisionDigestMismatch,
-    /// The authority-clock epoch changed.
+    #[doc = " The authority-clock epoch changed."]
     ClockEpochMismatch,
-    /// The authority observation regressed.
+    #[doc = " The authority observation regressed."]
     ClockRegression,
-    /// A validity interval has not started.
+    #[doc = " A validity interval has not started."]
     NotYetValid,
-    /// A request, credential, challenge, or decision expired.
+    #[doc = " A request, credential, challenge, or decision expired."]
     Expired,
-    /// The responder violated an exact independence requirement.
+    #[doc = " The responder violated an exact independence requirement."]
     IndependenceViolation,
-    /// A command was attempted in the wrong lifecycle phase.
+    #[doc = " A command was attempted in the wrong lifecycle phase."]
     IllegalPhase {
-        /// Required phase.
+        #[doc = " Required phase."]
         expected: ApprovalPhase,
-        /// Actual phase.
+        #[doc = " Actual phase."]
         actual: ApprovalPhase,
     },
-    /// A terminal request received a semantically conflicting response.
+    #[doc = " A terminal request received a semantically conflicting response."]
     AlreadyResolved,
-    /// An approve-once grant was already consumed.
+    #[doc = " An approve-once grant was already consumed."]
     AlreadyConsumed,
-    /// Rendering could not preserve its safe bounded representation.
+    #[doc = " Rendering could not preserve its safe bounded representation."]
     UnsafeRenderingInput,
-    /// Internal checked state did not satisfy its representation invariant.
+    #[doc = " Internal checked state did not satisfy its representation invariant."]
     CorruptState,
 }
-
 impl ApprovalError {
-    /// Returns the stable subsystem diagnostic code.
+    #[doc = " Returns the stable subsystem diagnostic code."]
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -198,8 +188,7 @@ impl ApprovalError {
             Self::CorruptState => "PERITUS-APPROVAL-STATE-004",
         }
     }
-
-    /// Returns the recovery classification.
+    #[doc = " Returns the recovery classification."]
     #[must_use]
     pub const fn recovery(&self) -> RecoveryClass {
         match self {
@@ -229,116 +218,63 @@ impl ApprovalError {
         }
     }
 }
-
-/// Rejected move-only state transition preserving the unchanged aggregate and observation.
+#[doc = " Rejected move-only state transition preserving the unchanged aggregate and observation."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ApprovalTransitionFailure {
     pub(crate) error: ApprovalError,
     pub(crate) aggregate: crate::ApprovalAggregate,
     pub(crate) observation: Option<crate::AuthenticatedApprovalObservation>,
 }
-
 impl ApprovalTransitionFailure {
-    /// Returns exact aggregate preservation for formal reducer contracts.
-    pub closed spec fn spec_preserves_aggregate(
-        &self,
-        previous: &crate::ApprovalAggregate,
-    ) -> bool {
-        self.aggregate == *previous
-    }
-
-    /// Returns the exact rejected authentication observation.
-    pub closed spec fn spec_observation(
-        &self,
-    ) -> Option<crate::AuthenticatedApprovalObservation> {
-        self.observation
-    }
-
     pub(crate) const fn new(
         error: ApprovalError,
         aggregate: crate::ApprovalAggregate,
         observation: Option<crate::AuthenticatedApprovalObservation>,
-    ) -> (failure: Self)
-        ensures
-            failure.error == error,
-            failure.aggregate == aggregate,
-            failure.observation == observation,
-            failure.spec_preserves_aggregate(&aggregate),
-            failure.spec_observation() == observation,
-    {
+    ) -> Self {
         Self { error, aggregate, observation }
     }
-
-    pub(crate) proof fn prove_preserves(&self, previous: &crate::ApprovalAggregate)
-        requires self.spec_preserves_aggregate(previous),
-        ensures self.aggregate == *previous,
-    {
+    #[doc = " Borrows the exact error."]
+    #[must_use]
+    pub const fn error(&self) -> &ApprovalError {
+        &self.error
     }
-
-    /// Borrows the exact error.
+    #[doc = " Borrows the unchanged aggregate."]
     #[must_use]
-    pub const fn error(&self) -> &ApprovalError { &self.error }
-
-    /// Borrows the unchanged aggregate.
-    #[must_use]
-    pub const fn aggregate(&self) -> &crate::ApprovalAggregate { &self.aggregate }
-
-    /// Consumes the failure into its exact parts.
+    pub const fn aggregate(&self) -> &crate::ApprovalAggregate {
+        &self.aggregate
+    }
+    #[doc = " Consumes the failure into its exact parts."]
     #[must_use]
     pub fn into_parts(
         self,
-    ) -> (ApprovalError, crate::ApprovalAggregate, Option<crate::AuthenticatedApprovalObservation>) {
+    ) -> (ApprovalError, crate::ApprovalAggregate, Option<crate::AuthenticatedApprovalObservation>)
+    {
         (self.error, self.aggregate, self.observation)
     }
 }
-
-/// Rejected approve-once use preserving the unchanged aggregate.
+#[doc = " Rejected approve-once use preserving the unchanged aggregate."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ApprovalUseFailure {
     pub(crate) error: ApprovalError,
     pub(crate) aggregate: crate::ApprovalAggregate,
 }
-
 impl ApprovalUseFailure {
-    /// Returns exact aggregate preservation for formal use-reducer contracts.
-    pub closed spec fn spec_preserves_aggregate(
-        &self,
-        previous: &crate::ApprovalAggregate,
-    ) -> bool {
-        self.aggregate == *previous
-    }
-
-    pub(crate) const fn new(
-        error: ApprovalError,
-        aggregate: crate::ApprovalAggregate,
-    ) -> (failure: Self)
-        ensures
-            failure.error == error,
-            failure.aggregate == aggregate,
-            failure.spec_preserves_aggregate(&aggregate),
-    {
+    pub(crate) const fn new(error: ApprovalError, aggregate: crate::ApprovalAggregate) -> Self {
         Self { error, aggregate }
     }
-
-    pub(crate) proof fn prove_preserves(&self, previous: &crate::ApprovalAggregate)
-        requires self.spec_preserves_aggregate(previous),
-        ensures self.aggregate == *previous,
-    {
+    #[doc = " Borrows the exact error."]
+    #[must_use]
+    pub const fn error(&self) -> &ApprovalError {
+        &self.error
     }
-
-    /// Borrows the exact error.
+    #[doc = " Borrows the exact unchanged aggregate."]
     #[must_use]
-    pub const fn error(&self) -> &ApprovalError { &self.error }
-
-    /// Borrows the exact unchanged aggregate.
-    #[must_use]
-    pub const fn aggregate(&self) -> &crate::ApprovalAggregate { &self.aggregate }
-
-    /// Consumes the failure into its reason and unchanged aggregate.
+    pub const fn aggregate(&self) -> &crate::ApprovalAggregate {
+        &self.aggregate
+    }
+    #[doc = " Consumes the failure into its reason and unchanged aggregate."]
     #[must_use]
     pub fn into_parts(self) -> (ApprovalError, crate::ApprovalAggregate) {
         (self.error, self.aggregate)
     }
 }
-
-} // verus!

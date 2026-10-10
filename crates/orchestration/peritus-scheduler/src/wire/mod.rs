@@ -6,9 +6,6 @@ mod event;
 mod records;
 mod state;
 
-#[cfg(test)]
-mod fixture_tests;
-
 use peritus_codec::{
     CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits, decode_frame,
     decode_message, encode_message,

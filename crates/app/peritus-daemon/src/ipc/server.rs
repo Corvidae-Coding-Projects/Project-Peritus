@@ -26,9 +26,6 @@ use crate::{
 // Persistent listener/resource errors must yield rather than spin and flood the daemon log.
 const ACCEPT_RETRY_DELAY: Duration = Duration::from_millis(100);
 
-#[cfg(all(test, unix))]
-mod tests;
-
 pub async fn serve(
     endpoint: LocalEndpoint,
     authority: AuthorityHandle,

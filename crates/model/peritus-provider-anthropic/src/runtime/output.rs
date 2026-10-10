@@ -274,6 +274,3 @@ fn optional_bool(object: &Map<String, Value>, name: &str) -> Result<Option<bool>
 fn optional_u64(object: &Map<String, Value>, name: &str) -> Result<Option<u64>, DecodeFailure> {
     object.get(name).map(|value| value.as_u64().ok_or(DecodeFailure::Malformed)).transpose()
 }
-
-#[cfg(test)]
-mod tests;

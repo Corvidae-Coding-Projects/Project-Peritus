@@ -86,21 +86,6 @@ impl WorkspaceSnapshot {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) const fn test_fixture(
-        workspace_id: WorkspaceId,
-        generation: Generation,
-        revision: RevisionNumber,
-    ) -> Self {
-        Self {
-            workspace_id,
-            generation,
-            revision,
-            commit: GitObjectIdentity { format: ObjectFormat::Sha256, bytes: [41; 32] },
-            tree: GitObjectIdentity { format: ObjectFormat::Sha256, bytes: [42; 32] },
-        }
-    }
-
     /// Returns the workspace lineage.
     #[must_use]
     pub const fn workspace_id(&self) -> WorkspaceId {

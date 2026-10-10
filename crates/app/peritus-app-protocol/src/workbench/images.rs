@@ -11,8 +11,6 @@ mod page;
 pub use page::{
     MAX_WORKBENCH_IMAGE_PAGE, WorkbenchImagePage, WorkbenchImageQuery, WorkbenchImageRow,
 };
-#[cfg(test)]
-mod tests;
 
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)

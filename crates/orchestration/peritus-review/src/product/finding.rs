@@ -370,7 +370,3 @@ fn finding_id(category: ProductFindingCategory, title: &str) -> Sha256Digest {
     bytes.extend(title.trim().chars().flat_map(char::to_lowercase).collect::<String>().as_bytes());
     sha256(&bytes)
 }
-
-#[cfg(test)]
-#[path = "finding_tests.rs"]
-mod tests;

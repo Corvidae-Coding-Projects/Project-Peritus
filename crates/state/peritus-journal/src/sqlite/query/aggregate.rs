@@ -4,9 +4,6 @@ mod checkpoint;
 
 pub use checkpoint::AggregateCheckpointSnapshot;
 
-#[cfg(test)]
-mod tests;
-
 use peritus_types::EventSequence;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 

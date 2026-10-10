@@ -16,9 +16,6 @@ pub use fingerprints::{
     rewind_confirmation_fingerprint,
 };
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn write_checkpoint_receipt(
     w: &mut CanonicalWriter,
     value: &WorkbenchCheckpointReceipt,

@@ -14,12 +14,7 @@ use peritus_types::ActorId;
 mod brief;
 mod checkpoints;
 mod conversation;
-#[cfg(test)]
-#[allow(
-    clippy::redundant_pub_crate,
-    reason = "crate-level tests inject exact crash boundaries"
-)]
-pub(crate) use checkpoints::{RewindFaultPoint, inject_rewind_fault};
+
 mod execution;
 pub(super) mod files;
 mod folder_mutation;
@@ -393,6 +388,3 @@ pub(super) fn error_value(error: Error) -> AppProtocolError {
     };
     AppProtocolError::new(code, None)
 }
-
-#[cfg(test)]
-mod tests;

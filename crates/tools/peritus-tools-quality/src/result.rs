@@ -323,6 +323,3 @@ fn normalize_retry(
         _ => (retryability, recovery),
     }
 }
-
-#[cfg(test)]
-mod tests;

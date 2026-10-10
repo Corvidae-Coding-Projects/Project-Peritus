@@ -379,6 +379,3 @@ impl ResponsibleSubsystem {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

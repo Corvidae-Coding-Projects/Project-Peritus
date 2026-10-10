@@ -7,33 +7,20 @@ use peritus_policy::AuthorityInstant;
 use peritus_types::{
     ActionId, CapabilityName, EvidenceId, Generation, RevisionTuple, Sha256Digest,
 };
-use vstd::prelude::*;
 
 mod batch;
 mod clone_impl;
 
-verus! {
-
-pub fn clone_tool_proposals(
-    proposals: &[ToolProposal],
-) -> (result: Vec<ToolProposal>)
-    ensures ToolProposal::sequence_clone_equivalent(proposals@, result@),
-{
+pub fn clone_tool_proposals(proposals: &[ToolProposal]) -> Vec<ToolProposal> {
     clone_impl::clone_tool_proposals(proposals)
 }
 
-} // verus!
-
-verus! {
-
-/// Checked semantic tool version.
+#[doc = " Checked semantic tool version."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ToolVersion {
     major: u16,
     minor: u16,
 }
-
-} // verus!
 
 impl ToolVersion {
     /// Creates a semantic version with a positive major component.
@@ -58,9 +45,7 @@ impl ToolVersion {
     }
 }
 
-verus! {
-
-/// Side-effect projection used for D0 serialization; C4 remains authoritative.
+#[doc = " Side-effect projection used for D0 serialization; C4 remains authoritative."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolSideEffect {
     None,
@@ -68,8 +53,7 @@ pub enum ToolSideEffect {
     Process,
     External,
 }
-
-/// Replay classification copied from C4 preparation.
+#[doc = " Replay classification copied from C4 preparation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolIdempotency {
     Idempotent,
@@ -77,11 +61,7 @@ pub enum ToolIdempotency {
     NonIdempotent,
 }
 
-} // verus!
-
-verus! {
-
-/// Immutable checked tool proposal supplied after C4 preparation.
+#[doc = " Immutable checked tool proposal supplied after C4 preparation."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ToolProposal {
     ordinal: ToolOrdinal,
@@ -98,8 +78,6 @@ pub struct ToolProposal {
     side_effect: ToolSideEffect,
     idempotency: ToolIdempotency,
 }
-
-} // verus!
 
 impl ToolProposal {
     #[allow(clippy::too_many_arguments, reason = "the C4-prepared identity must remain exact")]
@@ -240,9 +218,7 @@ pub enum ToolSlotPhase {
     Terminal,
 }
 
-verus! {
-
-/// Terminal C4 result projection.
+#[doc = " Terminal C4 result projection."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolResultStatus {
     Succeeded,
@@ -251,8 +227,7 @@ pub enum ToolResultStatus {
     Cancelled,
     Indeterminate,
 }
-
-/// Bounded terminal tool result supplied by C4.
+#[doc = " Bounded terminal tool result supplied by C4."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ToolResultRecord {
     status: ToolResultStatus,
@@ -260,8 +235,6 @@ pub struct ToolResultRecord {
     model_visible_bytes: u64,
     evidence: Vec<EvidenceId>,
 }
-
-} // verus!
 
 impl ToolResultRecord {
     pub const MAX_EVIDENCE: usize = 256;

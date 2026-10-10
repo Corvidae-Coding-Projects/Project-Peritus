@@ -8,9 +8,6 @@ use crate::{
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ArtifactId;
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn write_query(
     w: &mut CanonicalWriter,
     value: WorkbenchImageQuery,

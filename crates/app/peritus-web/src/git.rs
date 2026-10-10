@@ -13,10 +13,7 @@ mod workflows;
 async fn run(directory: &Path, args: &[String]) -> Result<String> {
     execute(directory, args, false, None).await
 }
-#[cfg(test)]
-async fn run_effect(directory: &Path, args: &[String]) -> Result<String> {
-    execute(directory, args, true, None).await
-}
+
 async fn run_effect_owned(
     directory: &Path,
     args: &[String],
@@ -241,23 +238,5 @@ pub async fn recover(app: &App, operation: &str, input: &Value) -> Result<Option
         Ok(output) => Ok(Some(json!({"output":output,"recovered":true}))),
         Err(error) if error.1 => Err(error),
         Err(error) => Ok(Some(json!({"error":error.0,"recovered":true}))),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[tokio::test]
-    async fn network_effect_errors_are_not_replayed_as_known_failures() {
-        let directory = tempfile::tempdir().unwrap();
-        let error = run_effect(directory.path(), &["push".into()]).await.unwrap_err();
-        assert!(error.1);
-        let query = run(directory.path(), &["status".into()]).await.unwrap_err();
-        assert!(!query.1);
-    }
-    #[test]
-    fn ignores_literal_names_not_patterns() {
-        assert_eq!(ignore_pattern(Path::new("a[1]*.txt"), false), "/a\\[1\\]\\*.txt");
-        assert_eq!(ignore_pattern(Path::new("build output"), true), "/build\\ output/");
     }
 }

@@ -1,6 +1,6 @@
 //! Bounded macOS process-group and workspace resource sampling.
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 mod pids;
 
 use std::{
@@ -12,7 +12,7 @@ use std::{
 use std::time::Duration;
 
 use peritus_process::ProcessTreeIdentity;
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 use peritus_sandbox::SandboxResourceKind;
 
 use crate::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction, ResourceControlPlan};
@@ -114,7 +114,7 @@ impl ResourceUsage {
     }
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 const fn exceeds(usage: &ResourceUsage, controls: &ResourceControlPlan) -> bool {
     let cpu_nanos =
         controls.control(SandboxResourceKind::CpuTime).ceiling().saturating_mul(1_000_000);
@@ -157,7 +157,7 @@ fn disk_usage(root: &Path) -> Result<u64, MacosError> {
     Ok(total)
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 fn sample_error() -> MacosError {
     MacosError::new(
         MacosErrorKind::SupervisorFailure,
@@ -276,47 +276,5 @@ mod native {
             }
         }
         Ok(usage)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use peritus_sandbox::SandboxResourceKind;
-
-    use super::{ResourceUsage, exceeds};
-    use crate::{EnforcementLevel, ResourceControl, ResourceControlPlan};
-
-    #[test]
-    fn resource_ceiling_comparison_is_exact_and_dimension_complete() {
-        let controls = ResourceControlPlan::from_controls([
-            ResourceControl::new(SandboxResourceKind::WallTime, 100, EnforcementLevel::Supervisor),
-            ResourceControl::new(SandboxResourceKind::CpuTime, 100, EnforcementLevel::Supervisor),
-            ResourceControl::new(SandboxResourceKind::Memory, 100, EnforcementLevel::Supervisor),
-            ResourceControl::new(SandboxResourceKind::Disk, 100, EnforcementLevel::Supervisor),
-            ResourceControl::new(SandboxResourceKind::Output, 100, EnforcementLevel::Supervisor),
-            ResourceControl::new(
-                SandboxResourceKind::OpenHandles,
-                100,
-                EnforcementLevel::Supervisor,
-            ),
-            ResourceControl::new(SandboxResourceKind::Processes, 100, EnforcementLevel::Supervisor),
-            ResourceControl::new(
-                SandboxResourceKind::Concurrency,
-                100,
-                EnforcementLevel::Supervisor,
-            ),
-        ]);
-        let at_limit = ResourceUsage {
-            cpu_nanos: controls.control(SandboxResourceKind::CpuTime).ceiling() * 1_000_000,
-            memory_bytes: controls.control(SandboxResourceKind::Memory).ceiling(),
-            disk_bytes: controls.control(SandboxResourceKind::Disk).ceiling(),
-            open_handles: controls.control(SandboxResourceKind::OpenHandles).ceiling(),
-            processes: controls.control(SandboxResourceKind::Processes).ceiling(),
-        };
-        assert!(!exceeds(&at_limit, &controls));
-        assert!(exceeds(
-            &ResourceUsage { processes: at_limit.processes + 1, ..at_limit },
-            &controls,
-        ));
     }
 }

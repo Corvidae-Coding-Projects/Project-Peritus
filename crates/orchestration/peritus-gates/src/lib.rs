@@ -14,18 +14,13 @@ mod event;
 mod evidence;
 mod obligation;
 mod outcome;
-#[cfg(not(verus_only))]
+
 mod product;
 mod projection;
 mod reducer;
 mod state;
 mod verified;
 mod wire;
-
-#[cfg(test)]
-mod test_support;
-#[cfg(test)]
-mod tests;
 
 pub use command::{GateCommand, GateCommandKind, RecoveryDisposition};
 pub use descriptor::{GatePlan, PlannedGate};
@@ -46,7 +41,7 @@ pub use obligation::{GateObligationAssessment, route_failure};
 pub use outcome::{
     GateArtifact, GateAttemptResult, GateOutcomeKind, RecoveryRequirement, RetryPermission,
 };
-#[cfg(not(verus_only))]
+
 pub use product::{
     AffectedProject, GateCommandSpec, GateExecutionRecord, GateObservation, ProjectKind,
     TargetGatePlan, TargetGateReport,

@@ -4,7 +4,7 @@ use super::{
     InteractionOptions, ProductRunService, ProductRunServiceError, narration, tool_activity,
 };
 use peritus_agent::DeveloperInput;
-#[cfg(not(verus_only))]
+
 use peritus_agent::{
     DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperLoopError,
     DeveloperModelRole, DeveloperRequestAdmission, DeveloperToolEffect,
@@ -174,12 +174,12 @@ impl ConversationView for LiveConversation {
             .seal_automatic_checkpoint(&start, self.run_id, relative_path, kind, owned_postchange)
             .map_err(|error| format!("automatic workspace checkpoint could not be durably sealed: {error}. Peritus stopped because the completed mutation could not be recorded durably"))
     }
-    #[cfg(not(verus_only))]
+
     fn interaction(&self) -> Option<&dyn DeveloperInteraction> {
         Some(self)
     }
 }
-#[cfg(not(verus_only))]
+
 impl DeveloperInteraction for LiveConversation {
     fn allows_semantic_compaction(&self) -> bool {
         false
@@ -406,11 +406,10 @@ impl DeveloperInteraction for LiveConversation {
         })
     }
 }
-#[cfg(not(verus_only))]
+
 mod request;
 mod review;
 
-#[cfg(not(verus_only))]
 const fn goal_role(role: DeveloperModelRole) -> peritus_product_runner::control::GoalRole {
     match role {
         DeveloperModelRole::Writer => peritus_product_runner::control::GoalRole::Writer,
@@ -419,7 +418,6 @@ const fn goal_role(role: DeveloperModelRole) -> peritus_product_runner::control:
     }
 }
 
-#[cfg(not(verus_only))]
 const fn control_flow(
     admission: peritus_product_runner::control::GoalAdmission,
 ) -> DeveloperControlFlow {
@@ -429,12 +427,11 @@ const fn control_flow(
         | peritus_product_runner::control::GoalAdmission::Inactive => DeveloperControlFlow::Stop,
     }
 }
-#[cfg(not(verus_only))]
+
 fn port_error(operation: &'static str, error: ProductRunServiceError) -> DeveloperLoopError {
     DeveloperLoopError::Trace(format!("{operation}: {error}"))
 }
 
-#[cfg(not(verus_only))]
 fn port_internal(operation: &'static str, detail: &str) -> DeveloperLoopError {
     DeveloperLoopError::Trace(format!("{operation}: {detail}"))
 }

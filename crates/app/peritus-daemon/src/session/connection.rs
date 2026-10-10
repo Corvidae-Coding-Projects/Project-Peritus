@@ -3,8 +3,6 @@
 use std::time::Duration;
 
 mod select;
-#[cfg(test)]
-mod terminal_tests;
 
 use peritus_app_protocol::{
     AppErrorCode, AppEventEnvelope, AppEventPayload, AppMessage, AppProtocolError,

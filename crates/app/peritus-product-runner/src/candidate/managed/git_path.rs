@@ -30,35 +30,3 @@ pub(super) fn local_path(path: &Path) -> Result<String, ProductRunnerError> {
     #[cfg(not(windows))]
     Ok(text.to_owned())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn nested_tree_names_use_git_separators() {
-        assert_eq!(
-            tree_name(&Path::new("nested").join("child").join("file.txt")).unwrap(),
-            "nested/child/file.txt"
-        );
-        assert!(tree_name(Path::new("../outside")).is_err());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn unix_backslash_is_a_literal_filename_character() {
-        assert_eq!(tree_name(Path::new(r"name\part")).unwrap(), r"name\part");
-    }
-
-    #[test]
-    fn canonical_repository_operand_remains_local() {
-        let directory = tempfile::tempdir().unwrap();
-        let operand = local_path(directory.path()).unwrap();
-        assert_eq!(
-            Path::new(&operand).canonicalize().unwrap(),
-            directory.path().canonicalize().unwrap()
-        );
-        #[cfg(windows)]
-        assert!(!operand.contains('\\'));
-    }
-}

@@ -405,6 +405,3 @@ const fn empty() -> WorkspaceImages {
 fn repository(detail: String) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Repository, "discover workspace images", detail)
 }
-
-#[cfg(test)]
-mod tests;

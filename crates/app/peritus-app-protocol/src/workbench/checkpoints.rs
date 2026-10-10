@@ -304,6 +304,3 @@ fn valid_path(path: &str) -> bool {
             .split('/')
             .all(|component| !component.is_empty() && component != "." && component != "..")
 }
-
-#[cfg(test)]
-mod tests;

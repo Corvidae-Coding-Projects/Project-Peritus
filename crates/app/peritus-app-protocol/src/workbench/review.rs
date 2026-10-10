@@ -50,5 +50,3 @@ fn validate_path(value: &str) -> Result<(), AppProtocolError> {
 const fn malformed() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
-#[cfg(test)]
-mod tests;

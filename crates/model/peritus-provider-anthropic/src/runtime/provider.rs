@@ -42,14 +42,6 @@ impl ClaudeRuntimeProvider {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn with_transport(
-        config: ClaudeRuntimeConfig,
-        transport: Box<dyn ProcessTransport>,
-    ) -> Self {
-        Self { config, transport, authenticated: AtomicBool::new(false) }
-    }
-
     /// Returns the exact immutable runtime profile.
     #[must_use]
     pub const fn profile(&self) -> &peritus_model_protocol::ProviderProfile {

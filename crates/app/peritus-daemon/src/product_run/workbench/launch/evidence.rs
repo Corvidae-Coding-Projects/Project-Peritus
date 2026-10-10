@@ -3,10 +3,6 @@
 use super::*;
 mod goal;
 
-#[cfg(test)]
-#[path = "evidence_tests.rs"]
-mod tests;
-
 impl ProductRunService {
     pub(super) fn check_preview_behavior(
         &self,

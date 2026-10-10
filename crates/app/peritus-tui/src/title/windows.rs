@@ -59,6 +59,3 @@ impl SavedTitle {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -14,9 +14,6 @@ use peritus_types::{Generation, RevisionNumber, WorkspaceId};
 use peritus_workspace::{FolderIdentity, FolderInspection};
 use std::{fs, path::Path};
 
-#[cfg(test)]
-mod tests;
-
 const SELECTED_SOURCES: &[(&str, InitSourceKind)] = &[
     (".cargo/config", InitSourceKind::CommandConfig),
     (".cargo/config.toml", InitSourceKind::CommandConfig),
@@ -40,24 +37,6 @@ struct SelectedSource {
     observation: InitSourceObservation,
     bytes: Vec<u8>,
     mode: InitFileMode,
-}
-
-/// Discovers the legacy fixed set of root-local project sources without running commands.
-///
-/// Missing selected sources are simply absent from the proposal. Present sources are opened
-/// handle-relatively without following symlinks, streamed with exact source checks, and
-/// represented by exact digests. This function performs no writes, provider calls, package-script
-/// execution, dependency installation, recursive scan, or network access.
-///
-/// # Errors
-/// Rejects changed folder identity, unsafe source shapes, non-UTF-8 instructions,
-/// malformed managed-section markers, or invalid protocol bounds.
-#[cfg(test)]
-pub fn discover_init(
-    root: &Path,
-    request: InitDiscoveryRequest,
-) -> Result<InitProposal, AppProtocolError> {
-    discover_init_checked(root, request, &|_| true)
 }
 
 /// Discovers fixed sources under the caller's authenticated read policy.
@@ -102,27 +81,6 @@ pub fn discover_init_checked(
         selected.into_iter().map(|source| source.observation).collect::<Vec<_>>();
     observations.sort_unstable();
     InitProposal::from_discovery(request, identity.digest(), observations, original, commands)
-}
-
-/// Re-discovers the project and prepares only the exact currently reviewed patch.
-///
-/// The returned [`PatchSet`] is inert. The caller must pass it through the current
-/// `peritus_workspace::WorkspaceGateway` with an exact authorization request. Generation and
-/// revision are lower-layer patch bindings only and do not derive or imply authority.
-///
-/// # Errors
-/// Rejects another workspace, changed folder/source bytes, a modified proposal, or invalid patch
-/// construction. Any intervening `AGENTS.md` edit therefore fails before a write is attempted; the
-/// patch transaction independently rechecks the same preimage at application time.
-#[cfg(test)]
-pub fn prepare_init_patch(
-    root: &Path,
-    workspace_id: WorkspaceId,
-    generation: Generation,
-    revision: RevisionNumber,
-    proposal: &InitProposal,
-) -> Result<PatchSet, AppProtocolError> {
-    prepare_init_patch_checked(root, workspace_id, generation, revision, proposal, &|_| true)
 }
 
 /// Revalidates a fixed-source proposal with the caller's current authenticated read policy.

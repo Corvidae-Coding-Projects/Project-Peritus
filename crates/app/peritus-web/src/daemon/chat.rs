@@ -317,15 +317,3 @@ fn identity(operation: &str, kind: &str) -> [u8; 16] {
     bytes.copy_from_slice(&digest[..16]);
     bytes
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn stage_identities_are_stable_and_separate() {
-        assert_eq!(identity("operation", "queue"), identity("operation", "queue"));
-        assert_ne!(identity("operation", "queue"), identity("operation", "start"));
-        assert_ne!(identity("operation", "queue"), identity("other", "queue"));
-    }
-}

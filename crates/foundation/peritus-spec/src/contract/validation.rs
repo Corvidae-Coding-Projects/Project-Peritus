@@ -5,58 +5,46 @@ use crate::{
     EvidenceSource, Exclusion, GateGraph, HumanApprovalPolicy, Requirement, ReviewCategory,
     ReviewPolicy, SpecError, WaiverPolicy,
 };
-use vstd::prelude::*;
-
-verus! {
 
 fn has_evidence(values: &[EvidenceRequirement], target: EvidenceRequirementId) -> bool {
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
-        if values[index].id() == target { return true; }
+    while index < values.len() {
+        if values[index].id() == target {
+            return true;
+        }
         index += 1;
     }
     false
 }
-
 fn evidence_source(
     values: &[EvidenceRequirement],
     target: EvidenceRequirementId,
 ) -> Option<EvidenceSource> {
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
-        if values[index].id() == target { return Some(values[index].source()); }
+    while index < values.len() {
+        if values[index].id() == target {
+            return Some(values[index].source());
+        }
         index += 1;
     }
     None
 }
-
 fn has_category(values: &[ReviewCategory], target: ReviewCategory) -> bool {
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
-        if values[index] == target { return true; }
+    while index < values.len() {
+        if values[index] == target {
+            return true;
+        }
         index += 1;
     }
     false
 }
-
 fn validate_requirements(values: &[Requirement]) -> Result<(), SpecError> {
     if values.is_empty() {
         return Err(SpecError::EmptyCollection(CanonicalCollection::Requirements));
     }
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if index > 0 {
             if values[index - 1].id() == values[index].id() {
                 return Err(SpecError::DuplicateCanonicalValue(CanonicalCollection::Requirements));
@@ -69,13 +57,9 @@ fn validate_requirements(values: &[Requirement]) -> Result<(), SpecError> {
     }
     Ok(())
 }
-
 fn validate_exclusions(values: &[Exclusion]) -> Result<(), SpecError> {
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if index > 0 {
             if values[index - 1].content() == values[index].content() {
                 return Err(SpecError::DuplicateCanonicalValue(CanonicalCollection::Exclusions));
@@ -88,13 +72,9 @@ fn validate_exclusions(values: &[Exclusion]) -> Result<(), SpecError> {
     }
     Ok(())
 }
-
 fn validate_assumptions(values: &[Assumption]) -> Result<(), SpecError> {
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if index > 0 {
             if values[index - 1].content() == values[index].content() {
                 return Err(SpecError::DuplicateCanonicalValue(CanonicalCollection::Assumptions));
@@ -107,7 +87,6 @@ fn validate_assumptions(values: &[Assumption]) -> Result<(), SpecError> {
     }
     Ok(())
 }
-
 fn validate_evidence(
     values: &[EvidenceRequirement],
     gates: &GateGraph,
@@ -117,10 +96,7 @@ fn validate_evidence(
         return Err(SpecError::EmptyCollection(CanonicalCollection::EvidenceRequirements));
     }
     let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if index > 0 {
             if values[index - 1].id() == values[index].id() {
                 return Err(SpecError::DuplicateCanonicalValue(
@@ -148,26 +124,17 @@ fn validate_evidence(
     }
     Ok(())
 }
-
 fn validate_gate_evidence(
     gates: &GateGraph,
     evidence: &[EvidenceRequirement],
 ) -> Result<(), SpecError> {
     let mut gate_index = 0;
     let gate_definitions = gates.definitions();
-    while gate_index < gate_definitions.len()
-        invariant gate_index <= gate_definitions@.len(),
-        decreases gate_definitions.len() - gate_index,
-    {
+    while gate_index < gate_definitions.len() {
         let gate = &gate_definitions[gate_index];
         let mut evidence_index = 0;
         let required_evidence = gate.required_evidence();
-        while evidence_index < required_evidence.len()
-            invariant
-                evidence_index <= required_evidence@.len(),
-                gate_index < gate_definitions@.len(),
-            decreases required_evidence.len() - evidence_index,
-        {
+        while evidence_index < required_evidence.len() {
             let required = required_evidence[evidence_index];
             if !has_evidence(evidence, required) {
                 return Err(SpecError::UnknownEvidenceRequirement(gate.id()));
@@ -182,7 +149,6 @@ fn validate_gate_evidence(
     }
     Ok(())
 }
-
 fn validate_authority_evidence(
     evidence: &[EvidenceRequirement],
     approval: HumanApprovalPolicy,
@@ -191,17 +157,16 @@ fn validate_authority_evidence(
     if approval.is_required() {
         let mut index = 0;
         let mut found = false;
-        while index < evidence.len()
-            invariant index <= evidence.len(),
-            decreases evidence.len() - index,
-        {
+        while index < evidence.len() {
             if matches!(evidence[index].source(), EvidenceSource::HumanApproval) {
                 found = true;
                 break;
             }
             index += 1;
         }
-        if !found { return Err(SpecError::MissingApprovalEvidence); }
+        if !found {
+            return Err(SpecError::MissingApprovalEvidence);
+        }
     }
     #[allow(clippy::collapsible_if, reason = "keeps the Verus-supported control flow explicit")]
     if let Some(required) = waiver.evidence_requirement() {
@@ -211,8 +176,10 @@ fn validate_authority_evidence(
     }
     Ok(())
 }
-
-#[allow(clippy::too_many_arguments, reason = "validation receives each contract component explicitly")]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "validation receives each contract component explicitly"
+)]
 pub(super) fn validate_contract(
     requirements: &[Requirement],
     exclusions: &[Exclusion],
@@ -237,5 +204,3 @@ pub(super) fn validate_contract(
     validate_gate_evidence(gates, evidence)?;
     validate_authority_evidence(evidence, approval, waiver)
 }
-
-} // verus!

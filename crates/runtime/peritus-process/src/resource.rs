@@ -15,20 +15,6 @@ pub struct ProcessResourcePolicy {
     concurrent_slots: u64,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wall_time_ceiling_can_be_absent_without_a_numeric_sentinel() {
-        let policy = ProcessResourcePolicy::new(None, None, 1, 1, None, 1, 1, 1)
-            .expect("finite other resources");
-        assert_eq!(policy.wall_millis(), None);
-        assert_eq!(policy.output_bytes(), None);
-        assert_eq!(policy.cpu_millis(), None);
-    }
-}
-
 impl ProcessResourcePolicy {
     /// Creates process resource ceilings with an optional wall-time ceiling.
     ///

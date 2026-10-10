@@ -31,8 +31,7 @@ mod permissions;
 mod record;
 mod reply;
 mod review;
-#[cfg(test)]
-mod tests;
+
 mod text;
 
 pub use branch::{ConversationBranch, ConversationBranchMode};

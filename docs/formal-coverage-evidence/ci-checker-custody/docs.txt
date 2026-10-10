@@ -1,3 +1,0 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.14s
-     Running `target/sol-ci-custody/debug/xtask docs-check`
-docs-check passed: 189 documentation file(s)

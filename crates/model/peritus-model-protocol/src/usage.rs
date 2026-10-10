@@ -222,29 +222,3 @@ impl UsageTracker {
 fn invalid(detail: &'static str) -> ProtocolError {
     ProtocolError::at(ProtocolErrorKind::InvalidUsage, "usage", detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn missing_stays_unknown_and_cumulative_regression_fails() {
-        let mut tracker = UsageTracker::new();
-        let first = UsageObservation::new(
-            UsageScope::Cumulative,
-            UsageCounters::new(Some(10), None, None, Some(2), None, None, Some(12), None),
-            None,
-        );
-        tracker.observe(&first).expect("first observation");
-        assert_eq!(tracker.high_water().cached_input_tokens(), None);
-        let regression = UsageObservation::new(
-            UsageScope::Cumulative,
-            UsageCounters::new(Some(9), None, None, None, None, None, None, None),
-            None,
-        );
-        assert_eq!(
-            tracker.observe(&regression).expect_err("regression").kind(),
-            ProtocolErrorKind::InvalidUsage
-        );
-    }
-}

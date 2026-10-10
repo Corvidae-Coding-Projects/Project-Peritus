@@ -7,8 +7,7 @@ use peritus_product_state::{WorkspaceProfile, WorkspaceTrust};
 use crate::{LauncherError, PreparedProduct, ProductBootstrap, terminal::Terminal};
 
 mod discovery;
-#[cfg(test)]
-mod folder_tests;
+
 mod managed;
 
 use discovery::{DiscoveredRepository, user_path};

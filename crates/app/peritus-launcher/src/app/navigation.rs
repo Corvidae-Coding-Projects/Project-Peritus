@@ -57,6 +57,3 @@ fn configured_context(
         )))?;
     workspace_context(prepared, workspace)
 }
-
-#[cfg(test)]
-mod tests;

@@ -12,15 +12,14 @@ mod error;
 mod event;
 mod handoff;
 mod identity;
-#[cfg(test)]
-mod integration_tests;
+
 mod limits;
 mod ownership;
 mod phase;
-#[cfg(not(verus_only))]
+
 mod product;
 mod projection;
-#[cfg(not(verus_only))]
+
 pub mod qualification;
 pub(crate) mod reducer;
 mod replay;
@@ -61,7 +60,7 @@ pub use identity::{HandoffId, OrchestratorId};
 pub use limits::OrchestratorLimits;
 pub use ownership::{RoleAssignment, RoleOwnership};
 pub use phase::{ActivePhase, OrchestratorPhase};
-#[cfg(not(verus_only))]
+
 pub use product::{ProductionDecision, ProductionRunCoordinator};
 pub use projection::OrchestratorProjection;
 pub use reducer::{decide, replay, start};

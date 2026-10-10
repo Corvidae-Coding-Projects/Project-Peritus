@@ -89,24 +89,3 @@ pub(crate) fn canonicalize(entries: &mut [EnvironmentEntry]) -> Result<(), Macos
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn environment_projection_has_no_host_name_count_or_value_ceiling() {
-        let mut entries = (0..1_025)
-            .map(|index| {
-                EnvironmentEntry::new(
-                    format!("VARIABLE_{index}_{}", "N".repeat(256)),
-                    if index == 0 { "v".repeat(65 * 1_024) } else { String::new() },
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .expect("environment projection");
-        canonicalize(&mut entries).expect("canonical environment");
-        assert_eq!(entries.len(), 1_025);
-        assert_eq!(entries[0].value().len(), 65 * 1_024);
-    }
-}

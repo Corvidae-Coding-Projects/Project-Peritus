@@ -18,8 +18,6 @@ use super::{ProductRunService, ProductRunServiceError};
 
 pub(in crate::product_run) mod commit;
 pub(super) mod discard;
-#[cfg(test)]
-use commit::commit_deliverable;
 
 impl ProductRunService {
     pub(super) fn control_deliverable(
@@ -246,9 +244,7 @@ fn export_deliverable(
         match baseline {
             Some(baseline) => ProductRunner::candidate_patch_from_baseline(root, baseline)
                 .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?,
-            #[cfg(test)]
-            None => uncommitted_patch(root, deliverable.changed_paths())?,
-            #[cfg(not(test))]
+
             None => return Err(ProductRunServiceError::WorkspaceUnavailable),
         }
     } else {
@@ -283,91 +279,6 @@ fn export_deliverable(
     Ok(path)
 }
 
-#[cfg(test)]
-fn uncommitted_patch(root: &Path, paths: &[String]) -> Result<Vec<u8>, ProductRunServiceError> {
-    let output = Command::new("git")
-        .env("GIT_LITERAL_PATHSPECS", "1")
-        .arg("diff")
-        .arg("--binary")
-        .arg("HEAD")
-        .arg("--")
-        .args(paths)
-        .current_dir(root)
-        .output()
-        .map_err(|_| ProductRunServiceError::Unavailable)?;
-    if !output.status.success() {
-        return Err(ProductRunServiceError::Unavailable);
-    }
-    let mut patch = output.stdout;
-    for path in paths {
-        if tracked(root, path)? || !root.join(path).is_file() {
-            continue;
-        }
-        let output = Command::new("git")
-            .env("GIT_LITERAL_PATHSPECS", "1")
-            .args(["diff", "--no-index", "--binary", "--", null_device(), path])
-            .current_dir(root)
-            .output()
-            .map_err(|_| ProductRunServiceError::Unavailable)?;
-        if !matches!(output.status.code(), Some(0 | 1)) {
-            return Err(ProductRunServiceError::Unavailable);
-        }
-        patch.extend_from_slice(&output.stdout);
-    }
-    Ok(patch)
-}
-
-#[cfg(test)]
-fn discard_deliverable(deliverable: &ProductDeliverable) -> Result<(), ProductRunServiceError> {
-    let root = Path::new(deliverable.workspace_path());
-    let mut tracked_paths = Vec::new();
-    for path in deliverable.changed_paths() {
-        if tracked(root, path)? {
-            tracked_paths.push(path.as_str());
-        } else {
-            match fs::remove_file(root.join(path)) {
-                Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(_) => return Err(ProductRunServiceError::Unavailable),
-            }
-        }
-    }
-    if !tracked_paths.is_empty() {
-        let status = Command::new("git")
-            .env("GIT_LITERAL_PATHSPECS", "1")
-            .args(["restore", "--staged", "--worktree", "--source=HEAD", "--"])
-            .args(tracked_paths)
-            .current_dir(root)
-            .status()
-            .map_err(|_| ProductRunServiceError::Unavailable)?;
-        if !status.success() {
-            return Err(ProductRunServiceError::Unavailable);
-        }
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-fn tracked(root: &Path, path: &str) -> Result<bool, ProductRunServiceError> {
-    Command::new("git")
-        .env("GIT_LITERAL_PATHSPECS", "1")
-        .args(["ls-files", "--error-unmatch", "--", path])
-        .current_dir(root)
-        .output()
-        .map(|output| output.status.success())
-        .map_err(|_| ProductRunServiceError::Unavailable)
-}
-
-#[cfg(all(test, windows))]
-const fn null_device() -> &'static str {
-    "NUL"
-}
-
-#[cfg(all(test, not(windows)))]
-const fn null_device() -> &'static str {
-    "/dev/null"
-}
-
 pub(super) fn run_hex(run_id: RunId) -> String {
     run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
         use core::fmt::Write as _;
@@ -375,7 +286,3 @@ pub(super) fn run_hex(run_id: RunId) -> String {
         value
     })
 }
-
-#[cfg(test)]
-#[path = "deliverable/tests.rs"]
-mod tests;

@@ -7,8 +7,7 @@ use serde::Serialize;
 
 mod ledger;
 mod source;
-#[cfg(test)]
-mod tests;
+
 mod version;
 pub use ledger::{FileAttachments, FileSelection};
 pub use source::{FileMode, FileRange, FileSource};

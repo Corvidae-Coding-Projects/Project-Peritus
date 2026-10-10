@@ -17,8 +17,3 @@ pub use init::{
 
 pub use error::ControlStoreError;
 pub use storage::ControlStore;
-
-#[cfg(test)]
-pub fn test_request(text: &str) -> peritus_model_protocol::ModelRequest {
-    inputs::tests::request(text)
-}

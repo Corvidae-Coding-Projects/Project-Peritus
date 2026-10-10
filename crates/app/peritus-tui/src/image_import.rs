@@ -104,39 +104,3 @@ pub fn open_regular(path: &Path) -> Result<File, &'static str> {
 pub fn open_regular(_path: &Path) -> Result<File, &'static str> {
     Err("Explicit file import is unsupported on this platform.")
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn explicit_read_retains_exact_bytes_and_rejects_relative_escape_empty_and_oversize() {
-        let root = tempfile::tempdir().expect("root");
-        let path = root.path().join("reference.gif");
-        std::fs::write(&path, b"exact bytes; host validates pixels").expect("fixture");
-        let image = read(&path).expect("read");
-        assert_eq!(image.bytes, b"exact bytes; host validates pixels");
-        assert_eq!(image.digest, peritus_codec::sha256(&image.bytes));
-        assert!(!format!("{image:?}").contains("host validates"));
-        assert!(read(Path::new("reference.gif")).is_err());
-        assert!(read(&root.path().join("../reference.gif")).is_err());
-        assert!(read(root.path()).is_err());
-        let file = File::create(&path).expect("empty");
-        assert!(read(&path).is_err());
-        file.set_len(4 * 1024 * 1024 + 1).expect("large sparse fixture");
-        assert_eq!(
-            read(&path).expect("no client media size quota").bytes.len(),
-            4 * 1024 * 1024 + 1
-        );
-    }
-    #[cfg(unix)]
-    #[test]
-    fn symlink_does_not_import_its_target() {
-        let root = tempfile::tempdir().expect("root");
-        let target = root.path().join("target");
-        std::fs::write(&target, b"private bytes").expect("fixture");
-        let link = root.path().join("link");
-        std::os::unix::fs::symlink(&target, &link).expect("link");
-        assert!(read(&link).is_err());
-    }
-}

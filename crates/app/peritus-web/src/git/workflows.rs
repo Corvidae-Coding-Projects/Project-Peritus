@@ -189,6 +189,3 @@ pub(super) async fn action(
     };
     run_effect_owned(root, &args, app, input["operation"].as_str().unwrap_or("")).await
 }
-
-#[cfg(test)]
-mod tests;

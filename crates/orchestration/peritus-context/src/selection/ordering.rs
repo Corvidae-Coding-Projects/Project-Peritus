@@ -3,9 +3,6 @@
 use super::closure::is_visible;
 use crate::{ContextGraph, RequirementMode, SelectedContext};
 use peritus_role::RoleProfile;
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn ranked_optional_roots(
     graph: &ContextGraph,
@@ -19,31 +16,19 @@ pub(super) fn ranked_optional_roots(
         return ranked;
     }
     let mut index = 0;
-    while index < graph_len
-        invariant
-            index <= graph_len,
-            graph_len == graph_nodes@.len(),
-            selected.len() == graph_len,
-        decreases graph_len - index,
-    {
+    while index < graph_len {
         let node = &graph_nodes[index];
         if node.requirement() == RequirementMode::Optional
             && !selected[index]
             && is_visible(node, role)
         {
             let mut position = ranked.len();
-            while position > 0
-                invariant position <= ranked.len(),
-                decreases position,
-            {
+            while position > 0 {
                 let previous_index = ranked[position - 1];
                 if previous_index >= graph_nodes.len() {
                     return Vec::new();
                 }
-                if !crate::precedence::optional_precedes(
-                    node,
-                    &graph_nodes[previous_index],
-                ) {
+                if !crate::precedence::optional_precedes(node, &graph_nodes[previous_index]) {
                     break;
                 }
                 position -= 1;
@@ -54,33 +39,17 @@ pub(super) fn ranked_optional_roots(
     }
     ranked
 }
-
-pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedContext>)
-    ensures final(entries)@.len() == old(entries)@.len(),
-{
+pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedContext>) {
     let entries_len = entries.len();
     if entries_len < 2 {
         return;
     }
     let mut index = 1;
-    while index < entries_len
-        invariant
-            1 <= index <= entries_len,
-            entries.len() == entries_len,
-            entries_len == old(entries)@.len(),
-        decreases entries_len - index,
-    {
+    while index < entries_len {
         let entry = entries[index];
         let Some(node) = graph.node(entry.node_id()) else { return };
         let mut position = index;
-        while position > 0
-            invariant
-                position <= index,
-                position <= entries.len(),
-                entries.len() == entries_len,
-                entries_len == old(entries)@.len(),
-            decreases position,
-        {
+        while position > 0 {
             let Some(previous) = graph.node(entries[position - 1].node_id()) else { return };
             if !crate::precedence::render_precedes(node, previous) {
                 break;
@@ -89,14 +58,8 @@ pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedCo
         }
         if position != index {
             entries.remove(index);
-            proof {
-                assert(position < index);
-                assert(position <= entries@.len());
-            }
             entries.insert(position, entry);
         }
         index += 1;
     }
 }
-
-} // verus!

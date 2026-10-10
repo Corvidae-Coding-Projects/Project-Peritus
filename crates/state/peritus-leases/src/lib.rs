@@ -3,29 +3,23 @@
 //! Reducers are deterministic and effect-free. Successful values are logical state plans and raw
 //! observations remain unprivileged; this crate never claims durable commit or effect authority.
 
-use vstd::prelude::*;
-
-verus! {
-
-mod claim;
 mod binding;
+mod claim;
 mod command;
 mod failure;
 mod model;
 mod port;
-mod proofs;
 mod reconcile;
 mod scope;
 mod state;
 mod transition;
-
-pub use claim::LeaseClaim;
 pub use binding::{
     LeaseCommandBinding, LeaseCommandBindingKind, LeasePermissionBinding, LeaseUseCommandBinding,
 };
+pub use claim::LeaseClaim;
 pub use command::{
-    AcquireLease, ExpireLease, FenceClockDiscontinuity, FenceHolderLoss, ReconcileLease,
-    MintLease, ReleaseLease, RenewLease, RevokeLease, UseLease,
+    AcquireLease, ExpireLease, FenceClockDiscontinuity, FenceHolderLoss, MintLease, ReconcileLease,
+    ReleaseLease, RenewLease, RevokeLease, UseLease,
 };
 pub use failure::{
     LeaseError, LeasePhase, LeaseTransitionFailure, LeaseUseFailure, PolicyIntersectionDimension,
@@ -47,5 +41,3 @@ pub use transition::{
     LeaseTransition, LeaseTransitionKind, LeaseTransitionOutcome, LeaseTransitionRecord,
     LeaseUseOutcome, LeaseUseTransition,
 };
-
-} // verus!

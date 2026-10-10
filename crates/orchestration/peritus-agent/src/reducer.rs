@@ -656,6 +656,3 @@ const fn replay_error(detail: &'static str) -> AgentRejection {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests;

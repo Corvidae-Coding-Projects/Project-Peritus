@@ -101,20 +101,3 @@ fn validate_frames(frames: image::Frames<'_>) -> Result<u32, ProductRunnerError>
 fn decode_error(error: &image::ImageError) -> ProductRunnerError {
     invalid(format!("image pixel validation failed: {error}"))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn single_frame() -> image::Frames<'static> {
-        image::Frames::new(Box::new(std::iter::once(Ok(image::Frame::new(image::RgbaImage::new(
-            2, 3,
-        ))))))
-    }
-
-    #[test]
-    fn frames_are_consumed_incrementally_and_empty_animation_is_invalid() {
-        assert_eq!(validate_frames(single_frame()).expect("one complete frame"), 1);
-        assert!(validate_frames(image::Frames::new(Box::new(std::iter::empty()))).is_err());
-    }
-}

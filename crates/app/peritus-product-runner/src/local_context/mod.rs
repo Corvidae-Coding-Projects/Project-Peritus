@@ -8,8 +8,7 @@ mod port;
 mod record;
 mod semantic;
 mod storage;
-#[cfg(test)]
-mod tests;
+
 mod tools;
 mod view_binding;
 

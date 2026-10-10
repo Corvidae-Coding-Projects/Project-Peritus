@@ -6,25 +6,13 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 description = "Verified hierarchical resource-budget accounting for Project Peritus"
 keywords = ["budgeting", "formal-verification", "resource-management", "rust"]
 categories = ["algorithms", "data-structures"]
 
 [dependencies]
 peritus-types = { version = "=0.0.5", path = "../peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-
-[package.metadata.peritus]
-owner = "B1"
-layer = "foundation"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

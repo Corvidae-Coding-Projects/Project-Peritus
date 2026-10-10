@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 
 [features]
 default = ["protocol-bridge"]
@@ -30,21 +30,6 @@ peritus-tool-router = { version = "=0.0.5", path = "../../tools/peritus-tool-rou
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 tokio.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-kernel = { version = "=0.0.5", path = "../../foundation/peritus-kernel" }
-peritus-leases = { version = "=0.0.5", path = "../../state/peritus-leases" }
-tempfile.workspace = true
-tokio.workspace = true
-
-[package.metadata.peritus]
-owner = "D0"
-layer = "orchestration"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

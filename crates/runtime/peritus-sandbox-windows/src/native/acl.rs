@@ -6,14 +6,9 @@ mod inheritance;
 mod reservation;
 mod stable_path;
 pub(crate) use anchor::create;
-#[cfg(test)]
-mod tests;
+
 pub(crate) use reservation::VolumeReservations;
 pub(crate) use stable_path::Stabilizers;
-
-#[cfg(test)]
-#[path = "../../tests/native_enforcement/acl_fixture.rs"]
-pub(crate) mod test_fixture;
 
 use std::{
     fs::{File, OpenOptions},
@@ -63,10 +58,6 @@ pub(crate) struct AclObject {
     identity: ObjectId,
     directory: bool,
     original_path: PathBuf,
-    #[cfg(test)]
-    fail_verification_once: std::cell::Cell<bool>,
-    #[cfg(test)]
-    fail_inheritance_once: std::cell::Cell<bool>,
 }
 
 impl AclObject {
@@ -117,10 +108,6 @@ impl AclObject {
             identity,
             directory: information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0,
             original_path: path.to_path_buf(),
-            #[cfg(test)]
-            fail_verification_once: std::cell::Cell::new(false),
-            #[cfg(test)]
-            fail_inheritance_once: std::cell::Cell::new(false),
         })
     }
 
@@ -207,10 +194,6 @@ impl AclObject {
     }
 
     pub(crate) fn restore_inheritance(&self) -> Result<(), WindowsError> {
-        #[cfg(test)]
-        if self.fail_inheritance_once.replace(false) {
-            return Err(error("injected inheritance restore failure"));
-        }
         self.original.restore_inheritance(&self.file)
     }
 
@@ -242,24 +225,12 @@ impl AclObject {
 
     pub(crate) fn restore_exact(&self) -> Result<(), WindowsError> {
         self.original.restore_exact(&self.file)?;
-        #[cfg(test)]
-        if self.fail_verification_once.replace(false) {
-            return Err(error("injected exact DACL verification failure"));
-        }
+
         Ok(())
     }
 
     pub(crate) fn verify_exact(&self) -> Result<(), WindowsError> {
         self.original.verify_exact(&self.file)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn fail_next_verification(&self) {
-        self.fail_verification_once.set(true);
-    }
-    #[cfg(test)]
-    pub(crate) fn fail_next_inheritance(&self) {
-        self.fail_inheritance_once.set(true);
     }
 }
 

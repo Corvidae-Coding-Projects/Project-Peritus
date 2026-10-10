@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["network", "proxy", "sandbox", "formal-verification"]
 categories = ["development-tools", "network-programming"]
 
@@ -16,22 +16,10 @@ base64.workspace = true
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-sandbox = { version = "=0.0.5", path = "../peritus-sandbox" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
 zeroize.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["fs", "socket", "uio"] }
-
-[dev-dependencies]
-tempfile.workspace = true
-
-[package.metadata.peritus]
-owner = "C3"
-layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

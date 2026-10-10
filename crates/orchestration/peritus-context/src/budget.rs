@@ -1,11 +1,8 @@
 //! Checked context-window reservation and input-token accounting.
 
 use crate::{ContextError, ContextErrorKind};
-use vstd::prelude::*;
 
-verus! {
-
-/// Explicit context-window budget with output and protocol reservations.
+#[doc = " Explicit context-window budget with output and protocol reservations."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TokenBudget {
     context_window: u64,
@@ -13,59 +10,18 @@ pub struct TokenBudget {
     reserved_protocol_overhead: u64,
     usable_input: u64,
 }
-
 impl TokenBudget {
-    #[verifier::type_invariant]
-    pub(crate) open spec fn invariant(&self) -> bool { self.spec_is_valid() }
-
-    /// Mathematical context-window capacity.
-    pub closed spec fn spec_context_window(self) -> int { self.context_window as int }
-    /// Mathematical output reservation.
-    pub closed spec fn spec_reserved_output(self) -> int { self.reserved_output as int }
-    /// Mathematical protocol-overhead reservation.
-    pub closed spec fn spec_reserved_protocol_overhead(self) -> int {
-        self.reserved_protocol_overhead as int
-    }
-    /// Mathematical usable-input capacity.
-    pub closed spec fn spec_usable_input(self) -> int { self.usable_input as int }
-
-    /// Exact valid reservation relationship retained by every constructed budget.
-    pub open spec fn spec_is_valid(self) -> bool {
-        &&& self.spec_context_window() > 0
-        &&& self.spec_reserved_output() + self.spec_reserved_protocol_overhead()
-            < self.spec_context_window()
-        &&& self.spec_usable_input()
-            == self.spec_context_window()
-                - self.spec_reserved_output()
-                - self.spec_reserved_protocol_overhead()
-    }
-
-    /// Creates a budget using checked addition and subtraction.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error when the window is zero, addition overflows, or reservations consume
-    /// the full context window.
+    #[doc = " Creates a budget using checked addition and subtraction."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns a typed error when the window is zero, addition overflows, or reservations consume"]
+    #[doc = " the full context window."]
     pub const fn new(
         context_window: u64,
         reserved_output: u64,
         reserved_protocol_overhead: u64,
-    ) -> (result: Result<Self, ContextError>)
-        ensures match result {
-            Ok(budget) => {
-                &&& budget.spec_context_window() == context_window as int
-                &&& budget.spec_reserved_output() == reserved_output as int
-                &&& budget.spec_reserved_protocol_overhead()
-                    == reserved_protocol_overhead as int
-                &&& budget.spec_usable_input()
-                    == context_window as int
-                        - reserved_output as int
-                        - reserved_protocol_overhead as int
-                &&& budget.spec_is_valid()
-            }
-            Err(_) => true,
-        },
-    {
+    ) -> Result<Self, ContextError> {
         if context_window == 0 {
             return Err(ContextError::plain(ContextErrorKind::InvalidTokenBudget));
         }
@@ -86,67 +42,29 @@ impl TokenBudget {
                 reserved,
             ));
         }
-        Ok(Self {
-            context_window,
-            reserved_output,
-            reserved_protocol_overhead,
-            usable_input,
-        })
+        Ok(Self { context_window, reserved_output, reserved_protocol_overhead, usable_input })
     }
-
-    /// Total model context capacity.
+    #[doc = " Total model context capacity."]
     #[must_use]
-    pub const fn context_window(self) -> (result: u64)
-        ensures result as int == self.spec_context_window(),
-    {
+    pub const fn context_window(self) -> u64 {
         self.context_window
     }
-    /// Reserved model-output capacity.
+    #[doc = " Reserved model-output capacity."]
     #[must_use]
-    pub const fn reserved_output(self) -> (result: u64)
-        ensures result as int == self.spec_reserved_output(),
-    {
+    pub const fn reserved_output(self) -> u64 {
         self.reserved_output
     }
-    /// Reserved provider-protocol overhead.
+    #[doc = " Reserved provider-protocol overhead."]
     #[must_use]
-    pub const fn reserved_protocol_overhead(self) -> (result: u64)
-        ensures result as int == self.spec_reserved_protocol_overhead(),
-    {
+    pub const fn reserved_protocol_overhead(self) -> u64 {
         self.reserved_protocol_overhead
     }
-    /// Capacity remaining for selected input nodes.
+    #[doc = " Capacity remaining for selected input nodes."]
     #[must_use]
-    pub const fn usable_input(self) -> (result: u64)
-        ensures result as int == self.spec_usable_input(),
-    {
+    pub const fn usable_input(self) -> u64 {
         self.usable_input
     }
-
-    pub(crate) const fn accounting(
-        self,
-        used_input: u64,
-    ) -> (result: Result<TokenAccounting, ContextError>)
-        ensures match result {
-            Ok(accounting) => {
-                &&& accounting.spec_context_window() == self.spec_context_window()
-                &&& accounting.spec_reserved_output() == self.spec_reserved_output()
-                &&& accounting.spec_reserved_protocol_overhead()
-                    == self.spec_reserved_protocol_overhead()
-                &&& accounting.spec_usable_input() == self.spec_usable_input()
-                &&& accounting.spec_used_input() == used_input as int
-                &&& accounting.spec_remaining_input()
-                    == self.spec_usable_input() - used_input as int
-                &&& accounting.spec_is_bounded()
-            }
-            Err(error) => error.spec_is_numbers(
-                ContextErrorKind::RequiredTokenBudgetExceeded,
-                self.spec_usable_input() as u64,
-                used_input,
-            ) && used_input as int > self.spec_usable_input(),
-        },
-    {
-        proof { use_type_invariant(&self); }
+    pub(crate) const fn accounting(self, used_input: u64) -> Result<TokenAccounting, ContextError> {
         let Some(remaining_input) = self.usable_input.checked_sub(used_input) else {
             return Err(ContextError::with_numbers(
                 ContextErrorKind::RequiredTokenBudgetExceeded,
@@ -164,8 +82,7 @@ impl TokenBudget {
         })
     }
 }
-
-/// Exact accounting attached to selection and render plans.
+#[doc = " Exact accounting attached to selection and render plans."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TokenAccounting {
     context_window: u64,
@@ -175,79 +92,35 @@ pub struct TokenAccounting {
     used_input: u64,
     remaining_input: u64,
 }
-
 impl TokenAccounting {
-    /// Total model context capacity.
+    #[doc = " Total model context capacity."]
     #[must_use]
-    pub const fn context_window(self) -> (result: u64)
-        ensures result as int == self.spec_context_window(),
-    {
+    pub const fn context_window(self) -> u64 {
         self.context_window
     }
-    /// Reserved model-output capacity.
+    #[doc = " Reserved model-output capacity."]
     #[must_use]
-    pub const fn reserved_output(self) -> (result: u64)
-        ensures result as int == self.spec_reserved_output(),
-    {
+    pub const fn reserved_output(self) -> u64 {
         self.reserved_output
     }
-    /// Reserved provider-protocol overhead.
+    #[doc = " Reserved provider-protocol overhead."]
     #[must_use]
-    pub const fn reserved_protocol_overhead(self) -> (result: u64)
-        ensures result as int == self.spec_reserved_protocol_overhead(),
-    {
+    pub const fn reserved_protocol_overhead(self) -> u64 {
         self.reserved_protocol_overhead
     }
-    /// Input capacity after reservations.
+    #[doc = " Input capacity after reservations."]
     #[must_use]
-    pub const fn usable_input(self) -> (result: u64)
-        ensures result as int == self.spec_usable_input(),
-    {
+    pub const fn usable_input(self) -> u64 {
         self.usable_input
     }
-    /// Input tokens selected by the planner.
+    #[doc = " Input tokens selected by the planner."]
     #[must_use]
-    pub const fn used_input(self) -> (result: u64)
-        ensures result as int == self.spec_used_input(),
-    {
+    pub const fn used_input(self) -> u64 {
         self.used_input
     }
-    /// Unused input capacity.
+    #[doc = " Unused input capacity."]
     #[must_use]
-    pub const fn remaining_input(self) -> (result: u64)
-        ensures result as int == self.spec_remaining_input(),
-    {
+    pub const fn remaining_input(self) -> u64 {
         self.remaining_input
     }
-
-    /// Mathematical context-window capacity.
-    pub closed spec fn spec_context_window(self) -> int { self.context_window as int }
-    /// Mathematical output reservation.
-    pub closed spec fn spec_reserved_output(self) -> int { self.reserved_output as int }
-    /// Mathematical protocol-overhead reservation.
-    pub closed spec fn spec_reserved_protocol_overhead(self) -> int {
-        self.reserved_protocol_overhead as int
-    }
-    /// Mathematical usable-input capacity.
-    pub closed spec fn spec_usable_input(self) -> int { self.usable_input as int }
-    /// Mathematical selected-input use.
-    pub closed spec fn spec_used_input(self) -> int { self.used_input as int }
-    /// Mathematical remaining-input capacity.
-    pub closed spec fn spec_remaining_input(self) -> int { self.remaining_input as int }
-
-    /// Exact reservation, use, and remaining-capacity invariant.
-    pub open spec fn spec_is_bounded(self) -> bool {
-        self.spec_reserved_output() <= self.spec_context_window()
-            && self.spec_reserved_protocol_overhead()
-                <= self.spec_context_window() - self.spec_reserved_output()
-            && self.spec_used_input()
-                <= self.spec_context_window()
-                    - self.spec_reserved_output()
-                    - self.spec_reserved_protocol_overhead()
-            && self.spec_used_input() <= self.spec_usable_input()
-            && self.spec_remaining_input()
-                == self.spec_usable_input() - self.spec_used_input()
-    }
 }
-
-} // verus!

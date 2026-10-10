@@ -5,13 +5,10 @@ use crate::{
     ToolResultRecord,
 };
 use peritus_types::{CommandId, EventId, RevisionNumber, Sha256Digest};
-use vstd::prelude::*;
 
 mod clone_impl;
 
-verus! {
-
-/// Exact assembled context observation.
+#[doc = " Exact assembled context observation."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(clippy::struct_field_names, reason = "each retained value is explicitly a digest")]
 pub struct ContextRecord {
@@ -21,8 +18,6 @@ pub struct ContextRecord {
     estimator_digest: Sha256Digest,
     compaction_digest: Option<Sha256Digest>,
 }
-
-} // verus!
 
 impl ContextRecord {
     #[must_use]
@@ -57,9 +52,7 @@ impl ContextRecord {
     }
 }
 
-verus! {
-
-/// Ordered provider stream observation.
+#[doc = " Ordered provider stream observation."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ProviderEventRecord {
     cursor: u64,
@@ -68,8 +61,6 @@ pub struct ProviderEventRecord {
     duplicate: bool,
     encoded_envelope: Vec<u8>,
 }
-
-} // verus!
 
 impl ProviderEventRecord {
     /// Maximum canonical C5 envelope retained in one durable D0 event.
@@ -137,9 +128,7 @@ impl ProviderEventRecord {
     }
 }
 
-verus! {
-
-/// Provider terminal facts needed by the completion gate.
+#[doc = " Provider terminal facts needed by the completion gate."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ModelTerminalRecord {
     response_digest: Sha256Digest,
@@ -147,8 +136,6 @@ pub struct ModelTerminalRecord {
     incomplete_items: bool,
     usage_settled: bool,
 }
-
-} // verus!
 
 impl ModelTerminalRecord {
     #[must_use]
@@ -178,30 +165,22 @@ impl ModelTerminalRecord {
     }
 }
 
-verus! {
-
-/// Provider retry mode selected after consulting C5 recovery facts.
+#[doc = " Provider retry mode selected after consulting C5 recovery facts."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderRetryClass {
-    /// Resume the same canonical provider stream at this exact cursor.
+    #[doc = " Resume the same canonical provider stream at this exact cursor."]
     ExactResume { cursor: u64 },
-    /// Start a semantically safe new request rather than resume uncertain work.
+    #[doc = " Start a semantically safe new request rather than resume uncertain work."]
     SafeNewRequest,
 }
 
-} // verus!
-
-verus! {
-
-/// Failure and successor request facts for one bounded provider retry.
+#[doc = " Failure and successor request facts for one bounded provider retry."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProviderRetryRecord {
     failure_digest: Sha256Digest,
     request_digest: Sha256Digest,
     class: ProviderRetryClass,
 }
-
-} // verus!
 
 impl ProviderRetryRecord {
     #[must_use]
@@ -226,9 +205,7 @@ impl ProviderRetryRecord {
     }
 }
 
-verus! {
-
-/// Closed, exhaustive pure agent command.
+#[doc = " Closed, exhaustive pure agent command."]
 #[derive(Debug, Eq, PartialEq)]
 pub enum AgentCommandKind {
     ContextPrepared(ContextRecord),
@@ -255,8 +232,6 @@ pub enum AgentCommandKind {
     Exhausted(AgentFailure),
     CompletionCommitted,
 }
-
-} // verus!
 
 /// Causally fenced command. Rejections leave the supplied state unchanged.
 #[derive(Clone, Debug, Eq, PartialEq)]

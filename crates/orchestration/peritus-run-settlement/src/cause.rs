@@ -1,40 +1,35 @@
 //! Typed reason a run reached settlement.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Stable terminal cause independent of candidate quality.
+#[doc = " Stable terminal cause independent of candidate quality."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum SettlementCause {
-    /// All intended phases reached their normal terminal boundary.
+    #[doc = " All intended phases reached their normal terminal boundary."]
     Completed,
-    /// A material user answer is required.
+    #[doc = " A material user answer is required."]
     UserWait,
-    /// The user explicitly cancelled the run.
+    #[doc = " The user explicitly cancelled the run."]
     Cancellation,
-    /// The caller's run horizon was exhausted.
+    #[doc = " The caller\'s run horizon was exhausted."]
     Deadline,
-    /// The selected provider reached a terminal condition.
+    #[doc = " The selected provider reached a terminal condition."]
     Provider,
-    /// The request remained outside the supported context envelope.
+    #[doc = " The request remained outside the supported context envelope."]
     Context,
-    /// Deterministic gates could not complete or pass.
+    #[doc = " Deterministic gates could not complete or pass."]
     Gate,
-    /// Independent review could not complete or retained blockers.
+    #[doc = " Independent review could not complete or retained blockers."]
     Review,
-    /// The managed repository prevented further work.
+    #[doc = " The managed repository prevented further work."]
     Repository,
-    /// An adapter or report-projection boundary failed.
+    #[doc = " An adapter or report-projection boundary failed."]
     Adapter,
-    /// A restart requires effectful reconciliation before work resumes.
+    #[doc = " A restart requires effectful reconciliation before work resumes."]
     Recovery,
-    /// An internal invariant prevented a trustworthy continuation.
+    #[doc = " An internal invariant prevented a trustworthy continuation."]
     InternalInvariant,
 }
-
 impl SettlementCause {
-    /// Stable protocol tag.
+    #[doc = " Stable protocol tag."]
     #[must_use]
     pub const fn tag(self) -> u16 {
         match self {
@@ -52,8 +47,7 @@ impl SettlementCause {
             Self::InternalInvariant => 12,
         }
     }
-
-    /// Decodes a stable protocol tag.
+    #[doc = " Decodes a stable protocol tag."]
     #[must_use]
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
@@ -73,5 +67,3 @@ impl SettlementCause {
         }
     }
 }
-
-} // verus!

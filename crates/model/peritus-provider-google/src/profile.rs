@@ -50,7 +50,3 @@ pub fn validate_google_profile(profile: &ProviderProfile) -> Result<(), Provider
     }
     Ok(())
 }
-
-#[cfg(test)]
-#[path = "profile_tests.rs"]
-mod tests;

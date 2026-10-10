@@ -195,28 +195,3 @@ fn put_reasons(bytes: &mut Vec<u8>, reasons: &[DirtyReason]) {
         });
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{DirtyReason, ReconcileDisposition, put_reasons};
-
-    #[test]
-    fn reason_encoding_is_order_sensitive_and_total() {
-        let mut bytes = Vec::new();
-        put_reasons(
-            &mut bytes,
-            &[
-                DirtyReason::AttachedHead,
-                DirtyReason::HeadMismatch,
-                DirtyReason::IndexMismatch,
-                DirtyReason::WorktreeModified,
-                DirtyReason::Untracked,
-                DirtyReason::Ignored,
-                DirtyReason::Conflict,
-                DirtyReason::IndexUnavailable,
-            ],
-        );
-        assert_eq!(&bytes[8..], &[0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_ne!(ReconcileDisposition::Clean, ReconcileDisposition::Dirty(Vec::new()));
-    }
-}

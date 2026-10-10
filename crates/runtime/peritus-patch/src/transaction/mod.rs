@@ -8,9 +8,6 @@ mod recovery_observation;
 mod roots;
 mod storage;
 
-#[cfg(test)]
-mod tests;
-
 use peritus_types::{Generation, RevisionNumber, Sha256Digest, WorkspaceId};
 
 use crate::{

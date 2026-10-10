@@ -24,5 +24,3 @@ pub use recovery::{SecretRecoveryRecord, SecretRecoveryState};
 pub use reference::{format_credential_reference, parse_credential_reference};
 pub use refinement::secret_delivery_exact;
 pub use store::{CredentialStore, PlatformCredentialStore, StoreProbe};
-#[cfg(any(test, feature = "test-memory-store"))]
-pub use store::{MemoryCredentialStore, MemoryStoreOutcome};

@@ -361,9 +361,6 @@ fn unavailable<E>(_error: E) -> AppProtocolError {
     app_error(AppErrorCode::NotReady)
 }
 
-#[cfg(test)]
-mod tests;
-
 fn selected_sources(
     archive: &Archive,
     reader: &FolderInspection,

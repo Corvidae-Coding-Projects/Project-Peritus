@@ -241,8 +241,7 @@ impl PreparedIndex {
         if let Some(journal) = journal {
             journal.cleanup_directory(directory.path())?;
         }
-        #[cfg(test)]
-        super::super::transaction::fault::pause(super::super::transaction::fault::Stage::Index);
+
         Ok(())
     }
 }

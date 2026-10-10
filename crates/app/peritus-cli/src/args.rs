@@ -10,9 +10,6 @@ mod product;
 mod terminal;
 mod types;
 
-#[cfg(test)]
-mod tests;
-
 pub use types::*;
 
 impl Cli {

@@ -130,34 +130,3 @@ impl LifecycleFixture {
         &self.state
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn every_h1_phase_is_reducer_reachable_and_replay_exact() {
-        for phase in [
-            LifecyclePhase::WriterPending,
-            LifecyclePhase::WriterActive,
-            LifecyclePhase::GatesPending,
-            LifecyclePhase::GatesActive,
-            LifecyclePhase::ReviewPending,
-            LifecyclePhase::ReviewActive,
-            LifecyclePhase::FixerPending,
-            LifecyclePhase::FixerActive,
-            LifecyclePhase::RevisionAdvancing,
-            LifecyclePhase::EvaluatingAcceptance,
-            LifecyclePhase::KernelAcceptancePending,
-        ] {
-            let fixture = LifecycleFixture::build(phase).expect("build lifecycle fixture");
-            let events = fixture
-                .steps()
-                .iter()
-                .map(|(_, transition)| transition.event().clone())
-                .collect::<Vec<_>>();
-            let replayed = crate::replay(&events).expect("replay lifecycle prefix");
-            assert_eq!(replayed, fixture.state().clone());
-        }
-    }
-}

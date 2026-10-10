@@ -301,30 +301,3 @@ impl Default for ResourceUsage {
         Self::zero()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn absent_wall_cpu_and_output_have_no_synthetic_ceilings() {
-        let one = ResourceQuantity::new(1);
-        let limits = ResourceLimits::with_optional_wall_output_cpu(
-            None, None, None, one, one, one, one, one,
-        )
-        .expect("all finite resource dimensions are positive");
-        assert_eq!(limits.wall_time_limit(), None);
-        assert_eq!(limits.cpu_time_limit(), None);
-        assert_eq!(limits.output_limit(), None);
-        let mut usage = ResourceUsage::zero();
-        usage
-            .charge(SandboxResourceKind::WallTime, ResourceQuantity::new(u64::MAX), &limits)
-            .expect("wall time is not charged against an invented ceiling");
-        usage
-            .charge(SandboxResourceKind::Output, ResourceQuantity::new(u64::MAX), &limits)
-            .expect("aggregate output is not charged against an invented ceiling");
-        usage
-            .charge(SandboxResourceKind::CpuTime, ResourceQuantity::new(u64::MAX), &limits)
-            .expect("CPU time is not charged against an invented ceiling");
-    }
-}

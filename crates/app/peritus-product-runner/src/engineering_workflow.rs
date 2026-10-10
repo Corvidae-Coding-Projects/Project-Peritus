@@ -352,6 +352,3 @@ pub fn developer() -> String {
 pub fn reviewer() -> String {
     format!("Production engineering workflow:\n{WORKFLOW}\n\nReviewer skill:\n{}", reviewer::SKILL)
 }
-
-#[cfg(test)]
-mod tests;

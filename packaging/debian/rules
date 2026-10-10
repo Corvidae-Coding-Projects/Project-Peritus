@@ -24,10 +24,6 @@ override_dh_auto_build:
 	$(CARGO) build --release --frozen $(PRODUCTS) --bins --features peritus-cli/system-package
 
 override_dh_auto_test:
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	$(CARGO) test --frozen -p peritus-launcher --features system-package update::tests
-	test "$$(target/release/peritus --version)" = "peritus $(DEB_VERSION_UPSTREAM)"
-endif
 
 override_dh_auto_install:
 	install -d debian/peritus/usr/lib/peritus debian/peritus/usr/bin

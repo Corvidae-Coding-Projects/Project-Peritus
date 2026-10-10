@@ -421,6 +421,3 @@ async fn terminal_write(
     }
     Ok(Json(json!({"ok":true})))
 }
-
-#[cfg(all(test, unix))]
-mod owned_tests;

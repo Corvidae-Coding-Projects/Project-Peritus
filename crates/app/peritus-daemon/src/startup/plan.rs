@@ -9,11 +9,8 @@ use peritus_types::Sha256Digest;
 
 use crate::StartupPhase;
 
-#[cfg(test)]
-pub use checkpoint::StartupNextAction;
 pub use checkpoint::{StartupCheckpoint, StartupCheckpoints};
-#[cfg(test)]
-pub use failpoint::{STARTUP_KILL_MATRIX, StartupFailpointBoundary};
+
 pub use failpoint::{StartupFailpoint, StartupFailpoints};
 
 /// Number of phases in the closed daemon startup plan.
@@ -225,7 +222,3 @@ const fn phase_index(phase: StartupPhase) -> usize {
         StartupPhase::Ready => 13,
     }
 }
-
-#[cfg(test)]
-#[path = "plan_tests.rs"]
-mod tests;

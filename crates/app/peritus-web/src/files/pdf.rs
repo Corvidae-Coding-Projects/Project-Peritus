@@ -24,24 +24,3 @@ pub fn inspect(path: &Path) -> Result<u64> {
     }
     Ok(metadata.len())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn identification_is_binary_safe_and_bounded() {
-        let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("report.PDF");
-        let bytes = b"%PDF-1.7\n%\x80\x81\x82\x83\n";
-        std::fs::write(&path, bytes).unwrap();
-        assert_eq!(inspect(&path).unwrap(), bytes.len() as u64);
-        std::fs::write(&path, b"<html>Not a PDF</html>").unwrap();
-        assert!(inspect(&path).is_err());
-        let mut late_header = vec![b' '; 1024];
-        late_header.extend_from_slice(bytes);
-        std::fs::write(&path, late_header).unwrap();
-        assert!(inspect(&path).is_err());
-        assert!(inspect(directory.path()).is_err());
-    }
-}

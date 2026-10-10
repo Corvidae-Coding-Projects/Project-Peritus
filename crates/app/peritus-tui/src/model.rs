@@ -6,9 +6,6 @@ mod interaction;
 mod product;
 mod protocol;
 
-#[cfg(test)]
-mod tests;
-
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
@@ -367,11 +364,6 @@ pub struct AppModel {
 }
 
 impl AppModel {
-    #[cfg(test)]
-    pub(crate) fn new(seed: [u8; 32]) -> Self {
-        Self::with_product(seed, None)
-    }
-
     pub(crate) fn with_product(seed: [u8; 32], product: Option<ProductLaunchContext>) -> Self {
         Self {
             view: if product.is_some() { View::Conversation } else { View::Runs },

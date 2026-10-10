@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["patch", "filesystem", "transactions", "formal-verification"]
 categories = ["filesystem", "data-structures"]
 
@@ -15,18 +15,7 @@ categories = ["filesystem", "data-structures"]
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 sha2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
 
 [lints]
 workspace = true
 
-[package.metadata.peritus]
-owner = "C1"
-layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true

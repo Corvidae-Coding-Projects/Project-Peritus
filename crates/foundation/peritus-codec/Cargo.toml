@@ -7,22 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["codec", "protocol", "canonical", "formal-verification"]
 categories = ["encoding", "data-structures"]
 
 [dependencies]
 peritus-types = { version = "=0.0.5", path = "../peritus-types" }
 sha2.workspace = true
-vstd.workspace = true
 
 [lints]
 workspace = true
 
-[package.metadata.peritus]
-owner = "B3"
-layer = "foundation"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true

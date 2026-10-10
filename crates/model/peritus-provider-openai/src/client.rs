@@ -77,29 +77,6 @@ impl OpenAiProvider {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn with_transport(
-        config: OpenAiConfig,
-        profile: ProviderProfile,
-        credentials: Arc<dyn CredentialSource>,
-        transport: Arc<dyn HttpTransport>,
-    ) -> Result<Self, ProviderCoreError> {
-        crate::profile::validate(&profile)?;
-        Ok(Self::compose(config, profile, credentials, transport))
-    }
-
-    #[cfg(test)]
-    pub(crate) fn remember_background_for_test(
-        &self,
-        response_id: ResponseId,
-    ) -> Result<(), ProviderCoreError> {
-        self.resumable_background
-            .lock()
-            .map_err(|_| error::invalid("OpenAI continuation registry is unavailable"))?
-            .insert(response_id);
-        Ok(())
-    }
-
     fn exact_resume_was_observed(&self, plan: &RequestPlan) -> Result<(), ProviderCoreError> {
         let RequestPlan::Resume { response_id, .. } = plan else { return Ok(()) };
         let registry = self

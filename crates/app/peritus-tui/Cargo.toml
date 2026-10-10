@@ -34,20 +34,9 @@ signal-hook.workspace = true
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_System_Console"] }
 
-[dev-dependencies]
-tempfile.workspace = true
-
-[target.'cfg(unix)'.dev-dependencies]
-portable-pty.workspace = true
-
 [[bin]]
 name = "peritus-tui"
 path = "src/main.rs"
-
-[package.metadata.peritus]
-owner = "G2"
-layer = "app"
-verification-class = "C"
 
 [lints]
 workspace = true

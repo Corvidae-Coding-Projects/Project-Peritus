@@ -7,9 +7,6 @@ use crate::{
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn write_field(
     w: &mut CanonicalWriter,
     field: WorkbenchBriefField,

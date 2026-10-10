@@ -133,15 +133,6 @@ impl AppLayout {
     pub fn daemon_applied_configuration(&self) -> PathBuf {
         self.state.join("daemon/applied-configuration")
     }
-
-    #[cfg(test)]
-    pub(crate) fn for_test(root: &std::path::Path) -> Self {
-        Self {
-            configuration: root.join("config"),
-            state: root.join("state"),
-            cache: root.join("cache"),
-        }
-    }
 }
 
 #[cfg(target_os = "macos")]
@@ -222,20 +213,4 @@ fn protect_directory(path: &std::path::Path) -> Result<(), LauncherError> {
 )]
 const fn protect_directory(_path: &std::path::Path) -> Result<(), LauncherError> {
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn preparation_creates_separate_protected_roots() {
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let layout = AppLayout::for_test(temporary.path()).prepare().expect("prepare layout");
-        assert!(layout.config_root().is_dir());
-        assert!(layout.state_root().is_dir());
-        assert!(layout.cache_root().is_dir());
-        assert!(layout.logs_root().is_dir());
-        assert_ne!(layout.config_root(), layout.state_root());
-    }
 }

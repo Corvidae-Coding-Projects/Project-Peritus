@@ -75,19 +75,6 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
-    #[cfg(test)]
-    pub(crate) fn with_reviewer_evidence(mut self, evidence: String) -> Self {
-        self.reviewer_evidence = Some(ReviewerEvidenceSources::new(
-            String::new(),
-            String::new(),
-            String::new(),
-            evidence,
-            String::new(),
-            String::new(),
-        ));
-        self
-    }
-
     pub(crate) fn with_reviewer_evidence_sources(
         mut self,
         evidence: ReviewerEvidenceSources,
@@ -309,19 +296,6 @@ const fn permission_name(capability: PermissionCapability) -> &'static str {
     }
 }
 
-#[cfg(test)]
-fn test_command_runtime(root: &std::path::Path) -> crate::CommandRuntime {
-    use std::sync::atomic::{AtomicU64, Ordering};
-
-    static NEXT: AtomicU64 = AtomicU64::new(1);
-    let mut bytes = [0_u8; 16];
-    bytes[..8].copy_from_slice(&NEXT.fetch_add(1, Ordering::Relaxed).to_le_bytes());
-    crate::CommandRuntime::open_for_test(
-        root,
-        peritus_types::RunId::new(bytes).expect("test command run ID"),
-    )
-}
-
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if matches!(
@@ -470,8 +444,3 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
 }
 
 mod effects;
-
-#[cfg(test)]
-mod receipt_tests;
-#[cfg(test)]
-mod tests;

@@ -6,8 +6,6 @@ use crossterm::event::{KeyCode, KeyEvent};
 use peritus_app_protocol::{AppRequestPayload, WellKnownProtocolFeature};
 
 mod cancel;
-#[cfg(test)]
-mod tests;
 
 impl AppModel {
     pub(in crate::model) fn refresh_workbench(&mut self) -> Vec<Effect> {

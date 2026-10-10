@@ -6,8 +6,7 @@ use peritus_types::ProviderProfileId;
 mod import;
 mod preview;
 pub use import::{WorkbenchFileImportPreview, WorkbenchFileImportRequest, WorkbenchFileUpload};
-#[cfg(test)]
-mod tests;
+
 pub use preview::{WorkbenchFileMetadata, WorkbenchFilePreview};
 mod page;
 pub use page::{WorkbenchFilePage, WorkbenchFileQuery, WorkbenchFileRow};

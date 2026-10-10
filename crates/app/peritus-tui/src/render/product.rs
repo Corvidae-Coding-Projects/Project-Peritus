@@ -1,10 +1,7 @@
 //! Dashboard, diff, and review presentation for daemon-owned coding runs.
 
-#[cfg(test)]
-use peritus_app_protocol::ProductRunPhase;
 use peritus_app_protocol::ProductRunSnapshot;
-#[cfg(test)]
-use peritus_run_settlement::CandidateStage;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -20,8 +17,6 @@ mod detail;
 mod preview;
 mod structured_review;
 
-#[cfg(test)]
-use detail::product_state;
 use detail::{
     conversation_text, empty_detail, inspect_text, phase_symbol, render_run_text, run_detail, safe,
 };
@@ -265,6 +260,3 @@ pub(super) fn scroll_page(area: Rect) -> usize {
 fn content_scroll_limit(lines: usize, area: Rect) -> usize {
     lines.saturating_sub(usize::from(area.height.saturating_sub(2)))
 }
-
-#[cfg(test)]
-mod tests;

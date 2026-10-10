@@ -6,9 +6,6 @@ use crate::{
 };
 use peritus_types::Sha256Digest;
 
-#[cfg(test)]
-mod tests;
-
 mod pages;
 pub use pages::*;
 

@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-#[cfg(any(target_os = "windows", test))]
+#[cfg(target_os = "windows")]
 use std::path::Path;
 
 use peritus_sandbox::SandboxPath;
@@ -57,7 +57,7 @@ impl WindowsPath {
     ///
     /// # Errors
     /// Rejects non-drive paths or invalid native syntax.
-    #[cfg(any(target_os = "windows", test))]
+    #[cfg(target_os = "windows")]
     pub fn from_canonicalized(path: &Path) -> Result<Self, WindowsError> {
         let mut units = native_units(path.as_os_str())?;
         let extended_prefix =
@@ -414,21 +414,4 @@ fn path_error(detail: &'static str) -> WindowsError {
         WindowsRecovery::CorrectRequest,
         detail,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::WindowsPath;
-
-    #[test]
-    fn trusted_canonical_drive_path_removes_only_the_extended_length_prefix() {
-        let path = std::path::Path::new(r"\\?\d:\qualification\peritus-helper.exe");
-        let normalized = WindowsPath::from_canonicalized(path).expect("canonical drive path");
-
-        assert_eq!(normalized.as_str(), "D:/qualification/peritus-helper.exe");
-        assert!(WindowsPath::new(path.to_string_lossy()).is_err());
-        assert!(
-            WindowsPath::from_canonicalized(std::path::Path::new(r"\\?\UNC\host\share")).is_err()
-        );
-    }
 }

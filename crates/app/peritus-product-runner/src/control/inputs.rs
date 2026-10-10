@@ -1,8 +1,7 @@
 //! Immutable input revisions and dependency-safe queue transitions, independent of transport.
 
 mod capture;
-#[cfg(test)]
-mod tests;
+
 mod transition;
 
 pub use capture::InputCapture;

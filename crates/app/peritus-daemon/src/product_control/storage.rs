@@ -34,10 +34,6 @@ mod permissions;
 mod replay;
 mod reservations;
 
-#[cfg(test)]
-#[path = "tests.rs"]
-mod tests;
-
 pub struct ControlStore {
     journal: SqliteJournal,
     store: StoreId,

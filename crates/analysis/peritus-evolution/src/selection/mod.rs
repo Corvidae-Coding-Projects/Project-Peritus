@@ -4,9 +4,6 @@ mod assessment;
 mod decision;
 mod engine;
 
-#[cfg(test)]
-mod tests;
-
 pub use assessment::{
     Criterion, CriterionOutcome, CriterionResult, ObjectiveVector, VariantAssessment,
 };

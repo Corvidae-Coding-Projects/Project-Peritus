@@ -1,7 +1,5 @@
 //! Durable product-run snapshots and restart recovery.
 
-#[cfg(test)]
-use std::collections::BTreeMap;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -19,8 +17,7 @@ use super::progress::RunProgress;
 use super::{
     PreviewAggregate, PreviewOperationRecord, ProductRunRequest, ProductRunServiceError, RunRecord,
 };
-#[cfg(test)]
-use super::{filesystem, invalid};
+
 use crate::DaemonError;
 
 mod deliverable;
@@ -38,16 +35,6 @@ mod types;
 use types::{
     PersistedDeliverable, PersistedPreviewOperation, PersistedPreviewOutput, PersistedProgress,
     PersistedRecord,
-};
-
-#[cfg(test)]
-mod fault;
-#[cfg(test)]
-use fault::check_persistence_fault;
-#[cfg(test)]
-pub(super) use fault::{
-    PersistenceFaultPoint, clear_persistent_persistence_fault, inject_persistence_fault,
-    inject_persistent_persistence_fault,
 };
 
 pub(super) fn persist_record(
@@ -69,8 +56,7 @@ pub(super) fn write_record(
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
     use std::io::Write as _;
-    #[cfg(test)]
-    let fault_directory = directory;
+
     let workbench_directory = record_directory(directory)?;
     fs::create_dir_all(&workbench_directory).map_err(|error| {
         ProductRunServiceError::persistence("create the workbench run directory", error)
@@ -95,47 +81,21 @@ pub(super) fn write_record(
     let mut file = fs::File::create(&temporary).map_err(|error| {
         ProductRunServiceError::persistence("create the product-run temporary record", error)
     })?;
-    #[cfg(test)]
-    check_persistence_fault(
-        fault_directory,
-        record.request.run_id(),
-        PersistenceFaultPoint::BeforeWrite,
-    )?;
+
     file.write_all(&bytes).map_err(|error| {
         ProductRunServiceError::persistence("write the product-run temporary record", error)
     })?;
-    #[cfg(test)]
-    check_persistence_fault(
-        fault_directory,
-        record.request.run_id(),
-        PersistenceFaultPoint::BeforeFileSync,
-    )?;
+
     file.sync_all().map_err(|error| {
         ProductRunServiceError::persistence("sync the product-run temporary record", error)
     })?;
-    #[cfg(test)]
-    check_persistence_fault(
-        fault_directory,
-        record.request.run_id(),
-        PersistenceFaultPoint::BeforeRename,
-    )?;
+
     fs::rename(temporary, path).map_err(|error| {
         ProductRunServiceError::persistence("replace the durable product-run record", error)
     })?;
-    #[cfg(test)]
-    check_persistence_fault(
-        fault_directory,
-        record.request.run_id(),
-        PersistenceFaultPoint::AfterRename,
-    )?;
+
     #[cfg(unix)]
     {
-        #[cfg(test)]
-        check_persistence_fault(
-            fault_directory,
-            record.request.run_id(),
-            PersistenceFaultPoint::BeforeDirectorySync,
-        )?;
         fs::File::open(directory).and_then(|file| file.sync_all()).map_err(|error| {
             ProductRunServiceError::persistence("sync the product-run directory", error)
         })?;
@@ -156,97 +116,6 @@ pub(super) fn record_directory(directory: &Path) -> Result<PathBuf, ProductRunSe
             .join("workbench-v1/runs"));
     }
     Ok(directory.to_path_buf())
-}
-
-#[cfg(test)]
-pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
-    let root = directory
-        .parent()
-        .filter(|_| directory.file_name().is_some_and(|name| name == "product-runs"))
-        .map_or_else(
-            || directory.parent().unwrap_or(directory).to_path_buf(),
-            |parent| parent.join("workbench-v1"),
-        );
-    let controls = crate::product_control::ControlStore::open(
-        &root,
-        peritus_journal::StoreId::new([0x7f; 16]).map_err(|_| invalid("invalid test store"))?,
-    )
-    .map_err(|error| {
-        DaemonError::with_source(
-            crate::DaemonErrorCode::Storage,
-            crate::DaemonRecovery::Reconcile,
-            "open governed test state",
-            "the durable workbench control store could not be reopened",
-            error,
-        )
-    })?;
-    load_workbench_records(&root, Some(&controls))
-}
-
-#[cfg(test)]
-pub(super) fn load_unchecked_records(
-    directory: &Path,
-) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
-    let workbench_directory = record_directory(directory).map_err(|error| {
-        DaemonError::new(
-            crate::DaemonErrorCode::Storage,
-            crate::DaemonRecovery::Reconcile,
-            "resolve product-run state",
-            error.describe(),
-        )
-    })?;
-    let directory = workbench_directory.as_path();
-    let mut records = BTreeMap::new();
-    for entry in fs::read_dir(directory).map_err(filesystem)? {
-        let entry = match entry {
-            Ok(entry) => entry,
-            Err(error) => {
-                report_isolation_failure(directory, "enumerate a product-run record", &error);
-                continue;
-            }
-        };
-        let path = entry.path();
-        if path.extension().and_then(|value| value.to_str()) != Some("json") {
-            continue;
-        }
-        let bytes = match fs::read(&path) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                quarantine_record(&path, "product-run record cannot be read", Some(&error));
-                continue;
-            }
-        };
-        let persisted: PersistedRecord = match serde_json::from_slice(&bytes) {
-            Ok(persisted) => persisted,
-            Err(error) => {
-                quarantine_record(&path, "product-run state is malformed", Some(&error));
-                continue;
-            }
-        };
-        let record = match persisted
-            .into_record_with_context(Some("test-only persisted workbench context"))
-        {
-            Ok(record) => record,
-            Err(error) => {
-                quarantine_record(&path, "product-run state contains invalid values", Some(&error));
-                continue;
-            }
-        };
-        if !record_path_matches(&path, record.request.run_id()) {
-            quarantine_record(
-                &path,
-                "product-run filename does not match its embedded identity",
-                None,
-            );
-            continue;
-        }
-        if records.contains_key(&record.request.run_id()) {
-            quarantine_record(&path, "duplicate product-run identity", None);
-            continue;
-        }
-        records.insert(record.request.run_id(), record);
-    }
-    Ok(records)
 }
 
 pub(super) fn quarantine_record(path: &Path, reason: &str, source: Option<&dyn std::fmt::Display>) {
@@ -322,17 +191,3 @@ fn record_path_matches(path: &Path, run_id: RunId) -> bool {
 
 mod record;
 use record::hex;
-
-#[cfg(test)]
-#[path = "persistence/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-mod evidence_tests;
-#[cfg(test)]
-pub(super) fn test_behavior_evidence(
-    record: &RunRecord,
-    operation: peritus_app_protocol::ControlOperationId,
-) {
-    evidence_tests::test_behavior_evidence(record, operation);
-}

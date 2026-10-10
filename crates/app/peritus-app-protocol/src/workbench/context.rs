@@ -5,9 +5,6 @@ use crate::{
 };
 use peritus_types::Sha256Digest;
 
-#[cfg(test)]
-mod tests;
-
 /// Maximum metadata rows in a response page.
 pub const MAX_WORKBENCH_CONTEXT_PAGE: usize = 32;
 const fn invalid() -> AppProtocolError {

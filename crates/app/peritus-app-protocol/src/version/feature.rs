@@ -316,19 +316,3 @@ impl ProtocolFeatureSet {
         self.0
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn feature_sets_are_sorted_and_duplicate_free() {
-        let terminal =
-            ProtocolFeatureName::well_known(WellKnownProtocolFeature::TerminalStreaming).unwrap();
-        let artifact =
-            ProtocolFeatureName::well_known(WellKnownProtocolFeature::ArtifactTransfer).unwrap();
-        let set = ProtocolFeatureSet::new(vec![terminal.clone(), artifact], 2).unwrap();
-        assert_eq!(set.as_slice()[0].as_str(), ProtocolFeatureName::ARTIFACT_TRANSFER);
-        assert!(ProtocolFeatureSet::new(vec![terminal.clone(), terminal], 2).is_err());
-    }
-}

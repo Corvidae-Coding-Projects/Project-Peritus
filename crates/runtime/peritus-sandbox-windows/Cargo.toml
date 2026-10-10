@@ -7,17 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["windows", "sandbox", "appcontainer", "job-object", "security"]
 categories = ["development-tools", "os::windows-apis"]
-
-[package.metadata.peritus]
-owner = "C3"
-layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [dependencies]
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
@@ -26,7 +18,6 @@ peritus-process = { version = "=0.0.5", path = "../peritus-process" }
 peritus-sandbox = { version = "=0.0.5", path = "../peritus-sandbox" }
 peritus-secrets = { version = "=0.0.5", path = "../peritus-secrets" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
 zeroize.workspace = true
 sha2.workspace = true
 
@@ -53,10 +44,6 @@ windows-sys = { workspace = true, features = [
     "Win32_System_WindowsProgramming",
     "Win32_UI_WindowsAndMessaging",
 ] }
-
-[dev-dependencies]
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-tempfile.workspace = true
 
 [[bin]]
 name = "peritus-windows-sandbox-helper"

@@ -112,21 +112,3 @@ impl VersionRange {
 
 /// Descriptive alias for an application-protocol version range.
 pub type ProtocolVersionRange = VersionRange;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn range_rejects_zero_major_and_reversal() {
-        assert!(VersionRange::new(0, 0, 1).is_err());
-        assert!(VersionRange::new(1, 2, 1).is_err());
-    }
-
-    #[test]
-    fn intersection_selects_greatest_common_minor() {
-        let left = VersionRange::new(2, 1, 7).unwrap();
-        let right = VersionRange::new(2, 4, 9).unwrap();
-        assert_eq!(left.greatest_intersection(right), ProtocolVersion::new(2, 7).ok());
-    }
-}

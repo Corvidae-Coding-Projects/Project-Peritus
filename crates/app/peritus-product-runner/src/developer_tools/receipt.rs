@@ -430,7 +430,3 @@ fn fields_are_consistent(record: &ReceiptRecord) -> bool {
         ReceiptState::Reviewed => record.output.is_some() && record.is_error == Some(true),
     }
 }
-
-#[cfg(test)]
-#[path = "receipt/tests.rs"]
-mod tests;

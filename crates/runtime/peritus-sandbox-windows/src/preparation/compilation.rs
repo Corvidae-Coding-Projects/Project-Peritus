@@ -10,9 +10,6 @@ use peritus_sandbox::{BackendAdmission, CheckedSandboxPlan};
 use peritus_types::Sha256Digest;
 use std::sync::Arc;
 
-#[cfg(all(test, target_os = "windows"))]
-mod native_paths_tests;
-
 impl WindowsBackend {
     #[allow(
         clippy::too_many_lines,

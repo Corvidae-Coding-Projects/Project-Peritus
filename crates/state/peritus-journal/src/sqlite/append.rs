@@ -148,15 +148,6 @@ impl SqliteJournal {
             }
         }
     }
-
-    #[cfg(test)]
-    pub(super) fn append_losing_acknowledgement(
-        &mut self,
-        plan: AppendPlan,
-    ) -> Result<crate::CommittedBatch, JournalError> {
-        self.replay_generation = Arc::new(());
-        self.append_inner(plan, true, None)
-    }
 }
 
 pub(super) fn to_i64(value: u64, operation: &'static str) -> Result<i64, JournalError> {

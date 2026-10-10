@@ -8,8 +8,6 @@ mod lifecycle;
 mod records;
 mod review;
 
-#[cfg(verus_only)]
-pub use base::valid_identifier_bytes;
 pub use budget::{BudgetId, BudgetReservationId};
 pub use evolution::{EvaluationCampaignId, EvolutionCampaignId};
 pub use execution::{

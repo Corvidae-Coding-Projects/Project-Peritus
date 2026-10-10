@@ -24,7 +24,7 @@ mod open;
 mod publication;
 mod read_only;
 mod reconcile;
-mod refinement;
+
 mod registration;
 mod scoped_inspection;
 pub use folder::FolderIdentity;

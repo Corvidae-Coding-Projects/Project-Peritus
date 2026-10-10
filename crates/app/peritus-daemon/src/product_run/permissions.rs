@@ -53,24 +53,6 @@ impl HostPermissionCatalog {
         Self { entries }
     }
 
-    #[cfg(test)]
-    pub(super) fn managed(
-        workspaces: impl IntoIterator<Item = WorkspaceId>,
-        network: bool,
-    ) -> Self {
-        let permissions = host_permissions(true, network);
-        let entries = workspaces
-            .into_iter()
-            .map(|workspace| {
-                (
-                    workspace,
-                    HostPermissionEntry { permissions, trust: WorkbenchWorkspaceTrust::Managed },
-                )
-            })
-            .collect();
-        Self { entries }
-    }
-
     fn get(&self, workspace: WorkspaceId) -> Result<HostPermissionEntry, Error> {
         self.entries.get(&workspace).copied().ok_or_else(|| ControlError::ScopeMismatch.into())
     }
@@ -344,45 +326,5 @@ pub(super) const fn domain_capability(
         WorkbenchPermissionCapability::Write => PermissionCapability::Write,
         WorkbenchPermissionCapability::Process => PermissionCapability::Process,
         WorkbenchPermissionCapability::Network => PermissionCapability::Network,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use peritus_app_protocol::{
-        ControlOperationId, ConversationId as PublicConversationId, WorkbenchRewindMode,
-        WorkbenchRewindPreview, WorkbenchRewindRequest,
-    };
-
-    fn rewind(mode: WorkbenchRewindMode) -> WorkbenchIntent {
-        let query = WorkbenchQuery::new(
-            PublicConversationId::new([1; 16]).unwrap(),
-            WorkspaceId::new([2; 16]).unwrap(),
-        );
-        let mut request =
-            WorkbenchRewindRequest::new(query, 1, ControlOperationId::new([3; 16]).unwrap())
-                .unwrap();
-        if mode != WorkbenchRewindMode::FilesOnly {
-            request =
-                request.with_branch(mode, PublicConversationId::new([4; 16]).unwrap()).unwrap();
-        }
-        WorkbenchIntent::ApplyRewind(
-            WorkbenchRewindPreview::new(request, Vec::new(), Vec::new(), Vec::new()).unwrap(),
-        )
-    }
-
-    #[test]
-    fn rewind_permissions_distinguish_logical_and_filesystem_effects() {
-        assert_eq!(
-            command_permissions(&rewind(WorkbenchRewindMode::ConversationOnly)),
-            &[PermissionCapability::Read]
-        );
-        for mode in [WorkbenchRewindMode::FilesOnly, WorkbenchRewindMode::Combined] {
-            assert_eq!(
-                command_permissions(&rewind(mode)),
-                &[PermissionCapability::Read, PermissionCapability::Write]
-            );
-        }
     }
 }

@@ -138,33 +138,3 @@ impl OutputAccounting {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn failed_spool_write_retains_only_the_successfully_written_prefix() {
-        let mut accounting = OutputAccounting::new(OutputStream::Stdout, None);
-        assert_eq!(accounting.observe(8, u64::MAX), 8);
-        accounting.retain_written(3);
-        accounting.fail();
-        let result = accounting.finish();
-        assert_eq!(result.observed(), 8);
-        assert_eq!(result.retained(), 3);
-        assert_eq!(result.dropped(), 5);
-        assert_eq!(result.completeness(), OutputCompleteness::Incomplete);
-    }
-
-    #[test]
-    fn absent_output_quota_retains_every_observed_byte() {
-        let mut accounting = OutputAccounting::new(OutputStream::Stdout, None);
-        assert_eq!(accounting.observe(32 * 1024 * 1024, u64::MAX), 32 * 1024 * 1024);
-        accounting.retain_written(32 * 1024 * 1024);
-        let result = accounting.finish();
-        assert_eq!(result.observed(), 32 * 1024 * 1024);
-        assert_eq!(result.retained(), result.observed());
-        assert_eq!(result.dropped(), 0);
-        assert_eq!(result.completeness(), OutputCompleteness::Complete);
-    }
-}

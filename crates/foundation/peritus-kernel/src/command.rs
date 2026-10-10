@@ -7,11 +7,8 @@ use peritus_types::{
     ActionId, ActorId, AttemptId, EnvironmentId, FindingId, ReviewCycleId, RunId, Sha256Digest,
     TurnId,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// Stable command discriminant consumed by B3.
+#[doc = " Stable command discriminant consumed by B3."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum KernelCommandKind {
     PauseSession,
@@ -50,29 +47,69 @@ pub enum KernelCommandKind {
     BeginAcceptance,
     EvaluateAcceptance,
 }
-
-/// Complete requests understood by the lifecycle kernel.
+#[doc = " Complete requests understood by the lifecycle kernel."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KernelCommand {
     PauseSession,
     ResumeSession,
     CloseSession,
-    StartRun { run_id: RunId },
-    PauseRun { run_id: RunId },
-    ResumeRun { run_id: RunId },
-    CancelRun { run_id: RunId },
-    FailRun { run_id: RunId },
-    ExhaustRun { run_id: RunId },
-    RejectRun { run_id: RunId },
-    StartAttempt { run_id: RunId, attempt_id: AttemptId },
-    ResumeAttempt { run_id: RunId, attempt_id: AttemptId },
-    SubmitAttempt { run_id: RunId, attempt_id: AttemptId },
-    FailAttempt { run_id: RunId, attempt_id: AttemptId },
-    ExhaustAttempt { run_id: RunId, attempt_id: AttemptId },
-    StartTurn { attempt_id: AttemptId, turn_id: TurnId },
-    CompleteTurn { attempt_id: AttemptId, turn_id: TurnId },
-    FailTurn { attempt_id: AttemptId, turn_id: TurnId },
-    CancelTurn { attempt_id: AttemptId, turn_id: TurnId },
+    StartRun {
+        run_id: RunId,
+    },
+    PauseRun {
+        run_id: RunId,
+    },
+    ResumeRun {
+        run_id: RunId,
+    },
+    CancelRun {
+        run_id: RunId,
+    },
+    FailRun {
+        run_id: RunId,
+    },
+    ExhaustRun {
+        run_id: RunId,
+    },
+    RejectRun {
+        run_id: RunId,
+    },
+    StartAttempt {
+        run_id: RunId,
+        attempt_id: AttemptId,
+    },
+    ResumeAttempt {
+        run_id: RunId,
+        attempt_id: AttemptId,
+    },
+    SubmitAttempt {
+        run_id: RunId,
+        attempt_id: AttemptId,
+    },
+    FailAttempt {
+        run_id: RunId,
+        attempt_id: AttemptId,
+    },
+    ExhaustAttempt {
+        run_id: RunId,
+        attempt_id: AttemptId,
+    },
+    StartTurn {
+        attempt_id: AttemptId,
+        turn_id: TurnId,
+    },
+    CompleteTurn {
+        attempt_id: AttemptId,
+        turn_id: TurnId,
+    },
+    FailTurn {
+        attempt_id: AttemptId,
+        turn_id: TurnId,
+    },
+    CancelTurn {
+        attempt_id: AttemptId,
+        turn_id: TurnId,
+    },
     ProposeAction {
         turn_id: TurnId,
         action_id: ActionId,
@@ -81,29 +118,58 @@ pub enum KernelCommand {
         role: ActorRole,
         environment_id: EnvironmentId,
     },
-    AuthorizeAction { action_id: ActionId },
-    DispatchAction { action_id: ActionId },
-    CompleteAction { action_id: ActionId },
-    FailAction { action_id: ActionId },
-    CancelAction { action_id: ActionId },
-    RequestReview { run_id: RunId, attempt_id: AttemptId, review_id: ReviewCycleId },
-    BeginReview { review_id: ReviewCycleId },
-    SubmitReview { review_id: ReviewCycleId },
-    InvalidateReview { review_id: ReviewCycleId },
+    AuthorizeAction {
+        action_id: ActionId,
+    },
+    DispatchAction {
+        action_id: ActionId,
+    },
+    CompleteAction {
+        action_id: ActionId,
+    },
+    FailAction {
+        action_id: ActionId,
+    },
+    CancelAction {
+        action_id: ActionId,
+    },
+    RequestReview {
+        run_id: RunId,
+        attempt_id: AttemptId,
+        review_id: ReviewCycleId,
+    },
+    BeginReview {
+        review_id: ReviewCycleId,
+    },
+    SubmitReview {
+        review_id: ReviewCycleId,
+    },
+    InvalidateReview {
+        review_id: ReviewCycleId,
+    },
     RequestWaiver {
         run_id: RunId,
         review_id: ReviewCycleId,
         finding_id: FindingId,
     },
-    GrantWaiver { finding_id: FindingId },
-    DenyWaiver { finding_id: FindingId },
-    InvalidateWaiver { finding_id: FindingId },
-    BeginAcceptance { run_id: RunId },
-    EvaluateAcceptance { run_id: RunId },
+    GrantWaiver {
+        finding_id: FindingId,
+    },
+    DenyWaiver {
+        finding_id: FindingId,
+    },
+    InvalidateWaiver {
+        finding_id: FindingId,
+    },
+    BeginAcceptance {
+        run_id: RunId,
+    },
+    EvaluateAcceptance {
+        run_id: RunId,
+    },
 }
-
 impl KernelCommand {
-    /// Returns the stable command discriminant.
+    #[doc = " Returns the stable command discriminant."]
     #[must_use]
     pub const fn kind(&self) -> KernelCommandKind {
         match self {
@@ -145,5 +211,3 @@ impl KernelCommand {
         }
     }
 }
-
-} // verus!

@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["projection", "replay", "event-sourcing", "formal-verification"]
 categories = ["database", "data-structures"]
 
@@ -23,21 +23,7 @@ peritus-protocol = { version = "=0.0.5", path = "../../foundation/peritus-protoc
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 rusqlite.workspace = true
 sha2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-artifact-store = { version = "=0.0.5", path = "../peritus-artifact-store" }
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-tempfile.workspace = true
 
 [lints]
 workspace = true
 
-[package.metadata.peritus]
-owner = "C0"
-layer = "state"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true

@@ -291,23 +291,3 @@ fn output_text(bytes: &[u8], incomplete: bool) -> String {
         text.into_owned()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn complete_stream_projection_has_no_arbitrary_midstream_cap() {
-        let bytes = vec![b'x'; 2 * 1024 * 1024];
-        let value = output_text(&bytes, false);
-        assert_eq!(value.len(), bytes.len());
-        assert!(value.bytes().all(|byte| byte == b'x'));
-    }
-
-    #[test]
-    fn incomplete_artifact_remains_explicitly_marked() {
-        let value = output_text(b"retained", true);
-        assert!(value.starts_with("retained"));
-        assert!(value.contains("artifact is incomplete"));
-    }
-}

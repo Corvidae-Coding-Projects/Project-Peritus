@@ -36,12 +36,6 @@ use projection::{
     patch_input, patch_mode, patch_preimage, public_checkpoint, public_restore, public_version,
     reconstruct_rewind_preview,
 };
-#[cfg(test)]
-#[allow(
-    clippy::redundant_pub_crate,
-    reason = "crate-level tests inject exact crash boundaries"
-)]
-pub(crate) use rewind::{RewindFaultPoint, inject_rewind_fault, obstruct_folder_patch};
 
 const HISTORY_EFFECT: &str =
     "Conversation history and cumulative goal and accounting state are preserved.";

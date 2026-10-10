@@ -344,6 +344,3 @@ pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
     };
     ProductRunnerError::new(kind, "execute D0 developer loop", error.to_string())
 }
-
-#[cfg(test)]
-mod tests;

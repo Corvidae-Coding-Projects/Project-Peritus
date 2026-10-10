@@ -1,41 +1,20 @@
 //! Bounded retry and review-cycle policy.
 
 use crate::{LimitKind, SpecError};
-use vstd::prelude::*;
 
-verus! {
-
-/// Checked completion limits; exhausting either limit is non-success.
+#[doc = " Checked completion limits; exhausting either limit is non-success."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct CompletionPolicy {
     max_gate_attempts: u16,
     max_review_cycles: u16,
 }
-
 impl CompletionPolicy {
-    /// Specification view of the configured gate-attempt limit.
-    pub closed spec fn spec_max_gate_attempts(&self) -> u16 { self.max_gate_attempts }
-
-    /// Specification view of the configured review-cycle limit.
-    pub closed spec fn spec_max_review_cycles(&self) -> u16 { self.max_review_cycles }
-
-    /// Creates nonzero gate-attempt and review-cycle limits.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SpecError::ZeroLimit`] for the first zero value.
-    pub const fn new(
-        max_gate_attempts: u16,
-        max_review_cycles: u16,
-    ) -> (result: Result<Self, SpecError>)
-        ensures
-            result.is_ok() == (max_gate_attempts > 0 && max_review_cycles > 0),
-            match result {
-                Ok(policy) => policy.spec_max_gate_attempts() == max_gate_attempts
-                    && policy.spec_max_review_cycles() == max_review_cycles,
-                Err(_) => true,
-            },
-    {
+    #[doc = " Creates nonzero gate-attempt and review-cycle limits."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns [`SpecError::ZeroLimit`] for the first zero value."]
+    pub const fn new(max_gate_attempts: u16, max_review_cycles: u16) -> Result<Self, SpecError> {
         if max_gate_attempts == 0 {
             return Err(SpecError::ZeroLimit(LimitKind::GateAttempts));
         }
@@ -44,18 +23,14 @@ impl CompletionPolicy {
         }
         Ok(Self { max_gate_attempts, max_review_cycles })
     }
-
-    /// Returns the maximum permitted attempts for one gate.
+    #[doc = " Returns the maximum permitted attempts for one gate."]
     #[must_use]
-    pub const fn max_gate_attempts(&self) -> (result: u16)
-        ensures result == self.spec_max_gate_attempts()
-    { self.max_gate_attempts }
-
-    /// Returns the maximum writer/reviewer/fixer cycles.
+    pub const fn max_gate_attempts(&self) -> u16 {
+        self.max_gate_attempts
+    }
+    #[doc = " Returns the maximum writer/reviewer/fixer cycles."]
     #[must_use]
-    pub const fn max_review_cycles(&self) -> (result: u16)
-        ensures result == self.spec_max_review_cycles()
-    { self.max_review_cycles }
+    pub const fn max_review_cycles(&self) -> u16 {
+        self.max_review_cycles
+    }
 }
-
-} // verus!

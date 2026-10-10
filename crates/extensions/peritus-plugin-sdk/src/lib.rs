@@ -3,9 +3,6 @@
 //! The SDK contains data and framing only. It has no daemon handles, policy evaluator, filesystem
 //! access, process launcher, or authority-minting API.
 
-#[allow(unused_imports, reason = "Verus verifies every crate target through this prelude")]
-use vstd::prelude::*;
-
 mod canonical;
 mod error;
 mod framing;

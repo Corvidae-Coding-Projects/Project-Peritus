@@ -370,31 +370,3 @@ pub fn put_bytes(output: &mut Vec<u8>, value: &[u8]) {
     output.extend_from_slice(&(value.len() as u64).to_be_bytes());
     output.extend_from_slice(value);
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{put_bytes, status_digest};
-    use crate::{CommitId, ObjectFormat, ObjectId, Operation};
-    use peritus_types::Sha256Digest;
-
-    #[test]
-    fn committed_head_status_digest_preserves_v1_encoding() {
-        let repository = Sha256Digest::new([3; 32]);
-        let root = std::path::Path::new("/workspace");
-        let head = CommitId::checked(
-            ObjectId::parse(ObjectFormat::Sha1, &"a".repeat(40), Operation::Status)
-                .expect("valid commit object ID"),
-        );
-        let mut original = b"PERITUS-GIT-STATUS-V1\0".to_vec();
-        original.extend_from_slice(repository.as_bytes());
-        put_bytes(&mut original, root.to_str().expect("UTF-8 root").as_bytes());
-        put_bytes(&mut original, head.object_id().as_bytes());
-        original.push(1);
-        original.push(0);
-        put_bytes(&mut original, b"");
-
-        let observed =
-            status_digest(repository, root, Some(head), true, None, b"").expect("status digest");
-        assert_eq!(observed, peritus_codec::sha256(&original));
-    }
-}

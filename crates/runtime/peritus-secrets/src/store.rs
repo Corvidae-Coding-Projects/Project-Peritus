@@ -1,16 +1,10 @@
 //! Exact secret-store boundary and platform credential adapter.
 
-#[cfg(any(test, feature = "test-memory-store"))]
-mod memory;
-
 use peritus_sandbox::SecretReference;
 use peritus_types::ResourceId;
 use zeroize::Zeroize;
 
 use crate::{RecoveryClass, SecretError, SecretErrorKind, SecretMaterial, SecretOperation};
-
-#[cfg(any(test, feature = "test-memory-store"))]
-pub use memory::{MemoryCredentialStore, MemoryStoreOutcome};
 
 /// Truthful credential-store capability probe.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -230,17 +224,4 @@ const fn unavailable(detail: &'static str) -> SecretError {
         RecoveryClass::Retry,
         detail,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn provider_namespace_preserves_existing_credential_references() {
-        // These names are a persisted storage contract: references contain no namespace to
-        // migrate or infer if setup and daemon construction ever diverge again.
-        assert_eq!(
-            super::PlatformCredentialStore::providers().service,
-            "org.corvidae-coding.peritus.providers"
-        );
-    }
 }

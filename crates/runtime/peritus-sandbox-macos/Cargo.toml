@@ -7,17 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 keywords = ["macos", "sandbox", "seatbelt", "process", "security"]
 categories = ["development-tools"]
-
-[package.metadata.peritus]
-owner = "C3"
-layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [dependencies]
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
@@ -26,15 +18,10 @@ peritus-process = { version = "=0.0.5", path = "../peritus-process" }
 peritus-sandbox = { version = "=0.0.5", path = "../peritus-sandbox" }
 peritus-secrets = { version = "=0.0.5", path = "../peritus-secrets" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
 zeroize.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc.workspace = true
-
-[dev-dependencies]
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-tempfile.workspace = true
 
 [lints]
 workspace = true

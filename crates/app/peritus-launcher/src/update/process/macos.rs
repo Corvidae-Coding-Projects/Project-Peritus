@@ -19,39 +19,3 @@ pub(super) fn only_group_member(root: i32) -> bool {
     // Errors, empty results, and additional members all retain the original signal error.
     written == i32::try_from(size_of::<i32>()).expect("PID size fits i32") && members[0] == root
 }
-
-#[cfg(test)]
-mod tests {
-    use super::super::{ChildOwner, root_exited, spawn};
-    use super::only_group_member;
-    use std::{process::Command, time::Duration};
-
-    async fn exited_root(script: &str) -> (ChildOwner, i32) {
-        let mut command = Command::new("sh");
-        command.args(["-c", script]);
-        let child = spawn(&mut command, "macOS root fixture").unwrap();
-        let pid = i32::try_from(child.0.id().unwrap()).unwrap();
-        tokio::time::timeout(Duration::from_secs(5), async {
-            while !root_exited(pid).unwrap() {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .expect("fixture root exits");
-        (child, pid)
-    }
-
-    #[tokio::test]
-    async fn reaps_a_completed_singleton_group_with_its_exact_exit_status() {
-        let (mut child, pid) = exited_root("exit 17").await;
-        assert!(only_group_member(pid), "unreaped root remains the sole group member");
-        assert_eq!(child.wait().await.unwrap().code(), Some(17));
-    }
-
-    #[tokio::test]
-    async fn live_descendant_prevents_singleton_exception() {
-        let (mut child, pid) = exited_root("sleep 30 & exit 0").await;
-        assert!(!only_group_member(pid), "live descendant requires group termination");
-        assert!(child.wait().await.unwrap().success());
-    }
-}

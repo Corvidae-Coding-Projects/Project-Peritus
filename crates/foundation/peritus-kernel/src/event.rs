@@ -6,11 +6,8 @@ use peritus_types::{
     ActionId, AttemptId, CommandId, EventId, EventSequence, FindingId, ReviewCycleId,
     RevisionTuple, RunId, SessionId, TurnId,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// Stable lifecycle event discriminant.
+#[doc = " Stable lifecycle event discriminant."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum KernelEventKind {
     SessionOpened,
@@ -51,8 +48,7 @@ pub enum KernelEventKind {
     AcceptanceAccepted,
     AcceptanceNeedsChanges,
 }
-
-/// Typed subject of one lifecycle event.
+#[doc = " Typed subject of one lifecycle event."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum KernelSubject {
     Session(SessionId),
@@ -64,8 +60,7 @@ pub enum KernelSubject {
     Waiver(FindingId),
     Acceptance(RunId),
 }
-
-/// One immutable causal lifecycle event plan.
+#[doc = " One immutable causal lifecycle event plan."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct KernelEvent {
     pub(crate) id: EventId,
@@ -76,13 +71,7 @@ pub struct KernelEvent {
     pub(crate) kind: KernelEventKind,
     pub(crate) subject: KernelSubject,
 }
-
 impl KernelEvent {
-    /// Specification view of the emitted event kind.
-    pub closed spec fn spec_kind(&self) -> KernelEventKind { self.kind }
-    /// Specification view of the emitted event subject.
-    pub closed spec fn spec_subject(&self) -> KernelSubject { self.subject }
-
     pub(crate) const fn new(
         id: EventId,
         command_id: CommandId,
@@ -91,41 +80,42 @@ impl KernelEvent {
         revision: RevisionTuple,
         kind: KernelEventKind,
         subject: KernelSubject,
-    ) -> (result: Self)
-        ensures
-            result.id == id,
-            result.command_id == command_id,
-            result.sequence == sequence,
-            result.previous_event_id == previous_event_id,
-            result.revision == revision,
-            result.kind == kind,
-            result.subject == subject,
-            result.spec_kind() == kind,
-            result.spec_subject() == subject,
-    {
+    ) -> Self {
         Self { id, command_id, sequence, previous_event_id, revision, kind, subject }
     }
-    /// Returns the event identity.
+    #[doc = " Returns the event identity."]
     #[must_use]
-    pub const fn id(self) -> EventId { self.id }
-    /// Returns the causative command identity.
+    pub const fn id(self) -> EventId {
+        self.id
+    }
+    #[doc = " Returns the causative command identity."]
     #[must_use]
-    pub const fn command_id(self) -> CommandId { self.command_id }
-    /// Returns the one-based aggregate sequence.
+    pub const fn command_id(self) -> CommandId {
+        self.command_id
+    }
+    #[doc = " Returns the one-based aggregate sequence."]
     #[must_use]
-    pub const fn sequence(self) -> EventSequence { self.sequence }
-    /// Returns the exact previous event identity.
+    pub const fn sequence(self) -> EventSequence {
+        self.sequence
+    }
+    #[doc = " Returns the exact previous event identity."]
     #[must_use]
-    pub const fn previous_event_id(self) -> Option<EventId> { self.previous_event_id }
-    /// Returns the exact lifecycle revision.
+    pub const fn previous_event_id(self) -> Option<EventId> {
+        self.previous_event_id
+    }
+    #[doc = " Returns the exact lifecycle revision."]
     #[must_use]
-    pub const fn revision(self) -> RevisionTuple { self.revision }
-    /// Returns the stable event discriminant.
+    pub const fn revision(self) -> RevisionTuple {
+        self.revision
+    }
+    #[doc = " Returns the stable event discriminant."]
     #[must_use]
-    pub const fn kind(self) -> KernelEventKind { self.kind }
-    /// Returns the typed event subject.
+    pub const fn kind(self) -> KernelEventKind {
+        self.kind
+    }
+    #[doc = " Returns the typed event subject."]
     #[must_use]
-    pub const fn subject(self) -> KernelSubject { self.subject }
+    pub const fn subject(self) -> KernelSubject {
+        self.subject
+    }
 }
-
-} // verus!

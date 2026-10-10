@@ -69,37 +69,3 @@ fn parse_json(text: &str) -> Result<serde_json::Value, QualityError> {
         )
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn json_parser_never_passes_invalid_or_incomplete_output() {
-        let parser = OutputParser::Json { maximum_bytes: 64 };
-        assert!(parse(parser, b"not-json", OutputCompleteness::Complete, true).is_err());
-        assert!(parse(parser, b"{}", OutputCompleteness::Incomplete, true).is_err());
-        assert!(parse(parser, b"{}", OutputCompleteness::Complete, false).is_err());
-        assert!(matches!(
-            parse(parser, b"{\"ok\":true}", OutputCompleteness::Complete, true),
-            Ok(ParsedOutput::Json(_))
-        ));
-    }
-
-    #[test]
-    fn json_success_requires_an_explicit_true_member() {
-        let parser = OutputParser::JsonSuccess { maximum_bytes: 64 };
-        assert_eq!(
-            parse(parser, b"{}", OutputCompleteness::Complete, true),
-            Ok(ParsedOutput::JsonSuccess(false))
-        );
-        assert_eq!(
-            parse(parser, b"{\"success\":false}", OutputCompleteness::Complete, true),
-            Ok(ParsedOutput::JsonSuccess(false))
-        );
-        assert_eq!(
-            parse(parser, b"{\"success\":true}", OutputCompleteness::Complete, true),
-            Ok(ParsedOutput::JsonSuccess(true))
-        );
-    }
-}

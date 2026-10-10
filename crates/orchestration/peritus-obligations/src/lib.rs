@@ -36,8 +36,7 @@ pub use performance::{
 };
 pub use provenance::{ClauseProvenance, PublicClause, PublicTaskSource};
 pub use qualification::{EvidenceVerdict, QualificationReport, qualify};
-#[cfg(verus_only)]
-pub use qualification::{qualification_error, qualification_inputs_valid, qualification_satisfied};
+
 pub use requirement::{ObligationSpec, RequirementClass, RequirementEntry};
 pub use schema::{SchemaDirection, SchemaEvidence, SchemaField, SchemaRequirement};
 pub use verified::{

@@ -1,8 +1,5 @@
 //! Typed daemon-facing facade over the existing C4/C2 owned command lifecycle.
 
-#[cfg(test)]
-use std::time::Duration;
-
 use peritus_process::OutputStream;
 use serde_json::Value;
 
@@ -12,8 +9,6 @@ use crate::{
     PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState, ProductRunnerError,
     ProductRunnerErrorKind,
 };
-#[cfg(test)]
-use output::scan_stream;
 
 impl CommandRuntime {
     /// Starts one daemon-owned preview through the same C4/C2 authority, sandbox and process path
@@ -337,10 +332,3 @@ fn parse_observation(value: &Value) -> Result<PreviewObservation, ProductRunnerE
 fn preview_error(detail: impl Into<String>) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Apply, "manage preview process", detail)
 }
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-#[path = "preview_backlog.rs"]
-mod backlog;

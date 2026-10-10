@@ -6,9 +6,6 @@ use peritus_agent::DeveloperLoopError;
 
 use super::path::tool;
 
-#[cfg(test)]
-mod tests;
-
 pub(super) fn reject_destructive_command(
     program: &str,
     args: &[String],

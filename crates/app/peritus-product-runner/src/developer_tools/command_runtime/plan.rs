@@ -19,9 +19,6 @@ use serde_json::Value;
 use super::{identity::CommandIds, sandbox};
 use crate::developer_tools::wire::object;
 
-#[cfg(test)]
-mod tests;
-
 pub(super) const OUTPUT_BYTES: u64 = 8 * 1_024 * 1_024;
 pub(super) const MODEL_OUTPUT_BYTES: u32 = 16 * 1_024;
 const MEMORY_BYTES: u64 = 12 * 1_024 * 1_024 * 1_024;

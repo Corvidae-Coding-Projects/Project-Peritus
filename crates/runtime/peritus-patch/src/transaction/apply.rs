@@ -104,17 +104,6 @@ pub fn apply_patch_with_completion_and_cancellation(
     )
 }
 
-#[cfg(test)]
-pub(super) fn apply_with_faults(
-    workspace_root: &Path,
-    transaction_root: &Path,
-    plan: &PatchPlan,
-    faults: &dyn FaultInjector,
-) -> Result<AppliedPatch, PatchError> {
-    apply_with_completion(workspace_root, transaction_root, plan, faults, &|| false, |_| Ok(()))
-        .and_then(|applied| applied.ok_or_else(cancellation_error))
-}
-
 fn apply_with_completion(
     workspace_root: &Path,
     transaction_root: &Path,

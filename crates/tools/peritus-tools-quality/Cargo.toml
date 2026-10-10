@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = "README.md"
+readme = false
 
 [dependencies]
 peritus-artifact-store = { version = "=0.0.5", path = "../../state/peritus-artifact-store" }
@@ -25,17 +25,6 @@ peritus-workspace = { version = "=0.0.5", path = "../../runtime/peritus-workspac
 serde_json.workspace = true
 sha2.workspace = true
 toml.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
-
-[package.metadata.peritus]
-owner = "C4"
-layer = "tools"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

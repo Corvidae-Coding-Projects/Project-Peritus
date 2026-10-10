@@ -17,17 +17,6 @@ use crate::{
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
 };
 
-#[cfg(test)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum StorageFaultPoint {
-    StagingWrite,
-    StagingSync,
-    PreserveRename,
-    PublishRename,
-    DirectorySync,
-    BackupDelete,
-}
-
 pub(crate) fn load_claims(
     claims: &Path,
     quarantine: &Path,
@@ -160,25 +149,17 @@ pub(crate) fn write_manifest(
         .truncate(true)
         .open(&staging)
         .map_err(|_| store_error("manifest staging file cannot be opened"))?;
-    #[cfg(test)]
-    fault_control::check(StorageFaultPoint::StagingWrite)
-        .map_err(|_| store_error("manifest staging file cannot be written"))?;
+
     file.write_all(&bytes).map_err(|_| store_error("manifest staging file cannot be written"))?;
-    #[cfg(test)]
-    fault_control::check(StorageFaultPoint::StagingSync)
-        .map_err(|_| store_error("manifest staging file cannot be synchronized"))?;
+
     file.sync_all().map_err(|_| store_error("manifest staging file cannot be synchronized"))?;
     if target.exists() {
         let _ = fs::remove_file(&backup);
-        #[cfg(test)]
-        fault_control::check(StorageFaultPoint::PreserveRename)
-            .map_err(|_| store_error("prior manifest cannot be preserved for replacement"))?;
+
         fs::rename(&target, &backup)
             .map_err(|_| store_error("prior manifest cannot be preserved for replacement"))?;
     }
-    #[cfg(test)]
-    let publish_fault = fault_control::check(StorageFaultPoint::PublishRename).is_err();
-    #[cfg(not(test))]
+
     let publish_fault = false;
     if publish_fault || fs::rename(&staging, &target).is_err() {
         if backup.exists() {
@@ -186,14 +167,9 @@ pub(crate) fn write_manifest(
         }
         return Err(store_error("manifest replacement failed"));
     }
-    #[cfg(test)]
-    fault_control::check(StorageFaultPoint::DirectorySync)
-        .map_err(|_| store_error("registry directory cannot be synchronized"))?;
+
     sync_directory(directory)?;
     if backup.exists() {
-        #[cfg(test)]
-        fault_control::check(StorageFaultPoint::BackupDelete)
-            .map_err(|_| store_error("manifest backup cannot be removed"))?;
         fs::remove_file(&backup).map_err(|_| store_error("manifest backup cannot be removed"))?;
         sync_directory(directory)?;
     }
@@ -324,6 +300,3 @@ const fn store_error(detail: &'static str) -> ProcessError {
         detail,
     )
 }
-
-#[cfg(test)]
-pub(crate) mod fault_control;

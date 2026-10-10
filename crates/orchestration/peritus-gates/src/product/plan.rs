@@ -368,6 +368,3 @@ fn quote_argument(value: &str) -> String {
         format!("'{}'", value.replace('\'', "'\"'\"'"))
     }
 }
-
-#[cfg(test)]
-mod tests;

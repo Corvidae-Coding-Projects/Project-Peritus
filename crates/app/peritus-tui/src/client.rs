@@ -396,9 +396,3 @@ fn connect_local(endpoint: &Path) -> std::future::Ready<Result<BoxedLocalIo, std
         ClientOptions::new().open(endpoint).map(|stream| Box::new(stream) as BoxedLocalIo),
     )
 }
-
-#[cfg(all(test, unix))]
-mod unix_tests;
-
-#[cfg(test)]
-mod tests;

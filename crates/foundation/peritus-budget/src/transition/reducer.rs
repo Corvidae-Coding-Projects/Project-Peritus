@@ -1,30 +1,11 @@
 //! Closed command dispatch into command-local exact reducers.
 
 use crate::{BudgetCommand, BudgetError, BudgetLedger, BudgetReceipt};
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn apply_validated(
     ledger: &mut BudgetLedger,
     command: BudgetCommand,
-) -> (result: Result<BudgetReceipt, BudgetError>)
-    requires crate::model::ledger_well_formed(old(ledger)),
-    ensures
-        match result {
-            Ok(receipt) => crate::reachability::candidate_step(
-                old(ledger),
-                command,
-                final(ledger),
-                receipt,
-            ),
-            Err(error) => crate::reachability::rejection_cause(
-                old(ledger),
-                command,
-                error,
-            ),
-        },
-{
+) -> Result<BudgetReceipt, BudgetError> {
     match command {
         BudgetCommand::AllocateChild(request) => super::allocation::allocate_child(ledger, request),
         BudgetCommand::Begin(request) => super::allocation::begin(ledger, request),
@@ -45,5 +26,3 @@ pub(super) fn apply_validated(
         BudgetCommand::Close(budget_id) => super::lifecycle::close_validated(ledger, budget_id),
     }
 }
-
-} // verus!

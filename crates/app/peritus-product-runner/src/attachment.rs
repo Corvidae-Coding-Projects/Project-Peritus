@@ -6,8 +6,6 @@
 mod decode;
 mod text;
 pub use text::ValidatedFileText;
-#[cfg(test)]
-mod tests;
 
 use peritus_model_protocol::{
     Capability, MediaInput, MediaKind, MediaType, ProtocolLimits, ProviderProfile,

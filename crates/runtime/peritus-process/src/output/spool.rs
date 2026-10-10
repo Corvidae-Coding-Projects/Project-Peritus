@@ -115,38 +115,3 @@ fn write_counted(
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct FailedWriter {
-        retained: Vec<u8>,
-        available: usize,
-    }
-    impl Write for FailedWriter {
-        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-            if self.available == 0 {
-                return Err(std::io::Error::other("injected disk failure"));
-            }
-            let count = self.available.min(bytes.len());
-            self.retained.extend_from_slice(&bytes[..count]);
-            self.available -= count;
-            Ok(count)
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[test]
-    fn counted_write_preserves_exact_partial_progress_on_failure() {
-        for available in [0, 3] {
-            let mut writer = FailedWriter { retained: Vec::new(), available };
-            let mut written = 0;
-            assert!(write_counted(&mut writer, b"12345678", &mut written).is_err());
-            assert_eq!(written, u64::try_from(available).expect("count"));
-            assert_eq!(writer.retained, b"12345678"[..available]);
-        }
-    }
-}

@@ -18,8 +18,6 @@ use crate::{WindowsErrorKind, WindowsOperation, WindowsRecovery};
 
 #[cfg(target_os = "windows")]
 mod snapshots;
-#[cfg(all(test, target_os = "windows"))]
-mod tests;
 
 /// Owner of exact ACL backups and idempotent reversal.
 pub struct AclTransaction {

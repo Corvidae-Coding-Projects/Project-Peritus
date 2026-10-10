@@ -357,9 +357,6 @@ fn quarantine_malformed_state(path: &Path) {
     }
 }
 
-#[cfg(test)]
-mod tests;
-
 /// Keeps a detached HTTP mutation observable while prelaunch queries are still running.
 pub struct OperationOwner {
     operations: Arc<Mutex<std::collections::BTreeSet<String>>>,

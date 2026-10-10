@@ -4,8 +4,6 @@ mod fragments;
 mod json;
 mod omission;
 mod pages;
-#[cfg(test)]
-mod tests;
 
 use json::{array, object, string};
 

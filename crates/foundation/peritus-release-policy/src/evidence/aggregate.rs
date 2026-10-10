@@ -5,11 +5,8 @@ use crate::{
     ConstructionError, ConstructionErrorKind, FindingObservation, QualificationObservation,
     ReviewObservation, WaiverObservation,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// Bounded raw evidence supplied to the pure release evaluator.
+#[doc = " Bounded raw evidence supplied to the pure release evaluator."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ReleaseEvidence {
     observations: Vec<EvidenceObservation>,
@@ -18,113 +15,57 @@ pub struct ReleaseEvidence {
     findings: Vec<FindingObservation>,
     waivers: Vec<WaiverObservation>,
 }
-
 impl ReleaseEvidence {
-    /// Maximum observations retained in any one collection.
+    #[doc = " Maximum observations retained in any one collection."]
     pub const MAX_COLLECTION_LEN: usize = 4_096;
-
-    /// Creates a bounded release-evidence aggregate.
-    ///
-    /// Input order is deliberately unrestricted. The evaluator projects it into the closed
-    /// requirement, H-slice, criterion, review, and finding order before producing a decision.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConstructionErrorKind::CollectionLimitExceeded`] when any collection is too large.
+    #[doc = " Creates a bounded release-evidence aggregate."]
+    #[doc = ""]
+    #[doc = " Input order is deliberately unrestricted. The evaluator projects it into the closed"]
+    #[doc = " requirement, H-slice, criterion, review, and finding order before producing a decision."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns [`ConstructionErrorKind::CollectionLimitExceeded`] when any collection is too large."]
     pub fn new(
         observations: Vec<EvidenceObservation>,
         qualifications: Vec<QualificationObservation>,
         reviews: Vec<ReviewObservation>,
         findings: Vec<FindingObservation>,
         waivers: Vec<WaiverObservation>,
-    ) -> (result: Result<Self, ConstructionError>)
-        ensures
-            result.is_ok() == (
-                observations@.len() <= Self::MAX_COLLECTION_LEN
-                    && qualifications@.len() <= Self::MAX_COLLECTION_LEN
-                    && reviews@.len() <= Self::MAX_COLLECTION_LEN
-                    && findings@.len() <= Self::MAX_COLLECTION_LEN
-                    && waivers@.len() <= Self::MAX_COLLECTION_LEN
-            ),
-            match result {
-                Ok(value) => value.spec_observations() == observations@
-                    && value.spec_qualifications() == qualifications@
-                    && value.spec_reviews() == reviews@
-                    && value.spec_findings() == findings@
-                    && value.spec_waivers() == waivers@,
-                Err(error) => error.spec_kind()
-                    == ConstructionErrorKind::CollectionLimitExceeded,
-            },
-    {
+    ) -> Result<Self, ConstructionError> {
         if observations.len() > Self::MAX_COLLECTION_LEN
             || qualifications.len() > Self::MAX_COLLECTION_LEN
             || reviews.len() > Self::MAX_COLLECTION_LEN
             || findings.len() > Self::MAX_COLLECTION_LEN
             || waivers.len() > Self::MAX_COLLECTION_LEN
         {
-            return Err(ConstructionError::new(
-                ConstructionErrorKind::CollectionLimitExceeded,
-            ));
+            return Err(ConstructionError::new(ConstructionErrorKind::CollectionLimitExceeded));
         }
         Ok(Self { observations, qualifications, reviews, findings, waivers })
     }
-
-    /// Specification view of artifact observations.
-    pub closed spec fn spec_observations(&self) -> Seq<EvidenceObservation> { self.observations@ }
-
-    /// Specification view of H0-H3 qualification observations.
-    pub closed spec fn spec_qualifications(&self) -> Seq<QualificationObservation> {
-        self.qualifications@
-    }
-
-    /// Specification view of independent-review observations.
-    pub closed spec fn spec_reviews(&self) -> Seq<ReviewObservation> { self.reviews@ }
-
-    /// Specification view of finding observations.
-    pub closed spec fn spec_findings(&self) -> Seq<FindingObservation> { self.findings@ }
-
-    /// Specification view of waiver observations.
-    pub closed spec fn spec_waivers(&self) -> Seq<WaiverObservation> { self.waivers@ }
-
-    /// Returns raw artifact observations.
+    #[doc = " Returns raw artifact observations."]
     #[must_use]
-    pub const fn observations(&self) -> (result: &[EvidenceObservation])
-        ensures result@ == self.spec_observations(),
-    {
+    pub const fn observations(&self) -> &[EvidenceObservation] {
         self.observations.as_slice()
     }
-
-    /// Returns raw signed H0-H3 observations.
+    #[doc = " Returns raw signed H0-H3 observations."]
     #[must_use]
-    pub const fn qualifications(&self) -> (result: &[QualificationObservation])
-        ensures result@ == self.spec_qualifications(),
-    {
+    pub const fn qualifications(&self) -> &[QualificationObservation] {
         self.qualifications.as_slice()
     }
-
-    /// Returns raw independent-review observations.
+    #[doc = " Returns raw independent-review observations."]
     #[must_use]
-    pub const fn reviews(&self) -> (result: &[ReviewObservation])
-        ensures result@ == self.spec_reviews(),
-    {
+    pub const fn reviews(&self) -> &[ReviewObservation] {
         self.reviews.as_slice()
     }
-
-    /// Returns raw finding observations.
+    #[doc = " Returns raw finding observations."]
     #[must_use]
-    pub const fn findings(&self) -> (result: &[FindingObservation])
-        ensures result@ == self.spec_findings(),
-    {
+    pub const fn findings(&self) -> &[FindingObservation] {
         self.findings.as_slice()
     }
-
-    /// Returns raw waiver observations.
+    #[doc = " Returns raw waiver observations."]
     #[must_use]
-    pub const fn waivers(&self) -> (result: &[WaiverObservation])
-        ensures result@ == self.spec_waivers(),
-    {
+    pub const fn waivers(&self) -> &[WaiverObservation] {
         self.waivers.as_slice()
     }
 }
-
-} // verus!

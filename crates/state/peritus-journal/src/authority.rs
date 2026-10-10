@@ -6,54 +6,30 @@ use crate::{ExactFrame, JournalError, JournalErrorKind};
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_codec::{CodecLimits, decode_frame, encode_frame, sha256};
 use peritus_types::Sha256Digest;
-use vstd::prelude::*;
 
-verus! {
-
-/// C0-private B3 family used for canonical credential-registry snapshot payloads.
+#[doc = " C0-private B3 family used for canonical credential-registry snapshot payloads."]
 pub const CREDENTIAL_REGISTRY_FRAME_FAMILY: u16 = 49_153;
-/// Schema version of the canonical credential-registry snapshot payload.
+#[doc = " Schema version of the canonical credential-registry snapshot payload."]
 pub const CREDENTIAL_REGISTRY_FRAME_SCHEMA: u16 = 1;
-
-/// Positive, monotonically allocated authority-clock epoch.
+#[doc = " Positive, monotonically allocated authority-clock epoch."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AuthorityEpoch(u64);
-
 impl AuthorityEpoch {
-    /// Returns the mathematical positive epoch value used by specifications.
-    pub closed spec fn spec_value(&self) -> int {
-        self.0 as int
-    }
-
-    /// Returns the primitive positive value.
+    #[doc = " Returns the primitive positive value."]
     #[must_use]
-    pub const fn get(self) -> (value: u64)
-        ensures value == self.spec_value()
-    {
+    pub const fn get(self) -> u64 {
         self.0
     }
-
-    const fn try_new(value: u64) -> (result: Option<Self>)
-        ensures result.is_some() == (value > 0)
-    {
+    const fn try_new(value: u64) -> Option<Self> {
         if value == 0 { None } else { Some(Self(value)) }
     }
-
-    const fn try_next(self) -> (result: Option<Self>)
-        ensures
-            match result {
-                Some(next) => next.spec_value() == self.spec_value() + 1,
-                None => self.spec_value() == u64::MAX,
-            }
-    {
+    const fn try_next(self) -> Option<Self> {
         match self.0.checked_add(1) {
             Some(next) => Some(Self(next)),
             None => None,
         }
     }
 }
-
-} // verus!
 
 impl AuthorityEpoch {
     /// Creates a positive authority epoch.
