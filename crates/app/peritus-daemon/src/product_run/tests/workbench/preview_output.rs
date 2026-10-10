@@ -5,16 +5,16 @@ use peritus_app_protocol::{
     WorkbenchPreviewOutputStream, WorkbenchPreviewSnapshot, WorkbenchResultQuery,
 };
 mod evidence;
+mod polling;
 mod terminal;
 
 #[test]
 #[ignore = "owned subprocess fixture"]
 fn preview_prompt_fixture() {
-    use std::io::{BufRead as _, Write as _};
+    use std::io::BufRead as _;
     println!("EARLY_SIGNAL");
     println!("{}", "x".repeat(200 * 1024));
-    println!("NAME? ");
-    std::io::stdout().flush().expect("prompt");
+    polling::split_prompt();
     let name = std::io::stdin().lock().lines().next().expect("input").expect("line");
     println!("HELLO {name}");
     eprintln!("GOODBYE diagnostic");
@@ -102,12 +102,12 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         let live = wait_for_output(&running, result_query, "NAME?", false).await;
         assert!(!live.outputs()[0].stdout().contains("EARLY_SIGNAL"));
         assert_eq!(live.result().launches()[0].state(), WorkbenchLaunchState::Running);
-        let revision = live.result().result_revision();
-        tokio::time::sleep(Duration::from_millis(30)).await;
+        let live = polling::release_and_wait(&running, result_query, &live).await;
         assert_eq!(
-            observe(&running, result_query).result().result_revision(),
-            revision,
-            "unchanged polling must not mutate result state"
+            peritus_product_runner::ProductRunner::candidate_digest(repository.path())
+                .expect("digest after removing the fixture release file"),
+            live.result().launches()[0].profile().source().digest(),
+            "fixture synchronization must leave the candidate unchanged"
         );
         let live_check = command(
             workspace,
@@ -144,6 +144,7 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         ));
         let terminal = wait_for_output(&running, result_query, "GOODBYE diagnostic", true).await;
         assert!(terminal.outputs()[0].stdout().contains("HELLO Ada"));
+        polling::assert_settled(&running, result_query, &terminal).await;
         terminal_attachment.finish().await;
         running.shutdown(Duration::from_secs(5)).await;
         drop(running);
