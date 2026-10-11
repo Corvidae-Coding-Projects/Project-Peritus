@@ -74,11 +74,18 @@ impl<'a> Reader<'a> {
         }
     }
 
-    pub(super) fn string(&mut self, limit: usize) -> Result<String, ProcessError> {
+    pub(super) fn string_u16(&mut self) -> Result<String, ProcessError> {
         let length = usize::from(self.u16()?);
-        if length > limit {
-            return Err(corrupt("manifest string exceeds its bound"));
-        }
+        self.read_string(length)
+    }
+
+    pub(super) fn string_u64(&mut self) -> Result<String, ProcessError> {
+        let length = usize::try_from(self.u64()?)
+            .map_err(|_| corrupt("manifest string length is not representable"))?;
+        self.read_string(length)
+    }
+
+    fn read_string(&mut self, length: usize) -> Result<String, ProcessError> {
         let end = self
             .offset
             .checked_add(length)

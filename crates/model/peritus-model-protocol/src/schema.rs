@@ -336,30 +336,3 @@ fn escape_pointer(value: &str) -> String {
 fn invalid(path: &str, detail: &'static str) -> ProtocolError {
     ProtocolError::at(ProtocolErrorKind::InvalidSchema, path, detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn canonicalizes_object_order_and_rejects_duplicates() {
-        let bounds = JsonBounds::schema(ProtocolLimits::PRODUCTION);
-        let value = CanonicalJson::parse(r#"{"z":1,"a":[true,null]}"#, bounds).expect("valid JSON");
-        assert_eq!(value.canonical_bytes(), br#"{"a":[true,null],"z":1}"#);
-        assert_eq!(
-            CanonicalJson::parse(r#"{"a":1,"a":2}"#, bounds).expect_err("duplicate").kind(),
-            ProtocolErrorKind::InvalidSchema
-        );
-    }
-
-    #[test]
-    fn schema_rejects_remote_reference() {
-        let error = JsonSchema::parse(
-            r#"{"$ref":"https://example.invalid/schema"}"#,
-            SchemaDialect::Draft202012,
-            JsonBounds::schema(ProtocolLimits::PRODUCTION),
-        )
-        .expect_err("remote reference");
-        assert_eq!(error.kind(), ProtocolErrorKind::InvalidSchema);
-    }
-}

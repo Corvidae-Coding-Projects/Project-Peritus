@@ -6,22 +6,17 @@
 #![allow(missing_docs)]
 
 use crate::{AuthorizationDenial, CapabilityIssuancePlan, EscalationChallenge};
-use vstd::prelude::*;
 
-verus! {
-
-/// Exact exhaustive result of evaluating one complete authorization request.
-///
-/// Every authority-bearing payload remains move-only. Exhaustive matching makes the security
-/// outcome explicit without permitting callers to construct an unchecked payload.
+#[doc = " Exact exhaustive result of evaluating one complete authorization request."]
+#[doc = ""]
+#[doc = " Every authority-bearing payload remains move-only. Exhaustive matching makes the security"]
+#[doc = " outcome explicit without permitting callers to construct an unchecked payload."]
 #[derive(Debug, Eq, PartialEq)]
 pub enum PolicyDecision {
-    /// The whole effective scope may proceed to logical capability issuance.
+    #[doc = " The whole effective scope may proceed to logical capability issuance."]
     Authorized(CapabilityIssuancePlan),
-    /// The whole effective scope requires one conjunction-satisfying approval.
+    #[doc = " The whole effective scope requires one conjunction-satisfying approval."]
     ApprovalRequired(EscalationChallenge),
-    /// The whole request was denied; no authorized subset exists.
+    #[doc = " The whole request was denied; no authorized subset exists."]
     Denied(AuthorizationDenial),
 }
-
-} // verus!

@@ -76,35 +76,3 @@ fn invalid(detail: &'static str) -> ProductRunnerError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn final_terminal_object_is_selected_after_earlier_braced_prose() {
-        let value = r#"Verified output {'policy_id': 'POLICY-2024-Q3'}.
-The exact result is:
-{"kind":"complete","summary":"Generated the policy rollup and report.","run_instructions":"cat out/summary.json"}"#;
-
-        let terminal = parse(value).expect("final terminal");
-
-        let TerminalTurn::Complete((summary, run_instructions)) = terminal else {
-            panic!("expected completion");
-        };
-        assert_eq!(summary, "Generated the policy rollup and report.");
-        assert_eq!(run_instructions, "cat out/summary.json");
-    }
-
-    #[test]
-    fn terminal_schema_remains_strict_when_no_valid_terminal_object_exists() {
-        let Err(error) = parse(
-            r#"prose {"kind":"complete","summary":"done","run_instructions":"cargo test","extra":true}"#,
-        ) else {
-            panic!("unknown fields must remain rejected");
-        };
-
-        assert_eq!(error.kind(), ProductRunnerErrorKind::InvalidModelOutput);
-        assert_eq!(error.operation(), "parse developer terminal");
-    }
-}

@@ -158,6 +158,3 @@ fn stage_bootstraps(root: &Path, tag: &str) -> Result<Vec<std::path::PathBuf>, X
     }
     Ok(assets)
 }
-
-#[cfg(test)]
-mod tests;

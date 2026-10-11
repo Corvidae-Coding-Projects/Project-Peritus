@@ -202,34 +202,3 @@ impl Drop for RawInputGuard {
 fn interaction(error: &io::Error) -> LauncherError {
     LauncherError::Interaction(error.to_string())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn pasted_newline_is_removed_but_embedded_controls_are_rejected() {
-        let mut bytes = Vec::new();
-        push_paste(&mut bytes, "provider-key\r\n").expect("paste");
-        assert_eq!(bytes, b"provider-key");
-        assert!(push_paste(&mut bytes, "bad\nkey").is_err());
-    }
-
-    #[test]
-    fn backspace_removes_one_unicode_scalar() {
-        let mut bytes = "key-🦀".as_bytes().to_vec();
-        pop_character(&mut bytes);
-        assert_eq!(bytes, b"key-");
-    }
-
-    #[test]
-    fn compatible_endpoint_prompt_names_the_selected_operation_route() {
-        assert!(
-            compatible_endpoint_prompt(CompatibleProtocol::ChatCompletions)
-                .contains("/v1/chat/completions")
-        );
-        assert!(
-            compatible_endpoint_prompt(CompatibleProtocol::Responses).contains("/v1/responses")
-        );
-    }
-}

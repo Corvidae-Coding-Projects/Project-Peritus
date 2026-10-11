@@ -215,21 +215,3 @@ fn valid_identifiers(value: &str, forbid_numeric_leading_zero: bool) -> bool {
                     || valid_numeric(identifier))
         })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{CandidateCommit, ReleaseVersion};
-
-    #[test]
-    fn commit_requires_full_lowercase_identity() {
-        assert!(CandidateCommit::new("a".repeat(40)).is_ok());
-        assert!(CandidateCommit::new("A".repeat(40)).is_err());
-        assert!(CandidateCommit::new("abc123").is_err());
-    }
-
-    #[test]
-    fn version_rejects_leading_zero() {
-        assert!(ReleaseVersion::new("1.0.0-rc.1+build.7").is_ok());
-        assert!(ReleaseVersion::new("01.0.0").is_err());
-    }
-}

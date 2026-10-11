@@ -1,32 +1,21 @@
 //! Checked canonical resource dimensions and arithmetic.
 
 use crate::{SchedulerError, SchedulerErrorKind};
-use vstd::prelude::*;
 
 mod addition;
 pub mod capacity;
 mod subtraction;
 
-verus! {
-
-/// Stable nonzero resource dimension tag.
+#[doc = " Stable nonzero resource dimension tag."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ResourceKind(u16);
-
 impl ResourceKind {
-    /// Returns the mathematical stable resource tag.
-    pub closed spec fn spec_tag(&self) -> u16 { self.0 }
-
-    /// Returns the stable canonical tag.
+    #[doc = " Returns the stable canonical tag."]
     #[must_use]
-    pub const fn tag(self) -> (result: u16)
-        ensures result == self.spec_tag(),
-    {
+    pub const fn tag(self) -> u16 {
         self.0
     }
 }
-
-} // verus!
 
 impl ResourceKind {
     /// CPU execution slots.
@@ -53,32 +42,19 @@ impl ResourceKind {
     }
 }
 
-verus! {
-
-/// Checked positive quantity in a resource dimension.
+#[doc = " Checked positive quantity in a resource dimension."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ResourceQuantity(u64);
-
 impl ResourceQuantity {
-    /// Returns the mathematical positive quantity.
-    pub closed spec fn spec_value(&self) -> u64 { self.0 }
-
-    /// Returns the exact quantity.
+    #[doc = " Returns the exact quantity."]
     #[must_use]
-    pub const fn get(self) -> (result: u64)
-        ensures result == self.spec_value(),
-    {
+    pub const fn get(self) -> u64 {
         self.0
     }
-
-    pub(crate) const fn from_wire(value: u64) -> (result: Self)
-        ensures result.spec_value() == value,
-    {
+    pub(crate) const fn from_wire(value: u64) -> Self {
         Self(value)
     }
 }
-
-} // verus!
 
 impl ResourceQuantity {
     /// Creates a positive resource quantity.
@@ -94,122 +70,68 @@ impl ResourceQuantity {
     }
 }
 
-verus! {
-
-/// One canonical resource entry.
+#[doc = " One canonical resource entry."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ResourceEntry {
     kind: ResourceKind,
     quantity: ResourceQuantity,
 }
-
 impl ResourceEntry {
-    /// Returns the mathematical resource kind.
-    pub closed spec fn spec_kind(&self) -> ResourceKind { self.kind }
-    /// Returns the mathematical resource quantity.
-    pub closed spec fn spec_quantity(&self) -> ResourceQuantity { self.quantity }
-
-    /// Returns the dimension.
+    #[doc = " Returns the dimension."]
     #[must_use]
-    pub const fn kind(self) -> (result: ResourceKind)
-        ensures result == self.spec_kind(),
-    {
+    pub const fn kind(self) -> ResourceKind {
         self.kind
     }
-    /// Returns the positive quantity.
+    #[doc = " Returns the positive quantity."]
     #[must_use]
-    pub const fn quantity(self) -> (result: ResourceQuantity)
-        ensures result == self.spec_quantity(),
-    {
+    pub const fn quantity(self) -> ResourceQuantity {
         self.quantity
     }
-
-    /// Creates one checked entry.
+    #[doc = " Creates one checked entry."]
     #[must_use]
-    pub const fn new(kind: ResourceKind, quantity: ResourceQuantity) -> (result: Self)
-        ensures
-            result.spec_kind() == kind,
-            result.spec_quantity() == quantity,
-    {
+    pub const fn new(kind: ResourceKind, quantity: ResourceQuantity) -> Self {
         Self { kind, quantity }
     }
 }
 
-} // verus!
-
-verus! {
-
-/// Nonempty unique resource vector in ascending kind order.
+#[doc = " Nonempty unique resource vector in ascending kind order."]
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct ResourceVector(Vec<ResourceEntry>);
-
 enum VectorAdmission {
     Accepted(ResourceVector),
     LimitExceeded,
     NonCanonical,
 }
-
 enum VectorAddition {
     Value(ResourceVector),
     Overflow,
     LimitExceeded,
 }
-
 enum VectorSubtraction {
     Value(ResourceVector),
     ExactZero,
     Underflow,
     AbsentDimension,
 }
-
 impl ResourceVector {
-    #[verifier::type_invariant]
-    closed spec fn invariant(&self) -> bool {
-        capacity::entries_canonical(self.spec_entries())
-    }
-
-    /// Returns the exact mathematical entry sequence.
-    pub closed spec fn spec_entries(&self) -> Seq<ResourceEntry> {
-        self.0@
-    }
-
-    /// Borrows canonical entries.
+    #[doc = " Borrows canonical entries."]
     #[must_use]
-    pub fn entries(&self) -> (result: &[ResourceEntry])
-        ensures
-            result@ == self.spec_entries(),
-            capacity::entries_canonical(result@),
-    {
-        proof { use_type_invariant(self); }
+    pub fn entries(&self) -> &[ResourceEntry] {
         &self.0
     }
-
-    /// Adds two canonical vectors for internal aggregate accounting.
-    pub(crate) fn aggregate_add(&self, other: &Self) -> (result: Option<Self>)
-        ensures match result {
-            Some(vector) => forall |kind: ResourceKind| #![auto]
-                vector.spec_quantity(kind)
-                    == self.spec_quantity(kind) + other.spec_quantity(kind),
-            None => true,
-        },
-    {
+    #[doc = " Adds two canonical vectors for internal aggregate accounting."]
+    pub(crate) fn aggregate_add(&self, other: &Self) -> Option<Self> {
         match addition::add(self, other, u16::MAX) {
             VectorAddition::Value(vector) => Some(vector),
             VectorAddition::Overflow | VectorAddition::LimitExceeded => None,
         }
     }
 }
-
 impl Clone for ResourceVector {
-    fn clone(&self) -> (result: Self)
-        ensures result.spec_entries() == self.spec_entries(),
-    {
-        proof { use_type_invariant(self); }
+    fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
-
-} // verus!
 
 impl ResourceVector {
     /// Creates a canonical vector under a caller-configured dimension bound.

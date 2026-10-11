@@ -7,23 +7,15 @@ use peritus_types::{
     ActorId, AttemptId, EnvironmentId, ProviderProfileId, RevisionNumber, RevisionTuple, SessionId,
     Sha256Digest, TurnId,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// Bounded secret-safe text retained in state and errors.
+#[doc = " Bounded secret-safe text retained in state and errors."]
 #[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SafeText(String);
-
 impl Clone for SafeText {
-    fn clone(&self) -> (result: Self)
-        ensures result == *self,
-    {
+    fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
-
-} // verus!
 
 impl SafeText {
     pub const MAX_BYTES: usize = 16_384;
@@ -90,13 +82,9 @@ impl ProfileRevision {
     }
 }
 
-verus! {
-
-/// Nonzero digest projection of a provider call identity.
+#[doc = " Nonzero digest projection of a provider call identity."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ModelCallId(Sha256Digest);
-
-} // verus!
 
 impl ModelCallId {
     /// Creates an opaque nonzero model-call digest.
@@ -123,13 +111,9 @@ impl ModelCallId {
     }
 }
 
-verus! {
-
-/// Zero-based canonical tool-call ordinal.
+#[doc = " Zero-based canonical tool-call ordinal."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ToolOrdinal(u16);
-
-} // verus!
 
 impl ToolOrdinal {
     #[must_use]

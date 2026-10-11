@@ -1,5 +1,7 @@
 # peritus-conformance
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-conformance` is Peritus's runtime-neutral conformance harness. It supplies typed suite,
 case, subject-factory, failure, observation, and report contracts without defining any production
 provider, tool, journal, process, sandbox, plugin, protocol, or replay implementation.

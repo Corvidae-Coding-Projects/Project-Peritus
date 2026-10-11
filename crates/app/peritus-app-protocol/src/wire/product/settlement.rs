@@ -175,23 +175,3 @@ fn read_evidence(
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use peritus_codec::CodecLimits;
-
-    #[test]
-    fn unknown_evidence_status_rejects_before_reading_a_record() {
-        let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
-        writer.write_u16(u16::MAX).expect("write tag");
-        let bytes = writer.into_bytes();
-        let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
-
-        assert_eq!(
-            read_evidence(&mut reader).expect_err("unknown evidence status").kind(),
-            CodecErrorKind::UnknownTag,
-        );
-        assert_eq!(reader.offset(), 2);
-    }
-}

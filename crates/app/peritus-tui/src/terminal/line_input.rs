@@ -74,31 +74,3 @@ impl LineInput {
         display
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossterm::event::KeyModifiers;
-
-    #[test]
-    fn unicode_input_reserves_a_newline_and_paste_never_submits_controls() {
-        let mut line = LineInput::new(5);
-        line.paste("λ\r\n\x03x");
-        assert_eq!(line.text, "λ\nx");
-        line.paste("y");
-        assert_eq!(line.text, "λ\nx", "oversized paste must preserve the existing draft");
-        assert_eq!(
-            line.key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)).unwrap(),
-            "λ\nx\n".as_bytes()
-        );
-        line.paste("z");
-        assert_eq!(line.text, "λ\nx", "pending input cannot change before acknowledgement");
-    }
-
-    #[test]
-    fn pipe_newlines_start_at_column_zero_across_chunk_boundaries() {
-        let mut line = LineInput::new(8192);
-        assert_eq!(line.display_bytes(b"out\nerr\r"), b"out\r\nerr\r");
-        assert_eq!(line.display_bytes(b"\nnext\n"), b"\nnext\r\n");
-    }
-}

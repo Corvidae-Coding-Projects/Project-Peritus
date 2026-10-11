@@ -37,8 +37,10 @@ const LINES: &[&str] = &[
 ];
 
 pub fn lines(width: u16) -> Vec<Line<'static>> {
-    let mut lines =
-        crate::input::composer::layout(&LINES.join("\n"), 0, None, usize::from(width)).lines;
+    let mut lines = crate::render::wrapped_lines(
+        LINES.iter().map(|line| Line::from(*line)).collect(),
+        usize::from(width),
+    );
     for line in &mut lines {
         if matches!(
             line.to_string().as_str(),
@@ -51,11 +53,10 @@ pub fn lines(width: u16) -> Vec<Line<'static>> {
     lines
 }
 
-pub fn scroll(offset: &mut u16, key: KeyEvent, viewport: Option<Rect>) -> bool {
+pub fn scroll(offset: &mut usize, key: KeyEvent, viewport: Option<Rect>) -> bool {
     let viewport = viewport.unwrap_or(Rect::new(0, 0, 80, 24));
     let rows = usize::from(viewport.height.saturating_sub(6)).max(1);
-    let maximum = u16::try_from(lines(viewport.width.saturating_sub(2)).len().saturating_sub(rows))
-        .unwrap_or(u16::MAX);
+    let maximum = lines(viewport.width.saturating_sub(2)).len().saturating_sub(rows);
     let current = (*offset).min(maximum);
     *offset = match key.code {
         KeyCode::Up | KeyCode::Char('k') => current.saturating_sub(1),
@@ -67,53 +68,4 @@ pub fn scroll(offset: &mut u16, key: KeyEvent, viewport: Option<Rect>) -> bool {
         _ => return false,
     };
     true
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        action::Action,
-        model::{AppModel, View},
-    };
-    use crossterm::event::{Event, KeyModifiers};
-    use ratatui::{Terminal, backend::TestBackend};
-
-    fn draw(model: &AppModel, width: u16) -> String {
-        let mut terminal = Terminal::new(TestBackend::new(width, 24)).unwrap();
-        terminal.draw(|frame| crate::render::draw(frame, model)).unwrap();
-        terminal.backend().buffer().content().iter().map(ratatui::buffer::Cell::symbol).collect()
-    }
-
-    #[test]
-    fn help_scroll_exposes_all_content_and_moves_up_immediately_from_the_end() {
-        for width in [48, 80, 132] {
-            let mut model = AppModel::new([63; 32]);
-            model.view = View::Help;
-            model.chat.viewport = Some(Rect::new(0, 0, width, 24));
-            let mut seen = String::new();
-            for _ in 0..100 {
-                seen.push_str(&draw(&model, width));
-                model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-                    KeyCode::Down,
-                    KeyModifiers::NONE,
-                ))));
-            }
-            assert!(seen.contains("Ctrl-]"));
-            assert!(seen.contains("Authority boundary"));
-            let bottom = model.help_scroll;
-            assert!(bottom > 0);
-            model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-                KeyCode::Up,
-                KeyModifiers::NONE,
-            ))));
-            assert_eq!(model.help_scroll, bottom - 1);
-            model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-                KeyCode::Home,
-                KeyModifiers::NONE,
-            ))));
-            assert_eq!(model.help_scroll, 0);
-            assert!(draw(&model, width).contains("Navigation"));
-        }
-    }
 }

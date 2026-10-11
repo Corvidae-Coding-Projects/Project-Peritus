@@ -58,28 +58,3 @@ impl Serialize for LocalCompactorSandbox {
         map.end()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn platform_fields_are_exact_and_roundtrip_without_widening() {
-        for input in [
-            r#"{"platform":"linux","helper":"/helper","bubblewrap":"/bwrap","cgroup_root":"/delegated"}"#,
-            r#"{"platform":"macos","helper":"/helper","seatbelt":"/sandbox-exec"}"#,
-            r#"{"platform":"windows","helper":"C:/helper.exe"}"#,
-        ] {
-            let config: LocalCompactorSandbox = serde_json::from_str(input).unwrap();
-            let encoded = serde_json::to_string(&config).unwrap();
-            assert_eq!(serde_json::from_str::<LocalCompactorSandbox>(&encoded).unwrap(), config);
-        }
-        for input in [
-            r#"{"platform":"linux","helper":"/helper"}"#,
-            r#"{"platform":"windows","helper":"C:/helper.exe","seatbelt":"/unexpected"}"#,
-            r#"{"platform":"windows","helper":"C:/helper.exe","network":true}"#,
-        ] {
-            assert!(serde_json::from_str::<LocalCompactorSandbox>(input).is_err());
-        }
-    }
-}

@@ -62,38 +62,3 @@ fn portable(path: &Path, label: &'static str) -> Result<String, BenchmarkError> 
     validate(&output, label)?;
     Ok(output)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn portable_validation_rejects_absolute_parent_and_windows_separators() {
-        for invalid in ["", "/root/file", "../file", "dir/../file", "dir\\file"] {
-            assert!(validate(invalid, "fixture path").is_err(), "accepted {invalid:?}");
-        }
-        validate("trial/result.json", "fixture path").expect("portable path");
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn canonical_containment_normalizes_root_aliases_before_comparison() {
-        use std::os::unix::fs::symlink;
-
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let root = temporary.path().join("canonical-campaign");
-        let evidence = root.join("workspaces/task/invocation.json");
-        fs::create_dir_all(evidence.parent().expect("evidence parent")).expect("directories");
-        fs::write(&evidence, b"{}").expect("evidence");
-        let alias = temporary.path().join("campaign-alias");
-        symlink(&root, &alias).expect("root alias");
-
-        let relative = canonical_relative(
-            &root,
-            &alias.join("workspaces/task/invocation.json"),
-            "fixture evidence",
-        )
-        .expect("canonical containment");
-        assert_eq!(relative, "workspaces/task/invocation.json");
-    }
-}

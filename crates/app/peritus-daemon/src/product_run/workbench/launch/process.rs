@@ -31,11 +31,11 @@ impl ProductRunService {
             })
             .collect::<Result<Vec<_>, _>>()?;
         let cwd = resolve_workspace_path(&workspace, profile.working_directory().as_str(), true)?;
-        let preview = PreviewCommand::new(
+        let preview = PreviewCommand::new_optional(
             profile.executable().as_str().to_owned(),
             profile.arguments().iter().map(|value| value.as_str().to_owned()).collect(),
             cwd,
-            Duration::from_millis(profile.wall_millis()),
+            profile.wall_millis().map(Duration::from_millis),
             profile.interactive(),
             24,
             80,

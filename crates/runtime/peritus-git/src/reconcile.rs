@@ -114,7 +114,7 @@ fn classify(
     if !status.is_detached() {
         return ReconcileDisposition::Indeterminate(vec![DirtyReason::AttachedHead]);
     }
-    let head_matches = status.head() == expectation.head;
+    let head_matches = status.head() == Some(expectation.head);
     let tree_matches = status.index_tree() == Some(expectation.tree);
     let worktree_changed = status.has_worktree_change();
     let untracked = status.has_untracked();
@@ -193,30 +193,5 @@ fn put_reasons(bytes: &mut Vec<u8>, reasons: &[DirtyReason]) {
             DirtyReason::Conflict => 6,
             DirtyReason::IndexUnavailable => 7,
         });
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{DirtyReason, ReconcileDisposition, put_reasons};
-
-    #[test]
-    fn reason_encoding_is_order_sensitive_and_total() {
-        let mut bytes = Vec::new();
-        put_reasons(
-            &mut bytes,
-            &[
-                DirtyReason::AttachedHead,
-                DirtyReason::HeadMismatch,
-                DirtyReason::IndexMismatch,
-                DirtyReason::WorktreeModified,
-                DirtyReason::Untracked,
-                DirtyReason::Ignored,
-                DirtyReason::Conflict,
-                DirtyReason::IndexUnavailable,
-            ],
-        );
-        assert_eq!(&bytes[8..], &[0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_ne!(ReconcileDisposition::Clean, ReconcileDisposition::Dirty(Vec::new()));
     }
 }

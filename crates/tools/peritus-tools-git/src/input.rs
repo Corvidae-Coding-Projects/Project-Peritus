@@ -14,6 +14,8 @@ pub struct DiffInput {
     pub(crate) base_revision: String,
     pub(crate) maximum_entries: u32,
     pub(crate) maximum_patch_bytes: u64,
+    pub(crate) cursor: peritus_git::DiffCursor,
+    pub(crate) expected_digest: Option<peritus_types::Sha256Digest>,
 }
 
 impl DiffInput {
@@ -30,8 +32,8 @@ impl DiffInput {
             || !crate::verified::diff_bounds_valid(
                 maximum_entries,
                 maximum_patch_bytes,
-                peritus_git::MAX_DIFF_ENTRIES,
-                peritus_git::MAX_DIFF_BYTES,
+                u32::MAX,
+                u64::MAX,
             )
         {
             return Err(GitToolError::invalid(
@@ -39,7 +41,24 @@ impl DiffInput {
                 "revision or diff bounds are invalid",
             ));
         }
-        Ok(Self { base_revision, maximum_entries, maximum_patch_bytes })
+        Ok(Self {
+            base_revision,
+            maximum_entries,
+            maximum_patch_bytes,
+            cursor: peritus_git::DiffCursor::default(),
+            expected_digest: None,
+        })
+    }
+    /// Selects exact immutable continuation coordinates and the previous observation digest.
+    #[must_use]
+    pub const fn with_cursor(
+        mut self,
+        cursor: peritus_git::DiffCursor,
+        digest: peritus_types::Sha256Digest,
+    ) -> Self {
+        self.cursor = cursor;
+        self.expected_digest = Some(digest);
+        self
     }
 }
 
@@ -47,6 +66,9 @@ impl DiffInput {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HistoryInput {
     pub(crate) maximum_commits: u16,
+    pub(crate) offset: u64,
+    pub(crate) parent_offset: u32,
+    pub(crate) subject_offset: u32,
 }
 
 impl HistoryInput {
@@ -61,7 +83,38 @@ impl HistoryInput {
                 "history count is outside its bound",
             ));
         }
-        Ok(Self { maximum_commits })
+        Ok(Self { maximum_commits, offset: 0, parent_offset: 0, subject_offset: 0 })
+    }
+
+    /// Creates one bounded continuation page of immutable history.
+    ///
+    /// # Errors
+    /// Rejects zero or excessive commit counts.
+    pub const fn page(maximum_commits: u16, offset: u64) -> Result<Self, GitToolError> {
+        if maximum_commits == 0 || maximum_commits > peritus_git::MAX_HISTORY_COMMITS {
+            return Err(GitToolError::invalid(
+                GitToolOperation::History,
+                "history count is outside its bound",
+            ));
+        }
+        Ok(Self { maximum_commits, offset, parent_offset: 0, subject_offset: 0 })
+    }
+
+    /// Creates one history page with an exact parent-list continuation offset.
+    ///
+    /// # Errors
+    /// Rejects zero or excessive commit counts.
+    #[must_use]
+    pub const fn with_parent_offset(mut self, parent_offset: u32) -> Self {
+        self.parent_offset = parent_offset;
+        self
+    }
+
+    /// Creates a continuation within the first commit subject in the page.
+    #[must_use]
+    pub const fn with_subject_offset(mut self, subject_offset: u32) -> Self {
+        self.subject_offset = subject_offset;
+        self
     }
 }
 

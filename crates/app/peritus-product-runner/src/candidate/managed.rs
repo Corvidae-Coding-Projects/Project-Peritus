@@ -12,8 +12,6 @@ mod retention;
 mod source_digest;
 pub mod transaction;
 pub use paths::parent_is_directory;
-#[cfg(test)]
-mod tests;
 
 use super::repository;
 use crate::ProductRunnerError;

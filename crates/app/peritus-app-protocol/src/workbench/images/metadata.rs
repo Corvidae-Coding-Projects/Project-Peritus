@@ -1,6 +1,6 @@
 //! Bounded raster metadata; a decoded DTO is not an image-validation proof.
 
-use super::{AppProtocolError, MAX_WORKBENCH_IMAGE_BYTES, invalid};
+use super::{AppProtocolError, invalid};
 use peritus_types::Sha256Digest;
 
 /// Closed detected raster format, independent of filename extensions.
@@ -38,27 +38,18 @@ pub struct WorkbenchImageMetadata {
     frames: u32,
 }
 impl WorkbenchImageMetadata {
-    /// Validates protocol ceilings; the host additionally decodes the original artifact.
+    /// Validates structural metadata; the host additionally decodes the original artifact.
     ///
     /// # Errors
-    /// Rejects zero or excessive encoded size, dimensions, pixels, or frames.
-    pub fn new(
+    /// Rejects zero encoded size, dimensions, or frame count.
+    pub const fn new(
         digest: Sha256Digest,
         bytes: u64,
         format: WorkbenchImageFormat,
         dimensions: (u32, u32),
         frames: u32,
     ) -> Result<Self, AppProtocolError> {
-        if bytes == 0
-            || bytes > MAX_WORKBENCH_IMAGE_BYTES
-            || frames == 0
-            || frames > 64
-            || dimensions.0 == 0
-            || dimensions.1 == 0
-            || dimensions.0 > 8192
-            || dimensions.1 > 8192
-            || u64::from(dimensions.0) * u64::from(dimensions.1) > 16 * 1024 * 1024
-        {
+        if bytes == 0 || frames == 0 || dimensions.0 == 0 || dimensions.1 == 0 {
             return Err(invalid());
         }
         Ok(Self { digest, bytes, format, dimensions, frames })

@@ -12,25 +12,21 @@ keywords = ["agents", "authentication", "onboarding"]
 categories = ["authentication", "command-line-utilities"]
 
 [dependencies]
-peritus-provider-core = { version = "=0.0.5", path = "../../model/peritus-provider-core" }
+peritus-provider-core = { version = "=0.0.6", path = "../../model/peritus-provider-core" }
 tokio.workspace = true
 getrandom.workspace = true
-peritus-product-state = { version = "=0.0.5", path = "../peritus-product-state" }
-peritus-provider-anthropic = { version = "=0.0.5", path = "../../model/peritus-provider-anthropic" }
-peritus-provider-openai = { version = "=0.0.5", path = "../../model/peritus-provider-openai" }
-peritus-secrets = { version = "=0.0.5", path = "../../runtime/peritus-secrets" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
+peritus-product-state = { version = "=0.0.6", path = "../peritus-product-state" }
+peritus-provider-anthropic = { version = "=0.0.6", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.0.6", path = "../../model/peritus-provider-openai" }
+peritus-secrets = { version = "=0.0.6", path = "../../runtime/peritus-secrets" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 
-[target.'cfg(windows)'.dev-dependencies]
-windows-sys = { workspace = true, features = ["Win32_System_Console"] }
-
 [package.metadata.peritus]
 owner = "G4"
 layer = "app"
-verification-class = "C"
 
 [lints]
 workspace = true

@@ -81,8 +81,18 @@ impl<'a> Reader<'a> {
         Ok(value)
     }
 
-    pub(super) fn string(&mut self, limit: usize) -> Result<String, ProcessError> {
-        let length = self.count(limit)?;
+    pub(super) fn string_u16(&mut self) -> Result<String, ProcessError> {
+        let length = usize::from(self.u16()?);
+        self.read_string(length)
+    }
+
+    pub(super) fn string_u64(&mut self) -> Result<String, ProcessError> {
+        let length = usize::try_from(self.u64()?)
+            .map_err(|_| corrupt("terminal string length is not representable"))?;
+        self.read_string(length)
+    }
+
+    fn read_string(&mut self, length: usize) -> Result<String, ProcessError> {
         let end = self
             .offset
             .checked_add(length)

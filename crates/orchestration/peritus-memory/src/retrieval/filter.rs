@@ -6,9 +6,6 @@ use super::output::{ExclusionReason, dominant_tombstone, state_reason};
 use super::types::{RetrievalPolicy, RetrievalQuery};
 use crate::{BasisPoints, MemoryError, MemoryErrorKind, MemoryField, MemoryRecord};
 use peritus_role::MemoryVisibility;
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn exclusion(
     record: &MemoryRecord,
@@ -59,12 +56,7 @@ pub(super) fn exclusion(
     let required = query.required_features().values();
     let required_len = required.len();
     let mut required_index = 0;
-    while required_index < required_len
-        invariant
-            required_index <= required_len,
-            required_len == required@.len(),
-        decreases required_len - required_index,
-    {
+    while required_index < required_len {
         if record.features().get(required[required_index]).is_none() {
             return Ok(Some(ExclusionReason::MissingRequiredFeature));
         }
@@ -85,7 +77,6 @@ pub(super) fn exclusion(
     }
     Ok(None)
 }
-
 const fn review_is_stale(
     record: &MemoryRecord,
     policy: &RetrievalPolicy,
@@ -103,28 +94,21 @@ const fn review_is_stale(
     }
     query_tick - reviewed_tick > max_age
 }
-
 pub(super) fn contradiction_ratio(record: &MemoryRecord) -> Result<BasisPoints, MemoryError> {
     let supporting = record.evidence().supporting().values().len() as u64;
     let contradicting = record.evidence().contradicting().values().len() as u64;
-    let total = supporting.checked_add(contradicting).ok_or(MemoryError::field(
-        MemoryErrorKind::ArithmeticOverflow,
-        MemoryField::Score,
-    ))?;
+    let total = supporting
+        .checked_add(contradicting)
+        .ok_or(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score))?;
     if total == 0 {
         return Ok(BasisPoints::ZERO);
     }
-    let scaled = contradicting.checked_mul(10_000).ok_or(MemoryError::field(
-        MemoryErrorKind::ArithmeticOverflow,
-        MemoryField::Score,
-    ))? / total;
+    let scaled = contradicting
+        .checked_mul(10_000)
+        .ok_or(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score))?
+        / total;
     let Ok(converted) = u16::try_from(scaled) else {
-        return Err(MemoryError::field(
-            MemoryErrorKind::ArithmeticOverflow,
-            MemoryField::Score,
-        ));
+        return Err(MemoryError::field(MemoryErrorKind::ArithmeticOverflow, MemoryField::Score));
     };
     BasisPoints::new(converted)
 }
-
-} // verus!

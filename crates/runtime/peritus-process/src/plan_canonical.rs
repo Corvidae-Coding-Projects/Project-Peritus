@@ -9,11 +9,21 @@ use crate::{
     TerminalSize, WorkspaceAccess, error::invalid,
 };
 
-const DOMAIN: &[u8] = b"peritus.execution-plan.v1\0";
+const DOMAIN_V1: &[u8] = b"peritus.execution-plan.v1\0";
+const DOMAIN_V2: &[u8] = b"peritus.execution-plan.v2\0";
 
 pub(crate) fn encode(plan: &ExecutionPlan) -> Result<Vec<u8>, ProcessError> {
     let mut writer = PlanWriter::new();
-    writer.raw(DOMAIN);
+    let output = plan.output_policy();
+    let version_two = output.spool_bytes().is_none()
+        || output.stdout_bytes().is_none()
+        || output.stderr_bytes().is_none()
+        || output.terminal_bytes().is_none()
+        || plan.working_directory().path().to_str().is_none()
+        || plan.resource_policy().wall_millis().is_none()
+        || plan.resource_policy().cpu_millis().is_none()
+        || plan.resource_policy().output_bytes().is_none();
+    writer.raw(if version_two { DOMAIN_V2 } else { DOMAIN_V1 });
     let identity = plan.identity();
     encode_identity(&mut writer, &identity);
     writer.string(plan.command().executable())?;
@@ -21,12 +31,7 @@ pub(crate) fn encode(plan: &ExecutionPlan) -> Result<Vec<u8>, ProcessError> {
     for argument in plan.command().arguments() {
         writer.string(argument)?;
     }
-    writer.string(
-        plan.working_directory()
-            .path()
-            .to_str()
-            .ok_or_else(|| invalid("working directory became noncanonical"))?,
-    )?;
+    writer.path(plan.working_directory().path(), version_two)?;
     writer.u8(access_tag(plan.working_directory().access()));
     encode_environment(&mut writer, plan.environment())?;
     encode_io(&mut writer, plan.io_mode());
@@ -36,9 +41,9 @@ pub(crate) fn encode(plan: &ExecutionPlan) -> Result<Vec<u8>, ProcessError> {
     writer.u8(u8::from(terminal.signals_allowed()));
     writer.u64(terminal.event_count());
     writer.u64(terminal.output_bytes());
-    encode_output(&mut writer, plan.output_policy());
+    encode_output(&mut writer, output, version_two);
     encode_deadlines(&mut writer, plan.deadline_policy());
-    encode_resources(&mut writer, plan.resource_policy());
+    encode_resources(&mut writer, plan.resource_policy(), version_two);
     if let Some(binding) = plan.caller_binding() {
         writer.u8(1);
         writer.raw(binding.action_id().as_bytes());
@@ -166,14 +171,22 @@ fn encode_stdin(writer: &mut PlanWriter, policy: StdinPolicy) {
     }
 }
 
-fn encode_output(writer: &mut PlanWriter, policy: OutputPolicy) {
+fn encode_output(writer: &mut PlanWriter, policy: OutputPolicy, version_two: bool) {
     writer.u64(policy.chunk_bytes());
     writer.u64(policy.retained_window_bytes());
-    writer.u64(policy.spool_bytes());
+    if version_two {
+        writer.optional_u64(policy.spool_bytes());
+    } else {
+        writer.u64(policy.spool_bytes().expect("v1 requires a configured spool ceiling"));
+    }
     writer.u64(policy.event_count());
-    writer.u64(policy.stdout_bytes());
-    writer.u64(policy.stderr_bytes());
-    writer.u64(policy.terminal_bytes());
+    for limit in [policy.stdout_bytes(), policy.stderr_bytes(), policy.terminal_bytes()] {
+        if version_two {
+            writer.optional_u64(limit);
+        } else {
+            writer.u64(limit.expect("v1 requires configured stream ceilings"));
+        }
+    }
     writer.u8(match policy.overflow_action() {
         OutputOverflowAction::ContinueIncomplete => 1,
         OutputOverflowAction::Terminate => 2,
@@ -197,12 +210,24 @@ fn encode_deadlines(writer: &mut PlanWriter, policy: DeadlinePolicy) {
     writer.u64(policy.reap_millis());
 }
 
-fn encode_resources(writer: &mut PlanWriter, policy: ProcessResourcePolicy) {
-    writer.u64(policy.wall_millis());
-    writer.u64(policy.cpu_millis());
+fn encode_resources(writer: &mut PlanWriter, policy: ProcessResourcePolicy, version_two: bool) {
+    if version_two {
+        writer.optional_u64(policy.wall_millis());
+    } else {
+        writer.u64(policy.wall_millis().unwrap_or_default());
+    }
+    if version_two {
+        writer.optional_u64(policy.cpu_millis());
+    } else {
+        writer.u64(policy.cpu_millis().expect("v1 requires a configured CPU ceiling"));
+    }
     writer.u64(policy.memory_bytes());
     writer.u64(policy.disk_bytes());
-    writer.u64(policy.output_bytes());
+    if version_two {
+        writer.optional_u64(policy.output_bytes());
+    } else {
+        writer.u64(policy.output_bytes().unwrap_or_default());
+    }
     writer.u64(policy.process_count());
     writer.u64(policy.file_descriptors());
     writer.u64(policy.concurrent_slots());
@@ -238,6 +263,14 @@ impl PlanWriter {
     fn u64(&mut self, value: u64) {
         self.raw(&value.to_be_bytes());
     }
+    fn optional_u64(&mut self, value: Option<u64>) {
+        if let Some(value) = value {
+            self.u8(1);
+            self.u64(value);
+        } else {
+            self.u8(0);
+        }
+    }
     fn length(&mut self, value: usize) -> Result<(), ProcessError> {
         let value =
             u32::try_from(value).map_err(|_| invalid("canonical collection is too large"))?;
@@ -247,6 +280,38 @@ impl PlanWriter {
     fn string(&mut self, value: &str) -> Result<(), ProcessError> {
         self.length(value.len())?;
         self.raw(value.as_bytes());
+        Ok(())
+    }
+
+    fn path(&mut self, value: &std::path::Path, version_two: bool) -> Result<(), ProcessError> {
+        if let Some(text) = value.to_str() {
+            if version_two {
+                self.u8(0);
+            }
+            return self.string(text);
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStrExt as _;
+            self.u8(1);
+            let bytes = value.as_os_str().as_bytes();
+            self.length(bytes.len())?;
+            self.raw(bytes);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::ffi::OsStrExt as _;
+            self.u8(2);
+            let units: Vec<u16> = value.as_os_str().encode_wide().collect();
+            self.length(units.len())?;
+            for unit in units {
+                self.u16(unit);
+            }
+        }
+        #[cfg(not(any(unix, windows)))]
+        {
+            return Err(invalid("working directory path has no exact canonical encoding"));
+        }
         Ok(())
     }
 }

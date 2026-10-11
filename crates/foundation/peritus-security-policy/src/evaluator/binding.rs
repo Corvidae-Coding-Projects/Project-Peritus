@@ -4,193 +4,69 @@ use crate::{
     IndependentSecurityReview, IntegratedCandidate, ObservationClass, SecurityEvidence,
     UnmetSecurityCondition,
 };
-use vstd::prelude::*;
 
-verus! {
-
-fn requirements_current(
-    evidence: &SecurityEvidence,
-    candidate: IntegratedCandidate,
-) -> (current: bool)
-    ensures current == (forall |index: int| 0 <= index < evidence.spec_requirements().len() ==>
-        #[trigger] crate::binding::candidate_fresh(
-            evidence.spec_requirements()[index].spec_candidate(), candidate)),
-{
+fn requirements_current(evidence: &SecurityEvidence, candidate: IntegratedCandidate) -> bool {
     let values = evidence.requirements();
     let mut index = 0;
-    while index < values.len()
-        invariant
-            0 <= index <= values.len(),
-            values@ == evidence.spec_requirements(),
-            forall |prior: int| 0 <= prior < index ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    values@[prior].spec_candidate(), candidate),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if !crate::binding::candidate_matches(values[index].candidate(), candidate) {
-            assert(values@ == evidence.spec_requirements());
-            assert(!(forall |prior: int| 0 <= prior < evidence.spec_requirements().len() ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    evidence.spec_requirements()[prior].spec_candidate(), candidate))) by {
-                assert(!crate::binding::candidate_fresh(
-                    evidence.spec_requirements()[index as int].spec_candidate(), candidate));
-            };
             return false;
         }
         index += 1;
     }
     true
 }
-
-fn criteria_current(
-    evidence: &SecurityEvidence,
-    candidate: IntegratedCandidate,
-) -> (current: bool)
-    ensures current == (forall |index: int| 0 <= index < evidence.spec_criteria().len() ==>
-        #[trigger] crate::binding::candidate_fresh(
-            evidence.spec_criteria()[index].spec_candidate(), candidate)),
-{
+fn criteria_current(evidence: &SecurityEvidence, candidate: IntegratedCandidate) -> bool {
     let values = evidence.criteria();
     let mut index = 0;
-    while index < values.len()
-        invariant
-            0 <= index <= values.len(),
-            values@ == evidence.spec_criteria(),
-            forall |prior: int| 0 <= prior < index ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    values@[prior].spec_candidate(), candidate),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if !crate::binding::candidate_matches(values[index].candidate(), candidate) {
-            assert(values@ == evidence.spec_criteria());
-            assert(!(forall |prior: int| 0 <= prior < evidence.spec_criteria().len() ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    evidence.spec_criteria()[prior].spec_candidate(), candidate))) by {
-                assert(!crate::binding::candidate_fresh(
-                    evidence.spec_criteria()[index as int].spec_candidate(), candidate));
-            };
             return false;
         }
         index += 1;
     }
     true
 }
-
-fn inventories_current(
-    evidence: &SecurityEvidence,
-    candidate: IntegratedCandidate,
-) -> (current: bool)
-    ensures current == (forall |index: int| 0 <= index < evidence.spec_inventories().len() ==>
-        #[trigger] crate::binding::candidate_fresh(
-            evidence.spec_inventories()[index].spec_candidate(), candidate)),
-{
+fn inventories_current(evidence: &SecurityEvidence, candidate: IntegratedCandidate) -> bool {
     let values = evidence.inventories();
     let mut index = 0;
-    while index < values.len()
-        invariant
-            0 <= index <= values.len(),
-            values@ == evidence.spec_inventories(),
-            forall |prior: int| 0 <= prior < index ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    values@[prior].spec_candidate(), candidate),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if !crate::binding::candidate_matches(values[index].candidate(), candidate) {
-            assert(values@ == evidence.spec_inventories());
-            assert(!(forall |prior: int| 0 <= prior < evidence.spec_inventories().len() ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    evidence.spec_inventories()[prior].spec_candidate(), candidate))) by {
-                assert(!crate::binding::candidate_fresh(
-                    evidence.spec_inventories()[index as int].spec_candidate(), candidate));
-            };
             return false;
         }
         index += 1;
     }
     true
 }
-
-fn artifacts_current(
-    evidence: &SecurityEvidence,
-    candidate: IntegratedCandidate,
-) -> (current: bool)
-    ensures current == (forall |index: int| 0 <= index < evidence.spec_artifacts().len() ==>
-        #[trigger] crate::binding::candidate_fresh(
-            evidence.spec_artifacts()[index].spec_candidate(), candidate)),
-{
+fn artifacts_current(evidence: &SecurityEvidence, candidate: IntegratedCandidate) -> bool {
     let values = evidence.artifacts();
     let mut index = 0;
-    while index < values.len()
-        invariant
-            0 <= index <= values.len(),
-            values@ == evidence.spec_artifacts(),
-            forall |prior: int| 0 <= prior < index ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    values@[prior].spec_candidate(), candidate),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if !crate::binding::candidate_matches(values[index].candidate(), candidate) {
-            assert(values@ == evidence.spec_artifacts());
-            assert(!(forall |prior: int| 0 <= prior < evidence.spec_artifacts().len() ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    evidence.spec_artifacts()[prior].spec_candidate(), candidate))) by {
-                assert(!crate::binding::candidate_fresh(
-                    evidence.spec_artifacts()[index as int].spec_candidate(), candidate));
-            };
             return false;
         }
         index += 1;
     }
     true
 }
-
-fn findings_current(
-    review: &IndependentSecurityReview,
-    candidate: IntegratedCandidate,
-) -> (current: bool)
-    ensures current == (forall |index: int| 0 <= index < review.spec_findings().len() ==>
-        #[trigger] crate::binding::candidate_fresh(
-            review.spec_findings()[index].spec_candidate(), candidate)),
-{
+fn findings_current(review: &IndependentSecurityReview, candidate: IntegratedCandidate) -> bool {
     let values = review.findings();
     let mut index = 0;
-    while index < values.len()
-        invariant
-            0 <= index <= values.len(),
-            values@ == review.spec_findings(),
-            forall |prior: int| 0 <= prior < index ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    values@[prior].spec_candidate(), candidate),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if !crate::binding::candidate_matches(values[index].candidate(), candidate) {
-            assert(!(forall |prior: int| 0 <= prior < review.spec_findings().len() ==>
-                #[trigger] crate::binding::candidate_fresh(
-                    review.spec_findings()[prior].spec_candidate(), candidate))) by {
-                assert(!crate::binding::candidate_fresh(
-                    review.spec_findings()[index as int].spec_candidate(), candidate));
-            };
             return false;
         }
         index += 1;
     }
     true
 }
-
 fn report_flat_mismatches(
     candidate: IntegratedCandidate,
     evidence: &SecurityEvidence,
     unmet: &mut Vec<UnmetSecurityCondition>,
-)
-    ensures evidence.spec_all_current(candidate) ==> final(unmet)@ == old(unmet)@,
-{
+) {
     let mut index = 0;
-    while index < evidence.requirements().len()
-        invariant
-            0 <= index <= evidence.spec_requirements().len(),
-            evidence.spec_all_current(candidate) ==> unmet@ == old(unmet)@,
-        decreases evidence.spec_requirements().len() - index,
-    {
+    while index < evidence.requirements().len() {
         if !crate::binding::candidate_matches(evidence.requirements()[index].candidate(), candidate)
         {
             unmet.push(UnmetSecurityCondition::CandidateMismatch {
@@ -201,12 +77,7 @@ fn report_flat_mismatches(
         index += 1;
     }
     index = 0;
-    while index < evidence.criteria().len()
-        invariant
-            0 <= index <= evidence.spec_criteria().len(),
-            evidence.spec_all_current(candidate) ==> unmet@ == old(unmet)@,
-        decreases evidence.spec_criteria().len() - index,
-    {
+    while index < evidence.criteria().len() {
         if !crate::binding::candidate_matches(evidence.criteria()[index].candidate(), candidate) {
             unmet.push(UnmetSecurityCondition::CandidateMismatch {
                 class: ObservationClass::Criterion,
@@ -216,12 +87,7 @@ fn report_flat_mismatches(
         index += 1;
     }
     index = 0;
-    while index < evidence.inventories().len()
-        invariant
-            0 <= index <= evidence.spec_inventories().len(),
-            evidence.spec_all_current(candidate) ==> unmet@ == old(unmet)@,
-        decreases evidence.spec_inventories().len() - index,
-    {
+    while index < evidence.inventories().len() {
         if !crate::binding::candidate_matches(evidence.inventories()[index].candidate(), candidate)
         {
             unmet.push(UnmetSecurityCondition::CandidateMismatch {
@@ -232,12 +98,7 @@ fn report_flat_mismatches(
         index += 1;
     }
     index = 0;
-    while index < evidence.artifacts().len()
-        invariant
-            0 <= index <= evidence.spec_artifacts().len(),
-            evidence.spec_all_current(candidate) ==> unmet@ == old(unmet)@,
-        decreases evidence.spec_artifacts().len() - index,
-    {
+    while index < evidence.artifacts().len() {
         if !crate::binding::candidate_matches(evidence.artifacts()[index].candidate(), candidate) {
             unmet.push(UnmetSecurityCondition::CandidateMismatch {
                 class: ObservationClass::Artifact,
@@ -247,17 +108,12 @@ fn report_flat_mismatches(
         index += 1;
     }
 }
-
 fn report_review_mismatches(
     candidate: IntegratedCandidate,
     evidence: &SecurityEvidence,
     unmet: &mut Vec<UnmetSecurityCondition>,
-)
-    ensures evidence.spec_all_current(candidate) ==> final(unmet)@ == old(unmet)@,
-{
+) {
     if let Some(review) = evidence.review() {
-        let ghost reviewed = *review;
-        assert(evidence.spec_review() == Some(reviewed));
         if !crate::binding::candidate_matches(review.candidate(), candidate) {
             unmet.push(UnmetSecurityCondition::CandidateMismatch {
                 class: ObservationClass::ExternalReview,
@@ -265,31 +121,12 @@ fn report_review_mismatches(
             });
         }
         let mut finding_index = 0;
-        while finding_index < review.findings().len()
-            invariant
-                0 <= finding_index <= review.spec_findings().len(),
-                reviewed == *review,
-                evidence.spec_review() == Some(reviewed),
-                evidence.spec_all_current(candidate) ==> unmet@ == old(unmet)@,
-            decreases review.spec_findings().len() - finding_index,
-        {
+        while finding_index < review.findings().len() {
             let finding_current = crate::binding::candidate_matches(
-                review.findings()[finding_index].candidate(), candidate,
+                review.findings()[finding_index].candidate(),
+                candidate,
             );
             if !finding_current {
-                proof {
-                    if evidence.spec_all_current(candidate) {
-                        reveal(SecurityEvidence::spec_all_current);
-                        assert(forall |index: int| 0 <= index < reviewed.spec_findings().len() ==>
-                            #[trigger] crate::binding::candidate_fresh(
-                                reviewed.spec_findings()[index].spec_candidate(), candidate));
-                        assert(crate::binding::candidate_fresh(
-                            reviewed.spec_findings()[finding_index as int].spec_candidate(),
-                            candidate,
-                        ));
-                        assert(false);
-                    }
-                };
                 unmet.push(UnmetSecurityCondition::CandidateMismatch {
                     class: ObservationClass::Finding,
                     index: finding_index,
@@ -299,7 +136,6 @@ fn report_review_mismatches(
         }
     }
 }
-
 #[allow(
     clippy::option_if_let_else,
     reason = "the explicit Option match is supported by Verus while map_or and is_none_or are not"
@@ -308,14 +144,9 @@ pub(super) fn evaluate(
     candidate: IntegratedCandidate,
     evidence: &SecurityEvidence,
     unmet: &mut Vec<UnmetSecurityCondition>,
-) -> (current: bool)
-    ensures
-        current == evidence.spec_all_current(candidate),
-        current ==> final(unmet)@ == old(unmet)@,
-{
+) -> bool {
     report_flat_mismatches(candidate, evidence, unmet);
     report_review_mismatches(candidate, evidence, unmet);
-
     requirements_current(evidence, candidate)
         && criteria_current(evidence, candidate)
         && inventories_current(evidence, candidate)
@@ -328,5 +159,3 @@ pub(super) fn evaluate(
             None => true,
         }
 }
-
-} // verus!

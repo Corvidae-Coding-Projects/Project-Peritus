@@ -1,5 +1,7 @@
 # peritus-security-qualification
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-security-qualification` owns the C-class H0 campaign boundary. It runs a closed security
 catalog against one exact integrated candidate, provisions a fresh native subject for every probe,
 enforces resource and cleanup accounting, packages canonical evidence, and delegates the final

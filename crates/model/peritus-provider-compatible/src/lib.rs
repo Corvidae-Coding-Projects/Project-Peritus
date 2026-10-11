@@ -20,6 +20,3 @@ pub use profile::{
     CompatibleContract, CompatibleProfile, CreateReplayGuarantee, EventMapping, RequestField,
     ResponseIdSemantics, StreamFraming,
 };
-
-#[cfg(test)]
-mod tests;

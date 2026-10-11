@@ -152,7 +152,7 @@ impl RuntimeToolSlot {
         let model_call_id = ModelCallId::new(peritus_codec::sha256(&call_bytes))?;
         let descriptor = self.prepared.descriptor();
         let version = ToolVersion::new(descriptor.version().major(), descriptor.version().minor())?;
-        Ok(ToolProposal::new(
+        Ok(ToolProposal::new_with_lifetime(
             ToolOrdinal::new(
                 u16::try_from(self.ordinal).map_err(|_| ToolDriveError::InvalidBound)?,
             ),
@@ -164,7 +164,7 @@ impl RuntimeToolSlot {
             self.prepared.prepared_digest(),
             self.prepared.replay_identity().digest(),
             self.prepared.call().revision(),
-            self.prepared.call().deadline(),
+            self.prepared.call().lifetime(),
             agent_side_effect(descriptor.side_effect()),
             agent_idempotency(descriptor.side_effect(), descriptor.idempotency()),
         ))

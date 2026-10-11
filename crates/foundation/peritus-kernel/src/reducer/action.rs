@@ -8,9 +8,6 @@ use crate::{
 };
 use peritus_policy::ActorRole;
 use peritus_types::{ActionId, ActorId, EnvironmentId, Sha256Digest, TurnId};
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn apply(
     state: &mut KernelAggregate,
@@ -19,15 +16,26 @@ pub(super) fn apply(
 ) -> Result<AppliedCommand, KernelError> {
     match command {
         KernelCommand::ProposeAction {
-            turn_id, action_id, digest, actor_id, role, environment_id,
+            turn_id,
+            action_id,
+            digest,
+            actor_id,
+            role,
+            environment_id,
         } => propose(state, *turn_id, *action_id, *digest, *actor_id, *role, *environment_id),
         KernelCommand::AuthorizeAction { action_id } => authorize(state, *action_id, inputs),
         KernelCommand::DispatchAction { action_id } => phase(
-            state, *action_id, ActionPhase::Authorized, ActionPhase::Dispatched,
+            state,
+            *action_id,
+            ActionPhase::Authorized,
+            ActionPhase::Dispatched,
             KernelEventKind::ActionDispatched,
         ),
         KernelCommand::CompleteAction { action_id } => phase(
-            state, *action_id, ActionPhase::Dispatched, ActionPhase::Succeeded,
+            state,
+            *action_id,
+            ActionPhase::Dispatched,
+            ActionPhase::Succeeded,
             KernelEventKind::ActionCompleted,
         ),
         KernelCommand::FailAction { action_id } => fail(state, *action_id),
@@ -35,7 +43,6 @@ pub(super) fn apply(
         _ => Err(KernelError::entity(KernelErrorKind::IllegalPhase, LifecycleEntity::Action)),
     }
 }
-
 #[allow(clippy::too_many_arguments)]
 fn propose(
     state: &mut KernelAggregate,
@@ -56,14 +63,15 @@ fn propose(
         return Err(KernelError::entity(KernelErrorKind::DuplicateEntity, LifecycleEntity::Action));
     }
     state.actions.push(ActionState::proposed(
-        action_id, turn_id, digest, actor_id, role, environment_id,
+        action_id,
+        turn_id,
+        digest,
+        actor_id,
+        role,
+        environment_id,
     ));
-    Ok(AppliedCommand::new(
-        KernelEventKind::ActionProposed,
-        KernelSubject::Action(action_id),
-    ))
+    Ok(AppliedCommand::new(KernelEventKind::ActionProposed, KernelSubject::Action(action_id)))
 }
-
 fn authorize(
     state: &mut KernelAggregate,
     action_id: ActionId,
@@ -91,12 +99,8 @@ fn authorize(
         transition,
     )?;
     state.actions[index].authorize(witness);
-    Ok(AppliedCommand::new(
-        KernelEventKind::ActionAuthorized,
-        KernelSubject::Action(action_id),
-    ))
+    Ok(AppliedCommand::new(KernelEventKind::ActionAuthorized, KernelSubject::Action(action_id)))
 }
-
 fn phase(
     state: &mut KernelAggregate,
     action_id: ActionId,
@@ -113,7 +117,6 @@ fn phase(
     state.actions[index].set_phase(next);
     Ok(AppliedCommand::new(event_kind, KernelSubject::Action(action_id)))
 }
-
 fn fail(state: &mut KernelAggregate, action_id: ActionId) -> Result<AppliedCommand, KernelError> {
     let Some(index) = state.action_index(action_id) else {
         return Err(KernelError::entity(KernelErrorKind::MissingEntity, LifecycleEntity::Action));
@@ -124,7 +127,6 @@ fn fail(state: &mut KernelAggregate, action_id: ActionId) -> Result<AppliedComma
     state.actions[index].set_phase(ActionPhase::Failed);
     Ok(AppliedCommand::new(KernelEventKind::ActionFailed, KernelSubject::Action(action_id)))
 }
-
 fn cancel(state: &mut KernelAggregate, action_id: ActionId) -> Result<AppliedCommand, KernelError> {
     let Some(index) = state.action_index(action_id) else {
         return Err(KernelError::entity(KernelErrorKind::MissingEntity, LifecycleEntity::Action));
@@ -135,5 +137,3 @@ fn cancel(state: &mut KernelAggregate, action_id: ActionId) -> Result<AppliedCom
     state.actions[index].set_phase(ActionPhase::Cancelled);
     Ok(AppliedCommand::new(KernelEventKind::ActionCancelled, KernelSubject::Action(action_id)))
 }
-
-} // verus!

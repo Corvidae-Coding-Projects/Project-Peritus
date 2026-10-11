@@ -44,10 +44,6 @@ pub struct RuntimeTurn {
     pub tool_calls: Vec<RuntimeToolCall>,
     pub usage: UsageCounters,
     pub repairs: Vec<ModelEvent>,
-    #[cfg(test)]
-    pub raw_events: usize,
-    #[cfg(test)]
-    pub duplicates: usize,
 }
 
 pub struct RuntimeToolCall {
@@ -164,16 +160,6 @@ pub fn decode_with_usage(
     let mut state = State::default();
     let turn = decode_turn(stdout, allowed_tools, call_bounds, final_message, &mut state);
     RuntimeDecoded { turn, usage: state.usage }
-}
-
-#[cfg(test)]
-pub fn decode(
-    stdout: &[u8],
-    allowed_tools: &BTreeSet<String>,
-    call_bounds: std::ops::RangeInclusive<usize>,
-    final_message: Option<&str>,
-) -> Result<RuntimeTurn, DecodeFailure> {
-    decode_with_usage(stdout, allowed_tools, call_bounds, final_message).turn
 }
 
 fn decode_turn(
@@ -321,16 +307,7 @@ fn validate_turn(
         repairs.extend(audit);
         tool_calls.push(RuntimeToolCall { name: call.name, arguments });
     }
-    Ok(RuntimeTurn {
-        content: turn.content,
-        tool_calls,
-        usage: state.usage,
-        repairs,
-        #[cfg(test)]
-        raw_events: state.raw_events,
-        #[cfg(test)]
-        duplicates: state.duplicates,
-    })
+    Ok(RuntimeTurn { content: turn.content, tool_calls, usage: state.usage, repairs })
 }
 
 fn decode_usage(value: Option<&Value>) -> Result<UsageCounters, DecodeFailure> {

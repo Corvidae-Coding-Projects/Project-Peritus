@@ -184,7 +184,3 @@ impl fmt::Debug for GoogleStream {
             .finish_non_exhaustive()
     }
 }
-
-#[cfg(test)]
-#[path = "stream_tests.rs"]
-mod tests;

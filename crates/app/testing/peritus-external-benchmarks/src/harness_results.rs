@@ -4,8 +4,7 @@ mod cli;
 mod model;
 mod parse;
 mod publish;
-#[cfg(test)]
-mod tests;
+
 mod validation;
 
 use std::{

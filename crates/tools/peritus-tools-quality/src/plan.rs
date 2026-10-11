@@ -54,7 +54,7 @@ impl QualityPlanInputs {
         if self.deadlines.wall_timeout_millis() != Some(definition.timeout_millis()) {
             return Err(invalid("execution deadline differs from the check definition"));
         }
-        if self.output.spool_bytes() < definition.output_bytes() {
+        if self.output.spool_bytes().is_some_and(|limit| limit < definition.output_bytes()) {
             return Err(invalid("execution output retention is below the check definition bound"));
         }
         if sandbox.isolation() != IsolationRequirement::Restricted

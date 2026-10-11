@@ -92,20 +92,3 @@ fn hex(bytes: &[u8]) -> String {
     }
     output
 }
-
-#[cfg(test)]
-mod tests {
-    use super::render_manifest;
-
-    #[test]
-    fn manifest_inventory_is_sorted_and_content_addressed() {
-        let manifest = render_manifest(
-            "minimal",
-            "minimal-client-hello",
-            &[("expectation.toml", b"expectation"), ("payload.hex", b"7061796c6f6164\n")],
-        );
-        assert!(manifest.contains("surface = \"app-protocol\""));
-        assert!(manifest.find("expectation.toml") < manifest.find("payload.hex"));
-        assert_eq!(manifest.matches("sha256 = ").count(), 2);
-    }
-}

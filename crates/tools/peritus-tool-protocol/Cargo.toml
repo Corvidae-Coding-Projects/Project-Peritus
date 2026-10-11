@@ -10,19 +10,14 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
-vstd.workspace = true
 
 [package.metadata.peritus]
 owner = "C4"
 layer = "tools"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

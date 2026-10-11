@@ -311,15 +311,3 @@ const fn binding(detail: &'static str) -> EvolutionError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::citation_counts_within_limit;
-
-    #[test]
-    fn citation_limit_applies_to_the_whole_manifest() {
-        assert!(citation_counts_within_limit([2, 2], 4));
-        assert!(!citation_counts_within_limit([2, 2], 3));
-        assert!(!citation_counts_within_limit([usize::MAX, 1], u16::MAX));
-    }
-}

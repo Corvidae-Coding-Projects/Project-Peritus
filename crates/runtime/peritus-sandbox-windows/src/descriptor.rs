@@ -62,7 +62,7 @@ impl WindowsBackendDescriptor {
         managed_filter_digest: Option<Sha256Digest>,
     ) -> Result<Self, WindowsError> {
         let helper_digest = probe.evidence().helper_digest.ok_or_else(identity_error)?;
-        if probe.evidence().managed_network != managed_filter_digest.is_some() {
+        if probe.evidence().managed_network && managed_filter_digest.is_none() {
             return Err(identity_error());
         }
         let name = BackendName::new(BACKEND_NAME).map_err(|_| identity_error())?;

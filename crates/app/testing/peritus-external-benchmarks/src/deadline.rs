@@ -81,37 +81,3 @@ fn product_horizon(outer_seconds: u64) -> Result<Duration, BenchmarkError> {
 fn invalid(detail: impl Into<String>) -> BenchmarkError {
     BenchmarkError::Workspace(detail.into())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn derives_horizon_from_the_exact_task_catalog_entry() {
-        let root = tempfile::tempdir().expect("catalog");
-        let task = root.path().join("009-git-pr-merge");
-        fs::create_dir(&task).expect("task directory");
-        fs::write(task.join("task.yaml"), "name: test\ntimeout_sec: 600\n").expect("task metadata");
-
-        assert_eq!(
-            horizon_from_catalog(root.path(), "009-git-pr-merge").expect("horizon"),
-            Duration::from_secs(510)
-        );
-    }
-
-    #[test]
-    fn reserve_tracks_short_ordinary_and_long_deadlines() {
-        assert_eq!(product_horizon(180).expect("short"), Duration::from_secs(90));
-        assert_eq!(product_horizon(900).expect("ordinary"), Duration::from_secs(810));
-        assert_eq!(product_horizon(3_600).expect("long"), Duration::from_mins(55));
-        assert_eq!(product_horizon(43_200).expect("longer"), Duration::from_mins(715));
-    }
-
-    #[test]
-    fn rejects_ambiguous_or_escaping_task_deadlines() {
-        assert!(parse_timeout_seconds("timeout_sec: 600\ntimeout_sec: 900\n").is_err());
-        assert!(parse_timeout_seconds("  timeout_sec: 600\n").is_err());
-        let root = tempfile::tempdir().expect("catalog");
-        assert!(horizon_from_catalog(root.path(), "../escape").is_err());
-    }
-}

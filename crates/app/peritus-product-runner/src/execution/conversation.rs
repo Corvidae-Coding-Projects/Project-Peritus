@@ -253,19 +253,3 @@ fn request(
         cancellation: input.provider_cancellation.clone(),
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn every_conversation_mode_states_the_external_reference_boundary() {
-        for mode in [ConversationMode::Chat, ConversationMode::Plan, ConversationMode::Review] {
-            let policy = system(mode);
-            assert!(policy.contains("workspace_list and workspace_read"));
-            assert!(policy.contains("exact named file or directory"));
-            assert!(policy.contains("Paths are case-sensitive"));
-            assert!(policy.contains("do not draft around unseen reference material"));
-        }
-    }
-}

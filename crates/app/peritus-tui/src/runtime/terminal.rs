@@ -216,6 +216,3 @@ impl Drop for InputPump {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

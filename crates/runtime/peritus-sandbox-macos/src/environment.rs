@@ -10,10 +10,6 @@ use crate::{
     error,
 };
 
-const MAX_ENVIRONMENT_NAMES: usize = 1_024;
-const MAX_ENVIRONMENT_NAME_BYTES: usize = 255;
-const MAX_ENVIRONMENT_VALUE_BYTES: usize = 64 * 1_024;
-
 /// One exact non-secret environment assignment carried in the protected manifest.
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct EnvironmentEntry {
@@ -25,18 +21,12 @@ impl EnvironmentEntry {
     /// Creates one portable target assignment.
     ///
     /// # Errors
-    /// Rejects an invalid name, NUL-bearing value, or an excessive value.
+    /// Rejects an empty name, `=` or NUL in the name, or NUL in the value.
     pub fn new(name: String, value: String) -> Result<Self, MacosError> {
-        let valid_name = !name.is_empty()
-            && name.len() <= MAX_ENVIRONMENT_NAME_BYTES
-            && name.bytes().enumerate().all(|(index, byte)| {
-                byte == b'_' || byte.is_ascii_alphabetic() || (index > 0 && byte.is_ascii_digit())
-            });
-        if !valid_name || value.len() > MAX_ENVIRONMENT_VALUE_BYTES || value.as_bytes().contains(&0)
-        {
+        if name.is_empty() || name.contains(['=', '\0']) || value.as_bytes().contains(&0) {
             return Err(error::invalid(
                 MacosOperation::Manifest,
-                "target environment assignment is invalid or excessive",
+                "target environment assignment contains an invalid native name or NUL",
             ));
         }
         Ok(Self { name, value })
@@ -90,12 +80,6 @@ pub(crate) fn project_environment(
 }
 
 pub(crate) fn canonicalize(entries: &mut [EnvironmentEntry]) -> Result<(), MacosError> {
-    if entries.len() > MAX_ENVIRONMENT_NAMES {
-        return Err(error::limited(
-            MacosOperation::Manifest,
-            "target environment assignment count exceeds its bound",
-        ));
-    }
     entries.sort_by(|left, right| left.name.cmp(&right.name));
     if entries.windows(2).any(|pair| pair[0].name == pair[1].name) {
         return Err(error::invalid(

@@ -149,16 +149,3 @@ fn digest(bytes: &[u8]) -> String {
     }
     encoded
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn digest_is_lowercase_sha256() {
-        assert_eq!(
-            digest(b"peritus"),
-            "e37df4e8bb764f688971c0d821b9c6ceee503134bed29c53c42f3a841d647898"
-        );
-    }
-}

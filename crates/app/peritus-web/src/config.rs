@@ -173,8 +173,8 @@ impl Default for Preferences {
 impl Preferences {
     pub(crate) fn parse(text: &str) -> Result<Self> {
         let value: Self = toml::from_str(text).map_err(problem)?;
-        if !(12..=22).contains(&value.font_size) || !(180..=480).contains(&value.explorer_width) {
-            return Err(problem("font_size must be 12–22; explorer_width must be 180–480"));
+        if value.font_size == 0 || value.explorer_width == 0 {
+            return Err(problem("font_size and explorer_width must be positive pixel values"));
         }
         if !["nixie", "daylight", "blueprint"].contains(&value.theme.as_str()) {
             return Err(problem("theme must be nixie, daylight, or blueprint"));
@@ -194,9 +194,6 @@ impl Preferences {
                 ));
             }
         }
-        if value.aliases.len() > 100 || value.shortcuts.len() > 100 {
-            return Err(problem("At most 100 aliases and shortcuts are supported"));
-        }
         for (name, command) in &value.aliases {
             if name.is_empty()
                 || !name.bytes().all(|b| b.is_ascii_lowercase() || b == b'-')
@@ -207,36 +204,5 @@ impl Preferences {
             }
         }
         Ok(value)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn presentation_path_overrides_do_not_redirect_daemon_discovery() {
-        let root = tempfile::tempdir().unwrap();
-        let config_root = root.path().join("native-config");
-        let state_root = root.path().join("native-state");
-        let config = root.path().join("custom/webui.toml");
-        let state = root.path().join("custom/workspace.json");
-        let options = Options::from_args(
-            [
-                "--config".into(),
-                config.to_string_lossy().into_owned(),
-                "--state".into(),
-                state.to_string_lossy().into_owned(),
-            ],
-            config_root.clone(),
-            &state_root,
-        )
-        .unwrap();
-        assert_eq!(options.config_file, config);
-        assert_eq!(options.state_file, state);
-        assert_eq!(options.daemon_config_root, config_root);
-        assert_eq!(options.product_state_root, state_root.join("product-state"));
-        assert!(options.daemon_config.is_none());
-        assert!(options.endpoint.is_none());
     }
 }

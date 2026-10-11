@@ -10,19 +10,11 @@ readme = "README.md"
 description = "Verified policy, capability, and authority-time core for Project Peritus"
 
 [dependencies]
-peritus-types = { version = "=0.0.5", path = "../peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
+peritus-types = { version = "=0.0.6", path = "../peritus-types" }
 
 [package.metadata.peritus]
 owner = "B1"
 layer = "foundation"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

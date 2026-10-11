@@ -410,7 +410,7 @@ The physical group directories are proposed as `crates/foundation`, `crates/stat
 - Plugins never link into the daemon address space as arbitrary native dynamic libraries.
 - Every crate has a named owner, README with invariants and dependency policy, public API docs, unit tests, and a `tests/` directory for boundary behavior where warranted.
 - `src/lib.rs` and binary `main.rs` declare modules, re-export intentional API, and compose dependencies. Business logic in roots is rejected by architecture checks.
-- A source file has one named responsibility. A 400-line soft budget triggers review; a 700-line hard budget requires a checked-in exception naming why further decomposition would harm cohesion. Generated files and proof-generated expansions are measured separately.
+- A source file has one named responsibility. The source limit is 500 lines; exceeding it requires a checked-in exception naming why further decomposition would harm cohesion. Generated files and proof-generated expansions are measured separately.
 - Generic `utils.rs`, `helpers.rs`, `common.rs`, `misc.rs`, or `manager.rs` modules are prohibited unless the name is domain-qualified and responsibility is documented.
 - Libraries use typed `thiserror`-style errors with stable categories and source chaining. Dynamic context errors are allowed only at application composition/reporting boundaries.
 - Public fields are private unless they are intentionally stable wire data. Constructors enforce validity; typestate or enums prevent invalid lifecycle combinations.

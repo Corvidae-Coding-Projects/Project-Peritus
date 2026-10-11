@@ -1,6 +1,8 @@
 //! Narrow operating-system launch adapters.
 
 mod inheritance;
+#[cfg(target_os = "linux")]
+pub(crate) mod linux_tree;
 mod ownership;
 mod pipe;
 mod pty;
@@ -69,7 +71,7 @@ pub(crate) trait PlatformProcess: Send {
     fn resize(&mut self, size: TerminalSize) -> Result<(), ProcessError>;
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "linux")))]
 pub(crate) fn process_group_quiescent(identity: ProcessTreeIdentity) -> Result<bool, ProcessError> {
     use nix::{errno::Errno, sys::signal::kill, unistd::Pid};
 
@@ -84,7 +86,12 @@ pub(crate) fn process_group_quiescent(identity: ProcessTreeIdentity) -> Result<b
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
+pub(crate) fn process_group_quiescent(identity: ProcessTreeIdentity) -> Result<bool, ProcessError> {
+    linux_tree::members(identity).map(|members| members.is_empty())
+}
+
+#[cfg(all(unix, not(target_os = "linux")))]
 const fn tree_observation_error(detail: &'static str) -> ProcessError {
     ProcessError::new(
         crate::ErrorCode::ProcessTree,

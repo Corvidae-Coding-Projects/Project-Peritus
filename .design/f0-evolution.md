@@ -242,8 +242,8 @@ crates/analysis/peritus-evolution/
     verified_refinement.rs
 ```
 
-`lib.rs` remains a small documentation/export surface. Production files target 400 lines and may
-not exceed 700. A genuinely exhaustive reducer or wire mapping may receive a reviewed
+`lib.rs` remains a small documentation/export surface. Production files may
+not exceed 500 lines. A genuinely exhaustive reducer or wire mapping may receive a reviewed
 `architecture.toml` exception only after it has been split by domain concern.
 
 ### Aggregate ownership and identity

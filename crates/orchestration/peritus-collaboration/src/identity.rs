@@ -1,28 +1,25 @@
 //! Collaboration-owned checked identities.
 
 use crate::error::{CollaborationError, CollaborationErrorKind, reject};
-use vstd::prelude::*;
 
-verus! {
-
-/// Returns whether the canonical identity bytes are not the reserved all-zero value.
-pub open spec fn valid_identity_bytes(bytes: [u8; 16]) -> bool {
-    bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
-        || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
-        || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
-        || bytes[12] != 0 || bytes[13] != 0 || bytes[14] != 0 || bytes[15] != 0
+const fn valid(bytes: [u8; 16]) -> bool {
+    bytes[0] != 0
+        || bytes[1] != 0
+        || bytes[2] != 0
+        || bytes[3] != 0
+        || bytes[4] != 0
+        || bytes[5] != 0
+        || bytes[6] != 0
+        || bytes[7] != 0
+        || bytes[8] != 0
+        || bytes[9] != 0
+        || bytes[10] != 0
+        || bytes[11] != 0
+        || bytes[12] != 0
+        || bytes[13] != 0
+        || bytes[14] != 0
+        || bytes[15] != 0
 }
-
-const fn valid(bytes: [u8; 16]) -> (result: bool)
-    ensures result == valid_identity_bytes(bytes)
-{
-    bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
-        || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
-        || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
-        || bytes[12] != 0 || bytes[13] != 0 || bytes[14] != 0 || bytes[15] != 0
-}
-
-} // verus!
 
 /// Identifies one collaboration aggregate.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

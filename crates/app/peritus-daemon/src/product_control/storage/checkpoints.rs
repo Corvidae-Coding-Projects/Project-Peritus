@@ -241,8 +241,13 @@ fn checkpoint_installs(
 }
 
 fn checkpoint_key(checkpoint: CheckpointId, index: usize) -> Result<Vec<u8>, Error> {
-    let index = u16::try_from(index).map_err(|_| ControlError::Capacity)?;
     let mut key = checkpoint.as_bytes().to_vec();
-    key.extend_from_slice(&index.to_be_bytes());
+    if let Ok(index) = u16::try_from(index) {
+        key.extend_from_slice(&index.to_be_bytes());
+    } else {
+        let index = u64::try_from(index).map_err(|_| ControlError::Capacity)?;
+        key.extend_from_slice(&[u8::MAX; 2]);
+        key.extend_from_slice(&index.to_be_bytes());
+    }
     Ok(key)
 }

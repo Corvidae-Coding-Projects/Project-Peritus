@@ -5,15 +5,14 @@ use serde::Deserialize;
 use serde::Serialize;
 
 mod accounting;
+mod evidence;
 mod execution;
 mod lifecycle;
 mod validation;
 
 use accounting::GoalAttemptProgress;
 pub use accounting::{GoalAdmission, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport};
-
-#[cfg(test)]
-mod tests;
+pub use evidence::GraphicalOutputEvidence;
 
 /// User-visible lifecycle of one logical goal, independent of an individual run attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

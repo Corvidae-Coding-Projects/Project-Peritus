@@ -248,21 +248,3 @@ fn require_hex(
 fn invalid(path: &Path, field: &'static str) -> BenchmarkError {
     BenchmarkError::trace(path, format!("trace metadata field {field} is invalid"))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn provider_switch_requires_exact_bounded_evidence() {
-        let valid = br#"{"role":"writer","cycle":1,"previous_profile":"11111111111111111111111111111111","next_profile":"22222222222222222222222222222222","reason":"rate_limited"}"#;
-        validate(Path::new("trace"), DeveloperTraceFrameKind::ProviderSwitch, valid)
-            .expect("provider switch metadata");
-
-        let missing_reason = br#"{"role":"writer","cycle":1,"previous_profile":"11111111111111111111111111111111","next_profile":"22222222222222222222222222222222"}"#;
-        assert!(
-            validate(Path::new("trace"), DeveloperTraceFrameKind::ProviderSwitch, missing_reason,)
-                .is_err()
-        );
-    }
-}

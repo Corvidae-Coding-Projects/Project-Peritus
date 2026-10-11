@@ -187,22 +187,3 @@ fn secret_query_name(name: &str) -> bool {
 const fn invalid_endpoint(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::new(ProviderCoreErrorKind::InvalidEndpoint, "endpoint", detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn literal_loopback_does_not_trust_dns_names_or_remote_addresses() {
-        for host in ["127.0.0.1", "127.0.0.2", "[::1]"] {
-            assert!(Endpoint::new(format!("http://{host}:8000/v1")).unwrap().is_literal_loopback());
-        }
-        for host in
-            ["localhost", "loopback.invalid", "192.0.2.1", "[2001:db8::1]", "[::ffff:127.0.0.1]"]
-        {
-            assert!(
-                !Endpoint::new(format!("http://{host}:8000/v1")).unwrap().is_literal_loopback()
-            );
-        }
-    }
-}

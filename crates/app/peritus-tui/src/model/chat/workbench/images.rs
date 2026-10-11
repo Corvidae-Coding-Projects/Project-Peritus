@@ -44,7 +44,7 @@ impl ImageUi {
         Some((metadata.transfer_id(), metadata.artifact_id()))
     }
 
-    pub(super) fn discard_preview(&mut self) {
+    pub(in crate::model::chat) fn discard_preview(&mut self) {
         self.preview = None;
         self.request = None;
         self.expected = None;
@@ -138,12 +138,8 @@ impl AppModel {
             );
             return Vec::new();
         };
-        let Some(provider) = self
-            .product
-            .as_ref()
-            .filter(|product| product.launch.workspace_id() == snapshot.query().workspace())
-            .and_then(crate::model::product::ProductUi::providers)
-            .map(peritus_app_protocol::ProductProviderSelection::writer)
+        let Some(provider) =
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer)
         else {
             self.notice(
                 NoticeLevel::Warning,
@@ -176,11 +172,15 @@ impl AppModel {
         request: &WorkbenchImageRequest,
         preview: WorkbenchImagePreview,
     ) {
+        let active_provider =
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
         let image = &mut self.chat.workbench.images;
         if image.request.as_ref() != Some(request)
             || preview.request() != request
             || self.chat.workbench.selected != Some(request.query())
             || image.expected != Some((preview.image().digest(), preview.image().bytes()))
+            || active_provider != Some(request.provider())
+            || self.chat.models.writer() != request.model()
         {
             self.notice(NoticeLevel::Error, "Image preview did not match the exact imported bytes and selection; no confirmation is available.");
             return;
@@ -201,14 +201,12 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "Read and preview an image before confirming.");
             return Vec::new();
         };
-        let selected = self
-            .product
-            .as_ref()
-            .and_then(crate::model::product::ProductUi::providers)
-            .map(peritus_app_protocol::ProductProviderSelection::writer);
+        let selected =
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
         if selected != Some(preview.request().provider())
             || self.chat.models.writer() != preview.request().model()
         {
+            self.chat.workbench.images.discard_preview();
             self.notice(
                 NoticeLevel::Warning,
                 "Provider/model changed after preview. Preview again before confirmation.",

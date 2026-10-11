@@ -1,5 +1,7 @@
 # peritus-platform-qualification
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-platform-qualification` owns H2's target-independent contracts for qualifying a staged
 Peritus release on fresh Linux, macOS, and Windows subjects. It validates release layouts,
 checksummed package manifests, foreground-daemon supervisor definitions, local IPC expectations,

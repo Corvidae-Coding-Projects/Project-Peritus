@@ -1,5 +1,7 @@
 # peritus-resilience-qualification
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 This crate owns the executable H1 release operator and the platform effect boundary used to
 exercise a real Peritus release candidate. The runtime-neutral catalog, observations, invariants,
 and verdict stay in `peritus-resilience`.

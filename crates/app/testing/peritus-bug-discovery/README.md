@@ -1,5 +1,7 @@
 # Peritus bug discovery
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 Test-only adapters exercise production public boundaries with the same assertions in libFuzzer
 and stable-toolchain corpus replay. They do not grant execution authority or disable validation.
 All inputs are bounded to 8192 bytes; generated working graphs contain at most eight entries.

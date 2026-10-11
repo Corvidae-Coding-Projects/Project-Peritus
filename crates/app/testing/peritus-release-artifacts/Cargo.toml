@@ -21,7 +21,6 @@ thiserror.workspace = true
 [package.metadata.peritus]
 owner = "H4"
 layer = "testing"
-verification-class = "C"
 
 [lints]
 workspace = true

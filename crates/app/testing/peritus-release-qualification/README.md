@@ -1,5 +1,7 @@
 # peritus-release-qualification
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-release-qualification` is the H4 effect shell. It collects required campaigns on distinct
 fresh subjects, admits only detached-signature-verified evidence envelopes bound to one exact
 candidate, requires all 25 production acceptance criteria to map to evidence, validates an

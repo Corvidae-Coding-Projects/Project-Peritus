@@ -18,8 +18,6 @@ use crate::terminal::Terminal;
 use selection::{choose_default, choose_failover, choose_provider_set};
 
 const CODEX: ProviderKind = ProviderKind::CodexAccount;
-#[cfg(test)]
-const CLAUDE: ProviderKind = ProviderKind::ClaudeAccount;
 
 /// Completes first-run provider setup or repairs only unhealthy retained providers.
 pub fn ensure_configured(prepared: PreparedProduct) -> Result<PreparedProduct, LauncherError> {

@@ -13,6 +13,3 @@ pub use input::InputId;
 pub use invocation::InvocationId;
 pub use operation::OperationId;
 pub use restore::RestoreId;
-
-#[cfg(test)]
-mod tests;

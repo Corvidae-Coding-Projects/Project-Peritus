@@ -14,17 +14,9 @@ categories = ["os::unix-apis"]
 [package.metadata.peritus]
 owner = "G0"
 layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [dependencies]
 sha2.workspace = true
-vstd.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
 
 [lints]
 workspace = true

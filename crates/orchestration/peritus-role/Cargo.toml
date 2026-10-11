@@ -10,17 +10,12 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
-peritus-spec = { version = "=0.0.5", path = "../../foundation/peritus-spec" }
-vstd.workspace = true
+peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" }
+peritus-spec = { version = "=0.0.6", path = "../../foundation/peritus-spec" }
 
 [package.metadata.peritus]
 owner = "C6"
 layer = "orchestration"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

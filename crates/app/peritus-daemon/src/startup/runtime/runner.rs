@@ -102,7 +102,7 @@ impl DaemonRuntime {
         progress.complete(StartupPhase::AuthorityEpoch)?;
         let workspaces = install_and_reconcile(&mut journal, &config)?;
         let production = recover_production(&journal, &config, &workspaces)?;
-        let product_runs = ProductRunService::open(
+        let (product_runs, live_command_owners) = ProductRunService::open(
             config.paths().state_root(),
             config.store_identity()?,
             &components,
@@ -112,7 +112,7 @@ impl DaemonRuntime {
             processes.clone(),
         )?;
         progress.complete(StartupPhase::DomainRecovery)?;
-        let diagnostic = reconcile_processes(&processes)?;
+        let diagnostic = reconcile_processes(&processes, &live_command_owners)?;
         progress.complete(StartupPhase::EffectRecovery)?;
         reconcile_application(&mut journal)?;
         progress.complete(StartupPhase::AppRecovery)?;

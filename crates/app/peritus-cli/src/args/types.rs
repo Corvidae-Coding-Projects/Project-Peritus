@@ -27,7 +27,8 @@ COMMANDS:
                                Update now, or configure automatic startup checks
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
-  open [PATH] [--run ID]        Launch PATH, optionally selecting an exact conversation
+  open [PATH] [--run ID | --conversation ID]
+                               Launch PATH and select an exact run or durable conversation
   resume                        Open this folder's most recently active conversation
   status
   shutdown [--wait]
@@ -77,16 +78,24 @@ pub struct Cli {
 
 pub enum Command {
     Improvements(peritus_app_protocol::ImprovementRequest),
-    Help { text: String },
+    Help {
+        text: String,
+    },
     Version,
     Completions(Shell),
     Update(UpdateArgs),
     Providers,
     Workspaces,
-    Open { path: Option<PathBuf>, run: Option<RunId> },
+    Open {
+        path: Option<PathBuf>,
+        run: Option<RunId>,
+        conversation: Option<peritus_app_protocol::ConversationId>,
+    },
     Resume,
     Status,
-    Shutdown { wait: bool },
+    Shutdown {
+        wait: bool,
+    },
     Submit(SubmitArgs),
     Events(EventArgs),
     ArtifactGet(ArtifactGetArgs),

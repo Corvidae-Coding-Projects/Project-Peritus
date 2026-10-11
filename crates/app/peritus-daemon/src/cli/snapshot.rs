@@ -30,7 +30,7 @@ pub(super) fn stage_before(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error("snapshot-before qualifier was not killed at its prepared candidate checkpoint");
     ExitCode::FAILURE
 }
@@ -54,7 +54,7 @@ pub(super) fn stage_after(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error("snapshot-after qualifier was not killed at its retained-reference checkpoint");
     ExitCode::FAILURE
 }

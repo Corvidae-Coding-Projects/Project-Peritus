@@ -102,6 +102,20 @@ impl ProductRunner {
         parse_baseline(bytes)?.patch(workspace)
     }
 
+    /// Exports the recorded committed candidate across its nested Git roots.
+    /// Later working-tree edits are excluded; consumers apply source changes and
+    /// create their own child commits without requiring producer-only commit IDs.
+    ///
+    /// # Errors
+    /// Rejects invalid preimages or unavailable parent/child commit objects.
+    pub fn candidate_patch_from_committed_baseline(
+        workspace: &Path,
+        bytes: &str,
+        commit: &str,
+    ) -> Result<Vec<u8>, ProductRunnerError> {
+        parse_baseline(bytes)?.patch_from_commit(workspace, commit)
+    }
+
     /// Discards task-owned changes using durable preimages even if the sidecar was lost.
     /// Returns directories preserving new repositories or recovery records for restored HEADs.
     ///

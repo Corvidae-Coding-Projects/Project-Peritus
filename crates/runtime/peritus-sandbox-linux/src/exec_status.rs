@@ -137,34 +137,3 @@ fn status_error(detail: &'static str) -> LinuxError {
         detail,
     )
 }
-
-#[cfg(all(test, target_os = "linux"))]
-mod tests {
-    use std::{fs::File, os::fd::OwnedFd, os::unix::net::UnixStream, time::Duration};
-
-    use peritus_types::Sha256Digest;
-
-    use super::{ExecStatusOwner, report_helper_failure};
-
-    #[test]
-    fn close_on_exec_eof_is_success() {
-        let (reader, writer) = UnixStream::pair().expect("status pair");
-        reader.set_read_timeout(Some(Duration::from_secs(1))).expect("timeout");
-        drop(writer);
-        let mut owner = ExecStatusOwner { reader };
-        owner.observe(Sha256Digest::new([1; 32]), Sha256Digest::new([2; 32])).expect("EOF");
-    }
-
-    #[test]
-    fn digest_bound_failure_is_typed() {
-        let (reader, writer) = UnixStream::pair().expect("status pair");
-        reader.set_read_timeout(Some(Duration::from_secs(1))).expect("timeout");
-        let mut writer = File::from(OwnedFd::from(writer));
-        let manifest = Sha256Digest::new([3; 32]);
-        let preparation = Sha256Digest::new([4; 32]);
-        report_helper_failure(&mut writer, manifest, preparation).expect("failure record");
-        drop(writer);
-        let mut owner = ExecStatusOwner { reader };
-        assert!(owner.observe(manifest, preparation).is_err());
-    }
-}

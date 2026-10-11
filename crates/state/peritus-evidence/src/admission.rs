@@ -41,8 +41,12 @@ impl AdmissionPlan {
     ) -> Result<Self, EvidenceError> {
         let exported = exported_record(export, draft.journal_position())?;
         validate_observation(exported, durable)?;
-        let actual_artifacts = export
-            .artifact_references()
+        let references = export.artifact_references();
+        let start = references
+            .partition_point(|reference| reference.last_position() < durable.global_position);
+        let end = references
+            .partition_point(|reference| reference.first_position() <= durable.global_position);
+        let actual_artifacts = references[start..end]
             .iter()
             .filter(|reference| reference.batch_hash() == durable.batch_hash)
             .map(|reference| ArtifactDigest::from_sha256(reference.artifact_digest()))
@@ -94,16 +98,11 @@ fn exported_record(
     export: &IntegrityExport,
     position: u64,
 ) -> Result<&CommittedRecord, EvidenceError> {
-    let index = position
-        .checked_sub(1)
-        .and_then(|value| usize::try_from(value).ok())
-        .ok_or_else(|| missing("journal position cannot be indexed"))?;
-    let record = export.records().get(index).ok_or_else(|| missing("journal position absent"))?;
-    if record.global_position() == position {
-        Ok(record)
-    } else {
-        Err(mismatch("integrity export position is not canonical"))
-    }
+    let index = export
+        .records()
+        .binary_search_by_key(&position, CommittedRecord::global_position)
+        .map_err(|_| missing("journal position absent from checked export"))?;
+    Ok(&export.records()[index])
 }
 
 fn validate_observation(

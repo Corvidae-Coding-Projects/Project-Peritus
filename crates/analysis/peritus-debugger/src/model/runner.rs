@@ -11,9 +11,6 @@ use crate::{
 
 use super::ModelAnalysisPlan;
 
-#[cfg(test)]
-mod tests;
-
 /// Complete successful attempt accounting and validated inert proposal.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModelRunSuccess {

@@ -1,28 +1,25 @@
 //! Validated journal-owned identities and aggregate kinds.
 
 use crate::{JournalError, JournalErrorKind};
-use vstd::prelude::*;
 
-verus! {
-
-/// Returns whether an identifier is not the reserved all-zero value.
-pub closed spec fn valid_identity(bytes: [u8; 16]) -> bool {
-    bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
-        || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
-        || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
-        || bytes[12] != 0 || bytes[13] != 0 || bytes[14] != 0 || bytes[15] != 0
+const fn validate_identity(bytes: [u8; 16]) -> bool {
+    bytes[0] != 0
+        || bytes[1] != 0
+        || bytes[2] != 0
+        || bytes[3] != 0
+        || bytes[4] != 0
+        || bytes[5] != 0
+        || bytes[6] != 0
+        || bytes[7] != 0
+        || bytes[8] != 0
+        || bytes[9] != 0
+        || bytes[10] != 0
+        || bytes[11] != 0
+        || bytes[12] != 0
+        || bytes[13] != 0
+        || bytes[14] != 0
+        || bytes[15] != 0
 }
-
-const fn validate_identity(bytes: [u8; 16]) -> (valid: bool)
-    ensures valid == valid_identity(bytes)
-{
-    bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
-        || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
-        || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
-        || bytes[12] != 0 || bytes[13] != 0 || bytes[14] != 0 || bytes[15] != 0
-}
-
-} // verus!
 
 /// Identifies one durable journal store.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

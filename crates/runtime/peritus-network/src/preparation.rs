@@ -35,6 +35,14 @@ impl ManagedProxyPreparation {
         Self { options, token, resolver, credential }
     }
 
+    /// Validates the checked plan without consuming configuration or starting a listener.
+    ///
+    /// # Errors
+    /// Rejects options that do not narrow the checked policy.
+    pub fn preflight(&self, checked: &CheckedSandboxPlan) -> Result<(), NetworkError> {
+        NetworkPlan::from_checked(checked, self.options.clone()).map(|_| ())
+    }
+
     /// Compiles the checked plan and starts its one owned loopback proxy.
     ///
     /// # Errors

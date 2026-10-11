@@ -10,7 +10,7 @@ pub struct StoreConfig {
     root: PathBuf,
     database_path: Option<PathBuf>,
     max_artifact_bytes: u64,
-    quota_bytes: u64,
+    quota_bytes: Option<u64>,
 }
 
 impl StoreConfig {
@@ -24,6 +24,22 @@ impl StoreConfig {
         max_artifact_bytes: u64,
         quota_bytes: u64,
     ) -> Result<Self, ArtifactStoreError> {
+        Self::new_with_quota_policy(root, max_artifact_bytes, Some(quota_bytes))
+    }
+
+    /// Creates a store configuration with an optional logical quota.
+    ///
+    /// A missing quota removes aggregate admission only; each artifact and durable catalog value
+    /// must still fit its configured and `SQLite` representation bounds.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an empty root, zero artifact bounds, or invalid selected quota.
+    pub fn new_with_quota_policy(
+        root: impl Into<PathBuf>,
+        max_artifact_bytes: u64,
+        quota_bytes: Option<u64>,
+    ) -> Result<Self, ArtifactStoreError> {
         let root = root.into();
         if root.as_os_str().is_empty() {
             return Err(invalid("the store root must not be empty"));
@@ -31,14 +47,16 @@ impl StoreConfig {
         if max_artifact_bytes == 0 {
             return Err(invalid("the per-artifact byte limit must be positive"));
         }
-        if quota_bytes == 0 {
-            return Err(invalid("the store quota must be positive"));
-        }
-        if max_artifact_bytes > quota_bytes {
-            return Err(invalid("the per-artifact byte limit exceeds the store quota"));
-        }
-        if quota_bytes > i64::MAX as u64 {
-            return Err(invalid("the store quota exceeds durable SQLite accounting capacity"));
+        if let Some(quota_bytes) = quota_bytes {
+            if quota_bytes == 0 {
+                return Err(invalid("the store quota must be positive when selected"));
+            }
+            if max_artifact_bytes > quota_bytes {
+                return Err(invalid("the per-artifact byte limit exceeds the store quota"));
+            }
+            if quota_bytes > i64::MAX as u64 {
+                return Err(invalid("the store quota exceeds durable SQLite accounting capacity"));
+            }
         }
         Ok(Self { root, database_path: None, max_artifact_bytes, quota_bytes })
     }
@@ -75,9 +93,9 @@ impl StoreConfig {
         self.max_artifact_bytes
     }
 
-    /// Returns the total logical byte quota used by checked quota plans.
+    /// Returns the optional total logical byte quota used by checked quota plans.
     #[must_use]
-    pub const fn quota_bytes(&self) -> u64 {
+    pub const fn quota_bytes(&self) -> Option<u64> {
         self.quota_bytes
     }
 

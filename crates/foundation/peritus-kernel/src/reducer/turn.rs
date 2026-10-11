@@ -6,9 +6,6 @@ use crate::{
     KernelEventKind, KernelSubject, LifecycleEntity, TurnPhase, TurnState,
 };
 use peritus_types::{AttemptId, TurnId};
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn apply(
     state: &mut KernelAggregate,
@@ -16,19 +13,28 @@ pub(super) fn apply(
 ) -> Result<AppliedCommand, KernelError> {
     match command {
         KernelCommand::StartTurn { attempt_id, turn_id } => start(state, *attempt_id, *turn_id),
-        KernelCommand::CompleteTurn { attempt_id, turn_id } => complete(state, *attempt_id, *turn_id),
+        KernelCommand::CompleteTurn { attempt_id, turn_id } => {
+            complete(state, *attempt_id, *turn_id)
+        }
         KernelCommand::FailTurn { attempt_id, turn_id } => terminate(
-            state, *attempt_id, *turn_id, TurnPhase::Failed, ActionPhase::Failed,
+            state,
+            *attempt_id,
+            *turn_id,
+            TurnPhase::Failed,
+            ActionPhase::Failed,
             KernelEventKind::TurnFailed,
         ),
         KernelCommand::CancelTurn { attempt_id, turn_id } => terminate(
-            state, *attempt_id, *turn_id, TurnPhase::Cancelled, ActionPhase::Cancelled,
+            state,
+            *attempt_id,
+            *turn_id,
+            TurnPhase::Cancelled,
+            ActionPhase::Cancelled,
             KernelEventKind::TurnCancelled,
         ),
         _ => Err(KernelError::entity(KernelErrorKind::IllegalPhase, LifecycleEntity::Turn)),
     }
 }
-
 fn start(
     state: &mut KernelAggregate,
     attempt_id: AttemptId,
@@ -49,7 +55,6 @@ fn start(
     state.turns.push(TurnState::active(turn_id, attempt_id));
     Ok(AppliedCommand::new(KernelEventKind::TurnStarted, KernelSubject::Turn(turn_id)))
 }
-
 fn complete(
     state: &mut KernelAggregate,
     attempt_id: AttemptId,
@@ -70,7 +75,6 @@ fn complete(
     state.turns[index].set_phase(TurnPhase::Completed);
     Ok(AppliedCommand::new(KernelEventKind::TurnCompleted, KernelSubject::Turn(turn_id)))
 }
-
 fn terminate(
     state: &mut KernelAggregate,
     attempt_id: AttemptId,
@@ -89,12 +93,7 @@ fn terminate(
         return Err(KernelError::entity(KernelErrorKind::IllegalPhase, LifecycleEntity::Turn));
     }
     let mut action_index = 0;
-    while action_index < state.actions.len()
-        invariant
-            action_index <= state.actions.len(),
-            (index as int) < state.turns@.len(),
-        decreases state.actions.len() - action_index,
-    {
+    while action_index < state.actions.len() {
         if state.actions[action_index].turn_id() == turn_id
             && !state.actions[action_index].phase().is_terminal()
         {
@@ -105,5 +104,3 @@ fn terminate(
     state.turns[index].set_phase(turn_phase);
     Ok(AppliedCommand::new(event_kind, KernelSubject::Turn(turn_id)))
 }
-
-} // verus!

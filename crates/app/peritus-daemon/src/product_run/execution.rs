@@ -1,6 +1,16 @@
 //! Active product-run task ownership and terminal projection.
 mod runtime;
 
+use super::Path;
+
+pub(super) fn open_command_runtime(
+    service: &ProductRunService,
+    request: &super::ProductRunRequest,
+    root: &Path,
+) -> Result<peritus_product_runner::CommandRuntime, peritus_product_runner::ProductRunnerError> {
+    runtime::open(service, request, root)
+}
+
 use peritus_app_protocol::{ProductDeliverable, ProductRunPhase, ProductRunSnapshot};
 use peritus_product_runner::ProductRunOutcome;
 use peritus_product_runner::control::GoalSettlement;
@@ -15,8 +25,6 @@ mod goal;
 mod handoff;
 mod launch;
 use handoff::{fail_handoff, terminal_summary};
-#[cfg(test)]
-pub use launch::inject_finish_barrier;
 
 impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
@@ -339,7 +347,16 @@ impl ProductRunService {
 
     fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
         if self
-            .with_controls(false, |store| store.publish_reply(&record.interaction.workbench, &text))
+            .with_controls(false, |store| {
+                let execution = store.execution_record(&record.interaction.workbench)?;
+                if execution.inputs().invocations().is_empty() {
+                    // A pre-admission refusal has no provider invocation to bind a reply to.
+                    // Its original diagnostic is retained by the run's terminal activity/state;
+                    // do not replace it with a handoff error or manufacture an invocation.
+                    return Ok(());
+                }
+                store.publish_reply(&record.interaction.workbench, &text)
+            })
             .is_err()
         {
             fail_handoff(record);

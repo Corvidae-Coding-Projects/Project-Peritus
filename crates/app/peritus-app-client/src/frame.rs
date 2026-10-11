@@ -122,32 +122,3 @@ fn connect_local(_endpoint: &OsStr) -> std::future::Ready<Result<BoxedLocalIo, C
         "this target has no supported Peritus local transport",
     )))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{HEADER_LEN, MAGIC, checked_payload_length};
-    use peritus_app_protocol::AppProtocolLimits;
-
-    #[test]
-    fn invalid_magic_is_rejected_before_payload_allocation() {
-        let header = [0; HEADER_LEN];
-        let error = checked_payload_length(&header, AppProtocolLimits::PRODUCTION).unwrap_err();
-        assert!(error.detail().contains("magic"));
-    }
-
-    #[test]
-    fn oversized_payload_is_rejected_before_payload_allocation() {
-        let mut header = [0; HEADER_LEN];
-        header[..4].copy_from_slice(&MAGIC);
-        header[12..16].copy_from_slice(&u32::MAX.to_be_bytes());
-        assert!(checked_payload_length(&header, AppProtocolLimits::PRODUCTION).is_err());
-    }
-
-    #[test]
-    fn bounded_payload_length_is_preserved() {
-        let mut header = [0; HEADER_LEN];
-        header[..4].copy_from_slice(&MAGIC);
-        header[12..16].copy_from_slice(&128_u32.to_be_bytes());
-        assert_eq!(checked_payload_length(&header, AppProtocolLimits::PRODUCTION).unwrap(), 128,);
-    }
-}

@@ -1,46 +1,33 @@
 //! Stable security roles and compiled role-separation decisions.
 
-#[cfg(verus_only)]
-use crate::model;
-use vstd::prelude::*;
-
-verus! {
-
-/// Stable security identity used by capability and approval policy.
+#[doc = " Stable security identity used by capability and approval policy."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ActorRole {
-    /// Produces candidate workspace changes.
+    #[doc = " Produces candidate workspace changes."]
     Writer,
-    /// Resolves current-review findings through scoped changes.
+    #[doc = " Resolves current-review findings through scoped changes."]
     Fixer,
-    /// Performs fresh-context read-only adversarial review.
+    #[doc = " Performs fresh-context read-only adversarial review."]
     Reviewer,
-    /// Evaluates candidates against isolated definitions and datasets.
+    #[doc = " Evaluates candidates against isolated definitions and datasets."]
     Evaluator,
-    /// Executes deterministic quality gates without accepting results.
+    #[doc = " Executes deterministic quality gates without accepting results."]
     GateRunner,
-    /// Coordinates verified transitions without raw effect authority.
+    #[doc = " Coordinates verified transitions without raw effect authority."]
     Orchestrator,
-    /// Proposes and evaluates harness evolution candidates.
+    #[doc = " Proposes and evaluates harness evolution candidates."]
     EvolutionAgent,
-    /// Represents an authenticated human authority.
+    #[doc = " Represents an authenticated human authority."]
     HumanAuthority,
-    /// Runs daemon-owned control-plane work.
+    #[doc = " Runs daemon-owned control-plane work."]
     DaemonService,
-    /// Executes a previously authorized provider or tool plan.
+    #[doc = " Executes a previously authorized provider or tool plan."]
     ProviderToolWorker,
-    /// Represents an untrusted extension boundary.
+    #[doc = " Represents an untrusted extension boundary."]
     Plugin,
 }
-
 impl ActorRole {
-    /// Returns the non-configurable B1 operation-permission decision used by specifications.
-    pub open spec fn spec_permits_operation(self, operation: OperationClass) -> bool {
-        model::role_permits(self, operation)
-    }
-
-    /// Returns the stable canonical role rank used by executable specifications.
-    pub open spec fn spec_rank(self) -> int {
+    pub(crate) const fn canonical_rank(self) -> u8 {
         match self {
             Self::Writer => 0,
             Self::Fixer => 1,
@@ -55,30 +42,9 @@ impl ActorRole {
             Self::Plugin => 10,
         }
     }
-
-    pub(crate) const fn canonical_rank(self) -> (rank: u8)
-        ensures rank as int == self.spec_rank(),
-    {
-        match self {
-            Self::Writer => 0,
-            Self::Fixer => 1,
-            Self::Reviewer => 2,
-            Self::Evaluator => 3,
-            Self::GateRunner => 4,
-            Self::Orchestrator => 5,
-            Self::EvolutionAgent => 6,
-            Self::HumanAuthority => 7,
-            Self::DaemonService => 8,
-            Self::ProviderToolWorker => 9,
-            Self::Plugin => 10,
-        }
-    }
-
-    /// Returns whether this role may receive the operation class under compiled invariants.
+    #[doc = " Returns whether this role may receive the operation class under compiled invariants."]
     #[must_use]
-    pub const fn permits_operation(self, operation: OperationClass) -> (result: bool)
-        ensures result == self.spec_permits_operation(operation),
-    {
+    pub const fn permits_operation(self, operation: OperationClass) -> bool {
         match self {
             Self::Writer | Self::Fixer => matches!(
                 operation,
@@ -94,10 +60,9 @@ impl ActorRole {
             Self::Reviewer | Self::Plugin => {
                 matches!(operation, OperationClass::Inspection)
             }
-            Self::Evaluator | Self::GateRunner => matches!(
-                operation,
-                OperationClass::Inspection | OperationClass::Execution
-            ),
+            Self::Evaluator | Self::GateRunner => {
+                matches!(operation, OperationClass::Inspection | OperationClass::Execution)
+            }
             Self::Orchestrator => matches!(
                 operation,
                 OperationClass::Inspection
@@ -149,38 +114,35 @@ impl ActorRole {
         }
     }
 }
-
-/// Stable operation category used by non-configurable role separation.
+#[doc = " Stable operation category used by non-configurable role separation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationClass {
-    /// Reads state without changing a workspace or authoritative record.
+    #[doc = " Reads state without changing a workspace or authoritative record."]
     Inspection,
-    /// Mutates a workspace revision.
+    #[doc = " Mutates a workspace revision."]
     WorkspaceMutation,
-    /// Executes a bounded process or deterministic gate.
+    #[doc = " Executes a bounded process or deterministic gate."]
     Execution,
-    /// Accesses an explicitly scoped network destination.
+    #[doc = " Accesses an explicitly scoped network destination."]
     Network,
-    /// Changes dependencies or the execution environment.
+    #[doc = " Changes dependencies or the execution environment."]
     DependencyEnvironment,
-    /// Rewrites repository history or protected references.
+    #[doc = " Rewrites repository history or protected references."]
     RepositoryHistoryMutation,
-    /// Uses an injected secret without exposing its value.
+    #[doc = " Uses an injected secret without exposing its value."]
     SecretUse,
-    /// Causes an externally visible side effect.
+    #[doc = " Causes an externally visible side effect."]
     ExternalSideEffect,
-    /// Accepts a run or candidate revision.
+    #[doc = " Accepts a run or candidate revision."]
     Acceptance,
-    /// Waives an otherwise required finding or gate.
+    #[doc = " Waives an otherwise required finding or gate."]
     Waiver,
-    /// Creates or activates a protected policy amendment.
+    #[doc = " Creates or activates a protected policy amendment."]
     PolicyAmendment,
-    /// Promotes or rolls back a production harness.
+    #[doc = " Promotes or rolls back a production harness."]
     HarnessPromotion,
-    /// Exercises a decision reserved to authenticated human authority.
+    #[doc = " Exercises a decision reserved to authenticated human authority."]
     HumanAuthority,
-    /// Invokes a raw effect adapter; only a provider/tool worker may receive this class.
+    #[doc = " Invokes a raw effect adapter; only a provider/tool worker may receive this class."]
     RawEffect,
 }
-
-} // verus!

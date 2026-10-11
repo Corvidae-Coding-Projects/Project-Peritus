@@ -4,9 +4,11 @@ use super::{ControlError, ControlOperation, ControlReceipt, ControlStore, Error}
 use peritus_journal::StateInstall;
 use peritus_model_protocol::{MediaInput, MediaKind, MediaType, ProtocolLimits};
 use peritus_product_runner::{
-    attachment::{MAX_IMAGE_BYTES, ValidatedImage},
+    attachment::ValidatedImage,
     control::{ControlIntent, ImageAttachment},
 };
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 const IMAGE_NAMESPACE: u16 = 3407;
 const PREVIEW_NAMESPACE: u16 = 3408;
@@ -46,10 +48,8 @@ impl ControlStore {
             return Err(ControlError::InvalidInput.into());
         }
         match (image.preview_digest(), &preview) {
-            (Some(digest), Some(bytes))
-                if !bytes.is_empty()
-                    && bytes.len() <= 16 * 1024
-                    && peritus_codec::sha256(bytes) == digest => {}
+            (Some(digest), Some(bytes)) if !bytes.is_empty() && digest_content(bytes) == digest => {
+            }
             (None, None) => {}
             _ => return Err(ControlError::InvalidInput.into()),
         }
@@ -97,8 +97,7 @@ impl ControlStore {
             if preview.revision() != 1
                 || preview.producing_position() != position
                 || preview.bytes().is_empty()
-                || preview.bytes().len() > 16 * 1024
-                || peritus_codec::sha256(preview.bytes()) != digest
+                || digest_content(preview.bytes()) != digest
             {
                 return Err(Error::Corrupt(
                     "image preview differs from its atomic consent binding",
@@ -123,7 +122,7 @@ impl ControlStore {
             MediaType::new(image.format().media_type().to_owned())
                 .map_err(|_| Error::Corrupt("invalid image format"))?,
             artifact.bytes().to_vec(),
-            ProtocolLimits::PRODUCTION,
+            ProtocolLimits::ARCHIVE,
         )
         .map_err(|_| Error::Corrupt("invalid archived image media"))
     }
@@ -131,11 +130,18 @@ impl ControlStore {
 
 fn verify_bytes(image: &ImageAttachment, bytes: &[u8]) -> Result<(), Error> {
     if bytes.is_empty()
-        || bytes.len() as u64 > MAX_IMAGE_BYTES
         || bytes.len() as u64 != image.bytes()
-        || peritus_codec::sha256(bytes) != image.digest()
+        || digest_content(bytes) != image.digest()
     {
         return Err(Error::Corrupt("image bytes differ from their immutable reference"));
     }
     Ok(())
+}
+
+fn digest_content(bytes: &[u8]) -> Sha256Digest {
+    let mut digest = Sha256::new();
+    for chunk in bytes.chunks(64 * 1024) {
+        digest.update(chunk);
+    }
+    Sha256Digest::new(digest.finalize().into())
 }

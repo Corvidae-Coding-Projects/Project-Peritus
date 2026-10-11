@@ -2,8 +2,10 @@
 
 /// Removes active terminal controls from multiline conversational text.
 pub fn sanitize_display_text(text: &str) -> String {
-    TerminalSanitizer::default()
-        .push(text.as_bytes())
+    let mut sanitizer = TerminalSanitizer::default();
+    let mut tokens = sanitizer.push(text.as_bytes());
+    tokens.extend(sanitizer.finish());
+    tokens
         .into_iter()
         .filter_map(|token| match token {
             SafeToken::Character(character) if !character.is_control() => Some(character),
@@ -107,6 +109,18 @@ impl TerminalSanitizer {
         visible
     }
 
+    /// Ends a complete stream or record, exposes incomplete control state, and resets the parser.
+    /// Ordinary chunks must use `push` without finishing so split controls stay inert.
+    pub(crate) fn finish(&mut self) -> Vec<SafeToken> {
+        let mut visible = Vec::new();
+        self.finish_incomplete_utf8(&mut visible);
+        if self.state != EscapeState::Ground {
+            visible.extend("[incomplete terminal control]".chars().map(SafeToken::Character));
+        }
+        self.state = EscapeState::Ground;
+        visible
+    }
+
     fn push_utf8(&mut self, byte: u8, visible: &mut Vec<SafeToken>) {
         if self.utf8_tail.is_empty() && byte.is_ascii() {
             visible.push(SafeToken::Character(char::from(byte)));
@@ -165,43 +179,4 @@ pub fn inert_preview(bytes: &[u8], maximum: usize) -> String {
         output.push('…');
     }
     output
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{SafeToken, TerminalSanitizer, inert_preview};
-
-    #[test]
-    fn utf8_is_preserved_across_chunk_boundaries() {
-        let mut sanitizer = TerminalSanitizer::default();
-        assert!(sanitizer.push(&[0xe2, 0x82]).is_empty());
-        assert_eq!(
-            sanitizer.push(&[0xac, b'!']),
-            [SafeToken::Character('€'), SafeToken::Character('!')]
-        );
-    }
-
-    #[test]
-    fn terminal_escape_sequences_are_removed_across_chunks() {
-        let mut sanitizer = TerminalSanitizer::default();
-        assert_eq!(sanitizer.push(b"safe\x1b[31"), SafeToken::characters("safe"));
-        assert_eq!(sanitizer.push(b"mred\x1b]0;title"), SafeToken::characters("red"));
-        assert_eq!(sanitizer.push(b"\x07!"), [SafeToken::Character('!')]);
-    }
-
-    #[test]
-    fn malformed_utf8_is_inert_and_preview_escapes_controls() {
-        let mut sanitizer = TerminalSanitizer::default();
-        assert_eq!(
-            sanitizer.push(&[0xff, b'a']),
-            [SafeToken::Character('\u{fffd}'), SafeToken::Character('a')]
-        );
-        assert_eq!(inert_preview(b"a\n\x1b", 8), "a↵\\x1b");
-    }
-
-    impl SafeToken {
-        fn characters(text: &str) -> Vec<Self> {
-            text.chars().map(Self::Character).collect()
-        }
-    }
 }

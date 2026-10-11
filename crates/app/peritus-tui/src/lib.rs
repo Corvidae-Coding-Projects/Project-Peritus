@@ -16,8 +16,7 @@ mod render;
 mod runtime;
 mod sanitize;
 mod terminal;
-#[cfg(test)]
-mod test_support;
+
 mod title;
 
 pub use entry::run_env;

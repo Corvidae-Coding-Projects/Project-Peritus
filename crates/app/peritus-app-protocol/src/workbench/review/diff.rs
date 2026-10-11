@@ -1,9 +1,6 @@
 //! Bounded inert structured-diff files, hunks, and lines.
 
-use super::{
-    MAX_WORKBENCH_DIFF_HUNKS, MAX_WORKBENCH_DIFF_LINES, WorkbenchReviewAnchor,
-    WorkbenchReviewTarget, malformed,
-};
+use super::{WorkbenchReviewAnchor, WorkbenchReviewTarget, malformed};
 use crate::AppProtocolError;
 
 /// Unified-diff line classification retained for structured rendering.
@@ -48,20 +45,53 @@ impl WorkbenchDiffLineKind {
 pub struct WorkbenchDiffLine {
     kind: WorkbenchDiffLineKind,
     text: String,
+    raw_offset: u32,
+    raw_length: u32,
+    truncated: bool,
 }
 
 impl WorkbenchDiffLine {
+    pub(crate) fn from_wire(
+        kind: WorkbenchDiffLineKind,
+        text: String,
+        raw_offset: u32,
+        raw_length: u32,
+        truncated: bool,
+    ) -> Result<Self, AppProtocolError> {
+        if text.len() > 1027
+            || text.chars().any(|ch| ch.is_control() && ch != '\t')
+            || raw_offset.checked_add(raw_length).is_none()
+            || (truncated && !text.ends_with('…'))
+        {
+            return Err(malformed());
+        }
+        Ok(Self { kind, text, raw_offset, raw_length, truncated })
+    }
+
     /// Creates a line after removing its unified-diff prefix.
     ///
     /// # Errors
     /// Rejects terminal controls or a line above the app field bound.
-    pub fn new(kind: WorkbenchDiffLineKind, text: String) -> Result<Self, AppProtocolError> {
-        if text.len() > crate::MAX_PRODUCT_DETAIL_BYTES
-            || text.chars().any(|character| character.is_control() && character != '\t')
-        {
-            return Err(malformed());
-        }
-        Ok(Self { kind, text })
+    pub fn new(kind: WorkbenchDiffLineKind, text: &str) -> Result<Self, AppProtocolError> {
+        let raw_length = u32::try_from(text.len()).map_err(|_| malformed())?;
+        let (text, truncated) = safe_preview(text);
+        Ok(Self { kind, text, raw_offset: 0, raw_length, truncated })
+    }
+
+    pub(crate) fn from_source(
+        kind: WorkbenchDiffLineKind,
+        text: &str,
+        raw_offset: usize,
+    ) -> Result<Self, AppProtocolError> {
+        let raw_length = u32::try_from(text.len()).map_err(|_| malformed())?;
+        let (text, truncated) = safe_preview(text);
+        Ok(Self {
+            kind,
+            text,
+            raw_offset: u32::try_from(raw_offset).map_err(|_| malformed())?,
+            raw_length,
+            truncated,
+        })
     }
     /// Display classification.
     #[must_use]
@@ -73,6 +103,39 @@ impl WorkbenchDiffLine {
     pub fn text(&self) -> &str {
         &self.text
     }
+    /// Byte offset of the exact source text in the retained raw diff.
+    #[must_use]
+    pub const fn raw_offset(&self) -> u32 {
+        self.raw_offset
+    }
+    /// Exact source-text byte length in the retained raw diff.
+    #[must_use]
+    pub const fn raw_length(&self) -> u32 {
+        self.raw_length
+    }
+    /// Whether the visible safe preview omits source bytes.
+    #[must_use]
+    pub const fn is_truncated(&self) -> bool {
+        self.truncated
+    }
+}
+
+fn safe_preview(value: &str) -> (String, bool) {
+    const PREVIEW_BYTES: usize = 1024;
+    let mut preview = String::new();
+    let mut truncated = false;
+    for character in value.chars() {
+        let character = if character.is_control() && character != '\t' { '�' } else { character };
+        if preview.len().saturating_add(character.len_utf8()) > PREVIEW_BYTES {
+            truncated = true;
+            break;
+        }
+        preview.push(character);
+    }
+    if truncated {
+        preview.push('…');
+    }
+    (preview, truncated)
 }
 
 /// One exact parsed hunk and its visible lines.
@@ -94,7 +157,6 @@ impl WorkbenchDiffHunk {
             || header.is_empty()
             || header.len() > crate::MAX_PRODUCT_DETAIL_BYTES
             || lines.is_empty()
-            || lines.len() > MAX_WORKBENCH_DIFF_LINES
         {
             return Err(malformed());
         }
@@ -131,7 +193,6 @@ impl WorkbenchDiffFile {
         hunks: Vec<WorkbenchDiffHunk>,
     ) -> Result<Self, AppProtocolError> {
         if anchor.target() != WorkbenchReviewTarget::File
-            || hunks.len() > MAX_WORKBENCH_DIFF_HUNKS
             || hunks.iter().any(|hunk| hunk.anchor().path() != anchor.path())
         {
             return Err(malformed());

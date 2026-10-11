@@ -142,19 +142,3 @@ const fn hex_nibble(byte: u8) -> u8 {
         _ => 0,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Sha256Digest, digest_bytes};
-
-    #[test]
-    fn digest_round_trips_through_canonical_hex() {
-        let digest = digest_bytes(b"peritus release");
-        assert_eq!(Sha256Digest::parse(&digest.to_hex()).expect("canonical digest"), digest);
-    }
-
-    #[test]
-    fn uppercase_digest_is_rejected() {
-        assert!(Sha256Digest::parse(&"A".repeat(64)).is_err());
-    }
-}

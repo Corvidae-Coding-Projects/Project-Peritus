@@ -1,91 +1,86 @@
 //! Stable, actionable memory validation and planning failures.
 
 use crate::{FeatureKey, MemoryId, MemoryState};
-use vstd::prelude::*;
 
-verus! {
-
-/// Stable category for a memory failure.
+#[doc = " Stable category for a memory failure."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum MemoryErrorKind {
-    /// A required collection or byte payload is empty.
+    #[doc = " A required collection or byte payload is empty."]
     EmptyValue,
-    /// A caller-supplied bound is outside its supported interval.
+    #[doc = " A caller-supplied bound is outside its supported interval."]
     InvalidBound,
-    /// A stable identifier is the forbidden all-zero value.
+    #[doc = " A stable identifier is the forbidden all-zero value."]
     ZeroIdentifier,
-    /// A collection exceeds its explicit production limit.
+    #[doc = " A collection exceeds its explicit production limit."]
     LimitExceeded,
-    /// Supplied content does not match its SHA-256 digest.
+    #[doc = " Supplied content does not match its SHA-256 digest."]
     DigestMismatch,
-    /// Values are not in canonical strictly increasing order.
+    #[doc = " Values are not in canonical strictly increasing order."]
     NonCanonicalOrder,
-    /// A canonical set contains a duplicate value.
+    #[doc = " A canonical set contains a duplicate value."]
     DuplicateValue,
-    /// Supporting and contradicting evidence overlap.
+    #[doc = " Supporting and contradicting evidence overlap."]
     ConflictingEvidence,
-    /// A scope kind is missing its corresponding dimension.
+    #[doc = " A scope kind is missing its corresponding dimension."]
     IncompleteScope,
-    /// An observation precedes an observation it must follow.
+    #[doc = " An observation precedes an observation it must follow."]
     StaleObservation,
-    /// An expiry observation precedes creation.
+    #[doc = " An expiry observation precedes creation."]
     ExpiryBeforeCreation,
-    /// A revision is zero, stale, skipped, or overflows.
+    #[doc = " A revision is zero, stale, skipped, or overflows."]
     InvalidRevision,
-    /// The requested lifecycle transition is not legal from the current state.
+    #[doc = " The requested lifecycle transition is not legal from the current state."]
     InvalidTransition,
-    /// A quarantine release lacks a later review.
+    #[doc = " A quarantine release lacks a later review."]
     ReleaseRequiresReview,
-    /// Canonical replay contains conflicting revisions for one memory.
+    #[doc = " Canonical replay contains conflicting revisions for one memory."]
     ConflictingRevision,
-    /// A tombstone does not bind the record digest it claims to delete.
+    #[doc = " A tombstone does not bind the record digest it claims to delete."]
     TombstoneDigestMismatch,
-    /// Checked token or score arithmetic overflowed.
+    #[doc = " Checked token or score arithmetic overflowed."]
     ArithmeticOverflow,
 }
-
-/// Stable field associated with a memory failure.
+#[doc = " Stable field associated with a memory failure."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum MemoryField {
-    /// Stable memory identifier.
+    #[doc = " Stable memory identifier."]
     MemoryId,
-    /// Stable repository identifier.
+    #[doc = " Stable repository identifier."]
     RepositoryId,
-    /// Stable feature key.
+    #[doc = " Stable feature key."]
     FeatureKey,
-    /// Source journal events.
+    #[doc = " Source journal events."]
     SourceEvents,
-    /// Supporting evidence.
+    #[doc = " Supporting evidence."]
     SupportingEvidence,
-    /// Contradicting evidence.
+    #[doc = " Contradicting evidence."]
     ContradictingEvidence,
-    /// Retrieval features.
+    #[doc = " Retrieval features."]
     Features,
-    /// Memory content.
+    #[doc = " Memory content."]
     Content,
-    /// Memory scope.
+    #[doc = " Memory scope."]
     Scope,
-    /// Confidence or another basis-point value.
+    #[doc = " Confidence or another basis-point value."]
     Score,
-    /// Logical observation.
+    #[doc = " Logical observation."]
     Observation,
-    /// Expiry observation.
+    #[doc = " Expiry observation."]
     Expiry,
-    /// Immutable record revision.
+    #[doc = " Immutable record revision."]
     Revision,
-    /// Lifecycle state.
+    #[doc = " Lifecycle state."]
     Lifecycle,
-    /// Retrieval token budget.
+    #[doc = " Retrieval token budget."]
     TokenBudget,
-    /// Retrieval result limit.
+    #[doc = " Retrieval result limit."]
     ResultLimit,
-    /// Tombstone sequence.
+    #[doc = " Tombstone sequence."]
     Tombstones,
-    /// Record replay sequence.
+    #[doc = " Record replay sequence."]
     Records,
 }
-
-/// Comparable structured error returned by all checked memory APIs.
+#[doc = " Comparable structured error returned by all checked memory APIs."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MemoryError {
     kind: MemoryErrorKind,
@@ -94,12 +89,10 @@ pub struct MemoryError {
     feature_key: Option<FeatureKey>,
     state: Option<MemoryState>,
 }
-
 impl MemoryError {
     pub(crate) const fn field(kind: MemoryErrorKind, field: MemoryField) -> Self {
         Self { kind, field, memory_id: None, feature_key: None, state: None }
     }
-
     pub(crate) const fn memory(
         kind: MemoryErrorKind,
         field: MemoryField,
@@ -107,7 +100,6 @@ impl MemoryError {
     ) -> Self {
         Self { kind, field, memory_id: Some(memory_id), feature_key: None, state: None }
     }
-
     pub(crate) const fn feature(kind: MemoryErrorKind, feature_key: FeatureKey) -> Self {
         Self {
             kind,
@@ -117,7 +109,6 @@ impl MemoryError {
             state: None,
         }
     }
-
     pub(crate) const fn transition(memory_id: MemoryId, state: MemoryState) -> Self {
         Self {
             kind: MemoryErrorKind::InvalidTransition,
@@ -127,26 +118,29 @@ impl MemoryError {
             state: Some(state),
         }
     }
-
-    /// Returns the stable failure category.
+    #[doc = " Returns the stable failure category."]
     #[must_use]
-    pub const fn kind(&self) -> MemoryErrorKind { self.kind }
-
-    /// Returns the field whose invariant failed.
+    pub const fn kind(&self) -> MemoryErrorKind {
+        self.kind
+    }
+    #[doc = " Returns the field whose invariant failed."]
     #[must_use]
-    pub const fn field_value(&self) -> MemoryField { self.field }
-
-    /// Returns the affected memory identifier, when known.
+    pub const fn field_value(&self) -> MemoryField {
+        self.field
+    }
+    #[doc = " Returns the affected memory identifier, when known."]
     #[must_use]
-    pub const fn memory_id(&self) -> Option<MemoryId> { self.memory_id }
-
-    /// Returns the affected feature key, when known.
+    pub const fn memory_id(&self) -> Option<MemoryId> {
+        self.memory_id
+    }
+    #[doc = " Returns the affected feature key, when known."]
     #[must_use]
-    pub const fn feature_key(&self) -> Option<FeatureKey> { self.feature_key }
-
-    /// Returns the state from which an illegal transition was requested, when applicable.
+    pub const fn feature_key(&self) -> Option<FeatureKey> {
+        self.feature_key
+    }
+    #[doc = " Returns the state from which an illegal transition was requested, when applicable."]
     #[must_use]
-    pub const fn state(&self) -> Option<MemoryState> { self.state }
+    pub const fn state(&self) -> Option<MemoryState> {
+        self.state
+    }
 }
-
-} // verus!

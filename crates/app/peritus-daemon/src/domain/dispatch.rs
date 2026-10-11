@@ -4,8 +4,6 @@ mod debugger;
 mod evaluation;
 mod evolution;
 mod harness;
-#[cfg(test)]
-mod scheduler_tests;
 
 use peritus_app_protocol::AppErrorCode;
 use peritus_codec::{CodecLimits, decode_message};

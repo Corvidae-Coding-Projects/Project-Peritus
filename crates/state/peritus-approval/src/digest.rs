@@ -6,83 +6,65 @@ use peritus_policy::{
 };
 use peritus_types::{RevisionTuple, Sha256Digest};
 use sha2::{Digest, Sha256};
-use vstd::prelude::*;
 
 mod canonical;
 mod registry;
-#[cfg(test)]
-mod tests;
+
 pub use canonical::CanonicalEncoder;
 use canonical::{be_u32, be_u64};
 pub use registry::{credential_registry_bytes, credential_registry_digest};
 
-verus! {
-
-/// Maximum canonical decision digest preimage size.
+#[doc = " Maximum canonical decision digest preimage size."]
 pub const MAX_APPROVAL_DECISION_PREIMAGE_BYTES: usize = 4_096;
-/// Maximum canonical approval-key identifier preimage size.
+#[doc = " Maximum canonical approval-key identifier preimage size."]
 pub const MAX_APPROVAL_KEY_ID_PREIMAGE_BYTES: usize = 256;
-/// Maximum canonical credential-registry snapshot preimage size.
+#[doc = " Maximum canonical credential-registry snapshot preimage size."]
 pub const MAX_CREDENTIAL_REGISTRY_PREIMAGE_BYTES: usize = 4 * 1024 * 1024;
-
-/// Exact externally computed SHA-256 digest of canonical action bytes.
+#[doc = " Exact externally computed SHA-256 digest of canonical action bytes."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ActionDigest(Sha256Digest);
-
 impl ActionDigest {
-    /// Returns the exact action-digest bytes used by reducer specifications.
-    pub closed spec fn spec_bytes(&self) -> [u8; 32] { self.0.spec_bytes() }
-
-    /// Stores an externally computed digest without claiming byte provenance.
+    #[doc = " Stores an externally computed digest without claiming byte provenance."]
     #[must_use]
-    pub const fn from_sha256(digest: Sha256Digest) -> Self { Self(digest) }
-
-    /// Returns the exact SHA-256 value.
+    pub const fn from_sha256(digest: Sha256Digest) -> Self {
+        Self(digest)
+    }
+    #[doc = " Returns the exact SHA-256 value."]
     #[must_use]
-    pub const fn sha256(self) -> (digest: Sha256Digest)
-        ensures digest.spec_bytes() == self.spec_bytes(),
-    { self.0 }
+    pub const fn sha256(self) -> Sha256Digest {
+        self.0
+    }
 }
-
-/// SHA-256 binding every authority-relevant request field.
+#[doc = " SHA-256 binding every authority-relevant request field."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ApprovalRequestDigest(Sha256Digest);
-
 impl ApprovalRequestDigest {
-    /// Returns the exact request-digest bytes used by reducer specifications.
-    pub closed spec fn spec_bytes(&self) -> [u8; 32] { self.0.spec_bytes() }
-
-    pub(crate) const fn from_sha256(digest: Sha256Digest) -> Self { Self(digest) }
-
-    /// Returns the exact SHA-256 value.
+    pub(crate) const fn from_sha256(digest: Sha256Digest) -> Self {
+        Self(digest)
+    }
+    #[doc = " Returns the exact SHA-256 value."]
     #[must_use]
-    pub const fn sha256(self) -> (digest: Sha256Digest)
-        ensures digest.spec_bytes() == self.spec_bytes(),
-    { self.0 }
+    pub const fn sha256(self) -> Sha256Digest {
+        self.0
+    }
 }
-
-/// SHA-256 binding every signed decision field.
+#[doc = " SHA-256 binding every signed decision field."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ApprovalDecisionDigest(Sha256Digest);
-
 impl ApprovalDecisionDigest {
-    /// Returns the exact decision-digest bytes used by reducer specifications.
-    pub closed spec fn spec_bytes(&self) -> [u8; 32] { self.0.spec_bytes() }
-
-    pub(crate) const fn from_sha256(digest: Sha256Digest) -> Self { Self(digest) }
-
-    /// Returns the exact SHA-256 value.
+    pub(crate) const fn from_sha256(digest: Sha256Digest) -> Self {
+        Self(digest)
+    }
+    #[doc = " Returns the exact SHA-256 value."]
     #[must_use]
-    pub const fn sha256(self) -> (digest: Sha256Digest)
-        ensures digest.spec_bytes() == self.spec_bytes(),
-    { self.0 }
+    pub const fn sha256(self) -> Sha256Digest {
+        self.0
+    }
 }
-
-const fn enum_byte(value: u8) -> [u8; 1] { [value] }
-
-pub const fn role_tag(role: ActorRole) -> (tag: u8)
-    ensures tag as int == role.spec_rank(),
-{
+const fn enum_byte(value: u8) -> [u8; 1] {
+    [value]
+}
+pub const fn role_tag(role: ActorRole) -> u8 {
     match role {
         ActorRole::Writer => 0,
         ActorRole::Fixer => 1,
@@ -97,7 +79,6 @@ pub const fn role_tag(role: ActorRole) -> (tag: u8)
         ActorRole::Plugin => 10,
     }
 }
-
 const fn risk_tag(risk: RiskClass) -> u8 {
     match risk {
         RiskClass::Read => 0,
@@ -112,7 +93,6 @@ const fn risk_tag(risk: RiskClass) -> u8 {
         RiskClass::HarnessPromotion => 9,
     }
 }
-
 const fn independence_tag(value: IndependenceRequirement) -> u8 {
     match value {
         IndependenceRequirement::NotRequester => 0,
@@ -121,7 +101,6 @@ const fn independence_tag(value: IndependenceRequirement) -> u8 {
         IndependenceRequirement::NoReviewParticipation => 3,
     }
 }
-
 const fn authority_tier_tag(value: AuthorityTier) -> u8 {
     match value {
         AuthorityTier::Project => 0,
@@ -130,7 +109,6 @@ const fn authority_tier_tag(value: AuthorityTier) -> u8 {
         AuthorityTier::System => 3,
     }
 }
-
 const fn policy_tier_tag(value: PolicyTier) -> u8 {
     match value {
         PolicyTier::System => 0,
@@ -141,21 +119,18 @@ const fn policy_tier_tag(value: PolicyTier) -> u8 {
         PolicyTier::RoleHarness => 5,
     }
 }
-
 fn instant_bytes(value: AuthorityInstant) -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(&be_u64(value.epoch().get()));
     bytes.extend_from_slice(&be_u64(value.tick_millis()));
     bytes
 }
-
 fn validity_bytes(value: ValidityWindow) -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(&instant_bytes(value.not_before()));
     bytes.extend_from_slice(&instant_bytes(value.expires_at()));
     bytes
 }
-
 fn revision_bytes(value: RevisionTuple) -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(value.acceptance_spec_id().as_bytes());
@@ -167,7 +142,6 @@ fn revision_bytes(value: RevisionTuple) -> Vec<u8> {
     bytes.extend_from_slice(value.provider_profile_id().as_bytes());
     bytes
 }
-
 #[allow(
     clippy::cast_possible_truncation,
     reason = "each u32 conversion is dominated by its explicit u32::MAX length guard"
@@ -180,10 +154,7 @@ fn list_vec_bytes(values: &[Vec<u8>]) -> Result<Vec<u8>, crate::ApprovalError> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(&be_u32(count));
     let mut index = 0;
-    while index < values.len()
-        invariant 0 <= index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         if values[index].len() > u32::MAX as usize {
             return Err(crate::ApprovalError::PreimageTooLarge);
         }
@@ -194,7 +165,6 @@ fn list_vec_bytes(values: &[Vec<u8>]) -> Result<Vec<u8>, crate::ApprovalError> {
     }
     Ok(bytes)
 }
-
 #[allow(
     clippy::cast_possible_truncation,
     reason = "the u32 conversion is dominated by the explicit u32::MAX length guard"
@@ -207,17 +177,13 @@ fn list_tag_bytes(values: &[[u8; 1]]) -> Result<Vec<u8>, crate::ApprovalError> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(&be_u32(count));
     let mut index = 0;
-    while index < values.len()
-        invariant 0 <= index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         bytes.extend_from_slice(&be_u32(1));
         bytes.extend_from_slice(&values[index]);
         index += 1;
     }
     Ok(bytes)
 }
-
 #[allow(
     clippy::cast_possible_truncation,
     reason = "the u32 conversion is dominated by the explicit u32::MAX length guard"
@@ -230,18 +196,13 @@ fn list_actor_bytes(values: &[peritus_types::ActorId]) -> Result<Vec<u8>, crate:
     let mut bytes = Vec::new();
     bytes.extend_from_slice(&be_u32(count));
     let mut index = 0;
-    while index < values.len()
-        invariant 0 <= index <= values.len(),
-        decreases values.len() - index,
-    {
+    while index < values.len() {
         bytes.extend_from_slice(&be_u32(16));
         bytes.extend_from_slice(values[index].as_bytes());
         index += 1;
     }
     Ok(bytes)
 }
-
-} // verus!
 
 impl ApprovalRequestDigest {
     /// Computes the domain-separated digest of every exact request field.

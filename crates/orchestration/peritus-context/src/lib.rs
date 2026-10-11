@@ -3,12 +3,8 @@
 //! The crate is a pure control-plane library: callers supply bounded content, identities,
 //! logical recency, role profiles, and token estimates. It performs no model or provider I/O.
 
-use vstd::prelude::*;
-
 mod content_binding;
 pub use content_binding::bind_context_content;
-
-verus! {
 
 mod authority;
 mod budget;
@@ -27,7 +23,6 @@ mod selection;
 mod trust;
 mod verified;
 pub mod working;
-
 pub use authority::AuthorityClass;
 pub use budget::{TokenAccounting, TokenBudget};
 pub use compaction::{
@@ -39,20 +34,14 @@ pub use error::{ContextError, ContextErrorKind};
 pub use graph::ContextGraph;
 pub use identity::{CompactionPolicyId, ContextNodeId, ContextPlanId};
 pub use node::{ContextNode, ContextNodeMetadata, RequirementMode, RoleVisibility};
-pub use plan::{
-    ContextPlan, OmissionReason, OmittedContext, SelectionReason, SelectedContext,
-};
+pub use plan::{ContextPlan, OmissionReason, OmittedContext, SelectedContext, SelectionReason};
 pub use provenance::Provenance;
 pub use render::{MessageRole, RenderPlan, RenderSegment, build_render_plan};
 pub use reuse::{
     KnowledgeContextLink, ReusableContextSelection, build_reusable_context_selections,
 };
 pub use selection::{SelectionPolicy, select_context, selection_result_is_exact};
-#[cfg(verus_only)]
-pub use selection::selection_success_matches;
 pub use trust::TrustClass;
-pub use verified::{plan_dependencies_complete, plan_is_exact, plan_is_visible, token_accounting_is_bounded};
-#[cfg(verus_only)]
-pub use verified::plan_exact_relation;
-
-} // verus!
+pub use verified::{
+    plan_dependencies_complete, plan_is_exact, plan_is_visible, token_accounting_is_bounded,
+};

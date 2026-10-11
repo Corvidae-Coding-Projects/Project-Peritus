@@ -13,51 +13,6 @@ use std::{
     sync::{Arc, atomic::AtomicBool},
 };
 
-#[cfg(test)]
-pub struct FinishBarrier {
-    reached: tokio::sync::Notify,
-    release: tokio::sync::Notify,
-}
-
-#[cfg(test)]
-impl FinishBarrier {
-    pub async fn reached(&self) {
-        self.reached.notified().await;
-    }
-
-    pub fn release(&self) {
-        self.release.notify_one();
-    }
-}
-
-#[cfg(test)]
-static FINISH_BARRIERS: std::sync::LazyLock<
-    std::sync::Mutex<std::collections::BTreeMap<[u8; 16], Arc<FinishBarrier>>>,
-> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::BTreeMap::new()));
-
-#[cfg(test)]
-pub fn inject_finish_barrier(run_id: RunId) -> Arc<FinishBarrier> {
-    let barrier = Arc::new(FinishBarrier {
-        reached: tokio::sync::Notify::new(),
-        release: tokio::sync::Notify::new(),
-    });
-    FINISH_BARRIERS
-        .lock()
-        .expect("finish barrier lock")
-        .insert(run_id.into_bytes(), Arc::clone(&barrier));
-    barrier
-}
-
-#[cfg(test)]
-async fn pause_before_finish(run_id: RunId) {
-    let barrier =
-        FINISH_BARRIERS.lock().ok().and_then(|mut values| values.remove(&run_id.into_bytes()));
-    if let Some(barrier) = barrier {
-        barrier.reached.notify_one();
-        barrier.release.notified().await;
-    }
-}
-
 impl ProductRunService {
     #[allow(
         clippy::too_many_arguments,
@@ -79,6 +34,22 @@ impl ProductRunService {
             let trace_path = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
             let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
             let service = self.clone();
+            let mut tasks = loop {
+                let tasks = self.inner.tasks.lock().await;
+                let recovery_active = self
+                    .inner
+                    .command_recoveries
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .contains(&run_id);
+                if recovery_active {
+                    drop(tasks);
+                    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                    continue;
+                }
+                break tasks;
+            };
+            tasks.retain(|(_, existing)| !existing.is_finished());
             let task = tokio::spawn(async move {
                 let folder = service.inner.folders.get(&request.workspace_id());
                 let command_runtime = match runtime::open(&service, &request, &workspace_root) {
@@ -146,16 +117,13 @@ impl ProductRunService {
                     execution,
                 ))
                 .await;
-                #[cfg(test)]
-                pause_before_finish(run_id).await;
+
                 service.finish(run_id, result);
                 if service.pending_interactive_input(run_id) {
                     let _ = service.retry(run_id).await;
                 }
             });
-            let mut tasks = self.inner.tasks.lock().await;
-            tasks.retain(|existing| !existing.is_finished());
-            tasks.push(task);
+            tasks.push((run_id, task));
         })
     }
 }

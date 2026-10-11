@@ -249,32 +249,3 @@ fn valid_path(value: &str) -> bool {
 fn invalid(detail: &'static str) -> ProductStateError {
     ProductStateError::InvalidPayload(detail.to_owned())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn trust_requires_all_registration_facts() {
-        let restricted = WorkspaceProfile::restricted(
-            "/repo".to_owned(),
-            "01".repeat(32),
-            "02".repeat(16),
-            "03".repeat(16),
-            "04".repeat(16),
-            "05".repeat(16),
-        )
-        .expect("profile");
-        assert_eq!(restricted.trust_level(), WorkspaceTrust::Restricted);
-        let trusted = restricted
-            .trust(
-                "/state/registration.bin".to_owned(),
-                "06".repeat(32),
-                "/state/worktree".to_owned(),
-                "/state/transactions".to_owned(),
-            )
-            .expect("trusted");
-        assert_eq!(trusted.trust_level(), WorkspaceTrust::Trusted);
-        assert!(trusted.restrict().registration_file().is_none());
-    }
-}

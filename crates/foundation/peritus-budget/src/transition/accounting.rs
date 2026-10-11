@@ -13,14 +13,8 @@ pub(in crate::transition) use charge_safety::{
     establish_available_charge_safe, establish_observation_charge_safe,
     establish_reserved_charge_safe,
 };
-#[cfg(verus_only)]
-pub(in crate::transition) use charge_safety::{
-    known_release_preserves_charge_safety, later_account_update_preserves_safe_fuel,
-    lineage_charge_safe, lineage_charge_safe_fuel,
-};
+
 pub(in crate::transition) use fault_safety::establish_fault_lineage_safe;
-#[cfg(verus_only)]
-pub(in crate::transition) use fault_safety::identity_stability_preserves_fault_safety;
 
 pub(super) use fault::fault_lineage;
 pub(super) use lineage::{outstanding, outstanding_validated, require_open_lineage};

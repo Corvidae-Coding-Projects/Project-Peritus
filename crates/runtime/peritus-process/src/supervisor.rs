@@ -55,6 +55,14 @@ impl OwnedProcess {
         self.control.clone()
     }
 
+    /// Detaches this observer while retaining the process owner in its shared process store.
+    ///
+    /// Dropping an ordinary [`OwnedProcess`] requests bounded shutdown. Detach is for a C4
+    /// projection that is being replaced while the exact C2 owner remains active and recoverable.
+    pub fn detach(mut self) {
+        self.join.take();
+    }
+
     /// Waits for the unique terminal result and joins the owning supervisor.
     ///
     /// # Errors
@@ -142,17 +150,27 @@ fn start_with_native(
         changed: std::sync::Condvar::new(),
     });
     emit(&shared, &plan, None, ProcessEventKind::IntentPersisted, Vec::new());
+    // Observers can read output as soon as control is published. Prepare valid streams before
+    // scheduling the owner, retaining its existing asynchronous failure and native cleanup path.
+    let spools = match plan.io_mode() {
+        crate::IoMode::Pipes => {
+            SpoolSet::pipes(&spool_directory, plan.output_policy().spool_bytes())
+        }
+        crate::IoMode::Pty(_) => {
+            SpoolSet::pty(&spool_directory, plan.output_policy().spool_bytes())
+        }
+    };
     let control = ProcessControl::new(
         control_tx,
         Arc::clone(&shared),
         plan.stdin_policy(),
         plan.terminal_capabilities(),
+        spool_directory.clone(),
     );
     let pending_session = Arc::new(std::sync::Mutex::new(session));
     let thread_session = Arc::clone(&pending_session);
     let thread_store = store.clone();
     let thread_shared = Arc::clone(&shared);
-    let thread_spool = spool_directory.clone();
     let thread_plan = plan.clone();
     let name = format!("peritus-process-{}", short_id(process_id.as_bytes()));
     let Ok(join) = thread::Builder::new().name(name).spawn(move || {
@@ -161,7 +179,7 @@ fn start_with_native(
         run_owner(
             &thread_store,
             &thread_plan,
-            &thread_spool,
+            spools,
             control_rx,
             thread_shared,
             session,
@@ -178,6 +196,7 @@ fn start_with_native(
             publish_spawn_failure(store, &plan, &shared, Instant::now(), cleanup_complete, error);
         return Err(supervisor_error("process owner thread cannot be created"));
     };
+    store.retain_control(process_id, control.clone());
     Ok(OwnedProcess { store: store.clone(), control, join: Some(join), spool_directory })
 }
 
@@ -246,7 +265,7 @@ impl ProcessStore {
 fn run_owner(
     store: &ProcessStore,
     plan: &ExecutionPlan,
-    spool_directory: &std::path::Path,
+    spools: Result<SpoolSet, ProcessError>,
     control_rx: mpsc::Receiver<crate::control::ControlCommand>,
     shared: Arc<SharedObservation>,
     mut native: Option<Box<dyn NativeSandboxSession>>,
@@ -254,12 +273,6 @@ fn run_owner(
 ) -> Result<TerminalResult, ProcessError> {
     let began = Instant::now();
     emit(&shared, plan, None, ProcessEventKind::SpawnAttempt, Vec::new());
-    let spools = match plan.io_mode() {
-        crate::IoMode::Pipes => {
-            SpoolSet::pipes(spool_directory, plan.output_policy().spool_bytes())
-        }
-        crate::IoMode::Pty(_) => SpoolSet::pty(spool_directory, plan.output_policy().spool_bytes()),
-    };
     let spools = match spools {
         Ok(spools) => spools,
         Err(error) => {

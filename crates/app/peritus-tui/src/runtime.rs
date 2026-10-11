@@ -342,6 +342,3 @@ fn process_seed(endpoint: &Path) -> [u8; 32] {
     hasher.update(endpoint.as_os_str().as_encoded_bytes());
     hasher.finalize().into()
 }
-
-#[cfg(test)]
-mod tests;

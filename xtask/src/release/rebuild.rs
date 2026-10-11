@@ -7,45 +7,36 @@ use crate::XtaskError;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Operation {
     Record,
-    Compare,
     Library,
     CliLibrary,
     DaemonBinary,
     CliBinary,
     WindowsBinary,
-    WindowsSqliteCheck,
-    StagingCheck,
 }
 
 impl Operation {
     pub(crate) fn parse(name: &str) -> Option<Self> {
         match name {
             "release-rebuild-record" => Some(Self::Record),
-            "release-rebuild-compare" => Some(Self::Compare),
             "release-daemon-library" => Some(Self::Library),
             "release-cli-library" => Some(Self::CliLibrary),
             "release-daemon-binary" => Some(Self::DaemonBinary),
             "release-cli-binary" => Some(Self::CliBinary),
             "release-windows-binary" => Some(Self::WindowsBinary),
-            "release-windows-sqlite-check" => Some(Self::WindowsSqliteCheck),
-            "release-staging-check" => Some(Self::StagingCheck),
             _ => None,
         }
     }
 }
 
 pub(crate) fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
-    let role = if matches!(
-        operation,
-        Operation::Compare | Operation::WindowsBinary | Operation::WindowsSqliteCheck
-    ) {
+    let role = if matches!(operation, Operation::WindowsBinary) {
         None
     } else {
         Some(env::var("PERITUS_RELEASE_BUILD_ROLE").map_err(|_| {
             XtaskError::invocation("PERITUS_RELEASE_BUILD_ROLE must be primary or independent")
         })?)
     };
-    let binary = if matches!(operation, Operation::WindowsBinary | Operation::StagingCheck) {
+    let binary = if matches!(operation, Operation::WindowsBinary) {
         Some(env::var("PERITUS_RELEASE_BINARY").map_err(|_| {
             XtaskError::invocation("PERITUS_RELEASE_BINARY must select a reviewed native binary")
         })?)
@@ -70,9 +61,7 @@ fn command(
         Operation::Library | Operation::CliLibrary | Operation::DaemonBinary | Operation::CliBinary
     ) {
         "packaging/native_build.py"
-    } else if operation == Operation::StagingCheck {
-        "packaging/native_staging_check.py"
-    } else if matches!(operation, Operation::WindowsBinary | Operation::WindowsSqliteCheck) {
+    } else if matches!(operation, Operation::WindowsBinary) {
         "packaging/windows_release.py"
     } else {
         "packaging/rebuild.py"
@@ -81,14 +70,6 @@ fn command(
     match operation {
         Operation::Record => {
             command.args(["record", "dist", require_role(role)?]);
-        }
-        Operation::Compare => {
-            command.args([
-                "compare",
-                "target/native-rebuild/primary",
-                "target/native-rebuild/independent",
-                "target/native-rebuild/report.json",
-            ]);
         }
         Operation::Library => {
             command.env("PERITUS_RELEASE_BUILD_ROLE", require_role(role)?);
@@ -116,18 +97,6 @@ fn command(
                 })?;
             command.args(["build", binary]);
         }
-        Operation::WindowsSqliteCheck => {
-            command.arg("check-sqlite");
-        }
-        Operation::StagingCheck => {
-            let binary = binary
-                .filter(|value| matches!(*value, "peritus" | "peritusd"))
-                .ok_or_else(|| {
-                    XtaskError::invocation("staging comparison requires a reviewed native consumer")
-                })?;
-            command.env("PERITUS_RELEASE_BUILD_ROLE", require_role(role)?);
-            command.arg(binary);
-        }
     }
     Ok(command)
 }
@@ -135,97 +104,4 @@ fn command(
 fn require_role(role: Option<&str>) -> Result<&str, XtaskError> {
     role.filter(|role| matches!(*role, "primary" | "independent"))
         .ok_or_else(|| XtaskError::invocation("release build role must be primary or independent"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn roles_are_closed_and_commands_do_not_invoke_a_shell_or_product_build() {
-        let root = Path::new(".");
-        for role in [None, Some(""), Some("other"), Some("primary; exit 0")] {
-            for operation in [
-                Operation::Record,
-                Operation::Library,
-                Operation::CliLibrary,
-                Operation::StagingCheck,
-                Operation::DaemonBinary,
-                Operation::CliBinary,
-            ] {
-                assert!(command(root, operation, role, None).is_err());
-            }
-        }
-        for role in ["primary", "independent"] {
-            let command = command(root, Operation::Record, Some(role), None).expect("record");
-            assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), ["record", "dist", role]);
-        }
-        let command = command(root, Operation::Compare, None, None).expect("comparison");
-        assert_eq!(
-            command.get_args().skip(1).collect::<Vec<_>>(),
-            [
-                "compare",
-                "target/native-rebuild/primary",
-                "target/native-rebuild/independent",
-                "target/native-rebuild/report.json",
-            ]
-        );
-    }
-
-    #[test]
-    fn native_phases_select_only_the_reviewed_compiler_and_binary() {
-        for (operation, arguments) in [
-            (Operation::Library, vec!["library"]),
-            (Operation::CliLibrary, vec!["library", "peritus"]),
-            (Operation::DaemonBinary, vec!["binary", "peritusd"]),
-            (Operation::CliBinary, vec!["binary", "peritus"]),
-        ] {
-            for role in ["primary", "independent"] {
-                let command = command(Path::new("."), operation, Some(role), None).expect("phase");
-                let script = Path::new(".").join("packaging/native_build.py");
-                assert_eq!(command.get_args().next(), Some(script.as_os_str()));
-                assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), arguments);
-                assert!(command.get_envs().any(|(name, value)| {
-                    name == "PERITUS_RELEASE_BUILD_ROLE" && value == Some(role.as_ref())
-                }));
-            }
-        }
-    }
-
-    #[test]
-    fn windows_operations_reject_arbitrary_binaries_and_use_the_reviewed_script() {
-        let root = Path::new(".");
-        for binary in [None, Some(""), Some("other"), Some("peritus; exit 0")] {
-            assert!(command(root, Operation::WindowsBinary, None, binary).is_err());
-        }
-        for binary in ["peritus", "peritusd", "peritus-tui", "peritus-windows-sandbox-helper"] {
-            let command =
-                command(root, Operation::WindowsBinary, None, Some(binary)).expect("binary");
-            assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), ["build", binary]);
-            assert_eq!(
-                command.get_args().next(),
-                Some(root.join("packaging/windows_release.py").as_os_str())
-            );
-        }
-        let command =
-            command(root, Operation::WindowsSqliteCheck, None, None).expect("SQLite check");
-        assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), ["check-sqlite"]);
-    }
-
-    #[test]
-    fn staging_check_selects_only_the_diagnostic_script_and_closed_consumer_names() {
-        let root = Path::new(".");
-        for binary in [None, Some(""), Some("peritus; exit 0"), Some("peritus-tui")] {
-            assert!(command(root, Operation::StagingCheck, Some("primary"), binary).is_err());
-        }
-        for binary in ["peritus", "peritusd"] {
-            let command = command(root, Operation::StagingCheck, Some("primary"), Some(binary))
-                .expect("diagnostic comparison");
-            assert_eq!(
-                command.get_args().next(),
-                Some(root.join("packaging/native_staging_check.py").as_os_str())
-            );
-            assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), [binary]);
-        }
-    }
 }

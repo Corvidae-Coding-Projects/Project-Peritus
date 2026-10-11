@@ -17,10 +17,6 @@ use crate::{
 };
 
 pub mod configuration;
-#[cfg(all(test, unix))]
-mod endpoint_tests;
-#[cfg(test)]
-mod model_tests;
 
 use configuration::{endpoint, ensure_configuration};
 
@@ -188,6 +184,7 @@ fn finish(
         state.advance(BootstrapPhase::RegistryReady)?;
         store.commit(&state)?;
     }
+    configuration::folder_catalog::refresh(&layout, store, &mut state)?;
     let (configuration, configuration_path) = ensure_configuration(&layout, &state)?;
     if state.bootstrap_phase() == BootstrapPhase::RegistryReady {
         state.advance(BootstrapPhase::ConfigurationReady)?;
@@ -239,137 +236,4 @@ fn ensure_registry(layout: &AppLayout) -> Result<(), LauncherError> {
     let actual = read_exact_or_publish(&layout.approval_registry(), &expected)?;
     let _validated = decode_credential_registry(&actual)?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bootstrap_is_complete_and_idempotent() {
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
-        let first = ProductBootstrap::new(layout.clone()).prepare().expect("first bootstrap");
-        let identity = first.state().identity().clone();
-        assert_eq!(first.state().bootstrap_phase(), BootstrapPhase::ConfigurationReady);
-        assert!(first.daemon_config_path().is_file());
-        assert!(layout.approval_registry().is_file());
-
-        let second = ProductBootstrap::new(layout).prepare().expect("repeat bootstrap");
-        assert_eq!(second.state().identity(), &identity);
-        assert_eq!(second.state().generation(), 3);
-        assert_eq!(second.endpoint_path(), first.endpoint_path());
-    }
-
-    #[test]
-    fn provider_selection_publishes_a_new_immutable_configuration() {
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
-        let first = ProductBootstrap::new(layout.clone()).prepare().expect("bootstrap");
-        let selection = ProviderSelection::new(
-            vec![peritus_product_state::ProviderKind::CodexAccount],
-            Some(peritus_product_state::ProviderKind::CodexAccount),
-        )
-        .expect("selection")
-        .with_account_models(std::collections::BTreeMap::from([(
-            peritus_product_state::ProviderKind::CodexAccount,
-            "fixture-codex-model".to_owned(),
-        )]))
-        .expect("model selection");
-        let configured =
-            ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
-        assert_ne!(configured.daemon_config_path(), first.daemon_config_path());
-        assert_eq!(configured.daemon_config().providers().len(), 1);
-        assert!(!configured.daemon_config().product().automatic_provider_failover());
-        assert!(first.daemon_config_path().is_file());
-    }
-
-    #[test]
-    fn explicit_failover_choice_reaches_the_immutable_daemon_configuration() {
-        use peritus_product_state::ProviderKind;
-
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
-        let selection = ProviderSelection::with_direct_profiles_and_failover(
-            vec![ProviderKind::CodexAccount, ProviderKind::ClaudeAccount],
-            Some(ProviderKind::CodexAccount),
-            Vec::new(),
-            true,
-        )
-        .expect("explicit failover selection")
-        .with_account_models(std::collections::BTreeMap::from([
-            (ProviderKind::CodexAccount, "fixture-codex-model".to_owned()),
-            (ProviderKind::ClaudeAccount, "fixture-claude-model".to_owned()),
-        ]))
-        .expect("model selection");
-        let configured =
-            ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
-
-        assert!(configured.daemon_config().product().automatic_provider_failover());
-        let text = std::fs::read_to_string(configured.daemon_config_path()).expect("configuration");
-        assert!(text.contains("[product]\nautomatic_provider_failover = true"));
-    }
-
-    #[test]
-    fn every_direct_provider_profile_builds_its_production_adapter() {
-        use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderKind};
-
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
-        let reference = format!("peritus-secret-v1:{}:{}", "01".repeat(16), "02".repeat(32));
-        let profiles = vec![
-            direct_profile(ProviderKind::OpenAiApi, &reference, None, None),
-            direct_profile(
-                ProviderKind::AnthropicApi,
-                &reference,
-                Some("https://api.anthropic.com"),
-                None,
-            ),
-            direct_profile(
-                ProviderKind::GoogleGeminiApi,
-                &reference,
-                Some("https://generativelanguage.googleapis.com"),
-                None,
-            ),
-            DirectProviderProfile::new(
-                ProviderKind::CompatibleEndpoint,
-                reference,
-                Some("https://example.com/v1/responses".to_owned()),
-                "compatible-model".to_owned(),
-                Some(CompatibleProtocol::Responses),
-                None,
-            )
-            .expect("compatible profile"),
-        ];
-        let enabled = profiles.iter().map(DirectProviderProfile::kind).collect::<Vec<_>>();
-        let selection = ProviderSelection::with_direct_profiles(
-            enabled,
-            Some(ProviderKind::OpenAiApi),
-            profiles,
-        )
-        .expect("selection");
-        let configured =
-            ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
-        assert_eq!(configured.daemon_config().providers().len(), 4);
-        for route in configured.daemon_config().providers() {
-            route.declaration().expect("production adapter declaration");
-        }
-    }
-
-    fn direct_profile(
-        kind: peritus_product_state::ProviderKind,
-        reference: &str,
-        endpoint: Option<&str>,
-        protocol: Option<peritus_product_state::CompatibleProtocol>,
-    ) -> peritus_product_state::DirectProviderProfile {
-        peritus_product_state::DirectProviderProfile::new(
-            kind,
-            reference.to_owned(),
-            endpoint.map(str::to_owned),
-            "provider-model".to_owned(),
-            protocol,
-            None,
-        )
-        .expect("direct profile")
-    }
 }

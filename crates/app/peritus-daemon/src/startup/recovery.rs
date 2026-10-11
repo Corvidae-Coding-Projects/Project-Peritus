@@ -4,6 +4,7 @@ use peritus_journal::{
     ApplicationCommandSettlement, CommandResolution, JournalError, SqliteJournal,
 };
 use peritus_process::{NativeProcessProbe, ProcessStore, RecoveryDisposition};
+use peritus_types::{ActionId, ProcessId, RunId};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
@@ -60,17 +61,21 @@ pub(super) fn reconcile_application(journal: &mut SqliteJournal) -> Result<(), D
     }
 }
 
-pub(super) fn reconcile_processes(store: &ProcessStore) -> Result<Option<String>, DaemonError> {
+pub(super) fn reconcile_processes(
+    store: &ProcessStore,
+    preserved_owners: &[(RunId, ActionId, ProcessId)],
+) -> Result<Option<String>, DaemonError> {
     let mut probe = NativeProcessProbe::new();
-    let report = store.reconcile(&mut probe).map_err(|error| {
-        DaemonError::with_source(
-            DaemonErrorCode::RecoveryRequired,
-            DaemonRecovery::Reconcile,
-            "reconcile process registry",
-            error.to_string(),
-            error,
-        )
-    })?;
+    let report =
+        store.reconcile_preserving_exact_live(preserved_owners, &mut probe).map_err(|error| {
+            DaemonError::with_source(
+                DaemonErrorCode::RecoveryRequired,
+                DaemonRecovery::Reconcile,
+                "reconcile process registry",
+                error.to_string(),
+                error,
+            )
+        })?;
     let indeterminate = report
         .entries()
         .iter()

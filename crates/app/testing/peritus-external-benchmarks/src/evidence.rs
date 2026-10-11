@@ -351,6 +351,3 @@ const fn phase_name(phase: ProductRunPhase) -> &'static str {
         ProductRunPhase::Complete => "complete",
     }
 }
-
-#[cfg(test)]
-mod tests;

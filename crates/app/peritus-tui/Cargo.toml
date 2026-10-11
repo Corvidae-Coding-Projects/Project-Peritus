@@ -13,13 +13,13 @@ categories = ["command-line-utilities"]
 [dependencies]
 base64.workspace = true
 crossterm = { workspace = true, features = ["osc52"] }
-peritus-app-protocol = { version = "=0.0.5", path = "../peritus-app-protocol" }
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-protocol = { version = "=0.0.5", path = "../../foundation/peritus-protocol" }
-peritus-product-runner = { version = "=0.0.5", path = "../peritus-product-runner" }
-peritus-run-settlement = { version = "=0.0.5", path = "../../orchestration/peritus-run-settlement" }
-peritus-tools-shell = { version = "=0.0.5", path = "../../tools/peritus-tools-shell" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
+peritus-app-protocol = { version = "=0.0.6", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.0.6", path = "../../foundation/peritus-protocol" }
+peritus-product-runner = { version = "=0.0.6", path = "../peritus-product-runner" }
+peritus-run-settlement = { version = "=0.0.6", path = "../../orchestration/peritus-run-settlement" }
+peritus-tools-shell = { version = "=0.0.6", path = "../../tools/peritus-tools-shell" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 ratatui.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
@@ -34,12 +34,6 @@ signal-hook.workspace = true
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_System_Console"] }
 
-[dev-dependencies]
-tempfile.workspace = true
-
-[target.'cfg(unix)'.dev-dependencies]
-portable-pty.workspace = true
-
 [[bin]]
 name = "peritus-tui"
 path = "src/main.rs"
@@ -47,7 +41,6 @@ path = "src/main.rs"
 [package.metadata.peritus]
 owner = "G2"
 layer = "app"
-verification-class = "C"
 
 [lints]
 workspace = true

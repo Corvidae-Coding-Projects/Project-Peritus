@@ -6,11 +6,6 @@ use peritus_agent::DeveloperLoopError;
 
 use super::path::tool;
 
-const MAX_OUTPUT_BYTES: usize = 512 * 1024;
-
-#[cfg(test)]
-mod tests;
-
 pub(super) fn reject_destructive_command(
     program: &str,
     args: &[String],
@@ -44,12 +39,4 @@ pub(super) fn atomic_write(path: &Path, content: &[u8]) -> Result<(), DeveloperL
     }
     file.as_file().sync_all().map_err(|error| tool(error.to_string()))?;
     file.persist(path).map(|_| ()).map_err(|error| tool(error.to_string()))
-}
-
-pub(super) fn limit(value: &str) -> String {
-    if value.len() <= MAX_OUTPUT_BYTES {
-        value.to_owned()
-    } else {
-        format!("{}\n[output truncated]", &value[..value.floor_char_boundary(MAX_OUTPUT_BYTES)])
-    }
 }

@@ -1,7 +1,6 @@
 //! Closed pure scheduler command vocabulary.
 
 use peritus_types::{CommandId, EventId, RevisionTuple, RunId, Sha256Digest};
-use vstd::prelude::*;
 
 use crate::{SchedulerError, SchedulerErrorKind, SchedulerSemantics, SchedulerState};
 
@@ -9,9 +8,7 @@ mod kind;
 
 pub use kind::{FailureDisposition, SchedulerCommandKind};
 
-verus! {
-
-/// Syntax-checked but unprivileged scheduler reducer command.
+#[doc = " Syntax-checked but unprivileged scheduler reducer command."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct SchedulerCommand {
     semantics: SchedulerSemantics,
@@ -24,43 +21,7 @@ pub struct SchedulerCommand {
     revision: RevisionTuple,
     kind: SchedulerCommandKind,
 }
-
 impl SchedulerCommand {
-    /// Relates every command fence and the exact semantic payload across a clone.
-    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
-        &&& left.semantics == right.semantics
-        &&& left.command_id == right.command_id
-        &&& left.event_id == right.event_id
-        &&& left.run_id == right.run_id
-        &&& left.expected_sequence == right.expected_sequence
-        &&& left.expected_previous_event == right.expected_previous_event
-        &&& left.prior_state_digest == right.prior_state_digest
-        &&& left.revision == right.revision
-        &&& SchedulerCommandKind::clone_equivalent(&left.kind, &right.kind)
-    }
-    /// Returns the mathematical immutable scheduler semantics.
-    pub closed spec fn spec_semantics(&self) -> SchedulerSemantics { self.semantics }
-    /// Returns the mathematical idempotency identity.
-    pub closed spec fn spec_command_id(&self) -> CommandId { self.command_id }
-    /// Returns the mathematical reserved event identity.
-    pub closed spec fn spec_event_id(&self) -> EventId { self.event_id }
-    /// Returns the mathematical run fence.
-    pub closed spec fn spec_run_id(&self) -> RunId { self.run_id }
-    /// Returns the mathematical predecessor sequence fence.
-    pub closed spec fn spec_expected_sequence(&self) -> u64 { self.expected_sequence }
-    /// Returns the mathematical predecessor event fence.
-    pub closed spec fn spec_expected_previous_event(&self) -> Option<EventId> {
-        self.expected_previous_event
-    }
-    /// Returns the mathematical predecessor-state digest fence.
-    pub closed spec fn spec_prior_state_digest(&self) -> Sha256Digest {
-        self.prior_state_digest
-    }
-    /// Returns the mathematical immutable revision fence.
-    pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
-    /// Returns the mathematical semantic command payload.
-    pub closed spec fn spec_kind(&self) -> &SchedulerCommandKind { &self.kind }
-
     #[allow(clippy::too_many_arguments)]
     pub(crate) const fn from_wire(
         semantics: SchedulerSemantics,
@@ -72,18 +33,7 @@ impl SchedulerCommand {
         prior_state_digest: Sha256Digest,
         revision: RevisionTuple,
         kind: SchedulerCommandKind,
-    ) -> (result: Self)
-        ensures
-            result.spec_semantics() == semantics,
-            result.spec_command_id() == command_id,
-            result.spec_event_id() == event_id,
-            result.spec_run_id() == run_id,
-            result.spec_expected_sequence() == expected_sequence,
-            result.spec_expected_previous_event() == expected_previous_event,
-            result.spec_prior_state_digest() == prior_state_digest,
-            result.spec_revision() == revision,
-            result.spec_kind() == &kind,
-    {
+    ) -> Self {
         Self {
             semantics,
             command_id,
@@ -96,75 +46,54 @@ impl SchedulerCommand {
             kind,
         }
     }
-    /// Returns the immutable queue and recovery semantics.
+    #[doc = " Returns the immutable queue and recovery semantics."]
     #[must_use]
-    pub const fn semantics(&self) -> (result: SchedulerSemantics)
-        ensures result == self.spec_semantics(),
-    {
+    pub const fn semantics(&self) -> SchedulerSemantics {
         self.semantics
     }
-    /// Returns idempotent command identity.
+    #[doc = " Returns idempotent command identity."]
     #[must_use]
-    pub const fn command_id(&self) -> (result: CommandId)
-        ensures result == self.spec_command_id(),
-    {
+    pub const fn command_id(&self) -> CommandId {
         self.command_id
     }
-    /// Returns reserved successor event identity.
+    #[doc = " Returns reserved successor event identity."]
     #[must_use]
-    pub const fn event_id(&self) -> (result: EventId)
-        ensures result == self.spec_event_id(),
-    {
+    pub const fn event_id(&self) -> EventId {
         self.event_id
     }
-    /// Returns bound run.
+    #[doc = " Returns bound run."]
     #[must_use]
-    pub const fn run_id(&self) -> (result: RunId)
-        ensures result == self.spec_run_id(),
-    {
+    pub const fn run_id(&self) -> RunId {
         self.run_id
     }
-    /// Returns expected prior sequence, zero at genesis.
+    #[doc = " Returns expected prior sequence, zero at genesis."]
     #[must_use]
-    pub const fn expected_sequence(&self) -> (result: u64)
-        ensures result == self.spec_expected_sequence(),
-    {
+    pub const fn expected_sequence(&self) -> u64 {
         self.expected_sequence
     }
-    /// Returns exact prior event identity.
+    #[doc = " Returns exact prior event identity."]
     #[must_use]
-    pub const fn expected_previous_event(&self) -> (result: Option<EventId>)
-        ensures result == self.spec_expected_previous_event(),
-    {
+    pub const fn expected_previous_event(&self) -> Option<EventId> {
         self.expected_previous_event
     }
-    /// Returns exact predecessor-state digest.
+    #[doc = " Returns exact predecessor-state digest."]
     #[must_use]
-    pub const fn prior_state_digest(&self) -> (result: Sha256Digest)
-        ensures result == self.spec_prior_state_digest(),
-    {
+    pub const fn prior_state_digest(&self) -> Sha256Digest {
         self.prior_state_digest
     }
-    /// Returns exact immutable revision fence.
+    #[doc = " Returns exact immutable revision fence."]
     #[must_use]
-    pub const fn revision(&self) -> (result: RevisionTuple)
-        ensures result == self.spec_revision(),
-    {
+    pub const fn revision(&self) -> RevisionTuple {
         self.revision
     }
-    /// Borrows closed semantic payload.
+    #[doc = " Borrows closed semantic payload."]
     #[must_use]
-    pub const fn kind(&self) -> (result: &SchedulerCommandKind)
-        ensures result == self.spec_kind(),
-    {
+    pub const fn kind(&self) -> &SchedulerCommandKind {
         &self.kind
     }
 }
-
 impl Clone for SchedulerCommand {
-    fn clone(&self) -> (result: Self)
-        ensures Self::clone_equivalent(self, &result),
-    {
+    fn clone(&self) -> Self {
         Self {
             semantics: self.semantics,
             command_id: self.command_id,
@@ -178,8 +107,6 @@ impl Clone for SchedulerCommand {
         }
     }
 }
-
-} // verus!
 
 impl SchedulerCommand {
     /// Creates one exact fenced command.

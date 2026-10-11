@@ -228,11 +228,13 @@ impl ExecutionPlan {
         }
         if deadlines
             .wall_timeout_millis()
-            .is_some_and(|deadline| deadline > resources.wall_millis())
-            || output.spool_bytes() > resources.output_bytes()
-            || output.stdout_bytes() > resources.output_bytes()
-            || output.stderr_bytes() > resources.output_bytes()
-            || output.terminal_bytes() > resources.output_bytes()
+            .is_some_and(|deadline| resources.wall_millis().is_some_and(|wall| deadline > wall))
+            || resources.output_bytes().is_some_and(|ceiling| {
+                output.spool_bytes().is_some_and(|limit| limit > ceiling)
+                    || output.stdout_bytes().is_some_and(|limit| limit > ceiling)
+                    || output.stderr_bytes().is_some_and(|limit| limit > ceiling)
+                    || output.terminal_bytes().is_some_and(|limit| limit > ceiling)
+            })
         {
             return Err(invalid("deadline or output policy exceeds the resource policy"));
         }

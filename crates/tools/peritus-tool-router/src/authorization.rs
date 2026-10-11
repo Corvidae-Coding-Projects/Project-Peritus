@@ -138,8 +138,8 @@ pub fn validate(
         && capability.successor().time_state().epoch() == request.observed_at.epoch()
         && capability.successor().time_state().greatest_tick_millis()
             <= request.observed_at.tick_millis()
-        && request.observed_at.epoch() == prepared.call().deadline().epoch()
-        && request.observed_at.tick_millis() < prepared.call().deadline().tick_millis();
+        && request.observed_at.epoch() == prepared.call().authority_epoch()
+        && prepared.call().deadline().is_none_or(|deadline| request.observed_at < deadline);
     let revision_exact = request.revision == prepared.call().revision()
         && request.expected_generation == request.revision.workspace_generation()
         && request.expected_revision == request.revision.workspace_revision();
@@ -196,13 +196,23 @@ fn validate_budget(
         .reservation_snapshot(reservation_id)
         .map_err(|_| mismatch("budget transition has no exact reservation snapshot"))?;
     let begin = snapshot.request();
-    Ok(snapshot.phase() == ReservationPhase::Held
+    let expected_phase =
+        if prepared.call().limits().timeout_millis().is_none() && begin.reserve().is_zero() {
+            ReservationPhase::SettledExact
+        } else {
+            ReservationPhase::Held
+        };
+    Ok(snapshot.phase() == expected_phase
         && begin.reservation_id() == reservation_id
         && begin.action_id() == prepared.call().action_id()
         && begin.action_digest() == intent_digest
         && begin.revision() == prepared.call().revision()
-        && begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get()
-            >= prepared.call().limits().timeout_millis())
+        && prepared.call().limits().timeout_millis().map_or_else(
+            || begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get() == 0,
+            |timeout| {
+                begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get() >= timeout
+            },
+        ))
 }
 
 fn validate_lease(

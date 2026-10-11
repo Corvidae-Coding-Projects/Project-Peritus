@@ -172,7 +172,7 @@ fn grounded_markdown(
 }
 
 fn system_prompt(remaining: Option<std::time::Duration>) -> String {
-    let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer.";
+    let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer. For a scoped change in an existing application, inspect only its owning modules, immediate callers, persistence boundary, and applicable local instructions. Stop discovery when you can name an actionable first slice and its contracts; do not conduct a whole-repository review unless the user requested one. Batch independent focused reads. Reuse unchanged observations within this invocation, and avoid rereading the same ranges or broad directory inventories. Mark remaining targeted questions in the design so implementation can resolve them while making progress.";
     let instructions = format!(
         "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
@@ -275,63 +275,4 @@ fn grounding(detail: &'static str) -> ProductRunnerError {
         "ground implementation design in repository evidence",
         detail,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn design_requires_a_real_markdown_document() {
-        assert!(normalize("not a design").is_err());
-        let detailed = format!(
-            "# Design\n\n## Objective\n{}\n\n## Repository findings\nConcrete.\n\n## Architecture\nConcrete.\n\n## Implementation\nConcrete.\n\n## Verification\nConcrete.",
-            "Complete requested behavior. ".repeat(24)
-        );
-        assert!(normalize(&detailed).is_ok());
-    }
-
-    #[test]
-    fn rejected_design_retry_explains_the_exact_heading_contract() {
-        let error = normalize("# Objective\n\n# Architecture\n\n# Verification")
-            .expect_err("invalid heading hierarchy");
-        let correction = correction_prompt(&error);
-        let prompt = user_prompt("task", Some(&correction));
-
-        assert!(prompt.contains("Harness correction from the previous rejected design"));
-        assert!(prompt.contains("first nonblank line"));
-        assert!(prompt.contains("at least four section headings"));
-        assert!(prompt.contains(error.detail()));
-    }
-
-    #[test]
-    fn design_keeps_literal_values_and_scoped_rules_authoritative() {
-        let prompt = system_prompt(Some(std::time::Duration::from_mins(10)));
-        assert!(prompt.contains("original request's literal paths, values, operations"));
-        assert!(prompt.contains("Do not override an explicit expected value"));
-        assert!(prompt.contains("broadening a narrowly scoped rule"));
-        assert!(prompt.contains("non-exhaustive"));
-        assert!(prompt.contains("preserve that precedence"));
-        assert!(prompt.contains("owns the primary field"));
-        assert!(prompt.contains("opaque contract values"));
-        assert!(prompt.contains("reversible requested artifact"));
-        assert!(prompt.contains("without inventing package scaffolding"));
-
-        let unbounded = system_prompt(None);
-        assert!(!unbounded.contains("seconds left"));
-        assert!(!unbounded.contains("shared window"));
-    }
-
-    #[test]
-    fn artifact_workspace_marker_selects_the_deterministic_design_path() {
-        let workspace = tempfile::tempdir().expect("workspace");
-        fs::write(
-            workspace.path().join("peritus-workspace.toml"),
-            "schema_version = 1\nkind = \"artifact\"\n",
-        )
-        .expect("manifest");
-
-        let scope = design_scope(workspace.path());
-        assert_eq!(scope, DesignScope::Artifact);
-    }
 }

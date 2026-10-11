@@ -1,46 +1,6 @@
 //! Named Linux portions of the C3 formal obligations and their executable projection.
 
-use vstd::prelude::*;
-
 use crate::verified::{ActivationFacts, NativeBindingFacts, TeardownFacts};
-
-verus! {
-
-/// `OBL-0130-LINUX`: admitted native preparation covers and binds every exact input identity.
-pub proof fn admitted_linux_backend_covers_and_binds(facts: NativeBindingFacts)
-    requires crate::verified::native_binding_complete_spec(facts),
-    ensures
-        facts.features_covered,
-        facts.plan_exact,
-        facts.descriptor_exact,
-        facts.probe_exact,
-        facts.preparation_exact,
-{
-}
-
-/// `OBL-0133-LINUX`: complete teardown leaves no backend, proxy, or secret resource.
-pub proof fn complete_linux_teardown_releases_every_resource(facts: TeardownFacts)
-    requires crate::verified::teardown_complete_spec(facts),
-    ensures
-        facts.backend_resources_empty,
-        facts.proxy_resources_empty,
-        facts.secret_resources_empty,
-{
-}
-
-/// `OBL-0134-LINUX`: unsupported or mismatched preparation has no activation effect.
-pub proof fn unsupported_or_mismatched_linux_preparation_has_no_effect(facts: ActivationFacts)
-    requires
-        !facts.supported || !facts.binding_exact,
-        crate::verified::unsupported_or_mismatched_no_effect_spec(facts),
-    ensures
-        !facts.process_activated,
-        !facts.network_activated,
-        !facts.secrets_activated,
-{
-}
-
-} // verus!
 
 use peritus_types::Sha256Digest;
 

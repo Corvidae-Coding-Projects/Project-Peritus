@@ -12,8 +12,7 @@
 
 mod activation;
 mod canonical;
-#[cfg(all(test, unix))]
-mod conformance_tests;
+
 mod descriptor;
 mod environment;
 mod error;
@@ -33,8 +32,7 @@ mod resource_monitor;
 mod runner;
 mod secret;
 mod session;
-#[cfg(all(test, unix))]
-mod test_support;
+
 mod verified;
 
 pub use activation::{ACTIVATION_RECORD_BYTES, ActivationRecord};

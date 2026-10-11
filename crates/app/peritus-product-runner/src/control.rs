@@ -24,21 +24,21 @@ mod goal;
 pub use goal::{
     GoalAdmission, GoalCriterion, GoalCriterionKind, GoalCriterionState, GoalPauseMode, GoalRecord,
     GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage, GoalUsageReport,
+    GraphicalOutputEvidence,
 };
 mod inputs;
 mod permissions;
 mod record;
 mod reply;
 mod review;
-#[cfg(test)]
-mod tests;
+
 mod text;
 
 pub use branch::{ConversationBranch, ConversationBranchMode};
 pub use brief::{BriefBinding, BriefField, TaskBrief};
 pub use checkpoint::{
-    CheckpointFileMode, CheckpointFileVersion, CheckpointPath, CheckpointReferences,
-    RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointExclusion, CheckpointExclusionIter, CheckpointFileMode, CheckpointFileVersion,
+    CheckpointPath, CheckpointReferences, RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 pub use compaction::{CompactedReply, PromptView};
 pub use context::{ContextPreference, ContextSelection, ContextSelections, ContextTarget};

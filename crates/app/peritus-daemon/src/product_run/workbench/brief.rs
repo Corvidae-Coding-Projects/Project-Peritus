@@ -1,10 +1,12 @@
 //! Authenticated, read-only task-brief projection from the authoritative input ledger.
 
+mod pages;
+
 use super::{ProductRunService, error_response, inputs::project_row};
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, WorkbenchBrief, WorkbenchBriefEntry,
     WorkbenchBriefField, WorkbenchBriefObservation, WorkbenchBriefObservationKind,
-    WorkbenchBriefProposal, WorkbenchInputText, WorkbenchInvocationId, WorkbenchQuery,
+    WorkbenchBriefProposal, WorkbenchInvocationId, WorkbenchQuery,
 };
 use peritus_product_runner::control::{BriefField, ControlError, ConversationId};
 use peritus_types::ActorId;
@@ -61,25 +63,21 @@ impl ProductRunService {
                 let mut excluded = 0_u32;
                 let mut proposals = Vec::new();
                 for reply in record.replies().iter().rev() {
-                    if proposals.len() == peritus_app_protocol::MAX_WORKBENCH_BRIEF_PROPOSALS {
-                        excluded = excluded.checked_add(1).ok_or(ControlError::Capacity)?;
-                        continue;
-                    }
-                    let Ok(text) = WorkbenchInputText::new(store.reply_text(reply)?) else {
-                        excluded = excluded.checked_add(1).ok_or(ControlError::Capacity)?;
-                        continue;
-                    };
-                    proposals.push(
-                        WorkbenchBriefProposal::new(
-                            ControlOperationId::new(*reply.operation().as_bytes())
-                                .map_err(|_| ControlError::InvalidInput)?,
-                            WorkbenchInvocationId::new(*reply.after_invocation().as_bytes())
-                                .map_err(|_| ControlError::InvalidInput)?,
-                            reply.digest(),
-                            text,
-                        )
-                        .map_err(|_| ControlError::InvalidInput)?,
+                    let text = store.reply_text(reply)?;
+                    let proposal = WorkbenchBriefProposal::new(
+                        ControlOperationId::new(*reply.operation().as_bytes())
+                            .map_err(|_| ControlError::InvalidInput)?,
+                        WorkbenchInvocationId::new(*reply.after_invocation().as_bytes())
+                            .map_err(|_| ControlError::InvalidInput)?,
+                        reply.digest(),
+                        text,
                     );
+                    match proposal {
+                        Ok(proposal) => proposals.push(proposal),
+                        Err(_) => {
+                            excluded = excluded.checked_add(1).ok_or(ControlError::Capacity)?;
+                        }
+                    }
                 }
                 // Invocation identities are opaque, not chronological counters. Keep the
                 // most recent bounded selection, then emit the protocol's canonical order.

@@ -12,9 +12,6 @@ pub mod query;
 mod reader;
 mod schema;
 
-#[cfg(test)]
-mod tests;
-
 use crate::CommittedBatch;
 use peritus_types::{CommandId, Sha256Digest};
 

@@ -8,22 +8,18 @@ use peritus_policy::{ActorRole, AuthorityInstant};
 use peritus_types::{
     ActorId, ApprovalRequestId, CommandId, Generation, RevisionNumber, Sha256Digest,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// One of the three exact human approval choices.
+#[doc = " One of the three exact human approval choices."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ApprovalChoice {
-    /// Deny this exact request.
+    #[doc = " Deny this exact request."]
     Deny,
-    /// Authorize one logical use of this exact action.
+    #[doc = " Authorize one logical use of this exact action."]
     ApproveOnce,
-    /// Authorize one exact previewed policy amendment.
+    #[doc = " Authorize one exact previewed policy amendment."]
     Amend(crate::AmendmentIdentity),
 }
-
-/// Exact digest-bound decision payload presented to strict authentication.
+#[doc = " Exact digest-bound decision payload presented to strict authentication."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ApprovalDecision {
     pub(crate) command_id: CommandId,
@@ -38,82 +34,91 @@ pub struct ApprovalDecision {
     pub(crate) registry_revision: RevisionNumber,
     pub(crate) digest: crate::ApprovalDecisionDigest,
 }
-
 impl ApprovalDecision {
-    /// Returns the unique command identity.
+    #[doc = " Returns the unique command identity."]
     #[must_use]
-    pub const fn command_id(&self) -> CommandId { self.command_id }
-
-    /// Returns the authenticated human responder.
+    pub const fn command_id(&self) -> CommandId {
+        self.command_id
+    }
+    #[doc = " Returns the authenticated human responder."]
     #[must_use]
-    pub const fn responder(&self) -> ActorId { self.responder }
-
-    /// Returns the separately asserted and signed approval role.
+    pub const fn responder(&self) -> ActorId {
+        self.responder
+    }
+    #[doc = " Returns the separately asserted and signed approval role."]
     #[must_use]
-    pub const fn approver_role(&self) -> ActorRole { self.approver_role }
-
-    /// Returns the exact request identity.
+    pub const fn approver_role(&self) -> ActorRole {
+        self.approver_role
+    }
+    #[doc = " Returns the exact request identity."]
     #[must_use]
-    pub const fn request_id(&self) -> ApprovalRequestId { self.request_id }
-
-    /// Returns the exact request digest.
+    pub const fn request_id(&self) -> ApprovalRequestId {
+        self.request_id
+    }
+    #[doc = " Returns the exact request digest."]
     #[must_use]
-    pub const fn request_digest(&self) -> crate::ApprovalRequestDigest { self.request_digest }
-
-    /// Returns the exact semantic choice.
+    pub const fn request_digest(&self) -> crate::ApprovalRequestDigest {
+        self.request_digest
+    }
+    #[doc = " Returns the exact semantic choice."]
     #[must_use]
-    pub const fn choice(&self) -> ApprovalChoice { self.choice }
-
-    /// Returns the decision's exclusive expiry instant.
+    pub const fn choice(&self) -> ApprovalChoice {
+        self.choice
+    }
+    #[doc = " Returns the decision\'s exclusive expiry instant."]
     #[must_use]
-    pub const fn expires_at(&self) -> AuthorityInstant { self.expires_at }
-
-    /// Returns the signed approval key ID.
+    pub const fn expires_at(&self) -> AuthorityInstant {
+        self.expires_at
+    }
+    #[doc = " Returns the signed approval key ID."]
     #[must_use]
-    pub const fn key_id(&self) -> crate::ApprovalKeyId { self.key_id }
-
-    /// Returns the signed credential generation.
+    pub const fn key_id(&self) -> crate::ApprovalKeyId {
+        self.key_id
+    }
+    #[doc = " Returns the signed credential generation."]
     #[must_use]
-    pub const fn credential_generation(&self) -> Generation { self.credential_generation }
-
-    /// Returns the signed supplied-registry revision.
+    pub const fn credential_generation(&self) -> Generation {
+        self.credential_generation
+    }
+    #[doc = " Returns the signed supplied-registry revision."]
     #[must_use]
-    pub const fn registry_revision(&self) -> RevisionNumber { self.registry_revision }
-
-    /// Returns the semantic decision digest.
+    pub const fn registry_revision(&self) -> RevisionNumber {
+        self.registry_revision
+    }
+    #[doc = " Returns the semantic decision digest."]
     #[must_use]
-    pub const fn digest(&self) -> crate::ApprovalDecisionDigest { self.digest }
+    pub const fn digest(&self) -> crate::ApprovalDecisionDigest {
+        self.digest
+    }
 }
-
-/// Exact decision payload plus an unparsed 64-byte Ed25519 signature.
+#[doc = " Exact decision payload plus an unparsed 64-byte Ed25519 signature."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct SignedApprovalDecision {
     decision: ApprovalDecision,
     signature: crate::ApprovalSignature,
 }
-
 impl SignedApprovalDecision {
-    /// Attaches exact signature bytes without claiming authentication.
+    #[doc = " Attaches exact signature bytes without claiming authentication."]
     #[must_use]
     pub const fn new(decision: ApprovalDecision, signature: crate::ApprovalSignature) -> Self {
         Self { decision, signature }
     }
-
-    /// Borrows the exact unprivileged decision.
+    #[doc = " Borrows the exact unprivileged decision."]
     #[must_use]
-    pub const fn decision(&self) -> &ApprovalDecision { &self.decision }
-
-    /// Returns the exact unprivileged signature bytes.
+    pub const fn decision(&self) -> &ApprovalDecision {
+        &self.decision
+    }
+    #[doc = " Returns the exact unprivileged signature bytes."]
     #[must_use]
-    pub const fn signature(&self) -> crate::ApprovalSignature { self.signature }
-
-    /// Consumes the signed input into its unprivileged parts.
+    pub const fn signature(&self) -> crate::ApprovalSignature {
+        self.signature
+    }
+    #[doc = " Consumes the signed input into its unprivileged parts."]
     #[must_use]
     pub const fn into_parts(self) -> (ApprovalDecision, crate::ApprovalSignature) {
         (self.decision, self.signature)
     }
 }
-
 impl ApprovalDecision {
     #[allow(clippy::too_many_arguments, reason = "all signed authority fields remain explicit")]
     const fn new_with_digest(
@@ -144,8 +149,6 @@ impl ApprovalDecision {
         }
     }
 }
-
-} // verus!
 
 impl ApprovalDecision {
     /// Constructs a decision and computes its complete canonical digest.

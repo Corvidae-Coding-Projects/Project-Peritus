@@ -6,20 +6,100 @@ use peritus_process::{
 use peritus_sandbox::{
     AdmissionProfile, BackendAdmission, BackendDescriptor, CheckedSandboxPlan, admit_backend,
 };
-use peritus_types::Sha256Digest;
+use std::sync::Arc;
 
 use crate::{
-    EnvironmentEntry, HelperManifest, InheritedHandlePolicy, JobPlan, ObservationBinding,
-    PathPolicy, ProcessPolicy, ResourceControlPlan, RuntimeIdentity, TerminalMapping,
-    WindowsBackendConfig, WindowsBackendDescriptor, WindowsError, WindowsErrorKind,
-    WindowsLaunchDescription, WindowsOperation, WindowsProbe, WindowsSession, compile_acl_plan,
+    AclTransaction, HelperManifest, ObservationBinding, PreparationCleanup, RuntimeIdentity,
+    WindowsBackendConfig, WindowsBackendDescriptor, WindowsError, WindowsLaunchDescription,
+    WindowsOperation, WindowsProbe, WindowsSession,
 };
 
+#[cfg(target_os = "windows")]
+use crate::WindowsErrorKind;
+
+mod compilation;
+use compilation::target_handles;
+
+struct StagedPreparation {
+    acl: AclTransaction,
+    channels: Option<crate::channels::PreparedChannels>,
+}
+
+impl StagedPreparation {
+    const fn new(acl: AclTransaction) -> Self {
+        Self { acl, channels: None }
+    }
+
+    fn set_channels(&mut self, channels: crate::channels::PreparedChannels) {
+        self.channels = Some(channels);
+    }
+
+    fn channels(&self) -> Result<&crate::channels::PreparedChannels, WindowsError> {
+        self.channels.as_ref().ok_or_else(|| {
+            crate::error::invalid(
+                WindowsOperation::Prepare,
+                "staged protected-channel ownership is absent",
+            )
+        })
+    }
+
+    fn take_handles(
+        &mut self,
+    ) -> Result<Vec<peritus_process::NativeProtectedHandle>, WindowsError> {
+        self.channels.as_mut().map(|channels| core::mem::take(&mut channels.handles)).ok_or_else(
+            || {
+                crate::error::invalid(
+                    WindowsOperation::Prepare,
+                    "staged protected-handle ownership is absent",
+                )
+            },
+        )
+    }
+
+    fn cleanup(&mut self, mut original: WindowsError) -> WindowsError {
+        if let Some(channels) = self.channels.as_mut() {
+            original = channels.cleanup(original);
+        }
+        let acl_restore = self.acl.restore().is_err() || !self.acl.restored();
+        let original =
+            original.with_cleanup(PreparationCleanup::new([acl_restore, false, false, false]));
+        if acl_restore {
+            let digest = self.acl.digest();
+            let acl = core::mem::replace(&mut self.acl, AclTransaction::planned(digest));
+            original.retain_cleanup(crate::error::CleanupOwner::Acl(Box::new(acl)))
+        } else {
+            original
+        }
+    }
+
+    fn finish(
+        mut self,
+    ) -> Result<(AclTransaction, crate::channels::PreparedChannels), WindowsError> {
+        let channels = self.channels.take().ok_or_else(|| {
+            crate::error::invalid(
+                WindowsOperation::Prepare,
+                "completed preparation lacks protected-channel ownership",
+            )
+        })?;
+        Ok((self.acl, channels))
+    }
+}
+
 /// Probed Windows backend selected by C2 admission.
-#[derive(Debug)]
 pub struct WindowsBackend {
     config: WindowsBackendConfig,
     descriptor: WindowsBackendDescriptor,
+    preparation_continues: Arc<dyn Fn() -> bool + Send + Sync>,
+}
+
+impl core::fmt::Debug for WindowsBackend {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("WindowsBackend")
+            .field("config", &self.config)
+            .field("descriptor", &self.descriptor)
+            .finish_non_exhaustive()
+    }
 }
 
 impl WindowsBackend {
@@ -28,13 +108,28 @@ impl WindowsBackend {
     /// # Errors
     /// Returns typed probe/descriptor failure.
     pub fn new(config: WindowsBackendConfig) -> Result<Self, WindowsError> {
+        Self::new_cancellable(config, || true)
+    }
+
+    /// Probes the current host while the caller retains cancellation ownership.
+    ///
+    /// # Errors
+    /// Returns typed cancellation, probe, or descriptor failure.
+    pub fn new_cancellable(
+        config: WindowsBackendConfig,
+        should_continue: impl Fn() -> bool + Send + Sync + 'static,
+    ) -> Result<Self, WindowsError> {
         let request = crate::ProbeRequest::new(
             config.helper_path.clone(),
             config.token.clone(),
             config.managed_filter_digest(),
-        )?;
-        let probe = WindowsProbe::run(&request)?;
-        Self::from_probe(config, probe)
+        )?
+        .with_acl_probe_root(config.acl_backup_root.clone())?;
+        let preparation_continues = Arc::new(should_continue);
+        let probe = WindowsProbe::run_cancellable(&request, || preparation_continues())?;
+        let descriptor =
+            WindowsBackendDescriptor::from_probe(probe, config.managed_filter_digest())?;
+        Ok(Self { config, descriptor, preparation_continues })
     }
 
     /// Builds from already validated probe evidence for deterministic conformance tests.
@@ -47,7 +142,7 @@ impl WindowsBackend {
     ) -> Result<Self, WindowsError> {
         let descriptor =
             WindowsBackendDescriptor::from_probe(probe, config.managed_filter_digest())?;
-        Ok(Self { config, descriptor })
+        Ok(Self { config, descriptor, preparation_continues: Arc::new(|| true) })
     }
 
     /// Returns common C2 descriptor.
@@ -66,6 +161,7 @@ impl WindowsBackend {
     /// # Errors
     /// Returns unsupported for any missing feature.
     pub fn admit(&self, plan: &CheckedSandboxPlan) -> Result<BackendAdmission, WindowsError> {
+        self.descriptor.probe().selected_controls(plan, &self.config.token)?;
         admit_backend(plan, self.descriptor(), AdmissionProfile::Production).map_err(|_| {
             let _no_effect = crate::verified::unsupported_has_no_effect(false, false, false);
             crate::error::unsupported(
@@ -100,93 +196,31 @@ impl WindowsBackend {
         admission: &BackendAdmission,
         install_native: bool,
     ) -> Result<WindowsSession, WindowsError> {
-        self.validate_bindings(execution, sandbox, admission)?;
-        let probe = self.descriptor.probe();
-        if !probe.core_supported() {
-            return Err(crate::error::unsupported(
-                WindowsOperation::Prepare,
-                "Windows 11 24H2/Server 2025 native controls are incomplete",
-            ));
-        }
-        let helper_bytes = std::fs::read(&self.config.helper_path)
-            .map_err(|_| crate::error::io(WindowsOperation::Prepare, "helper cannot be read"))?;
-        let helper_digest = peritus_codec::sha256(&helper_bytes);
-        if probe.evidence().helper_digest != Some(helper_digest) {
-            return Err(crate::error::mismatch(
-                WindowsErrorKind::PreparationMismatch,
-                "installed helper identity changed after probe",
-            ));
-        }
-        #[cfg(target_os = "windows")]
-        self.validate_native_paths(execution)?;
-        let path_policy =
-            PathPolicy::new(self.config.workspace.clone(), self.config.protected_roots.clone())?
-                .with_read_only_inputs(self.config.read_only_inputs.clone())?;
-        let acl = compile_acl_plan(sandbox, &path_policy, self.config.token.principal_sid())?;
-        let environment = execution
-            .environment()
-            .variables()
-            .iter()
-            .map(|value| EnvironmentEntry::new(value.name(), value.value()))
-            .collect::<Result<Vec<_>, _>>()?;
-        let channels = crate::channels::PreparedChannels::prepare(
-            &mut self.config,
-            execution,
-            sandbox,
-            install_native,
-            probe.evidence().managed_network,
-        )?;
-        let terminal = TerminalMapping::from_checked_plan(sandbox)?;
-        if matches!(terminal, TerminalMapping::ConPty { .. }) && !probe.evidence().conpty {
-            return Err(crate::error::unsupported(
-                WindowsOperation::Prepare,
-                "checked terminal requires unavailable ConPTY support",
-            ));
-        }
-        let resources = ResourceControlPlan::from_checked_plan(sandbox, probe.evidence().resources);
-        let job = JobPlan::from_checked_plan(sandbox);
-        let process = ProcessPolicy::from_checked_plan(sandbox);
-        let inherited_handles = target_handles(&channels.secrets)?;
-        let manifest = HelperManifest::build(
-            execution.identity().process_id(),
-            sandbox,
-            admission,
-            helper_digest,
-            &acl,
-            self.config.token.clone(),
-            execution.command(),
-            self.config.workspace.clone(),
-            environment,
-            job,
-            process,
-            terminal,
-            resources,
-            channels.network,
-            channels.secrets.clone(),
-            inherited_handles,
-        )?;
-        self.validate_compilation(execution, sandbox, admission, helper_digest, &acl, &manifest)?;
+        let (acl, channel_plan, projected) =
+            self.preflight_compilation(execution, sandbox, admission, install_native)?;
+        let helper_digest = projected.helper_digest();
         let helper_identity = crate::identity::helper(helper_digest);
-        let (windows_launch, native_launch) = WindowsLaunchDescription::new(
-            &self.config.helper_path,
-            helper_identity,
-            manifest,
-            channels.handles,
-        )?;
+        let environment = projected.environment().to_vec();
+        let job = projected.job();
+        let process = projected.process();
+        let terminal = projected.terminal();
+        let resources = projected.resources();
+        let probe = self.descriptor.probe();
         #[cfg(target_os = "windows")]
-        let native_launch = if install_native {
-            WindowsLaunchDescription::attach_helper_channels(
-                native_launch,
-                peritus_process::NativeWindowsHelperChannels::new().map_err(|_| {
-                    crate::error::io(
-                        WindowsOperation::Prepare,
-                        "Windows helper status/control channels cannot be created",
-                    )
-                })?,
-            )?
+        let native_helper_channels = if install_native {
+            Some(peritus_process::NativeWindowsHelperChannels::new().map_err(|source| {
+                WindowsError::new(
+                    WindowsErrorKind::Handle,
+                    WindowsOperation::Prepare,
+                    crate::WindowsRecovery::CancelAndReap,
+                    "Windows helper status/control channels cannot be created",
+                )
+                .with_source(crate::error::process_source(&source))
+            })?)
         } else {
-            native_launch
+            None
         };
+        self.ensure_preparation_continues()?;
         let acl_transaction = if install_native {
             #[cfg(target_os = "windows")]
             {
@@ -202,6 +236,61 @@ impl WindowsBackend {
         } else {
             acl.planned()
         };
+        let mut staged = StagedPreparation::new(acl_transaction);
+        let channels = crate::channels::PreparedChannels::prepare(
+            &mut self.config,
+            execution,
+            sandbox,
+            &channel_plan,
+            self.preparation_continues.as_ref(),
+        )
+        .map_err(|error| staged.cleanup(error))?;
+        staged.set_channels(channels);
+        self.ensure_preparation_continues().map_err(|error| staged.cleanup(error))?;
+        let (network, secrets) = match staged.channels() {
+            Ok(channels) => (channels.network, channels.secrets.clone()),
+            Err(error) => return Err(staged.cleanup(error)),
+        };
+        let inherited_handles = target_handles(&secrets).map_err(|error| staged.cleanup(error))?;
+        let manifest = HelperManifest::build(
+            execution.identity().process_id(),
+            sandbox,
+            admission,
+            helper_digest,
+            &acl,
+            self.config.token.clone(),
+            execution.command(),
+            self.config.workspace.clone(),
+            environment,
+            job,
+            process,
+            terminal,
+            resources,
+            network,
+            secrets,
+            inherited_handles,
+        )
+        .map_err(|error| staged.cleanup(error))?;
+        self.validate_compilation(execution, sandbox, admission, helper_digest, &acl, &manifest)
+            .map_err(|error| staged.cleanup(error))?;
+        let protected_handles = match staged.take_handles() {
+            Ok(handles) => handles,
+            Err(error) => return Err(staged.cleanup(error)),
+        };
+        let (windows_launch, native_launch) = WindowsLaunchDescription::new(
+            &self.config.helper_path,
+            helper_identity,
+            manifest,
+            protected_handles,
+        )
+        .map_err(|error| staged.cleanup(error))?;
+        #[cfg(target_os = "windows")]
+        let native_launch = if let Some(helper_channels) = native_helper_channels {
+            WindowsLaunchDescription::attach_helper_channels(native_launch, helper_channels)
+                .map_err(|error| staged.cleanup(error))?
+        } else {
+            native_launch
+        };
         let binding = ObservationBinding::new(
             sandbox.digest(),
             self.descriptor().digest(),
@@ -216,6 +305,7 @@ impl WindowsBackend {
             crate::identity::profile(&self.config.token),
             acl.digest(),
         );
+        let (acl_transaction, channels) = staged.finish()?;
         Ok(WindowsSession::new(
             native_launch,
             windows_launch,
@@ -227,130 +317,6 @@ impl WindowsBackend {
             channels.filter_owner,
             channels.secret_owner,
         ))
-    }
-
-    fn validate_bindings(
-        &self,
-        execution: &ExecutionPlan,
-        sandbox: &CheckedSandboxPlan,
-        admission: &BackendAdmission,
-    ) -> Result<(), WindowsError> {
-        let feature_match =
-            sandbox.required_features().is_subset_of(self.descriptor().supported_features());
-        let plan_match = execution.sandbox_digest() == sandbox.digest()
-            && admission.plan_digest() == sandbox.digest();
-        let descriptor_match = admission.descriptor() == self.descriptor();
-        let support_match = admission.support_digest() == self.descriptor().support_digest();
-        let preparation_match = crate::manifest::expected_preparation(
-            sandbox.digest(),
-            self.descriptor().digest(),
-            self.descriptor().support_digest(),
-        ) == admission.preparation_digest();
-        if feature_match && plan_match && descriptor_match && support_match && preparation_match {
-            Ok(())
-        } else {
-            Err(crate::error::mismatch(
-                WindowsErrorKind::PreparationMismatch,
-                "authorized Windows plan, descriptor, support, or installation differs",
-            ))
-        }
-    }
-
-    fn validate_compilation(
-        &self,
-        execution: &ExecutionPlan,
-        sandbox: &CheckedSandboxPlan,
-        admission: &BackendAdmission,
-        helper_digest: Sha256Digest,
-        acl: &crate::AclPlan,
-        manifest: &HelperManifest,
-    ) -> Result<(), WindowsError> {
-        let execution_plan_exact = execution.sandbox_digest() == manifest.plan_digest();
-        let admission_plan_exact = admission.plan_digest() == manifest.plan_digest();
-        let plan_exact = execution_plan_exact && admission_plan_exact;
-        let helper_exact = helper_digest == manifest.helper_digest()
-            && self.descriptor.identity().helper_digest() == helper_digest;
-        let facts = crate::verified::NativeBindingFacts {
-            features_covered: sandbox
-                .required_features()
-                .is_subset_of(self.descriptor().supported_features()),
-            plan_exact,
-            descriptor_exact: admission.descriptor_digest() == manifest.descriptor_digest(),
-            support_exact: admission.support_digest() == manifest.support_digest(),
-            preparation_exact: admission.preparation_digest() == manifest.preparation_digest(),
-            helper_exact,
-            workspace_exact: manifest.working_directory() == &self.config.workspace,
-            token_exact: manifest.token() == &self.config.token,
-            acl_exact: acl.digest() == manifest.acl_digest(),
-            network_exact: network_exact(
-                manifest.network(),
-                sandbox,
-                &self.config.token,
-                self.config.managed_filter_digest,
-            ),
-            handles_exact: manifest.inherited_handles().digest()
-                == target_handles(manifest.secret_handles())?.digest(),
-        };
-        if crate::verified::native_binding_complete(facts) {
-            Ok(())
-        } else {
-            Err(crate::error::mismatch(
-                WindowsErrorKind::PreparationMismatch,
-                "compiled helper controls differ from checked and admitted native facts",
-            ))
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    fn validate_native_paths(&self, execution: &ExecutionPlan) -> Result<(), WindowsError> {
-        let working = crate::WindowsPath::from_canonicalized(execution.working_directory().path())?;
-        if working != self.config.workspace {
-            return Err(crate::error::mismatch(
-                WindowsErrorKind::PreparationMismatch,
-                "working directory changed after authorization",
-            ));
-        }
-        let workspace = crate::ResolvedWindowsPath::resolve(self.config.workspace.clone())?;
-        for input in &self.config.read_only_inputs {
-            crate::ResolvedWindowsPath::resolve(input.clone())?;
-        }
-        for protected in &self.config.protected_roots {
-            let resolved = crate::ResolvedWindowsPath::resolve(protected.clone())?;
-            if workspace.evidence().volume_serial() != resolved.evidence().volume_serial() {
-                return Err(crate::error::invalid(
-                    WindowsOperation::ResolvePath,
-                    "protected root is on another volume",
-                ));
-            }
-        }
-        Ok(())
-    }
-}
-
-fn network_exact(
-    isolation: crate::NetworkIsolation,
-    sandbox: &CheckedSandboxPlan,
-    profile: &crate::TokenProfile,
-    controller: Option<Sha256Digest>,
-) -> bool {
-    match isolation {
-        crate::NetworkIsolation::DenyAll => {
-            sandbox.requirements().network().is_empty()
-                && controller.is_none()
-                && profile.is_app_container()
-        }
-        crate::NetworkIsolation::ManagedProxy(route) => {
-            !sandbox.requirements().network().is_empty()
-                && route.network_plan_digest() == sandbox.digest()
-                && controller.is_some_and(|identity| {
-                    crate::network::managed_wfp_policy_digest(
-                        identity,
-                        profile.principal_sid(),
-                        route.endpoint(),
-                        sandbox.digest(),
-                    ) == route.filter_digest()
-                })
-        }
     }
 }
 
@@ -365,6 +331,20 @@ impl NativeSandboxBackend for WindowsBackend {
         NativePlatform::Windows
     }
 
+    fn validate_preparation_capacity(
+        &self,
+        execution: &ExecutionPlan,
+        sandbox: &CheckedSandboxPlan,
+        admission: &BackendAdmission,
+    ) -> Result<(), ProcessError> {
+        self.validate_bindings(execution, sandbox, admission)
+            .and_then(|()| self.validate_selected_capacity(sandbox))
+            .and_then(|()| {
+                self.preflight_compilation(execution, sandbox, admission, true).map(|_| ())
+            })
+            .map_err(|error| crate::session::process_error(&error).with_source(error))
+    }
+
     fn prepare(
         mut self,
         context: AuthorizedPreparationContext<'_>,
@@ -375,19 +355,11 @@ impl NativeSandboxBackend for WindowsBackend {
             context.admission(),
             true,
         )
-        .map_err(|error| crate::session::process_error(&error))
-    }
-}
-
-fn target_handles(
-    secrets: &[crate::ProtectedSecretHandle],
-) -> Result<InheritedHandlePolicy, WindowsError> {
-    let handles = secrets
-        .iter()
-        .filter(|handle| {
-            matches!(handle.destination(), crate::SecretHandleDestination::Brokered(_))
+        .map_err(|error| {
+            let cleanup_complete = error.preparation_cleanup().is_complete();
+            crate::session::process_error(&error)
+                .with_preparation_cleanup(cleanup_complete)
+                .with_source(error)
         })
-        .map(crate::ProtectedSecretHandle::handle)
-        .collect();
-    InheritedHandlePolicy::new(handles)
+    }
 }

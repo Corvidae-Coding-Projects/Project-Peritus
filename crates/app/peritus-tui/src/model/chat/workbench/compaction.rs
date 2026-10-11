@@ -67,12 +67,8 @@ impl AppModel {
         let Some(request) = self.chat.workbench.compaction_request.clone() else {
             return Vec::new();
         };
-        self.request(
-            AppRequestPayload::PreviewWorkbenchCompaction(request.clone()),
-            PendingRequest::WorkbenchCompaction(request),
-        )
-        .into_iter()
-        .collect()
+        let focus = request.focus().map_or("", |focus| focus.as_str());
+        self.refresh_snapshot_for_command(request.query(), format!("/compact {focus}"))
     }
 
     pub(in crate::model) fn accept_workbench_compaction(

@@ -26,18 +26,23 @@ impl OwnedJob {
         let job = Self(raw);
         let memory = usize::try_from(plan.job_memory_bytes())
             .map_err(|_| job_error("job memory ceiling exceeds this Windows architecture"))?;
-        let cpu_100ns = plan
-            .cpu_time_millis()
-            .checked_mul(10_000)
-            .and_then(|value| i64::try_from(value).ok())
-            .ok_or_else(|| job_error("job CPU ceiling exceeds Windows representation"))?;
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-            | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
-            | JOB_OBJECT_LIMIT_JOB_MEMORY
-            | JOB_OBJECT_LIMIT_JOB_TIME;
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        if plan.active_process_limit() != 0 {
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_ACTIVE_PROCESS;
+        }
+        if plan.job_memory_bytes() != 0 {
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_MEMORY;
+        }
         limits.BasicLimitInformation.ActiveProcessLimit = plan.active_process_limit();
-        limits.BasicLimitInformation.PerJobUserTimeLimit = cpu_100ns;
+        if let Some(cpu_time_millis) = plan.cpu_time_millis() {
+            let cpu_100ns = cpu_time_millis
+                .checked_mul(10_000)
+                .and_then(|value| i64::try_from(value).ok())
+                .ok_or_else(|| job_error("job CPU ceiling exceeds Windows representation"))?;
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_TIME;
+            limits.BasicLimitInformation.PerJobUserTimeLimit = cpu_100ns;
+        }
         limits.JobMemoryLimit = memory;
         let length = u32::try_from(size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>())
             .map_err(|_| job_error("Job Object limit record size overflowed"))?;
@@ -58,10 +63,6 @@ impl OwnedJob {
 
     pub(super) const fn raw(&self) -> HANDLE {
         self.0
-    }
-
-    pub(super) fn probe() -> bool {
-        JobPlan::from_manifest(true, 1, 64 * 1_024 * 1_024, 1_000).and_then(Self::create).is_ok()
     }
 }
 

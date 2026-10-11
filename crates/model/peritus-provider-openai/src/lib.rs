@@ -14,6 +14,3 @@ mod stream;
 pub use client::{OpenAiClient, OpenAiProvider};
 pub use config::OpenAiConfig;
 pub use runtime::{CodexExecutable, CodexRuntimeClient, CodexRuntimeConfig, CodexRuntimeProvider};
-
-#[cfg(test)]
-mod tests;

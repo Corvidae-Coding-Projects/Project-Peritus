@@ -7,6 +7,8 @@ use peritus_product_runner::control::{
 };
 use peritus_types::ActorId;
 
+pub(super) mod proposal;
+
 pub(super) fn equivalent_user_intent(left: &ControlIntent, right: &ControlIntent) -> bool {
     match (left, right) {
         (
@@ -52,27 +54,7 @@ pub(super) fn domain_operation_with_store(
     actor: ActorId,
     command: &WorkbenchCommand,
 ) -> Result<ControlOperation, Error> {
-    let proposal =
-        if let WorkbenchIntent::AcceptBriefProposal { proposal, digest, .. } = command.intent() {
-            let id = ConversationId::new(command.query().conversation().into_bytes())?;
-            let record = store.load(id)?.ok_or(ControlError::NotFound)?;
-            if record.owner_bytes() != actor.as_bytes()
-                || record.workspace_bytes() != command.query().workspace().as_bytes()
-            {
-                return Err(ControlError::ScopeMismatch.into());
-            }
-            let reference = record
-                .replies()
-                .iter()
-                .find(|reply| reply.operation().as_bytes() == proposal.as_bytes())
-                .ok_or(ControlError::NotFound)?;
-            if reference.digest() != *digest {
-                return Err(ControlError::StaleRevision.into());
-            }
-            Some(ControlText::new(store.reply_text(reference)?)?)
-        } else {
-            None
-        };
+    let proposal = proposal::resolve(store, actor, command)?;
     let context = if let WorkbenchIntent::SetContext { source, .. } = command.intent() {
         Some(domain_context_target(store, actor, command, *source)?)
     } else {
@@ -93,7 +75,7 @@ pub(super) fn domain_operation_with_store(
 fn domain_operation_resolved(
     actor: ActorId,
     command: &WorkbenchCommand,
-    proposal: Option<ControlText<8192>>,
+    proposal: Option<ControlIntent>,
     context: Option<peritus_product_runner::control::ContextTarget>,
     prompt_view: Option<peritus_product_runner::control::PromptView>,
 ) -> Result<ControlOperation, Error> {
@@ -118,10 +100,7 @@ fn domain_operation_resolved(
             field: brief::domain_field(*field),
             text: ControlText::new(text.as_str().to_owned())?,
         },
-        WorkbenchIntent::AcceptBriefProposal { field, .. } => ControlIntent::SetBrief {
-            field: brief::domain_field(*field),
-            text: proposal.ok_or(ControlError::InvalidInput)?,
-        },
+        WorkbenchIntent::AcceptBriefProposal { .. } => proposal.ok_or(ControlError::InvalidInput)?,
         WorkbenchIntent::SetContext { preference, .. } => ControlIntent::SetContext {
             target: context.ok_or(ControlError::InvalidInput)?,
             preference: preference.map(|value| match value {
@@ -152,6 +131,24 @@ fn domain_operation_resolved(
             file: files::domain_import(command, preview)?,
             text: ControlText::new(text.as_str().to_owned())?,
         },
+        WorkbenchIntent::EnqueueMessage { preview } => ControlIntent::SubmitMessage {
+            files: vec![files::domain_import(command, preview)?],
+            text: ControlText::new("Read the complete user_message reference with attachment_read, following every continuation offset before acting. It contains the user's exact instructions.".to_owned())?,
+        },
+        WorkbenchIntent::EnqueueMessageBundle { text, message, attachments } => {
+            let files = message.iter().map(|preview| (preview, true))
+                .chain(attachments.iter().map(|preview| (preview, false)))
+                .enumerate().map(|(index, (preview, is_message))| {
+                    let mut seed = b"peritus-message-part-v1\0".to_vec();
+                    seed.extend_from_slice(command.operation().as_bytes());
+                    seed.extend_from_slice(&(index as u64).to_be_bytes());
+                    let digest = peritus_codec::sha256(&seed);
+                    let mut identity = [0; 16];
+                    identity.copy_from_slice(&digest.as_bytes()[..16]);
+                    files::domain_import_part(command, preview, identity, is_message, true)
+                }).collect::<Result<Vec<_>, _>>()?;
+            ControlIntent::SubmitMessage { text: ControlText::new(text.as_str().to_owned())?, files }
+        }
         WorkbenchIntent::SelectFile { attachment, selected } => ControlIntent::SelectFile {
             attachment: OperationId::new(attachment.into_bytes())?,
             selected: *selected,
@@ -210,7 +207,9 @@ fn domain_operation_resolved(
         | WorkbenchIntent::AddArtifactFeedback { .. } => {
             return Err(ControlError::UnsupportedSchema.into());
         }
-        WorkbenchIntent::CreateCheckpoint(_) | WorkbenchIntent::ApplyRewind(_) => {
+        WorkbenchIntent::CreateCheckpoint(_)
+        | WorkbenchIntent::ApplyRewind(_)
+        | WorkbenchIntent::ConfirmRewind(_) => {
             return Err(ControlError::InvalidInput.into());
         }
         WorkbenchIntent::SetPermissions(change) => ControlIntent::SetPermissions {
@@ -223,7 +222,7 @@ fn domain_operation_resolved(
         | WorkbenchIntent::PinGuidance(_)
         | WorkbenchIntent::ScopeGuidance(_)
         | WorkbenchIntent::ForgetGuidance(_) => guidance::domain_intent(command.intent())?,
-        WorkbenchIntent::ApplyInitDiff(_) => return Err(ControlError::InvalidInput.into()),
+        WorkbenchIntent::ApplyInitDiff(_) | WorkbenchIntent::ApplyInitArtifact(_) => return Err(ControlError::InvalidInput.into()),
     };
     Ok(ControlOperation::new(
         OperationId::new(command.operation().into_bytes())?,

@@ -269,32 +269,3 @@ fn digest(bytes: &[u8]) -> String {
     }
     encoded
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn selection_prefers_time_then_path() {
-        let earlier = Candidate::new(
-            PathBuf::from("/state/results/z/task.json"),
-            "results/z/task.json".to_owned(),
-            10,
-            "task".to_owned(),
-        );
-        let later = Candidate::new(
-            PathBuf::from("/state/results/a/task.json"),
-            "results/a/task.json".to_owned(),
-            11,
-            "task".to_owned(),
-        );
-        assert!(prefer(&later, &earlier));
-        let same_time_later_path = Candidate::new(
-            PathBuf::from("/state/results/zz/task.json"),
-            "results/zz/task.json".to_owned(),
-            10,
-            "task".to_owned(),
-        );
-        assert!(prefer(&same_time_later_path, &earlier));
-    }
-}

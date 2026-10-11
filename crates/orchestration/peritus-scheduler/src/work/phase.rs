@@ -1,44 +1,36 @@
 //! Work recovery and lifecycle phases.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Worker-loss classification fixed at admission.
+#[doc = " Worker-loss classification fixed at admission."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RecoveryPolicy {
-    /// Ownership loss safely requeues under the next attempt.
+    #[doc = " Ownership loss safely requeues under the next attempt."]
     RetrySafe,
-    /// Ownership loss has ambiguous external outcome and cannot be retried automatically.
+    #[doc = " Ownership loss has ambiguous external outcome and cannot be retried automatically."]
     Ambiguous,
-    /// Ownership loss is a terminal failure.
+    #[doc = " Ownership loss is a terminal failure."]
     Fail,
 }
-
-/// Closed work lifecycle.
+#[doc = " Closed work lifecycle."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum WorkPhase {
-    /// Waiting for successful dependencies.
+    #[doc = " Waiting for successful dependencies."]
     WaitingDependencies,
-    /// Eligible for deterministic selection.
+    #[doc = " Eligible for deterministic selection."]
     Queued,
-    /// Reserved durably but not yet acknowledged by the worker.
+    #[doc = " Reserved durably but not yet acknowledged by the worker."]
     Reserved,
-    /// Worker acknowledged execution ownership.
+    #[doc = " Worker acknowledged execution ownership."]
     Running,
-    /// Retryable failure awaits explicit retry command.
+    #[doc = " Retryable failure awaits explicit retry command."]
     RetryPending,
-    /// Cancellation was requested and awaits owner acknowledgement.
+    #[doc = " Cancellation was requested and awaits owner acknowledgement."]
     Cancelling,
-    /// Immutable non-running outcome is retained.
+    #[doc = " Immutable non-running outcome is retained."]
     Terminal,
 }
-
 impl WorkPhase {
-    /// Compares exact lifecycle variants for verified production admission.
-    pub(crate) const fn same(self, other: Self) -> (result: bool)
-        ensures result == (self == other),
-    {
+    #[doc = " Compares exact lifecycle variants for verified production admission."]
+    pub(crate) const fn same(self, other: Self) -> bool {
         matches!(
             (self, other),
             (Self::WaitingDependencies, Self::WaitingDependencies)
@@ -51,5 +43,3 @@ impl WorkPhase {
         )
     }
 }
-
-} // verus!

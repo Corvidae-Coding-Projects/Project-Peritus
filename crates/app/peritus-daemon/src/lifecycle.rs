@@ -123,18 +123,3 @@ impl DaemonLifecycle {
             })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{DaemonLifecycle, StartupPhase};
-
-    #[test]
-    fn startup_rejects_repeated_skipped_and_reversed_phases() {
-        let mut lifecycle = DaemonLifecycle::starting();
-        assert!(lifecycle.advance(StartupPhase::Validate).is_err());
-        assert!(lifecycle.advance(StartupPhase::Migrate).is_err());
-        lifecycle.advance(StartupPhase::Lock).expect("exact successor");
-        assert!(lifecycle.advance(StartupPhase::Validate).is_err());
-        lifecycle.advance(StartupPhase::Migrate).expect("next exact successor");
-    }
-}

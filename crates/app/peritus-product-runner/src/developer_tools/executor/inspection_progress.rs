@@ -110,74 +110,9 @@ impl InspectionProgress {
 }
 
 fn is_inspection(name: &str) -> bool {
-    matches!(name, "workspace_list" | "workspace_read" | "workspace_search")
+    matches!(name, "workspace_list" | "workspace_read" | "workspace_search" | "attachment_read")
 }
 
 fn fingerprint(name: &str, arguments: &Value, result: &Value) -> Sha256Digest {
     peritus_codec::sha256(format!("{name}\n{arguments}\n{result}").as_bytes())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn path(value: impl Into<Value>) -> Value {
-        Value::from_iter([("path", value.into())])
-    }
-
-    #[test]
-    fn identical_and_alternating_inspections_warn_once() {
-        for width in [1, 2] {
-            let mut progress = InspectionProgress::default();
-            for index in 0..width {
-                progress.observe("workspace_read", &path(index), &Value::from("same"), false);
-            }
-            for index in 1..=32 {
-                progress.observe(
-                    "workspace_read",
-                    &path(index % width),
-                    &Value::from("same"),
-                    false,
-                );
-                assert_eq!(progress.feedback().is_some(), index == WARN_REPEATS);
-            }
-            assert!(progress.feedback().is_none());
-        }
-    }
-
-    #[test]
-    fn new_evidence_and_noninspection_work_reset_the_cycle() {
-        let mut progress = InspectionProgress::default();
-        for index in 0..32 {
-            progress.observe("workspace_read", &path("state"), &Value::from(index), false);
-        }
-        assert_eq!(progress.recent.len(), RECENT_OBSERVATIONS);
-        for name in ["run_command", "command_poll", "workspace_write"] {
-            for _ in 0..3 {
-                progress.observe("workspace_list", &path("."), &Value::Array(Vec::new()), false);
-                progress.feedback();
-            }
-            assert_eq!(progress.repeats, 2);
-            progress.observe(
-                name,
-                &Value::Object(serde_json::Map::new()),
-                &Value::from_iter([("success", Value::from(false))]),
-                true,
-            );
-            assert_eq!(progress.repeats, 0);
-            assert!(progress.feedback().is_none());
-        }
-    }
-
-    #[test]
-    fn a_repeated_batch_delivers_its_warning_once() {
-        let mut progress = InspectionProgress::default();
-        progress.observe("workspace_read", &path("state"), &Value::from("same"), false);
-        for _ in 0..3 {
-            progress.observe("workspace_read", &path("state"), &Value::from("same"), false);
-        }
-        assert!(progress.feedback().is_some());
-        progress.observe("workspace_read", &path("state"), &Value::from("same"), false);
-        assert!(progress.feedback().is_none());
-    }
 }

@@ -13,15 +13,18 @@ mod schemas;
 mod verified;
 
 pub use catalog::{descriptor_catalog, descriptor_digest};
-pub use dispatcher::{FsDispatchKind, FsDispatcher};
-pub use error::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
+pub use decoder::artifact_reference_json;
+pub use dispatcher::{ArtifactInputResolver, FsDispatchKind, FsDispatcher};
+pub use error::{
+    ArtifactInputFailure, FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass,
+};
 pub use input::{
-    CreateInput, DiscoverInput, MetadataInput, PatchEdit, PatchInput, ReadInput, RemoveInput,
-    ReplaceInput, SearchInput, WriteInput,
+    CreateInput, DiscoverInput, MetadataInput, MutationContent, PatchEdit, PatchInput, ReadInput,
+    RemoveInput, ReplaceInput, SearchInput, SearchMatchField, WriteInput,
 };
 pub use mutation::{CompiledMutation, WorkspaceVersion};
 pub use read::{
     DiscoverEntry, DiscoverObservation, FileContent, FileObservation, FsReadService,
-    MetadataObservation, SearchMatch, SearchObservation,
+    MetadataObservation, OmissionReason, ScopeOmission, SearchMatch, SearchObservation,
 };
 pub use render::RenderedOutput;

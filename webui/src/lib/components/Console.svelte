@@ -5,7 +5,7 @@
   import Icon from './Icon.svelte';
   import '@xterm/xterm/css/xterm.css';
   let { id,suggestion='' }:{id:string;suggestion?:string}=$props();
-  let element:HTMLDivElement;let text=$state(''),ended=$state(false),error=$state('');
+  let element:HTMLDivElement;let text=$state(''),ended=$state(false),inputAvailable=$state(true),error=$state('');
   let sequence=Promise.resolve();
   function input(value:string){sequence=sequence.then(()=>request(`/api/terminal/${id}`,{text:value})).then(()=>{}).catch(e=>{error=`Input was not confirmed: ${e.message}. Inspect the console before repeating it.`;});}
   onMount(()=>{
@@ -18,9 +18,9 @@
       observer=new ResizeObserver(()=>{if(disposed)return;fit.fit();void request(`/api/terminal/${id}`,{cols:term!.cols,rows:term!.rows}).catch(e=>error=e.message);});observer.observe(element);
       let after=0;
       async function read(){
-        try{const value=await request<{data:string;next:number;lost:boolean;ended:boolean}>(`/api/terminal/${id}?after=${after}`);if(disposed)return;
+        try{const value=await request<{data:string;next:number;lost:boolean;ended:boolean;inputAvailable?:boolean}>(`/api/terminal/${id}?after=${after}`);if(disposed)return;
           if(value.lost)term!.writeln('\r\n[Earlier console output is no longer retained]\r\n');
-          term!.write(Uint8Array.from(atob(value.data),c=>c.charCodeAt(0)));after=value.next;ended=value.ended;
+          term!.write(Uint8Array.from(atob(value.data),c=>c.charCodeAt(0)));after=value.next;ended=value.ended;inputAvailable=value.inputAvailable!==false;error='';
         }catch(e){if(!disposed)error=e instanceof Error?e.message:String(e);}
         if(!disposed)timer=setTimeout(()=>void read(),ended?1800:250);
       }void read();
@@ -34,8 +34,8 @@
   <div bind:this={element} class="terminal-surface" role="region" aria-label="Interactive Peritus terminal"></div>
   {#if error}<p class="inline-error">{error}</p>{/if}
   <div class="console-keypad" aria-label="Mouse-accessible terminal keys">
-    {#each [['Esc','\x1b'],['↑','\x1b[A'],['↓','\x1b[B'],['←','\x1b[D'],['→','\x1b[C'],['Tab','\t'],['Space',' '],['Enter','\r'],['Ctrl+C','\x03']] as key}<button class="key small" disabled={ended} aria-label={`Send ${key[0]} key`} onclick={()=>input(key[1]!)}>{key[0]}</button>{/each}
+    {#each [['Esc','\x1b'],['↑','\x1b[A'],['↓','\x1b[B'],['←','\x1b[D'],['→','\x1b[C'],['Tab','\t'],['Space',' '],['Enter','\r'],['Ctrl+C','\x03']] as key}<button class="key small" disabled={ended||!inputAvailable} aria-label={`Send ${key[0]} key`} onclick={()=>input(key[1]!)}>{key[0]}</button>{/each}
   </div>
-  <form class="console-input" onsubmit={(event)=>{event.preventDefault();input(text+'\r');text='';}}><input aria-label="Text or slash command to send to CLI" bind:value={text} placeholder="Type text or a CLI slash command…" disabled={ended}/><button class="key primary" disabled={ended}>Send to CLI<Icon name="arrow" size={16}/></button></form>
+  <form class="console-input" onsubmit={(event)=>{event.preventDefault();input(text+'\r');text='';}}><input aria-label="Text or slash command to send to CLI" bind:value={text} placeholder="Type text or a CLI slash command…" disabled={ended||!inputAvailable}/><button class="key primary" disabled={ended||!inputAvailable}>Send to CLI<Icon name="arrow" size={16}/></button></form>
   <div class="console-foot"><span>{ended?'Console process exited.':'Closing this window keeps the console running.'}</span><button class="flat" onclick={()=>void attempt(async()=>{await action('close-console',{id});ui.consoles=ui.consoles.filter(c=>c.id!==id);ui.consoleId=ui.consoles[0]?.id??'';if(!ui.consoleId)ui.overlay='';notify('Console process closed. Daemon-owned work is retained.');})}>Terminate console</button></div>
 </div>

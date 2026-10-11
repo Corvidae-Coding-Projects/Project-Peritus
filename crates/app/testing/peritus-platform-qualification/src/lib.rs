@@ -11,19 +11,11 @@ mod evidence;
 mod layout;
 mod lifecycle;
 mod manifest;
-mod native;
-mod native_controller;
-mod observation;
 mod package_builder;
 mod platform;
-mod qualification_operator;
-mod report_json;
-mod runner;
 mod sandbox;
-mod scenario;
 mod service;
 mod transport;
-mod verdict;
 
 pub use assets::{BundledPackagingAsset, bundled_packaging_assets};
 pub use digest::{ArtifactDigest, Sha256Digest, digest_bytes, digest_file};
@@ -44,23 +36,14 @@ pub use lifecycle::{
 pub use manifest::{
     ArtifactRole, ManifestArtifact, PackageManifest, PackageVersion, RelativePackagePath,
 };
-pub use native::{NativeControllerLimits, NativePlatformFactory};
-pub use native_controller::run_from_env as run_h2_native_controller;
-pub use observation::{
-    CleanupObservation, ObservationOutcome, QualificationRun, ScenarioObservation,
-};
 pub use package_builder::run_from_env as run_package_builder;
 pub use platform::{
     Architecture, NativePrerequisite, Platform, PlatformContract, PlatformDelta, PlatformVersion,
     QualificationTarget,
 };
-pub use qualification_operator::{H2OperatorStatus, run_from_env as run_h2_operator};
-pub use runner::{FreshSubjectFactory, FreshSubjectRunner, QualificationSubject, ScenarioRequest};
 pub use sandbox::{
     EnforcementClaim, NativeSandboxContract, SandboxCapability, SandboxExecutionResult,
     SandboxObservation,
 };
-pub use scenario::{ScenarioCategory, ScenarioId, ScenarioSpec};
 pub use service::{RestartPolicy, ServiceContract, ServiceLogContract, SupervisorKind};
 pub use transport::{EndpointAddress, EndpointExpectation, StoreIdentity};
-pub use verdict::{NotReadyReason, QualificationReport, ReadinessVerdict, ReadyEvidence};

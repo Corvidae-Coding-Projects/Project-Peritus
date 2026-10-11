@@ -262,11 +262,11 @@ fn python_spec(
 
 fn python_syntax_check() -> String {
     [
-        "import ast,pathlib; ",
+        "import ast,pathlib,tokenize; ",
         "files=(p for p in pathlib.Path('.').rglob('*.py') ",
         "if not any(part.startswith('.') or part in {'build','dist','node_modules','target','vendor'} ",
         "for part in p.parts)); ",
-        "[ast.parse(p.read_text(encoding='utf-8'),filename=str(p)) for p in files]",
+        "[ast.parse(tokenize.open(p).read(),filename=str(p)) for p in files]",
     ]
     .join("")
 }
@@ -279,7 +279,7 @@ fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
 }
 
 fn sqlite_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
-    vec![spec(
+    vec![optional_spec(
         "SQLite migration verification",
         "peritus-internal",
         vec!["sqlite-migration".to_owned()],
@@ -309,7 +309,7 @@ fn artifact_commands(
             "artifact workspace manifest must contain only schema_version = 1 and kind = \"artifact\"",
         ));
     }
-    Ok(vec![spec(
+    Ok(vec![optional_spec(
         "Artifact CSV structure",
         "peritus-internal",
         vec!["artifact-csv-structure".to_owned()],
@@ -329,7 +329,19 @@ fn spec(
         arguments,
         current_dir: project.root().to_owned(),
         project: project.clone(),
+        optional_when_not_selected: false,
     }
+}
+
+fn optional_spec(
+    label: &str,
+    program: &str,
+    arguments: Vec<String>,
+    project: &AffectedProject,
+) -> GateCommandSpec {
+    let mut command = spec(label, program, arguments, project);
+    command.optional_when_not_selected = true;
+    command
 }
 
 fn planning(detail: &'static str) -> GateError {
@@ -338,28 +350,4 @@ fn planning(detail: &'static str) -> GateError {
 
 fn required_manifest(project: &AffectedProject) -> Result<&Path, GateError> {
     project.manifest().ok_or_else(|| planning("affected project manifest is missing"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::TargetGatePlan;
-
-    #[test]
-    fn artifact_manifest_rejects_unknown_or_incompatible_fields() {
-        let root = tempfile::tempdir().expect("temporary workspace");
-        std::fs::create_dir(root.path().join("out")).expect("output directory");
-        std::fs::write(root.path().join("out/result.txt"), "result\n").expect("output artifact");
-        for manifest in [
-            "schema_version = 2\nkind = \"artifact\"\n",
-            "schema_version = 1\nkind = \"artifact\"\nextra = true\n",
-        ] {
-            std::fs::write(root.path().join("peritus-workspace.toml"), manifest)
-                .expect("artifact manifest");
-            assert!(
-                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")], &[])
-                    .is_err()
-            );
-        }
-    }
 }

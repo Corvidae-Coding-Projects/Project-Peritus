@@ -1,28 +1,23 @@
 //! User-visible terminal disposition derived by the settlement reducer.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Honest terminal state of one admitted coding run.
+#[doc = " Honest terminal state of one admitted coding run."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RunDisposition {
-    /// Current gates, public obligations, and independent review accepted the candidate.
+    #[doc = " Current gates, public obligations, and independent review accepted the candidate."]
     Accepted,
-    /// Exact candidate work is available but strict acceptance is incomplete.
+    #[doc = " Exact candidate work is available but strict acceptance is incomplete."]
     CandidateAvailable,
-    /// A material user answer is required before work can continue.
+    #[doc = " A material user answer is required before work can continue."]
     WaitingForUser,
-    /// The run stopped before producing any candidate.
+    #[doc = " The run stopped before producing any candidate."]
     FailedNoCandidate,
-    /// The user cancelled the run; an attached candidate remains unaccepted.
+    #[doc = " The user cancelled the run; an attached candidate remains unaccepted."]
     Cancelled,
-    /// Restart reconciliation is required; an attached candidate remains unaccepted.
+    #[doc = " Restart reconciliation is required; an attached candidate remains unaccepted."]
     RecoveryRequired,
 }
-
 impl RunDisposition {
-    /// Stable protocol tag.
+    #[doc = " Stable protocol tag."]
     #[must_use]
     pub const fn tag(self) -> u16 {
         match self {
@@ -34,8 +29,7 @@ impl RunDisposition {
             Self::RecoveryRequired => 6,
         }
     }
-
-    /// Decodes a stable protocol tag.
+    #[doc = " Decodes a stable protocol tag."]
     #[must_use]
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
@@ -48,12 +42,9 @@ impl RunDisposition {
             _ => None,
         }
     }
-
-    /// Whether strict automated qualification accepted the candidate.
+    #[doc = " Whether strict automated qualification accepted the candidate."]
     #[must_use]
-    pub const fn is_accepted(self) -> (accepted: bool)
-        ensures accepted == (self == Self::Accepted),
-    { matches!(self, Self::Accepted) }
+    pub const fn is_accepted(self) -> bool {
+        matches!(self, Self::Accepted)
+    }
 }
-
-} // verus!

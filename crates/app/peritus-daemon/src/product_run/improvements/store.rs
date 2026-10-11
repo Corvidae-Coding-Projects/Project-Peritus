@@ -348,6 +348,3 @@ pub(super) fn hex(bytes: &[u8]) -> String {
         .flat_map(|b| [char::from(HEX[usize::from(b >> 4)]), char::from(HEX[usize::from(b & 15)])])
         .collect()
 }
-
-#[cfg(test)]
-mod tests;

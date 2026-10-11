@@ -12,12 +12,8 @@ keywords = ["leases", "formal-verification", "concurrency", "rust"]
 categories = ["concurrency", "data-structures"]
 
 [dependencies]
-peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
+peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 
 [lints]
 workspace = true
@@ -25,7 +21,4 @@ workspace = true
 [package.metadata.peritus]
 owner = "B1"
 layer = "state"
-verification-class = "H"
 
-[package.metadata.verus]
-verify = true

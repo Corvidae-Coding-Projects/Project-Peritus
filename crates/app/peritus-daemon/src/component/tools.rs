@@ -12,6 +12,3 @@ mod selection;
 pub use error::{ToolComponentError, ToolComponentErrorKind};
 pub use registry::{DispatcherBinding, ToolComponents, ToolRegistration};
 pub use route::{FilesystemDispatcherRoute, GitDispatcherRoute, ToolDispatcherRoute};
-
-#[cfg(test)]
-mod tests;

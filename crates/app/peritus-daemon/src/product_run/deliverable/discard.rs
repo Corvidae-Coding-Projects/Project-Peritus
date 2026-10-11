@@ -23,16 +23,6 @@ struct Completed {
     status: String,
 }
 
-#[cfg(test)]
-pub(super) fn save_completed(
-    directory: &Path,
-    record: &RunRecord,
-    deliverable: &ProductDeliverable,
-    status: &str,
-) -> Result<(), ProductRunServiceError> {
-    Reservation::prepare(directory, record, deliverable)?.complete(status)
-}
-
 pub(in crate::product_run) fn recover_completed(
     directory: &Path,
     record: &mut RunRecord,

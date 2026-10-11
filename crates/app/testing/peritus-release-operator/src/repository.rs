@@ -40,8 +40,6 @@ struct WorkspaceMetadata {
 #[serde(rename_all = "kebab-case")]
 struct PeritusMetadata {
     rust_toolchain: String,
-    verus_version: String,
-    vstd_revision: String,
 }
 
 pub fn root() -> Result<std::path::PathBuf, OperatorError> {
@@ -67,10 +65,7 @@ pub fn binding(root: &Path) -> Result<ReleaseBinding, OperatorError> {
         return Err(OperatorError::metadata("release tag does not equal the workspace version"));
     }
     let pins = metadata.workspace.metadata.peritus;
-    let toolchain = format!(
-        "rust-{}-verus-{}-vstd-{}",
-        pins.rust_toolchain, pins.verus_version, pins.vstd_revision
-    );
+    let toolchain = format!("rust-{}", pins.rust_toolchain);
     Ok(ReleaseBinding::new(
         CandidateCommit::new(commit_text)?,
         ReleaseVersion::new(metadata.workspace.package.version)?,

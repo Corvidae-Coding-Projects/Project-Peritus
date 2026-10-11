@@ -1,5 +1,7 @@
 # Peritus test support
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-test-support` owns deterministic, protocol-neutral fixtures used by later Peritus
 crates. It is a class-C testing crate and must be consumed only as a development dependency by
 production crates.

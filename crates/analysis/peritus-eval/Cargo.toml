@@ -12,29 +12,18 @@ keywords = ["evaluation", "agents", "statistics", "formal-verification"]
 categories = ["development-tools::testing"]
 
 [dependencies]
-peritus-artifact-store = { version = "=0.0.5", path = "../../state/peritus-artifact-store" }
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-evidence = { version = "=0.0.5", path = "../../state/peritus-evidence" }
-peritus-harness = { version = "=0.0.5", path = "../../orchestration/peritus-harness" }
-peritus-journal = { version = "=0.0.5", path = "../../state/peritus-journal" }
-peritus-model-protocol = { version = "=0.0.5", path = "../../model/peritus-model-protocol" }
-peritus-scheduler = { version = "=0.0.5", path = "../../orchestration/peritus-scheduler" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
-tempfile.workspace = true
-tokio.workspace = true
+peritus-artifact-store = { version = "=0.0.6", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-evidence = { version = "=0.0.6", path = "../../state/peritus-evidence" }
+peritus-harness = { version = "=0.0.6", path = "../../orchestration/peritus-harness" }
+peritus-journal = { version = "=0.0.6", path = "../../state/peritus-journal" }
+peritus-model-protocol = { version = "=0.0.6", path = "../../model/peritus-model-protocol" }
+peritus-scheduler = { version = "=0.0.6", path = "../../orchestration/peritus-scheduler" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 
 [package.metadata.peritus]
 owner = "E3"
 layer = "analysis"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

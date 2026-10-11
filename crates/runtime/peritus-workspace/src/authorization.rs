@@ -6,9 +6,12 @@ use peritus_journal::{
 };
 use peritus_policy::AuthorityInstant;
 use peritus_protocol::ActionIntentDto;
-use peritus_types::{Generation, RevisionNumber, RevisionTuple, SessionId};
+use peritus_types::{ActionId, Generation, RevisionNumber, RevisionTuple, SessionId, Sha256Digest};
 
 use crate::WorkspaceCallerBinding;
+
+mod owned;
+pub use owned::OwnedWorkspaceAuthorization;
 
 /// Exact C0 receipts and current facts required by one workspace mutation.
 pub struct WorkspaceAuthorizationRequest<'a> {
@@ -67,6 +70,57 @@ impl<'a> WorkspaceAuthorizationRequest<'a> {
     #[must_use]
     pub const fn caller_binding(&self) -> Option<&WorkspaceCallerBinding> {
         self.caller.as_ref()
+    }
+
+    /// Returns the lower C1 authorization action identifier.
+    #[must_use]
+    pub const fn action_id(&self) -> ActionId {
+        self.intent.action_id
+    }
+
+    /// Returns the exact canonical action digest covered by the supplied authority receipts.
+    ///
+    /// # Errors
+    /// Rejects an intent that cannot be encoded within the protocol bound.
+    pub fn action_digest(&self) -> Result<Sha256Digest, crate::WorkspaceError> {
+        self.intent.digest(peritus_codec::CodecLimits::PRODUCTION).map_err(|_| {
+            crate::WorkspaceError::new(
+                crate::ErrorCode::InvalidInput,
+                crate::WorkspaceOperation::Authorize,
+                crate::RecoveryClass::CorrectRequest,
+                "action intent cannot be encoded canonically",
+            )
+        })
+    }
+
+    /// Returns the exact intent payload digest for checking a retained pre-effect plan.
+    #[must_use]
+    pub fn action_payload_digest(&self) -> Sha256Digest {
+        peritus_codec::sha256(&self.intent.payload)
+    }
+
+    /// Returns the exact durable action-marker key represented by this lower C1 request.
+    ///
+    /// # Errors
+    /// Requires the exact C4 caller projection bound into the request.
+    pub fn consumption_binding(
+        &self,
+    ) -> Result<crate::ActionConsumptionBinding, crate::WorkspaceError> {
+        let caller = self.caller.as_ref().ok_or_else(|| {
+            crate::WorkspaceError::new(
+                crate::ErrorCode::ResourceMismatch,
+                crate::WorkspaceOperation::Authorize,
+                crate::RecoveryClass::CorrectRequest,
+                "durable Git replay requires an exact C4 caller binding",
+            )
+        })?;
+        Ok(crate::ActionConsumptionBinding::new(
+            caller.workspace_id(),
+            caller.resource_id(),
+            caller.environment_id(),
+            self.expected_generation,
+            self.expected_revision,
+        ))
     }
 
     pub(crate) const fn intent(&self) -> &ActionIntentDto {

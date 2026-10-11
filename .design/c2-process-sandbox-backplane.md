@@ -475,7 +475,7 @@ src/refinement.rs
 ```
 
 `lib.rs` files contain crate documentation, module declarations, and intentional re-exports only.
-Files split before the 700-line hard source limit and receive review at the 400-line soft budget.
+Files stay within the 500-line source limit.
 
 ### Public effect boundary
 

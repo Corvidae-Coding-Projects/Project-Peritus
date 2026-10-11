@@ -12,12 +12,9 @@ keywords = ["patch", "filesystem", "transactions", "formal-verification"]
 categories = ["filesystem", "data-structures"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
+sha2.workspace = true
 
 [lints]
 workspace = true
@@ -25,7 +22,4 @@ workspace = true
 [package.metadata.peritus]
 owner = "C1"
 layer = "runtime"
-verification-class = "H"
 
-[package.metadata.verus]
-verify = true

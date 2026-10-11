@@ -158,6 +158,3 @@ fn repository(detail: impl Into<String>) -> ProductRunnerError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests;

@@ -1,4 +1,4 @@
-//! Bounded final file content with exact computed identity.
+//! Final file content with exact computed identity.
 
 use peritus_types::Sha256Digest;
 
@@ -18,26 +18,17 @@ pub struct FinalFile {
 }
 
 impl FinalFile {
-    /// Applies the requested line-ending policy, checks the per-file bound, and computes identity.
+    /// Applies the requested line-ending policy and computes identity.
     ///
     /// # Errors
     ///
-    /// Returns invalid-content or overflow for non-text normalization and oversized content.
+    /// Returns invalid-content or overflow for non-text normalization or unrepresentable length.
     pub fn new(
         bytes: Vec<u8>,
         mode: FileMode,
         line_endings: LineEndingPolicy,
     ) -> Result<Self, PatchError> {
         let bytes = line_endings.transform(bytes)?;
-        if bytes.len() > crate::set::MAX_FILE_BYTES {
-            return Err(PatchError::message(
-                ErrorCode::InvalidPatchBounds,
-                RecoveryClass::CorrectPatch,
-                PatchOperationContext::Plan,
-                RollbackStatus::NotRequired,
-                "final file exceeds the per-file byte bound",
-            ));
-        }
         let size = u64::try_from(bytes.len()).map_err(|_| {
             PatchError::message(
                 ErrorCode::ArithmeticOverflow,

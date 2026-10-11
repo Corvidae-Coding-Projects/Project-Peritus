@@ -4,13 +4,6 @@ mod collaboration;
 mod gates_review;
 mod scheduler;
 
-#[cfg(test)]
-pub(super) use collaboration::commit_collaboration_directive;
-#[cfg(test)]
-pub(super) use gates_review::commit_review_lifecycle;
-#[cfg(test)]
-pub(super) use scheduler::commit_scheduler_directive;
-
 use peritus_journal::SqliteJournal;
 use peritus_orchestrator::{
     ChildAggregateKind, ChildHead, DirectiveDestination, DirectiveKind, DirectivePayloadBinding,

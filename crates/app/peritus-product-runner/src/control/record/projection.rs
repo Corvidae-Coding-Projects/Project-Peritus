@@ -108,7 +108,7 @@ impl ConversationRecord {
             .filter(|entry| {
                 let target = crate::control::ContextTarget::File(entry.file().operation());
                 let preference = self.context.preference(target);
-                included.iter().any(|input| input.id() == entry.file().input())
+                included.iter().any(|input| entry.file().matches_input(*input))
                     && preference != Some(crate::control::ContextPreference::Excluded)
                     && (entry.selected()
                         || preference == Some(crate::control::ContextPreference::Pinned))

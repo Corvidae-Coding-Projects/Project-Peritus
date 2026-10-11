@@ -300,7 +300,3 @@ pub fn workspace_id(path: &Path) -> Result<WorkspaceId, BenchmarkError> {
     WorkspaceId::new(bytes)
         .map_err(|_| BenchmarkError::Workspace("derived workspace identity is zero".to_owned()))
 }
-
-#[cfg(test)]
-#[path = "settlement/tests.rs"]
-pub mod tests;

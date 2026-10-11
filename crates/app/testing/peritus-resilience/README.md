@@ -1,5 +1,7 @@
 # peritus-resilience
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-resilience` is the runtime-neutral H1 release-qualification harness for an integrated
 Peritus system. It defines a deterministic fault catalog, a black-box subject contract, bounded
 observations, invariant evaluation, canonical evidence, and the only `Ready` verdict issued by

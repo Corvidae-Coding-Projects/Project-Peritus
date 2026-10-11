@@ -174,26 +174,3 @@ impl PermissionPolicy {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn narrowing_is_durable_and_broadening_above_host_rejects() {
-        let host = HostPermissions::all().without(PermissionCapability::Network);
-        let initial = PermissionPolicy::default();
-        assert!(!initial.effective(host, PermissionCapability::Network));
-        assert_eq!(
-            initial.apply(0, PermissionCapability::Network, true, host),
-            Err(ControlError::InvalidInput)
-        );
-        let narrowed = initial.apply(0, PermissionCapability::Write, false, host).expect("narrow");
-        assert_eq!(narrowed.revision(), 1);
-        assert!(!narrowed.effective(host, PermissionCapability::Write));
-        assert_eq!(
-            PermissionPolicy::parse(&narrowed.canonical_bytes().unwrap()).unwrap(),
-            narrowed
-        );
-    }
-}

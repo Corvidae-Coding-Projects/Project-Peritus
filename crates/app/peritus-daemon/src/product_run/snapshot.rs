@@ -19,32 +19,32 @@ impl super::ProductRunService {
         if let Some(run) = query.run_id() {
             return records
                 .get(&run)
-                .map(|record| observation(&self.inner.directory, record))
+                .map(|record| observation(self, record))
                 .transpose()
                 .map(|value| value.into_iter().collect());
         }
         super::recent_records(&records, query.offset())
             .into_iter()
             .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
-            .map(|record| observation(&self.inner.directory, record))
+            .map(|record| observation(self, record))
             .collect()
     }
 }
 
 fn observation(
-    directory: &std::path::Path,
+    service: &super::ProductRunService,
     record: &RunRecord,
 ) -> Result<ProductRunObservation, ProductRunServiceError> {
-    ProductRunObservation::new(live_snapshot(directory, record)?, delivery_settlement(record))
+    ProductRunObservation::new(live_snapshot(service, record)?, delivery_settlement(record))
         .map_err(|_| ProductRunServiceError::InvalidState)
 }
 
 pub(super) fn project_snapshot(
-    directory: &std::path::Path,
+    service: &super::ProductRunService,
     record: &RunRecord,
     snapshot: ProductRunSnapshot,
 ) -> Result<AppResponsePayload, ProductRunServiceError> {
-    let snapshot = snapshot.with_operation(super::operation::project(directory, record)?);
+    let snapshot = snapshot.with_operation(service.project_operation(record)?);
     match delivery_settlement(record) {
         Some(settlement) => ProductRunSettlementSnapshot::new(snapshot, settlement)
             .map(AppResponsePayload::ProductRunSettled)
@@ -64,7 +64,7 @@ pub(super) fn delivery_settlement(
 }
 
 pub(super) fn live_snapshot(
-    directory: &std::path::Path,
+    service: &super::ProductRunService,
     record: &RunRecord,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
     let snapshot = if record.snapshot.phase().terminal() {
@@ -77,7 +77,7 @@ pub(super) fn live_snapshot(
             record.snapshot.summary(),
         )?
     };
-    Ok(snapshot.with_operation(super::operation::project(directory, record)?))
+    Ok(snapshot.with_operation(service.project_operation(record)?))
 }
 
 pub(super) fn initial_snapshot(

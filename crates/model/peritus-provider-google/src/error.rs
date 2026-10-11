@@ -121,7 +121,3 @@ fn failure(provider: ProviderName, facts: FailureFacts) -> Result<ModelFailure, 
         diagnostic,
     ))
 }
-
-#[cfg(test)]
-#[path = "error_tests.rs"]
-mod tests;

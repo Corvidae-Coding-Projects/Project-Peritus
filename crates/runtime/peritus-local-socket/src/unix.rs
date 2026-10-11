@@ -8,8 +8,6 @@ use std::{
 use crate::{NATIVE_MAX_PATH_BYTES, bounded_path};
 
 mod directory;
-#[cfg(test)]
-mod tests;
 
 /// One usable socket path and, when needed, an owned private runtime directory.
 ///

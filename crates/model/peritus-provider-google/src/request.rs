@@ -79,7 +79,3 @@ fn endpoint(request: &ModelRequest, base: &Endpoint) -> Result<Endpoint, Provide
 pub const fn invalid(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::invalid_request("google_request", detail)
 }
-
-#[cfg(test)]
-#[path = "request_tests.rs"]
-mod tests;

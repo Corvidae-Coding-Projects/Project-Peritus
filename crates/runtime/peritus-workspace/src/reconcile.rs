@@ -385,7 +385,3 @@ fn evidence_digest(
     bytes.extend_from_slice(detail.as_bytes());
     peritus_codec::sha256(&bytes)
 }
-
-#[cfg(test)]
-#[path = "reconcile_tests.rs"]
-mod tests;

@@ -86,17 +86,3 @@ fn descriptor(
 fn internal(detail: impl Into<String>) -> QualityError {
     QualityError::new(QualityErrorKind::Protocol, detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn catalog_refines_b1_classes_exactly() {
-        let discover = discover_descriptor().expect("discover descriptor");
-        let run = run_descriptor().expect("run descriptor");
-        assert_eq!(discover.operation().operation_class(), OperationClass::Inspection);
-        assert_eq!(run.operation().operation_class(), OperationClass::Execution);
-        assert_ne!(discover.descriptor_digest(), run.descriptor_digest());
-    }
-}

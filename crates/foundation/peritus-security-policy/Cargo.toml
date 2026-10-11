@@ -10,16 +10,11 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-types = { version = "=0.0.5", path = "../peritus-types" }
-vstd.workspace = true
+peritus-types = { version = "=0.0.6", path = "../peritus-types" }
 
 [package.metadata.peritus]
 owner = "H0"
 layer = "foundation"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

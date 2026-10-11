@@ -3,118 +3,111 @@
 #![allow(missing_docs, reason = "Verus generates ghost enum projection methods")]
 
 use peritus_types::GateId;
-use vstd::prelude::*;
 
-verus! {
-
-/// Canonical collection whose ordering or uniqueness was invalid.
+#[doc = " Canonical collection whose ordering or uniqueness was invalid."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CanonicalCollection {
-    /// Contract requirements.
+    #[doc = " Contract requirements."]
     Requirements,
-    /// Contract exclusions.
+    #[doc = " Contract exclusions."]
     Exclusions,
-    /// Contract assumptions.
+    #[doc = " Contract assumptions."]
     Assumptions,
-    /// Gate definitions.
+    #[doc = " Gate definitions."]
     Gates,
-    /// Dependencies within one gate.
+    #[doc = " Dependencies within one gate."]
     GateDependencies,
-    /// Evidence declarations attached to one gate.
+    #[doc = " Evidence declarations attached to one gate."]
     GateEvidence,
-    /// Required review categories.
+    #[doc = " Required review categories."]
     ReviewCategories,
-    /// Contract-wide evidence declarations.
+    #[doc = " Contract-wide evidence declarations."]
     EvidenceRequirements,
 }
-
-/// Bounded policy value that cannot be zero.
+#[doc = " Bounded policy value that cannot be zero."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum LimitKind {
-    /// Maximum attempts for one gate.
+    #[doc = " Maximum attempts for one gate."]
     GateAttempts,
-    /// Maximum writer/reviewer/fixer cycles.
+    #[doc = " Maximum writer/reviewer/fixer cycles."]
     ReviewCycles,
-    /// Required count of independent reviewers.
+    #[doc = " Required count of independent reviewers."]
     ReviewerQuorum,
-    /// Gate execution timeout.
+    #[doc = " Gate execution timeout."]
     GateTimeout,
 }
-
-/// Stable machine-actionable class of specification failure.
+#[doc = " Stable machine-actionable class of specification failure."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum SpecErrorKind {
-    /// A required collection was empty.
+    #[doc = " A required collection was empty."]
     EmptyCollection,
-    /// A canonical collection repeated a value.
+    #[doc = " A canonical collection repeated a value."]
     DuplicateCanonicalValue,
-    /// A collection was not in strict canonical order.
+    #[doc = " A collection was not in strict canonical order."]
     NonCanonicalOrder,
-    /// A gate names itself as a dependency.
+    #[doc = " A gate names itself as a dependency."]
     SelfDependency,
-    /// A gate names an undeclared dependency.
+    #[doc = " A gate names an undeclared dependency."]
     UnknownGateDependency,
-    /// Gate dependencies contain a directed cycle.
+    #[doc = " Gate dependencies contain a directed cycle."]
     GateCycle,
-    /// A gate names undeclared required evidence.
+    #[doc = " A gate names undeclared required evidence."]
     UnknownEvidenceRequirement,
-    /// An evidence declaration names a gate or category absent from the contract.
+    #[doc = " An evidence declaration names a gate or category absent from the contract."]
     InvalidEvidenceSource,
-    /// A required bounded policy value was zero.
+    #[doc = " A required bounded policy value was zero."]
     ZeroLimit,
-    /// A waiver declaration names evidence with the wrong source.
+    #[doc = " A waiver declaration names evidence with the wrong source."]
     InvalidWaiverEvidence,
-    /// Required final human-approval evidence is not declared.
+    #[doc = " Required final human-approval evidence is not declared."]
     MissingApprovalEvidence,
-    /// Reviewer quorum cannot be reached within the maximum review cycles.
+    #[doc = " Reviewer quorum cannot be reached within the maximum review cycles."]
     ReviewQuorumExceedsCycleLimit,
-    /// The revision tuple is governed by another acceptance specification.
+    #[doc = " The revision tuple is governed by another acceptance specification."]
     RevisionBindingMismatch,
 }
-
-/// Typed acceptance-contract validation failure.
+#[doc = " Typed acceptance-contract validation failure."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum SpecError {
-    /// A required collection was empty.
+    #[doc = " A required collection was empty."]
     EmptyCollection(CanonicalCollection),
-    /// A canonical collection repeated a value.
+    #[doc = " A canonical collection repeated a value."]
     DuplicateCanonicalValue(CanonicalCollection),
-    /// A canonical collection was not strictly ordered.
+    #[doc = " A canonical collection was not strictly ordered."]
     NonCanonicalOrder(CanonicalCollection),
-    /// A gate names itself as a dependency.
+    #[doc = " A gate names itself as a dependency."]
     SelfDependency(GateId),
-    /// A gate names an undeclared dependency.
+    #[doc = " A gate names an undeclared dependency."]
     UnknownGateDependency {
-        /// Gate containing the invalid dependency edge.
+        #[doc = " Gate containing the invalid dependency edge."]
         gate: GateId,
-        /// Undeclared dependency target.
+        #[doc = " Undeclared dependency target."]
         dependency: GateId,
     },
-    /// Gate dependencies contain a directed cycle.
+    #[doc = " Gate dependencies contain a directed cycle."]
     GateCycle,
-    /// A gate names undeclared required evidence.
+    #[doc = " A gate names undeclared required evidence."]
     UnknownEvidenceRequirement(GateId),
-    /// An evidence declaration names a producer absent from the contract.
+    #[doc = " An evidence declaration names a producer absent from the contract."]
     InvalidEvidenceSource(crate::EvidenceRequirementId),
-    /// A required policy limit was zero.
+    #[doc = " A required policy limit was zero."]
     ZeroLimit(LimitKind),
-    /// A waiver names evidence that is absent or not waiver authorization.
+    #[doc = " A waiver names evidence that is absent or not waiver authorization."]
     InvalidWaiverEvidence,
-    /// Final human approval is required but no matching evidence is declared.
+    #[doc = " Final human approval is required but no matching evidence is declared."]
     MissingApprovalEvidence,
-    /// The reviewer quorum exceeds the number of permitted review cycles.
+    #[doc = " The reviewer quorum exceeds the number of permitted review cycles."]
     ReviewQuorumExceedsCycleLimit {
-        /// Required number of distinct review observations.
+        #[doc = " Required number of distinct review observations."]
         reviewer_quorum: u16,
-        /// Maximum number of review cycles that may produce observations.
+        #[doc = " Maximum number of review cycles that may produce observations."]
         max_review_cycles: u16,
     },
-    /// A revision tuple carries a different acceptance-specification identity.
+    #[doc = " A revision tuple carries a different acceptance-specification identity."]
     RevisionBindingMismatch,
 }
-
 impl SpecError {
-    /// Returns the stable error class.
+    #[doc = " Returns the stable error class."]
     #[must_use]
     pub const fn kind(&self) -> SpecErrorKind {
         match self {
@@ -135,8 +128,7 @@ impl SpecError {
             Self::RevisionBindingMismatch => SpecErrorKind::RevisionBindingMismatch,
         }
     }
-
-    /// Returns the affected canonical collection, if applicable.
+    #[doc = " Returns the affected canonical collection, if applicable."]
     #[must_use]
     pub const fn collection(&self) -> Option<CanonicalCollection> {
         match self {
@@ -147,5 +139,3 @@ impl SpecError {
         }
     }
 }
-
-} // verus!

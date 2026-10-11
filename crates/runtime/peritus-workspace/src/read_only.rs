@@ -19,6 +19,10 @@ pub struct ReadOnlyWorkspace {
 }
 
 impl ReadOnlyWorkspace {
+    /// Binds this immutable handle's Git commands to an explicit owned operation lifetime.
+    pub fn set_git_cancellation(&mut self, cancellation: peritus_git::GitCancellation) {
+        self.repository.set_cancellation(cancellation);
+    }
     /// Opens and revalidates a detached read-only snapshot worktree.
     ///
     /// # Errors

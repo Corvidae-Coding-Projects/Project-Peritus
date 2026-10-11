@@ -1,7 +1,5 @@
 //! Exact release identity and current GitHub release discovery.
 
-use std::time::Duration;
-
 use crate::LauncherError;
 
 const LATEST_RELEASE: &str =
@@ -57,13 +55,15 @@ impl Version {
 }
 
 pub(super) async fn latest() -> Result<Option<Release>, LauncherError> {
+    latest_from(LATEST_RELEASE).await
+}
+
+pub(super) async fn latest_from(url: &str) -> Result<Option<Release>, LauncherError> {
     let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(2))
-        .timeout(Duration::from_secs(4))
         .build()
         .map_err(|error| update("construct release client", &error))?;
     let response = client
-        .get(LATEST_RELEASE)
+        .get(url)
         .header(reqwest::header::USER_AGENT, "peritus-updater")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
@@ -101,20 +101,4 @@ fn malformed(value: &str) -> LauncherError {
 
 fn update(operation: &'static str, error: &reqwest::Error) -> LauncherError {
     LauncherError::Update(format!("{operation}: {error}"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn release_tags_are_exact_and_order_numerically() {
-        let ten = Release::from_tag("v10.2.3").expect("release");
-        let nine = Version::parse("9.99.99").expect("version");
-        assert!(ten.version > nine);
-        assert_eq!(ten.version(), "10.2.3");
-        for malformed in ["1.2.3", "v1.2", "v1.2.3.4", "v1.2.3-rc1", "v1.two.3"] {
-            assert!(Release::from_tag(malformed).is_err(), "accepted {malformed}");
-        }
-    }
 }

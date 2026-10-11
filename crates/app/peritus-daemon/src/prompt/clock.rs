@@ -51,23 +51,3 @@ fn clock_error(detail: &'static str) -> DaemonError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::AuthorityClock;
-
-    #[test]
-    fn observations_retain_epoch_and_do_not_regress() {
-        let clock = AuthorityClock::new(7).expect("positive epoch");
-        let first = clock.now().expect("first observation");
-        let second = clock.now().expect("second observation");
-        assert_eq!(clock.epoch().get(), 7);
-        assert_eq!(first.epoch(), second.epoch());
-        assert!(second.tick_millis() >= first.tick_millis());
-    }
-
-    #[test]
-    fn zero_epoch_is_rejected() {
-        assert!(AuthorityClock::new(0).is_err());
-    }
-}

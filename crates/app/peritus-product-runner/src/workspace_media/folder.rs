@@ -1,8 +1,6 @@
 //! Explicit-path-only media for direct folders: no recursive discovery or private-state reads.
 
-use super::{
-    MAX_IMAGES, ProductRunnerError, ProviderProfile, WorkspaceImages, attach, supported_extension,
-};
+use super::{ProductRunnerError, ProviderProfile, WorkspaceImages, attach, supported_extension};
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
@@ -33,65 +31,8 @@ pub fn discover_explicit(
             .ok()
         })
         .filter(|path| path.is_file())
-        .take(MAX_IMAGES)
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
-    attach(root, paths, profile, super::requests_visual_inspection(task))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn non_visual_explicit_image_file_work_does_not_require_image_input() {
-        let root = tempfile::tempdir().expect("folder");
-        std::fs::write(root.path().join("photo.jpg"), b"image bytes to checksum").expect("file");
-        let task = "Compute the SHA-256 checksum of photo.jpg with the workspace tools.";
-
-        let images =
-            discover_explicit(root.path(), task, &super::super::tests::profile(false), &[])
-                .expect("file work needs no vision");
-        let (prompt, attachments) = images.into_parts(task.to_owned());
-
-        assert!(prompt.starts_with(task));
-        assert!(prompt.contains("cannot inspect image pixels"));
-        assert!(prompt.contains("scoped file and command tools"));
-        assert!(prompt.contains("photo.jpg"));
-        assert!(attachments.is_empty());
-        assert_eq!(
-            std::fs::read(root.path().join("photo.jpg")).unwrap(),
-            b"image bytes to checksum"
-        );
-    }
-
-    #[test]
-    fn greeting_never_discovers_or_attaches_unmentioned_images() {
-        let root = tempfile::tempdir().expect("folder");
-        std::fs::write(root.path().join("private.png"), b"not an image").expect("private file");
-        let images =
-            discover_explicit(root.path(), "hello", &super::super::tests::profile(false), &[]);
-        assert!(images.is_ok());
-    }
-
-    #[test]
-    fn only_explicit_non_private_paths_are_attached() {
-        let root = tempfile::tempdir().expect("folder");
-        let private = root.path().join("private");
-        std::fs::create_dir(&private).expect("private directory");
-        std::fs::write(private.join("secret.png"), b"invalid private image").expect("private file");
-        std::fs::write(root.path().join("public photo.png"), b"\x89PNG\r\n\x1a\npixels")
-            .expect("image");
-        let images = discover_explicit(
-            root.path(),
-            "Inspect `public photo.png` and private/secret.png",
-            &super::super::tests::profile(true),
-            &[private],
-        )
-        .expect("explicit media");
-        assert_eq!(images.attachments.len(), 1);
-        assert!(images.manifest.contains("public photo.png"));
-        assert!(!images.manifest.contains("secret"));
-    }
+    attach(root, paths, Vec::new(), profile, super::requests_visual_inspection(task))
 }

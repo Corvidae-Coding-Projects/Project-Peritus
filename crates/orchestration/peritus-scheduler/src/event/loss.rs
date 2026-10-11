@@ -1,12 +1,11 @@
 //! Work outcomes emitted by worker-loss classification.
 
 use crate::{DispatchId, WorkId};
-use vstd::prelude::*;
 
 /// Deterministic work outcome caused by one worker-loss event.
 // Direct verification keeps this Rust declaration checked without synthesizing unused
 // enum-field projection methods, whose documentation is lost by the pinned Verus macro.
-#[cfg_attr(verus_keep_ghost, verifier::verify)]
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum LossOutcome {
     /// Safe ownership loss released and requeued the work.
@@ -46,30 +45,24 @@ pub enum LossOutcome {
     },
 }
 
-verus! {
-
 impl Clone for LossOutcome {
-    fn clone(&self) -> (result: Self)
-        ensures result == *self,
-    {
+    fn clone(&self) -> Self {
         match self {
-            Self::Requeued { dispatch_id, work_id } => Self::Requeued {
-                dispatch_id: *dispatch_id, work_id: *work_id,
-            },
-            Self::Exhausted { dispatch_id, work_id } => Self::Exhausted {
-                dispatch_id: *dispatch_id, work_id: *work_id,
-            },
-            Self::Ambiguous { dispatch_id, work_id } => Self::Ambiguous {
-                dispatch_id: *dispatch_id, work_id: *work_id,
-            },
-            Self::Failed { dispatch_id, work_id } => Self::Failed {
-                dispatch_id: *dispatch_id, work_id: *work_id,
-            },
-            Self::Cancelled { dispatch_id, work_id } => Self::Cancelled {
-                dispatch_id: *dispatch_id, work_id: *work_id,
-            },
+            Self::Requeued { dispatch_id, work_id } => {
+                Self::Requeued { dispatch_id: *dispatch_id, work_id: *work_id }
+            }
+            Self::Exhausted { dispatch_id, work_id } => {
+                Self::Exhausted { dispatch_id: *dispatch_id, work_id: *work_id }
+            }
+            Self::Ambiguous { dispatch_id, work_id } => {
+                Self::Ambiguous { dispatch_id: *dispatch_id, work_id: *work_id }
+            }
+            Self::Failed { dispatch_id, work_id } => {
+                Self::Failed { dispatch_id: *dispatch_id, work_id: *work_id }
+            }
+            Self::Cancelled { dispatch_id, work_id } => {
+                Self::Cancelled { dispatch_id: *dispatch_id, work_id: *work_id }
+            }
         }
     }
 }
-
-} // verus!

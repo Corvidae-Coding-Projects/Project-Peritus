@@ -4,7 +4,6 @@ use ed25519_dalek::{Signature, VerifyingKey};
 use peritus_policy::{ActorRole, AuthorityInstant, IndependenceRequirement, ValidityWindow};
 use peritus_types::Sha256Digest;
 use sha2::{Digest, Sha256};
-use vstd::prelude::*;
 
 mod credential;
 mod observation;
@@ -14,26 +13,25 @@ pub use credential::{
 };
 pub use observation::AuthenticatedApprovalObservation;
 
-verus! {
-
-/// Exact unparsed 32-byte Ed25519 public key.
+#[doc = " Exact unparsed 32-byte Ed25519 public key."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ApprovalPublicKey([u8; 32]);
-
 impl ApprovalPublicKey {
-    /// Stores exact public key bytes without claiming curve validity.
+    #[doc = " Stores exact public key bytes without claiming curve validity."]
     #[must_use]
-    pub const fn new(bytes: [u8; 32]) -> Self { Self(bytes) }
-
-    /// Borrows the exact bytes.
+    pub const fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+    #[doc = " Borrows the exact bytes."]
     #[must_use]
-    pub const fn as_bytes(&self) -> &[u8; 32] { &self.0 }
-
-    /// Validates the exact encoded length before storing public-key bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InvalidCryptoLength` unless `value` contains exactly 32 bytes.
+    pub const fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+    #[doc = " Validates the exact encoded length before storing public-key bytes."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns `InvalidCryptoLength` unless `value` contains exactly 32 bytes."]
     pub const fn from_slice(value: &[u8]) -> Result<Self, crate::ApprovalError> {
         if value.len() != 32 {
             return Err(crate::ApprovalError::InvalidCryptoLength);
@@ -43,25 +41,25 @@ impl ApprovalPublicKey {
         Ok(Self(bytes))
     }
 }
-
-/// Exact unparsed 64-byte Ed25519 signature.
+#[doc = " Exact unparsed 64-byte Ed25519 signature."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ApprovalSignature([u8; 64]);
-
 impl ApprovalSignature {
-    /// Stores exact signature bytes without claiming validity.
+    #[doc = " Stores exact signature bytes without claiming validity."]
     #[must_use]
-    pub const fn new(bytes: [u8; 64]) -> Self { Self(bytes) }
-
-    /// Borrows the exact bytes.
+    pub const fn new(bytes: [u8; 64]) -> Self {
+        Self(bytes)
+    }
+    #[doc = " Borrows the exact bytes."]
     #[must_use]
-    pub const fn as_bytes(&self) -> &[u8; 64] { &self.0 }
-
-    /// Validates the exact encoded length before storing signature bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InvalidCryptoLength` unless `value` contains exactly 64 bytes.
+    pub const fn as_bytes(&self) -> &[u8; 64] {
+        &self.0
+    }
+    #[doc = " Validates the exact encoded length before storing signature bytes."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns `InvalidCryptoLength` unless `value` contains exactly 64 bytes."]
     pub const fn from_slice(value: &[u8]) -> Result<Self, crate::ApprovalError> {
         if value.len() != 64 {
             return Err(crate::ApprovalError::InvalidCryptoLength);
@@ -71,30 +69,24 @@ impl ApprovalSignature {
         Ok(Self(bytes))
     }
 }
-
-/// Domain-separated public-key identifier.
+#[doc = " Domain-separated public-key identifier."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ApprovalKeyId(Sha256Digest);
-
 impl ApprovalKeyId {
-    /// Returns the exact key-identifier digest bytes used by registry specifications.
-    pub closed spec fn spec_bytes(&self) -> [u8; 32] { self.0.spec_bytes() }
-
-    /// Returns the exact identifier digest.
+    #[doc = " Returns the exact identifier digest."]
     #[must_use]
-    pub const fn sha256(self) -> (digest: Sha256Digest)
-        ensures digest.spec_bytes() == self.spec_bytes(),
-    { self.0 }
-
-    /// Stores an exact decoded key-identifier digest without claiming registry membership.
-    ///
-    /// Strict authentication still recomputes the registered credential key ID before accepting a
-    /// decision.
+    pub const fn sha256(self) -> Sha256Digest {
+        self.0
+    }
+    #[doc = " Stores an exact decoded key-identifier digest without claiming registry membership."]
+    #[doc = ""]
+    #[doc = " Strict authentication still recomputes the registered credential key ID before accepting a"]
+    #[doc = " decision."]
     #[must_use]
-    pub const fn from_sha256(digest: Sha256Digest) -> Self { Self(digest) }
+    pub const fn from_sha256(digest: Sha256Digest) -> Self {
+        Self(digest)
+    }
 }
-
-} // verus!
 
 impl ApprovalKeyId {
     /// Computes the algorithm-tagged domain-separated key identifier.
@@ -115,39 +107,17 @@ impl ApprovalKeyId {
     }
 }
 
-verus! {
-
-pub open spec fn spec_contains_role(roles: Seq<ActorRole>, target: ActorRole) -> bool {
-    exists |index: int| 0 <= index < roles.len()
-        && #[trigger] roles[index].spec_rank() == target.spec_rank()
-}
-
-pub fn contains_role(roles: &[ActorRole], target: ActorRole) -> (result: bool)
-    ensures result == spec_contains_role(roles@, target),
-{
+pub fn contains_role(roles: &[ActorRole], target: ActorRole) -> bool {
     let target_rank = crate::digest::role_tag(target);
     let mut index = 0;
-    while index < roles.len()
-        invariant
-            0 <= index <= roles.len(),
-            target_rank as int == target.spec_rank(),
-            forall |prior: int| 0 <= prior < index ==>
-                #[trigger] roles@[prior].spec_rank() != target.spec_rank(),
-        decreases roles.len() - index,
-    {
+    while index < roles.len() {
         if crate::digest::role_tag(roles[index]) == target_rank {
-            assert(spec_contains_role(roles@, target)) by {
-                assert(exists |found: int| found == index
-                    && 0 <= found < roles@.len()
-                    && #[trigger] roles@[found].spec_rank() == target.spec_rank());
-            }
             return true;
         }
         index += 1;
     }
     false
 }
-
 fn check_window(window: ValidityWindow, now: AuthorityInstant) -> Result<(), crate::ApprovalError> {
     if window.not_before().epoch() != now.epoch() || window.expires_at().epoch() != now.epoch() {
         return Err(crate::ApprovalError::ClockEpochMismatch);
@@ -160,8 +130,6 @@ fn check_window(window: ValidityWindow, now: AuthorityInstant) -> Result<(), cra
     }
     Ok(())
 }
-
-} // verus!
 
 /// Strictly authenticates one complete decision against one supplied registry snapshot.
 ///

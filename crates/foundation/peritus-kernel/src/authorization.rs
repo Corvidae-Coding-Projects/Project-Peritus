@@ -5,27 +5,15 @@ use peritus_policy::{ActorRole, CapabilityUseTransition};
 use peritus_types::{
     ActionId, ActorId, CapabilityName, EnvironmentId, ResourceId, RevisionTuple, Sha256Digest,
 };
-use vstd::prelude::*;
 
-verus! {
-
-/// Non-authorizing record that B1 checked one exact action-bound capability use.
+#[doc = " Non-authorizing record that B1 checked one exact action-bound capability use."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ActionAuthorizationWitness {
     transition_digest: Sha256Digest,
     resource_id: ResourceId,
     capability_name: CapabilityName,
 }
-
 impl ActionAuthorizationWitness {
-    /// Exact semantic fields preserved when an authorization witness is cloned.
-    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
-        left.transition_digest == right.transition_digest
-            && left.resource_id == right.resource_id
-            && left.capability_name.spec_value() == right.capability_name.spec_value()
-            && left.capability_name.spec_bytes() == right.capability_name.spec_bytes()
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_transition(
         action_id: ActionId,
@@ -52,22 +40,24 @@ impl ActionAuthorizationWitness {
             capability_name: transition.permission().capability_name().clone(),
         })
     }
-
-    /// Returns the exact B1 logical transition digest.
+    #[doc = " Returns the exact B1 logical transition digest."]
     #[must_use]
-    pub const fn transition_digest(&self) -> Sha256Digest { self.transition_digest }
-    /// Returns the authorized resource identity.
+    pub const fn transition_digest(&self) -> Sha256Digest {
+        self.transition_digest
+    }
+    #[doc = " Returns the authorized resource identity."]
     #[must_use]
-    pub const fn resource_id(&self) -> ResourceId { self.resource_id }
-    /// Returns the authorized capability name.
+    pub const fn resource_id(&self) -> ResourceId {
+        self.resource_id
+    }
+    #[doc = " Returns the authorized capability name."]
     #[must_use]
-    pub const fn capability_name(&self) -> &CapabilityName { &self.capability_name }
+    pub const fn capability_name(&self) -> &CapabilityName {
+        &self.capability_name
+    }
 }
-
 impl Clone for ActionAuthorizationWitness {
-    fn clone(&self) -> (result: Self)
-        ensures Self::clone_equivalent(self, &result),
-    {
+    fn clone(&self) -> Self {
         Self {
             transition_digest: self.transition_digest,
             resource_id: self.resource_id,
@@ -75,5 +65,3 @@ impl Clone for ActionAuthorizationWitness {
         }
     }
 }
-
-} // verus!

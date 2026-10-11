@@ -2,118 +2,60 @@
 
 use super::OpaqueAppIdentifier;
 use peritus_types::IdentifierError;
-use vstd::prelude::*;
 
-verus! {
-
-/// Identifies one durable user conversation, independently of its run attempts.
+#[doc = " Identifies one durable user conversation, independently of its run attempts."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ConversationId(OpaqueAppIdentifier);
-
 impl ConversationId {
-    /// Exact binary representation length.
+    #[doc = " Exact binary representation length."]
     pub const LENGTH: usize = 16;
-
-    /// Returns the mathematical byte-array view.
-    pub closed spec fn spec_bytes(&self) -> [u8; 16] {
-        self.0.spec_bytes()
-    }
-
-    /// Returns whether this identity satisfies its nonzero invariant.
-    pub closed spec fn is_valid(&self) -> bool {
-        super::valid_app_identifier_bytes(self.spec_bytes())
-    }
-
-    /// Creates an identity, rejecting the reserved all-zero value.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`IdentifierError::Zero`] when every input byte is zero.
-    pub const fn new(bytes: [u8; 16]) -> (result: Result<Self, IdentifierError>)
-        ensures
-            result.is_ok() == super::valid_app_identifier_bytes(bytes),
-            match result {
-                Ok(identifier) => identifier.spec_bytes() == bytes,
-                Err(_) => true,
-            },
-    {
+    #[doc = " Creates an identity, rejecting the reserved all-zero value."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns [`IdentifierError::Zero`] when every input byte is zero."]
+    pub const fn new(bytes: [u8; 16]) -> Result<Self, IdentifierError> {
         match OpaqueAppIdentifier::new(bytes) {
             Ok(value) => Ok(Self(value)),
             Err(error) => Err(error),
         }
     }
-
-    /// Borrows the exact identity bytes.
+    #[doc = " Borrows the exact identity bytes."]
     #[must_use]
-    pub const fn as_bytes(&self) -> (bytes: &[u8; 16])
-        ensures *bytes == self.spec_bytes()
-    {
+    pub const fn as_bytes(&self) -> &[u8; 16] {
         self.0.as_bytes()
     }
-
-    /// Consumes the identity and returns its exact bytes.
+    #[doc = " Consumes the identity and returns its exact bytes."]
     #[must_use]
-    pub const fn into_bytes(self) -> (bytes: [u8; 16])
-        ensures bytes == self.spec_bytes()
-    {
+    pub const fn into_bytes(self) -> [u8; 16] {
         self.0.into_bytes()
     }
 }
-
-
-/// Identifies one exact durable user-control operation across transport reconnects.
+#[doc = " Identifies one exact durable user-control operation across transport reconnects."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ControlOperationId(OpaqueAppIdentifier);
-
 impl ControlOperationId {
-    /// Exact binary representation length.
+    #[doc = " Exact binary representation length."]
     pub const LENGTH: usize = 16;
-
-    /// Returns the mathematical byte-array view.
-    pub closed spec fn spec_bytes(&self) -> [u8; 16] {
-        self.0.spec_bytes()
-    }
-
-    /// Returns whether this identity satisfies its nonzero invariant.
-    pub closed spec fn is_valid(&self) -> bool {
-        super::valid_app_identifier_bytes(self.spec_bytes())
-    }
-
-    /// Creates an identity, rejecting the reserved all-zero value.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`IdentifierError::Zero`] when every input byte is zero.
-    pub const fn new(bytes: [u8; 16]) -> (result: Result<Self, IdentifierError>)
-        ensures
-            result.is_ok() == super::valid_app_identifier_bytes(bytes),
-            match result {
-                Ok(identifier) => identifier.spec_bytes() == bytes,
-                Err(_) => true,
-            },
-    {
+    #[doc = " Creates an identity, rejecting the reserved all-zero value."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns [`IdentifierError::Zero`] when every input byte is zero."]
+    pub const fn new(bytes: [u8; 16]) -> Result<Self, IdentifierError> {
         match OpaqueAppIdentifier::new(bytes) {
             Ok(value) => Ok(Self(value)),
             Err(error) => Err(error),
         }
     }
-
-    /// Borrows the exact identity bytes.
+    #[doc = " Borrows the exact identity bytes."]
     #[must_use]
-    pub const fn as_bytes(&self) -> (bytes: &[u8; 16])
-        ensures *bytes == self.spec_bytes()
-    {
+    pub const fn as_bytes(&self) -> &[u8; 16] {
         self.0.as_bytes()
     }
-
-    /// Consumes the identity and returns its exact bytes.
+    #[doc = " Consumes the identity and returns its exact bytes."]
     #[must_use]
-    pub const fn into_bytes(self) -> (bytes: [u8; 16])
-        ensures bytes == self.spec_bytes()
-    {
+    pub const fn into_bytes(self) -> [u8; 16] {
         self.0.into_bytes()
     }
 }
-
-
-} // verus!

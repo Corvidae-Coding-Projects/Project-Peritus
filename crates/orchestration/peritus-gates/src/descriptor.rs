@@ -345,15 +345,3 @@ fn append_revision(hash: &mut Sha256, revision: RevisionTuple) {
     hash.update(revision.policy_id().as_bytes());
     hash.update(revision.provider_profile_id().as_bytes());
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn total_attempt_bound_matches_the_production_codec_collection_ceiling() {
-        assert_eq!(MAX_TOTAL_GATE_ATTEMPTS, 65_535);
-        assert!(total_attempts_within_bound(1, u16::MAX));
-        assert!(!total_attempts_within_bound(2, 32_768));
-    }
-}

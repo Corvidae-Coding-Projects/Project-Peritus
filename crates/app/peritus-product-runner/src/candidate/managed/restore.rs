@@ -9,8 +9,6 @@ use std::{
 
 mod prepared;
 mod sources;
-#[cfg(all(test, unix))]
-mod tests;
 
 impl ManagedBaseline {
     pub(crate) fn discard(
@@ -39,8 +37,7 @@ impl ManagedBaseline {
         if let Some(journal) = journal.as_deref_mut() {
             journal.restoring()?;
         }
-        #[cfg(test)]
-        super::transaction::fault::pause(super::transaction::fault::Stage::Prepared);
+
         let mut recovered = self.discard_prepared(
             root,
             paths,

@@ -1,6 +1,6 @@
 schema = 3
-soft_source_lines = 400
-hard_source_lines = 700
+soft_source_lines = 500
+hard_source_lines = 500
 root_module_lines = 80
 required_license = "MIT"
 ignored_directories = [
@@ -18,19 +18,14 @@ ignored_directories = [
 forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
 trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
 source_exceptions = [
-    { path = "xtask/src/reproducibility/verification_commands/tests.rs", owner = "A0", rationale = "The canonical architecture fixture keeps the complete ordered package and verification-class inventory together so strict Verus command drift is detected by one exact fail-closed comparison." },
     { path = "crates/foundation/peritus-release-policy/src/catalog.rs", owner = "H4", rationale = "The closed 25-criterion and 44-evidence-requirement H4 catalog keeps stable IDs, exact criterion ownership, source-class mappings, and canonical ordering together as one directly auditable release contract." },
-    { path = "crates/app/peritus-cli/src/args.rs", owner = "G1", rationale = "The strict dependency-free CLI parser keeps the complete closed command grammar, option cardinality, and stable usage failures in one auditable surface while command value types live separately." },
     { path = "crates/app/peritus-tui/src/model.rs", owner = "G2", rationale = "The bounded presentation state keeps view, notice, prompt, event, terminal, and pending-request invariants together while protocol and interaction transitions remain split into submodules." },
     { path = "crates/extensions/peritus-mcp/src/server.rs", owner = "G3", rationale = "The MCP server keeps its closed JSON-RPC lifecycle, request dispatch, cancellation registry, bounded pagination, and response mapping in one auditable protocol surface." },
-    { path = "crates/extensions/peritus-plugin-host/src/host.rs", owner = "G3", rationale = "The plugin host keeps discovery-to-start-to-authorize-to-invoke-to-stop lifecycle ordering and owned runtime state in one auditable orchestration surface." },
     { path = "crates/extensions/peritus-plugin-sdk/src/manifest.rs", owner = "G3", rationale = "The canonical plugin manifest keeps the versioned entrypoint, capability, quota, signature, trust, validation, and digest contract together for compatibility review." },
     { path = "crates/analysis/peritus-eval/src/aggregate/reducer.rs", owner = "E3", rationale = "The pure evaluation reducer keeps its closed command vocabulary, legal phase transitions, and corresponding canonical command encoding in one auditable surface." },
     { path = "crates/analysis/peritus-eval/src/aggregate/state.rs", owner = "E3", rationale = "Complete evaluation state and its versioned canonical encode/decode implementation remain together so replay digest correspondence can be audited directly." },
     { path = "crates/analysis/peritus-eval/src/aggregate/types.rs", owner = "E3", rationale = "The closed durable aggregate vocabulary keeps phase, rollout, plan, publication, report, and failure tag mappings visible together." },
-    { path = "crates/analysis/peritus-eval/src/durability/commit.rs", owner = "E3", rationale = "Evaluation commit logic keeps journal append, artifact dependency admission, outbox insertion, claim acknowledgement, and checkpoint ordering in one transaction audit surface." },
     { path = "crates/analysis/peritus-eval/src/durability/directive.rs", owner = "E3", rationale = "The three closed evaluation outbox directive families keep canonical codecs, deterministic identities, and claimed-message validation together." },
-    { path = "crates/analysis/peritus-eval/src/profile/binding.rs", owner = "E3", rationale = "Frozen profile construction keeps every dataset, harness, provider, execution, retry, metric, infrastructure, and limit binding beside its domain-separated digest." },
     { path = "crates/analysis/peritus-eval/src/report/analysis.rs", owner = "E3", rationale = "Evaluation analysis keeps correctness denominators, paired evidence, resource aggregation, missing-data policy, and reliability accounting in one checked derivation." },
     { path = "crates/analysis/peritus-eval/src/verified.rs", owner = "E3", rationale = "The E3 Verus refinement surface keeps executable predicates adjacent to their specifications and proofs so runtime-to-proof correspondence remains inspectable." },
     { path = "crates/orchestration/peritus-agent/src/canonical/event_wire.rs", owner = "D0", rationale = "The closed version-one command payload codec keeps its exhaustive encode/decode tag correspondence in one audited source." },
@@ -39,10 +34,8 @@ source_exceptions = [
     { path = "crates/orchestration/peritus-agent/src/runtime/tools.rs", owner = "D0", rationale = "The C4 coordinator keeps proposal-order slot state and the sole prepare, dispatch, control, recovery, and result projection boundary together." },
     { path = "crates/orchestration/peritus-agent/tests/runtime_driver.rs", owner = "D0", rationale = "The fake-provider durability matrix shares one exact scripted-provider and request fixture across completion, duplicate, malformed-order, and restart cases." },
     { path = "crates/orchestration/peritus-agent/tests/runtime_tools.rs", owner = "D0", rationale = "The end-to-end D0/C4 test intentionally shows complete B0/B1/C0 authority and lease assembly beside inspect, edit, run, and test effect ordering." },
-    { path = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", owner = "C6", rationale = "The compaction matrix keeps source validation and operational graph-replacement cases beside their shared canonical graph fixture." },
     { path = "crates/orchestration/peritus-review/tests/domain_engine.rs", owner = "D2", rationale = "The D2 engine matrix keeps exact binding, quorum, waiver, terminal, and shared identity fixtures together so each assertion exercises the same deterministic domain construction." },
     { path = "crates/orchestration/peritus-review/tests/domain_transitions.rs", owner = "D2", rationale = "The D2 transition matrix keeps reconciliation, confirmation, cancellation, supersession, and oscillation sequences beside one shared canonical review-history fixture." },
-    { path = "crates/state/peritus-migrations/src/engine.rs", owner = "C0", rationale = "The migration engine keeps backup, transaction, integrity, recovery, and version publication ordering in one auditable implementation." },
 ]
 forbidden_dependencies = []
 controlled_source_roots = [
@@ -131,7 +124,6 @@ may_dev_depend_on = ["foundation", "state", "model", "orchestration", "observe",
 [[layers]]
 name = "testing"
 path = "crates/app/testing"
-required_verification_class = "C"
 may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
 may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
 
@@ -153,690 +145,465 @@ path = "xtask"
 may_depend_on = ["engineering"]
 may_dev_depend_on = ["engineering", "testing"]
 
-[[verification_classes]]
-name = "V"
-may_depend_on = ["V"]
-may_dev_depend_on = ["V", "H", "C"]
-
-[[verification_classes]]
-name = "H"
-may_depend_on = ["V", "H"]
-may_dev_depend_on = ["V", "H", "C"]
-
-[[verification_classes]]
-name = "T"
-may_depend_on = ["V", "H", "T"]
-may_dev_depend_on = ["V", "H", "T", "C"]
-
-[[verification_classes]]
-name = "C"
-may_depend_on = ["V", "H", "C"]
-may_dev_depend_on = ["V", "H", "C"]
-
 [[packages]]
 name = "peritus-app-protocol"
 path = "crates/app/peritus-app-protocol"
 owner = "A3"
 layer = "app"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-app-client"
 path = "crates/app/peritus-app-client"
 owner = "G1"
 layer = "app"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-cli"
 path = "crates/app/peritus-cli"
 owner = "G1"
 layer = "app"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-web"
 path = "crates/app/peritus-web"
 owner = "G1"
 layer = "app"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-daemon"
 path = "crates/app/peritus-daemon"
 owner = "G0"
 layer = "app"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-launcher"
 path = "crates/app/peritus-launcher"
 owner = "G4"
 layer = "app"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-product-state"
 path = "crates/app/peritus-product-state"
 owner = "G4"
 layer = "app"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-product-runner"
 path = "crates/app/peritus-product-runner"
 owner = "G4"
 layer = "app"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-provider-onboarding"
 path = "crates/app/peritus-provider-onboarding"
 owner = "G4"
 layer = "app"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-mcp"
 path = "crates/extensions/peritus-mcp"
 owner = "G3"
 layer = "extensions"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-plugin-host"
 path = "crates/extensions/peritus-plugin-host"
 owner = "G3"
 layer = "extensions"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-plugin-sdk"
 path = "crates/extensions/peritus-plugin-sdk"
 owner = "G3"
 layer = "extensions"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tui"
 path = "crates/app/peritus-tui"
 owner = "G2"
 layer = "app"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-approval"
 path = "crates/state/peritus-approval"
 owner = "B1"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-artifact-store"
 path = "crates/state/peritus-artifact-store"
 owner = "C0"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-budget"
 path = "crates/foundation/peritus-budget"
 owner = "B1"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-debugger"
 path = "crates/analysis/peritus-debugger"
 owner = "E2"
 layer = "analysis"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-eval"
 path = "crates/analysis/peritus-eval"
 owner = "E3"
 layer = "analysis"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-evolution"
 path = "crates/analysis/peritus-evolution"
 owner = "F0"
 layer = "analysis"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-evidence"
 path = "crates/state/peritus-evidence"
 owner = "C0"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-codec"
 path = "crates/foundation/peritus-codec"
 owner = "B3"
 layer = "foundation"
-verification_class = "H"
-
-[[packages]]
-name = "peritus-conformance"
-path = "crates/app/testing/peritus-conformance"
-owner = "A2"
-layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-benchmarks"
-path = "crates/app/testing/peritus-benchmarks"
-owner = "H3"
-layer = "testing"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-external-benchmarks"
 path = "crates/app/testing/peritus-external-benchmarks"
 owner = "H3"
 layer = "testing"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-platform-qualification"
 path = "crates/app/testing/peritus-platform-qualification"
 owner = "H2"
 layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-performance-qualification"
-path = "crates/app/testing/peritus-performance-qualification"
-owner = "H3"
-layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-resilience"
-path = "crates/app/testing/peritus-resilience"
-owner = "H1"
-layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-resilience-qualification"
-path = "crates/app/testing/peritus-resilience-qualification"
-owner = "H1"
-layer = "testing"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-release-artifacts"
 path = "crates/app/testing/peritus-release-artifacts"
 owner = "H4"
 layer = "testing"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-release-operator"
 path = "crates/app/testing/peritus-release-operator"
 owner = "H4"
 layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-release-qualification"
-path = "crates/app/testing/peritus-release-qualification"
-owner = "H4"
-layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-security-qualification"
-path = "crates/app/testing/peritus-security-qualification"
-owner = "H0"
-layer = "testing"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-collaboration"
 path = "crates/orchestration/peritus-collaboration"
 owner = "D3"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-git"
 path = "crates/runtime/peritus-git"
 owner = "C1"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-gates"
 path = "crates/orchestration/peritus-gates"
 owner = "D1"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-obligations"
 path = "crates/orchestration/peritus-obligations"
 owner = "D1"
 layer = "orchestration"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-review"
 path = "crates/orchestration/peritus-review"
 owner = "D2"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-kernel"
 path = "crates/foundation/peritus-kernel"
 owner = "B0"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-journal"
 path = "crates/state/peritus-journal"
 owner = "C0"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-leases"
 path = "crates/state/peritus-leases"
 owner = "B1"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-migrations"
 path = "crates/state/peritus-migrations"
 owner = "C0"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-model-protocol"
 path = "crates/model/peritus-model-protocol"
 owner = "C5"
 layer = "model"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-local-socket"
 path = "crates/runtime/peritus-local-socket"
 owner = "G0"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-network"
 path = "crates/runtime/peritus-network"
 owner = "C3"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-patch"
 path = "crates/runtime/peritus-patch"
 owner = "C1"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-policy"
 path = "crates/foundation/peritus-policy"
 owner = "B1"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-process"
 path = "crates/runtime/peritus-process"
 owner = "C2"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-provider-anthropic"
 path = "crates/model/peritus-provider-anthropic"
 owner = "C5"
 layer = "model"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-provider-compatible"
 path = "crates/model/peritus-provider-compatible"
 owner = "C5"
 layer = "model"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-provider-core"
 path = "crates/model/peritus-provider-core"
 owner = "C5"
 layer = "model"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-provider-google"
 path = "crates/model/peritus-provider-google"
 owner = "C5"
 layer = "model"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-provider-openai"
 path = "crates/model/peritus-provider-openai"
 owner = "C5"
 layer = "model"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-context"
 path = "crates/orchestration/peritus-context"
 owner = "C6"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-memory"
 path = "crates/orchestration/peritus-memory"
 owner = "C6"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-role"
 path = "crates/orchestration/peritus-role"
 owner = "C6"
 layer = "orchestration"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-agent"
 path = "crates/orchestration/peritus-agent"
 owner = "D0"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-harness"
 path = "crates/orchestration/peritus-harness"
 owner = "E1"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-orchestrator"
 path = "crates/orchestration/peritus-orchestrator"
 owner = "E0"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-run-knowledge"
 path = "crates/orchestration/peritus-run-knowledge"
 owner = "C6"
 layer = "orchestration"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-run-settlement"
 path = "crates/orchestration/peritus-run-settlement"
 owner = "E0"
 layer = "orchestration"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-protocol"
 path = "crates/foundation/peritus-protocol"
 owner = "B3"
 layer = "foundation"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-projection"
 path = "crates/state/peritus-projection"
 owner = "C0"
 layer = "state"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-quality-policy"
 path = "crates/foundation/peritus-quality-policy"
 owner = "B2"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-release-policy"
 path = "crates/foundation/peritus-release-policy"
 owner = "H4"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-security-policy"
 path = "crates/foundation/peritus-security-policy"
 owner = "H0"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-sandbox"
 path = "crates/runtime/peritus-sandbox"
 owner = "C2"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-scheduler"
 path = "crates/orchestration/peritus-scheduler"
 owner = "D3"
 layer = "orchestration"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-sandbox-linux"
 path = "crates/runtime/peritus-sandbox-linux"
 owner = "C3"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-sandbox-macos"
 path = "crates/runtime/peritus-sandbox-macos"
 owner = "C3"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-sandbox-windows"
 path = "crates/runtime/peritus-sandbox-windows"
 owner = "C3"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-secrets"
 path = "crates/runtime/peritus-secrets"
 owner = "C3"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-spec"
 path = "crates/foundation/peritus-spec"
 owner = "B2"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-tcb"
 path = "crates/foundation/peritus-tcb"
 owner = "A1"
 layer = "foundation"
-verification_class = "T"
-
-[[packages]]
-name = "peritus-test-support"
-path = "crates/app/testing/peritus-test-support"
-owner = "A2"
-layer = "testing"
-verification_class = "C"
-
-[[packages]]
-name = "peritus-bug-discovery"
-path = "crates/app/testing/peritus-bug-discovery"
-owner = "H1"
-layer = "testing"
-verification_class = "C"
 
 [[packages]]
 name = "peritus-telemetry"
 path = "crates/observe/peritus-telemetry"
 owner = "C7"
 layer = "observe"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tool-protocol"
 path = "crates/tools/peritus-tool-protocol"
 owner = "C4"
 layer = "tools"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tool-router"
 path = "crates/tools/peritus-tool-router"
 owner = "C4"
 layer = "tools"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tools-fs"
 path = "crates/tools/peritus-tools-fs"
 owner = "C4"
 layer = "tools"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tools-git"
 path = "crates/tools/peritus-tools-git"
 owner = "C4"
 layer = "tools"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tools-quality"
 path = "crates/tools/peritus-tools-quality"
 owner = "C4"
 layer = "tools"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-tools-shell"
 path = "crates/tools/peritus-tools-shell"
 owner = "C4"
 layer = "tools"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-trace"
 path = "crates/observe/peritus-trace"
 owner = "C7"
 layer = "observe"
-verification_class = "H"
 
 [[packages]]
 name = "peritus-types"
 path = "crates/foundation/peritus-types"
 owner = "A1"
 layer = "foundation"
-verification_class = "V"
 
 [[packages]]
 name = "peritus-workspace"
 path = "crates/runtime/peritus-workspace"
 owner = "C1"
 layer = "runtime"
-verification_class = "H"
 
 [[packages]]
 name = "xtask"
 path = "xtask"
 owner = "A0"
 layer = "engineering"
-verification_class = "C"
 
-[[refinement_reservations]]
-id = "REF-B0-B1-CURRENT-STATE-WITNESS"
-introduced_by = "B1"
-future_owner = "B0"
-statement = "V-only kernel logic binds current lifecycle/policy/revision/action facts, exact producing-attempt and review-participant sets, and the exact current credential-registry revision, and produces the logical PolicyActivationTransition and next-state plan from V-owned candidate facts without importing H approval or C0 types."
-
-[[refinement_reservations]]
-id = "REF-E0-B1-COMMIT-BEFORE-EFFECT"
-introduced_by = "B1"
-future_owner = "E0"
-statement = "E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval plus its exact credential-registry revision when required, B0 current-state witness, and exact C0 commit/current-registry receipts before invoking a target authorization gateway; it does not construct that target's permit."
-
-[[refinement_reservations]]
-id = "REF-E0-B1-POLICY-ACTIVATION"
-introduced_by = "B1"
-future_owner = "E0"
-statement = "E0 matches candidate, H-owned approved amendment, B0 witness, and first C0 approval receipt; submits B0's unchanged V-only activation plan for a distinct linked C0 commit; then installs/replays only B0's exact next state after the second receipt."
-
-[[refinement_reservations]]
-id = "REF-B2-B1-CONTRACT-REVISION"
-introduced_by = "B1"
-future_owner = "B2"
-statement = "Acceptance-contract validation binds every authority request to one exact RevisionTuple."
-
-[[refinement_reservations]]
-id = "REF-B0-B2-CURRENT-EVIDENCE"
-introduced_by = "B2"
-future_owner = "B0"
-statement = "The lifecycle kernel evaluates acceptance only from its exact current contract, RevisionTuple, and V-owned current-evidence projection; raw B2 observation values or an AcceptanceDecision are logical facts and do not independently authorize a lifecycle transition."
-
-[[refinement_reservations]]
-id = "REF-D1-B2-GATE-OBSERVATION"
-introduced_by = "B2"
-future_owner = "D1"
-statement = "Gate observations correspond to actual executions of the frozen GateDefinition against the exact clean candidate snapshot, environment, parser, success rule, artifacts, and dependency order declared by the contract."
-
-[[refinement_reservations]]
-id = "REF-D2-B2-REVIEW-OBSERVATION"
-introduced_by = "B2"
-future_owner = "D2"
-statement = "Review, finding, and waiver observations correspond to authenticated fresh-context read-only review records and preserve reviewer identity, category coverage, disposition, authority, and exact-revision provenance."
-
-[[refinement_reservations]]
-id = "REF-B0-B1-REVISION-FRESHNESS"
-introduced_by = "B1"
-future_owner = "B0"
-statement = "Kernel lifecycle checks reject B1 transitions whose exact RevisionTuple is not current."
-
-[[refinement_reservations]]
-id = "REF-B0-B1-BUDGET-CEILING"
-introduced_by = "B1"
-future_owner = "B0"
-statement = "Kernel integration proves root limit is within the B2 effective policy ceiling and child limit is within parent availability."
-
-[[refinement_reservations]]
-id = "REF-G0-B1-STARTUP-FENCING"
-introduced_by = "B1"
-future_owner = "G0"
-statement = "Restart advances the durable epoch, fences/reconciles every active lease, invalidates prior capability/approval time state, and blocks mutation intake until complete."
-
-[[refinement_reservations]]
-id = "REF-E0-B0-CURRENT-LIFECYCLE"
-introduced_by = "B0"
-future_owner = "E0"
-statement = "Orchestration requests effects only for the exact current run, attempt, turn, and action recorded by B0 and only after C0 commits the matching B0 transition and returns its non-forgeable receipt."

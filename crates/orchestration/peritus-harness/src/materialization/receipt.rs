@@ -111,41 +111,6 @@ pub struct MaterializationReceipt {
 }
 
 impl MaterializationReceipt {
-    #[cfg(test)]
-    pub(crate) fn test_fixture(
-        revision: &crate::domain::HarnessRevision,
-        installed: WorkspaceSnapshot,
-    ) -> Self {
-        let plan_digest = Sha256Digest::new([21; 32]);
-        let mut receipt = Self {
-            id: MaterializationReceiptId([0; 16]),
-            digest: Sha256Digest::new([0; 32]),
-            plan_id: MaterializationPlanId::from_digest(plan_digest),
-            plan_digest,
-            harness_id: revision.harness_id(),
-            revision_digest: revision.digest(),
-            prior_receipt: None,
-            patch_id: Sha256Digest::new([22; 32]),
-            patch_action_id: ActionId::new([23; 16]).expect("test patch action"),
-            patch_authorization_digest: Sha256Digest::new([24; 32]),
-            candidate_action_id: ActionId::new([25; 16]).expect("test candidate action"),
-            candidate_authorization_digest: Sha256Digest::new([26; 32]),
-            before: installed.clone(),
-            after: installed,
-            snapshot_id: SnapshotId::new([27; 16]).expect("test snapshot"),
-            workspace_manifest_artifact: Sha256Digest::new([28; 32]),
-            files: Vec::new(),
-            started_at_millis: 10,
-            completed_at_millis: 11,
-            causal_event_id: EventId::new([29; 16]).expect("test causal event"),
-        };
-        receipt.digest = peritus_codec::sha256(
-            &receipt.encode_without_identity().expect("test receipt must encode"),
-        );
-        receipt.id = MaterializationReceiptId::from_digest(receipt.digest);
-        receipt
-    }
-
     /// Constructs and cross-checks a complete receipt from exact C1 outcomes.
     ///
     /// # Errors

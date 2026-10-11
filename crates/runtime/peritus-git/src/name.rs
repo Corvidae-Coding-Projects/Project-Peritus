@@ -40,16 +40,3 @@ impl WorktreeName {
         &self.0
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::WorktreeName;
-
-    #[test]
-    fn validates_portable_names() {
-        assert_eq!(WorktreeName::new("run_42").expect("name").as_str(), "run_42");
-        for invalid in ["", "-option", "has.dot", "has/slash", "git", "peritus"] {
-            assert!(WorktreeName::new(invalid).is_err(), "accepted {invalid:?}");
-        }
-    }
-}

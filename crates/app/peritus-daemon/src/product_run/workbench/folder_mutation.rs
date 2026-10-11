@@ -20,10 +20,12 @@ impl ProductRunService {
         command: &WorkbenchCommand,
     ) -> peritus_app_protocol::AppResponsePayload {
         match command.intent() {
-            peritus_app_protocol::WorkbenchIntent::ApplyInitDiff(_) => {
+            peritus_app_protocol::WorkbenchIntent::ApplyInitDiff(_)
+            | peritus_app_protocol::WorkbenchIntent::ApplyInitArtifact(_) => {
                 self.apply_workbench_init(actor, session, command).await
             }
-            peritus_app_protocol::WorkbenchIntent::ApplyRewind(_) => {
+            peritus_app_protocol::WorkbenchIntent::ApplyRewind(_)
+            | peritus_app_protocol::WorkbenchIntent::ConfirmRewind(_) => {
                 self.apply_workbench_rewind(actor, session, command).await
             }
             _ => super::error_response(ControlError::InvalidInput.into()),
@@ -82,8 +84,7 @@ impl ProductRunService {
         ))?;
         let payload = owner.authorization_payload(&patch)?;
         let authority = runtime.commit_folder_patch_authority(plan, payload)?;
-        #[cfg(test)]
-        super::checkpoints::obstruct_folder_patch(command, owner.transaction_namespace(), &patch)?;
+
         owner.apply_patch(&authority.request(), patch).map_err(Into::into)
     }
 

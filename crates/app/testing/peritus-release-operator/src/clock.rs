@@ -34,21 +34,3 @@ fn civil_from_days(days_since_epoch: i64) -> (i64, i64, i64) {
     year += i64::from(month <= 2);
     (year, month, day)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::timestamp;
-    use serde_json::to_string;
-
-    #[test]
-    fn epoch_and_leap_day_are_exact() {
-        assert_eq!(
-            to_string(&timestamp(0).expect("epoch")).expect("JSON"),
-            "\"1970-01-01T00:00:00Z\""
-        );
-        assert_eq!(
-            to_string(&timestamp(1_709_164_800).expect("leap day")).expect("JSON"),
-            "\"2024-02-29T00:00:00Z\""
-        );
-    }
-}

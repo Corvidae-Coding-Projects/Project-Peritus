@@ -35,9 +35,6 @@ pub(super) fn open(path: &Path, busy_timeout: Duration) -> Result<Connection, Ev
         .set_db_config(DbConfig::SQLITE_DBCONFIG_TRUSTED_SCHEMA, false)
         .map_err(|error| EvidenceError::sqlite("disable evidence trusted schema", error))?;
     connection
-        .set_limit(Limit::SQLITE_LIMIT_LENGTH, 32 * 1024 * 1024)
-        .map_err(|error| EvidenceError::sqlite("set evidence value limit", error))?;
-    connection
         .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
         .map_err(|error| EvidenceError::sqlite("disable evidence attached databases", error))?;
     Ok(connection)

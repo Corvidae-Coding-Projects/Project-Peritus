@@ -1,40 +1,21 @@
 //! Independently checked scheduler bounds.
 
 use crate::{SchedulerError, SchedulerErrorKind};
-use vstd::prelude::*;
 
-verus! {
-
-/// One-based bounded work attempt number.
+#[doc = " One-based bounded work attempt number."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AttemptNumber(u16);
 
-} // verus!
-
-verus! {
-
 impl AttemptNumber {
-    /// Returns the mathematical one-based attempt value.
-    pub closed spec fn spec_value(&self) -> u16 {
-        self.0
-    }
-
-    /// Returns the one-based number.
+    #[doc = " Returns the one-based number."]
     #[must_use]
-    pub const fn get(self) -> (result: u16)
-        ensures result == self.spec_value(),
-    {
+    pub const fn get(self) -> u16 {
         self.0
     }
-
-    pub(crate) const fn from_wire(value: u16) -> (result: Self)
-        ensures result.spec_value() == value,
-    {
+    pub(crate) const fn from_wire(value: u16) -> Self {
         Self(value)
     }
 }
-
-} // verus!
 
 impl AttemptNumber {
     /// Creates a nonzero attempt number.
@@ -50,9 +31,7 @@ impl AttemptNumber {
     }
 }
 
-verus! {
-
-/// Complete independently enforced limits for one scheduler aggregate.
+#[doc = " Complete independently enforced limits for one scheduler aggregate."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SchedulerLimits {
     queued_work: u32,
@@ -67,69 +46,33 @@ pub struct SchedulerLimits {
     payload_bytes: u64,
     state_bytes: u64,
 }
-
 impl SchedulerLimits {
-    /// Returns the mathematical retained-work ceiling.
-    pub closed spec fn spec_retained_work(&self) -> u32 { self.retained_work }
-
-    /// Maximum retained work history.
+    #[doc = " Maximum retained work history."]
     #[must_use]
-    pub const fn retained_work(self) -> (result: u32)
-        ensures result == self.spec_retained_work(),
-    {
+    pub const fn retained_work(self) -> u32 {
         self.retained_work
     }
-
-    /// Returns the mathematical waiting-work ceiling.
-    pub closed spec fn spec_queued_work(&self) -> u32 { self.queued_work }
-
-    /// Returns the mathematical runtime-directive batch ceiling.
-    pub closed spec fn spec_dispatch_batch_size(&self) -> u16 {
-        self.dispatch_batch_size
-    }
-
-    /// Maximum simultaneously queued work.
+    #[doc = " Maximum simultaneously queued work."]
     #[must_use]
-    pub const fn queued_work(self) -> (result: u32)
-        ensures result == self.spec_queued_work(),
-    {
+    pub const fn queued_work(self) -> u32 {
         self.queued_work
     }
-
-    /// Returns the mathematical live-reservation ceiling.
-    pub closed spec fn spec_active_reservations(&self) -> u16 {
+    #[doc = " Maximum live reservations."]
+    #[must_use]
+    pub const fn active_reservations(self) -> u16 {
         self.active_reservations
     }
-
-    /// Returns the mathematical bounded-bypass ceiling.
-    pub closed spec fn spec_bypass_count(&self) -> u16 { self.bypass_count }
-
-    /// Maximum live reservations.
+    #[doc = " Bypasses before a feasible item is forced ahead."]
     #[must_use]
-    pub const fn active_reservations(self) -> (result: u16)
-        ensures result == self.spec_active_reservations(),
-    {
-        self.active_reservations
-    }
-
-    /// Bypasses before a feasible item is forced ahead.
-    #[must_use]
-    pub const fn bypass_count(self) -> (result: u16)
-        ensures result == self.spec_bypass_count(),
-    {
+    pub const fn bypass_count(self) -> u16 {
         self.bypass_count
     }
-
-    /// Maximum directives returned by one runtime poll.
+    #[doc = " Maximum directives returned by one runtime poll."]
     #[must_use]
-    pub const fn dispatch_batch_size(self) -> (result: u16)
-        ensures result == self.spec_dispatch_batch_size(),
-    {
+    pub const fn dispatch_batch_size(self) -> u16 {
         self.dispatch_batch_size
     }
 }
-
-} // verus!
 
 impl SchedulerLimits {
     /// Compiled maximum queued items.

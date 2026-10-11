@@ -1,19 +1,12 @@
 //! Checked bounded filesystem-tool input values.
 
 use peritus_patch::{FileMode, LineEndingPolicy, Preimage, WorkspacePath};
+use peritus_tool_protocol::ArtifactReference;
 
 use crate::{FsToolError, FsToolOperation};
 
-/// Maximum subtree depth accepted by discovery or search.
-pub const MAX_TRAVERSAL_DEPTH: u16 = 64;
-/// Maximum entries visited by one discovery or search.
-pub const MAX_TRAVERSAL_ENTRIES: u32 = 100_000;
-/// Maximum literal search matches retained in one observation.
-pub const MAX_SEARCH_MATCHES: u32 = 10_000;
-/// Maximum aggregate bytes scanned by one search.
-pub const MAX_SEARCH_BYTES: u64 = 64 * 1_024 * 1_024;
-/// Maximum file bytes rendered inline by `fs.read`, including base64 expansion.
-pub const MAX_TOOL_READ_BYTES: u64 = 48 * 1_024;
+mod search;
+pub use search::{SearchInput, SearchMatchField};
 
 /// One exact checked workspace-relative metadata path input.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -43,6 +36,9 @@ pub struct DiscoverInput {
     pub(crate) root: Option<WorkspacePath>,
     pub(crate) maximum_depth: u16,
     pub(crate) maximum_entries: u32,
+    pub(crate) continuation_offset: u64,
+    pub(crate) omission_offset: u64,
+    pub(crate) path_offset: Option<u64>,
 }
 
 impl DiscoverInput {
@@ -55,12 +51,46 @@ impl DiscoverInput {
         maximum_depth: u16,
         maximum_entries: u32,
     ) -> Result<Self, FsToolError> {
+        Self::page(root, maximum_depth, maximum_entries, 0)
+    }
+
+    /// Creates a discovery page following an exact count of preceding entries.
+    ///
+    /// # Errors
+    /// Rejects invalid paths and zero or excessive traversal bounds.
+    pub fn page(
+        root: Option<String>,
+        maximum_depth: u16,
+        maximum_entries: u32,
+        continuation_offset: u64,
+    ) -> Result<Self, FsToolError> {
         validate_traversal(FsToolOperation::Discover, maximum_depth, maximum_entries)?;
         let root = root
             .map(WorkspacePath::new)
             .transpose()
             .map_err(|_| FsToolError::invalid(FsToolOperation::Discover, "root path is invalid"))?;
-        Ok(Self { root, maximum_depth, maximum_entries })
+        Ok(Self {
+            root,
+            maximum_depth,
+            maximum_entries,
+            continuation_offset,
+            omission_offset: 0,
+            path_offset: None,
+        })
+    }
+
+    /// Sets the separate continuation offset for exact omissions and directory diagnostics.
+    #[must_use]
+    pub const fn with_omission_offset(mut self, offset: u64) -> Self {
+        self.omission_offset = offset;
+        self
+    }
+
+    /// Requests a byte range of the entry path at the current continuation offset.
+    #[must_use]
+    pub const fn with_path_offset(mut self, offset: Option<u64>) -> Self {
+        self.path_offset = offset;
+        self
     }
 }
 
@@ -68,6 +98,7 @@ impl DiscoverInput {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReadInput {
     pub(crate) path: WorkspacePath,
+    pub(crate) offset: u64,
     pub(crate) maximum_bytes: u64,
 }
 
@@ -77,75 +108,25 @@ impl ReadInput {
     /// # Errors
     /// Rejects invalid paths and zero or excessive file bounds.
     pub fn new(path: impl Into<String>, maximum_bytes: u64) -> Result<Self, FsToolError> {
+        Self::range(path, 0, maximum_bytes)
+    }
+
+    /// Creates one exact half-open file byte-range page.
+    ///
+    /// # Errors
+    /// Rejects invalid paths, a zero page size, or offset arithmetic overflow.
+    pub fn range(
+        path: impl Into<String>,
+        offset: u64,
+        maximum_bytes: u64,
+    ) -> Result<Self, FsToolError> {
         let path = WorkspacePath::new(path.into()).map_err(|_| {
             FsToolError::invalid(FsToolOperation::Read, "workspace path is invalid or protected")
         })?;
-        if maximum_bytes == 0 || maximum_bytes > MAX_TOOL_READ_BYTES {
+        if maximum_bytes == 0 || offset.checked_add(maximum_bytes).is_none() {
             return Err(FsToolError::invalid(FsToolOperation::Read, "file byte bound is invalid"));
         }
-        Ok(Self { path, maximum_bytes })
-    }
-}
-
-/// Bounded literal search input.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SearchInput {
-    pub(crate) root: Option<WorkspacePath>,
-    pub(crate) literal: String,
-    pub(crate) case_sensitive: bool,
-    pub(crate) maximum_depth: u16,
-    pub(crate) maximum_entries: u32,
-    pub(crate) maximum_file_bytes: u64,
-    pub(crate) maximum_total_bytes: u64,
-    pub(crate) maximum_matches: u32,
-}
-
-impl SearchInput {
-    /// Creates a regular-expression-free bounded literal search.
-    ///
-    /// # Errors
-    /// Rejects invalid paths, empty/oversized literals, or excessive resource bounds.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        root: Option<String>,
-        literal: String,
-        case_sensitive: bool,
-        maximum_depth: u16,
-        maximum_entries: u32,
-        maximum_file_bytes: u64,
-        maximum_total_bytes: u64,
-        maximum_matches: u32,
-    ) -> Result<Self, FsToolError> {
-        validate_traversal(FsToolOperation::Search, maximum_depth, maximum_entries)?;
-        validate_file_bound(FsToolOperation::Search, maximum_file_bytes)?;
-        if literal.is_empty()
-            || literal.len() > 4_096
-            || !crate::verified::search_bounds_valid(
-                maximum_total_bytes,
-                maximum_matches,
-                MAX_SEARCH_BYTES,
-                MAX_SEARCH_MATCHES,
-            )
-        {
-            return Err(FsToolError::invalid(
-                FsToolOperation::Search,
-                "literal or search bounds are invalid",
-            ));
-        }
-        let root = root
-            .map(WorkspacePath::new)
-            .transpose()
-            .map_err(|_| FsToolError::invalid(FsToolOperation::Search, "root path is invalid"))?;
-        Ok(Self {
-            root,
-            literal,
-            case_sensitive,
-            maximum_depth,
-            maximum_entries,
-            maximum_file_bytes,
-            maximum_total_bytes,
-            maximum_matches,
-        })
+        Ok(Self { path, offset, maximum_bytes })
     }
 }
 
@@ -165,9 +146,18 @@ pub struct ReplaceInput(pub(crate) ReplaceFields);
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FinalInput {
     pub path: WorkspacePath,
-    pub bytes: Vec<u8>,
+    pub content: MutationContent,
     pub mode: FileMode,
     pub line_endings: LineEndingPolicy,
+}
+
+/// Inline mutation bytes or a complete immutable artifact reference.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MutationContent {
+    /// Exact bytes carried in the bounded tool call.
+    Inline(Vec<u8>),
+    /// Exact bytes resolved by the dispatcher-bound caller authority.
+    Artifact(ArtifactReference),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -185,7 +175,7 @@ pub struct WriteFields {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReplaceFields {
     pub existing: ExistingInput,
-    pub bytes: Vec<u8>,
+    pub content: MutationContent,
     pub mode: FileMode,
     pub line_endings: LineEndingPolicy,
 }
@@ -249,10 +239,70 @@ impl ReplaceInput {
             existing_input(FsToolOperation::Replace, final_input.path.as_str(), preimage)?;
         Ok(Self(ReplaceFields {
             existing,
-            bytes: final_input.bytes,
+            content: final_input.content,
             mode: final_input.mode,
             line_endings: final_input.line_endings,
         }))
+    }
+
+    /// Creates an exact replacement using an immutable artifact reference.
+    ///
+    /// # Errors
+    /// Rejects an invalid path or absent preimage.
+    pub fn from_artifact(
+        path: impl Into<String>,
+        preimage: Preimage,
+        reference: ArtifactReference,
+        mode: FileMode,
+        line_endings: LineEndingPolicy,
+    ) -> Result<Self, FsToolError> {
+        let existing = existing_input(FsToolOperation::Replace, path, preimage)?;
+        Ok(Self(ReplaceFields {
+            existing,
+            content: MutationContent::Artifact(reference),
+            mode,
+            line_endings,
+        }))
+    }
+}
+
+impl CreateInput {
+    /// Creates an absent-target file input using an immutable artifact reference.
+    ///
+    /// # Errors
+    /// Rejects an invalid path.
+    pub fn from_artifact(
+        path: impl Into<String>,
+        reference: ArtifactReference,
+        mode: FileMode,
+        line_endings: LineEndingPolicy,
+    ) -> Result<Self, FsToolError> {
+        let path = WorkspacePath::new(path.into()).map_err(|_| {
+            FsToolError::invalid(FsToolOperation::Create, "workspace path is invalid or protected")
+        })?;
+        Ok(Self(FinalInput {
+            path,
+            content: MutationContent::Artifact(reference),
+            mode,
+            line_endings,
+        }))
+    }
+}
+
+impl WriteInput {
+    /// Creates an explicit write input using an immutable artifact reference.
+    ///
+    /// # Errors
+    /// Rejects an invalid path or absent preimage.
+    pub fn from_artifact(
+        path: impl Into<String>,
+        preimage: Preimage,
+        reference: ArtifactReference,
+        mode: FileMode,
+        line_endings: LineEndingPolicy,
+    ) -> Result<Self, FsToolError> {
+        let final_input = CreateInput::from_artifact(path, reference, mode, line_endings)?;
+        Ok(Self(WriteFields { final_input: final_input.0, preimage }))
     }
 }
 
@@ -277,9 +327,9 @@ impl PatchInput {
     /// Creates a checked nonempty patch input.
     ///
     /// # Errors
-    /// Rejects empty or excessive operation counts.
+    /// Rejects an empty patch.
     pub fn new(edits: Vec<PatchEdit>) -> Result<Self, FsToolError> {
-        if edits.is_empty() || edits.len() > peritus_patch::MAX_PATCH_OPERATIONS {
+        if edits.is_empty() {
             return Err(FsToolError::invalid(
                 FsToolOperation::Patch,
                 "patch operation count is outside its bound",
@@ -298,10 +348,7 @@ fn final_input(
 ) -> Result<FinalInput, FsToolError> {
     let path = WorkspacePath::new(path.into())
         .map_err(|_| FsToolError::invalid(operation, "workspace path is invalid or protected"))?;
-    if bytes.len() > peritus_patch::MAX_PATCH_BYTES {
-        return Err(FsToolError::invalid(operation, "final file exceeds the patch byte bound"));
-    }
-    Ok(FinalInput { path, bytes, mode, line_endings })
+    Ok(FinalInput { path, content: MutationContent::Inline(bytes), mode, line_endings })
 }
 
 fn existing_input(
@@ -322,12 +369,8 @@ const fn validate_traversal(
     maximum_depth: u16,
     maximum_entries: u32,
 ) -> Result<(), FsToolError> {
-    if !crate::verified::traversal_bounds_valid(
-        maximum_depth,
-        maximum_entries,
-        MAX_TRAVERSAL_DEPTH,
-        MAX_TRAVERSAL_ENTRIES,
-    ) {
+    if !crate::verified::traversal_bounds_valid(maximum_depth, maximum_entries, u16::MAX, u32::MAX)
+    {
         return Err(FsToolError::invalid(operation, "traversal bounds are invalid"));
     }
     Ok(())
@@ -337,7 +380,7 @@ const fn validate_file_bound(
     operation: FsToolOperation,
     maximum_bytes: u64,
 ) -> Result<(), FsToolError> {
-    if maximum_bytes == 0 || maximum_bytes > peritus_workspace::MAX_INSPECTION_FILE_BYTES {
+    if maximum_bytes == 0 {
         return Err(FsToolError::invalid(operation, "file byte bound is invalid"));
     }
     Ok(())

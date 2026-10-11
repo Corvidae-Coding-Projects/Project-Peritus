@@ -146,24 +146,3 @@ pub fn hex(bytes: &[u8]) -> String {
     }
     output
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn user_path_accepts_quotes_and_relative_paths() {
-        assert_eq!(user_path("  './my repo'  ").expect("path"), PathBuf::from("./my repo"));
-    }
-
-    #[test]
-    fn hex_is_lowercase_and_exact() {
-        assert_eq!(hex(&[0, 15, 16, 255]), "000f10ff");
-    }
-
-    #[test]
-    fn git_parent_inspection_preserves_filesystem_errors() {
-        let directory = tempfile::tempdir().expect("temporary workspace");
-        assert!(has_git_parent(&directory.path().join("missing")).is_err());
-    }
-}

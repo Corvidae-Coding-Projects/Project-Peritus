@@ -2,10 +2,6 @@
 
 use crate::{MacosError, MacosOperation, error};
 
-const MAX_CANONICAL_BYTES: usize = 512 * 1_024;
-const MAX_COLLECTION_ITEMS: usize = 4_096;
-const MAX_STRING_BYTES: usize = 256 * 1_024;
-
 pub(crate) struct Writer {
     bytes: Vec<u8>,
 }
@@ -49,19 +45,28 @@ impl Writer {
     }
 
     pub(crate) fn string(&mut self, value: &str) -> Result<(), MacosError> {
-        if value.len() > MAX_STRING_BYTES {
-            return Err(error::limited(MacosOperation::Manifest, "string exceeds manifest bound"));
-        }
         self.bytes(value.as_bytes())
     }
 
-    pub(crate) fn count(&mut self, value: usize) -> Result<(), MacosError> {
-        if value > MAX_COLLECTION_ITEMS {
-            return Err(error::limited(
+    #[cfg(unix)]
+    pub(crate) fn path(&mut self, value: &std::path::Path) -> Result<(), MacosError> {
+        use std::os::unix::ffi::OsStrExt as _;
+        self.bytes(value.as_os_str().as_bytes())
+    }
+
+    // The macOS wire format uses Unix path bytes. Other hosts may handle its UTF-8 subset
+    // exactly, but must reject native names that have no exact representation in that format.
+    #[cfg(not(unix))]
+    pub(crate) fn path(&mut self, value: &std::path::Path) -> Result<(), MacosError> {
+        self.string(value.to_str().ok_or_else(|| {
+            error::invalid(
                 MacosOperation::Manifest,
-                "collection exceeds manifest bound",
-            ));
-        }
+                "path cannot be represented as Unix bytes on this host",
+            )
+        })?)
+    }
+
+    pub(crate) fn count(&mut self, value: usize) -> Result<(), MacosError> {
         self.u32(
             u32::try_from(value)
                 .map_err(|_| error::limited(MacosOperation::Manifest, "collection is too large"))?,
@@ -73,14 +78,13 @@ impl Writer {
     }
 
     fn reserve(&mut self, additional: usize) -> Result<(), MacosError> {
-        let next =
-            self.bytes.len().checked_add(additional).ok_or_else(|| {
-                error::limited(MacosOperation::Manifest, "manifest size overflow")
-            })?;
-        if next > MAX_CANONICAL_BYTES {
-            return Err(error::limited(MacosOperation::Manifest, "manifest exceeds byte bound"));
-        }
-        self.bytes.reserve(additional);
+        self.bytes
+            .len()
+            .checked_add(additional)
+            .ok_or_else(|| error::limited(MacosOperation::Manifest, "manifest size overflow"))?;
+        self.bytes.try_reserve(additional).map_err(|_| {
+            error::limited(MacosOperation::Manifest, "manifest storage cannot be reserved")
+        })?;
         Ok(())
     }
 }
@@ -91,11 +95,8 @@ pub(crate) struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-    pub(crate) fn new(input: &'a [u8]) -> Result<Self, MacosError> {
-        if input.len() > MAX_CANONICAL_BYTES {
-            return Err(error::limited(MacosOperation::Manifest, "manifest exceeds byte bound"));
-        }
-        Ok(Self { input, offset: 0 })
+    pub(crate) const fn new(input: &'a [u8]) -> Self {
+        Self { input, offset: 0 }
     }
 
     pub(crate) fn u8(&mut self) -> Result<u8, MacosError> {
@@ -131,26 +132,46 @@ impl<'a> Reader<'a> {
     pub(crate) fn bytes(&mut self) -> Result<&'a [u8], MacosError> {
         let length = usize::try_from(self.u32()?)
             .map_err(|_| error::limited(MacosOperation::Manifest, "byte length is too large"))?;
-        if length > MAX_STRING_BYTES {
-            return Err(error::limited(MacosOperation::Manifest, "byte value exceeds bound"));
-        }
         self.take(length)
+    }
+
+    #[cfg(unix)]
+    pub(crate) fn path(&mut self) -> Result<std::path::PathBuf, MacosError> {
+        use std::os::unix::ffi::OsStringExt as _;
+        let value = self.bytes()?;
+        let mut bytes = Vec::new();
+        bytes.try_reserve_exact(value.len()).map_err(|_| {
+            error::limited(MacosOperation::Manifest, "manifest path storage cannot be reserved")
+        })?;
+        bytes.extend_from_slice(value);
+        Ok(std::ffi::OsString::from_vec(bytes).into())
+    }
+
+    #[cfg(not(unix))]
+    pub(crate) fn path(&mut self) -> Result<std::path::PathBuf, MacosError> {
+        Ok(self.string()?.into())
     }
 
     pub(crate) fn string(&mut self) -> Result<String, MacosError> {
         let value = self.bytes()?;
-        String::from_utf8(value.to_vec())
-            .map_err(|_| error::invalid(MacosOperation::Manifest, "manifest string is not UTF-8"))
+        let mut text = String::new();
+        text.try_reserve(value.len()).map_err(|_| {
+            error::limited(MacosOperation::Manifest, "manifest string storage cannot be reserved")
+        })?;
+        text.push_str(std::str::from_utf8(value).map_err(|_| {
+            error::invalid(MacosOperation::Manifest, "manifest string is not UTF-8")
+        })?);
+        Ok(text)
     }
 
     pub(crate) fn count(&mut self) -> Result<usize, MacosError> {
         let value = usize::try_from(self.u32()?).map_err(|_| {
             error::limited(MacosOperation::Manifest, "collection count is too large")
         })?;
-        if value > MAX_COLLECTION_ITEMS {
+        if value > self.input.len().saturating_sub(self.offset) {
             return Err(error::limited(
                 MacosOperation::Manifest,
-                "collection exceeds manifest bound",
+                "collection count exceeds the remaining manifest bytes",
             ));
         }
         Ok(value)

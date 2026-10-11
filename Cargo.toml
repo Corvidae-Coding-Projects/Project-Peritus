@@ -13,19 +13,10 @@ members = [
     "crates/app/peritus-product-runner",
     "crates/app/peritus-tui",
     "crates/app/peritus-web",
-    "crates/app/testing/peritus-benchmarks",
-    "crates/app/testing/peritus-bug-discovery",
-    "crates/app/testing/peritus-conformance",
     "crates/app/testing/peritus-external-benchmarks",
     "crates/app/testing/peritus-platform-qualification",
-    "crates/app/testing/peritus-performance-qualification",
     "crates/app/testing/peritus-release-artifacts",
     "crates/app/testing/peritus-release-operator",
-    "crates/app/testing/peritus-release-qualification",
-    "crates/app/testing/peritus-resilience",
-    "crates/app/testing/peritus-resilience-qualification",
-    "crates/app/testing/peritus-security-qualification",
-    "crates/app/testing/peritus-test-support",
     "crates/extensions/peritus-mcp",
     "crates/extensions/peritus-plugin-host",
     "crates/extensions/peritus-plugin-sdk",
@@ -91,7 +82,7 @@ default-members = ["xtask"]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.5"
+version = "0.0.6"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"
@@ -103,7 +94,6 @@ bytes = "=1.12.1"
 cap-std = { version = "=4.0.3", default-features = false }
 cap-fs-ext = { version = "=4.0.3", default-features = false, features = ["std"] }
 crossterm = { version = "=0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
-criterion = { version = "=0.8.2", default-features = false }
 ed25519-dalek = { version = "=3.0.0", default-features = false }
 find-msvc-tools = "=0.1.11"
 fs4 = "=1.1.0"
@@ -115,7 +105,6 @@ image = { version = "=0.25.10", default-features = false, features = ["png", "jp
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }
 landlock = { version = "=0.4.7", default-features = false }
-libfuzzer-sys = "=0.4.13"
 libc = "=0.2.189"
 markup5ever_rcdom = "=0.39.0"
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }
@@ -140,14 +129,11 @@ url = "=2.5.8"
 vt100 = "=0.16.2"
 zeroize = { version = "=1.9.0", default-features = false, features = ["alloc"] }
 windows-sys = { version = "=0.61.2", default-features = false }
-vstd = { version = "=0.0.0-2026-08-09-0044", git = "https://github.com/verus-lang/verus.git", rev = "92f466f247f45128c630d1c843fd6e27d2115587" }
 yaml-rust2 = { version = "=0.12.0", default-features = false }
 
 [workspace.metadata.peritus]
 architecture-policy = "architecture.toml"
 rust-toolchain = "1.97.1"
-verus-version = "0.2026.08.09.92f466f"
-vstd-revision = "92f466f247f45128c630d1c843fd6e27d2115587"
 
 [workspace.lints.rust]
 future_incompatible = { level = "deny", priority = -1 }
@@ -155,12 +141,6 @@ missing_docs = "deny"
 nonstandard_style = { level = "deny", priority = -1 }
 rust_2018_idioms = { level = "deny", priority = -1 }
 rust_2024_compatibility = { level = "deny", priority = -1 }
-unexpected_cfgs = { level = "deny", check-cfg = [
-    "cfg(verus_keep_ghost)",
-    "cfg(verus_keep_ghost_body)",
-    "cfg(verus_only)",
-    "cfg(verus_verify_core)",
-] }
 unsafe_code = "deny"
 unused_lifetimes = "deny"
 unused_qualifications = "deny"
@@ -181,9 +161,6 @@ private_intra_doc_links = "deny"
 incremental = false
 overflow-checks = true
 
-[profile.test]
-incremental = false
-overflow-checks = true
 
 [profile.release]
 codegen-units = 1

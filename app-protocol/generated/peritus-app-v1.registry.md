@@ -8,8 +8,8 @@ Generated from Rust metadata. Numeric and semantic allocations are append-only.
 |---:|---|---:|---|
 | 94 | `app-client-hello` | 1 | `1:client-hello` |
 | 95 | `app-server-hello` | 1 | `1:compatible`, `2:downgraded`, `3:incompatible` |
-| 96 | `app-request` | 1 | `180:harness-improvements`, `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `20:continue-product-run`, `21:query-product-run-conversation`, `22:interact`, `23:query-interaction`, `24:query-models`, `25:update-models`, `26:interact-with-effort`, `27:update-models-with-effort`, `28:doctor`, `29:workbench-command`, `30:query-workbench`, `31:query-workbench-receipt`, `32:query-workbench-queue`, `33:query-workbench-context`, `34:query-workbench-brief`, `35:begin-workbench-image-upload`, `36:preview-workbench-image`, `37:query-workbench-images`, `38:preview-workbench-file`, `39:query-workbench-files`, `40:begin-workbench-file-upload`, `41:preview-workbench-file-import`, `42:preview-workbench-compaction`, `43:query-workbench-execution`, `44:continue-workbench-execution`, `45:query-interaction-binding`, `60:query-workbench-goal`, `80:query-workbench-review`, `100:query-workbench-result`, `101:query-workbench-preview`, `102:query-product-run-observations`, `120:preview-workbench-rewind`, `121:inspect-workbench-checkpoint`, `140:query-conversation-library`, `160:query-workbench-permissions`, `161:query-workbench-memory`, `162:discover-init` |
-| 97 | `app-response` | 1 | `180:harness-improvements`, `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `181:terminal-pipe-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `12:product-run-conversation`, `13:product-run-settled`, `15:interaction`, `16:models`, `17:interaction-with-effort`, `18:doctor-report`, `19:workbench-snapshot`, `20:workbench-receipt`, `21:workbench-queue`, `22:workbench-context`, `23:workbench-brief`, `24:workbench-image-preview`, `25:workbench-images`, `26:workbench-file-preview`, `27:workbench-files`, `28:workbench-file-import-preview`, `29:workbench-compaction-preview`, `43:workbench-execution`, `44:interaction-binding`, `60:workbench-goal`, `80:workbench-review`, `100:workbench-result`, `101:workbench-preview`, `102:product-run-observations`, `120:workbench-checkpoint`, `121:workbench-rewind-preview`, `122:workbench-restore`, `140:conversation-library`, `160:workbench-permissions`, `161:workbench-memory`, `162:init-proposal` |
+| 96 | `app-request` | 1 | `180:harness-improvements`, `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `20:continue-product-run`, `21:query-product-run-conversation`, `22:interact`, `23:query-interaction`, `24:query-models`, `25:update-models`, `26:interact-with-effort`, `27:update-models-with-effort`, `28:doctor`, `29:workbench-command`, `30:query-workbench`, `31:query-workbench-receipt`, `32:query-workbench-queue`, `33:query-workbench-context`, `34:query-workbench-brief`, `47:query-workbench-brief-page`, `48:query-workbench-brief-proposal`, `35:begin-workbench-image-upload`, `36:preview-workbench-image`, `37:query-workbench-images`, `38:preview-workbench-file`, `39:query-workbench-files`, `40:begin-workbench-file-upload`, `41:preview-workbench-file-import`, `42:preview-workbench-compaction`, `43:query-workbench-execution`, `44:continue-workbench-execution`, `46:continue-workbench-message`, `45:query-interaction-binding`, `60:query-workbench-goal`, `80:query-workbench-review`, `100:query-workbench-result`, `101:query-workbench-preview`, `102:query-product-run-observations`, `120:preview-workbench-rewind`, `121:inspect-workbench-checkpoint`, `122:query-workbench-checkpoint-page`, `123:query-workbench-rewind-page`, `140:query-conversation-library`, `160:query-workbench-permissions`, `161:query-workbench-memory`, `162:discover-init`, `164:discover-init-artifacts`, `165:query-init-artifact-page` |
+| 97 | `app-response` | 1 | `180:harness-improvements`, `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `181:terminal-pipe-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `12:product-run-conversation`, `13:product-run-settled`, `15:interaction`, `16:models`, `17:interaction-with-effort`, `18:doctor-report`, `19:workbench-snapshot`, `20:workbench-receipt`, `21:workbench-queue`, `22:workbench-context`, `23:workbench-brief`, `45:workbench-brief-page`, `46:workbench-brief-proposal`, `24:workbench-image-preview`, `25:workbench-images`, `26:workbench-file-preview`, `27:workbench-files`, `28:workbench-file-import-preview`, `29:workbench-compaction-preview`, `43:workbench-execution`, `44:interaction-binding`, `60:workbench-goal`, `80:workbench-review`, `100:workbench-result`, `101:workbench-preview`, `102:product-run-observations`, `120:workbench-checkpoint`, `121:workbench-rewind-preview`, `122:workbench-restore`, `123:workbench-checkpoint-page`, `124:workbench-rewind-page`, `125:workbench-restore-summary`, `140:conversation-library`, `160:workbench-permissions`, `161:workbench-memory`, `162:init-proposal`, `164:init-artifact-proposal`, `165:init-artifact-page` |
 | 98 | `app-event` | 1 | `1:domain-event`, `2:subscription-gap`, `3:backpressure`, `4:artifact-metadata`, `5:artifact-chunk`, `6:artifact-complete`, `7:prompt-requested`, `8:terminal-output`, `9:terminal-exited`, `10:readiness-changed`, `11:diagnostic`, `12:heartbeat`, `13:shutdown-progress`, `14:shutdown-complete`, `15:terminal-unavailable` |
 | 99 | `app-control` | 1 | `1:acknowledge`, `2:cancel-subscription`, `3:cancel-artifact`, `4:cancel-prompt`, `5:cancel-terminal`, `6:subscription`, `7:heartbeat-reply` |
 
@@ -699,6 +699,7 @@ Rust type: `WorkbenchContinuation`
 |---|:---:|---|---|---|---|
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
+| `operation` | no | `option+value` | `Option<ControlOperationId>` | `ControlOperationId` | `nonzero` |
 
 ### `WorkbenchExecutionState`
 
@@ -767,7 +768,7 @@ Rust type: `WorkbenchCommand`
 | `operation` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `expectedRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
-| `intent` | yes | `ordered-fields` | `WorkbenchIntent` | `WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent` | — |
+| `intent` | yes | `ordered-fields` | `WorkbenchIntent` | `WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchEnqueueMessageIntent | WorkbenchEnqueueMessageBundleIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent | WorkbenchInitArtifactIntent` | — |
 
 ### `WorkbenchSnapshot`
 
@@ -800,6 +801,19 @@ Rust type: `WorkbenchResultQuery`
 |---|:---:|---|---|---|---|
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
+
+### `WorkbenchPreviewOutputQuery`
+
+Rust type: `WorkbenchPreviewOutputQuery`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
+| `launch` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `stream` | yes | `u16-be` | `WorkbenchPreviewOutputStream` | `WorkbenchPreviewOutputStream` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `maximumBytes` | yes | `u32-be` | `u32` | `number` | `nonzero` |
 
 ### `WorkbenchLaunchSource`
 
@@ -939,6 +953,27 @@ Rust type: `WorkbenchPreviewOutput`
 | `stdout` | yes | `len+utf8` | `String` | `string` | `product.max-activity-bytes (8192)` |
 | `stderr` | yes | `len+utf8` | `String` | `string` | `product.max-activity-bytes (8192)` |
 | `truncated` | yes | `bool/u8` | `bool` | `boolean` | — |
+
+### `WorkbenchPreviewOutputStream`
+
+Rust type: `WorkbenchPreviewOutputStream`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `tag` | yes | `u16-be` | `WorkbenchPreviewOutputStream` | `"stdout" | "stderr" | "terminal"` | — |
+
+### `WorkbenchPreviewOutputRange`
+
+Rust type: `WorkbenchPreviewOutputRange`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `launch` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `stream` | yes | `ordered-fields` | `WorkbenchPreviewOutputStream` | `WorkbenchPreviewOutputStream` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `totalBytes` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `artifactDigest` | no | `option+value` | `Option<[u8; 32]>` | `Sha256Digest` | — |
+| `bytes` | yes | `len+bytes` | `Vec<u8>` | `string` | — |
 
 ### `WorkbenchPreviewSnapshot`
 
@@ -1146,6 +1181,76 @@ Rust type: `WorkbenchIntent`
 |---|:---:|---|---|---|---|
 | `kind` | yes | `u16-be` | `WorkbenchIntent` | `"applyInitDiff"` | — |
 | `proposal` | yes | `ordered-fields` | `InitProposal` | `InitProposal` | — |
+
+### `InitContentReference`
+
+Rust type: `InitContentReference`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `digest` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
+| `bytes` | yes | `u64-be` | `u64` | `UInt64` | — |
+
+### `InitSourceSelection`
+
+Rust type: `InitSourceSelection`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `path` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
+| `kind` | yes | `u16-be` | `InitSourceKind` | `"manifest" | "documentation" | "instructions" | "commandConfig"` | — |
+
+### `InitArtifactDiscovery`
+
+Rust type: `InitArtifactDiscovery`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `InitDiscoveryRequest` | `InitDiscoveryRequest` | — |
+| `hasPrevious` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `previous` | no | `ordered-fields` | `InitContentReference` | `InitContentReference` | — |
+| `hasSource` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `source` | no | `ordered-fields` | `InitSourceSelection` | `InitSourceSelection` | — |
+| `hasCommand` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `command` | no | `u64-be` | `u64` | `UInt64` | — |
+
+### `InitArtifactProposal`
+
+Rust type: `InitArtifactProposal`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `InitDiscoveryRequest` | `InitDiscoveryRequest` | — |
+| `manifest` | yes | `ordered-fields` | `InitContentReference` | `InitContentReference` | — |
+| `review` | yes | `ordered-fields` | `InitContentReference` | `InitContentReference` | — |
+
+### `InitArtifactPageRequest`
+
+Rust type: `InitArtifactPageRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `proposal` | yes | `ordered-fields` | `InitArtifactProposal` | `InitArtifactProposal` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `maximum` | yes | `u32-be` | `u32` | `number` | `nonzero`, `app.max-artifact-chunk-bytes` |
+
+### `InitArtifactPage`
+
+Rust type: `InitArtifactPage`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `InitArtifactPageRequest` | `InitArtifactPageRequest` | — |
+| `bytes` | yes | `len+bytes` | `Vec<u8>` | `string` | `app.max-artifact-chunk-bytes` |
+
+### `WorkbenchInitArtifactIntent`
+
+Rust type: `WorkbenchIntent`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `WorkbenchIntent` | `"applyInitArtifact"` | — |
+| `proposal` | yes | `ordered-fields` | `InitArtifactProposal` | `InitArtifactProposal` | — |
 
 ### `WorkbenchGuidanceProjectScope`
 
@@ -1436,6 +1541,16 @@ Rust type: `WorkbenchQueueIntent`
 | `kind` | yes | `u16-be` | `WorkbenchQueueIntent` | `"reorder"` | — |
 | `order` | yes | `len+items` | `WorkbenchInputOrder` | `readonly WorkbenchInputId[]` | `workbench.max-inputs (1024)` |
 
+### `WorkbenchMoveInputIntent`
+
+Rust type: `WorkbenchQueueIntent`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `WorkbenchQueueIntent` | `"move"` | — |
+| `selected` | yes | `ordered-fields` | `WorkbenchInputSelection` | `WorkbenchInputSelection` | — |
+| `before` | no | `option+value` | `Option<WorkbenchInputId>` | `WorkbenchInputId` | `nonzero` |
+
 ### `WorkbenchQueueControlIntent`
 
 Rust type: `WorkbenchIntent`
@@ -1443,7 +1558,7 @@ Rust type: `WorkbenchIntent`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `kind` | yes | `u16-be` | `WorkbenchIntent` | `"queue"` | — |
-| `queue` | yes | `ordered-fields` | `WorkbenchQueueIntent` | `WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent` | — |
+| `queue` | yes | `ordered-fields` | `WorkbenchQueueIntent` | `WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent | WorkbenchMoveInputIntent` | — |
 
 ### `WorkbenchInputRow`
 
@@ -1654,9 +1769,9 @@ Rust type: `WorkbenchCheckpointReceipt`
 | `acceptedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
 | `name` | yes | `len+utf8` | `WorkbenchCheckpointName` | `string` | `workbench.max-checkpoint-name-bytes (256)` |
 | `references` | yes | `ordered-fields` | `WorkbenchCheckpointReferences` | `WorkbenchCheckpointReferences` | — |
-| `paths` | yes | `len+items` | `Vec<WorkbenchCheckpointPath>` | `readonly WorkbenchCheckpointPath[]` | `workbench.max-checkpoint-paths (64)`, `strictly-sorted-unique` |
-| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
-| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
+| `paths` | yes | `len+items` | `Vec<WorkbenchCheckpointPath>` | `readonly WorkbenchCheckpointPath[]` | `wire.u16-count (legacy full-list message only)`, `strictly-sorted-unique` |
+| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-checkpoint-text-bytes (512)` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-checkpoint-text-bytes (512)` |
 
 ### `WorkbenchRewindRequest`
 
@@ -1691,9 +1806,9 @@ Rust type: `WorkbenchRewindPreview`
 |---|:---:|---|---|---|---|
 | `request` | yes | `ordered-fields` | `WorkbenchRewindRequest` | `WorkbenchRewindRequest` | — |
 | `previewDigest` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
-| `paths` | yes | `len+items` | `Vec<WorkbenchRewindPath>` | `readonly WorkbenchRewindPath[]` | `workbench.max-checkpoint-paths (64)`, `strictly-sorted-unique` |
-| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
-| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
+| `paths` | yes | `len+items` | `Vec<WorkbenchRewindPath>` | `readonly WorkbenchRewindPath[]` | `wire.u16-count (legacy full-list message only)`, `strictly-sorted-unique` |
+| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-checkpoint-text-bytes (512)` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-checkpoint-text-bytes (512)` |
 | `conversationHistoryPreserved` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `accountingPreserved` | yes | `bool/u8` | `bool` | `boolean` | — |
 
@@ -1727,9 +1842,117 @@ Rust type: `WorkbenchRestoreReceipt`
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `acceptedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
 | `status` | yes | `u16-be` | `WorkbenchRestoreStatus` | `"applied" | "conflict" | "recoveryRequired"` | — |
-| `restored` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-restore-text-bytes (4096)` |
-| `conflicts` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-restore-text-bytes (4096)` |
-| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-restore-text-bytes (4096)` |
+| `restored` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-restore-text-bytes (4096)` |
+| `conflicts` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-restore-text-bytes (4096)` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `wire.u16-count (legacy full-list message only)`, `workbench.max-restore-text-bytes (4096)` |
+
+### `WorkbenchRewindConfirmation`
+
+Rust type: `WorkbenchRewindConfirmation`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `WorkbenchRewindRequest` | `WorkbenchRewindRequest` | — |
+| `previewDigest` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
+
+### `WorkbenchConfirmRewindIntent`
+
+Rust type: `WorkbenchIntent`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `WorkbenchIntent` | `"confirmRewind"` | — |
+| `confirmation` | yes | `ordered-fields` | `WorkbenchRewindConfirmation` | `WorkbenchRewindConfirmation` | — |
+
+### `WorkbenchCoverageCursor`
+
+Rust type: `WorkbenchCoverageCursor`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `section` | yes | `u16-be` | `WorkbenchCoverageSection` | `"paths" | "exclusions" | "externalEffects"` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `fingerprint` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
+
+### `WorkbenchCheckpointPageRequest`
+
+Rust type: `WorkbenchCheckpointPageRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `revision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
+| `checkpoint` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `hasCursor` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `cursor` | no | `option+value` | `WorkbenchCoverageCursor` | `WorkbenchCoverageCursor` | — |
+
+### `WorkbenchRewindPageRequest`
+
+Rust type: `WorkbenchRewindPageRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `WorkbenchRewindRequest` | `WorkbenchRewindRequest` | — |
+| `hasCursor` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `cursor` | no | `option+value` | `WorkbenchCoverageCursor` | `WorkbenchCoverageCursor` | — |
+
+### `WorkbenchCheckpointCoveragePage`
+
+Rust type: `WorkbenchCheckpointCoveragePage`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `checkpoint` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `selectedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
+| `acceptedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
+| `name` | yes | `len+utf8` | `WorkbenchCheckpointName` | `string` | `workbench.max-checkpoint-name-bytes (256)` |
+| `references` | yes | `ordered-fields` | `WorkbenchCheckpointReferences` | `WorkbenchCheckpointReferences` | — |
+| `fingerprint` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
+| `totalPaths` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `totalExclusions` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `totalExternalEffects` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `section` | yes | `u16-be` | `WorkbenchCoverageSection` | `"paths" | "exclusions" | "externalEffects"` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `paths` | yes | `len+items` | `Vec<WorkbenchCheckpointPath>` | `readonly WorkbenchCheckpointPath[]` | `codec.max-collection-items`, `strictly-sorted-unique` |
+| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-collection-items`, `workbench.max-checkpoint-text-bytes (512)` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-collection-items`, `workbench.max-checkpoint-text-bytes (512)` |
+| `hasNext` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `next` | no | `option+value` | `WorkbenchCoverageCursor` | `WorkbenchCoverageCursor` | — |
+
+### `WorkbenchRewindCoveragePage`
+
+Rust type: `WorkbenchRewindCoveragePage`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `confirmation` | yes | `ordered-fields` | `WorkbenchRewindConfirmation` | `WorkbenchRewindConfirmation` | — |
+| `totalPaths` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `totalExclusions` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `totalExternalEffects` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `section` | yes | `u16-be` | `WorkbenchCoverageSection` | `"paths" | "exclusions" | "externalEffects"` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `paths` | yes | `len+items` | `Vec<WorkbenchRewindPath>` | `readonly WorkbenchRewindPath[]` | `codec.max-collection-items`, `strictly-sorted-unique` |
+| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-collection-items`, `workbench.max-checkpoint-text-bytes (512)` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-collection-items`, `workbench.max-checkpoint-text-bytes (512)` |
+| `hasNext` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `next` | no | `option+value` | `WorkbenchCoverageCursor` | `WorkbenchCoverageCursor` | — |
+
+### `WorkbenchRestoreSummary`
+
+Rust type: `WorkbenchRestoreSummary`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `restore` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `checkpoint` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `recoveryCheckpoint` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `acceptedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
+| `status` | yes | `u16-be` | `WorkbenchRestoreStatus` | `"applied" | "conflict" | "recoveryRequired"` | — |
+| `restoredPaths` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `conflictingPaths` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `fingerprint` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
 
 ### `WorkbenchCompactionRequest`
 
@@ -1845,6 +2068,62 @@ Rust type: `WorkbenchBrief`
 | `proposals` | yes | `len+items` | `Vec<WorkbenchBriefProposal>` | `readonly WorkbenchBriefProposal[]` | `workbench.max-brief-proposals (8)`, `strictly-sorted-unique` |
 | `observations` | yes | `len+items` | `Vec<WorkbenchBriefObservation>` | `readonly WorkbenchBriefObservation[]` | `workbench.max-brief-observations (32)`, `strictly-sorted-unique` |
 | `excludedProposals` | yes | `u32-be` | `u32` | `number` | — |
+
+### `WorkbenchBriefPageRequest`
+
+Rust type: `WorkbenchBriefPageRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `revision` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `proposals` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `observations` | yes | `u64-be` | `u64` | `UInt64` | — |
+
+### `WorkbenchBriefProposalReference`
+
+Rust type: `WorkbenchBriefProposalReference`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `operation` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `invocation` | yes | `fixed[16]` | `WorkbenchInvocationId` | `WorkbenchInvocationId` | `nonzero` |
+| `digest` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
+| `bytes` | yes | `u64-be` | `u64` | `UInt64` | — |
+
+### `WorkbenchBriefPage`
+
+Rust type: `WorkbenchBriefPage`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `WorkbenchBriefPageRequest` | `WorkbenchBriefPageRequest` | — |
+| `revision` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `entries` | yes | `len+items` | `Vec<WorkbenchBriefEntry>` | `readonly WorkbenchBriefEntry[]` | `workbench.max-brief-fields (4)` |
+| `proposalTotal` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `proposals` | yes | `len+items` | `Vec<WorkbenchBriefProposalReference>` | `readonly WorkbenchBriefProposalReference[]` | `workbench.brief-page-items (16)` |
+| `observationTotal` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `observations` | yes | `len+items` | `Vec<WorkbenchBriefObservation>` | `readonly WorkbenchBriefObservation[]` | `workbench.brief-page-items (16)` |
+
+### `WorkbenchBriefProposalRequest`
+
+Rust type: `WorkbenchBriefProposalRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `revision` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `proposal` | yes | `ordered-fields` | `WorkbenchBriefProposalReference` | `WorkbenchBriefProposalReference` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+
+### `WorkbenchBriefProposalPage`
+
+Rust type: `WorkbenchBriefProposalPage`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `WorkbenchBriefProposalRequest` | `WorkbenchBriefProposalRequest` | — |
+| `text` | yes | `len+utf8` | `String` | `string` | `workbench.brief-body-bytes (32768)` |
 
 ### `WorkbenchImageUpload`
 
@@ -2116,6 +2395,26 @@ Rust type: `WorkbenchIntent`
 | `kind` | yes | `u16-be` | `WorkbenchIntent` | `"attachFileImport"` | — |
 | `preview` | yes | `ordered-fields` | `WorkbenchFileImportPreview` | `WorkbenchFileImportPreview` | — |
 | `text` | yes | `len+utf8` | `WorkbenchInputText` | `string` | `workbench.max-input-bytes (8192)` |
+
+### `WorkbenchEnqueueMessageIntent`
+
+Rust type: `WorkbenchIntent`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `WorkbenchIntent` | `"enqueueMessage"` | — |
+| `preview` | yes | `ordered-fields` | `WorkbenchFileImportPreview` | `WorkbenchFileImportPreview` | — |
+
+### `WorkbenchEnqueueMessageBundleIntent`
+
+Rust type: `WorkbenchIntent`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `WorkbenchIntent` | `"enqueueMessageBundle"` | — |
+| `text` | yes | `len+utf8` | `WorkbenchInputText` | `string` | `workbench.max-input-bytes (8192)` |
+| `message` | no | `option+value` | `Option<WorkbenchFileImportPreview>` | `WorkbenchFileImportPreview` | — |
+| `attachments` | yes | `len+items` | `Vec<WorkbenchFileImportPreview>` | `ReadonlyArray<WorkbenchFileImportPreview>` | — |
 
 ### `WorkbenchContextFileSource`
 

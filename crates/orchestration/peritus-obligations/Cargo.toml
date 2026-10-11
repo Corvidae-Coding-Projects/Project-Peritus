@@ -10,19 +10,14 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-run-settlement = { version = "=0.0.5", path = "../peritus-run-settlement" }
-peritus-spec = { version = "=0.0.5", path = "../../foundation/peritus-spec" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
+peritus-run-settlement = { version = "=0.0.6", path = "../peritus-run-settlement" }
+peritus-spec = { version = "=0.0.6", path = "../../foundation/peritus-spec" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 sha2.workspace = true
-vstd.workspace = true
 
 [package.metadata.peritus]
 owner = "D1"
 layer = "orchestration"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

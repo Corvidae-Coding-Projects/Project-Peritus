@@ -181,16 +181,3 @@ fn write_outputs(paths: &EvidencePaths) -> Result<(), OperatorError> {
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::parse_checksum;
-
-    #[test]
-    fn checksum_parser_accepts_one_canonical_digest() {
-        let digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-        assert!(parse_checksum(format!("{digest}\n").as_bytes()).is_ok());
-        assert!(parse_checksum(format!("{digest}\n{digest}\n").as_bytes()).is_err());
-        assert!(parse_checksum(digest.to_uppercase().as_bytes()).is_err());
-    }
-}

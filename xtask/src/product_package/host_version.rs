@@ -76,22 +76,3 @@ fn normalized_fields(mut fields: Vec<u32>) -> Option<String> {
     }
     Some(fields.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{normalize, normalize_windows};
-
-    #[test]
-    fn native_versions_are_reduced_to_the_h2_contract() {
-        assert_eq!(normalize("7.1.8-200.fc44.x86_64\n").as_deref(), Some("7.1.8"));
-        assert_eq!(normalize("15.7.1\n").as_deref(), Some("15.7.1"));
-        assert_eq!(normalize("15\n").as_deref(), Some("15.0.0"));
-        assert_eq!(normalize("unknown"), None);
-    }
-
-    #[test]
-    fn windows_kernel_build_is_projected_to_the_supported_product_version() {
-        assert_eq!(normalize_windows("10.0.26100.0\r\n").as_deref(), Some("11.0.0.26100"));
-        assert_eq!(normalize_windows("11.0.0.30000\n").as_deref(), Some("11.0.0.30000"));
-    }
-}

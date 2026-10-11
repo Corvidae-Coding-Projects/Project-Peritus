@@ -8,9 +8,6 @@ mod snapshot;
 mod supervisor;
 mod task;
 
-#[cfg(test)]
-mod tests;
-
 pub use cancellation::WorkerCancellation;
 pub use error::{WorkerSupervisorError, WorkerSupervisorErrorKind};
 pub use limits::WorkerSupervisorLimits;

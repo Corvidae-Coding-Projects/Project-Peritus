@@ -12,7 +12,7 @@ export interface Preferences {
 }
 export interface Bootstrap { workspace: Workspace; consoles?:ConsoleSession[]; pendingOperations?:import('./operations.svelte').PendingOperation[]; preferences: Preferences | null; config: string; configError: string | null; configPath: string; token: string }
 export interface Entry { name: string; path: string; directory: boolean; symlink: boolean; bytes: number }
-export interface Directory { entries: Entry[]; total: number; next: number | null }
+export interface Directory { inventory:string; entries: Entry[]; total: number; next: number | null }
 export interface GitChange { code: string; path: string; from: string | null }
 export interface GitBranch { name: string; ref: string; remote: boolean; current: boolean; upstream: string }
 export interface GitRemote { name: string; fetch: string[]; push: string[] }
@@ -32,3 +32,5 @@ export interface FileTab { path: string; session: string; project: string }
 export interface ImprovementEvaluation {conversation:string;run:string;target:string}
 export interface ImprovementCandidate { id:string;proposal:string;dismissed:boolean;evaluation:ImprovementEvaluation|null;evidence:{run:string;digest:string;summary:string}[] }
 export interface ImprovementInbox {workspace:string;candidates:ImprovementCandidate[]}
+
+export interface RunPage { runs:Run[]; next:number|null }

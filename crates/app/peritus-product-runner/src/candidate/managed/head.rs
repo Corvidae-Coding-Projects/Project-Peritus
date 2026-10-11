@@ -28,8 +28,7 @@ impl Prepared {
                 self.retained.display()
             ))
         })?;
-        #[cfg(test)]
-        super::transaction::fault::pause(super::transaction::fault::Stage::Head);
+
         Ok(self.retained)
     }
 }

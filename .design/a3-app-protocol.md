@@ -192,7 +192,7 @@ refinement tests.
   transport behavior, peer identity, durable storage, scheduling fairness, and actual daemon/process
   effects. Those remain explicit G0/C0/C2 or observation boundaries.
 - **A3-R051 — Maintainable decomposition.** `lib.rs` is a small documented facade. Production files
-  target 400 lines and may not exceed 700 without a specific reviewed architecture exception. No
+  may not exceed 500 lines without a specific reviewed architecture exception. No
   `common`, `helpers`, `manager`, `misc`, or `utils` dumping-ground modules are introduced.
 - **A3-R052 — Production evidence.** Focused ordinary tests, full resource-bounded Gate A,
   Linux/macOS/Windows CI, Foundation, Verus verify/build, and no-cheating checks all pass on the

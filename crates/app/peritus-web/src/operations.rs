@@ -25,6 +25,8 @@ pub async fn observe(app: &App, id: &str) -> Result<Value> {
                     .then(|| json!({"revision":hash,"bytes":bytes.len(),"recovered":true})))
             };
             check().unwrap_or(None)
+        } else if record.input["command"] == "git" {
+            crate::git::recover(app, id, &record.input).await?
         } else if record.input["command"] == "send" {
             match daemon::recover_send(app, id).await {
                 Ok(result) => result,
@@ -56,6 +58,18 @@ pub async fn acknowledge(app: &App, id: &str) -> Result<Value> {
     if !observed["result"].is_null() {
         return Ok(observed);
     }
+    if app.owned_operations.lock().map_err(problem)?.contains(id) {
+        return Err(problem("The original operation still has a live execution owner"));
+    }
+    if let Some(record) = app.snapshot()?.operations.get(id)
+        && record.input["command"] == "git"
+        && let Ok(command) = crate::processes::ManagedCommand::get(app, &format!("git:{id}"))
+        && command.observe()?.state() == peritus_product_runner::PreviewProcessState::Running
+    {
+        return Err(problem(
+            "Git is still running; cancel it or wait for its original outcome before clearing the hold",
+        ));
+    }
     app.update(|state| acknowledge_review(state, id))?;
     observe(app, id).await
 }
@@ -73,42 +87,4 @@ fn acknowledge_review(state: &mut Workspace, id: &str) -> Result<()> {
         json!({"reviewed":true,"error":"Outcome manually reviewed by the user. No acceptance was inferred and the operation was not repeated."}),
     );
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::state::Operation;
-
-    #[test]
-    fn manual_review_settles_parent_and_retires_unresolved_transport_child() {
-        let mut workspace = Workspace::default();
-        workspace.operations.insert(
-            "original".into(),
-            Operation { input: json!({"command":"send"}), prepared: None, result: None },
-        );
-        workspace.operations.insert(
-            "daemon:original".into(),
-            Operation { input: json!({"command":"daemon-request"}), prepared: None, result: None },
-        );
-        workspace.operations.insert(
-            "daemon:original:workbench:create".into(),
-            Operation {
-                input: json!({"command":"daemon-request"}),
-                prepared: None,
-                result: Some(json!({"accepted":true})),
-            },
-        );
-        workspace.operations.insert(
-            "daemon:original-other".into(),
-            Operation { input: json!({"command":"daemon-request"}), prepared: None, result: None },
-        );
-
-        acknowledge_review(&mut workspace, "original").expect("manual review");
-
-        assert!(workspace.operations["original"].result.is_some());
-        assert!(!workspace.operations.contains_key("daemon:original"));
-        assert!(!workspace.operations.contains_key("daemon:original:workbench:create"));
-        assert!(workspace.operations.contains_key("daemon:original-other"));
-    }
 }

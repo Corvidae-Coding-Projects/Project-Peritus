@@ -70,6 +70,8 @@ export type AppPayloadKind =
   | "query-workbench-queue"
   | "query-workbench-context"
   | "query-workbench-brief"
+  | "query-workbench-brief-page"
+  | "query-workbench-brief-proposal"
   | "begin-workbench-image-upload"
   | "preview-workbench-image"
   | "query-workbench-images"
@@ -80,6 +82,7 @@ export type AppPayloadKind =
   | "preview-workbench-compaction"
   | "query-workbench-execution"
   | "continue-workbench-execution"
+  | "continue-workbench-message"
   | "query-interaction-binding"
   | "query-workbench-goal"
   | "query-workbench-review"
@@ -88,10 +91,14 @@ export type AppPayloadKind =
   | "query-product-run-observations"
   | "preview-workbench-rewind"
   | "inspect-workbench-checkpoint"
+  | "query-workbench-checkpoint-page"
+  | "query-workbench-rewind-page"
   | "query-conversation-library"
   | "query-workbench-permissions"
   | "query-workbench-memory"
   | "discover-init"
+  | "discover-init-artifacts"
+  | "query-init-artifact-page"
   | "harness-improvements"
   | "command-result"
   | "subscription-started"
@@ -115,6 +122,8 @@ export type AppPayloadKind =
   | "workbench-queue"
   | "workbench-context"
   | "workbench-brief"
+  | "workbench-brief-page"
+  | "workbench-brief-proposal"
   | "workbench-image-preview"
   | "workbench-images"
   | "workbench-file-preview"
@@ -131,10 +140,15 @@ export type AppPayloadKind =
   | "workbench-checkpoint"
   | "workbench-rewind-preview"
   | "workbench-restore"
+  | "workbench-checkpoint-page"
+  | "workbench-rewind-page"
+  | "workbench-restore-summary"
   | "conversation-library"
   | "workbench-permissions"
   | "workbench-memory"
   | "init-proposal"
+  | "init-artifact-proposal"
+  | "init-artifact-page"
   | "domain-event"
   | "subscription-gap"
   | "backpressure"
@@ -621,6 +635,7 @@ export interface WorkbenchDismissReviewIntent {
 export interface WorkbenchContinuation {
   readonly query: WorkbenchQuery;
   readonly mode: "chat" | "plan" | "review" | "build";
+  readonly operation?: ControlOperationId;
 }
 
 export interface WorkbenchExecutionState {
@@ -661,7 +676,7 @@ export interface WorkbenchCommand {
   readonly operation: ControlOperationId;
   readonly query: WorkbenchQuery;
   readonly expectedRevision: UInt64;
-  readonly intent: WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent;
+  readonly intent: WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchEnqueueMessageIntent | WorkbenchEnqueueMessageBundleIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent | WorkbenchInitArtifactIntent;
 }
 
 export interface WorkbenchSnapshot {
@@ -682,6 +697,15 @@ export interface WorkbenchReceipt {
 export interface WorkbenchResultQuery {
   readonly query: WorkbenchQuery;
   readonly run: RunId;
+}
+
+export interface WorkbenchPreviewOutputQuery {
+  readonly query: WorkbenchQuery;
+  readonly run: RunId;
+  readonly launch: ControlOperationId;
+  readonly stream: WorkbenchPreviewOutputStream;
+  readonly offset: UInt64;
+  readonly maximumBytes: number;
 }
 
 export interface WorkbenchLaunchSource {
@@ -769,6 +793,19 @@ export interface WorkbenchPreviewOutput {
   readonly stdout: string;
   readonly stderr: string;
   readonly truncated: boolean;
+}
+
+export interface WorkbenchPreviewOutputStream {
+  readonly tag: "stdout" | "stderr" | "terminal";
+}
+
+export interface WorkbenchPreviewOutputRange {
+  readonly launch: ControlOperationId;
+  readonly stream: WorkbenchPreviewOutputStream;
+  readonly offset: UInt64;
+  readonly totalBytes: UInt64;
+  readonly artifactDigest?: Sha256Digest;
+  readonly bytes: string;
 }
 
 export interface WorkbenchPreviewSnapshot {
@@ -904,6 +941,48 @@ export interface InitProposal {
 export interface WorkbenchInitApplyIntent {
   readonly kind: "applyInitDiff";
   readonly proposal: InitProposal;
+}
+
+export interface InitContentReference {
+  readonly digest: Sha256Digest;
+  readonly bytes: UInt64;
+}
+
+export interface InitSourceSelection {
+  readonly path: string;
+  readonly kind: "manifest" | "documentation" | "instructions" | "commandConfig";
+}
+
+export interface InitArtifactDiscovery {
+  readonly request: InitDiscoveryRequest;
+  readonly hasPrevious: boolean;
+  readonly previous?: InitContentReference;
+  readonly hasSource: boolean;
+  readonly source?: InitSourceSelection;
+  readonly hasCommand: boolean;
+  readonly command?: UInt64;
+}
+
+export interface InitArtifactProposal {
+  readonly request: InitDiscoveryRequest;
+  readonly manifest: InitContentReference;
+  readonly review: InitContentReference;
+}
+
+export interface InitArtifactPageRequest {
+  readonly proposal: InitArtifactProposal;
+  readonly offset: UInt64;
+  readonly maximum: number;
+}
+
+export interface InitArtifactPage {
+  readonly request: InitArtifactPageRequest;
+  readonly bytes: string;
+}
+
+export interface WorkbenchInitArtifactIntent {
+  readonly kind: "applyInitArtifact";
+  readonly proposal: InitArtifactProposal;
 }
 
 export interface WorkbenchGuidanceProjectScope {
@@ -1079,9 +1158,15 @@ export interface WorkbenchReorderInputIntent {
   readonly order: readonly WorkbenchInputId[];
 }
 
+export interface WorkbenchMoveInputIntent {
+  readonly kind: "move";
+  readonly selected: WorkbenchInputSelection;
+  readonly before?: WorkbenchInputId;
+}
+
 export interface WorkbenchQueueControlIntent {
   readonly kind: "queue";
-  readonly queue: WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent;
+  readonly queue: WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent | WorkbenchMoveInputIntent;
 }
 
 export interface WorkbenchInputRow {
@@ -1266,6 +1351,82 @@ export interface WorkbenchRestoreReceipt {
   readonly externalEffects: readonly string[];
 }
 
+export interface WorkbenchRewindConfirmation {
+  readonly request: WorkbenchRewindRequest;
+  readonly previewDigest: Sha256Digest;
+}
+
+export interface WorkbenchConfirmRewindIntent {
+  readonly kind: "confirmRewind";
+  readonly confirmation: WorkbenchRewindConfirmation;
+}
+
+export interface WorkbenchCoverageCursor {
+  readonly section: "paths" | "exclusions" | "externalEffects";
+  readonly offset: UInt64;
+  readonly fingerprint: Sha256Digest;
+}
+
+export interface WorkbenchCheckpointPageRequest {
+  readonly query: WorkbenchQuery;
+  readonly revision: UInt64;
+  readonly checkpoint: ControlOperationId;
+  readonly hasCursor: boolean;
+  readonly cursor?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchRewindPageRequest {
+  readonly request: WorkbenchRewindRequest;
+  readonly hasCursor: boolean;
+  readonly cursor?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchCheckpointCoveragePage {
+  readonly checkpoint: ControlOperationId;
+  readonly query: WorkbenchQuery;
+  readonly selectedRevision: UInt64;
+  readonly acceptedRevision: UInt64;
+  readonly name: string;
+  readonly references: WorkbenchCheckpointReferences;
+  readonly fingerprint: Sha256Digest;
+  readonly totalPaths: UInt64;
+  readonly totalExclusions: UInt64;
+  readonly totalExternalEffects: UInt64;
+  readonly section: "paths" | "exclusions" | "externalEffects";
+  readonly offset: UInt64;
+  readonly paths: readonly WorkbenchCheckpointPath[];
+  readonly exclusions: readonly string[];
+  readonly externalEffects: readonly string[];
+  readonly hasNext: boolean;
+  readonly next?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchRewindCoveragePage {
+  readonly confirmation: WorkbenchRewindConfirmation;
+  readonly totalPaths: UInt64;
+  readonly totalExclusions: UInt64;
+  readonly totalExternalEffects: UInt64;
+  readonly section: "paths" | "exclusions" | "externalEffects";
+  readonly offset: UInt64;
+  readonly paths: readonly WorkbenchRewindPath[];
+  readonly exclusions: readonly string[];
+  readonly externalEffects: readonly string[];
+  readonly hasNext: boolean;
+  readonly next?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchRestoreSummary {
+  readonly restore: ControlOperationId;
+  readonly checkpoint: ControlOperationId;
+  readonly recoveryCheckpoint: ControlOperationId;
+  readonly query: WorkbenchQuery;
+  readonly acceptedRevision: UInt64;
+  readonly status: "applied" | "conflict" | "recoveryRequired";
+  readonly restoredPaths: UInt64;
+  readonly conflictingPaths: UInt64;
+  readonly fingerprint: Sha256Digest;
+}
+
 export interface WorkbenchCompactionRequest {
   readonly query: WorkbenchQuery;
   readonly revision: UInt64;
@@ -1339,6 +1500,42 @@ export interface WorkbenchBrief {
   readonly proposals: readonly WorkbenchBriefProposal[];
   readonly observations: readonly WorkbenchBriefObservation[];
   readonly excludedProposals: number;
+}
+
+export interface WorkbenchBriefPageRequest {
+  readonly query: WorkbenchQuery;
+  readonly revision: UInt64;
+  readonly proposals: UInt64;
+  readonly observations: UInt64;
+}
+
+export interface WorkbenchBriefProposalReference {
+  readonly operation: ControlOperationId;
+  readonly invocation: WorkbenchInvocationId;
+  readonly digest: Sha256Digest;
+  readonly bytes: UInt64;
+}
+
+export interface WorkbenchBriefPage {
+  readonly request: WorkbenchBriefPageRequest;
+  readonly revision: UInt64;
+  readonly entries: readonly WorkbenchBriefEntry[];
+  readonly proposalTotal: UInt64;
+  readonly proposals: readonly WorkbenchBriefProposalReference[];
+  readonly observationTotal: UInt64;
+  readonly observations: readonly WorkbenchBriefObservation[];
+}
+
+export interface WorkbenchBriefProposalRequest {
+  readonly query: WorkbenchQuery;
+  readonly revision: UInt64;
+  readonly proposal: WorkbenchBriefProposalReference;
+  readonly offset: UInt64;
+}
+
+export interface WorkbenchBriefProposalPage {
+  readonly request: WorkbenchBriefProposalRequest;
+  readonly text: string;
 }
 
 export interface WorkbenchImageUpload {
@@ -1510,6 +1707,18 @@ export interface WorkbenchAttachFileImportIntent {
   readonly kind: "attachFileImport";
   readonly preview: WorkbenchFileImportPreview;
   readonly text: string;
+}
+
+export interface WorkbenchEnqueueMessageIntent {
+  readonly kind: "enqueueMessage";
+  readonly preview: WorkbenchFileImportPreview;
+}
+
+export interface WorkbenchEnqueueMessageBundleIntent {
+  readonly kind: "enqueueMessageBundle";
+  readonly text: string;
+  readonly message?: WorkbenchFileImportPreview;
+  readonly attachments: ReadonlyArray<WorkbenchFileImportPreview>;
 }
 
 export interface WorkbenchContextFileSource {

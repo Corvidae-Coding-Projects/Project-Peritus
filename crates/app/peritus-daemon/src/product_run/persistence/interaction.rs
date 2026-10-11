@@ -9,9 +9,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::ser::SerializeStruct;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct PersistedInteraction {

@@ -68,6 +68,16 @@ impl WindowsSession {
             WindowsCapability::Network,
             WindowsCapability::SecretHandles,
         ] {
+            if (capability == WindowsCapability::ConPty
+                && !matches!(
+                    windows_launch.manifest().terminal(),
+                    crate::TerminalMapping::ConPty { .. }
+                ))
+                || (capability == WindowsCapability::SecretHandles
+                    && windows_launch.manifest().secret_handles().is_empty())
+            {
+                continue;
+            }
             let sequence = u64::try_from(windows_observations.len() + 1).unwrap_or(u64::MAX);
             windows_observations.push(WindowsObservation::new(
                 sequence,
@@ -80,6 +90,9 @@ impl WindowsSession {
             ));
         }
         for control in resources.controls() {
+            if control.ceiling() == 0 {
+                continue;
+            }
             let sequence = u64::try_from(windows_observations.len() + 1).unwrap_or(u64::MAX);
             windows_observations.push(WindowsObservation::new(
                 sequence,

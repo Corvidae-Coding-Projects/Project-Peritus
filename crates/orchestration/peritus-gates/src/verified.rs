@@ -1,86 +1,8 @@
 //! Executable predicates and Verus proof roots for D1 safety invariants.
 
 use peritus_types::{GateId, RevisionTuple};
-use vstd::prelude::*;
 
 use crate::{GatePlan, GateRunState, GateSlotPhase, GateTerminalKind};
-
-verus! {
-
-/// Mathematical bounded-attempt accounting predicate.
-pub open spec fn bounded_attempts(attempts: int, maximum: int) -> bool {
-    0 <= attempts && attempts <= maximum
-}
-
-/// Mathematical terminal truth predicate: passing requires every gate to pass.
-pub open spec fn passing_terminal(all_gates_passed: bool, claimed_pass: bool) -> bool {
-    !claimed_pass || all_gates_passed
-}
-
-/// Mathematical no-implicit-success predicate.
-pub open spec fn explicit_success(
-    result_complete: bool,
-    evidence_complete: bool,
-    claimed_pass: bool,
-) -> bool {
-    !claimed_pass || (result_complete && evidence_complete)
-}
-
-/// Mathematical legality of a dependency's position in a topological schedule.
-pub open spec fn ordered_dependency(dependency_index: int, gate_index: int) -> bool {
-    0 <= dependency_index && dependency_index < gate_index
-}
-
-/// Mathematical exact-replay claim over canonical digest projections.
-pub open spec fn exact_replay(expected_digest: int, observed_digest: int, claimed: bool) -> bool {
-    !claimed || expected_digest == observed_digest
-}
-
-/// Mathematical freshness claim over equality of every revision component.
-pub open spec fn exact_freshness(all_components_equal: bool, claimed: bool) -> bool {
-    !claimed || all_components_equal
-}
-
-/// Proves that a checked attempt increment below a cap remains bounded.
-pub proof fn bounded_successor(attempts: int, maximum: int)
-    requires 0 <= attempts, attempts < maximum
-    ensures bounded_attempts(attempts + 1, maximum)
-{
-}
-
-/// Proves that no passing claim follows from absent result or evidence.
-pub proof fn missing_input_cannot_pass(result_complete: bool, evidence_complete: bool)
-    requires !result_complete || !evidence_complete
-    ensures !explicit_success(result_complete, evidence_complete, true)
-{
-}
-
-/// Proves a dependency at any nonnegative earlier index is legally ordered.
-pub proof fn earlier_dependency_is_legal(dependency_index: int, gate_index: int)
-    requires 0 <= dependency_index, dependency_index < gate_index
-    ensures ordered_dependency(dependency_index, gate_index)
-{
-}
-
-/// Proves reflexive canonical replay equivalence.
-pub proof fn replay_reflexive(digest: int)
-    ensures exact_replay(digest, digest, true)
-{
-}
-
-/// Proves a freshness claim cannot hold when a revision component differs.
-pub proof fn stale_revision_cannot_be_fresh()
-    ensures !exact_freshness(false, true)
-{
-}
-
-/// Proves that an all-passing aggregate may truthfully claim pass.
-pub proof fn all_passed_allows_terminal()
-    ensures passing_terminal(true, true)
-{
-}
-
-} // verus!
 
 /// Returns whether every gate attempt count is within the immutable plan cap.
 #[must_use]

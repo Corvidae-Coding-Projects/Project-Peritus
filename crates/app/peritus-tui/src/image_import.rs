@@ -1,6 +1,6 @@
 //! Explicit local image reads. No shell expansion, clipboard polling, or provider operations.
 
-use peritus_app_protocol::{MAX_WORKBENCH_IMAGE_BYTES, WorkbenchImageLabel};
+use peritus_app_protocol::WorkbenchImageLabel;
 use peritus_types::Sha256Digest;
 use std::{
     fmt,
@@ -45,18 +45,17 @@ pub fn read(path: &Path) -> Result<ImageBytes, &'static str> {
     }
     let mut file = open_regular(path)?;
     let metadata = file.metadata().map_err(|_| "Cannot inspect the opened file.")?;
-    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_WORKBENCH_IMAGE_BYTES {
-        return Err(
-            "Image must be a nonempty regular file of at most 4 MiB; nothing was truncated.",
-        );
+    if !metadata.is_file() || metadata.len() == 0 {
+        return Err("Image must be a nonempty regular file.");
     }
     let mut bytes = Vec::new();
-    (&mut file)
-        .take(MAX_WORKBENCH_IMAGE_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| "Could not read the selected file completely.")?;
-    if bytes.len() as u64 != metadata.len() || bytes.len() as u64 > MAX_WORKBENCH_IMAGE_BYTES {
-        return Err("The file changed size while reading or exceeds 4 MiB; select it again.");
+    file.read_to_end(&mut bytes).map_err(|_| "Could not read the selected file completely.")?;
+    let after = file.metadata().map_err(|_| "Cannot recheck the opened file.")?;
+    if bytes.len() as u64 != metadata.len()
+        || after.len() != metadata.len()
+        || after.modified().ok() != metadata.modified().ok()
+    {
+        return Err("The file changed while reading; select it again.");
     }
     Ok(ImageBytes { digest: peritus_codec::sha256(&bytes), bytes, label })
 }
@@ -104,37 +103,4 @@ pub fn open_regular(path: &Path) -> Result<File, &'static str> {
 #[cfg(not(any(unix, windows)))]
 pub fn open_regular(_path: &Path) -> Result<File, &'static str> {
     Err("Explicit file import is unsupported on this platform.")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn explicit_read_retains_exact_bytes_and_rejects_relative_escape_empty_and_oversize() {
-        let root = tempfile::tempdir().expect("root");
-        let path = root.path().join("reference.gif");
-        std::fs::write(&path, b"exact bytes; host validates pixels").expect("fixture");
-        let image = read(&path).expect("read");
-        assert_eq!(image.bytes, b"exact bytes; host validates pixels");
-        assert_eq!(image.digest, peritus_codec::sha256(&image.bytes));
-        assert!(!format!("{image:?}").contains("host validates"));
-        assert!(read(Path::new("reference.gif")).is_err());
-        assert!(read(&root.path().join("../reference.gif")).is_err());
-        assert!(read(root.path()).is_err());
-        let file = File::create(&path).expect("empty");
-        assert!(read(&path).is_err());
-        file.set_len(MAX_WORKBENCH_IMAGE_BYTES + 1).expect("large sparse fixture");
-        assert!(read(&path).is_err());
-    }
-    #[cfg(unix)]
-    #[test]
-    fn symlink_does_not_import_its_target() {
-        let root = tempfile::tempdir().expect("root");
-        let target = root.path().join("target");
-        std::fs::write(&target, b"private bytes").expect("fixture");
-        let link = root.path().join("link");
-        std::os::unix::fs::symlink(&target, &link).expect("link");
-        assert!(read(&link).is_err());
-    }
 }

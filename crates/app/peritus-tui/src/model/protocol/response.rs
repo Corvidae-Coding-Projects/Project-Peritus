@@ -32,6 +32,7 @@ impl AppModel {
             // A dismissed inspection no longer owns the current screen or its notices.
             return Vec::new();
         }
+        self.review_request_error(pending);
         if matches!(pending, Some(PendingRequest::ArtifactCancel))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier
         {
@@ -123,6 +124,33 @@ impl AppModel {
         self.notice(NoticeLevel::Error, error.actionable_message());
         Vec::new()
     }
+
+    fn review_request_error(&mut self, pending: Option<&PendingRequest>) {
+        let Some(product) = &mut self.product else { return };
+        match pending {
+            Some(PendingRequest::WorkbenchReviewSummary(query))
+                if product.review.pending == Some(*query) =>
+            {
+                product.review.pending = None;
+                "Review summary failed; press r to refresh."
+                    .clone_into(&mut product.review.message);
+            }
+            Some(PendingRequest::WorkbenchReviewDiff(query))
+                if product.review.pending_diff == Some(*query) =>
+            {
+                product.review.pending_diff = None;
+                "Diff page failed; press r to refresh.".clone_into(&mut product.review.message);
+            }
+            Some(PendingRequest::WorkbenchReviewDiffBytes(query))
+                if product.review.pending_raw == Some(*query) =>
+            {
+                product.review.pending_raw = None;
+                "Exact raw line range failed; bounded preview remains."
+                    .clone_into(&mut product.review.message);
+            }
+            _ => {}
+        }
+    }
     pub(super) fn handle_response(&mut self, response: &AppResponseEnvelope) -> Vec<Effect> {
         if !self.context_matches(response.context()) {
             return Vec::new();
@@ -171,25 +199,36 @@ impl AppModel {
                 self.notice(NoticeLevel::Info, format!("{} harness improvement suggestions. Inspect them in the GUI inbox or with peritus improvements list.", inbox.candidates().len()));
             }
             AppResponsePayload::WorkbenchCheckpoint(_)
+            | AppResponsePayload::WorkbenchCheckpointPage(_)
+            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchExecution(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
+            | AppResponsePayload::InitArtifactProposal(_)
+            | AppResponsePayload::InitArtifactPage(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewSummary(_)
             | AppResponsePayload::WorkbenchImages(_)
             | AppResponsePayload::WorkbenchFiles(_)
             | AppResponsePayload::WorkbenchFilePreview(_)
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchImagePreview(_)
             | AppResponsePayload::WorkbenchBrief(_)
+            | AppResponsePayload::WorkbenchBriefPage(_)
+            | AppResponsePayload::WorkbenchBriefProposal(_)
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchResult(_)
             | AppResponsePayload::WorkbenchPreview(_)
+            | AppResponsePayload::WorkbenchPreviewOutput(_)
+            | AppResponsePayload::WorkbenchReviewDiff(_)
+            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
             | AppResponsePayload::WorkbenchContext(_)
             | AppResponsePayload::WorkbenchQueue(_)
             | AppResponsePayload::WorkbenchReceipt(_)
@@ -203,11 +242,7 @@ impl AppModel {
             }
             AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
             AppResponsePayload::SubscriptionStarted(started) => {
-                self.subscription = Some(started.subscription_id());
-                self.notice(
-                    NoticeLevel::Info,
-                    format!("live event stream resumed after #{}", started.after().get()),
-                );
+                self.accept_subscription_response(*started);
             }
             AppResponsePayload::DaemonStatus(status) => {
                 self.daemon_status = Some(status.clone());
@@ -257,6 +292,13 @@ impl AppModel {
         }
         Vec::new()
     }
+    fn accept_subscription_response(&mut self, started: peritus_app_protocol::SubscriptionStarted) {
+        self.subscription = Some(started.subscription_id());
+        self.notice(
+            NoticeLevel::Info,
+            format!("live event stream resumed after #{}", started.after().get()),
+        );
+    }
     fn interaction_response(
         &mut self,
         snapshot: &peritus_app_protocol::ProductInteractionSnapshot,
@@ -284,6 +326,9 @@ impl AppModel {
     }
     fn accept_ack(&mut self, pending: Option<&PendingRequest>) -> Vec<Effect> {
         match pending {
+            Some(PendingRequest::WorkbenchMessageUpload { transfer, step }) => {
+                return self.message_upload_ack(*transfer, *step);
+            }
             Some(PendingRequest::WorkbenchFileUpload { transfer, step }) => {
                 return self.file_upload_ack(*transfer, *step);
             }
@@ -356,12 +401,17 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
     matches!(
         payload,
         AppResponsePayload::WorkbenchCheckpoint(_)
+            | AppResponsePayload::WorkbenchCheckpointPage(_)
+            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchExecution(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
+            | AppResponsePayload::InitArtifactProposal(_)
+            | AppResponsePayload::InitArtifactPage(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
@@ -371,10 +421,16 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchImagePreview(_)
             | AppResponsePayload::WorkbenchBrief(_)
+            | AppResponsePayload::WorkbenchBriefPage(_)
+            | AppResponsePayload::WorkbenchBriefProposal(_)
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewSummary(_)
             | AppResponsePayload::WorkbenchResult(_)
             | AppResponsePayload::WorkbenchPreview(_)
+            | AppResponsePayload::WorkbenchPreviewOutput(_)
+            | AppResponsePayload::WorkbenchReviewDiff(_)
+            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
             | AppResponsePayload::WorkbenchContext(_)
             | AppResponsePayload::WorkbenchQueue(_)
             | AppResponsePayload::WorkbenchReceipt(_)

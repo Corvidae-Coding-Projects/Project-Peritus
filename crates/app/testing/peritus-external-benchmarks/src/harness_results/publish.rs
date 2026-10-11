@@ -52,16 +52,3 @@ fn temporary_path(output: &Path) -> std::path::PathBuf {
     name.push(".new");
     name.into()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn temporary_report_is_a_sibling() {
-        assert_eq!(
-            temporary_path(Path::new("/state/report.json")),
-            Path::new("/state/report.json.new")
-        );
-    }
-}

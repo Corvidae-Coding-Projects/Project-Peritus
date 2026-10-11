@@ -23,12 +23,13 @@ use scalars::{
 const FAMILY: u16 = 0xC307;
 const SCHEMA: u16 = 1;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
+const MAX_LENGTH_PREFIX: usize = u32::MAX as usize;
 const LIMITS: CodecLimits = CodecLimits::new(
-    4 * 1_024 * 1_024,
-    4 * 1_024 * 1_024 - peritus_codec::HEADER_LEN,
-    4_096,
-    1_048_576,
-    1_048_576,
+    MAX_LENGTH_PREFIX,
+    MAX_LENGTH_PREFIX - peritus_codec::HEADER_LEN,
+    MAX_LENGTH_PREFIX,
+    MAX_LENGTH_PREFIX,
+    MAX_LENGTH_PREFIX,
     16,
 );
 
@@ -70,7 +71,9 @@ pub(super) fn encode(manifest: &HelperManifest) -> Result<Vec<u8>, WindowsError>
 
 #[allow(clippy::too_many_lines, reason = "closed schema decode keeps every binding field visible")]
 pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
-    if bytes.len() <= CHECKSUM_BYTES || bytes.len() > LIMITS.max_frame_bytes + CHECKSUM_BYTES {
+    if bytes.len() <= CHECKSUM_BYTES
+        || bytes.len() > LIMITS.max_frame_bytes.saturating_add(CHECKSUM_BYTES)
+    {
         return Err(protocol("manifest size is invalid"));
     }
     let checksum_at = bytes.len() - CHECKSUM_BYTES;
@@ -96,6 +99,9 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let arguments = read_strings(&mut reader)?;
     let working_directory = WindowsPath::new(reader.read_str().map_err(codec_error)?)?;
     let environment_count = reader.read_collection_len().map_err(codec_error)?;
+    if environment_count > reader.remaining() / 8 {
+        return Err(protocol("environment count exceeds the remaining manifest bytes"));
+    }
     let mut environment = Vec::with_capacity(environment_count);
     for _ in 0..environment_count {
         environment.push(EnvironmentEntry::new(
@@ -110,6 +116,9 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let network = decode_network(&mut reader)?;
     let secret_handles = decode_secrets(&mut reader)?;
     let handle_count = reader.read_collection_len().map_err(codec_error)?;
+    if handle_count > reader.remaining() / 8 {
+        return Err(protocol("handle count exceeds the remaining manifest bytes"));
+    }
     let mut handles = Vec::with_capacity(handle_count);
     for _ in 0..handle_count {
         handles.push(reader.read_u64().map_err(codec_error)?);
@@ -182,7 +191,7 @@ fn encode_job(writer: &mut CanonicalWriter, job: JobPlan) -> Result<(), WindowsE
     boolean(writer, job.kill_on_close())?;
     u32_value(writer, job.active_process_limit())?;
     u64_value(writer, job.job_memory_bytes())?;
-    u64_value(writer, job.cpu_time_millis())
+    u64_value(writer, job.cpu_time_millis().unwrap_or(0))
 }
 
 fn decode_job(reader: &mut CanonicalReader<'_>) -> Result<JobPlan, WindowsError> {
@@ -340,6 +349,9 @@ fn decode_secrets(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<ProtectedSecretHandle>, WindowsError> {
     let count = reader.read_collection_len().map_err(codec_error)?;
+    if count > reader.remaining() / 45 {
+        return Err(protocol("secret handle count exceeds the remaining manifest bytes"));
+    }
     let mut values = Vec::with_capacity(count);
     for _ in 0..count {
         let handle = reader.read_u64().map_err(codec_error)?;

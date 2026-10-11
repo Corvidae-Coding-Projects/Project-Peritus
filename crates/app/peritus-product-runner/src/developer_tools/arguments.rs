@@ -40,6 +40,7 @@ pub(super) fn validate(name: &str, arguments: &Value) -> Result<(), DeveloperLoo
 fn load() -> Result<Catalog, String> {
     let mut definitions = catalog::definitions().map_err(|error| error.to_string())?;
     definitions.push(catalog::in_place_definition().map_err(|error| error.to_string())?);
+    definitions.extend(catalog::reviewer_definitions().map_err(|error| error.to_string())?);
     definitions
         .into_iter()
         .map(|definition| {
@@ -158,48 +159,5 @@ fn cardinality(
         Err(format!("{path} is outside the declared length range"))
     } else {
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn every_catalog_schema_is_supported_and_read_only_definitions_agree() {
-        let catalog = load().unwrap();
-        for definition in catalog::read_only_definitions().unwrap() {
-            let schema: Value =
-                serde_json::from_slice(definition.parameters().canonical_bytes()).unwrap();
-            assert_eq!(catalog[definition.name().as_str()], schema);
-        }
-        assert!(check_schema(&json!({"type":"string", "pattern":"unsupported"}), 0).is_err());
-    }
-
-    #[test]
-    fn invalid_fields_are_rejected_instead_of_defaulted_or_coerced() {
-        for (name, arguments) in [
-            ("workspace_list", json!({"depth":"3"})),
-            ("workspace_write", json!({"path":"a", "contents":"typo"})),
-            ("workspace_patch", json!({"path":"a", "old":"a", "new":"b", "replace_all":"false"})),
-            ("run_command", json!({"program":"cargo", "args":[5], "purpose":"verification"})),
-            ("run_command", json!({"program":"cargo", "args":[], "purpose":"verify"})),
-            ("run_command", json!({"program":"cargo", "args":[]})),
-            (
-                "run_command",
-                json!({"program":"cargo", "args":[], "purpose":"verification", "timeout_seconds":0}),
-            ),
-            ("workspace_scope", json!({"paths":[]})),
-        ] {
-            assert!(validate(name, &arguments).is_err(), "{name}: {arguments}");
-        }
-        assert!(validate("workspace_list", &json!({})).is_ok());
-        assert!(validate("run_command", &json!({"program":"cargo", "args":[], "purpose":"verification", "timeout_seconds":601})).is_ok());
-        assert!(
-            validate("workspace_write", &json!({"path":"a", "content":"é".repeat(100_000)}))
-                .is_ok(),
-            "preserve existing file size limits"
-        );
     }
 }

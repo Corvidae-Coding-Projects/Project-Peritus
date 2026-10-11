@@ -5,8 +5,6 @@ use peritus_patch::WorkspacePath;
 use serde::Deserialize;
 use serde::Serialize;
 
-pub(super) const MAX_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
-
 /// Explicit future-read preference. Refresh is supported only for selected-workspace sources.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -22,7 +20,7 @@ pub enum FileMode {
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum FileRange {
-    /// Complete bounded source, with no silent truncation.
+    /// Complete source, with no silent truncation.
     All,
     /// Exact nonempty half-open byte interval.
     Bytes {
@@ -43,16 +41,12 @@ impl FileRange {
     /// Checks structural bounds; source existence and resolved range require an actual read.
     ///
     /// # Errors
-    /// Rejects empty/reversed intervals, zero line numbers or bounds beyond the source ceiling.
+    /// Rejects empty/reversed intervals and zero or reversed line numbers.
     pub const fn validate(self) -> Result<(), ControlError> {
         match self {
             Self::All => Ok(()),
-            Self::Bytes { start, end } if start < end && end <= MAX_SOURCE_BYTES => Ok(()),
-            Self::Lines { first, last }
-                if first > 0 && first <= last && last as u64 <= MAX_SOURCE_BYTES =>
-            {
-                Ok(())
-            }
+            Self::Bytes { start, end } if start < end => Ok(()),
+            Self::Lines { first, last } if first > 0 && first <= last => Ok(()),
             _ => Err(ControlError::InvalidInput),
         }
     }
@@ -71,7 +65,9 @@ pub struct FileSource {
 #[serde(deny_unknown_fields)]
 enum Origin {
     Workspace { folder: [u8; 32], path: ControlText<4096> },
-    Import { label: ControlText<1024> },
+    Import { label: ControlText<4096> },
+    UserMessage,
+    AcceptedProposal { reply: crate::control::PublicReplyReference },
 }
 impl FileSource {
     /// Describes one exact selected-workspace path; the conversation supplies workspace ID.
@@ -99,17 +95,49 @@ impl FileSource {
     ///
     /// # Errors
     /// Rejects malformed ranges; caller still must validate and confirm imported bytes.
-    pub fn imported(label: ControlText<1024>, range: FileRange) -> Result<Self, ControlError> {
+    pub fn imported(label: ControlText<4096>, range: FileRange) -> Result<Self, ControlError> {
         let value = Self { origin: Origin::Import { label }, range, mode: FileMode::Snapshot };
         value.validate()?;
         Ok(value)
+    }
+    /// Describes a complete immutable user-authored message, rather than attachment source data.
+    #[must_use]
+    pub const fn user_message() -> Self {
+        Self { origin: Origin::UserMessage, range: FileRange::All, mode: FileMode::Snapshot }
+    }
+    /// Retains immutable model authorship when a user explicitly accepts a proposal.
+    #[must_use]
+    pub const fn accepted_proposal(reply: crate::control::PublicReplyReference) -> Self {
+        Self {
+            origin: Origin::AcceptedProposal { reply },
+            range: FileRange::All,
+            mode: FileMode::Snapshot,
+        }
+    }
+    /// Borrows the exact model-authored proposal explicitly accepted by the user.
+    #[must_use]
+    pub const fn proposal(&self) -> Option<&crate::control::PublicReplyReference> {
+        match &self.origin {
+            Origin::AcceptedProposal { reply } => Some(reply),
+            _ => None,
+        }
+    }
+    /// Reports whether this source carries user-authored or explicitly user-confirmed instructions.
+    #[must_use]
+    pub const fn is_user_instruction(&self) -> bool {
+        matches!(self.origin, Origin::UserMessage | Origin::AcceptedProposal { .. })
+    }
+    /// Reports whether these exact bytes were explicitly admitted as a user message.
+    #[must_use]
+    pub const fn is_user_message(&self) -> bool {
+        matches!(self.origin, Origin::UserMessage)
     }
     /// Returns the observed folder identity, absent for an inert external import.
     #[must_use]
     pub const fn folder(&self) -> Option<Sha256Digest> {
         match &self.origin {
             Origin::Workspace { folder, .. } => Some(Sha256Digest::new(*folder)),
-            Origin::Import { .. } => None,
+            Origin::Import { .. } | Origin::UserMessage | Origin::AcceptedProposal { .. } => None,
         }
     }
     /// Borrows the exact relative workspace path, never an external-import label.
@@ -117,7 +145,7 @@ impl FileSource {
     pub fn path(&self) -> Option<&str> {
         match &self.origin {
             Origin::Workspace { path, .. } => Some(path.as_str()),
-            Origin::Import { .. } => None,
+            Origin::Import { .. } | Origin::UserMessage | Origin::AcceptedProposal { .. } => None,
         }
     }
     /// Borrows the inert user-visible path or source label.
@@ -126,6 +154,8 @@ impl FileSource {
         match &self.origin {
             Origin::Workspace { path, .. } => path.as_str(),
             Origin::Import { label } => label.as_str(),
+            Origin::UserMessage => "User message",
+            Origin::AcceptedProposal { .. } => "User-confirmed agent proposal",
         }
     }
     /// Returns explicit range semantics, which may resolve to different bytes after refresh.
@@ -147,7 +177,12 @@ impl FileSource {
             Origin::Import { .. } if self.mode != FileMode::Snapshot => {
                 return Err(ControlError::InvalidInput);
             }
-            Origin::Import { .. } => {}
+            Origin::UserMessage | Origin::AcceptedProposal { .. }
+                if self.mode != FileMode::Snapshot || self.range != FileRange::All =>
+            {
+                return Err(ControlError::InvalidInput);
+            }
+            Origin::Import { .. } | Origin::UserMessage | Origin::AcceptedProposal { .. } => {}
         }
         Ok(())
     }

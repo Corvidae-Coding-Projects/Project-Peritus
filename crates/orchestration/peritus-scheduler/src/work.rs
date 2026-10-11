@@ -5,7 +5,6 @@ use peritus_types::{ActorId, BudgetReservationId, RevisionTuple, Sha256Digest};
 use crate::{
     AttemptNumber, ResourceVector, SchedulerError, SchedulerErrorKind, SchedulerLimits, WorkId,
 };
-use vstd::prelude::*;
 
 mod class;
 mod clone_impl;
@@ -17,9 +16,7 @@ pub use class::ExecutionClass;
 pub use phase::{RecoveryPolicy, WorkPhase};
 pub use terminal::WorkTerminal;
 
-verus! {
-
-/// Immutable admitted work definition.
+#[doc = " Immutable admitted work definition."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct WorkSpec {
     id: WorkId,
@@ -35,111 +32,58 @@ pub struct WorkSpec {
     recovery: RecoveryPolicy,
     payload_digest: Sha256Digest,
 }
-
 impl WorkSpec {
-    /// Returns the mathematical work identity.
-    pub closed spec fn spec_id(&self) -> WorkId { self.id }
-    /// Returns the mathematical owner identity.
-    pub closed spec fn spec_owner(&self) -> ActorId { self.owner }
-    /// Returns the mathematical revision fence.
-    pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
-    /// Returns the mathematical execution class.
-    pub closed spec fn spec_class(&self) -> ExecutionClass { self.class }
-    /// Returns the mathematical resource request.
-    pub closed spec fn spec_request(&self) -> &ResourceVector { &self.request }
-    /// Returns the mathematical attempt ceiling.
-    pub closed spec fn spec_maximum_attempts(&self) -> AttemptNumber { self.maximum_attempts }
-    /// Returns the immutable worker-loss recovery policy.
-    pub closed spec fn spec_recovery(&self) -> RecoveryPolicy { self.recovery }
-    /// Returns the mathematical scheduling priority.
-    pub closed spec fn spec_priority(&self) -> u8 { self.priority }
-    /// Returns the immutable parent edge used by cancellation traversal.
-    pub closed spec fn spec_parent(&self) -> Option<WorkId> { self.parent }
-    /// Returns the immutable dependency identities.
-    pub closed spec fn spec_dependencies(&self) -> Seq<WorkId> { self.dependencies@ }
-
-    /// Borrows canonical dependencies.
+    #[doc = " Borrows canonical dependencies."]
     #[must_use]
-    pub fn dependencies(&self) -> (result: &[WorkId])
-        ensures result@ == self.spec_dependencies(),
-    {
+    pub fn dependencies(&self) -> &[WorkId] {
         &self.dependencies
     }
-
-    /// Returns optional parent work.
+    #[doc = " Returns optional parent work."]
     #[must_use]
-    pub const fn parent(&self) -> (result: Option<WorkId>)
-        ensures result == self.spec_parent(),
-    {
+    pub const fn parent(&self) -> Option<WorkId> {
         self.parent
     }
-
-    /// Returns stable work identity.
+    #[doc = " Returns stable work identity."]
     #[must_use]
-    pub const fn id(&self) -> (result: WorkId)
-        ensures result == self.spec_id(),
-    {
+    pub const fn id(&self) -> WorkId {
         self.id
     }
-
-    /// Returns assigned owning actor.
+    #[doc = " Returns assigned owning actor."]
     #[must_use]
-    pub const fn owner(&self) -> (result: ActorId)
-        ensures result == self.spec_owner(),
-    {
+    pub const fn owner(&self) -> ActorId {
         self.owner
     }
-
-    /// Returns required execution class.
+    #[doc = " Returns required execution class."]
     #[must_use]
-    pub const fn class(&self) -> (result: ExecutionClass)
-        ensures result == self.spec_class(),
-    {
+    pub const fn class(&self) -> ExecutionClass {
         self.class
     }
-
-    /// Returns priority, where larger values precede smaller values.
+    #[doc = " Returns priority, where larger values precede smaller values."]
     #[must_use]
-    pub const fn priority(&self) -> (result: u8)
-        ensures result == self.spec_priority(),
-    {
+    pub const fn priority(&self) -> u8 {
         self.priority
     }
-
-    /// Borrows exact resource request.
+    #[doc = " Borrows exact resource request."]
     #[must_use]
-    pub const fn request(&self) -> (result: &ResourceVector)
-        ensures result == self.spec_request(),
-    {
+    pub const fn request(&self) -> &ResourceVector {
         &self.request
     }
-
-    /// Returns maximum allowed attempts.
+    #[doc = " Returns maximum allowed attempts."]
     #[must_use]
-    pub const fn maximum_attempts(&self) -> (result: AttemptNumber)
-        ensures result == self.spec_maximum_attempts(),
-    {
+    pub const fn maximum_attempts(&self) -> AttemptNumber {
         self.maximum_attempts
     }
-
-    /// Returns recorded worker-loss recovery policy.
+    #[doc = " Returns recorded worker-loss recovery policy."]
     #[must_use]
-    pub const fn recovery(&self) -> (result: RecoveryPolicy)
-        ensures result == self.spec_recovery(),
-    {
+    pub const fn recovery(&self) -> RecoveryPolicy {
         self.recovery
     }
-
-    /// Returns exact immutable revision.
+    #[doc = " Returns exact immutable revision."]
     #[must_use]
-    pub const fn revision(&self) -> (result: RevisionTuple)
-        ensures result == self.spec_revision(),
-    {
+    pub const fn revision(&self) -> RevisionTuple {
         self.revision
     }
 }
-
-} // verus!
 
 impl WorkSpec {
     /// Creates checked inert work.
@@ -207,9 +151,7 @@ impl WorkSpec {
     }
 }
 
-verus! {
-
-/// Retained work plus deterministic queue/attempt accounting.
+#[doc = " Retained work plus deterministic queue/attempt accounting."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct WorkRecord {
     spec: WorkSpec,
@@ -220,6 +162,3 @@ pub struct WorkRecord {
     retry_cause: Option<Sha256Digest>,
     terminal: Option<WorkTerminal>,
 }
-
-
-} // verus!

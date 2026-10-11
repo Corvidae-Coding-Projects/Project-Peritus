@@ -1,5 +1,7 @@
 # peritus-performance-qualification
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-performance-qualification` owns the executable H3 integration boundary. It applies the
 stable plans from `peritus-benchmarks` to disposable G0/F0 subjects with monotonic wall-clock
 pacing, cooperative cancellation, bounded accounting, and evidence-ready results.

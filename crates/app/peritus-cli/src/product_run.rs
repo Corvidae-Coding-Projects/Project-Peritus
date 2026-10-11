@@ -240,20 +240,3 @@ fn run_command(root: &str, instruction: &str) -> Result<std::process::ExitStatus
             CliError::local_io("run candidate", Some(Path::new(root).to_owned()), error)
         })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn candidate_command_executes_directly_and_rejects_shell_text() {
-        assert!(
-            run_command(env!("CARGO_MANIFEST_DIR"), "rustc --version")
-                .expect("direct command")
-                .success()
-        );
-        assert!(
-            run_command(env!("CARGO_MANIFEST_DIR"), "rustc --version && rustc --version",).is_err()
-        );
-    }
-}

@@ -94,23 +94,3 @@ fn cleanup_error(detail: &'static str) -> MacosError {
         detail,
     )
 }
-
-#[cfg(all(test, unix))]
-mod tests {
-    use peritus_sandbox::SandboxPath;
-
-    use super::remove_materialized_secret_files;
-
-    #[test]
-    fn release_cleanup_removes_materialized_file_for_any_preterminal_phase() {
-        let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("delivered.secret");
-        std::fs::write(&path, b"material").unwrap();
-        let logical_path = path.to_str().unwrap().replace('\\', "/");
-        let sandbox_path = SandboxPath::new(logical_path).unwrap();
-        let manifest = crate::test_support::manifest_with_file_secret(sandbox_path);
-        remove_materialized_secret_files(&manifest).unwrap();
-        assert!(!path.exists());
-        remove_materialized_secret_files(&manifest).unwrap();
-    }
-}

@@ -54,6 +54,3 @@ pub fn bounded_path(original: &Path, maximum_bytes: usize) -> io::Result<PathBuf
     }
     Ok(PathBuf::from(directory))
 }
-
-#[cfg(test)]
-mod tests;

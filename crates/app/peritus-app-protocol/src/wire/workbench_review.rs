@@ -1,5 +1,7 @@
 //! Canonical structured-review codecs with bounded collection allocation.
 
+mod content;
+
 use super::primitive::{invalid, read_digest, read_id, write_digest, write_id};
 use crate::{
     ControlOperationId, MAX_WORKBENCH_DIFF_FILES, MAX_WORKBENCH_DIFF_HUNKS,
@@ -8,6 +10,10 @@ use crate::{
     WorkbenchReviewCommentState, WorkbenchReviewEvidence, WorkbenchReviewEvidenceKind,
     WorkbenchReviewEvidenceState, WorkbenchReviewFeedback, WorkbenchReviewPage,
     WorkbenchReviewQuery, WorkbenchReviewRange, WorkbenchReviewTarget,
+};
+use content::{
+    read_comment, read_count, read_diff_page_hunk, read_evidence, read_file, write_comment,
+    write_count, write_diff_page_hunk, write_evidence, write_file,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::{RunId, WorkspaceId};
@@ -29,6 +35,154 @@ pub(super) fn read_query(r: &mut CanonicalReader<'_>) -> Result<WorkbenchReviewQ
         r.read_u64()?,
         r.read_u32()?,
     ))
+}
+
+pub(super) fn write_diff_query(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchReviewDiffQuery,
+) -> Result<(), CodecError> {
+    super::workbench::write_query(w, value.query())?;
+    write_id(w, value.run().as_bytes())?;
+    w.write_u64(value.revision())?;
+    w.write_u32(value.file_offset())?;
+    w.write_u32(value.hunk_offset())?;
+    w.write_u32(value.line_offset())
+}
+
+pub(super) fn read_diff_query(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffQuery, CodecError> {
+    Ok(crate::WorkbenchReviewDiffQuery::new(
+        super::workbench::read_query(r)?,
+        read_id(r, RunId::new)?,
+        r.read_u64()?,
+        r.read_u32()?,
+        r.read_u32()?,
+        r.read_u32()?,
+    ))
+}
+
+pub(super) fn write_diff_bytes_query(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchReviewDiffBytesQuery,
+) -> Result<(), CodecError> {
+    super::workbench::write_query(w, value.query())?;
+    write_id(w, value.run().as_bytes())?;
+    w.write_u64(value.revision())?;
+    write_digest(w, value.candidate_digest())?;
+    write_digest(w, value.diff_digest())?;
+    w.write_u32(value.offset())?;
+    w.write_u32(value.maximum_bytes())
+}
+
+pub(super) fn read_diff_bytes_query(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffBytesQuery, CodecError> {
+    Ok(crate::WorkbenchReviewDiffBytesQuery::new(
+        super::workbench::read_query(r)?,
+        read_id(r, RunId::new)?,
+        r.read_u64()?,
+        read_digest(r)?,
+        read_digest(r)?,
+        r.read_u32()?,
+        r.read_u32()?,
+    ))
+}
+
+pub(super) fn write_diff_bytes(
+    w: &mut CanonicalWriter,
+    value: &crate::WorkbenchReviewDiffBytes,
+) -> Result<(), CodecError> {
+    write_diff_bytes_query(w, value.query())?;
+    w.write_u32(value.total_bytes())?;
+    w.write_bytes(value.bytes())
+}
+
+pub(super) fn read_diff_bytes(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffBytes, CodecError> {
+    let offset = r.offset();
+    let query = read_diff_bytes_query(r)?;
+    let total = r.read_u32()?;
+    let bytes = r.read_bytes()?.to_vec();
+    invalid(offset, crate::WorkbenchReviewDiffBytes::new(query, total, bytes))
+}
+
+pub(super) fn write_diff_page(
+    w: &mut CanonicalWriter,
+    value: &crate::WorkbenchReviewDiffPage,
+) -> Result<(), CodecError> {
+    write_diff_query(w, value.query())?;
+    write_digest(w, value.candidate_digest())?;
+    write_digest(w, value.diff_digest())?;
+    write_anchor(w, value.file_anchor())?;
+    w.write_bool(value.hunk().is_some())?;
+    if let Some(hunk) = value.hunk() {
+        write_diff_page_hunk(w, hunk)?;
+    }
+    write_count(w, value.lines().len())?;
+    for line in value.lines() {
+        w.write_u16(line.kind().tag())?;
+        w.write_str(line.preview())?;
+        w.write_u32(line.raw_offset())?;
+        w.write_u32(line.raw_length())?;
+        w.write_bool(line.is_truncated())?;
+    }
+    w.write_u32(value.total_files())?;
+    w.write_u64(value.total_hunks())?;
+    w.write_u64(value.total_lines())?;
+    w.write_bool(value.next().is_some())?;
+    if let Some(next) = value.next() {
+        write_diff_query(w, next)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_diff_page(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffPage, CodecError> {
+    let offset = r.offset();
+    let query = read_diff_query(r)?;
+    let candidate = read_digest(r)?;
+    let diff = read_digest(r)?;
+    let file = read_anchor(r)?;
+    let hunk = if r.read_bool()? { Some(read_diff_page_hunk(r)?) } else { None };
+    let count = read_count(r, crate::MAX_WORKBENCH_DIFF_PAGE_LINES)?;
+    let mut lines = Vec::with_capacity(count);
+    for _ in 0..count {
+        let item_offset = r.offset();
+        let kind = WorkbenchDiffLineKind::from_tag(r.read_u16()?)
+            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, item_offset))?;
+        let preview = r.read_str()?.to_owned();
+        let raw_offset = r.read_u32()?;
+        let raw_length = r.read_u32()?;
+        let truncated = r.read_bool()?;
+        lines.push(invalid(
+            item_offset,
+            crate::WorkbenchReviewDiffLine::from_wire(
+                kind, preview, raw_offset, raw_length, truncated,
+            ),
+        )?);
+    }
+    let total_files = r.read_u32()?;
+    let total_hunks = r.read_u64()?;
+    let total_lines = r.read_u64()?;
+    let next = if r.read_bool()? { Some(read_diff_query(r)?) } else { None };
+    invalid(
+        offset,
+        crate::WorkbenchReviewDiffPage::from_wire_parts(
+            query,
+            candidate,
+            diff,
+            file,
+            hunk,
+            lines,
+            total_files,
+            total_hunks,
+            total_lines,
+            next,
+        ),
+    )
 }
 
 pub(super) fn write_anchor(
@@ -155,124 +309,55 @@ pub(super) fn read_page(r: &mut CanonicalReader<'_>) -> Result<WorkbenchReviewPa
     )
 }
 
-fn write_file(w: &mut CanonicalWriter, value: &WorkbenchDiffFile) -> Result<(), CodecError> {
-    write_anchor(w, value.anchor())?;
-    write_count(w, value.hunks().len())?;
-    for hunk in value.hunks() {
-        write_hunk(w, hunk)?;
-    }
-    Ok(())
-}
-
-fn read_file(r: &mut CanonicalReader<'_>) -> Result<WorkbenchDiffFile, CodecError> {
-    let offset = r.offset();
-    let anchor = read_anchor(r)?;
-    let count = read_count(r, MAX_WORKBENCH_DIFF_HUNKS)?;
-    let mut hunks = Vec::with_capacity(count);
-    for _ in 0..count {
-        hunks.push(read_hunk(r)?);
-    }
-    invalid(offset, WorkbenchDiffFile::new(anchor, hunks))
-}
-
-fn write_hunk(w: &mut CanonicalWriter, value: &WorkbenchDiffHunk) -> Result<(), CodecError> {
-    write_anchor(w, value.anchor())?;
-    w.write_str(value.header())?;
-    write_count(w, value.lines().len())?;
-    for line in value.lines() {
-        w.write_u16(line.kind().tag())?;
-        w.write_str(line.text())?;
-    }
-    Ok(())
-}
-
-fn read_hunk(r: &mut CanonicalReader<'_>) -> Result<WorkbenchDiffHunk, CodecError> {
-    let offset = r.offset();
-    let anchor = read_anchor(r)?;
-    let header = r.read_str()?.to_owned();
-    let count = read_count(r, MAX_WORKBENCH_DIFF_LINES)?;
-    let mut lines = Vec::with_capacity(count);
-    for _ in 0..count {
-        let tag_offset = r.offset();
-        let kind = WorkbenchDiffLineKind::from_tag(r.read_u16()?)
-            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, tag_offset))?;
-        lines.push(invalid(tag_offset, WorkbenchDiffLine::new(kind, r.read_str()?.to_owned()))?);
-    }
-    invalid(offset, WorkbenchDiffHunk::new(anchor, header, lines))
-}
-
-fn write_comment(
+pub(super) fn write_summary(
     w: &mut CanonicalWriter,
-    value: &WorkbenchReviewComment,
+    value: &crate::WorkbenchReviewSummary,
 ) -> Result<(), CodecError> {
-    write_id(w, value.id().as_bytes())?;
-    w.write_u64(value.revision())?;
-    write_anchor(w, value.anchor())?;
-    w.write_u16(value.feedback().tag())?;
-    w.write_str(value.message().as_str())?;
-    super::workbench_inputs::write_selection(w, value.input())?;
-    w.write_u16(value.state().tag())
+    write_query(w, value.query())?;
+    write_digest(w, value.candidate_digest())?;
+    write_digest(w, value.diff_digest())?;
+    w.write_u32(value.total_files())?;
+    w.write_u64(value.total_hunks())?;
+    w.write_u64(value.total_lines())?;
+    w.write_bool(value.structured_available())?;
+    write_count(w, value.comments().len())?;
+    for comment in value.comments() {
+        write_comment(w, comment)?;
+    }
+    w.write_u32(value.total_comments())?;
+    write_count(w, value.evidence().len())?;
+    for evidence in value.evidence() {
+        write_evidence(w, *evidence)?;
+    }
+    Ok(())
 }
 
-fn read_comment(r: &mut CanonicalReader<'_>) -> Result<WorkbenchReviewComment, CodecError> {
+pub(super) fn read_summary(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewSummary, CodecError> {
     let offset = r.offset();
-    let id = read_id(r, ControlOperationId::new)?;
-    let revision = r.read_u64()?;
-    let anchor = read_anchor(r)?;
-    let feedback = read_feedback(r)?;
-    let message = super::workbench_inputs::read_text(r)?;
-    let input = super::workbench_inputs::read_selection(r)?;
-    let state_offset = r.offset();
-    let state = WorkbenchReviewCommentState::from_tag(r.read_u16()?)
-        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, state_offset))?;
+    let query = read_query(r)?;
+    let candidate = read_digest(r)?;
+    let diff = read_digest(r)?;
+    let files = r.read_u32()?;
+    let hunks = r.read_u64()?;
+    let lines = r.read_u64()?;
+    let available = r.read_bool()?;
+    let count = read_count(r, MAX_WORKBENCH_REVIEW_PAGE)?;
+    let mut comments = Vec::with_capacity(count);
+    for _ in 0..count {
+        comments.push(read_comment(r)?);
+    }
+    let total = r.read_u32()?;
+    let evidence_count = read_count(r, 2)?;
+    let mut evidence = Vec::with_capacity(evidence_count);
+    for _ in 0..evidence_count {
+        evidence.push(read_evidence(r)?);
+    }
     invalid(
         offset,
-        WorkbenchReviewComment::new(id, revision, anchor, feedback, message, input, state),
+        crate::WorkbenchReviewSummary::new(
+            query, candidate, diff, files, hunks, lines, available, comments, total, evidence,
+        ),
     )
-}
-
-fn write_evidence(
-    w: &mut CanonicalWriter,
-    value: WorkbenchReviewEvidence,
-) -> Result<(), CodecError> {
-    w.write_u16(value.kind().tag())?;
-    w.write_u16(value.state().tag())?;
-    w.write_bool(value.candidate_digest().is_some())?;
-    if let (Some(candidate), Some(revision), Some(sequence)) =
-        (value.candidate_digest(), value.conversation_revision(), value.checkpoint_sequence())
-    {
-        write_digest(w, candidate)?;
-        w.write_u64(revision)?;
-        w.write_u64(sequence)?;
-    }
-    Ok(())
-}
-
-fn read_evidence(r: &mut CanonicalReader<'_>) -> Result<WorkbenchReviewEvidence, CodecError> {
-    let offset = r.offset();
-    let kind = WorkbenchReviewEvidenceKind::from_tag(r.read_u16()?)
-        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
-    let state = WorkbenchReviewEvidenceState::from_tag(r.read_u16()?)
-        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
-    let (candidate, revision, sequence) = if r.read_bool()? {
-        (Some(read_digest(r)?), Some(r.read_u64()?), Some(r.read_u64()?))
-    } else {
-        (None, None, None)
-    };
-    invalid(offset, WorkbenchReviewEvidence::new(kind, state, candidate, revision, sequence))
-}
-
-fn write_count(w: &mut CanonicalWriter, count: usize) -> Result<(), CodecError> {
-    w.write_u16(
-        u16::try_from(count).map_err(|_| CodecError::at(CodecErrorKind::LimitExceeded, w.len()))?,
-    )
-}
-
-fn read_count(r: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let offset = r.offset();
-    let count = usize::from(r.read_u16()?);
-    if count > maximum {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    Ok(count)
 }

@@ -55,9 +55,6 @@ pub(super) fn read_request(
     let provider = read_id(r, ProviderProfileId::new)?;
     let model = super::interaction::read_choice(r, true)?;
     let label = r.read_str()?;
-    if label.len() > crate::MAX_WORKBENCH_IMAGE_LABEL_BYTES {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let label = invalid(offset, WorkbenchImageLabel::new(label.to_owned()))?;
     invalid(offset, WorkbenchImageRequest::new(query, revision, artifact, provider, model, label))
 }

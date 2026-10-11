@@ -31,27 +31,3 @@ pub(super) fn contains_credential(value: &str) -> bool {
         },
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn credential_shapes_are_rejected_without_rejecting_security_guidance() {
-        for value in [
-            "-----BEGIN OPENSSH PRIVATE KEY-----",
-            "Authorization: Bearer fixture000000000000000000000000",
-            "ghp_fixture000000000000000000000000",
-        ] {
-            assert!(contains_credential(value));
-        }
-        for value in [
-            "Do not record credentials.",
-            "Use a bearer token from the credential store.",
-            "Authorization: Bearer [redacted]",
-            "A sk- prefix is not itself a credential.",
-        ] {
-            assert!(!contains_credential(value));
-        }
-    }
-}

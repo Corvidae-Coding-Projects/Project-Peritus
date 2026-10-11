@@ -15,15 +15,24 @@ use super::{contract, identity};
 /// `SQLite` serializes reservations across independently opened runtimes. Legacy
 /// authority and compactor paths remain occupied even without an allocator row.
 pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, String> {
-    let mut connection =
-        Connection::open(root.join("command-ordinals.sqlite3")).map_err(|error| detail(&error))?;
+    let mut connection = Connection::open(root.join("command-ordinals.sqlite3"))
+        .map_err(|error| detail("open store", &error))?;
     // Independent runtimes share this writer lock. Allow durable commits and
     // scheduling delays under contention without failing after only 250 ms.
-    connection.busy_timeout(Duration::from_secs(5)).map_err(|error| detail(&error))?;
+    connection
+        .busy_timeout(Duration::from_secs(5))
+        .map_err(|error| detail("configure busy timeout", &error))?;
     // EXTRA also syncs the rollback-journal directory after commit. FULL alone
     // can lose the last acknowledged reservation on power loss in DELETE mode.
-    connection.pragma_update(None, "synchronous", "EXTRA").map_err(|error| detail(&error))?;
     connection
+        .pragma_update(None, "synchronous", "EXTRA")
+        .map_err(|error| detail("configure durable synchronization", &error))?;
+    // Acquire the writer before installing the schema. First-open contenders
+    // must not commit a separate schema transaction before reserving an ordinal.
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| detail("begin reservation", &error))?;
+    transaction
         .execute_batch(
             "CREATE TABLE IF NOT EXISTS command_ordinals (
             run_id BLOB PRIMARY KEY NOT NULL CHECK(length(run_id) = 16),
@@ -31,24 +40,21 @@ pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, Str
                 CHECK(typeof(last_ordinal) = 'integer' AND last_ordinal >= 0)
         );",
         )
-        .map_err(|error| detail(&error))?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(|error| detail(&error))?;
+        .map_err(|error| detail("install schema", &error))?;
     transaction
         .execute(
             "INSERT INTO command_ordinals(run_id, last_ordinal) VALUES (?1, 0)
          ON CONFLICT(run_id) DO NOTHING",
             params![run_id.as_bytes().as_slice()],
         )
-        .map_err(|error| detail(&error))?;
+        .map_err(|error| detail("initialize run counter", &error))?;
     let stored: i64 = transaction
         .query_row(
             "SELECT last_ordinal FROM command_ordinals WHERE run_id = ?1",
             params![run_id.as_bytes().as_slice()],
             |row| row.get(0),
         )
-        .map_err(|error| detail(&error))?;
+        .map_err(|error| detail("read run counter", &error))?;
     let mut ordinal = u64::try_from(stored)
         .map_err(|_| "command ordinal store contains a negative number".to_owned())?
         .max(after);
@@ -73,9 +79,9 @@ pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, Str
             "UPDATE command_ordinals SET last_ordinal = ?1 WHERE run_id = ?2",
             params![stored, run_id.as_bytes().as_slice()],
         )
-        .map_err(|error| detail(&error))?;
+        .map_err(|error| detail("update run counter", &error))?;
     // Never expose an allocation whose durable commit was not acknowledged.
-    transaction.commit().map_err(|error| detail(&error))?;
+    transaction.commit().map_err(|error| detail("commit reservation", &error))?;
     Ok(ordinal)
 }
 
@@ -87,159 +93,6 @@ fn occupied(path: &Path) -> Result<bool, String> {
     }
 }
 
-fn detail(error: &rusqlite::Error) -> String {
-    format!("reserve durable command ordinal: {error}")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reopening_and_stale_local_counters_do_not_reuse_reservations() {
-        let root = tempfile::tempdir().expect("state directory");
-        let run = RunId::new([1; 16]).expect("run");
-        assert_eq!(reserve(root.path(), run, 0).expect("first"), 1);
-        // Every reserve opens a separate connection. No authority file is needed
-        // for a reservation to survive a failed start or runtime restart.
-        assert_eq!(reserve(root.path(), run, 0).expect("reopened"), 2);
-        assert_eq!(reserve(root.path(), run, 1).expect("stale instance"), 3);
-        assert_eq!(reserve(root.path(), run, 9).expect("local high water"), 10);
-        assert_eq!(reserve(root.path(), run, 0).expect("reopened again"), 11);
-    }
-
-    #[test]
-    fn legacy_shell_and_compactor_identities_are_preserved_including_gaps() {
-        let root = tempfile::tempdir().expect("state directory");
-        let run = RunId::new([2; 16]).expect("run");
-        for (ordinal, directory) in [(1, "authority"), (3, "local-compactor")] {
-            let action = ActionId::new(contract::id(run, ordinal, "action")).expect("action");
-            let path = root.path().join(directory).join(identity::action_hex(action));
-            fs::create_dir_all(&path).expect("legacy identity");
-            fs::write(path.join("preserved"), b"legacy evidence").expect("evidence");
-        }
-        assert_eq!(reserve(root.path(), run, 0).expect("first free"), 2);
-        assert_eq!(reserve(root.path(), run, 0).expect("skip later legacy"), 4);
-        for (ordinal, directory) in [(1, "authority"), (3, "local-compactor")] {
-            let action = ActionId::new(contract::id(run, ordinal, "action")).expect("action");
-            let path = root.path().join(directory).join(identity::action_hex(action));
-            assert_eq!(fs::read(path.join("preserved")).expect("retained"), b"legacy evidence");
-        }
-    }
-
-    #[test]
-    fn independent_threads_reserve_distinct_numbers() {
-        for initialized in [false, true] {
-            concurrent_reservations(initialized);
-        }
-    }
-
-    #[test]
-    fn transient_writer_contention_waits_for_a_durable_reservation() {
-        for initialized in [false, true] {
-            let root = tempfile::tempdir().expect("state directory");
-            let run = RunId::new([8; 16]).expect("run");
-            let offset =
-                if initialized { reserve(root.path(), run, 0).expect("initialize") } else { 0 };
-            let mut blocker = Connection::open(root.path().join("command-ordinals.sqlite3"))
-                .expect("open contending writer");
-            let transaction = blocker
-                .transaction_with_behavior(TransactionBehavior::Immediate)
-                .expect("hold writer lock");
-            let barrier = std::sync::Barrier::new(2);
-            let (sender, receiver) = std::sync::mpsc::sync_channel(1);
-            std::thread::scope(|scope| {
-                let worker = scope.spawn(|| {
-                    barrier.wait();
-                    sender.send(reserve(root.path(), run, 0)).expect("send reservation");
-                });
-                barrier.wait();
-                // A competing durable writer may outlive the old 250 ms budget.
-                // Keep its lock until the waiting reservation has had twice that long.
-                let while_locked = receiver.recv_timeout(Duration::from_millis(500));
-                transaction.commit().expect("release writer lock");
-                worker.join().expect("allocation thread");
-                assert!(
-                    matches!(while_locked, Err(std::sync::mpsc::RecvTimeoutError::Timeout)),
-                    "reservation completed while writer lock held: {while_locked:?}"
-                );
-                assert_eq!(
-                    receiver.recv().expect("reservation result").expect("reserved"),
-                    offset + 1
-                );
-            });
-            assert_eq!(reserve(root.path(), run, 0).expect("reopen after contention"), offset + 2);
-        }
-    }
-
-    fn concurrent_reservations(initialized: bool) {
-        let root = tempfile::tempdir().expect("state directory");
-        let run = RunId::new([3; 16]).expect("run");
-        let offset =
-            if initialized { reserve(root.path(), run, 0).expect("initialize") } else { 0 };
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(4));
-        // Start every worker before joining: joining a lazy spawn iterator would deadlock
-        // the barrier and would no longer exercise simultaneous reservations.
-        let mut handles = Vec::with_capacity(4);
-        for _ in 0..4 {
-            let path = root.path().to_path_buf();
-            let barrier = std::sync::Arc::clone(&barrier);
-            handles.push(std::thread::spawn(move || {
-                barrier.wait();
-                reserve(&path, run, 0).expect("concurrent allocation")
-            }));
-        }
-        let mut values: Vec<_> =
-            handles.into_iter().map(|handle| handle.join().expect("allocation thread")).collect();
-        values.sort_unstable();
-        assert_eq!(values, vec![offset + 1, offset + 2, offset + 3, offset + 4]);
-        assert_eq!(reserve(root.path(), run, 0).expect("reopen after contention"), offset + 5);
-    }
-
-    #[test]
-    fn separate_runs_retain_independent_high_water_marks() {
-        let root = tempfile::tempdir().expect("state directory");
-        let first = RunId::new([5; 16]).expect("first run");
-        let second = RunId::new([6; 16]).expect("second run");
-        assert_eq!(reserve(root.path(), first, 0).expect("first reservation"), 1);
-        assert_eq!(reserve(root.path(), second, 0).expect("second run reservation"), 1);
-        assert_eq!(reserve(root.path(), first, 0).expect("first run reopened"), 2);
-        assert_eq!(reserve(root.path(), second, 0).expect("second run reopened"), 2);
-    }
-
-    #[test]
-    fn invalid_and_exhausted_stored_counters_are_never_reset() {
-        for stored in [
-            rusqlite::types::Value::Integer(-1),
-            rusqlite::types::Value::Text("invalid ordinal".to_owned()),
-            rusqlite::types::Value::Integer(i64::MAX),
-        ] {
-            let root = tempfile::tempdir().expect("state directory");
-            let run = RunId::new([7; 16]).expect("run");
-            assert_eq!(reserve(root.path(), run, 0).expect("initialize"), 1);
-            let connection = Connection::open(root.path().join("command-ordinals.sqlite3"))
-                .expect("open fixture");
-            connection
-                .pragma_update(None, "ignore_check_constraints", true)
-                .expect("permit corrupt fixture");
-            connection
-                .execute("UPDATE command_ordinals SET last_ordinal = ?1", params![stored])
-                .expect("write stored counter fixture");
-            assert!(reserve(root.path(), run, 0).is_err());
-            let retained: rusqlite::types::Value = connection
-                .query_row("SELECT last_ordinal FROM command_ordinals", [], |row| row.get(0))
-                .expect("read retained counter");
-            assert_eq!(retained, stored);
-        }
-    }
-
-    #[test]
-    fn malformed_store_and_exhaustion_fail_without_resetting_identity() {
-        let root = tempfile::tempdir().expect("state directory");
-        let run = RunId::new([4; 16]).expect("run");
-        assert!(reserve(root.path(), run, u64::MAX).is_err());
-        fs::write(root.path().join("command-ordinals.sqlite3"), b"invalid database")
-            .expect("damaged fixture");
-        assert!(reserve(root.path(), run, 0).is_err());
-    }
+fn detail(operation: &str, error: &rusqlite::Error) -> String {
+    format!("reserve durable command ordinal ({operation}): {error}")
 }

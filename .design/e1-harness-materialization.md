@@ -233,7 +233,7 @@ authority, and G0 daemon/CLI presentation to their already-defined slices.
   precondition, placeholder, ignored test, state-machine macro, or convenience authority bypass.
   Verus wrappers and ordinary Rust APIs are both tested.
 - **E1-R052:** Public fields remain private and constructors return typed errors. `lib.rs` remains
-  below 80 lines. Production modules target 400 lines and never exceed 700; domain, manifest,
+  below 80 lines. Production modules stay at or below 500 lines; domain, manifest,
   materialization, aggregate, wire, durability, replay, runtime, and projection concerns remain
   separate.
 - **E1-R053:** E1 depends on public B1/B3/C0/C1 contracts and shared foundation types. It does not

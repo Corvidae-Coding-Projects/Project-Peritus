@@ -1,62 +1,12 @@
 //! Covered-path checkpoints, exact rewind previews, and durable restore receipts.
 
+mod field_shapes;
 use super::super::{
-    AppFieldDescriptor, AppTypeDescriptor, CanonicalWireType as W, FieldBound as B, JsonShape as J,
-    field,
+    AppTypeDescriptor, CanonicalWireType as W, FieldBound as B, JsonShape as J, field,
 };
-
-const VERSION_TYPES: &[&str] =
-    &["WorkbenchCheckpointAbsentVersion", "WorkbenchCheckpointPresentVersion"];
-
-const fn nested(name: &'static str, ty: &'static str) -> AppFieldDescriptor {
-    field(name, W::Struct, &[], ty, ty, J::Ref(ty), true)
-}
-const fn id(name: &'static str) -> AppFieldDescriptor {
-    field(
-        name,
-        W::Identifier,
-        &[B::NonZero],
-        "ControlOperationId",
-        "ControlOperationId",
-        J::Identifier,
-        true,
-    )
-}
-const fn revision(name: &'static str, required: bool) -> AppFieldDescriptor {
-    field(name, W::U64, &[B::NonZero], "u64", "UInt64", J::U64String, required)
-}
-const fn version(name: &'static str, required: bool) -> AppFieldDescriptor {
-    field(
-        name,
-        W::Struct,
-        &[],
-        "WorkbenchCheckpointVersion",
-        "WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion",
-        J::OneOfRef(VERSION_TYPES),
-        required,
-    )
-}
-const fn path(name: &'static str) -> AppFieldDescriptor {
-    field(name, W::Utf8, &[B::WorkbenchFilePathBytes], "String", "string", J::String, true)
-}
-const fn strings(name: &'static str, restore: bool) -> AppFieldDescriptor {
-    field(
-        name,
-        W::Sequence,
-        if restore {
-            &[B::WorkbenchCheckpointPaths, B::WorkbenchRestoreTextBytes]
-        } else {
-            &[B::WorkbenchCheckpointPaths, B::WorkbenchCheckpointTextBytes]
-        },
-        "Vec<String>",
-        "readonly string[]",
-        J::StringArray,
-        true,
-    )
-}
-const fn kind(value: &'static str, values: &'static [&'static str]) -> AppFieldDescriptor {
-    field("kind", W::U16, &[], "WorkbenchIntent", value, J::Enum(values), true)
-}
+use field_shapes::{
+    id, kind, nested, nested_optional, page_strings, path, revision, strings, u64_field, version,
+};
 
 pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
@@ -270,6 +220,162 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             strings("restored", true),
             strings("conflicts", true),
             strings("externalEffects", true),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchRewindConfirmation",
+        rust_type: "WorkbenchRewindConfirmation",
+        fields: &[
+            nested("request", "WorkbenchRewindRequest"),
+            field("previewDigest", W::Digest, &[], "Sha256Digest", "Sha256Digest", J::Digest, true),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchConfirmRewindIntent",
+        rust_type: "WorkbenchIntent",
+        fields: &[
+            kind("\"confirmRewind\"", &["confirmRewind"]),
+            nested("confirmation", "WorkbenchRewindConfirmation"),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchCoverageCursor",
+        rust_type: "WorkbenchCoverageCursor",
+        fields: &[
+            field(
+                "section",
+                W::U16,
+                &[],
+                "WorkbenchCoverageSection",
+                "\"paths\" | \"exclusions\" | \"externalEffects\"",
+                J::Enum(&["paths", "exclusions", "externalEffects"]),
+                true,
+            ),
+            u64_field("offset"),
+            field("fingerprint", W::Digest, &[], "Sha256Digest", "Sha256Digest", J::Digest, true),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchCheckpointPageRequest",
+        rust_type: "WorkbenchCheckpointPageRequest",
+        fields: &[
+            nested("query", "WorkbenchQuery"),
+            revision("revision", true),
+            id("checkpoint"),
+            field("hasCursor", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            nested_optional("cursor", "WorkbenchCoverageCursor"),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchRewindPageRequest",
+        rust_type: "WorkbenchRewindPageRequest",
+        fields: &[
+            nested("request", "WorkbenchRewindRequest"),
+            field("hasCursor", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            nested_optional("cursor", "WorkbenchCoverageCursor"),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchCheckpointCoveragePage",
+        rust_type: "WorkbenchCheckpointCoveragePage",
+        fields: &[
+            id("checkpoint"),
+            nested("query", "WorkbenchQuery"),
+            revision("selectedRevision", true),
+            revision("acceptedRevision", true),
+            field(
+                "name",
+                W::Utf8,
+                &[B::WorkbenchCheckpointNameBytes],
+                "WorkbenchCheckpointName",
+                "string",
+                J::String,
+                true,
+            ),
+            nested("references", "WorkbenchCheckpointReferences"),
+            field("fingerprint", W::Digest, &[], "Sha256Digest", "Sha256Digest", J::Digest, true),
+            u64_field("totalPaths"),
+            u64_field("totalExclusions"),
+            u64_field("totalExternalEffects"),
+            field(
+                "section",
+                W::U16,
+                &[],
+                "WorkbenchCoverageSection",
+                "\"paths\" | \"exclusions\" | \"externalEffects\"",
+                J::Enum(&["paths", "exclusions", "externalEffects"]),
+                true,
+            ),
+            u64_field("offset"),
+            field(
+                "paths",
+                W::Sequence,
+                &[B::CodecCollectionItems, B::SortedUnique],
+                "Vec<WorkbenchCheckpointPath>",
+                "readonly WorkbenchCheckpointPath[]",
+                J::ArrayRef("WorkbenchCheckpointPath"),
+                true,
+            ),
+            page_strings("exclusions"),
+            page_strings("externalEffects"),
+            field("hasNext", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            nested_optional("next", "WorkbenchCoverageCursor"),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchRewindCoveragePage",
+        rust_type: "WorkbenchRewindCoveragePage",
+        fields: &[
+            nested("confirmation", "WorkbenchRewindConfirmation"),
+            u64_field("totalPaths"),
+            u64_field("totalExclusions"),
+            u64_field("totalExternalEffects"),
+            field(
+                "section",
+                W::U16,
+                &[],
+                "WorkbenchCoverageSection",
+                "\"paths\" | \"exclusions\" | \"externalEffects\"",
+                J::Enum(&["paths", "exclusions", "externalEffects"]),
+                true,
+            ),
+            u64_field("offset"),
+            field(
+                "paths",
+                W::Sequence,
+                &[B::CodecCollectionItems, B::SortedUnique],
+                "Vec<WorkbenchRewindPath>",
+                "readonly WorkbenchRewindPath[]",
+                J::ArrayRef("WorkbenchRewindPath"),
+                true,
+            ),
+            page_strings("exclusions"),
+            page_strings("externalEffects"),
+            field("hasNext", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            nested_optional("next", "WorkbenchCoverageCursor"),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchRestoreSummary",
+        rust_type: "WorkbenchRestoreSummary",
+        fields: &[
+            id("restore"),
+            id("checkpoint"),
+            id("recoveryCheckpoint"),
+            nested("query", "WorkbenchQuery"),
+            revision("acceptedRevision", true),
+            field(
+                "status",
+                W::U16,
+                &[],
+                "WorkbenchRestoreStatus",
+                "\"applied\" | \"conflict\" | \"recoveryRequired\"",
+                J::Enum(&["applied", "conflict", "recoveryRequired"]),
+                true,
+            ),
+            u64_field("restoredPaths"),
+            u64_field("conflictingPaths"),
+            field("fingerprint", W::Digest, &[], "Sha256Digest", "Sha256Digest", J::Digest, true),
         ],
     },
 ];

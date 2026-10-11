@@ -348,24 +348,4 @@ impl TraceSelectionManifest {
             .ok()
             .map(|index| &self.artifacts[index])
     }
-
-    #[cfg(test)]
-    pub(crate) fn testing_empty(query_digest: Sha256Digest) -> Self {
-        let mut manifest = Self {
-            id: SelectionManifestId::new([1; 16]).expect("nonzero test manifest identity"),
-            digest: Sha256Digest::new([0; 32]),
-            query_digest,
-            subjects: Vec::new(),
-            entries: Vec::new(),
-            artifacts: Vec::new(),
-            counts: SelectionCounts::new(0, 0, 0, 0, 0, 0),
-            canonical_bytes: Vec::new(),
-        };
-        manifest.canonical_bytes = super::canonical::encode_manifest(&manifest);
-        manifest.digest =
-            crate::identity::domain_digest(MANIFEST_DIGEST_DOMAIN, &manifest.canonical_bytes);
-        manifest.id = SelectionManifestId::derive(MANIFEST_ID_DOMAIN, manifest.digest.as_bytes())
-            .expect("digest-derived test manifest identity");
-        manifest
-    }
 }

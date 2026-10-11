@@ -10,8 +10,8 @@ use crate::{
 };
 
 use super::support::{
-    object_mismatch, reject_nested_git_metadata, retain_ref, snapshot_ref,
-    validate_candidate_binding, verify_retained,
+    inspect_nested_git_metadata, object_mismatch, read_manifest, release_snapshot_refs,
+    retain_manifest, retain_ref, snapshot_ref, validate_candidate_binding, verify_retained,
 };
 use super::{
     CandidateRequest, CandidateSnapshot, CandidateTree, RestoreObservation, RestoreRequest,
@@ -23,7 +23,7 @@ impl GitRepository {
     ///
     /// # Errors
     ///
-    /// Rejects registration or HEAD drift, nested repository metadata, Git staging failures, and
+    /// Rejects registration or HEAD drift, unregistered nested repository metadata, Git staging failures, and
     /// an index tree that cannot be validated under the repository object format.
     pub fn create_candidate(
         &self,
@@ -38,7 +38,15 @@ impl GitRepository {
                 "worktree HEAD changed or is no longer detached",
             ));
         }
-        reject_nested_git_metadata(request.worktree.root(), Operation::CreateCandidate)?;
+        inspect_nested_git_metadata(
+            self,
+            request.worktree,
+            request.nested,
+            false,
+            None,
+            Operation::CreateCandidate,
+        )?;
+        let nested_links = super::nested::candidate_links(self, request.worktree, request.nested)?;
         let prior_status = self.status(request.worktree)?;
         self.runner.checked(
             request.worktree.root(),
@@ -48,9 +56,10 @@ impl GitRepository {
             &strings(&["add", "--all", "--", "."]),
             None,
         )?;
+        super::nested::stage_links(self, request.worktree, &nested_links)?;
         let tree = self.write_tree(request.worktree, Operation::CreateCandidate)?;
         let status = self.status(request.worktree)?;
-        if status.head() != request.expected_head
+        if status.head() != Some(request.expected_head)
             || !status.is_detached()
             || status.index_tree() != Some(tree)
         {
@@ -93,7 +102,7 @@ impl GitRepository {
     ) -> Result<CandidateSnapshot, GitError> {
         validate_candidate_binding(self, request.worktree, request.candidate)?;
         let current = self.status(request.worktree)?;
-        if current.head() != request.candidate.head()
+        if current.head() != Some(request.candidate.head())
             || !current.is_detached()
             || current.index_tree() != Some(request.candidate.tree())
             || current.digest() != request.candidate.status().digest()
@@ -127,7 +136,6 @@ impl GitRepository {
             one_line(&output.stdout, Operation::CreateSnapshot)?,
             Operation::CreateSnapshot,
         )?);
-        retain_ref(self, &reference, commit)?;
         let manifest = crate::manifest::snapshot_manifest(
             self.identity.digest(),
             request.workspace_id,
@@ -135,10 +143,61 @@ impl GitRepository {
             request.parent,
             commit,
             request.candidate.tree(),
-            reference,
+            reference.clone(),
             request.candidate.manifest_digest(),
         )?;
+        // The exact restart evidence is durable before the active commit ref becomes visible.
+        retain_manifest(self, request.workspace_id, request.snapshot_id, manifest.bytes())?;
+        retain_ref(self, &reference, commit)?;
         Ok(CandidateSnapshot { manifest })
+    }
+
+    /// Reopens a snapshot from its stable workspace/snapshot identity and retained manifest ref.
+    ///
+    /// # Errors
+    /// Rejects malformed or mismatched evidence and any underlying commit/ref drift.
+    pub fn reopen_snapshot_id(
+        &self,
+        workspace_id: peritus_types::WorkspaceId,
+        snapshot_id: peritus_types::SnapshotId,
+    ) -> Result<Option<CandidateSnapshot>, GitError> {
+        let Some(bytes) =
+            read_manifest(self, workspace_id, snapshot_id, Operation::ReopenSnapshot)?
+        else {
+            return Ok(None);
+        };
+        let manifest = crate::CandidateSnapshotManifest::decode(&bytes)?;
+        if manifest.workspace_id() != workspace_id || manifest.snapshot_id() != snapshot_id {
+            return Err(snapshot_mismatch("snapshot manifest differs from its requested identity"));
+        }
+        self.reopen_snapshot(&manifest).map(Some)
+    }
+
+    /// Completes interrupted reference publication from the exact retained snapshot manifest.
+    ///
+    /// This only retains the manifest's existing commit; it does not stage, restore, or commit
+    /// worktree content. Callers must bind the snapshot identity to their durable operation plan.
+    ///
+    /// # Errors
+    /// Rejects invalid repository/commit evidence or a reference already naming another commit.
+    pub fn recover_snapshot_id(
+        &self,
+        workspace_id: peritus_types::WorkspaceId,
+        snapshot_id: peritus_types::SnapshotId,
+    ) -> Result<Option<CandidateSnapshot>, GitError> {
+        let Some(bytes) =
+            read_manifest(self, workspace_id, snapshot_id, Operation::ReopenSnapshot)?
+        else {
+            return Ok(None);
+        };
+        let manifest = crate::CandidateSnapshotManifest::decode(&bytes)?;
+        if manifest.workspace_id() != workspace_id || manifest.snapshot_id() != snapshot_id {
+            return Err(snapshot_mismatch("snapshot manifest differs from its requested identity"));
+        }
+        let snapshot = self.validate_snapshot_manifest(&manifest)?;
+        retain_ref(self, snapshot.reference(), snapshot.commit())?;
+        verify_retained(self, &snapshot, Operation::ReopenSnapshot)?;
+        Ok(Some(snapshot))
     }
 
     /// Reopens a persisted snapshot after revalidating its repository, commit graph, tree, and
@@ -148,6 +207,15 @@ impl GitRepository {
     ///
     /// Rejects repository identity, deterministic reference, commit, parent, tree, or ref drift.
     pub fn reopen_snapshot(
+        &self,
+        manifest: &crate::CandidateSnapshotManifest,
+    ) -> Result<CandidateSnapshot, GitError> {
+        let snapshot = self.validate_snapshot_manifest(manifest)?;
+        verify_retained(self, &snapshot, Operation::ReopenSnapshot)?;
+        Ok(snapshot)
+    }
+
+    fn validate_snapshot_manifest(
         &self,
         manifest: &crate::CandidateSnapshotManifest,
     ) -> Result<CandidateSnapshot, GitError> {
@@ -166,9 +234,7 @@ impl GitRepository {
         if parent != manifest.parent() {
             return Err(snapshot_mismatch("snapshot commit parent differs from its manifest"));
         }
-        let snapshot = CandidateSnapshot { manifest: manifest.clone() };
-        verify_retained(self, &snapshot, Operation::ReopenSnapshot)?;
-        Ok(snapshot)
+        Ok(CandidateSnapshot { manifest: manifest.clone() })
     }
 
     /// Restores a retained snapshot tree into the exact registered worktree and index.
@@ -198,7 +264,21 @@ impl GitRepository {
                 "worktree HEAD changed or is no longer detached",
             ));
         }
-        reject_nested_git_metadata(request.worktree.root(), Operation::RestoreSnapshot)?;
+        inspect_nested_git_metadata(
+            self,
+            request.worktree,
+            request.nested,
+            false,
+            Some(request.snapshot.tree()),
+            Operation::RestoreSnapshot,
+        )?;
+        super::nested::protect_restore(
+            self,
+            request.worktree,
+            request.nested,
+            request.snapshot.tree(),
+        )?;
+        let cleanup = super::support::cleanup_inventory(self, request.worktree)?;
         let prior_tree = self.status(request.worktree)?.index_tree();
         let arguments = vec![
             OsString::from("read-tree"),
@@ -214,14 +294,7 @@ impl GitRepository {
             &arguments,
             None,
         )?;
-        self.runner.checked(
-            request.worktree.root(),
-            Some(Self::worktree_location(request.worktree.root(), request.worktree.git_dir())),
-            CommandAccess::Write,
-            Operation::RestoreSnapshot,
-            &strings(&["clean", "-fdx", "--", "."]),
-            None,
-        )?;
+        super::support::clean_inventory(self, request.worktree, &cleanup)?;
         let restored_tree = self.write_tree(request.worktree, Operation::RestoreSnapshot)?;
         if restored_tree != request.snapshot.tree() {
             return Err(GitError::new(
@@ -232,7 +305,7 @@ impl GitRepository {
             ));
         }
         let status = self.status(request.worktree)?;
-        if status.head() != request.expected_head
+        if status.head() != Some(request.expected_head)
             || !status.is_detached()
             || status.index_tree() != Some(restored_tree)
         {
@@ -257,18 +330,7 @@ impl GitRepository {
             ));
         }
         verify_retained(self, snapshot, Operation::ReleaseSnapshot)?;
-        let arguments = vec![
-            OsString::from("update-ref"),
-            OsString::from("-d"),
-            OsString::from(snapshot.reference().as_str()),
-            OsString::from(snapshot.commit().to_string()),
-        ];
-        self.checked_repo_command(
-            Operation::ReleaseSnapshot,
-            CommandAccess::Write,
-            &arguments,
-            None,
-        )?;
+        release_snapshot_refs(self, snapshot)?;
         Ok(())
     }
 

@@ -10,6 +10,8 @@ pub(super) struct PersistedRecord {
     pub(super) format_version: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) goal_resume: Option<[u8; 16]>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) message_launches: Vec<([u8; 16], u16)>,
     pub(super) interaction: interaction::PersistedInteraction,
     pub(super) run_id: String,
     pub(super) workspace_id: String,
@@ -50,6 +52,8 @@ pub(super) struct PersistedPreviewOperation {
     pub(super) accepted_revision: u64,
     pub(super) result_sequence: u64,
     pub(super) completed_sequence: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) behavior_evidence: Option<super::super::preview_evidence::PreviewBehaviorEvidence>,
 }
 
 #[derive(Serialize, Deserialize)]

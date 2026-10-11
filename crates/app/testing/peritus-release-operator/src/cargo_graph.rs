@@ -209,15 +209,3 @@ fn hash_field(hasher: &mut Sha256, bytes: &[u8]) {
     hasher.update(u64::try_from(bytes.len()).unwrap_or(u64::MAX).to_le_bytes());
     hasher.update(bytes);
 }
-
-#[cfg(test)]
-mod tests {
-    use super::component_id;
-    use peritus_release_artifacts::digest_bytes;
-
-    #[test]
-    fn component_identity_is_portable() {
-        let id = component_id("name+feature", "1.0.0+meta", digest_bytes(b"crate"));
-        assert!(id.starts_with("cargo-name-feature-1.0.0-meta-"));
-    }
-}

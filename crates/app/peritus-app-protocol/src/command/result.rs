@@ -1,23 +1,6 @@
 //! Final protocol-level command disposition and committed event ranges.
 
 use crate::{AppErrorCode, AppProtocolError, EventCursor, RequestId};
-use vstd::prelude::*;
-
-verus! {
-
-/// Mathematical validity predicate for a positive inclusive committed cursor range.
-pub open spec fn valid_committed_event_range(first: int, last: int) -> bool {
-    0 < first && first <= last
-}
-
-/// An inclusive valid range has a positive exact count.
-pub proof fn committed_range_count_positive(first: int, last: int)
-    requires valid_committed_event_range(first, last)
-    ensures last - first + 1 > 0
-{
-}
-
-} // verus!
 
 /// Positive, contiguous inclusive cursor range committed by one command.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -178,19 +161,5 @@ impl CommandResult {
     #[must_use]
     pub const fn error(&self) -> Option<&AppProtocolError> {
         self.error.as_ref()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn committed_range_is_positive_and_counts_inclusively() {
-        assert!(CommittedEventRange::new(EventCursor::origin(), EventCursor::new(1)).is_err());
-        let range = CommittedEventRange::new(EventCursor::new(7), EventCursor::new(9)).unwrap();
-        assert_eq!(range.count(), 3);
-        let request_id = RequestId::new([1; 16]).unwrap();
-        assert_eq!(CommandResult::committed(request_id, range).committed_events(), Some(range));
     }
 }

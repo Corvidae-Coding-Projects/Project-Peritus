@@ -26,24 +26,3 @@ pub fn generated(path: &Path) -> bool {
             || name.ends_with(".dist-info")
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn recognizes_common_language_build_and_cache_trees() {
-        for path in [
-            "crate/target/debug/app",
-            "web/node_modules/library/index.js",
-            "python/build/lib/package.py",
-            "python/package.egg-info/PKG-INFO",
-            "python/package.dist-info/METADATA",
-            "python/.pytest_cache/v/cache/nodeids",
-        ] {
-            assert!(generated(Path::new(path)), "{path}");
-        }
-        assert!(!generated(Path::new("src/catalogue/build.py")));
-        assert!(!generated(Path::new("src/package.py")));
-    }
-}

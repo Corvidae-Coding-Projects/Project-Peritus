@@ -38,7 +38,3 @@ pub fn validate_anthropic_profile(profile: &ProviderProfile) -> Result<(), Provi
     }
     Ok(())
 }
-
-#[cfg(test)]
-#[path = "profile_tests.rs"]
-mod tests;

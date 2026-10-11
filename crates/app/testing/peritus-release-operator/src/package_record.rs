@@ -67,16 +67,3 @@ fn validate_path(path: &Path) -> Result<(), OperatorError> {
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::validate_path;
-    use std::path::Path;
-
-    #[test]
-    fn package_paths_stay_below_the_workspace() {
-        assert!(validate_path(Path::new("dist/peritus.tar.gz")).is_ok());
-        assert!(validate_path(Path::new("../peritus.tar.gz")).is_err());
-        assert!(validate_path(Path::new("dist/line\nbreak")).is_err());
-    }
-}

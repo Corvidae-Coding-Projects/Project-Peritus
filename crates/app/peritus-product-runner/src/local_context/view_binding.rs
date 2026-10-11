@@ -13,15 +13,13 @@ use peritus_model_protocol::{SchemaDialect, ToolDefinition};
 
 const TOOL_POLICY_MAGIC: &[u8; 4] = b"P4TP";
 const VIEW_BINDING_MAGIC: &[u8; 4] = b"P4VB";
-const MAX_BINDING_BYTES: usize = 128 * 1024 * 1024;
-
 const fn writer() -> CanonicalWriter {
     CanonicalWriter::new(CodecLimits::new(
-        MAX_BINDING_BYTES,
-        MAX_BINDING_BYTES,
-        1_100_000,
-        32 * 1024 * 1024,
-        32 * 1024 * 1024,
+        (u32::MAX as usize).saturating_add(16),
+        u32::MAX as usize,
+        u32::MAX as usize,
+        u32::MAX as usize,
+        u32::MAX as usize,
         16,
     ))
 }

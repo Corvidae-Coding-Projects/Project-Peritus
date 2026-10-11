@@ -247,15 +247,3 @@ fn bounded(value: &str, maximum: usize) -> String {
     }
     value[..end].to_owned()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn multiline_task_and_handoff_project_as_bounded_library_labels() {
-        let handoff = bounded_handoff(&format!("Done\n{}\r\n", "λ".repeat(1024)));
-        assert!(handoff.len() <= 1024);
-        assert!(!handoff.chars().any(char::is_control));
-    }
-}

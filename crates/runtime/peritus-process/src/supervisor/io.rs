@@ -243,21 +243,35 @@ fn accept_output(
 ) -> Result<(), ProcessError> {
     let account = accounting.get_mut(stream);
     let offset = account.observed();
-    let global_available = plan.output_policy().spool_bytes().saturating_sub(*total_spooled);
+    let global_available = plan
+        .output_policy()
+        .spool_bytes()
+        .map_or(u64::MAX, |limit| limit.saturating_sub(*total_spooled));
     let accepted = account.observe(bytes.len(), global_available);
-    if accepted == 0 {
-        return Ok(());
-    }
-    spool_mut(spools, stream)?.write(&bytes[..accepted])?;
-    *total_spooled = total_spooled.saturating_add(u64::try_from(accepted).unwrap_or(u64::MAX));
-    window.push(stream, &bytes[..accepted]);
+    window.push(stream, bytes);
     let mut state = shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     state.retained_stdout = window.stream_bytes(OutputStream::Stdout);
     state.retained_stderr = window.stream_bytes(OutputStream::Stderr);
     state.retained_terminal = window.stream_bytes(OutputStream::Terminal);
     drop(state);
-    emit(shared, plan, Some(offset), ProcessEventKind::Output(stream), bytes[..accepted].to_vec());
-    Ok(())
+    if accepted == 0 {
+        return Ok(());
+    }
+    let spool = spool_mut(spools, stream)?;
+    let before = spool.written();
+    let result = spool.write(&bytes[..accepted]);
+    let written = spool.written() - before;
+    account.retain_written(written);
+    *total_spooled = total_spooled.saturating_add(written);
+    if result.is_err() {
+        account.fail();
+    }
+    if written > 0 {
+        let count = usize::try_from(written)
+            .map_err(|_| supervisor_error("spool prefix is unrepresentable"))?;
+        emit(shared, plan, Some(offset), ProcessEventKind::Output(stream), bytes[..count].to_vec());
+    }
+    result
 }
 
 #[allow(clippy::too_many_arguments)]

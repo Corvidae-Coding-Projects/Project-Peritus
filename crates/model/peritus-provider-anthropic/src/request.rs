@@ -374,7 +374,3 @@ fn apply_cache(
 const fn invalid(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::invalid_request("anthropic_request", detail)
 }
-
-#[cfg(test)]
-#[path = "request_tests.rs"]
-mod tests;

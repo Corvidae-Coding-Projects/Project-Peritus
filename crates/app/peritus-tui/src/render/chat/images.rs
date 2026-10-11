@@ -42,9 +42,14 @@ pub(super) fn draw_editor(
     text: &str,
     cursor: usize,
 ) {
-    let layout =
-        super::composer::layout(text, cursor, None, usize::from(area.width.saturating_sub(2)));
     let rows = usize::from(area.height.saturating_sub(2)).max(1);
+    let layout = super::composer::layout_for_rows(
+        text,
+        cursor,
+        None,
+        usize::from(area.width.saturating_sub(2)),
+        rows,
+    );
     let offset = layout.row.saturating_sub(rows - 1);
     frame.render_widget(
         Paragraph::new(layout.lines.into_iter().skip(offset).take(rows).collect::<Vec<_>>())

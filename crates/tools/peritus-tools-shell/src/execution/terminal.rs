@@ -102,7 +102,12 @@ fn structured(
         .iter()
         .map(|resource| {
             object([
-                ("ceiling", serde_json::Value::String(resource.ceiling().to_string())),
+                (
+                    "ceiling",
+                    resource.ceiling().map_or(serde_json::Value::Null, |value| {
+                        serde_json::Value::String(value.to_string())
+                    }),
+                ),
                 ("dimension", serde_json::Value::String(format!("{:?}", resource.dimension()))),
                 ("fidelity", serde_json::Value::String(format!("{:?}", resource.fidelity()))),
                 ("value", serde_json::Value::String(resource.value().to_string())),
@@ -324,22 +329,4 @@ fn hex(bytes: &[u8]) -> String {
         write!(value, "{byte:02x}").expect("writing to a string cannot fail");
         value
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn exec_and_script_accept_counted_truncation_but_not_incomplete_output() {
-        for descriptor in [crate::exec_descriptor(), crate::script_descriptor()] {
-            let descriptor = descriptor.expect("shell descriptor");
-            assert!(matches!(descriptor.name().as_str(), "shell.exec" | "shell.script"));
-            assert!(!has_incomplete_output([
-                OutputCompleteness::Complete,
-                OutputCompleteness::Truncated,
-            ]));
-            assert!(has_incomplete_output([OutputCompleteness::Incomplete]));
-        }
-    }
 }

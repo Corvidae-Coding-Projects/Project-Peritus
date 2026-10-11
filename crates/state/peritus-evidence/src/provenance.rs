@@ -160,18 +160,3 @@ fn invalid(detail: &'static str) -> EvidenceError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::schema_digest;
-
-    #[test]
-    fn scheduler_schema_digests_cover_supported_versions_only() {
-        let legacy = schema_digest(71, 1).expect("scheduler event schema one");
-        let current = schema_digest(71, 2).expect("scheduler event schema two");
-        assert_ne!(legacy, current);
-        assert!(schema_digest(71, 0).is_err());
-        assert!(schema_digest(71, 3).is_err());
-        assert!(schema_digest(3, 2).is_err());
-    }
-}

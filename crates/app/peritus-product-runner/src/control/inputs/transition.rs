@@ -85,6 +85,23 @@ impl InputLedger {
                 self.order.retain(|id| *id != selected.id);
                 Ok(())
             }
+            QueueIntent::Move { selected, before } => {
+                self.pending_mut(*selected)?;
+                if *before == Some(selected.id) {
+                    return Err(ControlError::InvalidInput);
+                }
+                self.order.retain(|id| *id != selected.id);
+                let destination = match before {
+                    Some(before) => self
+                        .order
+                        .iter()
+                        .position(|id| id == before)
+                        .ok_or(ControlError::NotFound)?,
+                    None => self.order.len(),
+                };
+                self.order.insert(destination, selected.id);
+                Ok(())
+            }
             QueueIntent::Reorder(order) => {
                 if order.len() != self.order.len()
                     || order.iter().copied().collect::<BTreeSet<_>>()

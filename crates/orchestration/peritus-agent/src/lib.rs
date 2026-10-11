@@ -8,7 +8,7 @@ mod canonical;
 mod command;
 mod completion;
 mod control;
-#[cfg(not(verus_only))]
+
 mod developer;
 mod developer_interaction;
 mod error;
@@ -17,7 +17,7 @@ mod identity;
 mod limits;
 mod phase;
 mod reducer;
-#[cfg(not(verus_only))]
+
 mod runtime;
 mod state;
 mod tools;
@@ -32,7 +32,7 @@ pub use command::{
     ProviderRetryClass, ProviderRetryRecord,
 };
 pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, TranscriptDigests};
-#[cfg(not(verus_only))]
+
 pub use developer::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperContextAssembly, DeveloperContextEvent,
     DeveloperContextPort, DeveloperControlFlow, DeveloperInteraction, DeveloperLoop,
@@ -48,13 +48,13 @@ pub use identity::{AgentBinding, ModelCallId, ProfileRevision, SafeText, ToolOrd
 pub use limits::{AgentCounters, AgentLimitDimension, AgentLimits};
 pub use phase::{ActivePhase, AgentPhase, TerminalKind};
 pub use reducer::{AgentTransition, reduce, replay, start};
-#[cfg(all(not(verus_only), feature = "protocol-bridge"))]
+#[cfg(feature = "protocol-bridge")]
 pub use runtime::{
     AGENT_STATE_NAMESPACE, AgentDriver, AgentDriverError, AgentDurabilityError, AgentReplay,
     CommittedAgentStep, ProviderAdvance, RecoveryReport, TransitionIdentity, agent_aggregate_key,
     agent_state_key, commit_agent_transition, load_agent_replay,
 };
-#[cfg(not(verus_only))]
+
 pub use runtime::{
     AgentBudgetError, AgentBudgetPlan, AgentBudgetPort, AgentBudgetPortError,
     AgentBudgetReservation, AgentBudgetState, ContextDriveError, ContextPreparation,

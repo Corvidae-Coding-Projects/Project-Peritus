@@ -1,18 +1,13 @@
 //! Stable errors returned by checked primitive constructors and arithmetic.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Failure returned when constructing a nominal identifier.
+#[doc = " Failure returned when constructing a nominal identifier."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum IdentifierError {
-    /// The all-zero byte pattern is reserved as an invalid identifier.
+    #[doc = " The all-zero byte pattern is reserved as an invalid identifier."]
     Zero,
 }
-
 impl IdentifierError {
-    /// Returns the stable diagnostic code for this error.
+    #[doc = " Returns the stable diagnostic code for this error."]
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -20,18 +15,16 @@ impl IdentifierError {
         }
     }
 }
-
-/// Failure returned when constructing or incrementing a one-based number.
+#[doc = " Failure returned when constructing or incrementing a one-based number."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum OneBasedNumberError {
-    /// Zero cannot represent a one-based number.
+    #[doc = " Zero cannot represent a one-based number."]
     Zero,
-    /// Incrementing the maximum representable value would overflow.
+    #[doc = " Incrementing the maximum representable value would overflow."]
     Overflow,
 }
-
 impl OneBasedNumberError {
-    /// Returns the stable diagnostic code for this error.
+    #[doc = " Returns the stable diagnostic code for this error."]
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -40,24 +33,22 @@ impl OneBasedNumberError {
         }
     }
 }
-
-/// Failure returned when validating a capability name.
+#[doc = " Failure returned when validating a capability name."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CapabilityNameError {
-    /// The name has no bytes.
+    #[doc = " The name has no bytes."]
     Empty,
-    /// The name exceeds [`crate::CapabilityName::MAX_LENGTH`] bytes.
+    #[doc = " The name exceeds [`crate::CapabilityName::MAX_LENGTH`] bytes."]
     TooLong,
-    /// A segment is missing before, after, or between separators.
+    #[doc = " A segment is missing before, after, or between separators."]
     EmptySegment,
-    /// A segment does not begin with an ASCII lowercase letter.
+    #[doc = " A segment does not begin with an ASCII lowercase letter."]
     InvalidSegmentStart,
-    /// A non-separator byte is outside `[a-z0-9-]`.
+    #[doc = " A non-separator byte is outside `[a-z0-9-]`."]
     InvalidCharacter,
 }
-
 impl CapabilityNameError {
-    /// Returns the stable diagnostic code for this error category.
+    #[doc = " Returns the stable diagnostic code for this error category."]
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -69,18 +60,16 @@ impl CapabilityNameError {
         }
     }
 }
-
-/// Failure returned by checked resource-quantity arithmetic.
+#[doc = " Failure returned by checked resource-quantity arithmetic."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ResourceQuantityError {
-    /// Addition would exceed [`u64::MAX`].
+    #[doc = " Addition would exceed [`u64::MAX`]."]
     Overflow,
-    /// Subtraction would produce a negative quantity.
+    #[doc = " Subtraction would produce a negative quantity."]
     Underflow,
 }
-
 impl ResourceQuantityError {
-    /// Returns the stable diagnostic code for this error.
+    #[doc = " Returns the stable diagnostic code for this error."]
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -89,5 +78,3 @@ impl ResourceQuantityError {
         }
     }
 }
-
-} // verus!

@@ -169,6 +169,12 @@ impl SecretLease {
     pub const fn delivery(&self) -> &SecretDelivery {
         &self.delivery
     }
+    /// Returns the expiration instant used by effect-free preparation checks.
+    #[must_use]
+    pub const fn expires_epoch_millis(&self) -> u64 {
+        self.expires_epoch_millis
+    }
+
     /// Returns remaining uses.
     #[must_use]
     pub const fn remaining_uses(&self) -> u32 {

@@ -1,12 +1,9 @@
 //! Stable diagnostics and recovery metadata for policy failures.
 
 use super::{PolicyError, PolicyErrorKind, RecoveryClass};
-use vstd::prelude::*;
-
-verus! {
 
 impl PolicyError {
-    /// Returns the stable subsystem diagnostic code.
+    #[doc = " Returns the stable subsystem diagnostic code."]
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self.kind {
@@ -32,8 +29,7 @@ impl PolicyError {
             PolicyErrorKind::InvalidOperationRisk => "PERITUS-POLICY-OPERATION-001",
         }
     }
-
-    /// Returns the stable recovery class for this failure.
+    #[doc = " Returns the stable recovery class for this failure."]
     #[must_use]
     pub const fn recovery(&self) -> RecoveryClass {
         match self.kind {
@@ -60,5 +56,3 @@ impl PolicyError {
         }
     }
 }
-
-} // verus!

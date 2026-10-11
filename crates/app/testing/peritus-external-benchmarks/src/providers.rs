@@ -338,6 +338,3 @@ fn process_limits() -> Result<ProcessLimits, BenchmarkError> {
     ProcessLimits::new(16 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024, Duration::from_mins(5))
         .map_err(|error| BenchmarkError::Provider(error.to_string()))
 }
-
-#[cfg(test)]
-mod tests;

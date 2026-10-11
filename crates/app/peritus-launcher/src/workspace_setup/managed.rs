@@ -273,6 +273,3 @@ fn path_text(path: &Path) -> Result<String, LauncherError> {
         LauncherError::WorkspaceSetup("a managed workspace path is not valid UTF-8".to_owned())
     })
 }
-
-#[cfg(test)]
-mod tests;

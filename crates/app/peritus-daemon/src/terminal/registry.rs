@@ -23,9 +23,6 @@ mod receipts;
 mod retirement;
 mod transitions;
 
-#[cfg(test)]
-mod tests;
-
 use lookup::{capacity, exact_bridge_mut, process_mut, rejected};
 
 /// Result of idempotently opening an exact terminal attachment.

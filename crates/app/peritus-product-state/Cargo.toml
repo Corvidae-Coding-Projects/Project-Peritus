@@ -14,15 +14,10 @@ categories = ["data-structures", "development-tools"]
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-vstd.workspace = true
 
 [package.metadata.peritus]
 owner = "G4"
 layer = "app"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

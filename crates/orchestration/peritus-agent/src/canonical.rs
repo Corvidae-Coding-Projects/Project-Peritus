@@ -14,7 +14,11 @@ pub use event_wire::{decode_command_kind, encode_command_kind};
 
 pub fn state_bytes(state: &AgentTurnState) -> Vec<u8> {
     let mut out = Encoder::new();
-    out.raw(b"peritus-agent-state-v1");
+    let optional_lifetimes = state
+        .tools
+        .as_ref()
+        .is_some_and(|batch| batch.slots().iter().any(|slot| slot.proposal().deadline().is_none()));
+    out.raw(if optional_lifetimes { b"peritus-agent-state-v2" } else { b"peritus-agent-state-v1" });
     let binding = &state.binding;
     out.raw(binding.turn_id().as_bytes());
     out.raw(binding.attempt_id().as_bytes());
@@ -41,7 +45,7 @@ pub fn state_bytes(state: &AgentTurnState) -> Vec<u8> {
         out.option(context.compaction_digest(), Encoder::digest);
     });
     encode_model(&mut out, state.model);
-    out.option(state.tools.as_ref(), encode_tools);
+    out.option(state.tools.as_ref(), |out, batch| encode_tools(out, batch, optional_lifetimes));
     out.option(state.tool_transcript_digest, Encoder::digest);
     out.option(state.completion.as_ref(), encode_completion);
     out.option(state.failure.as_ref(), |out, failure| {
@@ -99,7 +103,7 @@ fn encode_model(out: &mut Encoder, model: crate::ModelState) {
     out.bool(model.resume_exact());
 }
 
-fn encode_tools(out: &mut Encoder, batch: &crate::ToolBatch) {
+fn encode_tools(out: &mut Encoder, batch: &crate::ToolBatch, optional_lifetimes: bool) {
     out.len(batch.slots().len());
     for slot in batch.slots() {
         let proposal = slot.proposal();
@@ -113,8 +117,13 @@ fn encode_tools(out: &mut Encoder, batch: &crate::ToolBatch) {
         out.digest(proposal.prepared_digest());
         out.digest(proposal.replay_identity());
         out.revision(proposal.revision());
-        out.u64(proposal.deadline().epoch().get());
-        out.u64(proposal.deadline().tick_millis());
+        if optional_lifetimes {
+            out.bool(proposal.deadline().is_some());
+        }
+        out.u64(proposal.authority_epoch().get());
+        if let Some(deadline) = proposal.deadline() {
+            out.u64(deadline.tick_millis());
+        }
         out.u8(match proposal.side_effect() {
             ToolSideEffect::None => 0,
             ToolSideEffect::Workspace => 1,

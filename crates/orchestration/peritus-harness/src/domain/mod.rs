@@ -36,13 +36,7 @@ pub use identity::{
 pub use limits::HarnessLimits;
 pub use revision::{HarnessRevision, HarnessRevisionIdentity};
 pub use value::{MediaType, Owner, Provenance, SourcePath, TargetPath};
-#[cfg(verus_only)]
-pub use verified::{
-    ancestor_number_precedes, append_only_length, authority_reflexive, authority_within_ceiling,
-    dependency_precedes, digest_binding_reflexive, digest_is_bound, direct_predecessor_is_ancestor,
-    earlier_dependency_is_legal, one_append_is_monotonic, protected_assets_unchanged,
-    protected_invariance_reflexive, schema_is_compatible, singleton_schema_compatible,
-};
+
 pub use verified::{
     authority_is_non_widening, component_ids_are_unique, dependencies_are_resolved,
     graph_digest_is_bound, history_is_append_only, protected_assets_are_invariant,

@@ -11,16 +11,30 @@ pub(crate) enum Operation {
     ImageRestore,
     Build,
     Compile,
-    CompileChecks,
     PackageCompiled,
     Sign,
     SignCi,
     Verify,
     Upload,
-    Test,
 }
 
 impl Operation {
+    pub(crate) fn parse(name: &str) -> Option<Self> {
+        match name {
+            "distro-image" => Some(Self::Image),
+            "distro-image-save" => Some(Self::ImageSave),
+            "distro-image-restore" => Some(Self::ImageRestore),
+            "distro-build" => Some(Self::Build),
+            "distro-compile" => Some(Self::Compile),
+            "distro-package-compiled" => Some(Self::PackageCompiled),
+            "distro-sign" => Some(Self::Sign),
+            "distro-sign-ci" => Some(Self::SignCi),
+            "distro-verify" => Some(Self::Verify),
+            "distro-upload" => Some(Self::Upload),
+            _ => None,
+        }
+    }
+
     const fn argument(self) -> &'static str {
         match self {
             Self::Image => "image",
@@ -28,13 +42,11 @@ impl Operation {
             Self::ImageRestore => "image-restore",
             Self::Build => "build",
             Self::Compile => "compile",
-            Self::CompileChecks => "compile-checks",
             Self::PackageCompiled => "package-compiled",
             Self::Sign => "sign",
             Self::SignCi => "sign-ci",
             Self::Verify => "verify",
             Self::Upload => "upload",
-            Self::Test => "test",
         }
     }
 }

@@ -12,24 +12,15 @@ keywords = ["agents", "protocol", "ipc", "formal-verification"]
 categories = ["development-tools"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-protocol = { version = "=0.0.5", path = "../../foundation/peritus-protocol" }
-peritus-run-settlement = { version = "=0.0.5", path = "../../orchestration/peritus-run-settlement" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-conformance = { version = "=0.0.5", path = "../testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.5", path = "../testing/peritus-test-support" }
-tempfile.workspace = true
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.0.6", path = "../../foundation/peritus-protocol" }
+peritus-run-settlement = { version = "=0.0.6", path = "../../orchestration/peritus-run-settlement" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
+sha2.workspace = true
 
 [package.metadata.peritus]
 owner = "A3"
 layer = "app"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

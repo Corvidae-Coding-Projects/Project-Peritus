@@ -30,10 +30,12 @@ pub(super) struct SpawnedOwner {
     plan: ExecutionPlan,
     shared: Arc<SharedObservation>,
     control_rx: mpsc::Receiver<ControlCommand>,
+    // Drop output delivery before the process: native terminal shutdown can flush output, and
+    // disconnecting this receiver lets reader tasks release backpressure during unwinding.
+    output_rx: mpsc::Receiver<super::io::ReaderMessage>,
     process: Box<dyn PlatformProcess>,
     tree: ProcessTreeIdentity,
     input: Option<Box<dyn std::io::Write + Send>>,
-    output_rx: mpsc::Receiver<super::io::ReaderMessage>,
     reader_tasks: Vec<thread::JoinHandle<()>>,
     reader_count: usize,
     spools: SpoolSet,
@@ -264,11 +266,12 @@ impl SpawnedOwner {
             .plan
             .deadline_policy()
             .wall_timeout_millis()
-            .unwrap_or_else(|| self.plan.resource_policy().wall_millis())
-            .min(self.plan.resource_policy().wall_millis());
+            .into_iter()
+            .chain(self.plan.resource_policy().wall_millis())
+            .min();
         if self.os_exit.is_none()
             && self.lifecycle.first_trigger().is_none()
-            && elapsed_millis(self.began) >= wall_limit
+            && wall_limit.is_some_and(|limit| elapsed_millis(self.began) >= limit)
         {
             accept_trigger(
                 CancellationReason::Deadline,

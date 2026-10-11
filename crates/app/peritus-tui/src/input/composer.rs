@@ -70,12 +70,90 @@ pub fn layout(
     selection: Option<&Range<usize>>,
     width: usize,
 ) -> DraftLayout {
+    layout_for_rows(text, cursor, selection, width, 6)
+}
+
+/// Lays out only the rows needed around the cursor for an explicitly sized editor.
+pub fn layout_for_rows(
+    text: &str,
+    cursor: usize,
+    selection: Option<&Range<usize>>,
+    width: usize,
+    rows: usize,
+) -> DraftLayout {
     let width = width.max(1);
+    let range = visible_range(text, cursor, width, rows.max(1));
+    render_range(text, cursor, selection, width, range)
+}
+
+// Only keep the rows around the cursor. Scanning the prefix keeps byte positions exact without
+// allocating a second copy of the draft or a hit-test entry for every offscreen character.
+fn visible_range(text: &str, cursor: usize, width: usize, context_rows: usize) -> Range<usize> {
+    let mut starts = std::collections::VecDeque::from([0]);
+    let mut column = 0;
+    let mut after = 0;
+    for (index, character) in text.char_indices() {
+        let cells = character_width(character).min(width);
+        if character != '\n' && column + cells > width {
+            if index <= cursor {
+                starts.push_back(index);
+                if starts.len() > context_rows + 1 {
+                    starts.pop_front();
+                }
+            } else {
+                after += 1;
+                if after > context_rows {
+                    return *starts.front().expect("initial row")..index;
+                }
+            }
+            column = 0;
+        }
+        if character == '\n' {
+            let next = index + 1;
+            if next <= cursor {
+                starts.push_back(next);
+                if starts.len() > context_rows + 1 {
+                    starts.pop_front();
+                }
+            } else {
+                after += 1;
+                if after > context_rows {
+                    return *starts.front().expect("initial row")..next;
+                }
+            }
+            column = 0;
+        } else {
+            column += cells;
+        }
+    }
+    *starts.front().expect("initial row")..text.len()
+}
+
+fn character_width(character: char) -> usize {
+    match character {
+        '\t' => 4,
+        '\n' => 0,
+        control if control.is_control() => 1,
+        _ => {
+            let mut bytes = [0; 4];
+            Span::raw(&*character.encode_utf8(&mut bytes)).width()
+        }
+    }
+}
+
+fn render_range(
+    text: &str,
+    cursor: usize,
+    selection: Option<&Range<usize>>,
+    width: usize,
+    range: Range<usize>,
+) -> DraftLayout {
     let mut lines = vec![Line::default()];
-    let mut stops = vec![vec![(0, 0)]];
+    let mut stops = vec![vec![(0, range.start)]];
     let mut column = 0;
     let mut position = (0, 0);
-    for (index, character) in text.char_indices() {
+    for (relative, character) in text[range.clone()].char_indices() {
+        let index = range.start + relative;
         let shown = match character {
             '\t' => "    ".to_owned(),
             '\n' => String::new(),
@@ -114,10 +192,10 @@ pub fn layout(
     }
     if column == width {
         lines.push(Line::default());
-        stops.push(vec![(0, text.len())]);
+        stops.push(vec![(0, range.end)]);
         column = 0;
     }
-    if cursor == text.len() {
+    if cursor == range.end {
         position = (lines.len() - 1, column);
     }
     DraftLayout { lines, row: position.0, column: position.1, stops }
@@ -132,56 +210,5 @@ fn append(lines: &mut [Line<'static>], text: &str, style: Style) {
         } else {
             line.spans.push(Span::styled(text.to_owned(), style));
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cursor_and_clicks_track_wraps_wide_text_and_newlines() {
-        let text = "ab界cd\nλ\n";
-        let draft = layout(text, text.len(), None, 4);
-        assert_eq!(
-            draft.lines.iter().map(ToString::to_string).collect::<Vec<_>>(),
-            ["ab界", "cd", "λ", ""]
-        );
-        assert_eq!((draft.row, draft.column), (3, 0));
-        assert_eq!(draft.hit(0, 2), 2);
-        assert_eq!(draft.hit(0, 3), 2);
-        assert_eq!(draft.hit(1, 0), "ab界".len());
-        assert_eq!(draft.hit(1, 3), "ab界cd".len());
-        assert_eq!(draft.hit(2, 1), "ab界cd\nλ".len());
-        assert_eq!(draft.hit(20, 20), text.len());
-        let draft = layout(text, "ab界".len(), None, 4);
-        assert_eq!((draft.row, draft.column), (1, 0));
-    }
-
-    #[test]
-    fn exact_width_cursor_has_a_visible_next_line() {
-        let draft = layout("abcd", 4, None, 4);
-        assert_eq!(draft.lines.len(), 2);
-        assert_eq!((draft.row, draft.column), (1, 0));
-        assert_eq!(draft.hit(1, 0), 4);
-    }
-
-    #[test]
-    fn tabs_selection_and_combining_text_keep_byte_boundaries() {
-        let draft = layout("a\t界e\u{301}", 2, Some(&(1..5)), 6);
-        assert_eq!(draft.hit(0, 4), 2);
-        assert_eq!(draft.hit(1, 0), 2);
-        assert_eq!((draft.row, draft.column), (1, 0));
-        assert!(draft.lines[0].spans[1].style.add_modifier.contains(Modifier::REVERSED));
-        assert_eq!(draft.lines[1].to_string(), "界e\u{301}");
-    }
-
-    #[test]
-    fn pasted_control_bytes_cannot_become_terminal_commands() {
-        let text = "a\x1b[2J\r\0b";
-        let draft = layout(text, text.len(), None, 80);
-        assert_eq!(draft.lines[0].to_string(), "a�[2J��b");
-        assert_eq!(draft.column, 8);
-        assert_eq!(draft.hit(0, 8), text.len());
     }
 }

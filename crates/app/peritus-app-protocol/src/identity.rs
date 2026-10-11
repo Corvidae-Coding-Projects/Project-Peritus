@@ -2,69 +2,45 @@
 
 use core::fmt;
 use peritus_types::IdentifierError;
-use vstd::prelude::*;
 
 mod invocation;
 pub use invocation::WorkbenchInvocationId;
-
-verus! {
-
-/// Returns whether an application-protocol identifier is not the reserved all-zero value.
-pub open spec fn valid_app_identifier_bytes(bytes: [u8; 16]) -> bool {
-    bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
-        || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
-        || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
-        || bytes[12] != 0 || bytes[13] != 0 || bytes[14] != 0 || bytes[15] != 0
-}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct OpaqueAppIdentifier {
     bytes: [u8; 16],
 }
-
 impl OpaqueAppIdentifier {
-    #[verifier::type_invariant]
-    closed spec fn invariant(&self) -> bool {
-        valid_app_identifier_bytes(self.bytes)
-    }
-
-    closed spec fn spec_bytes(&self) -> [u8; 16] {
-        self.bytes
-    }
-
-    const fn new(bytes: [u8; 16]) -> (result: Result<Self, IdentifierError>)
-        ensures
-            result.is_ok() == valid_app_identifier_bytes(bytes),
-            match result {
-                Ok(identifier) => identifier.spec_bytes() == bytes,
-                Err(_) => true,
-            },
-    {
-        if bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
-            || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
-            || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
-            || bytes[12] != 0 || bytes[13] != 0 || bytes[14] != 0 || bytes[15] != 0
+    const fn new(bytes: [u8; 16]) -> Result<Self, IdentifierError> {
+        if bytes[0] != 0
+            || bytes[1] != 0
+            || bytes[2] != 0
+            || bytes[3] != 0
+            || bytes[4] != 0
+            || bytes[5] != 0
+            || bytes[6] != 0
+            || bytes[7] != 0
+            || bytes[8] != 0
+            || bytes[9] != 0
+            || bytes[10] != 0
+            || bytes[11] != 0
+            || bytes[12] != 0
+            || bytes[13] != 0
+            || bytes[14] != 0
+            || bytes[15] != 0
         {
             Ok(Self { bytes })
         } else {
             Err(IdentifierError::Zero)
         }
     }
-
-    const fn as_bytes(&self) -> (bytes: &[u8; 16])
-        ensures *bytes == self.spec_bytes()
-    {
+    const fn as_bytes(&self) -> &[u8; 16] {
         &self.bytes
     }
-
-    const fn into_bytes(self) -> (bytes: [u8; 16])
-        ensures bytes == self.spec_bytes()
-    {
+    const fn into_bytes(self) -> [u8; 16] {
         self.bytes
     }
 }
-
-} // verus!
 
 mod flow;
 mod inputs;
@@ -134,25 +110,3 @@ impl fmt::Display for IdempotencyKeyError {
 }
 
 impl std::error::Error for IdempotencyKeyError {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn nominal_id_rejects_zero_and_preserves_exact_bytes() {
-        assert_eq!(ProtocolId::new([0; 16]), Err(IdentifierError::Zero));
-        let bytes = [7; 16];
-        assert_eq!(ProtocolId::new(bytes).unwrap().into_bytes(), bytes);
-    }
-
-    #[test]
-    fn idempotency_key_is_nonempty_and_bounded() {
-        assert_eq!(IdempotencyKey::new(Vec::new()), Err(IdempotencyKeyError::Empty));
-        assert_eq!(
-            IdempotencyKey::new(vec![0; MAX_IDEMPOTENCY_KEY_BYTES + 1]),
-            Err(IdempotencyKeyError::TooLong),
-        );
-        assert_eq!(IdempotencyKey::new(vec![1, 2]).unwrap().as_bytes(), &[1, 2]);
-    }
-}

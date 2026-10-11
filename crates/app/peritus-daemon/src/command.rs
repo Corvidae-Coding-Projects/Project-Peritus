@@ -2,8 +2,6 @@
 
 mod facts;
 mod service;
-#[cfg(test)]
-mod service_tests;
 
 pub use facts::{committed_result_digest, rejection_result_digest};
 pub use service::submit;

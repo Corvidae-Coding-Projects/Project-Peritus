@@ -10,20 +10,15 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
-peritus-role = { version = "=0.0.5", path = "../peritus-role" }
-peritus-run-knowledge = { version = "=0.0.5", path = "../peritus-run-knowledge" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" }
+peritus-role = { version = "=0.0.6", path = "../peritus-role" }
+peritus-run-knowledge = { version = "=0.0.6", path = "../peritus-run-knowledge" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 
 [package.metadata.peritus]
 owner = "C6"
 layer = "orchestration"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

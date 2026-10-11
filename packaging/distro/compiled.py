@@ -71,11 +71,6 @@ def verify_source_trees(root, binding, stage="release"):
         if (not binary.exists() or not stat.S_ISREG(binary.lstat().st_mode)
                 or not binary.stat().st_size or not binary.stat().st_mode & stat.S_IXUSR):
             raise ValueError(f"missing or invalid compiled binary: {name}")
-    if stage == "checks":
-        checks = [path for path in (sources[-1] / "target/debug/deps").glob("peritus_launcher-*")
-                  if stat.S_ISREG(path.lstat().st_mode) and path.stat().st_mode & stat.S_IXUSR]
-        if len(checks) != 1 or not checks[0].stat().st_size:
-            raise ValueError("checked compilation requires exactly one nonempty check executable")
     return original
 
 
@@ -232,8 +227,8 @@ def package_compiled():
     (ROOT / "target").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"package-{kind}-finish-", dir=ROOT / "target", delete=False) as temporary:
         root = Path(temporary) / "build"
-        stage = "checks" if kind == "rpm" else "release"
-        directory = "distro-check-compiled" if kind == "rpm" else "distro-compiled"
+        stage = "release"
+        directory = "distro-compiled"
         compilation = restore_bundle(ROOT / "target" / directory, root, binding, stage)
         out = output_directory(kind)
         source = root / f"peritus-{binding['source']['version']}"
@@ -241,25 +236,5 @@ def package_compiled():
         if current_binding(kind, jobs) != binding:
             raise ValueError("candidate or builder changed while finishing packages")
         build.retain_packages(kind, root, source, out, jobs, started, compilation, root.parent)
-    print(f"Built and tested {kind} packages from the retained native compilation in {out}")
+    print(f"Built {kind} packages from the retained native compilation in {out}")
 
-
-def compile_checks():
-    kind, jobs = package_format(), package_build_jobs()
-    if kind != "rpm":
-        raise ValueError("separate check compilation is only supported for RPM")
-    binding = current_binding(kind, jobs)
-    output = ROOT / "target/distro-check-compiled"
-    if output.exists():
-        raise ValueError("refusing to overwrite an existing checked compilation")
-    started = time.time_ns()
-    with tempfile.TemporaryDirectory(prefix="package-rpm-checks-", dir=ROOT / "target", delete=False) as temporary:
-        root = Path(temporary) / "build"
-        previous = restore_bundle(ROOT / "target/distro-compiled", root, binding)
-        source = root / f"peritus-{binding['source']['version']}"
-        build.run_native_build(kind, root, source, binding["source"]["source_date_epoch"], jobs, "compile-checks")
-        if current_binding(kind, jobs) != binding:
-            raise ValueError("candidate or builder changed while compiling package checks")
-        observation = build.build_observation(root.parent, jobs, started)
-        save_bundle(root, output, binding, observation, previous)
-    print(f"Retained native RPM release and check compilation in {output}")

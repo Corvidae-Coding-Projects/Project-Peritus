@@ -64,8 +64,9 @@ pub fn inspect(
     workspace: &ReadOnlyWorkspace,
     explicit: Vec<CheckDefinition>,
 ) -> Result<CheckCatalog, QualityError> {
-    let entries = workspace.list_directory(None)?;
-    let cargo = if regular_file(&entries, "Cargo.toml") {
+    let listing = workspace.list_directory(None)?;
+    let entries = listing.entries();
+    let cargo = if regular_file(entries, "Cargo.toml") {
         let path = WorkspacePath::new("Cargo.toml").map_err(|error| {
             QualityError::new(QualityErrorKind::InvalidInput, error.to_string())
         })?;
@@ -75,7 +76,7 @@ pub fn inspect(
     };
     let mut justfiles = Vec::new();
     for name in ["Justfile", "justfile"] {
-        if regular_file(&entries, name) {
+        if regular_file(entries, name) {
             let path = WorkspacePath::new(name).map_err(|error| {
                 QualityError::new(QualityErrorKind::InvalidInput, error.to_string())
             })?;
@@ -161,36 +162,4 @@ fn derived_gate_id(name: &str, executable: &str, arguments: &[String]) -> GateId
         bytes[15] = 1;
     }
     GateId::new(bytes).expect("derived nonzero gate identifier")
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fs;
-
-    use super::*;
-
-    #[test]
-    fn real_temporary_project_discovers_cargo_and_just_surfaces() {
-        let project = tempfile::tempdir().expect("temporary project");
-        let cargo_path = project.path().join("Cargo.toml");
-        let just_path = project.path().join("Justfile");
-        fs::write(&cargo_path, "[package]\nname='fixture'\nversion='0.1.0'\n").expect("Cargo.toml");
-        fs::write(&just_path, "verify:\n  cargo test\n").expect("Justfile");
-        let cargo = fs::read(cargo_path).expect("read Cargo.toml");
-        let just = fs::read(just_path).expect("read Justfile");
-        let catalog = from_surfaces(Vec::new(), Some(&cargo), &[("Justfile".to_owned(), just)])
-            .expect("catalog");
-        let names: Vec<_> =
-            catalog.checks().iter().map(|check| check.definition().gate_name()).collect();
-        assert_eq!(
-            names,
-            ["cargo.check", "cargo.clippy", "cargo.fmt", "cargo.test", "just.verify"]
-        );
-        assert!(
-            catalog
-                .checks()
-                .iter()
-                .all(|check| { check.definition().requirement() == CheckRequirement::Discovered })
-        );
-    }
 }

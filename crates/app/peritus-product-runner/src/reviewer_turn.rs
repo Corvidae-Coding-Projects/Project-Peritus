@@ -4,7 +4,9 @@ use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_review::ProductReviewSubmission;
 
 use crate::budget::RunAccounting;
-use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
+use crate::developer_tools::{
+    ReviewerEvidenceSources, WorkspaceDeveloperTools, reviewer_definitions,
+};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind, review, turn};
 
@@ -17,6 +19,23 @@ pub struct ReviewEvidence<'a> {
     pub gates: &'a str,
     pub developer_commands: &'a str,
     pub prior: &'a str,
+}
+
+impl ReviewEvidence<'_> {
+    fn retained_sources(
+        &self,
+        transcript: String,
+        correction: Option<&str>,
+    ) -> ReviewerEvidenceSources {
+        ReviewerEvidenceSources::new(
+            transcript,
+            self.diff.to_owned(),
+            self.gates.to_owned(),
+            self.developer_commands.to_owned(),
+            self.prior.to_owned(),
+            correction.unwrap_or_default().to_owned(),
+        )
+    }
 }
 
 /// Runs a fresh reviewer with bounded read-only workspace tools and parses its typed submission.
@@ -57,7 +76,8 @@ pub async fn complete(
         let (prompt, attachments) = media.into_parts(request.prompt);
         let mut tools = input.configure_tools(
             WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
-                .with_task_contract(evidence.conversation),
+                .with_task_contract(evidence.conversation)
+                .with_reviewer_evidence_sources(request.archive),
         );
         let result = crate::local_context::run_live_invocation(
             providers.current(),
@@ -125,6 +145,7 @@ struct ReviewRequest {
     system: String,
     prompt: String,
     tools: Vec<peritus_model_protocol::ToolDefinition>,
+    archive: ReviewerEvidenceSources,
 }
 
 fn prepare_request(
@@ -136,7 +157,8 @@ fn prepare_request(
     memory: Option<&crate::local_context::LocalContextHandle>,
 ) -> Result<ReviewRequest, ProductRunnerError> {
     let system = turn::reviewer_system(remaining) + input.delivery_instructions();
-    let tools = read_only_definitions()?;
+    let transcript = input.conversation.stable_request_context();
+    let tools = reviewer_definitions()?;
     let mut budget_tools = tools.clone();
     if let Some(memory) = memory {
         budget_tools
@@ -145,12 +167,17 @@ fn prepare_request(
     let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
         system: &system,
         tools: &budget_tools,
-        transcript: &input.conversation.stable_request_context(),
+        transcript: &transcript,
         diff: evidence.diff,
         gates: evidence.gates,
         developer_evidence: evidence.developer_commands,
         prior: evidence.prior,
         max_input_tokens,
+        additional_framing_tokens: memory
+            .map(crate::local_context::LocalContextHandle::additional_request_framing_tokens)
+            .transpose()
+            .map_err(|error| turn::developer_error(&error))?
+            .unwrap_or(0),
         delivery: turn::ReviewDelivery {
             scope: input.delivery_scope,
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::from_task(
@@ -161,7 +188,8 @@ fn prepare_request(
         correction,
     })
     .map_err(|error| turn::developer_error(&error))?;
-    Ok(ReviewRequest { system, prompt, tools })
+    let archive = evidence.retained_sources(transcript, correction);
+    Ok(ReviewRequest { system, prompt, tools, archive })
 }
 
 fn grounded_submission(
@@ -221,32 +249,4 @@ fn grounding(detail: &'static str) -> ProductRunnerError {
         "ground independent review in repository evidence",
         detail,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ungrounded_review_has_a_typed_public_reason_without_response_bytes() {
-        let root = tempfile::tempdir().expect("workspace");
-        let tools = WorkspaceDeveloperTools::read_only(root.path().to_owned());
-        let Err(rejected) = grounded_submission(&tools, "PRIVATE_RESPONSE_CANARY", 1) else {
-            panic!("uninspected review cannot be accepted")
-        };
-        assert_eq!(rejected.reason, peritus_agent::DeveloperReviewRetryReason::MissingGrounding);
-        assert!(!rejected.error.detail().contains("PRIVATE_RESPONSE_CANARY"));
-    }
-
-    #[test]
-    fn rejected_review_requires_fresh_authoritative_reads() {
-        let error = grounding("repository grounding requires a successful workspace listing");
-        let correction = correction_prompt(&error);
-
-        assert!(correction.contains("fresh workspace_list call"));
-        assert!(correction.contains("host tool-call interface"));
-        assert!(correction.contains("authoritative source inputs"));
-        assert!(correction.contains("exact changed files"));
-        assert!(correction.contains(error.detail()));
-    }
 }

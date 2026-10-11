@@ -3,9 +3,6 @@
 //! MCP input is untrusted protocol data. The crate projects already-exposed tools and forwards
 //! calls to a daemon-owned [`AuthorityBridge`]; it cannot construct C4 invocation permits.
 
-#[allow(unused_imports, reason = "Verus verifies every crate target through this prelude")]
-use vstd::prelude::*;
-
 mod bridge;
 mod cancellation;
 mod error;

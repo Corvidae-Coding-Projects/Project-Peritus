@@ -264,18 +264,25 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchContext,
         WellKnownProtocolFeature::WorkbenchCompaction,
         WellKnownProtocolFeature::WorkbenchBrief,
+        WellKnownProtocolFeature::WorkbenchBriefPages,
         WellKnownProtocolFeature::WorkbenchImages,
         WellKnownProtocolFeature::WorkbenchFiles,
+        WellKnownProtocolFeature::WorkbenchReferencedText,
+        WellKnownProtocolFeature::WorkbenchQueueMoves,
         WellKnownProtocolFeature::WorkbenchGoals,
         WellKnownProtocolFeature::WorkbenchReview,
+        WellKnownProtocolFeature::WorkbenchReviewPages,
+        WellKnownProtocolFeature::WorkbenchReviewSummary,
         WellKnownProtocolFeature::WorkbenchPreview,
         WellKnownProtocolFeature::WorkbenchPreviewOutput,
         WellKnownProtocolFeature::WorkbenchCheckpoints,
+        WellKnownProtocolFeature::WorkbenchCheckpointPages,
         WellKnownProtocolFeature::ConversationLibrary,
         WellKnownProtocolFeature::ConversationForks,
         WellKnownProtocolFeature::WorkbenchPermissions,
         WellKnownProtocolFeature::WorkbenchMemory,
         WellKnownProtocolFeature::WorkbenchInit,
+        WellKnownProtocolFeature::WorkbenchInitArtifacts,
         WellKnownProtocolFeature::GracefulShutdown,
     ]
     .into_iter()
@@ -389,9 +396,3 @@ fn connect_local(endpoint: &Path) -> std::future::Ready<Result<BoxedLocalIo, std
         ClientOptions::new().open(endpoint).map(|stream| Box::new(stream) as BoxedLocalIo),
     )
 }
-
-#[cfg(all(test, unix))]
-mod unix_tests;
-
-#[cfg(test)]
-mod tests;

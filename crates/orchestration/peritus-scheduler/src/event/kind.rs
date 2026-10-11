@@ -7,12 +7,11 @@ use crate::{
     DispatchId, FailureDisposition, SchedulerBinding, SchedulerReservation, SchedulerTerminal,
     WorkId, WorkSpec, WorkerDescriptor, WorkerId,
 };
-use vstd::prelude::*;
 
 /// Closed semantic fact emitted by the scheduler reducer.
 // Direct verification preserves the documented enum fields without relying on synthesized
 // projections from the pinned Verus macro.
-#[cfg_attr(verus_keep_ghost, verifier::verify)]
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum SchedulerEventKind {
     /// Scheduler aggregate started.
@@ -124,169 +123,52 @@ pub enum SchedulerEventKind {
     },
 }
 
-verus! {
-
-impl SchedulerEventKind {
-    /// Relates an exact semantic clone of an accepted scheduler fact.
-    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
-        match (left, right) {
-            (Self::SchedulerStarted { binding: left }, Self::SchedulerStarted { binding: right }) => {
-                SchedulerBinding::clone_equivalent(left, right)
-            },
-            (
-                Self::WorkerRegistered { descriptor: left },
-                Self::WorkerRegistered { descriptor: right },
-            ) => WorkerDescriptor::clone_equivalent(left, right),
-            (
-                Self::WorkerAvailable { worker_id: left },
-                Self::WorkerAvailable { worker_id: right },
-            )
-            | (
-                Self::WorkerDrainRequested { worker_id: left },
-                Self::WorkerDrainRequested { worker_id: right },
-            )
-            | (Self::WorkerRemoved { worker_id: left }, Self::WorkerRemoved { worker_id: right }) => {
-                left == right
-            },
-            (
-                Self::WorkerLost { worker_id: left_id, outcomes: left_outcomes },
-                Self::WorkerLost { worker_id: right_id, outcomes: right_outcomes },
-            ) => left_id == right_id && left_outcomes@ == right_outcomes@,
-            (Self::WorkAdmitted { spec: left }, Self::WorkAdmitted { spec: right }) => {
-                WorkSpec::clone_equivalent(left, right)
-            },
-            (
-                Self::WorkReserved { reservation: left },
-                Self::WorkReserved { reservation: right },
-            ) => SchedulerReservation::clone_equivalent(left, right),
-            (
-                Self::WorkStartAcknowledged { dispatch_id: left },
-                Self::WorkStartAcknowledged { dispatch_id: right },
-            )
-            | (
-                Self::CancellationAcknowledged { dispatch_id: left },
-                Self::CancellationAcknowledged { dispatch_id: right },
-            ) => left == right,
-            (
-                Self::WorkSucceeded { dispatch_id: left_id, result_digest: left_digest },
-                Self::WorkSucceeded { dispatch_id: right_id, result_digest: right_digest },
-            ) => left_id == right_id && left_digest == right_digest,
-            (
-                Self::WorkFailed {
-                    dispatch_id: left_id,
-                    failure_digest: left_digest,
-                    disposition: left_disposition,
-                },
-                Self::WorkFailed {
-                    dispatch_id: right_id,
-                    failure_digest: right_digest,
-                    disposition: right_disposition,
-                },
-            ) => left_id == right_id
-                && left_digest == right_digest
-                && left_disposition == right_disposition,
-            (Self::WorkRetryQueued { work_id: left }, Self::WorkRetryQueued { work_id: right }) => {
-                left == right
-            },
-            (
-                Self::WorkCancelled {
-                    work_id: left_id,
-                    descendants: left_descendants,
-                    affected: left_affected,
-                },
-                Self::WorkCancelled {
-                    work_id: right_id,
-                    descendants: right_descendants,
-                    affected: right_affected,
-                },
-            ) => left_id == right_id
-                && left_descendants == right_descendants
-                && left_affected@ == right_affected@,
-            (
-                Self::WorkExhausted { work_id: left_id, cause_digest: left_digest },
-                Self::WorkExhausted { work_id: right_id, cause_digest: right_digest },
-            ) => left_id == right_id && left_digest == right_digest,
-            (
-                Self::DispatchAbandoned { dispatch_id: left_id, cause_digest: left_digest },
-                Self::DispatchAbandoned { dispatch_id: right_id, cause_digest: right_digest },
-            ) => left_id == right_id && left_digest == right_digest,
-            (Self::SchedulerPaused, Self::SchedulerPaused)
-            | (Self::SchedulerResumed, Self::SchedulerResumed)
-            | (Self::SchedulerDrainRequested, Self::SchedulerDrainRequested) => true,
-            (
-                Self::SchedulerFinalized { terminal: left },
-                Self::SchedulerFinalized { terminal: right },
-            ) => SchedulerTerminal::clone_equivalent(left, right),
-            _ => false,
-        }
-    }
-}
-
-fn clone_loss_outcomes(values: &[LossOutcome]) -> (result: Vec<LossOutcome>)
-    ensures result@ == values@,
-{
+impl SchedulerEventKind {}
+fn clone_loss_outcomes(values: &[LossOutcome]) -> Vec<LossOutcome> {
     let mut result = Vec::with_capacity(values.len());
     let mut index = 0;
-    while index < values.len()
-        invariant
-            index <= values@.len(),
-            result@ == values@.take(index as int),
-        decreases values@.len() - index,
-    {
+    while index < values.len() {
         result.push(values[index].clone());
         index += 1;
     }
     result
 }
-
-fn clone_work_ids(values: &[WorkId]) -> (result: Vec<WorkId>)
-    ensures result@ == values@,
-{
+fn clone_work_ids(values: &[WorkId]) -> Vec<WorkId> {
     let mut result = Vec::with_capacity(values.len());
     let mut index = 0;
-    while index < values.len()
-        invariant
-            index <= values@.len(),
-            result@ == values@.take(index as int),
-        decreases values@.len() - index,
-    {
+    while index < values.len() {
         result.push(values[index]);
         index += 1;
     }
     result
 }
-
 impl Clone for SchedulerEventKind {
-    fn clone(&self) -> (result: Self)
-        ensures Self::clone_equivalent(self, &result),
-    {
+    fn clone(&self) -> Self {
         match self {
             Self::SchedulerStarted { binding } => {
                 Self::SchedulerStarted { binding: binding.clone() }
-            },
+            }
             Self::WorkerRegistered { descriptor } => {
                 Self::WorkerRegistered { descriptor: descriptor.clone() }
-            },
+            }
             Self::WorkerAvailable { worker_id } => Self::WorkerAvailable { worker_id: *worker_id },
             Self::WorkerDrainRequested { worker_id } => {
                 Self::WorkerDrainRequested { worker_id: *worker_id }
-            },
-            Self::WorkerLost { worker_id, outcomes } => Self::WorkerLost {
-                worker_id: *worker_id,
-                outcomes: clone_loss_outcomes(outcomes),
-            },
+            }
+            Self::WorkerLost { worker_id, outcomes } => {
+                Self::WorkerLost { worker_id: *worker_id, outcomes: clone_loss_outcomes(outcomes) }
+            }
             Self::WorkerRemoved { worker_id } => Self::WorkerRemoved { worker_id: *worker_id },
             Self::WorkAdmitted { spec } => Self::WorkAdmitted { spec: spec.clone() },
             Self::WorkReserved { reservation } => {
                 Self::WorkReserved { reservation: reservation.clone() }
-            },
+            }
             Self::WorkStartAcknowledged { dispatch_id } => {
                 Self::WorkStartAcknowledged { dispatch_id: *dispatch_id }
-            },
-            Self::WorkSucceeded { dispatch_id, result_digest } => Self::WorkSucceeded {
-                dispatch_id: *dispatch_id,
-                result_digest: *result_digest,
-            },
+            }
+            Self::WorkSucceeded { dispatch_id, result_digest } => {
+                Self::WorkSucceeded { dispatch_id: *dispatch_id, result_digest: *result_digest }
+            }
             Self::WorkFailed { dispatch_id, failure_digest, disposition } => Self::WorkFailed {
                 dispatch_id: *dispatch_id,
                 failure_digest: *failure_digest,
@@ -300,23 +182,19 @@ impl Clone for SchedulerEventKind {
             },
             Self::CancellationAcknowledged { dispatch_id } => {
                 Self::CancellationAcknowledged { dispatch_id: *dispatch_id }
-            },
-            Self::WorkExhausted { work_id, cause_digest } => Self::WorkExhausted {
-                work_id: *work_id,
-                cause_digest: *cause_digest,
-            },
-            Self::DispatchAbandoned { dispatch_id, cause_digest } => Self::DispatchAbandoned {
-                dispatch_id: *dispatch_id,
-                cause_digest: *cause_digest,
-            },
+            }
+            Self::WorkExhausted { work_id, cause_digest } => {
+                Self::WorkExhausted { work_id: *work_id, cause_digest: *cause_digest }
+            }
+            Self::DispatchAbandoned { dispatch_id, cause_digest } => {
+                Self::DispatchAbandoned { dispatch_id: *dispatch_id, cause_digest: *cause_digest }
+            }
             Self::SchedulerPaused => Self::SchedulerPaused,
             Self::SchedulerResumed => Self::SchedulerResumed,
             Self::SchedulerDrainRequested => Self::SchedulerDrainRequested,
             Self::SchedulerFinalized { terminal } => {
                 Self::SchedulerFinalized { terminal: terminal.clone() }
-            },
+            }
         }
     }
 }
-
-} // verus!

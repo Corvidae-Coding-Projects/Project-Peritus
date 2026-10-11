@@ -7,9 +7,6 @@ use super::encoding::{
 };
 use peritus_policy::{ApprovalRequirement, AuthorityInstant};
 use peritus_types::RevisionTuple;
-use vstd::prelude::*;
-
-verus! {
 
 fn instant(
     builder: &mut Builder,
@@ -20,26 +17,16 @@ fn instant(
     builder.required_field(epoch_name, &decimal_u64(value.epoch().get()))?;
     builder.required_field(tick_name, &decimal_u64(value.tick_millis()))
 }
-
-fn revision(
-    builder: &mut Builder,
-    value: RevisionTuple,
-) -> Result<(), crate::ApprovalError> {
+fn revision(builder: &mut Builder, value: RevisionTuple) -> Result<(), crate::ApprovalError> {
     builder.required_field("acceptance-spec-id", &hex(value.acceptance_spec_id().as_bytes()))?;
     builder.required_field("harness-id", &hex(value.harness_id().as_bytes()))?;
     builder.required_field("workspace-id", &hex(value.workspace_id().as_bytes()))?;
-    builder.required_field(
-        "workspace-generation",
-        &decimal_u64(value.workspace_generation().get()),
-    )?;
-    builder.required_field(
-        "workspace-revision",
-        &decimal_u64(value.workspace_revision().get()),
-    )?;
+    builder
+        .required_field("workspace-generation", &decimal_u64(value.workspace_generation().get()))?;
+    builder.required_field("workspace-revision", &decimal_u64(value.workspace_revision().get()))?;
     builder.required_field("policy-id", &hex(value.policy_id().as_bytes()))?;
     builder.required_field("provider-profile-id", &hex(value.provider_profile_id().as_bytes()))
 }
-
 fn requirement(
     builder: &mut Builder,
     value: &ApprovalRequirement,
@@ -48,10 +35,7 @@ fn requirement(
     let mut roles = String::new();
     let role_values = value.approver_roles();
     let mut index = 0;
-    while index < role_values.len()
-        invariant 0 <= index <= role_values.len(),
-        decreases role_values.len() - index,
-    {
+    while index < role_values.len() {
         if index > 0 {
             roles.push(',');
         }
@@ -59,14 +43,10 @@ fn requirement(
         index += 1;
     }
     builder.required_field("approver-roles", &roles)?;
-
     let mut independence = String::new();
     let independence_values = value.independence().as_slice();
     let mut index = 0;
-    while index < independence_values.len()
-        invariant 0 <= index <= independence_values.len(),
-        decreases independence_values.len() - index,
-    {
+    while index < independence_values.len() {
         if index > 0 {
             independence.push(',');
         }
@@ -87,7 +67,6 @@ fn requirement(
         value.validity().expires_at(),
     )
 }
-
 fn resolution(
     builder: &mut Builder,
     value: Option<crate::ApprovalResolutionFacts>,
@@ -106,10 +85,7 @@ fn resolution(
         "resolution-registry-revision",
         &decimal_u64(value.registry_revision().get()),
     )?;
-    builder.required_field(
-        "resolution-registry-digest",
-        &digest_value(value.registry_digest()),
-    )?;
+    builder.required_field("resolution-registry-digest", &digest_value(value.registry_digest()))?;
     builder.required_field(
         "resolution-credential-generation",
         &decimal_u64(value.credential_generation().get()),
@@ -137,7 +113,6 @@ fn resolution(
     }
     Ok(())
 }
-
 pub(super) fn render(
     builder: &mut Builder,
     aggregate: &crate::ApprovalAggregate,
@@ -186,20 +161,9 @@ pub(super) fn render(
         "request-expires-at-tick",
         request.validity().expires_at(),
     )?;
-    instant(
-        builder,
-        "evaluated-at-epoch",
-        "evaluated-at-tick",
-        request.evaluated_at(),
-    )?;
-    builder.required_field(
-        "challenge-epoch",
-        &decimal_u64(request.challenge_epoch().get()),
-    )?;
-    builder.required_field(
-        "challenge-tick",
-        &decimal_u64(request.challenge_tick_millis()),
-    )?;
+    instant(builder, "evaluated-at-epoch", "evaluated-at-tick", request.evaluated_at())?;
+    builder.required_field("challenge-epoch", &decimal_u64(request.challenge_epoch().get()))?;
+    builder.required_field("challenge-tick", &decimal_u64(request.challenge_tick_millis()))?;
     builder.required_field(
         "authority-floor-epoch",
         &decimal_u64(request.authority_time().epoch().get()),
@@ -208,17 +172,11 @@ pub(super) fn render(
         "authority-floor-tick",
         &decimal_u64(request.authority_time().greatest_tick_millis()),
     )?;
-    builder.required_field(
-        "risk-details-digest",
-        &digest_value(request.risk_details_digest()),
-    )?;
+    builder.required_field("risk-details-digest", &digest_value(request.risk_details_digest()))?;
     let mut risks = String::new();
     let risk_values = request.risks().as_slice();
     let mut index = 0;
-    while index < risk_values.len()
-        invariant 0 <= index <= risk_values.len(),
-        decreases risk_values.len() - index,
-    {
+    while index < risk_values.len() {
         if index > 0 {
             risks.push(',');
         }
@@ -228,5 +186,3 @@ pub(super) fn render(
     builder.required_field("risks", &risks)?;
     resolution(builder, aggregate.resolution())
 }
-
-} // verus!

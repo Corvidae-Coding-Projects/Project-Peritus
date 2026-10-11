@@ -27,8 +27,12 @@ use crate::{
 /// issuing an operating-system request.
 ///
 /// Linux tokens are `/proc/<pid>/stat` start ticks, macOS tokens are process-start microseconds,
-/// and Windows tokens are creation-time `FILETIME` ticks. Unix recovery terminates only a complete
-/// root-led process group. Windows can re-observe the exact root, but exact tree termination
+/// and Windows tokens are creation-time `FILETIME` ticks. Linux recovery observes the complete
+/// root-led session, including ordinary job-control groups, and guards each signal with a
+/// process handle and birth recheck. A missing root with remaining session members stays
+/// unverifiable because the durable root token cannot authenticate descendant births after
+/// a recovery gap. Other Unix recovery uses a root-led process
+/// group. Windows can re-observe the exact root, but exact tree termination
 /// remains indeterminate unless C2 later persists a reopenable job-object identity.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NativeProcessProbe;

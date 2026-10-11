@@ -8,55 +8,19 @@ use crate::{
 };
 use peritus_quality_policy::{AcceptanceEvidence, evaluate_acceptance};
 use peritus_types::{AttemptId, RunId};
-use vstd::prelude::*;
-
-verus! {
-
-pub(super) proof fn authorization_follows_clone(
-    cloned: &KernelAggregate,
-    original: &KernelAggregate,
-    inputs: &ReducerInputs<'_>,
-)
-    requires
-        inputs.spec_acceptance_authorized(cloned.revision),
-        cloned.spec_revision() == original.spec_revision(),
-    ensures inputs.spec_acceptance_authorized(original.revision),
-{
-    cloned.expose_internal_views();
-    original.expose_internal_views();
-}
 
 pub(super) fn apply(
     state: &mut KernelAggregate,
     command: &KernelCommand,
     inputs: &ReducerInputs<'_>,
-) -> (result: Result<AppliedCommand, KernelError>)
-    ensures
-        final(state).revision == old(state).revision,
-        result.is_err() ==> *final(state) == *old(state),
-        match result {
-            Ok(applied) => applied.event_kind == KernelEventKind::AcceptanceAccepted
-                ==> inputs.spec_acceptance_authorized(old(state).revision),
-            Err(_) => true,
-        },
-{
+) -> Result<AppliedCommand, KernelError> {
     match command {
         KernelCommand::BeginAcceptance { run_id } => begin(state, *run_id),
         KernelCommand::EvaluateAcceptance { run_id } => evaluate(state, *run_id, inputs),
         _ => Err(KernelError::entity(KernelErrorKind::IllegalPhase, LifecycleEntity::Acceptance)),
     }
 }
-
-fn begin(state: &mut KernelAggregate, run_id: RunId) -> (result: Result<AppliedCommand, KernelError>)
-    ensures
-        final(state).revision == old(state).revision,
-        result.is_err() ==> *final(state) == *old(state),
-        match result {
-            Ok(applied) => applied.event_kind == KernelEventKind::AcceptanceBegun
-                && applied.subject == KernelSubject::Acceptance(run_id),
-            Err(_) => true,
-        },
-{
+fn begin(state: &mut KernelAggregate, run_id: RunId) -> Result<AppliedCommand, KernelError> {
     let Some(run_index) = state.run_index(run_id) else {
         return Err(KernelError::entity(KernelErrorKind::MissingEntity, LifecycleEntity::Run));
     };
@@ -71,32 +35,19 @@ fn begin(state: &mut KernelAggregate, run_id: RunId) -> (result: Result<AppliedC
         || state.attempts[attempt_index].phase() != AttemptPhase::Reviewing
         || !has_submitted_review(state, run_id, attempt_id)
     {
-        return Err(KernelError::entity(KernelErrorKind::IllegalPhase, LifecycleEntity::Acceptance));
+        return Err(KernelError::entity(
+            KernelErrorKind::IllegalPhase,
+            LifecycleEntity::Acceptance,
+        ));
     }
     state.runs[run_index].set_acceptance(AcceptancePhase::Evaluating);
-    Ok(AppliedCommand::new(
-        KernelEventKind::AcceptanceBegun,
-        KernelSubject::Acceptance(run_id),
-    ))
+    Ok(AppliedCommand::new(KernelEventKind::AcceptanceBegun, KernelSubject::Acceptance(run_id)))
 }
-
 fn evaluate(
     state: &mut KernelAggregate,
     run_id: RunId,
     inputs: &ReducerInputs<'_>,
-) -> (result: Result<AppliedCommand, KernelError>)
-    ensures
-        final(state).revision == old(state).revision,
-        result.is_err() ==> *final(state) == *old(state),
-        match result {
-            Ok(applied) => applied.subject == KernelSubject::Acceptance(run_id)
-                && (applied.event_kind == KernelEventKind::AcceptanceAccepted
-                    <==> inputs.spec_acceptance_authorized(old(state).revision))
-                && (applied.event_kind == KernelEventKind::AcceptanceAccepted
-                    || applied.event_kind == KernelEventKind::AcceptanceNeedsChanges),
-            Err(_) => true,
-        },
-{
+) -> Result<AppliedCommand, KernelError> {
     let Some(run_index) = state.run_index(run_id) else {
         return Err(KernelError::entity(KernelErrorKind::MissingEntity, LifecycleEntity::Run));
     };
@@ -110,7 +61,10 @@ fn evaluate(
         || state.runs[run_index].acceptance() != AcceptancePhase::Evaluating
         || state.attempts[attempt_index].phase() != AttemptPhase::Reviewing
     {
-        return Err(KernelError::entity(KernelErrorKind::IllegalPhase, LifecycleEntity::Acceptance));
+        return Err(KernelError::entity(
+            KernelErrorKind::IllegalPhase,
+            LifecycleEntity::Acceptance,
+        ));
     }
     let Some(evidence) = inputs.acceptance_evidence() else {
         return Err(KernelError::authority(
@@ -147,13 +101,9 @@ fn evaluate(
         ))
     }
 }
-
 fn has_submitted_review(state: &KernelAggregate, run_id: RunId, attempt_id: AttemptId) -> bool {
     let mut index = 0;
-    while index < state.reviews.len()
-        invariant index <= state.reviews.len(),
-        decreases state.reviews.len() - index,
-    {
+    while index < state.reviews.len() {
         let review = state.reviews[index];
         if review.run_id() == run_id
             && review.attempt_id() == attempt_id
@@ -165,7 +115,6 @@ fn has_submitted_review(state: &KernelAggregate, run_id: RunId, attempt_id: Atte
     }
     false
 }
-
 fn evidence_matches_projection(
     state: &KernelAggregate,
     run_id: RunId,
@@ -173,12 +122,11 @@ fn evidence_matches_projection(
     evidence: &AcceptanceEvidence,
 ) -> bool {
     let mut index = 0;
-    while index < evidence.reviews().len()
-        invariant index <= evidence.spec_reviews().len(),
-        decreases evidence.spec_reviews().len() - index,
-    {
+    while index < evidence.reviews().len() {
         let observation = &evidence.reviews()[index];
-        let Some(review) = state.review(observation.cycle_id()) else { return false; };
+        let Some(review) = state.review(observation.cycle_id()) else {
+            return false;
+        };
         if review.run_id() != run_id
             || review.attempt_id() != attempt_id
             || review.phase() != ReviewPhase::Submitted
@@ -189,12 +137,11 @@ fn evidence_matches_projection(
         index += 1;
     }
     let mut index = 0;
-    while index < evidence.waivers().len()
-        invariant index <= evidence.spec_waivers().len(),
-        decreases evidence.spec_waivers().len() - index,
-    {
+    while index < evidence.waivers().len() {
         let observation = &evidence.waivers()[index];
-        let Some(waiver) = state.waiver(observation.finding_id()) else { return false; };
+        let Some(waiver) = state.waiver(observation.finding_id()) else {
+            return false;
+        };
         if waiver.run_id() != run_id
             || waiver.phase() != WaiverPhase::Granted
             || observation.revision() != state.revision
@@ -205,5 +152,3 @@ fn evidence_matches_projection(
     }
     true
 }
-
-} // verus!

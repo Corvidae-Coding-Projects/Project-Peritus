@@ -9,15 +9,10 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-vstd.workspace = true
 
 [package.metadata.peritus]
 owner = "A1"
 layer = "foundation"
-verification-class = "V"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

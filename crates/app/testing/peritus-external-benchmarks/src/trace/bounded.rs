@@ -57,24 +57,3 @@ fn suffix(value: &str, budget: usize) -> &str {
     }
     &value[start..]
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn short_values_remain_exact() {
-        assert_eq!(tool_output("complete"), "complete");
-    }
-
-    #[test]
-    fn long_utf8_values_are_digest_labeled_and_bounded() {
-        let value = "évidence-".repeat(200);
-        let projected = tool_output(&value);
-
-        assert!(projected.contains("Peritus bounded tool output"));
-        assert!(projected.contains(&format!("original_bytes={}", value.len())));
-        assert!(projected.contains("exact value is in the native trace"));
-        assert!(projected.len() < 512);
-    }
-}

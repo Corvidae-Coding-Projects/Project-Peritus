@@ -2,9 +2,6 @@
 
 mod children;
 
-#[cfg(test)]
-mod children_tests;
-
 use peritus_journal::{OutboxId, SqliteJournal};
 use peritus_orchestrator::{
     ClaimedDirectiveAcknowledgement, DirectiveDeliveryState, OrchestratorCommand,

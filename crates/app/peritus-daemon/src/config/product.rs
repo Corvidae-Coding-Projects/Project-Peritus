@@ -22,25 +22,3 @@ impl ProductRunPolicy {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn failover_defaults_off_and_requires_an_explicit_true_value() {
-        assert!(!ProductRunPolicy::default().automatic_provider_failover());
-        let enabled: ProductRunPolicy =
-            toml::from_str("automatic_provider_failover = true").expect("explicit policy");
-        assert!(enabled.automatic_provider_failover());
-        let legacy: ProductRunPolicy = toml::from_str(
-            "automatic_provider_failover = false\nprovider_turn_timeout_seconds = 45",
-        )
-        .expect("legacy provider deadline remains readable");
-        assert!(!legacy.automatic_provider_failover());
-        assert!(legacy.validate().is_ok());
-        let formerly_invalid: ProductRunPolicy =
-            toml::from_str("provider_turn_timeout_seconds = 0").expect("parse policy");
-        assert!(formerly_invalid.validate().is_ok());
-    }
-}

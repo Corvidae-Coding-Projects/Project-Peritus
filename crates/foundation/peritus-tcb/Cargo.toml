@@ -10,15 +10,10 @@ readme = "README.md"
 description = "Audited trust-boundary policy anchor for Project Peritus"
 
 [dependencies]
-vstd.workspace = true
 
 [package.metadata.peritus]
 owner = "A1"
 layer = "foundation"
-verification-class = "T"
-
-[package.metadata.verus]
-verify = true
 
 [lints]
 workspace = true

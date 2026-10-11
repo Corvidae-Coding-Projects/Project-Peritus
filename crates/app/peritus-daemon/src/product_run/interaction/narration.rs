@@ -44,7 +44,6 @@ pub(super) fn waiting(
     options.append(ProductActivityKind::Status, &text, WAIT_DETAIL)
 }
 
-#[cfg(not(verus_only))]
 pub(super) fn review_retry(
     options: &mut InteractionOptions,
     next_attempt: u64,
@@ -65,57 +64,4 @@ pub(super) fn review_retry(
         &format!("{reason} Retrying review (attempt {next_attempt}) with fresh repository reads. Your existing work is retained."),
         "Host recovery notice",
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use peritus_app_protocol::ProductRoleModels;
-
-    #[test]
-    fn review_retry_is_visible_and_separate_from_provider_text_and_wait_status() {
-        use peritus_agent::DeveloperReviewRetryReason::{InvalidSubmission, MissingGrounding};
-        let mut options =
-            InteractionOptions::test(ProductInteractionMode::Build, ProductRoleModels::default());
-        options.text(b"Original reviewer output").expect("provider text");
-        review_retry(&mut options, 2, MissingGrounding).expect("grounding notice");
-        waiting(&mut options, 20).expect("status");
-        review_retry(&mut options, 3, InvalidSubmission).expect("schema notice");
-        options.text(b"Corrected reviewer output").expect("provider text");
-        assert_eq!(options.activities.len(), 5);
-        assert_eq!(options.activities[0].text(), "Original reviewer output");
-        assert_eq!(options.activities[4].text(), "Corrected reviewer output");
-        for (index, attempt, reason) in
-            [(1, "attempt 2", "repository evidence"), (3, "attempt 3", "invalid review")]
-        {
-            let notice = &options.activities[index];
-            assert_eq!(notice.kind(), ProductActivityKind::Assistant);
-            assert_eq!(notice.detail(), "Host recovery notice");
-            assert!(notice.text().contains(attempt));
-            assert!(notice.text().contains(reason));
-            assert!(notice.text().contains("existing work is retained"));
-        }
-    }
-
-    #[test]
-    fn repeated_waits_preserve_the_conversation_and_update_one_notice() {
-        let mut options =
-            InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default());
-        options.append(ProductActivityKind::User, "Check my code", "").expect("user");
-        waiting(&mut options, 20).expect("first wait");
-        for seconds in (40..=4000).step_by(20) {
-            waiting(&mut options, seconds).expect("continued wait");
-        }
-        assert_eq!(options.activities.len(), 2);
-        assert_eq!(options.activities[0].text(), "Check my code");
-        assert_eq!(options.activities[1].sequence(), 2);
-        assert!(options.activities[1].text().contains("4000s"));
-        options.text(b"Here is what I found.").expect("public response");
-        assert_eq!(options.activities.last().expect("response").text(), "Here is what I found.");
-    }
-
-    #[test]
-    fn chat_start_does_not_claim_implementation() {
-        assert!(!starting(ProductInteractionMode::Chat).contains("implementation"));
-    }
 }

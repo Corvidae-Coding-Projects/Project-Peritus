@@ -3,9 +3,6 @@
 //! The host validates declarations and enforces transport/lifecycle resource bounds. A supplied
 //! [`AuthorityMediator`] remains the only source of current capability authority.
 
-#[allow(unused_imports, reason = "Verus verifies every crate target through this prelude")]
-use vstd::prelude::*;
-
 mod authority;
 mod cancellation;
 mod discovery;

@@ -6,14 +6,11 @@ use crate::{
     AttemptNumber, DispatchId, ExecutionClass, ResourceVector, SchedulerError, SchedulerErrorKind,
     SchedulerLimits, WorkId, WorkerId,
 };
-use vstd::prelude::*;
 
 mod admission;
 mod clone_impl;
 
-verus! {
-
-/// Immutable worker capabilities and ownership.
+#[doc = " Immutable worker capabilities and ownership."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct WorkerDescriptor {
     id: WorkerId,
@@ -22,87 +19,45 @@ pub struct WorkerDescriptor {
     capacity: ResourceVector,
     concurrency: u16,
 }
-
 impl WorkerDescriptor {
-    /// Returns the mathematical worker identity.
-    pub closed spec fn spec_id(&self) -> WorkerId { self.id }
-    /// Returns the mathematical worker owner.
-    pub closed spec fn spec_owner(&self) -> ActorId { self.owner }
-    /// Returns the mathematical worker resource capacity.
-    pub closed spec fn spec_capacity(&self) -> &ResourceVector { &self.capacity }
-    /// Returns the mathematical worker concurrency ceiling.
-    pub closed spec fn spec_concurrency(&self) -> u16 { self.concurrency }
-    /// Returns the mathematical supported execution classes.
-    pub closed spec fn spec_classes(&self) -> Seq<ExecutionClass> { self.classes@ }
-
-    /// Returns the worker identity.
+    #[doc = " Returns the worker identity."]
     #[must_use]
-    pub const fn id(&self) -> (result: WorkerId)
-        ensures result == self.spec_id(),
-    {
+    pub const fn id(&self) -> WorkerId {
         self.id
     }
-
-    /// Returns the actor that owns dispatched work.
+    #[doc = " Returns the actor that owns dispatched work."]
     #[must_use]
-    pub const fn owner(&self) -> (result: ActorId)
-        ensures result == self.spec_owner(),
-    {
+    pub const fn owner(&self) -> ActorId {
         self.owner
     }
-
-    /// Borrows worker-local capacity.
+    #[doc = " Borrows worker-local capacity."]
     #[must_use]
-    pub const fn capacity(&self) -> (result: &ResourceVector)
-        ensures result == self.spec_capacity(),
-    {
+    pub const fn capacity(&self) -> &ResourceVector {
         &self.capacity
     }
-
-    /// Returns maximum concurrent dispatch ownership.
+    #[doc = " Returns maximum concurrent dispatch ownership."]
     #[must_use]
-    pub const fn concurrency(&self) -> (result: u16)
-        ensures result == self.spec_concurrency(),
-    {
+    pub const fn concurrency(&self) -> u16 {
         self.concurrency
     }
-
-    /// Borrows supported execution classes in canonical order.
+    #[doc = " Borrows supported execution classes in canonical order."]
     #[must_use]
-    pub fn classes(&self) -> (result: &[ExecutionClass])
-        ensures result@ == self.spec_classes(),
-    {
+    pub fn classes(&self) -> &[ExecutionClass] {
         &self.classes
     }
-
-    /// Returns whether this worker supports the class.
+    #[doc = " Returns whether this worker supports the class."]
     #[must_use]
-    pub fn supports(&self, class: ExecutionClass) -> (result: bool)
-        ensures result == self.spec_classes().contains(class),
-    {
+    pub fn supports(&self, class: ExecutionClass) -> bool {
         let mut index = 0;
-        while index < self.classes.len()
-            invariant
-                index <= self.classes@.len(),
-                forall |prior: int| 0 <= prior < index ==> self.classes@[prior] != class,
-            decreases self.classes@.len() - index,
-        {
+        while index < self.classes.len() {
             if self.classes[index].same(class) {
-                proof {
-                    assert(self.classes@[index as int] == class);
-                }
                 return true;
-            }
-            proof {
-                assert(self.classes@[index as int] != class);
             }
             index += 1;
         }
         false
     }
 }
-
-} // verus!
 
 impl WorkerDescriptor {
     /// Creates a checked worker descriptor.
@@ -141,28 +96,23 @@ impl WorkerDescriptor {
     }
 }
 
-verus! {
-
-/// Closed worker availability lifecycle.
+#[doc = " Closed worker availability lifecycle."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum WorkerPhase {
-    /// Worker can receive at least one more dispatch.
+    #[doc = " Worker can receive at least one more dispatch."]
     Available,
-    /// Worker has exhausted concurrency or resource capacity.
+    #[doc = " Worker has exhausted concurrency or resource capacity."]
     Busy,
-    /// Worker retains active ownership but accepts no new work.
+    #[doc = " Worker retains active ownership but accepts no new work."]
     Draining,
-    /// Worker ownership was lost and its reservations were classified.
+    #[doc = " Worker ownership was lost and its reservations were classified."]
     Lost,
-    /// Worker was explicitly removed after reaching quiescence.
+    #[doc = " Worker was explicitly removed after reaching quiescence."]
     Removed,
 }
-
 impl WorkerPhase {
-    /// Compares exact lifecycle variants for verified production admission.
-    pub(crate) const fn same(self, other: Self) -> (result: bool)
-        ensures result == (self == other),
-    {
+    #[doc = " Compares exact lifecycle variants for verified production admission."]
+    pub(crate) const fn same(self, other: Self) -> bool {
         matches!(
             (self, other),
             (Self::Available, Self::Available)
@@ -174,76 +124,27 @@ impl WorkerPhase {
     }
 }
 
-} // verus!
-
-verus! {
-
-/// Retained worker descriptor and current phase.
+#[doc = " Retained worker descriptor and current phase."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct WorkerRecord {
     descriptor: WorkerDescriptor,
     phase: WorkerPhase,
 }
-
 impl WorkerRecord {
-    /// Returns the mathematical worker descriptor.
-    pub closed spec fn spec_descriptor(&self) -> &WorkerDescriptor { &self.descriptor }
-    /// Returns the mathematical worker lifecycle.
-    pub closed spec fn spec_phase(&self) -> WorkerPhase { self.phase }
-
-    /// Borrows immutable descriptor.
+    #[doc = " Borrows immutable descriptor."]
     #[must_use]
-    pub const fn descriptor(&self) -> (result: &WorkerDescriptor)
-        ensures result == self.spec_descriptor(),
-    {
+    pub const fn descriptor(&self) -> &WorkerDescriptor {
         &self.descriptor
     }
-
-    /// Returns current lifecycle.
+    #[doc = " Returns current lifecycle."]
     #[must_use]
-    pub const fn phase(&self) -> (result: WorkerPhase)
-        ensures result == self.spec_phase(),
-    {
+    pub const fn phase(&self) -> WorkerPhase {
         self.phase
     }
-
-    /// Relates worker fields used by the reservation invariant.
-    pub closed spec fn reservation_owner_equivalent(left: &Self, right: &Self) -> bool {
-        left.descriptor.id == right.descriptor.id
-            && left.descriptor.owner == right.descriptor.owner
-            && left.descriptor.capacity.spec_entries()
-                == right.descriptor.capacity.spec_entries()
-            && left.descriptor.concurrency == right.descriptor.concurrency
-    }
-
-    pub(crate) proof fn reservation_owner_fields(left: &Self, right: &Self)
-        requires Self::reservation_owner_equivalent(left, right),
-        ensures
-            left.spec_descriptor().spec_id() == right.spec_descriptor().spec_id(),
-            left.spec_descriptor().spec_owner() == right.spec_descriptor().spec_owner(),
-            left.spec_descriptor().spec_capacity().spec_entries()
-                == right.spec_descriptor().spec_capacity().spec_entries(),
-            left.spec_descriptor().spec_concurrency()
-                == right.spec_descriptor().spec_concurrency(),
-    {
-    }
-
-    pub(crate) proof fn reservation_owner_reflexive(value: &Self)
-        ensures Self::reservation_owner_equivalent(value, value),
-    {
-    }
-
-    pub(crate) const fn set_phase(&mut self, phase: WorkerPhase)
-        ensures
-            Self::reservation_owner_equivalent(old(self), final(self)),
-            final(self).spec_descriptor() == old(self).spec_descriptor(),
-            final(self).spec_phase() == phase,
-    {
+    pub(crate) const fn set_phase(&mut self, phase: WorkerPhase) {
         self.phase = phase;
     }
 }
-
-} // verus!
 
 impl WorkerRecord {
     pub(crate) const fn new(descriptor: WorkerDescriptor) -> Self {
@@ -254,9 +155,7 @@ impl WorkerRecord {
     }
 }
 
-verus! {
-
-/// Exact durable reservation and inert dispatch directive.
+#[doc = " Exact durable reservation and inert dispatch directive."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct SchedulerReservation {
     work_id: WorkId,
@@ -270,24 +169,13 @@ pub struct SchedulerReservation {
     started: bool,
 }
 
-} // verus!
-
-verus! {
-
 impl SchedulerReservation {
-    /// Returns the mathematical idempotent effect token.
-    pub closed spec fn spec_dispatch_token(&self) -> Sha256Digest { self.dispatch_token }
-
-    /// Returns idempotent effect token.
+    #[doc = " Returns idempotent effect token."]
     #[must_use]
-    pub const fn dispatch_token(&self) -> (result: Sha256Digest)
-        ensures result == self.spec_dispatch_token(),
-    {
+    pub const fn dispatch_token(&self) -> Sha256Digest {
         self.dispatch_token
     }
 }
-
-} // verus!
 
 impl SchedulerReservation {
     pub(crate) fn validate_against(

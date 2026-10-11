@@ -1,5 +1,7 @@
 # Peritus xtask
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `xtask` is the dependency-light engineering-policy executable for the Peritus workspace. It owns
 no product or authority decisions. It validates the Cargo dependency graph, package ownership and
 verification-class metadata, source layout and size budgets, trusted-Verus construct placement,

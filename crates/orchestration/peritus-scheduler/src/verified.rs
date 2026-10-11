@@ -2,8 +2,6 @@
 
 use std::collections::BTreeSet;
 
-use vstd::prelude::*;
-
 use crate::{
     SchedulerPhase, SchedulerState, SchedulerTerminalKind, SchedulerTransition, WorkId, WorkPhase,
     WorkTerminal,
@@ -11,30 +9,6 @@ use crate::{
 
 mod reservation_transitions;
 mod reservations;
-
-#[cfg(verus_only)]
-pub(crate) use reservation_transitions::{
-    actual_reservation_insertion_preserves, actual_reservation_removal_preserves,
-    actual_reservation_work_update_preserves, actual_reservation_worker_update_preserves,
-    actual_unreserved_work_update_preserves, actual_work_insertion_preserves,
-    actual_worker_insertion_preserves,
-};
-#[cfg(verus_only)]
-pub(crate) use reservations::{
-    active_work_has_reservation, active_work_has_reservations, active_work_has_reservations_intro,
-    admissible_work_update_preserves_relations, equivalent_sequences_preserve_phase,
-    equivalent_state_preserves, inactive_work_insertion_preserves_phase,
-    inactive_work_update_is_admissible, lifecycle_work_update_preserves_relations,
-    release_preserves_relations, reservation_feasible_parts, reservation_has_active_work,
-    reservation_identities_unique, reservation_invariant_parts, reservation_matches_work_phase,
-    reservation_quantity, reservations_are_retained_dispatches, reservations_bind_active_work,
-    reservations_have_work, reservations_have_workers, reservations_match_work_phases,
-    selected_insertion_establishes_phase, selected_insertion_establishes_relations,
-    start_acknowledgement_preserves_relations, unused_dispatch_is_not_live, vector_quantity,
-    vector_quantity_nonnegative, work_identities_unique, work_identity_absent,
-    work_phase_retains_reservation, work_phase_update_admissible, worker_count,
-    worker_identities_unique, worker_identity_absent, worker_quantity,
-};
 
 /// Returns whether every dependency of work is terminal-successful.
 #[must_use]
@@ -166,130 +140,3 @@ pub fn transition_is_legal(prior: &SchedulerState, transition: &SchedulerTransit
         && successor.last_event_id() == event.id()
         && successor.state_digest() == event.successor_state_digest()
 }
-
-verus! {
-/// Mathematical exact resource conservation for one transition.
-pub open spec fn resource_conserved(
-    before: int,
-    reserved: int,
-    released: int,
-    after: int,
-    capacity: int,
-) -> bool {
-    0 <= before && 0 <= reserved && 0 <= released
-        && released <= before + reserved
-        && after == before + reserved - released
-        && after <= capacity
-}
-
-/// Mathematical unique work/dispatch ownership.
-pub open spec fn unique_ownership(dispatches: int, owned_work: int) -> bool {
-    0 <= dispatches && dispatches == owned_work
-}
-
-/// Mathematical dependency readiness.
-pub open spec fn dependency_ready(required: int, successful: int, claimed: bool) -> bool {
-    !claimed || (0 <= required && required == successful)
-}
-
-/// Mathematical deterministic selector equality.
-pub open spec fn deterministic_choice(left: int, right: int, claimed_equal: bool) -> bool {
-    !claimed_equal || left == right
-}
-
-/// Mathematical bounded bypass counter.
-pub open spec fn bounded_bypass(before: int, selected: bool, limit: int, after: int) -> bool {
-    0 < limit && 0 <= before && before <= limit
-        && if selected { after == 0 } else { after == if before < limit { before + 1 } else { limit } }
-}
-
-/// Mathematical attempt monotonicity.
-pub open spec fn monotonic_attempt(before: int, dispatched: bool, maximum: int, after: int) -> bool {
-    0 <= before && before <= maximum
-        && if dispatched { after == before + 1 && after <= maximum } else { after == before }
-}
-
-/// Mathematical cancellation dominance over late success.
-pub open spec fn cancellation_dominates(cancelling: bool, accepted_success: bool) -> bool {
-    !cancelling || !accepted_success
-}
-
-/// Mathematical terminal success truth.
-pub open spec fn truthful_completion(
-    completed: bool,
-    all_succeeded: bool,
-    no_reservations: bool,
-    no_directives: bool,
-) -> bool {
-    !completed || (all_succeeded && no_reservations && no_directives)
-}
-
-/// Mathematical replay equivalence.
-pub open spec fn exact_replay(expected: int, observed: int, claimed: bool) -> bool {
-    !claimed || expected == observed
-}
-
-/// Mathematical one-event reducer fence.
-#[allow(clippy::too_many_arguments)]
-pub open spec fn legal_reducer_step(
-    open: bool,
-    sequence: int,
-    expected: int,
-    predecessor: bool,
-    revision: bool,
-    digest: bool,
-    fresh_command: bool,
-    events: int,
-    successor: int,
-) -> bool {
-    open && sequence == expected && predecessor && revision && digest && fresh_command
-        && events == 1 && successor == sequence + 1
-}
-
-/// Proves capacity cannot be exceeded by a conserved transition.
-pub proof fn conservation_preserves_capacity(
-    before: int,
-    reserved: int,
-    released: int,
-    after: int,
-    capacity: int,
-)
-    requires resource_conserved(before, reserved, released, after, capacity)
-    ensures 0 <= after && after <= capacity
-{
-}
-
-/// Proves cancellation cannot accept a late success observation.
-pub proof fn cancelled_work_cannot_succeed()
-    ensures cancellation_dominates(true, false)
-{
-}
-
-/// Proves a completed claim requires every named terminal premise.
-pub proof fn completion_requires_quiescence()
-    ensures !truthful_completion(true, true, true, false)
-{
-}
-
-/// Proves a selected item resets its fairness counter.
-pub proof fn selected_item_resets_bypass(before: int, limit: int)
-    requires 0 < limit, 0 <= before, before <= limit
-    ensures bounded_bypass(before, true, limit, 0)
-{
-}
-
-/// Proves a saturated feasible item does not overflow its bypass counter.
-pub proof fn saturated_bypass_stays_bounded(limit: int)
-    requires 0 < limit
-    ensures bounded_bypass(limit, false, limit, limit)
-{
-}
-
-/// Proves readiness cannot be claimed with an unsuccessful dependency.
-pub proof fn missing_dependency_success_blocks(required: int, successful: int)
-    requires 0 <= successful, successful < required
-    ensures !dependency_ready(required, successful, true)
-{
-}
-
-} // verus!

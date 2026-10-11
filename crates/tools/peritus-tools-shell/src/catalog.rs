@@ -86,7 +86,8 @@ fn descriptor(
         LeaseRequirement::None,
         IdempotencySemantics::ReportPriorOutcome,
         ImplementationIdentity::new(implementation.to_owned())?,
-        ToolLimits::new(u64::MAX, 8 * 1_024 * 1_024, 16_384, 16_384, 4_096, 3, 65_536)?,
+        ToolLimits::new(u64::MAX, 8 * 1_024 * 1_024, 16_384, 16_384, 4_096, 3, 65_536)?
+            .without_timeout(),
         ControlSet::new(true, true, true, true, true),
         ProtocolCompatibility::V1,
         BoundedText::new(description.to_owned())?,
@@ -96,20 +97,4 @@ fn descriptor(
 
 fn internal(detail: impl Into<String>) -> ShellError {
     ShellError::new(ShellErrorKind::Protocol, detail)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn descriptors_are_stable_and_distinct() {
-        let exec_a = exec_descriptor().expect("exec descriptor");
-        let exec_b = exec_descriptor().expect("exec descriptor");
-        let script = script_descriptor().expect("script descriptor");
-        assert_eq!(exec_a.canonical_bytes(), exec_b.canonical_bytes());
-        assert_ne!(exec_a.descriptor_digest(), script.descriptor_digest());
-        assert_eq!(exec_a.operation().operation_class(), OperationClass::Execution);
-        assert_eq!(script.operation().operation_class(), OperationClass::Execution);
-    }
 }

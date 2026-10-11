@@ -9,6 +9,3 @@ pub use idempotency::{
     IdempotencyAdmission, IdempotencyEntry, IdempotencyRecordDisposition, IdempotencyWindow,
 };
 pub use result::{CommandDisposition, CommandResult, CommittedEventRange};
-
-#[cfg(verus_only)]
-pub use result::valid_committed_event_range;

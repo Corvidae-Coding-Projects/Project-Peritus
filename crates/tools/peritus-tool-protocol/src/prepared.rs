@@ -100,7 +100,9 @@ pub fn prepare_call(
             "call tool identity/version differs from the selected descriptor",
         ));
     }
-    if !call.limits().fits(descriptor.limits()) {
+    if !call.limits().fits(descriptor.limits())
+        || (call.deadline().is_none() && call.limits().timeout_millis().is_some())
+    {
         return Err(ProtocolError::at(
             ProtocolErrorKind::CallLimit,
             "call.limits",
@@ -121,14 +123,24 @@ fn prepared_digest(
     arguments: Sha256Digest,
 ) -> Sha256Digest {
     let mut bytes = Vec::with_capacity(256);
-    bytes.extend_from_slice(b"peritus.prepared-tool-call.v1\0");
+    let legacy = call.deadline().is_some() && call.limits().timeout_millis().is_some();
+    bytes.extend_from_slice(if legacy {
+        b"peritus.prepared-tool-call.v1\0"
+    } else {
+        b"peritus.prepared-tool-call.v2\0"
+    });
     bytes.extend_from_slice(call.action_id().as_bytes());
     bytes.extend_from_slice(descriptor.descriptor_digest().as_bytes());
     bytes.extend_from_slice(arguments.as_bytes());
     bytes.extend_from_slice(&call.limits().canonical_bytes());
     append_revision(&mut bytes, call.revision());
-    bytes.extend_from_slice(&call.deadline().epoch().get().to_be_bytes());
-    bytes.extend_from_slice(&call.deadline().tick_millis().to_be_bytes());
+    if !legacy {
+        bytes.push(u8::from(call.deadline().is_some()));
+    }
+    bytes.extend_from_slice(&call.authority_epoch().get().to_be_bytes());
+    if let Some(deadline) = call.deadline() {
+        bytes.extend_from_slice(&deadline.tick_millis().to_be_bytes());
+    }
     append_bytes(&mut bytes, call.idempotency_key().as_str().as_bytes());
     peritus_codec::sha256(&bytes)
 }

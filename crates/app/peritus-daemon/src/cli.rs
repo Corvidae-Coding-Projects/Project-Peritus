@@ -2,11 +2,11 @@
 
 mod arguments;
 mod blob_corruption;
-#[cfg(not(verus_only))]
+
 mod context;
-#[cfg(not(verus_only))]
+
 mod daemon_lifecycle;
-#[cfg(not(verus_only))]
+
 mod dependency;
 mod disk;
 mod evidence_corruption;
@@ -36,6 +36,8 @@ use crate::outbox::{
 use crate::terminal::qualify_pty_ordering;
 use arguments::{CommandLine, parse};
 
+// Qualification checkpoints must wait for the controller even if joined scoped workers left
+// this thread's park token set. Callers sleep; park_timeout may return immediately or spuriously.
 const QUALIFICATION_KILL_BOUND: Duration = Duration::from_secs(30);
 
 /// Runs the production daemon command line and returns its truthful process status.
@@ -54,7 +56,7 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::ProcessWatchdog { root, start, group } => {
             process_watchdog::run(root, start, group)
         }
-        #[cfg(not(verus_only))]
+
         CommandLine::ContextInspect(arguments) => context::run(arguments),
         CommandLine::QualifyPty => qualify_pty(),
         CommandLine::StageBlobBeforeCrash(configuration) => stage_blob_before(configuration),
@@ -149,21 +151,21 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverProjectionCorruption(configuration) => {
             projection::recover(configuration)
         }
-        #[cfg(not(verus_only))]
+
         CommandLine::StageDependencyFault { dependency, fault, retry_limit, configuration } => {
             dependency::stage(configuration, dependency, fault, retry_limit)
         }
-        #[cfg(not(verus_only))]
+
         CommandLine::RecoverDependencyFault { dependency, fault, retry_limit, configuration } => {
             dependency::recover(configuration, dependency, fault, retry_limit)
         }
-        #[cfg(not(verus_only))]
+
         CommandLine::DependencyChild(dependency) => dependency::child(dependency),
-        #[cfg(not(verus_only))]
+
         CommandLine::StageDaemonLifecycle { phase, configuration } => {
             daemon_lifecycle::stage(configuration, phase)
         }
-        #[cfg(not(verus_only))]
+
         CommandLine::RecoverDaemonLifecycle { phase, configuration } => {
             daemon_lifecycle::recover(configuration, phase)
         }
@@ -196,7 +198,7 @@ fn stage_blob_before(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error(&format!(
         "blob-before qualifier was not killed for digest {}",
         checkpoint.digest(),
@@ -225,7 +227,7 @@ fn stage_blob_after(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error(&format!("blob-after qualifier was not killed for digest {}", checkpoint.digest()));
     ExitCode::FAILURE
 }
@@ -279,7 +281,7 @@ fn stage_journal_before(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error(&format!(
         "journal-before crash qualifier was not killed at request {}",
         checkpoint.request_sha256(),
@@ -345,7 +347,7 @@ fn stage_outbox(configuration: OsString) -> ExitCode {
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error("outbox crash qualifier was not killed at its published checkpoint");
     ExitCode::FAILURE
 }

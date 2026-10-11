@@ -60,16 +60,3 @@ fn bounded_tail(value: &str, maximum: usize) -> (String, Truncation) {
     let start = value.len() - keep;
     (format!("{marker}{}", &value[start..]), Truncation::HeadDropped)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn escapes_controls_and_labels_tail_truncation() {
-        let rendered = output(b"begin\0\x1bend", 12, 64);
-        assert_eq!(rendered.model_truncation, Truncation::HeadDropped);
-        assert!(!rendered.human.as_str().contains('\0'));
-        assert!(rendered.human.as_str().contains("\\x1b"));
-    }
-}

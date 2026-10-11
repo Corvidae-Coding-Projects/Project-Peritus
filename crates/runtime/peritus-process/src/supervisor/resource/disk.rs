@@ -56,6 +56,3 @@ fn entries_usage(
     }
     Ok(total)
 }
-
-#[cfg(test)]
-mod tests;

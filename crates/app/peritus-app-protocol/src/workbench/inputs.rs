@@ -163,6 +163,13 @@ pub enum WorkbenchQueueIntent {
     Withdraw(WorkbenchInputSelection),
     /// Reorders the complete pending set subject to dependency checks.
     Reorder(WorkbenchInputOrder),
+    /// Moves one inspected pending input before an exact identity, or to the end.
+    Move {
+        /// Exact source content revision inspected by the user.
+        selected: WorkbenchInputSelection,
+        /// Destination identity in the same revision-fenced pending order; none means end.
+        before: Option<WorkbenchInputId>,
+    },
 }
 
 /// Public lifecycle projection of one immutable content revision.

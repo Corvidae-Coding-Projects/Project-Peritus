@@ -52,9 +52,16 @@ impl EffectReceiptLedger {
                     .is_error
                     .ok_or_else(|| tool("applied receipt lost its result status"))?,
             },
-            ReceiptState::Ambiguous => ReceiptDecision::Refuse {
-                detail: ambiguous(&self.scope, ordinal, &existing.call_id),
-                ambiguous: true,
+            ReceiptState::Ambiguous => match existing.native_owner {
+                Some(owner) => ReceiptDecision::RecoverCommandOwner {
+                    owner,
+                    scope: existing.scope.clone(),
+                    ordinal,
+                },
+                None => ReceiptDecision::Refuse {
+                    detail: ambiguous(&self.scope, ordinal, &existing.call_id),
+                    ambiguous: true,
+                },
             },
             ReceiptState::Reviewed => ReceiptDecision::Replay {
                 value: existing
@@ -65,7 +72,17 @@ impl EffectReceiptLedger {
                     .is_error
                     .ok_or_else(|| tool("reviewed receipt lost its result status"))?,
             },
-            ReceiptState::Started => return Ok(None),
+            ReceiptState::Started => {
+                if let Some(owner) = existing.native_owner {
+                    ReceiptDecision::RecoverCommandOwner {
+                        owner,
+                        scope: existing.scope.clone(),
+                        ordinal,
+                    }
+                } else {
+                    return Ok(None);
+                }
+            }
         };
         self.next_ordinal = ordinal;
         Ok(Some(decision))

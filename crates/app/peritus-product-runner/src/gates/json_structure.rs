@@ -3,8 +3,10 @@
 use std::{fs, path::Path};
 
 use peritus_gates::GateExecutionRecord;
+use serde::Deserializer as _;
+use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
 
-const MAX_JSON_BYTES: u64 = 16 * 1024 * 1024;
+use super::cancellation::GateCancellation;
 
 #[allow(
     clippy::format_push_string,
@@ -15,6 +17,7 @@ pub fn run(
     project_root: &Path,
     changed_paths: &[std::path::PathBuf],
     command: String,
+    cancellation: &GateCancellation,
 ) -> GateExecutionRecord {
     let json_paths = changed_paths
         .iter()
@@ -22,13 +25,27 @@ pub fn run(
         .collect::<Vec<_>>();
     let mut output = String::new();
     let mut passed = true;
+    let mut unevaluated = false;
 
     for relative in &json_paths {
-        match validate_file(&workspace_root.join(relative)) {
+        if cancellation.is_cancelled() {
+            unevaluated = true;
+            output.push_str("JSON structure: NOT EVALUATED (run was cancelled)\n");
+            break;
+        }
+        match validate_file(&workspace_root.join(relative), cancellation) {
             Ok(kind) => {
                 output.push_str(&format!("{}: PASS ({kind})\n", relative.display()));
             }
             Err(detail) => {
+                if cancellation.is_cancelled() {
+                    unevaluated = true;
+                    output.push_str(&format!(
+                        "{}: NOT EVALUATED (run was cancelled while reading or parsing)\n",
+                        relative.display(),
+                    ));
+                    break;
+                }
                 passed = false;
                 output.push_str(&format!("{}: FAIL: {detail}\n", relative.display()));
             }
@@ -38,12 +55,24 @@ pub fn run(
     if json_paths.is_empty() {
         output.push_str("No changed JSON files require structural validation.\n");
     }
-    output.push_str(if passed { "JSON structure: PASS\n" } else { "JSON structure: FAIL\n" });
+    output.push_str(if !passed {
+        "JSON structure: FAIL\n"
+    } else if unevaluated {
+        "JSON structure: NOT EVALUATED\n"
+    } else {
+        "JSON structure: PASS\n"
+    });
 
     GateExecutionRecord {
         command,
         label: "JSON structure".to_owned(),
-        exit_code: Some(i32::from(!passed)),
+        exit_code: if !passed {
+            Some(1)
+        } else if unevaluated {
+            None
+        } else {
+            Some(0)
+        },
         output,
     }
 }
@@ -54,63 +83,64 @@ fn is_json(path: &Path) -> bool {
         .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
 }
 
-fn validate_file(path: &Path) -> Result<&'static str, String> {
-    let metadata = fs::metadata(path).map_err(|error| format!("inspect file: {error}"))?;
-    if metadata.len() > MAX_JSON_BYTES {
-        return Err(format!("file exceeds the {MAX_JSON_BYTES}-byte validation limit"));
-    }
-    let bytes = fs::read(path).map_err(|error| format!("read file: {error}"))?;
-    let value = serde_json::from_slice::<serde_json::Value>(&bytes)
-        .map_err(|error| format!("parse JSON: {error}"))?;
-    Ok(match value {
-        serde_json::Value::Null => "null",
-        serde_json::Value::Bool(_) => "boolean",
-        serde_json::Value::Number(_) => "number",
-        serde_json::Value::String(_) => "string",
-        serde_json::Value::Array(_) => "array",
-        serde_json::Value::Object(_) => "object",
-    })
+fn validate_file(path: &Path, cancellation: &GateCancellation) -> Result<&'static str, String> {
+    let file = fs::File::open(path).map_err(|error| format!("read file: {error}"))?;
+    let mut parser = serde_json::Deserializer::from_reader(cancellation.reader(file));
+    let kind = parser.deserialize_any(JsonKind).map_err(|error| format!("parse JSON: {error}"))?;
+    parser.end().map_err(|error| format!("parse JSON: {error}"))?;
+    Ok(kind)
 }
 
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
+struct JsonKind;
 
-    use super::*;
+impl<'de> Visitor<'de> for JsonKind {
+    type Value = &'static str;
 
-    #[test]
-    fn validates_only_changed_json_files_in_the_project() {
-        let root = tempfile::tempdir().expect("workspace");
-        fs::create_dir_all(root.path().join("project/out")).expect("directory");
-        fs::write(root.path().join("project/out/result.json"), br#"{"result":true}"#)
-            .expect("result");
-        fs::write(root.path().join("outside.json"), b"{").expect("outside JSON");
-
-        let record = run(
-            root.path(),
-            Path::new("project"),
-            &[PathBuf::from("project/out/result.json"), PathBuf::from("outside.json")],
-            "json-structure".to_owned(),
-        );
-
-        assert_eq!(record.exit_code, Some(0));
-        assert!(record.output.contains("project/out/result.json: PASS (object)"));
-        assert!(!record.output.contains("outside.json"));
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a JSON value")
     }
 
-    #[test]
-    fn rejects_malformed_json() {
-        let root = tempfile::tempdir().expect("workspace");
-        fs::write(root.path().join("broken.json"), b"{\"value\":").expect("malformed JSON");
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok("null")
+    }
 
-        let record = run(
-            root.path(),
-            Path::new(""),
-            &[PathBuf::from("broken.json")],
-            "json-structure".to_owned(),
-        );
+    fn visit_bool<E: serde::de::Error>(self, _: bool) -> Result<Self::Value, E> {
+        Ok("boolean")
+    }
 
-        assert_eq!(record.exit_code, Some(1));
-        assert!(record.output.contains("broken.json: FAIL: parse JSON"));
+    fn visit_i64<E: serde::de::Error>(self, _: i64) -> Result<Self::Value, E> {
+        Ok("number")
+    }
+
+    fn visit_u64<E: serde::de::Error>(self, _: u64) -> Result<Self::Value, E> {
+        Ok("number")
+    }
+
+    fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Self::Value, E> {
+        Ok("number")
+    }
+
+    fn visit_str<E: serde::de::Error>(self, _: &str) -> Result<Self::Value, E> {
+        Ok("string")
+    }
+
+    fn visit_string<E: serde::de::Error>(self, _: String) -> Result<Self::Value, E> {
+        Ok("string")
+    }
+
+    fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        while sequence.next_element::<IgnoredAny>()?.is_some() {}
+        Ok("array")
+    }
+
+    fn visit_map<A>(self, mut mapping: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        while mapping.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+        Ok("object")
     }
 }

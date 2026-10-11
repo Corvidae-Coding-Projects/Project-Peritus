@@ -48,7 +48,7 @@ pub(in crate::wire) fn read_page(
     let query = read_query(r)?;
     let total = r.read_u32()?;
     let count = r.read_u32()?;
-    if count > 32 || total > 256 {
+    if count > 32 {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
     let mut rows = Vec::with_capacity(count as usize);

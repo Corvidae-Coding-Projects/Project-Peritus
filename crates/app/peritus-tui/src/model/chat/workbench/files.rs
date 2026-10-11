@@ -47,7 +47,7 @@ impl FileUi {
         self.pending_preview = None;
     }
 
-    pub(super) fn discard_preview(&mut self) {
+    pub(in crate::model::chat) fn discard_preview(&mut self) {
         self.preview = None;
         self.import_preview = None;
         self.expected = None;
@@ -188,12 +188,8 @@ impl AppModel {
         let Some(snapshot) = &self.chat.workbench.snapshot else {
             return self.refresh_file_panel();
         };
-        let Some(provider) = self
-            .product
-            .as_ref()
-            .filter(|product| product.launch.workspace_id() == snapshot.query().workspace())
-            .and_then(crate::model::product::ProductUi::providers)
-            .map(peritus_app_protocol::ProductProviderSelection::writer)
+        let Some(provider) =
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer)
         else {
             self.notice(NoticeLevel::Warning, "Choose a writer provider before previewing.");
             return Vec::new();
@@ -238,9 +234,21 @@ impl AppModel {
         request: &WorkbenchFileRequest,
         preview: WorkbenchFilePreview,
     ) {
+        let active_provider =
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
         if preview.request() == request
             && self.chat.workbench.selected == Some(request.query())
+            && self.chat.workbench.open
+            && self.chat.workbench.files.open
             && self.chat.workbench.files.path == request.path()
+            && parse_range(&self.chat.workbench.files.range) == Some(request.range())
+            && self.chat.workbench.files.refresh
+                == (request.mode() == WorkbenchFileMode::RefreshOnRequest)
+            && self.chat.workbench.snapshot.as_ref().is_some_and(|snapshot| {
+                snapshot.query() == request.query() && snapshot.revision() == request.revision()
+            })
+            && active_provider == Some(request.provider())
+            && self.chat.models.writer() == request.model()
         {
             self.chat.workbench.files.import_preview = None;
             self.chat.workbench.files.preview = Some(preview);
@@ -268,14 +276,12 @@ impl AppModel {
         let Some(preview) = self.chat.workbench.files.preview.clone() else {
             return Vec::new();
         };
-        let provider = self
-            .product
-            .as_ref()
-            .and_then(crate::model::product::ProductUi::providers)
-            .map(peritus_app_protocol::ProductProviderSelection::writer);
+        let provider =
+            self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer);
         if provider != Some(preview.request().provider())
             || self.chat.models.writer() != preview.request().model()
         {
+            self.chat.workbench.files.discard_preview();
             self.notice(
                 NoticeLevel::Warning,
                 "Provider/model changed after preview. Preview again before confirmation.",

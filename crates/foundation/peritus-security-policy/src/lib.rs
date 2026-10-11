@@ -3,10 +3,6 @@
 //! The evaluator is deterministic and effect-free. It consumes canonical observations and
 //! returns a fail-closed [`SecurityDecision`]. A ready decision is evidence, not release authority.
 
-use vstd::prelude::*;
-
-verus! {
-
 mod binding;
 mod catalog;
 mod decision;
@@ -18,7 +14,6 @@ mod observation;
 mod proofs;
 mod qualification_admission;
 mod review;
-
 pub use binding::IntegratedCandidate;
 pub use catalog::{AcceptanceCriterion, EvidenceArtifactKind, InventoryKind, SecurityRequirement};
 pub use decision::{ObservationClass, SecurityDecision, SecurityVerdict, UnmetSecurityCondition};
@@ -37,5 +32,3 @@ pub use review::{
     FindingLifecycle, FindingObservation, FindingSeverity, IndependentSecurityReview,
     ReviewCompletion, ReviewScope, ReviewerIdentity,
 };
-
-} // verus!

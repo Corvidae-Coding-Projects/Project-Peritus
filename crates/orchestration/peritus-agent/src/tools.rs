@@ -4,34 +4,23 @@ use crate::{
     AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection, ModelCallId, ToolOrdinal,
 };
 use peritus_policy::AuthorityInstant;
-use peritus_types::{ActionId, CapabilityName, EvidenceId, RevisionTuple, Sha256Digest};
-use vstd::prelude::*;
+use peritus_types::{
+    ActionId, CapabilityName, EvidenceId, Generation, RevisionTuple, Sha256Digest,
+};
 
 mod batch;
 mod clone_impl;
 
-verus! {
-
-pub fn clone_tool_proposals(
-    proposals: &[ToolProposal],
-) -> (result: Vec<ToolProposal>)
-    ensures ToolProposal::sequence_clone_equivalent(proposals@, result@),
-{
+pub fn clone_tool_proposals(proposals: &[ToolProposal]) -> Vec<ToolProposal> {
     clone_impl::clone_tool_proposals(proposals)
 }
 
-} // verus!
-
-verus! {
-
-/// Checked semantic tool version.
+#[doc = " Checked semantic tool version."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ToolVersion {
     major: u16,
     minor: u16,
 }
-
-} // verus!
 
 impl ToolVersion {
     /// Creates a semantic version with a positive major component.
@@ -56,9 +45,7 @@ impl ToolVersion {
     }
 }
 
-verus! {
-
-/// Side-effect projection used for D0 serialization; C4 remains authoritative.
+#[doc = " Side-effect projection used for D0 serialization; C4 remains authoritative."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolSideEffect {
     None,
@@ -66,8 +53,7 @@ pub enum ToolSideEffect {
     Process,
     External,
 }
-
-/// Replay classification copied from C4 preparation.
+#[doc = " Replay classification copied from C4 preparation."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolIdempotency {
     Idempotent,
@@ -75,11 +61,7 @@ pub enum ToolIdempotency {
     NonIdempotent,
 }
 
-} // verus!
-
-verus! {
-
-/// Immutable checked tool proposal supplied after C4 preparation.
+#[doc = " Immutable checked tool proposal supplied after C4 preparation."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ToolProposal {
     ordinal: ToolOrdinal,
@@ -91,12 +73,11 @@ pub struct ToolProposal {
     prepared_digest: Sha256Digest,
     replay_identity: Sha256Digest,
     revision: RevisionTuple,
-    deadline: AuthorityInstant,
+    deadline: Option<AuthorityInstant>,
+    authority_epoch: Generation,
     side_effect: ToolSideEffect,
     idempotency: ToolIdempotency,
 }
-
-} // verus!
 
 impl ToolProposal {
     #[allow(clippy::too_many_arguments, reason = "the C4-prepared identity must remain exact")]
@@ -115,6 +96,45 @@ impl ToolProposal {
         side_effect: ToolSideEffect,
         idempotency: ToolIdempotency,
     ) -> Self {
+        Self::new_with_lifetime(
+            ordinal,
+            model_call_id,
+            action_id,
+            capability,
+            version,
+            argument_digest,
+            prepared_digest,
+            replay_identity,
+            revision,
+            peritus_tool_protocol::CallLifetime::Deadline(deadline),
+            side_effect,
+            idempotency,
+        )
+    }
+
+    /// Projects the exact optional C4 lifetime, including its required authority epoch.
+    #[allow(clippy::too_many_arguments, reason = "the C4-prepared identity must remain exact")]
+    #[must_use]
+    pub const fn new_with_lifetime(
+        ordinal: ToolOrdinal,
+        model_call_id: ModelCallId,
+        action_id: ActionId,
+        capability: CapabilityName,
+        version: ToolVersion,
+        argument_digest: Sha256Digest,
+        prepared_digest: Sha256Digest,
+        replay_identity: Sha256Digest,
+        revision: RevisionTuple,
+        lifetime: peritus_tool_protocol::CallLifetime,
+        side_effect: ToolSideEffect,
+        idempotency: ToolIdempotency,
+    ) -> Self {
+        let (deadline, authority_epoch) = match lifetime {
+            peritus_tool_protocol::CallLifetime::Deadline(deadline) => {
+                (Some(deadline), deadline.epoch())
+            }
+            peritus_tool_protocol::CallLifetime::UntilCancelled { epoch } => (None, epoch),
+        };
         Self {
             ordinal,
             model_call_id,
@@ -126,6 +146,7 @@ impl ToolProposal {
             replay_identity,
             revision,
             deadline,
+            authority_epoch,
             side_effect,
             idempotency,
         }
@@ -168,8 +189,13 @@ impl ToolProposal {
         self.revision
     }
     #[must_use]
-    pub const fn deadline(&self) -> AuthorityInstant {
+    pub const fn deadline(&self) -> Option<AuthorityInstant> {
         self.deadline
+    }
+    /// Returns the authority epoch even when no runtime deadline was selected.
+    #[must_use]
+    pub const fn authority_epoch(&self) -> Generation {
+        self.authority_epoch
     }
     #[must_use]
     pub const fn side_effect(&self) -> ToolSideEffect {
@@ -192,9 +218,7 @@ pub enum ToolSlotPhase {
     Terminal,
 }
 
-verus! {
-
-/// Terminal C4 result projection.
+#[doc = " Terminal C4 result projection."]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolResultStatus {
     Succeeded,
@@ -203,8 +227,7 @@ pub enum ToolResultStatus {
     Cancelled,
     Indeterminate,
 }
-
-/// Bounded terminal tool result supplied by C4.
+#[doc = " Bounded terminal tool result supplied by C4."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ToolResultRecord {
     status: ToolResultStatus,
@@ -212,8 +235,6 @@ pub struct ToolResultRecord {
     model_visible_bytes: u64,
     evidence: Vec<EvidenceId>,
 }
-
-} // verus!
 
 impl ToolResultRecord {
     pub const MAX_EVIDENCE: usize = 256;

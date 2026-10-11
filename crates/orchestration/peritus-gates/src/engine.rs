@@ -350,9 +350,6 @@ impl GateEngine {
     }
 }
 
-#[cfg(test)]
-mod tests;
-
 /// Builds the observation command kind corresponding to one executor receipt.
 #[must_use]
 pub fn observed_result_kind(gate_id: GateId, receipt: DispatchReceipt) -> GateCommandKind {

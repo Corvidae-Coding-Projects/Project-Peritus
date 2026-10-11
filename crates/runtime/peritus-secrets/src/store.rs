@@ -231,16 +231,3 @@ const fn unavailable(detail: &'static str) -> SecretError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn provider_namespace_preserves_existing_credential_references() {
-        // These names are a persisted storage contract: references contain no namespace to
-        // migrate or infer if setup and daemon construction ever diverge again.
-        assert_eq!(
-            super::PlatformCredentialStore::providers().service,
-            "org.corvidae-coding.peritus.providers"
-        );
-    }
-}

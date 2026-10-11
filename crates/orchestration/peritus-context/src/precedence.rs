@@ -6,9 +6,6 @@
 )]
 
 use crate::ContextNode;
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) fn optional_precedes(left: &ContextNode, right: &ContextNode) -> bool {
     if left.authority().precedence() != right.authority().precedence() {
@@ -23,7 +20,6 @@ pub(super) fn optional_precedes(left: &ContextNode, right: &ContextNode) -> bool
         left.id() < right.id()
     }
 }
-
 pub(super) fn render_precedes(left: &ContextNode, right: &ContextNode) -> bool {
     if left.authority().precedence() != right.authority().precedence() {
         left.authority().precedence() > right.authority().precedence()
@@ -35,5 +31,3 @@ pub(super) fn render_precedes(left: &ContextNode, right: &ContextNode) -> bool {
         left.id() < right.id()
     }
 }
-
-} // verus!

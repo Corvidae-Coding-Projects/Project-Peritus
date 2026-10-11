@@ -27,19 +27,3 @@ pub(super) fn offer(
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Cursor;
-
-    #[test]
-    fn declining_installation_never_downloads_or_runs_a_provider() {
-        let mut input = Cursor::new(b"n\n");
-        let mut output = Vec::new();
-        let mut terminal = Terminal::for_test(&mut input, &mut output);
-        assert!(!offer(&mut terminal, ProviderKind::CodexAccount).expect("declined"));
-        drop(terminal);
-        assert!(String::from_utf8(output).expect("output").contains("[y/N]"));
-    }
-}

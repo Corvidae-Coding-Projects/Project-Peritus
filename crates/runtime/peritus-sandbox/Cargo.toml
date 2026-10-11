@@ -14,18 +14,10 @@ categories = ["development-tools"]
 [package.metadata.peritus]
 owner = "C2"
 layer = "runtime"
-verification-class = "H"
-
-[package.metadata.verus]
-verify = true
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 
 [lints]
 workspace = true

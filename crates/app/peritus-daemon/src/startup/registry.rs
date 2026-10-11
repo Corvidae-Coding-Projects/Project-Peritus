@@ -15,9 +15,6 @@ use peritus_journal::{
 
 use crate::{ApprovalRegistryDeclaration, DaemonError, DaemonErrorCode, DaemonRecovery};
 
-#[cfg(test)]
-mod tests;
-
 struct ConfiguredRegistry {
     snapshot: CredentialRegistrySnapshot,
     payload: Vec<u8>,

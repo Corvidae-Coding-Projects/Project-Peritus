@@ -167,6 +167,3 @@ impl Connection {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

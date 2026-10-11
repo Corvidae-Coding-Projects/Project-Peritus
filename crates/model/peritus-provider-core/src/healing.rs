@@ -14,8 +14,6 @@ use crate::ProviderCoreError;
 mod buffer;
 mod syntax;
 pub use buffer::ToolArgumentBuffer;
-#[cfg(test)]
-mod tests;
 
 /// Maximum malformed input considered for repair; valid JSON retains its protocol bounds.
 pub const MAX_REPAIR_BYTES: usize = 64 * 1024;

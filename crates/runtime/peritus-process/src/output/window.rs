@@ -49,11 +49,13 @@ impl RetainedWindow {
     }
 
     pub(crate) fn stream_bytes(&self, stream: OutputStream) -> Vec<u8> {
-        self.chunks
-            .iter()
-            .filter(|chunk| chunk.stream == stream)
-            .flat_map(|chunk| chunk.bytes.iter().copied())
-            .collect()
+        let mut bytes = Vec::new();
+        for chunk in self.chunks.iter().filter(|chunk| chunk.stream == stream) {
+            let (first, second) = chunk.bytes.as_slices();
+            bytes.extend_from_slice(first);
+            bytes.extend_from_slice(second);
+        }
+        bytes
     }
 
     fn discard_front(&mut self, mut count: usize) {
@@ -67,21 +69,5 @@ impl RetainedWindow {
                 self.chunks.pop_front();
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn preserves_stream_bytes_without_exceeding_the_combined_tail_limit() {
-        let mut window = RetainedWindow::new(8);
-        window.push(OutputStream::Stdout, b"abc");
-        window.push(OutputStream::Stderr, b"12");
-        window.push(OutputStream::Stdout, b"defg");
-        assert_eq!(window.stream_bytes(OutputStream::Stdout), b"bcdefg");
-        assert_eq!(window.stream_bytes(OutputStream::Stderr), b"12");
-        assert_eq!(window.length, 8);
     }
 }

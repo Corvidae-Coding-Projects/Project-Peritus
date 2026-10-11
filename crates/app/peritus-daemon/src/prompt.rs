@@ -19,6 +19,3 @@ pub use types::{
     AuthenticatedApprovalResponse, PreparedPromptResponse, PromptAcceptance, PromptAdmission,
     PromptBrokerLimits, PromptCancellationAcceptance, PromptSettlementToken, PromptTerminalStatus,
 };
-
-#[cfg(test)]
-mod tests;

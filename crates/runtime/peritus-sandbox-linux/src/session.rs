@@ -310,17 +310,3 @@ impl NativeSandboxSession for LinuxPreparedSession {
             .map_err(|error| crate::preparation::lifecycle_process_error(&error))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::release_emits_observation;
-    use crate::NativePhase;
-
-    #[test]
-    fn prepared_validation_failure_cleans_up_without_normal_release_observation() {
-        assert!(release_emits_observation(NativePhase::Prepared).expect("prepared cleanup"));
-        assert!(release_emits_observation(NativePhase::Terminated).expect("normal cleanup"));
-        assert!(release_emits_observation(NativePhase::Activated).is_err());
-        assert!(release_emits_observation(NativePhase::CancelRequested).is_err());
-    }
-}

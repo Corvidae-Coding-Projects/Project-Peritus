@@ -82,6 +82,15 @@ pub(super) fn write_intent(
             w.write_u16(5)?;
             write_selection(w, *selected)
         }
+        WorkbenchQueueIntent::Move { selected, before } => {
+            w.write_u16(7)?;
+            write_selection(w, *selected)?;
+            w.write_bool(before.is_some())?;
+            if let Some(before) = before {
+                write_id(w, before.as_bytes())?;
+            }
+            Ok(())
+        }
         WorkbenchQueueIntent::Reorder(order) => {
             w.write_u16(6)?;
             write_order(w, order)
@@ -109,6 +118,10 @@ pub(super) fn read_intent(r: &mut CanonicalReader<'_>) -> Result<WorkbenchQueueI
         4 => WorkbenchQueueIntent::Hold { selected: read_selection(r)?, held: r.read_bool()? },
         5 => WorkbenchQueueIntent::Withdraw(read_selection(r)?),
         6 => WorkbenchQueueIntent::Reorder(read_order(r)?),
+        7 => WorkbenchQueueIntent::Move {
+            selected: read_selection(r)?,
+            before: if r.read_bool()? { Some(read_id(r, WorkbenchInputId::new)?) } else { None },
+        },
         _ => return unknown(offset),
     })
 }

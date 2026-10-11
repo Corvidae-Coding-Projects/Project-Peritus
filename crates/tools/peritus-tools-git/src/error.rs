@@ -1,6 +1,7 @@
 //! Stable Git-tool failures and recovery guidance.
 
 use core::fmt;
+use std::borrow::Cow;
 
 /// Stable Git-tool failure class.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -13,8 +14,6 @@ pub enum GitToolErrorKind {
     Workspace,
     /// Protocol catalog or rendering construction failed.
     Protocol,
-    /// No lower authorized operation owns the requested effect.
-    Unsupported,
 }
 
 impl GitToolErrorKind {
@@ -26,7 +25,6 @@ impl GitToolErrorKind {
             Self::Git => "PERITUS-GIT-TOOL-002",
             Self::Workspace => "PERITUS-GIT-TOOL-003",
             Self::Protocol => "PERITUS-GIT-TOOL-004",
-            Self::Unsupported => "PERITUS-GIT-TOOL-005",
         }
     }
 }
@@ -59,21 +57,24 @@ pub enum RecoveryClass {
     CorrectInput,
     /// Re-observe the immutable repository/workspace.
     Reobserve,
+    /// Retry unchanged semantic inputs with fresh action authority.
+    Retry,
     /// Obtain fresh exact authority.
     Reauthorize,
+    /// Quarantine requires authenticated human handling before retry.
+    Quarantine,
     /// Reconcile a dirty or indeterminate workspace.
     Reconcile,
-    /// Select an operation supported by the lower boundary.
-    SelectSupportedOperation,
 }
 
 /// Bounded typed Git-tool error.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GitToolError {
     kind: GitToolErrorKind,
+    source_code: Option<&'static str>,
     operation: GitToolOperation,
     recovery: RecoveryClass,
-    detail: &'static str,
+    detail: Cow<'static, str>,
 }
 
 impl GitToolError {
@@ -83,7 +84,7 @@ impl GitToolError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { kind, operation, recovery, detail }
+        Self { kind, source_code: None, operation, recovery, detail: Cow::Borrowed(detail) }
     }
 
     pub(crate) const fn invalid(operation: GitToolOperation, detail: &'static str) -> Self {
@@ -95,6 +96,32 @@ impl GitToolError {
     pub const fn kind(&self) -> GitToolErrorKind {
         self.kind
     }
+    /// Returns the lower-boundary code when one is available, otherwise the tool code.
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match self.source_code {
+            Some(code) => code,
+            None => self.kind.code(),
+        }
+    }
+
+    pub(crate) const fn with_source_code(mut self, code: &'static str) -> Self {
+        self.source_code = Some(code);
+        self
+    }
+    pub(crate) fn with_source_detail(mut self, detail: &str) -> Self {
+        let end = detail.floor_char_boundary(2048.min(detail.len()));
+        let mut text: String = detail[..end]
+            .chars()
+            .map(|value| if value.is_control() { ' ' } else { value })
+            .collect();
+        if end < detail.len() {
+            text.push_str(" [detail truncated]");
+        }
+        self.detail = Cow::Owned(text);
+        self
+    }
+
     /// Returns the operation that failed.
     #[must_use]
     pub const fn operation(&self) -> GitToolOperation {
@@ -107,14 +134,14 @@ impl GitToolError {
     }
     /// Returns bounded content-free detail.
     #[must_use]
-    pub const fn detail(&self) -> &'static str {
-        self.detail
+    pub fn detail(&self) -> &str {
+        &self.detail
     }
 }
 
 impl fmt::Display for GitToolError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{} during {:?}: {}", self.kind.code(), self.operation, self.detail)
+        write!(formatter, "{} during {:?}: {}", self.code(), self.operation, self.detail)
     }
 }
 

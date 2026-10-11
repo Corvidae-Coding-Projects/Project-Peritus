@@ -1,5 +1,7 @@
 # peritus-benchmarks
 
+> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+
 `peritus-benchmarks` is the H3 production performance qualification core. It validates stable
 profiles and workloads, lazily generates deterministic load and soak schedules, ingests bounded
 measurements, accounts exact resource lifecycles and queue backpressure, compares an accepted

@@ -178,6 +178,7 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 evidence_input_generation: left_input_generation,
                 launch: left_launch,
                 capture: left_capture,
+                evidence: left_evidence,
                 ..
             },
             ControlIntent::ObserveGraphicalGoalEvidence {
@@ -188,6 +189,7 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 evidence_input_generation: right_input_generation,
                 launch: right_launch,
                 capture: right_capture,
+                evidence: right_evidence,
                 ..
             },
         ) => {
@@ -199,6 +201,7 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 left_input_generation,
                 left_launch,
                 left_capture,
+                left_evidence,
             ) == (
                 right_criterion,
                 right_goal,
@@ -207,6 +210,7 @@ pub(super) fn equivalent_host_intent(left: &ControlIntent, right: &ControlIntent
                 right_input_generation,
                 right_launch,
                 right_capture,
+                right_evidence,
             )
         }
         _ => false,

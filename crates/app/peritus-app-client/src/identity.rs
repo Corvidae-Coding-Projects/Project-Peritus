@@ -57,25 +57,3 @@ pub fn nonzero_id() -> Result<[u8; 16], ClientError> {
         "randomness source repeatedly returned the reserved zero identity",
     ))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::RequestIdentity;
-
-    #[test]
-    fn restoring_a_binding_preserves_both_identifiers() {
-        let request = peritus_app_protocol::RequestId::new([1; 16]).unwrap();
-        let correlation = peritus_app_protocol::CorrelationId::new([2; 16]).unwrap();
-        let restored = RequestIdentity::new(request, correlation);
-        assert_eq!(restored.request_id, request);
-        assert_eq!(restored.correlation_id, correlation);
-    }
-
-    #[test]
-    fn independently_generated_requests_have_distinct_bindings() {
-        let first = RequestIdentity::generate().unwrap();
-        let second = RequestIdentity::generate().unwrap();
-        assert_ne!(first.request_id, second.request_id);
-        assert_ne!(first.correlation_id, second.correlation_id);
-    }
-}

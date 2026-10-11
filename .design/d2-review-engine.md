@@ -169,7 +169,7 @@ shape, state transitions, parallel ownership, and verification evidence are fixe
   or unnecessary architecture/source exception.
 - **D2-R042:** The ordinary Rust API shall execute the same checked bodies after ghost erasure and
   return typed errors. Public fields remain private. `lib.rs` remains a composition/export surface
-  below 80 lines; production Rust files target 400 lines and never exceed 700.
+  below 80 lines; production Rust files stay at or below 500 lines.
 - **D2-R043:** No production dependency may offer provider execution, process/shell execution,
   workspace mutation, approval issuance, or overall acceptance authority.
 

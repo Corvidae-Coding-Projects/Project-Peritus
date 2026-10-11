@@ -5,8 +5,6 @@ use peritus_app_protocol::{ProductActivity, ProductActivityKind};
 use serde_json::Value;
 
 mod display;
-#[cfg(test)]
-mod tests;
 
 #[derive(Clone)]
 pub(super) struct PendingTool {

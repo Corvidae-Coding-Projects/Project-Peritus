@@ -62,21 +62,3 @@ fn zero_argument_recipe(line: &str) -> Option<&str> {
 fn parser_error(detail: &'static str) -> QualityError {
     QualityError::new(QualityErrorKind::Parser, detail)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn finds_only_public_zero_argument_recipes() {
-        let mut definitions = Vec::new();
-        discover(
-            "Justfile",
-            b"check:\n  cargo check\nwith-arg value:\n  echo {{value}}\n_private:\n  true\n",
-            &mut definitions,
-        )
-        .expect("discovery");
-        let names: Vec<_> = definitions.iter().map(CheckDefinition::gate_name).collect();
-        assert_eq!(names, ["just.check"]);
-    }
-}

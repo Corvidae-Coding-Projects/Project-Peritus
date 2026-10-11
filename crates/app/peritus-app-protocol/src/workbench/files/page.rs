@@ -20,7 +20,7 @@ impl WorkbenchFileQuery {
         revision: u64,
         offset: u32,
     ) -> Result<Self, AppProtocolError> {
-        if revision == 0 || offset > 256 {
+        if revision == 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, offset })
@@ -128,10 +128,7 @@ impl WorkbenchFilePage {
         rows: Vec<WorkbenchFileRow>,
         total: u32,
     ) -> Result<Self, AppProtocolError> {
-        if total > 256
-            || query.offset() > total
-            || rows.len() != (total - query.offset()).min(32) as usize
-        {
+        if query.offset() > total || rows.len() != (total - query.offset()).min(32) as usize {
             return Err(invalid());
         }
         Ok(Self { query, rows, total })

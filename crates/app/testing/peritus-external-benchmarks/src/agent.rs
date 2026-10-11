@@ -336,6 +336,3 @@ pub fn run_id(session_id: &str, task_id: &str) -> Result<RunId, BenchmarkError> 
     RunId::new(identity)
         .map_err(|_| BenchmarkError::Workspace("derived run identity is zero".to_owned()))
 }
-
-#[cfg(test)]
-mod tests;

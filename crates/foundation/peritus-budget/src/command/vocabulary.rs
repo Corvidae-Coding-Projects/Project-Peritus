@@ -11,34 +11,29 @@ use super::{
     UsageObservation,
 };
 use peritus_types::BudgetId;
-use vstd::prelude::*;
 
-verus! {
-
-/// Complete closed command family accepted by [`crate::BudgetLedger::transition`].
+#[doc = " Complete closed command family accepted by [`crate::BudgetLedger::transition`]."]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum BudgetCommand {
-    /// Allocate an immutable child account.
+    #[doc = " Allocate an immutable child account."]
     AllocateChild(ChildBudgetRequest),
-    /// Charge known use and reserve an operation ceiling atomically.
+    #[doc = " Charge known use and reserve an operation ceiling atomically."]
     Begin(BudgetRequest),
-    /// Mark a held operation active.
+    #[doc = " Mark a held operation active."]
     Activate(Activation),
-    /// Reconcile a cumulative usage high-water observation.
+    #[doc = " Reconcile a cumulative usage high-water observation."]
     ObserveUsage(UsageObservation),
-    /// Consume the complete outstanding ceiling from exact settlement evidence.
+    #[doc = " Consume the complete outstanding ceiling from exact settlement evidence."]
     SettleExact(ReservationReference),
-    /// Logically release a held reservation using a correlated non-activation claim.
-    ///
-    /// This is not effect or commit authority. `REF-C0-B1-COMMIT-ONCE` requires C0 to establish
-    /// the external negative fact from its own authoritative target or journal observation.
+    #[doc = " Logically release a held reservation using a correlated non-activation claim."]
+    #[doc = ""]
+    #[doc = " This is not effect or commit authority. `REF-C0-B1-COMMIT-ONCE` requires C0 to establish"]
+    #[doc = " the external negative fact from its own authoritative target or journal observation."]
     CancelHeld(ReservationReference),
-    /// Conservatively consume the outstanding ceiling after ambiguity.
+    #[doc = " Conservatively consume the outstanding ceiling after ambiguity."]
     FinalizeAmbiguous(AmbiguousFinalization),
-    /// Stop an account and its descendants from beginning or allocating new work.
+    #[doc = " Stop an account and its descendants from beginning or allocating new work."]
     Seal(BudgetId),
-    /// Close a quiescent account, releasing only unused child delegation.
+    #[doc = " Close a quiescent account, releasing only unused child delegation."]
     Close(BudgetId),
 }
-
-} // verus!

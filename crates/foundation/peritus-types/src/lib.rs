@@ -4,20 +4,13 @@
 //! Verus postconditions and type invariants, so verified consumers can rely on those constraints
 //! without preconditions.
 
-use vstd::prelude::*;
-
-verus! {
-
 mod capability;
 mod digest;
 mod errors;
 mod ids;
 mod numbers;
-mod revision;
 mod resource;
-
-#[cfg(verus_only)]
-pub use capability::canonical_byte_order_from;
+mod revision;
 pub use capability::CapabilityName;
 pub use digest::Sha256Digest;
 pub use errors::{
@@ -25,7 +18,5 @@ pub use errors::{
 };
 pub use ids::*;
 pub use numbers::{EventSequence, Generation, RevisionNumber};
-pub use revision::RevisionTuple;
 pub use resource::{ResourceKind, ResourceQuantity};
-
-} // verus!
+pub use revision::RevisionTuple;

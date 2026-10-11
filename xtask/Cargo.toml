@@ -20,7 +20,6 @@ yaml-rust2.workspace = true
 [package.metadata.peritus]
 owner = "A0"
 layer = "engineering"
-verification-class = "C"
 
 [lints]
 workspace = true

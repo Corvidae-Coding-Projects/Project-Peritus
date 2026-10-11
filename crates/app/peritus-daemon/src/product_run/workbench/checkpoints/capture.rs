@@ -1,11 +1,11 @@
 //! Bounded selected-path capture and no-follow folder observations.
 
 use super::{
-    BTreeSet, CapturedCoverage, CapturedPath, CheckpointFileMode, CheckpointFileVersion,
-    CheckpointId, CheckpointPath, ControlError, ControlIntent, ControlOperation, ConversationId,
-    ConversationRecord, Error, FileReadSelection, FolderIdentity, FolderInspection, OperationId,
-    Path, ProductRunService, UserCheckpoint, WorkspacePath, checkpoint_references,
-    external_effects, fs, io, patch_input,
+    BTreeSet, CapturedCoverage, CapturedPath, CheckpointExclusion, CheckpointFileMode,
+    CheckpointFileVersion, CheckpointId, CheckpointPath, ControlError, ControlIntent,
+    ControlOperation, ConversationId, ConversationRecord, Error, FileReadSelection, FolderIdentity,
+    FolderInspection, OperationId, Path, ProductRunService, UserCheckpoint, WorkspacePath,
+    checkpoint_references, external_effects, fs, io, patch_input,
 };
 use peritus_product_runner::WorkspaceMutationKind;
 use peritus_types::{ActorId, RunId, WorkspaceId};
@@ -26,7 +26,7 @@ impl ProductRunService {
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
         let mut selected = BTreeSet::new();
-        let mut exclusions = Vec::new();
+        let mut exclusions: Vec<CheckpointExclusion> = Vec::new();
         for entry in record.files().entries() {
             let source = entry.file().source();
             let reason = if !entry.selected() {
@@ -50,16 +50,9 @@ impl ProductRunService {
             }
         }
         let mut paths = Vec::with_capacity(selected.len());
-        let mut total = 0_usize;
         for path in &selected {
             check_protected(root, path, &contract, &protected)?;
             let captured = observe_path(&identity, path)?;
-            total = total
-                .checked_add(captured.body.as_ref().map_or(0, Vec::len))
-                .ok_or(ControlError::Capacity)?;
-            if total > peritus_patch::MAX_PATCH_BYTES {
-                return Err(ControlError::Capacity.into());
-            }
             paths.push(captured);
         }
         Ok(CapturedCoverage { paths, exclusions })
@@ -76,16 +69,9 @@ impl ProductRunService {
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
         let mut paths = Vec::with_capacity(checkpoint.paths().len());
-        let mut total = 0_usize;
         for path in checkpoint.paths() {
             check_protected(root, path.path(), &contract, &protected)?;
             let captured = observe_path(&identity, path.path())?;
-            total = total
-                .checked_add(captured.body.as_ref().map_or(0, Vec::len))
-                .ok_or(ControlError::Capacity)?;
-            if total > peritus_patch::MAX_PATCH_BYTES {
-                return Err(ControlError::Capacity.into());
-            }
             paths.push(captured);
         }
         Ok(paths)
@@ -207,7 +193,7 @@ fn validate_automatic_checkpoint(
         && checkpoint.automatic_run() == Some(run.into_bytes())
         && checkpoint.paths().len() == usize::from(expected_path.is_some())
         && checkpoint.paths().first().map(CheckpointPath::path) == expected_path
-        && checkpoint.exclusions().eq(expected_exclusions.iter().map(String::as_str));
+        && checkpoint.exclusions().eq(expected_exclusions);
     if exact { Ok(()) } else { Err(ControlError::IdempotencyConflict.into()) }
 }
 
@@ -244,14 +230,14 @@ pub(super) fn observe_path(identity: &FolderIdentity, path: &str) -> Result<Capt
         return Err(ControlError::InvalidInput.into());
     }
     let inspected = FolderInspection::open(identity)
-        .and_then(|reader| {
-            reader.read_file(
-                &relative,
-                FileReadSelection::all(),
-                peritus_patch::MAX_FILE_BYTES as u64,
-            )
-        })
-        .map_err(|_| ControlError::StaleRevision)?;
+        .and_then(|reader| reader.read_file(&relative, FileReadSelection::all(), u64::MAX))
+        .map_err(|error| {
+            if error.detail() == "source identity or content changed during inspection" {
+                Error::from(ControlError::StaleRevision)
+            } else {
+                Error::from(error)
+            }
+        })?;
     let after = fs::symlink_metadata(&target)?;
     if !after.is_file()
         || after.file_type().is_symlink()
@@ -333,10 +319,10 @@ pub(super) fn check_protected(
 }
 
 pub(super) fn push_exclusion(
-    values: &mut Vec<String>,
+    values: &mut Vec<CheckpointExclusion>,
     label: &str,
     reason: &str,
 ) -> Result<(), Error> {
-    values.push(format!("{label}: {reason}"));
+    values.push(CheckpointExclusion::from_label_and_reason(label.to_owned(), reason.to_owned())?);
     Ok(())
 }

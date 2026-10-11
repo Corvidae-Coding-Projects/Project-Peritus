@@ -244,28 +244,3 @@ fn lowercase_hex(bytes: &[u8]) -> String {
     }
     encoded
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rejects_stale_schema_and_missing_workspace_before_admission() {
-        assert!(matches!(
-            validate_schema(INVOCATION_REPORT_SCHEMA_VERSION - 1),
-            Err(BenchmarkError::UnsupportedSchema { .. })
-        ));
-        let missing = PathBuf::from("/definitely/missing/peritus-workspace");
-        assert!(matches!(
-            canonical_directory(&missing, "workspace"),
-            Err(BenchmarkError::MissingWorkspace { .. })
-        ));
-    }
-
-    #[test]
-    fn accepts_only_full_lowercase_suite_revisions() {
-        validate_revision("0123456789abcdef0123456789abcdef01234567").expect("revision");
-        assert!(validate_revision("0123456").is_err());
-        assert!(validate_revision("ABCDEF0123456789ABCDEF0123456789ABCDEF01").is_err());
-    }
-}

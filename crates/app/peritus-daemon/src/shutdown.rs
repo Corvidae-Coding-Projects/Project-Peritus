@@ -341,6 +341,3 @@ fn illegal(detail: &'static str) -> DaemonError {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests;

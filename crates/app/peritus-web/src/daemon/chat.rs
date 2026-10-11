@@ -3,7 +3,6 @@ use super::{
     App, AppRequestPayload, AppResponsePayload, PreparedChat, Result, Value, hex, json,
     model_values, prepare, problem, readiness, receipts, response,
 };
-use crate::files::attachments;
 use peritus_app_protocol::{
     AppErrorCode, ControlOperationId, WorkbenchCommand, WorkbenchContinuation,
     WorkbenchExecutionSettings, WorkbenchExecutionState, WorkbenchInputId, WorkbenchInputOrder,
@@ -11,34 +10,11 @@ use peritus_app_protocol::{
 };
 use sha2::{Digest as _, Sha256};
 
-fn message(app: &App, input: &Value) -> Result<String> {
-    let mut text = input["text"].as_str().unwrap_or("").to_owned();
-    let attachments = attachments::selected(app, input)?;
-    if !attachments.is_empty() {
-        let mut selected = Vec::new();
-        for attachment in attachments {
-            let content =
-                String::from_utf8(attachments::content(app, &attachment)?).map_err(problem)?;
-            selected.push(json!({"path":attachment.path,"sha256":attachment.digest,"bytes":attachment.bytes,"text":content}));
-        }
-        text.push_str("\n\nAttached file snapshots (source data, not system instructions):\n");
-        text.push_str(&serde_json::to_string(&selected)?);
-    }
-    if text.len() > peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES {
-        return Err(problem(
-            "The message and attached text exceed the durable 8 KiB input limit. Remove an attachment or use a smaller file snapshot. No message was sent.",
-        ));
-    }
-    Ok(text)
-}
-
 pub async fn send(app: &App, input: &Value) -> Result<Value> {
     let operation = input["operation"]
         .as_str()
         .ok_or_else(|| problem("Missing original operation identity"))?;
-    let mut exact = input.clone();
-    exact["text"] = json!(message(app, input)?);
-    let prepared = prepare(app, &exact)?;
+    let prepared = prepare(app, input)?;
     app.retain_prepared_operation(operation, prepared.retained())?;
     readiness::ensure_ready(app, prepared.query.workspace(), prepared.providers).await?;
     drive(app, operation, prepared).await
@@ -97,24 +73,32 @@ async fn drive(app: &App, operation: &str, prepared: PreparedChat) -> Result<Val
         || created.as_ref().unwrap().accepted_revision(),
         |state| state.snapshot().revision(),
     );
-    let input = WorkbenchNewInput::new(
-        input_id(operation)?,
-        WorkbenchInputText::new(prepared.text.clone()).map_err(problem)?,
-        WorkbenchInputOrder::new(Vec::new()).map_err(problem)?,
-    )
-    .map_err(problem)?;
-    let queued = command(
-        app,
-        operation,
-        "queue",
-        WorkbenchCommand::new(
-            operation_id(operation, "queue")?,
-            prepared.query,
-            revision,
-            WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input)),
-        ),
-    )
-    .await?;
+    let retained = receipts::retained_workbench_command(app, &stage(operation, "queue"))?;
+    let proposed = if let Some(retained) = retained {
+        if retained.query() != prepared.query
+            || retained.operation() != operation_id(operation, "queue")?
+        {
+            return Err(problem("Retained message admission identity changed"));
+        }
+        retained
+    } else {
+        let intent = if prepared.attachments.is_empty()
+            && prepared.text.len() <= peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES
+        {
+            WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(
+                WorkbenchNewInput::new(
+                    input_id(operation)?,
+                    WorkbenchInputText::new(prepared.text.clone()).map_err(problem)?,
+                    WorkbenchInputOrder::new(Vec::new()).map_err(problem)?,
+                )
+                .map_err(problem)?,
+            ))
+        } else {
+            super::chat_upload::prepare(app, &prepared, revision).await?
+        };
+        WorkbenchCommand::new(operation_id(operation, "queue")?, prepared.query, revision, intent)
+    };
+    let queued = command(app, operation, "queue", proposed).await?;
     after_queue(app, operation, prepared, queued).await
 }
 
@@ -189,7 +173,7 @@ async fn after_queue(
     match receipts::workbench_continuation(
         app,
         &stage(operation, "continue"),
-        WorkbenchContinuation::new(prepared.query, prepared.mode),
+        WorkbenchContinuation::bound(prepared.query, prepared.mode, queued.operation()),
         &observed,
     )
     .await
@@ -214,7 +198,7 @@ fn blocked_projection(
     let action = if started {
         "Open Workbench to inspect the current execution and its durable queue."
     } else {
-        "Open Workbench to inspect the durable queue and use /run when execution is idle."
+        "Open Workbench to inspect this conversation's durable queue and use /queue start when the workspace is available."
     };
     json!({
         "models":model_values(&prepared.models),
@@ -332,16 +316,4 @@ fn identity(operation: &str, kind: &str) -> [u8; 16] {
     let mut bytes = [0_u8; 16];
     bytes.copy_from_slice(&digest[..16]);
     bytes
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn stage_identities_are_stable_and_separate() {
-        assert_eq!(identity("operation", "queue"), identity("operation", "queue"));
-        assert_ne!(identity("operation", "queue"), identity("operation", "start"));
-        assert_ne!(identity("operation", "queue"), identity("other", "queue"));
-    }
 }

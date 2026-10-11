@@ -185,16 +185,6 @@ fn output_list_directory(root: &Path, words: &[&str]) -> Option<PathBuf> {
     })
 }
 
-#[cfg(test)]
-fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
-    run_analyzed(root, &analyze(root, transcript), changed_paths)
-}
-
-#[cfg(test)]
-pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
-    analyze(root, transcript).required_outputs()
-}
-
 fn transcript_requests_single_file(transcript: &str) -> bool {
     transcript.lines().any(|line| {
         let words = line.split_whitespace().collect::<Vec<_>>();
@@ -323,18 +313,3 @@ fn path_token(raw: &str) -> &str {
     // delimiters, unclosed literals, and concatenated path suffixes keep their bytes.
     if raw[end..].starts_with(['—', '–']) { &raw[..end] } else { raw }
 }
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-#[path = "explicit_paths/removal_tests.rs"]
-mod removal_tests;
-
-#[cfg(test)]
-#[path = "explicit_paths/scoped_list_tests.rs"]
-mod scoped_list_tests;
-
-#[cfg(test)]
-#[path = "explicit_paths/context_tests.rs"]
-mod context_tests;

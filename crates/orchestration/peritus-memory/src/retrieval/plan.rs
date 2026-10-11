@@ -1,18 +1,13 @@
 //! Transactional retrieval orchestration and complete explanations.
 
 use super::filter::exclusion;
-use super::ranking::score;
 use super::output::{
     CandidateExplanation, ExcludedMemory, ExclusionReason, MemoryCandidate, RankScore,
     RetrievalPlan,
 };
-use super::types::{
-    MAX_RETRIEVAL_INPUTS, RetrievalPolicy, RetrievalQuery,
-};
+use super::ranking::score;
+use super::types::{MAX_RETRIEVAL_INPUTS, RetrievalPolicy, RetrievalQuery};
 use crate::{MemoryError, MemoryErrorKind, MemoryField, MemoryRecord, MemoryTombstone};
-use vstd::prelude::*;
-
-verus! {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct WorkingCandidate {
@@ -21,16 +16,15 @@ struct WorkingCandidate {
     reason: Option<ExclusionReason>,
     selected: bool,
 }
-
-/// Filters, ranks, and budget-selects memory with one explanation for every input record.
-///
-/// Input order does not affect the result. Equal scores are ordered by stable memory identifier.
-/// Malformed duplicate record identities or conflicting tombstones fail transactionally.
-///
-/// # Errors
-///
-/// Returns a typed error for excessive input, duplicate memory identities, conflicting
-/// tombstones, tombstone digest mismatch, or checked arithmetic failure.
+#[doc = " Filters, ranks, and budget-selects memory with one explanation for every input record."]
+#[doc = ""]
+#[doc = " Input order does not affect the result. Equal scores are ordered by stable memory identifier."]
+#[doc = " Malformed duplicate record identities or conflicting tombstones fail transactionally."]
+#[doc = ""]
+#[doc = " # Errors"]
+#[doc = ""]
+#[doc = " Returns a typed error for excessive input, duplicate memory identities, conflicting"]
+#[doc = " tombstones, tombstone digest mismatch, or checked arithmetic failure."]
 #[allow(clippy::too_many_lines, reason = "transactional planning keeps one auditable pass")]
 pub fn retrieve(
     records: &[MemoryRecord],
@@ -48,10 +42,7 @@ pub fn retrieve(
     let record_order = record_order(records)?;
     let mut working = Vec::new();
     let mut ordered_index = 0;
-    while ordered_index < record_order.len()
-        invariant ordered_index <= record_order.len(),
-        decreases record_order.len() - ordered_index,
-    {
+    while ordered_index < record_order.len() {
         let record_index = record_order[ordered_index];
         if record_index >= records.len() {
             return Err(MemoryError::field(
@@ -61,11 +52,8 @@ pub fn retrieve(
         }
         let record = &records[record_index];
         let reason = exclusion(record, tombstones, policy, query)?;
-        let candidate_score = if reason.is_none() {
-            Some(score(record, policy, query)?)
-        } else {
-            None
-        };
+        let candidate_score =
+            if reason.is_none() { Some(score(record, policy, query)?) } else { None };
         working.push(WorkingCandidate {
             record_index,
             score: candidate_score,
@@ -74,18 +62,12 @@ pub fn retrieve(
         });
         ordered_index += 1;
     }
-
     let ranked = ranked_positions(&working, records);
     let token_budget = query.token_budget();
     let mut selected = Vec::new();
     let mut used_tokens = 0_u32;
     let mut rank_index = 0;
-    while rank_index < ranked.len()
-        invariant
-            rank_index <= ranked.len(),
-            used_tokens <= token_budget,
-        decreases ranked.len() - rank_index,
-    {
+    while rank_index < ranked.len() {
         let position = ranked[rank_index];
         if position >= working.len() {
             return Err(MemoryError::field(
@@ -130,13 +112,9 @@ pub fn retrieve(
         }
         rank_index += 1;
     }
-
     let mut explanations = Vec::new();
     let mut explanation_index = 0;
-    while explanation_index < working.len()
-        invariant explanation_index <= working.len(),
-        decreases working.len() - explanation_index,
-    {
+    while explanation_index < working.len() {
         let entry = working[explanation_index];
         if entry.record_index >= records.len() {
             return Err(MemoryError::field(
@@ -177,20 +155,13 @@ pub fn retrieve(
     }
     Ok(RetrievalPlan::new(selected, explanations, token_budget, used_tokens))
 }
-
 fn record_order(records: &[MemoryRecord]) -> Result<Vec<usize>, MemoryError> {
     let mut order = Vec::new();
     let mut source_index = 0;
-    while source_index < records.len()
-        invariant source_index <= records.len(),
-        decreases records.len() - source_index,
-    {
+    while source_index < records.len() {
         order.push(source_index);
         let mut position = order.len() - 1;
-        while position > 0
-            invariant position < order.len(),
-            decreases position,
-        {
+        while position > 0 {
             let previous_index = order[position - 1];
             let current_index = order[position];
             if previous_index >= records.len() || current_index >= records.len() {
@@ -212,10 +183,7 @@ fn record_order(records: &[MemoryRecord]) -> Result<Vec<usize>, MemoryError> {
     }
     if order.len() > 1 {
         let mut index = 1;
-        while index < order.len()
-            invariant 1 <= index <= order.len(),
-            decreases order.len() - index,
-        {
+        while index < order.len() {
             let previous_index = order[index - 1];
             let current_index = order[index];
             if previous_index >= records.len() || current_index >= records.len() {
@@ -236,21 +204,14 @@ fn record_order(records: &[MemoryRecord]) -> Result<Vec<usize>, MemoryError> {
     }
     Ok(order)
 }
-
 fn ranked_positions(working: &[WorkingCandidate], records: &[MemoryRecord]) -> Vec<usize> {
     let mut ranked = Vec::new();
     let mut index = 0;
-    while index < working.len()
-        invariant index <= working.len(),
-        decreases working.len() - index,
-    {
+    while index < working.len() {
         if working[index].score.is_some() {
             ranked.push(index);
             let mut position = ranked.len() - 1;
-            while position > 0
-                invariant position < ranked.len(),
-                decreases position,
-            {
+            while position > 0 {
                 let current_index = ranked[position];
                 let previous_index = ranked[position - 1];
                 if current_index >= working.len() || previous_index >= working.len() {
@@ -270,7 +231,6 @@ fn ranked_positions(working: &[WorkingCandidate], records: &[MemoryRecord]) -> V
     }
     ranked
 }
-
 fn ranks_before(
     left: usize,
     right: usize,
@@ -294,26 +254,15 @@ fn ranks_before(
         return false;
     }
     left_score > right_score
-        || left_score == right_score
-            && records[left_record].id() < records[right_record].id()
+        || left_score == right_score && records[left_record].id() < records[right_record].id()
 }
-
 fn validate_tombstones(tombstones: &[MemoryTombstone]) -> Result<(), MemoryError> {
     let mut left = 0;
-    while left < tombstones.len()
-        invariant left <= tombstones.len(),
-        decreases tombstones.len() - left,
-    {
+    while left < tombstones.len() {
         let mut right = left + 1;
-        while right < tombstones.len()
-            invariant
-                left < tombstones.len(),
-                right <= tombstones.len(),
-            decreases tombstones.len() - right,
-        {
+        while right < tombstones.len() {
             if tombstones[left].memory_id() == tombstones[right].memory_id()
-                && tombstones[left].last_known_revision()
-                    == tombstones[right].last_known_revision()
+                && tombstones[left].last_known_revision() == tombstones[right].last_known_revision()
             {
                 return Err(MemoryError::memory(
                     MemoryErrorKind::ConflictingRevision,
@@ -327,5 +276,3 @@ fn validate_tombstones(tombstones: &[MemoryTombstone]) -> Result<(), MemoryError
     }
     Ok(())
 }
-
-} // verus!

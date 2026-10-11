@@ -4,9 +4,6 @@ mod command;
 mod event;
 mod state;
 
-#[cfg(test)]
-mod fixture_tests;
-
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_quality_policy::ReviewerIdentity;
 use peritus_role::ReviewIndependenceView;

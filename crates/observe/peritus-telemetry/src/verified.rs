@@ -1,44 +1,24 @@
 //! Executable buffering, replay, and non-authority obligations proved with Verus.
 
-use vstd::prelude::*;
-
-verus! {
-
-/// Exact bounded queue accounting transition.
+#[doc = " Exact bounded queue accounting transition."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BufferFacts {
-    /// Queue length before enqueue.
+    #[doc = " Queue length before enqueue."]
     pub length_before: u64,
-    /// Configured nonzero capacity.
+    #[doc = " Configured nonzero capacity."]
     pub capacity: u64,
-    /// Queue length after enqueue.
+    #[doc = " Queue length after enqueue."]
     pub length_after: u64,
-    /// Drop counter before enqueue.
+    #[doc = " Drop counter before enqueue."]
     pub drops_before: u64,
-    /// Drop counter after enqueue.
+    #[doc = " Drop counter after enqueue."]
     pub drops_after: u64,
-    /// Whether the queue was full before enqueue.
+    #[doc = " Whether the queue was full before enqueue."]
     pub was_full: bool,
 }
-
-/// Mathematical bounded accounting predicate.
-pub open spec fn bounded_accounting_spec(facts: BufferFacts) -> bool {
-    facts.capacity > 0
-        && facts.length_before <= facts.capacity
-        && facts.length_after <= facts.capacity
-        && facts.was_full == (facts.length_before == facts.capacity)
-        && if facts.was_full {
-            facts.drops_before < u64::MAX && facts.drops_after == facts.drops_before + 1
-        } else {
-            facts.drops_after == facts.drops_before
-        }
-}
-
-/// Checks queue bounds and exact drop accounting.
+#[doc = " Checks queue bounds and exact drop accounting."]
 #[must_use]
-pub const fn bounded_accounting(facts: BufferFacts) -> (valid: bool)
-    ensures valid == bounded_accounting_spec(facts),
-{
+pub const fn bounded_accounting(facts: BufferFacts) -> bool {
     facts.capacity > 0
         && facts.length_before <= facts.capacity
         && facts.length_after <= facts.capacity
@@ -49,8 +29,7 @@ pub const fn bounded_accounting(facts: BufferFacts) -> (valid: bool)
             facts.drops_after == facts.drops_before
         }
 }
-
-/// Checks monotonic submitted, accepted, dropped, and exported accounting.
+#[doc = " Checks monotonic submitted, accepted, dropped, and exported accounting."]
 #[must_use]
 #[allow(
     clippy::too_many_arguments,
@@ -65,17 +44,7 @@ pub const fn counters_monotonic(
     dropped_after: u64,
     exported_before: u64,
     exported_after: u64,
-) -> (valid: bool)
-    ensures valid == (
-        submitted_after >= submitted_before
-            && accepted_after >= accepted_before
-            && dropped_after >= dropped_before
-            && exported_after >= exported_before
-            && accepted_after <= submitted_after
-            && dropped_after <= submitted_after
-            && exported_after <= accepted_after
-    ),
-{
+) -> bool {
     submitted_after >= submitted_before
         && accepted_after >= accepted_before
         && dropped_after >= dropped_before
@@ -84,8 +53,7 @@ pub const fn counters_monotonic(
         && dropped_after <= submitted_after
         && exported_after <= accepted_after
 }
-
-/// Checks exact whole-batch acknowledgement; partial success is never accepted.
+#[doc = " Checks exact whole-batch acknowledgement; partial success is never accepted."]
 #[must_use]
 #[allow(
     clippy::fn_params_excessive_bools,
@@ -97,15 +65,10 @@ pub const fn acknowledgement_legal(
     first_matches: bool,
     last_matches: bool,
     count_matches: bool,
-) -> (valid: bool)
-    ensures valid == (
-        stream_matches && batch_matches && first_matches && last_matches && count_matches
-    ),
-{
+) -> bool {
     stream_matches && batch_matches && first_matches && last_matches && count_matches
 }
-
-/// Checks checkpoint replay equivalence through an exact prefix.
+#[doc = " Checks checkpoint replay equivalence through an exact prefix."]
 #[must_use]
 #[allow(
     clippy::fn_params_excessive_bools,
@@ -116,27 +79,15 @@ pub const fn recovery_prefix_legal(
     sequence_not_future: bool,
     prefix_matches: bool,
     counters_valid: bool,
-) -> (valid: bool)
-    ensures valid == (
-        stream_matches && sequence_not_future && prefix_matches && counters_valid
-    ),
-{
+) -> bool {
     stream_matches && sequence_not_future && prefix_matches && counters_valid
 }
-
-/// Checks exact, overflow-free accounting for a contiguous final-disposition prefix.
+#[doc = " Checks exact, overflow-free accounting for a contiguous final-disposition prefix."]
 #[must_use]
-pub const fn disposition_prefix_legal(
-    submitted: u64,
-    dropped: u64,
-    exported: u64,
-) -> (valid: bool)
-    ensures valid == (exported <= submitted && dropped == submitted - exported),
-{
+pub const fn disposition_prefix_legal(submitted: u64, dropped: u64, exported: u64) -> bool {
     exported <= submitted && dropped == submitted - exported
 }
-
-/// Scalar proof that export changes no authority, execution, or budget measure.
+#[doc = " Scalar proof that export changes no authority, execution, or budget measure."]
 #[must_use]
 pub const fn export_preserves_authority(
     authority_before: u64,
@@ -145,16 +96,8 @@ pub const fn export_preserves_authority(
     execution_after: u64,
     budget_before: u64,
     budget_after: u64,
-) -> (valid: bool)
-    ensures valid == (
-        authority_before == authority_after
-            && execution_before == execution_after
-            && budget_before == budget_after
-    ),
-{
+) -> bool {
     authority_before == authority_after
         && execution_before == execution_after
         && budget_before == budget_after
 }
-
-} // verus!

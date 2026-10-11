@@ -1,59 +1,20 @@
-use crate::api_contract;
-use crate::architecture;
+//! Dispatch for the retained package, installation, distribution, and release tools.
+
 use crate::error::XtaskError;
-use crate::metadata;
-use crate::product_package::qualification::{self, QualificationInput};
-use crate::reproducibility;
-use crate::source;
-use crate::toolchain;
-use crate::trust;
-use std::env;
-use std::ffi::OsString;
-use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    ffi::OsString,
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
 
-use help::HELP;
+mod help;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Command {
-    All,
-    Discovery { operation: crate::discovery::Operation },
-    Architecture,
-    Documentation,
-    Formatting,
-    OrdinaryApi,
-    SourceLayout,
-    Reproducibility,
-    Toolchain,
-    Trust,
-    FormalInventory,
-    ProofImpactInventory,
-    CiShard { operation: crate::ci_shard::Operation, shard: &'static str },
-    ProductPackage,
-    ProductInstall,
-    ProductPackageSmoke,
-    ProductNativeQualification,
-    ProductNativeQualificationPrepare,
-    ProductNativeQualificationRestore,
-    ProductNativeQualificationShard { index: usize, input: QualificationInput },
-    ReleaseBootstrapSmoke { input: QualificationInput },
-    ReleaseCreate,
-    ReleasePackageStage,
-    ReleasePackageAssemble,
-    ReleaseQualificationPrepare,
-    ReleaseRebuild { operation: crate::release::rebuild::Operation },
-    ReleaseStage,
-    Distro { operation: crate::distro::Operation },
-    Help,
-}
-
-/// Runs `xtask` using process arguments, the current directory, and standard output.
+/// Runs the packaging tool with process arguments.
 ///
 /// # Errors
-///
-/// Returns a typed error when invocation, filesystem access, Cargo metadata, or a policy check
-/// fails. Diagnostics include a stable category and recovery guidance.
+/// Returns an invocation, filesystem, package build, or release operation error.
 pub fn run_from_env() -> Result<(), XtaskError> {
     let current = env::current_dir().map_err(|error| {
         XtaskError::io("determine current directory from", Path::new("."), error)
@@ -116,237 +77,44 @@ pub(crate) fn execute(
     root: &Path,
     output: &mut dyn Write,
 ) -> Result<(), XtaskError> {
-    let command = parse(args)?;
-    if command == Command::Help {
-        write_output(output, HELP)?;
-        return Ok(());
-    }
-
-    match command {
-        Command::Discovery { operation } => crate::discovery::run(root, operation)?,
-        Command::All => all::execute(root, output)?,
-        Command::Architecture => {
-            let policy = metadata::architecture_policy(root)?;
-            let (packages, files) = architecture::check(root, &policy)?;
-            write_output(
-                output,
-                &format!(
-                    "architecture-check passed: {packages} package(s), {files} source file(s)\n"
-                ),
-            )?;
-        }
-        Command::Documentation => {
-            let files = crate::documentation::check(root)?;
-            write_output(output, &format!("docs-check passed: {files} documentation file(s)\n"))?;
-        }
-        Command::Formatting => {
-            let packages = crate::formatting::check(root)?;
-            write_output(
-                output,
-                &format!("format-check passed: {packages} workspace package(s)\n"),
-            )?;
-        }
-        Command::OrdinaryApi => {
-            let policy = metadata::architecture_policy(root)?;
-            let report = api_contract::check(root, &policy)?;
-            write_output(
-                output,
-                &format!(
-                    "ordinary-api-check passed: {} formal-boundary file(s), {} ordinary-safe executable entry point(s)\n",
-                    report.files, report.executable_entry_points
-                ),
-            )?;
-        }
-        Command::SourceLayout => {
-            let policy = metadata::architecture_policy(root)?;
-            let cargo = metadata::cargo_metadata(root)?;
-            let files = source::check(root, &policy, &cargo)?;
-            write_output(output, &format!("source-layout-check passed: {files} source file(s)\n"))?;
-        }
-        Command::Reproducibility => {
-            let tools = metadata::toolchain_policy(root)?;
-            let actions = reproducibility::check(root, &tools)?;
-            write_output(
-                output,
-                &format!("reproducibility-check passed: {actions} immutable action reference(s)\n"),
-            )?;
-        }
-        Command::Toolchain => {
-            let tools = metadata::toolchain_policy(root)?;
-            toolchain::check(root, &tools)?;
-            write_output(
-                output,
-                "toolchain-check passed: Rust, Verus, vstd metadata, and bundled Z3 match\n",
-            )?;
-        }
-        Command::Trust => {
-            let policy = metadata::architecture_policy(root)?;
-            let files = trust::check(root, &policy)?;
-            write_output(
-                output,
-                &format!("verify-trust passed: {files} source file(s) scanned\n"),
-            )?;
-        }
-        Command::FormalInventory => write_output(output, &crate::formal_inventory::render(root)?)?,
-        Command::ProofImpactInventory => {
-            write_output(output, &trust::proof_impact_inventory(root)?)?;
-        }
-        Command::CiShard { operation, shard } => {
-            execute_ci_shard(root, operation, shard, output)?;
-        }
-        Command::ProductPackage
-        | Command::ProductInstall
-        | Command::ProductPackageSmoke
-        | Command::ProductNativeQualification
-        | Command::ProductNativeQualificationPrepare
-        | Command::ProductNativeQualificationRestore
-        | Command::ProductNativeQualificationShard { .. } => {
-            execute_product(command, root, output)?;
-        }
-        Command::ReleaseCreate => crate::release::create(root)?,
-        Command::ReleaseBootstrapSmoke { input } => {
-            execute_release_bootstrap(root, input, output)?;
-        }
-        Command::ReleasePackageStage => crate::release::package_stage(root)?,
-        Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
-        Command::ReleaseQualificationPrepare => crate::release::qualification_prepare(root)?,
-        Command::ReleaseRebuild { operation } => crate::release::rebuild::run(root, operation)?,
-        Command::ReleaseStage => execute_release_stage(root, output)?,
-        Command::Distro { operation } => crate::distro::run(root, operation)?,
-        Command::Help => {}
-    }
-    Ok(())
-}
-
-fn execute_ci_shard(
-    root: &Path,
-    operation: crate::ci_shard::Operation,
-    shard: &str,
-    output: &mut dyn Write,
-) -> Result<(), XtaskError> {
-    let packages = crate::ci_shard::run(root, operation, shard)?;
-    write_output(
-        output,
-        &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
-    )
-}
-
-fn execute_release_stage(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
-    crate::release::stage_draft(root)?;
-    write_output(
-        output,
-        "Release draft is complete and remains unpublished; H4 approval and separate publication authorization are required.\n",
-    )
-}
-
-fn execute_release_bootstrap(
-    root: &Path,
-    input: QualificationInput,
-    output: &mut dyn Write,
-) -> Result<(), XtaskError> {
-    let package = crate::release::bootstrap_smoke(root, input)?;
-    write_output(output, &format!("public release bootstrap passed: {}\n", package.display()))
-}
-
-fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError> {
     let mut args = args.into_iter();
     let first = args.next();
-    if let Some(command) = shard_args::parse(first.as_ref(), &mut args)? {
-        return Ok(command);
-    }
     if args.next().is_some() {
-        return Err(XtaskError::invocation(
-            "expected exactly one command; run `cargo xtask help` for the supported interface",
-        ));
+        return Err(XtaskError::invocation("expected one command; run cargo xtask help"));
     }
     let name = first.as_deref().and_then(|value| value.to_str());
     if let Some(operation) = name.and_then(crate::release::rebuild::Operation::parse) {
-        return Ok(Command::ReleaseRebuild { operation });
-    }
-    if let Some(operation) = name.and_then(crate::discovery::Operation::parse) {
-        return Ok(Command::Discovery { operation });
+        return crate::release::rebuild::run(root, operation);
     }
     match name {
-        Some("all") => Ok(Command::All),
-        Some("architecture-check") => Ok(Command::Architecture),
-        Some("docs-check") => Ok(Command::Documentation),
-        Some("format-check") => Ok(Command::Formatting),
-        Some("ordinary-api-check") => Ok(Command::OrdinaryApi),
-        Some("source-layout-check") => Ok(Command::SourceLayout),
-        Some("reproducibility-check") => Ok(Command::Reproducibility),
-        Some("toolchain-check") => Ok(Command::Toolchain),
-        Some("verify-trust") => Ok(Command::Trust),
-        Some("formal-inventory") => Ok(Command::FormalInventory),
-        Some("proof-impact-inventory") => Ok(Command::ProofImpactInventory),
-        Some("product-package") => Ok(Command::ProductPackage),
-        Some("product-install") => Ok(Command::ProductInstall),
-        Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
-        Some("product-native-qualification") => Ok(Command::ProductNativeQualification),
-        Some("product-native-qualification-prepare") => {
-            Ok(Command::ProductNativeQualificationPrepare)
+        None | Some("help" | "--help" | "-h") => write_output(output, help::HELP),
+        Some("product-package") => {
+            let package = crate::product_package::build(root)?;
+            write_output(output, &format!("product package ready: {}\n", package.display()))
         }
-        Some("product-native-qualification-restore") => {
-            Ok(Command::ProductNativeQualificationRestore)
+        Some("product-install") => {
+            let package = crate::product_package::install(root)?;
+            write_output(output, &format!("product installed: {}\n", package.display()))
         }
-        Some("release-bootstrap-smoke") => {
-            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Build })
+        Some("release-create") => crate::release::create(root),
+        Some("release-package-stage") => crate::release::package_stage(root),
+        Some("release-package-assemble") => crate::release::package_assemble(root),
+        Some("release-stage") => {
+            crate::release::stage_draft(root)?;
+            write_output(output, "Release draft staged; publication remains a separate action.\n")
         }
-        Some("release-bootstrap-prepared-smoke") => {
-            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Prepared })
+        Some(command) if command.starts_with("distro-") => {
+            let operation = crate::distro::Operation::parse(command).ok_or_else(|| {
+                XtaskError::invocation("unsupported distribution operation; run cargo xtask help")
+            })?;
+            crate::distro::run(root, operation)
         }
-        Some("release-create") => Ok(Command::ReleaseCreate),
-        Some("release-bootstrap-staged-smoke") => {
-            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Release })
-        }
-        Some("release-qualification-prepare") => Ok(Command::ReleaseQualificationPrepare),
-        Some("release-package-stage") => Ok(Command::ReleasePackageStage),
-        Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
-        Some("release-stage") => Ok(Command::ReleaseStage),
-        Some("distro-image") => Ok(Command::Distro { operation: crate::distro::Operation::Image }),
-        Some("distro-image-save") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::ImageSave })
-        }
-        Some("distro-image-restore") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::ImageRestore })
-        }
-        Some("distro-build") => Ok(Command::Distro { operation: crate::distro::Operation::Build }),
-        Some("distro-compile") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::Compile })
-        }
-        Some("distro-compile-checks") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::CompileChecks })
-        }
-        Some("distro-package-compiled") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::PackageCompiled })
-        }
-        Some("distro-sign") => Ok(Command::Distro { operation: crate::distro::Operation::Sign }),
-        Some("distro-sign-ci") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::SignCi })
-        }
-        Some("distro-verify") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::Verify })
-        }
-        Some("distro-upload") => {
-            Ok(Command::Distro { operation: crate::distro::Operation::Upload })
-        }
-        Some("distro-test") => Ok(Command::Distro { operation: crate::distro::Operation::Test }),
-        Some("help" | "-h" | "--help") | None => Ok(Command::Help),
-        Some(command) => Err(XtaskError::invocation(format!(
-            "unknown command `{command}`; run `cargo xtask help` for the supported interface"
-        ))),
+        _ => Err(XtaskError::invocation("unsupported command; run cargo xtask help")),
     }
 }
 
-fn write_output(output: &mut dyn Write, message: &str) -> Result<(), XtaskError> {
+fn write_output(output: &mut dyn Write, text: &str) -> Result<(), XtaskError> {
     output
-        .write_all(message.as_bytes())
-        .map_err(|error| XtaskError::io("write", Path::new("<stdout>"), error))
+        .write_all(text.as_bytes())
+        .map_err(|error| XtaskError::io("write command output to", Path::new("<stdout>"), error))
 }
-
-pub(crate) mod all;
-mod help;
-mod product;
-mod shard_args;
-use product::execute_product;
-#[cfg(test)]
-mod tests;

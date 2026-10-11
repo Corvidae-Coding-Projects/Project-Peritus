@@ -110,14 +110,3 @@ fn rubric(runtime: &tokio::runtime::Runtime) -> ExitCode {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rejected_external_attempt_fails_the_adapter_process() {
-        assert_eq!(completed_attempt_exit(true), ExitCode::SUCCESS);
-        assert_eq!(completed_attempt_exit(false), ExitCode::FAILURE);
-    }
-}

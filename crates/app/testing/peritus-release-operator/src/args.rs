@@ -42,26 +42,3 @@ fn path(value: Option<OsString>, name: &'static str) -> Result<PathBuf, Operator
 fn reject_extra(mut args: impl Iterator<Item = OsString>) -> Result<(), OperatorError> {
     if args.next().is_some() { Err(OperatorError::usage()) } else { Ok(()) }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Operation, parse};
-    use std::ffi::OsString;
-
-    #[test]
-    fn generate_requires_one_record() {
-        assert!(matches!(
-            parse([OsString::from("generate"), OsString::from("record.json")])
-                .expect("valid command"),
-            Operation::Generate { .. }
-        ));
-        assert!(parse([OsString::from("generate")]).is_err());
-    }
-
-    #[test]
-    fn publication_requires_both_attestation_bundles() {
-        let args = ["retain-and-upload", "record.json", "provenance.jsonl", "sbom.jsonl"]
-            .map(OsString::from);
-        assert!(matches!(parse(args).expect("valid command"), Operation::Publish { .. }));
-    }
-}

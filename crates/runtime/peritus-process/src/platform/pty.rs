@@ -6,7 +6,9 @@ use std::{
     process::{Command, Stdio},
 };
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
+use nix::sys::signal::Signal;
+#[cfg(all(unix, not(target_os = "linux")))]
 use nix::{
     sys::signal::{Signal, killpg},
     unistd::Pid,
@@ -16,6 +18,7 @@ use portable_pty::{Child, CommandBuilder, MasterPty, NativePtySystem, PtySize, P
 #[cfg(unix)]
 use process_wrap::std::{ChildWrapper, CommandWrap, ProcessSession};
 
+#[cfg(unix)]
 use crate::{
     CommandSpec, ErrorCode, ExecutionPlan, ProcessError, ProcessOperation, RecoveryClass,
     TerminalSize,
@@ -23,6 +26,7 @@ use crate::{
 #[cfg(unix)]
 use crate::{GracefulAction, OutputStream, StdinPolicy};
 
+#[cfg(unix)]
 use super::PlatformProcess;
 #[cfg(unix)]
 use super::{
@@ -30,19 +34,10 @@ use super::{
 };
 
 #[cfg(windows)]
-pub(super) fn launch(
-    _plan: &ExecutionPlan,
-    _command: &CommandSpec,
-    _handshake: Option<super::NativeHandshake<'_>>,
-    _size: TerminalSize,
-) -> Result<Box<dyn PlatformProcess>, ProcessError> {
-    Err(ProcessError::new(
-        ErrorCode::Unsupported,
-        ProcessOperation::Spawn,
-        RecoveryClass::SelectBackend,
-        "C2 local Windows PTY cannot provide complete descendant job containment",
-    ))
-}
+#[path = "pty/windows.rs"]
+mod windows;
+#[cfg(windows)]
+pub(super) use windows::launch;
 
 #[cfg(unix)]
 pub(super) fn launch(
@@ -77,11 +72,9 @@ pub(super) fn launch(
     let reader: Box<dyn std::io::Read + Send> = Box::new(reader);
     let root_pid =
         child.process_id().ok_or_else(|| pty_error("PTY child has no process identity"))?;
-    let process_group = pair
-        .master
-        .process_group_leader()
-        .and_then(|value| u32::try_from(value).ok())
-        .ok_or_else(|| pty_error("PTY session has no process-group identity"))?;
+    // The PTY child establishes its own session. Foreground job control can change the PTY's
+    // current process group, so bind ownership to the session leader instead of tcgetpgrp.
+    let process_group = root_pid;
     let identity = ProcessTreeIdentity::new(
         root_pid,
         current_start_token(root_pid),
@@ -210,6 +203,7 @@ impl PtyChild {
         }
     }
 
+    #[cfg(not(target_os = "linux"))]
     fn kill(&mut self) {
         match self {
             Self::Portable(child) => {
@@ -261,6 +255,7 @@ impl PlatformProcess for PtyProcess {
     fn force_kill(&mut self) -> Result<(), ProcessError> {
         self.input.take();
         signal_group(self.identity, Signal::SIGKILL)?;
+        #[cfg(not(target_os = "linux"))]
         self.child.kill();
         Ok(())
     }
@@ -278,13 +273,18 @@ impl PlatformProcess for PtyProcess {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "linux")))]
 fn signal_group(identity: ProcessTreeIdentity, signal: Signal) -> Result<(), ProcessError> {
     let group = identity
         .process_group()
         .and_then(|value| i32::try_from(value).ok())
         .ok_or_else(|| tree_error("PTY process-group identity is unavailable"))?;
     killpg(Pid::from_raw(group), signal).map_err(|_| tree_error("PTY process-group signal failed"))
+}
+
+#[cfg(target_os = "linux")]
+fn signal_group(identity: ProcessTreeIdentity, signal: Signal) -> Result<(), ProcessError> {
+    super::linux_tree::signal(identity, signal)
 }
 
 #[cfg(unix)]

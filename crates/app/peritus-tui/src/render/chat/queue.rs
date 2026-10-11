@@ -56,7 +56,7 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
     } else {
         lines.push(String::from("No queue page loaded. Inspect with /queue."));
     }
-    lines.push(String::from("Esc, then /queue add <text> | edit <row> <text> | hold <row> | release <row> | withdraw <row>"));
+    lines.push(String::from("Esc, then /queue start runs eligible saved input · /queue add <text> | edit <row> <text> | hold <row> | release <row> | withdraw <row>"));
     lines.push(String::from("/queue show <row> for exact full text | history | pending | next | previous | correct <row> <text> | order <all pending IDs>"));
     lines
 }

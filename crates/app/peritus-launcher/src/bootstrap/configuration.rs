@@ -14,6 +14,7 @@ use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
 pub(super) mod account;
 mod compatibility;
 mod folder;
+pub(super) mod folder_catalog;
 mod hosted;
 
 /// Imports the exact models from a pre-conversation immutable configuration. This migration

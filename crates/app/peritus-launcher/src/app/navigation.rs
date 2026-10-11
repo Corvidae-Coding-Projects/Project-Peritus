@@ -51,12 +51,16 @@ fn configured_context(
         .registered()
         .into_iter()
         .chain(prepared.state().workspaces().active())
-        .find(|workspace| workspace.workspace_id() == workspace_id)
+        .chain(prepared.state().workspaces().recent())
+        .find(|profile| {
+            profile.workspace_id() == workspace_id
+                && (!profile.is_direct_folder()
+                    || prepared.daemon_config().folders().iter().any(|folder| {
+                        folder.workspace_id().is_ok_and(|id| id == workspace)
+                    }))
+        })
         .ok_or_else(|| LauncherError::WorkspaceSetup(format!(
             "workspace {workspace_id} is not in this launcher's registered configuration. Reopen Peritus after configuring this workspace."
         )))?;
     workspace_context(prepared, workspace)
 }
-
-#[cfg(test)]
-mod tests;

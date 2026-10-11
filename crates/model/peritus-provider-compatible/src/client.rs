@@ -62,16 +62,6 @@ impl CompatibleClient {
         Self { config, profile, credentials, transport }
     }
 
-    #[cfg(test)]
-    pub(crate) fn with_transport(
-        config: CompatibleConfig,
-        profile: CompatibleProfile,
-        credentials: Arc<dyn CredentialSource>,
-        transport: Arc<dyn HttpTransport>,
-    ) -> Self {
-        Self::compose(config, profile, credentials, transport)
-    }
-
     /// Returns the separately validated dialect contract.
     #[must_use]
     pub const fn compatible_profile(&self) -> &CompatibleProfile {

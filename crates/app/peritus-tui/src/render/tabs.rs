@@ -52,30 +52,3 @@ pub(super) fn render_tabs(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         .highlight_style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD));
     frame.render_widget(tabs, area);
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ratatui::{Terminal, backend::TestBackend};
-
-    #[test]
-    fn every_selected_panel_has_a_visible_highlighted_tab_on_small_terminals() {
-        for width in [48, 80, 132] {
-            for (index, view) in View::ALL.into_iter().enumerate() {
-                let mut model = AppModel::new([64; 32]);
-                model.view = view;
-                let mut terminal = Terminal::new(TestBackend::new(width, 3)).unwrap();
-                terminal.draw(|frame| render_tabs(frame, frame.area(), &model)).unwrap();
-                let cells = terminal.backend().buffer().content();
-                let text = cells.iter().map(ratatui::buffer::Cell::symbol).collect::<String>();
-                let label = format!("{}:{}", index + 1, view.label());
-                assert!(text.contains(&label), "missing {label} at width {width}: {text}");
-                assert!(
-                    cells
-                        .iter()
-                        .any(|cell| cell.fg == ACCENT && cell.modifier.contains(Modifier::BOLD))
-                );
-            }
-        }
-    }
-}

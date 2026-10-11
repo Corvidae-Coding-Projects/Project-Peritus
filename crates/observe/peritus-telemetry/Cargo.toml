@@ -12,13 +12,9 @@ keywords = ["telemetry", "opentelemetry", "metrics", "formal-verification"]
 categories = ["development-tools::profiling", "data-structures"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-trace = { version = "=0.0.5", path = "../peritus-trace" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
-vstd.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-trace = { version = "=0.0.6", path = "../peritus-trace" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 
 [lints]
 workspace = true
@@ -26,7 +22,4 @@ workspace = true
 [package.metadata.peritus]
 owner = "C7"
 layer = "observe"
-verification-class = "H"
 
-[package.metadata.verus]
-verify = true

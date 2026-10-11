@@ -34,6 +34,12 @@ The retained aggregate's SHA-256 is `88cdb94169783031dcd0e536a38ad0e2ebf84cc5f17
 See the [benchmark integrity policy and findings](docs/benchmark-integrity-appendix.md)
 for how we preserve failures and distinguish product defects from evaluator problems.
 
+## Real testing
+
+Peritus uses the real-testing skill to build and run the actual application, exercise its human interfaces, and retain reproducible defects and replay evidence. We use this approach based on the findings in [Rethinking the Value of Agent-Generated Tests for LLM-Based Software Engineering Agents](https://arxiv.org/html/2602.07900v1). The paper reports limited task-outcome gains from agent-generated tests in the studied settings, with additional token and API costs; our choice of behavioral testing is a project policy informed by those findings.
+
+Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
+
 ## Install
 
 Install the latest public release with the command for your platform below. To select an older
@@ -159,7 +165,7 @@ daemon-owned work. Conversations and task state remain available between session
 Plain folders do not need `git init` or an initial commit. You can chat and inspect files before
 trusting the folder. After trust, ask for changes or commands in `/chat`; edits happen in that folder.
 The same pipeline checks individually tracked task files without a whole-folder snapshot. Missing
-verification coverage or an interrupted review leaves effects in place but not verified complete.
+check coverage or an interrupted review leaves effects in place with completion still unconfirmed.
 Commands run with your local user permissions. There is no automatic rollback of in-place changes.
 `/diff` shows the available comparison evidence. `/build` and candidate actions such as `/commit`
 and `/discard` require the managed Git workflow; they are not offered for in-place delivery.
@@ -202,7 +208,7 @@ paid tokens; saving a key or listing models does not run it. See [provider contr
 for API sources, discovery behavior, and test limits.
 
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
-when discovery fails; `/model manual MODEL_ID` is an explicit, unverified fallback.
+when discovery fails; `/model manual MODEL_ID` is an explicit manual fallback.
 Model changes apply at an idle boundary. Interactive selections never silently fail over.
 Automatic coding-run provider failover requires permission in provider settings and is off by default.
 

@@ -7,26 +7,22 @@ use crate::{
     MemoryState, Observation, RetrievalFeatures, SourceEventSet, StateSnapshot,
 };
 use peritus_types::{EvidenceId, RevisionNumber, Sha256Digest};
-use vstd::prelude::*;
 
 mod transitions;
 
-verus! {
-
-/// Canonical evidence bindings for one memory record.
+#[doc = " Canonical evidence bindings for one memory record."]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MemoryEvidence {
     source_events: SourceEventSet,
     supporting: EvidenceSet,
     contradicting: EvidenceSet,
 }
-
 impl MemoryEvidence {
-    /// Creates evidence bindings and rejects support/contradiction overlap.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`MemoryErrorKind::ConflictingEvidence`] for any identifier in both sets.
+    #[doc = " Creates evidence bindings and rejects support/contradiction overlap."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns [`MemoryErrorKind::ConflictingEvidence`] for any identifier in both sets."]
     pub fn new(
         source_events: SourceEventSet,
         supporting: EvidenceSet,
@@ -35,34 +31,35 @@ impl MemoryEvidence {
         reject_overlap(supporting.values(), contradicting.values())?;
         Ok(Self { source_events, supporting, contradicting })
     }
-
-    /// Returns canonical source events.
+    #[doc = " Returns canonical source events."]
     #[must_use]
-    pub const fn source_events(&self) -> &SourceEventSet { &self.source_events }
-
-    /// Returns canonical supporting evidence.
+    pub const fn source_events(&self) -> &SourceEventSet {
+        &self.source_events
+    }
+    #[doc = " Returns canonical supporting evidence."]
     #[must_use]
-    pub const fn supporting(&self) -> &EvidenceSet { &self.supporting }
-
-    /// Returns canonical contradicting evidence.
+    pub const fn supporting(&self) -> &EvidenceSet {
+        &self.supporting
+    }
+    #[doc = " Returns canonical contradicting evidence."]
     #[must_use]
-    pub const fn contradicting(&self) -> &EvidenceSet { &self.contradicting }
+    pub const fn contradicting(&self) -> &EvidenceSet {
+        &self.contradicting
+    }
 }
-
-/// Checked creation, review, and optional expiry observations.
+#[doc = " Checked creation, review, and optional expiry observations."]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MemoryTiming {
     created: Observation,
     reviewed: Option<Observation>,
     expires: Option<Observation>,
 }
-
 impl MemoryTiming {
-    /// Creates checked logical timing metadata.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error when review or expiry precedes creation.
+    #[doc = " Creates checked logical timing metadata."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns a typed error when review or expiry precedes creation."]
     pub fn new(
         created: Observation,
         reviewed: Option<Observation>,
@@ -86,21 +83,23 @@ impl MemoryTiming {
         }
         Ok(Self { created, reviewed, expires })
     }
-
-    /// Returns the creation observation.
+    #[doc = " Returns the creation observation."]
     #[must_use]
-    pub const fn created(&self) -> Observation { self.created }
-
-    /// Returns the latest successful review observation.
+    pub const fn created(&self) -> Observation {
+        self.created
+    }
+    #[doc = " Returns the latest successful review observation."]
     #[must_use]
-    pub const fn reviewed(&self) -> Option<Observation> { self.reviewed }
-
-    /// Returns the optional expiry observation.
+    pub const fn reviewed(&self) -> Option<Observation> {
+        self.reviewed
+    }
+    #[doc = " Returns the optional expiry observation."]
     #[must_use]
-    pub const fn expires(&self) -> Option<Observation> { self.expires }
+    pub const fn expires(&self) -> Option<Observation> {
+        self.expires
+    }
 }
-
-/// Complete immutable scoped derived-memory record.
+#[doc = " Complete immutable scoped derived-memory record."]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MemoryRecord {
     id: MemoryId,
@@ -111,14 +110,13 @@ pub struct MemoryRecord {
     features: RetrievalFeatures,
     lifecycle: StateSnapshot,
 }
-
 impl MemoryRecord {
-    /// Creates an initial active memory record from checked value groups.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error if an imported lifecycle snapshot is not initial active state or if
-    /// the review/expiry observations are inconsistent.
+    #[doc = " Creates an initial active memory record from checked value groups."]
+    #[doc = ""]
+    #[doc = " # Errors"]
+    #[doc = ""]
+    #[doc = " Returns a typed error if an imported lifecycle snapshot is not initial active state or if"]
+    #[doc = " the review/expiry observations are inconsistent."]
     pub fn new(
         id: MemoryId,
         scope: MemoryScope,
@@ -137,60 +135,52 @@ impl MemoryRecord {
         }
         Ok(Self { id, scope, material, evidence, timing, features, lifecycle })
     }
-
-    /// Returns the stable memory lineage identifier.
+    #[doc = " Returns the stable memory lineage identifier."]
     #[must_use]
-    pub const fn id(&self) -> (result: MemoryId)
-        ensures result.spec_bytes() == self.spec_id_bytes(),
-    {
+    pub const fn id(&self) -> MemoryId {
         self.id
     }
-
-    /// Returns the stable lineage identifier used by specifications.
-    pub closed spec fn spec_id_bytes(&self) -> Seq<u8> { self.id.spec_bytes() }
-
-    /// Returns the exact durable scope.
+    #[doc = " Returns the exact durable scope."]
     #[must_use]
-    pub const fn scope(&self) -> &MemoryScope { &self.scope }
-
-    /// Returns the typed inert claim material.
+    pub const fn scope(&self) -> &MemoryScope {
+        &self.scope
+    }
+    #[doc = " Returns the typed inert claim material."]
     #[must_use]
-    pub const fn material(&self) -> &MemoryMaterial { &self.material }
-
-    /// Returns source, supporting, and contradicting evidence.
+    pub const fn material(&self) -> &MemoryMaterial {
+        &self.material
+    }
+    #[doc = " Returns source, supporting, and contradicting evidence."]
     #[must_use]
-    pub const fn evidence(&self) -> &MemoryEvidence { &self.evidence }
-
-    /// Returns creation, review, and expiry observations.
+    pub const fn evidence(&self) -> &MemoryEvidence {
+        &self.evidence
+    }
+    #[doc = " Returns creation, review, and expiry observations."]
     #[must_use]
-    pub const fn timing(&self) -> &MemoryTiming { &self.timing }
-
-    /// Returns canonical retrieval features.
+    pub const fn timing(&self) -> &MemoryTiming {
+        &self.timing
+    }
+    #[doc = " Returns canonical retrieval features."]
     #[must_use]
-    pub const fn features(&self) -> &RetrievalFeatures { &self.features }
-
-    /// Returns lifecycle metadata.
+    pub const fn features(&self) -> &RetrievalFeatures {
+        &self.features
+    }
+    #[doc = " Returns lifecycle metadata."]
     #[must_use]
-    pub const fn lifecycle(&self) -> &StateSnapshot { &self.lifecycle }
-
-    /// Returns the current immutable record revision.
+    pub const fn lifecycle(&self) -> &StateSnapshot {
+        &self.lifecycle
+    }
+    #[doc = " Returns the current immutable record revision."]
     #[must_use]
-    pub const fn revision(&self) -> (result: RevisionNumber)
-        ensures result.spec_value() == self.spec_revision_value(),
-    {
+    pub const fn revision(&self) -> RevisionNumber {
         self.lifecycle.revision()
     }
-
-    /// Returns the mathematical immutable revision used by specifications.
-    pub closed spec fn spec_revision_value(&self) -> int {
-        self.lifecycle.spec_revision_value()
-    }
-
-    /// Returns the record content digest.
+    #[doc = " Returns the record content digest."]
     #[must_use]
-    pub const fn content_digest(&self) -> Sha256Digest { self.material.digest() }
-
-    /// Returns the latest observation represented by this revision.
+    pub const fn content_digest(&self) -> Sha256Digest {
+        self.material.digest()
+    }
+    #[doc = " Returns the latest observation represented by this revision."]
     #[must_use]
     pub fn latest_observation(&self) -> Observation {
         let mut latest = self.timing.created;
@@ -206,21 +196,14 @@ impl MemoryRecord {
         }
         latest
     }
-
 }
-
 fn reject_overlap(
     supporting: &[EvidenceId],
     contradicting: &[EvidenceId],
 ) -> Result<(), MemoryError> {
     let mut support_index = 0;
     let mut contradiction_index = 0;
-    while support_index < supporting.len() && contradiction_index < contradicting.len()
-        invariant
-            support_index <= supporting.len(),
-            contradiction_index <= contradicting.len(),
-        decreases supporting.len() - support_index + contradicting.len() - contradiction_index,
-    {
+    while support_index < supporting.len() && contradiction_index < contradicting.len() {
         if supporting[support_index] == contradicting[contradiction_index] {
             return Err(MemoryError::field(
                 MemoryErrorKind::ConflictingEvidence,
@@ -235,5 +218,3 @@ fn reject_overlap(
     }
     Ok(())
 }
-
-} // verus!

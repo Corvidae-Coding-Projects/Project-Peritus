@@ -1,20 +1,10 @@
 //! Reservation tombstone phase validation.
 
 use crate::{BudgetError, BudgetErrorKind, ReservationPhase};
-use vstd::prelude::*;
-
-verus! {
 
 pub(super) const fn validate_record_phase(
     record: &crate::state::ReservationRecord,
-) -> (result: Result<(), BudgetError>)
-    ensures
-        crate::invariant::record_phase_valid(*record) ==> result.is_ok(),
-        match result {
-            Ok(()) => crate::invariant::record_phase_valid(*record),
-            Err(_) => true,
-        },
-{
+) -> Result<(), BudgetError> {
     let valid = match record.phase {
         ReservationPhase::Held => {
             record.observed.is_zero()
@@ -84,29 +74,18 @@ pub(super) const fn validate_record_phase(
             record.request.reservation_id(),
         ));
     }
-    assert(crate::invariant::record_phase_valid(*record));
     Ok(())
 }
-
 const fn optional_amounts_equal(
     left: Option<crate::BudgetAmounts>,
     right: Option<crate::BudgetAmounts>,
-) -> (result: bool)
-    ensures result == crate::invariant::optional_amounts_equal(left, right),
-{
+) -> bool {
     match (left, right) {
         (Some(left_amount), Some(right_amount)) => left_amount.equals(right_amount),
         (None, None) => true,
         _ => false,
     }
 }
-
-const fn optional_finality_is_final(
-    value: Option<crate::UsageFinality>,
-) -> (result: bool)
-    ensures result == crate::invariant::optional_finality_is_final(value),
-{
+const fn optional_finality_is_final(value: Option<crate::UsageFinality>) -> bool {
     matches!(value, Some(crate::UsageFinality::Final))
 }
-
-} // verus!

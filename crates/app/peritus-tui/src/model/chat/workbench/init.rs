@@ -5,6 +5,8 @@ use peritus_app_protocol::{
     InitDiscoveryRequest, InitProposal, WellKnownProtocolFeature, WorkbenchIntent,
 };
 
+mod artifacts;
+
 impl AppModel {
     pub(super) fn init_command_binding(
         &mut self,
@@ -49,9 +51,14 @@ impl AppModel {
         self.chat.workbench.files.open = false;
         self.chat.workbench.context_mode = None;
         self.chat.workbench.open = true;
+        if self.init_artifacts_available() && !arguments.is_empty() {
+            return self.init_artifact_command(arguments, query);
+        }
         match arguments {
             "" => {
                 self.chat.workbench.init = None;
+                self.chat.workbench.init_artifact = None;
+                self.chat.workbench.init_artifact_page = None;
                 "Inspecting selected local files only; no commands, providers, or writes."
                     .clone_into(&mut self.chat.workbench.message);
                 self.refresh_selected_snapshot()
@@ -75,6 +82,8 @@ impl AppModel {
             }
             "decline" => {
                 self.chat.workbench.init = None;
+                self.chat.workbench.init_artifact = None;
+                self.chat.workbench.init_artifact_page = None;
                 self.chat.workbench.mode = WorkbenchMode::Sessions;
                 self.clear_chat_command();
                 "Initialization proposal declined locally; the workspace is unchanged."
@@ -102,6 +111,14 @@ impl AppModel {
         let Ok(request) = InitDiscoveryRequest::new(snapshot.query(), snapshot.revision()) else {
             return Vec::new();
         };
+        if self.init_artifacts_available() {
+            let Ok(selection) =
+                peritus_app_protocol::InitArtifactDiscovery::new(request, None, None, None)
+            else {
+                return Vec::new();
+            };
+            return self.request_init_artifacts(selection);
+        }
         self.request(
             AppRequestPayload::DiscoverInit(request),
             PendingRequest::WorkbenchInit(request),

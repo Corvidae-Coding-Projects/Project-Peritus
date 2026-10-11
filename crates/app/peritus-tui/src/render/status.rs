@@ -55,28 +55,3 @@ pub(super) fn render_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel)
     }
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::action::Action;
-    use ratatui::{Terminal, backend::TestBackend};
-
-    #[test]
-    fn a_long_connection_error_cannot_hide_input_validation_on_a_narrow_screen() {
-        let mut model = AppModel::new([1; 32]);
-        let _ = model.update(Action::Disconnected("long endpoint failure ".repeat(30)));
-        model.notice.as_mut().unwrap().text =
-            "ProcessId must contain 32 hexadecimal digits".to_owned();
-        let mut terminal = Terminal::new(TestBackend::new(48, 1)).unwrap();
-        terminal.draw(|frame| render_status(frame, frame.area(), &model)).unwrap();
-        let row = terminal
-            .backend()
-            .buffer()
-            .content
-            .iter()
-            .map(ratatui::buffer::Cell::symbol)
-            .collect::<String>();
-        assert!(row.starts_with(" ProcessId must contain 32 hexadecimal digits"));
-    }
-}

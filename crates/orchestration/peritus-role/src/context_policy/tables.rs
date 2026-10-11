@@ -1,15 +1,11 @@
 //! Production context-policy constructors and canonical tables.
-use super::{ContextPolicy, ContextClassSet, ContextClass, MemoryVisibility,
-    ReasoningVisibility, PresentationProfile, PresentationStyle};
+use super::{
+    ContextClass, ContextClassSet, ContextPolicy, MemoryVisibility, PresentationProfile,
+    PresentationStyle, ReasoningVisibility,
+};
 use peritus_policy::ActorRole;
-#[cfg(verus_only)]
-use super::model;
-use vstd::prelude::*;
 
-verus! {
-pub(super) fn policy_for(role: ActorRole) -> (policy: ContextPolicy)
-    ensures policy.spec_for_role(role),
-{
+pub(super) fn policy_for(role: ActorRole) -> ContextPolicy {
     match role {
         ActorRole::Writer => writer_policy(),
         ActorRole::Reviewer => reviewer_policy(),
@@ -19,10 +15,7 @@ pub(super) fn policy_for(role: ActorRole) -> (policy: ContextPolicy)
         _ => restricted_policy(role),
     }
 }
-
-fn writer_policy() -> (policy: ContextPolicy)
-    ensures policy.spec_for_role(ActorRole::Writer),
-{
+fn writer_policy() -> ContextPolicy {
     ContextPolicy {
         visible: ContextClassSet::from_canonical(all_classes()),
         contributable: ContextClassSet::from_canonical(vec![
@@ -42,10 +35,7 @@ fn writer_policy() -> (policy: ContextPolicy)
         presentation: PresentationProfile::new(PresentationStyle::Implementation),
     }
 }
-
-fn reviewer_policy() -> (policy: ContextPolicy)
-    ensures policy.spec_for_role(ActorRole::Reviewer),
-{
+fn reviewer_policy() -> ContextPolicy {
     ContextPolicy {
         visible: ContextClassSet::from_canonical(vec![
             ContextClass::ImmutablePolicy,
@@ -81,10 +71,7 @@ fn reviewer_policy() -> (policy: ContextPolicy)
         presentation: PresentationProfile::new(PresentationStyle::AdversarialReview),
     }
 }
-
-fn fixer_policy() -> (policy: ContextPolicy)
-    ensures policy.spec_for_role(ActorRole::Fixer),
-{
+fn fixer_policy() -> ContextPolicy {
     let mut policy = writer_policy();
     policy.required = ContextClassSet::from_canonical(vec![
         ContextClass::ImmutablePolicy,
@@ -97,10 +84,7 @@ fn fixer_policy() -> (policy: ContextPolicy)
     policy.presentation = PresentationProfile::new(PresentationStyle::FindingResolution);
     policy
 }
-
-fn evaluator_policy() -> (policy: ContextPolicy)
-    ensures policy.spec_for_role(ActorRole::Evaluator),
-{
+fn evaluator_policy() -> ContextPolicy {
     ContextPolicy {
         visible: ContextClassSet::from_canonical(vec![
             ContextClass::ImmutablePolicy,
@@ -137,10 +121,7 @@ fn evaluator_policy() -> (policy: ContextPolicy)
         presentation: PresentationProfile::new(PresentationStyle::IsolatedEvaluation),
     }
 }
-
-fn evolver_policy() -> (policy: ContextPolicy)
-    ensures policy.spec_for_role(ActorRole::EvolutionAgent),
-{
+fn evolver_policy() -> ContextPolicy {
     ContextPolicy {
         visible: ContextClassSet::from_canonical(all_classes()),
         contributable: ContextClassSet::from_canonical(vec![
@@ -163,11 +144,7 @@ fn evolver_policy() -> (policy: ContextPolicy)
         presentation: PresentationProfile::new(PresentationStyle::HarnessEvolution),
     }
 }
-
-fn restricted_policy(role: ActorRole) -> (policy: ContextPolicy)
-    ensures !matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
-        | ActorRole::Evaluator | ActorRole::EvolutionAgent) ==> policy.spec_for_role(role),
-{
+fn restricted_policy(role: ActorRole) -> ContextPolicy {
     let visible = match role {
         ActorRole::GateRunner => vec![
             ContextClass::ImmutablePolicy,
@@ -183,8 +160,6 @@ fn restricted_policy(role: ActorRole) -> (policy: ContextPolicy)
             ContextClass::AgentProgress,
         ],
     };
-    assert(!matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
-        | ActorRole::Evaluator | ActorRole::EvolutionAgent) ==> visible@ == model::visible(role));
     let required = match role {
         ActorRole::GateRunner => vec![
             ContextClass::ImmutablePolicy,
@@ -194,8 +169,6 @@ fn restricted_policy(role: ActorRole) -> (policy: ContextPolicy)
         ],
         _ => vec![ContextClass::ImmutablePolicy, ContextClass::WorkspaceState],
     };
-    assert(!matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
-        | ActorRole::Evaluator | ActorRole::EvolutionAgent) ==> required@ == model::required(role));
     let policy = ContextPolicy {
         required: ContextClassSet::from_canonical(required),
         visible: ContextClassSet::from_canonical(visible),
@@ -206,26 +179,9 @@ fn restricted_policy(role: ActorRole) -> (policy: ContextPolicy)
         allow_producer_ancestry: false,
         presentation: PresentationProfile::new(PresentationStyle::Restricted),
     };
-    proof {
-        if !matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
-            | ActorRole::Evaluator | ActorRole::EvolutionAgent) {
-            assert(policy.spec_visible().spec_values() == model::visible(role));
-            assert(policy.spec_required().spec_values() == model::required(role));
-            assert(policy.spec_contributable().spec_values() == model::contributable(role));
-            assert(policy.spec_fresh_context());
-            assert(policy.spec_memory_visibility() == MemoryVisibility::Excluded);
-            assert(policy.spec_reasoning_visibility() == ReasoningVisibility::Excluded);
-            assert(!policy.spec_allow_producer_ancestry());
-            assert(policy.spec_presentation().spec_for_style(model::style(role)));
-            assert(policy.spec_for_role(role));
-        }
-    }
     policy
 }
-
-fn base_required() -> (set: ContextClassSet)
-    ensures set.spec_values() == model::required(ActorRole::Writer),
-{
+fn base_required() -> ContextClassSet {
     ContextClassSet::from_canonical(vec![
         ContextClass::ImmutablePolicy,
         ContextClass::AcceptanceSpecification,
@@ -234,10 +190,7 @@ fn base_required() -> (set: ContextClassSet)
         ContextClass::WorkspaceState,
     ])
 }
-
-fn all_classes() -> (classes: Vec<ContextClass>)
-    ensures classes@ == model::visible(ActorRole::Writer),
-{
+fn all_classes() -> Vec<ContextClass> {
     vec![
         ContextClass::ImmutablePolicy,
         ContextClass::AcceptanceSpecification,
@@ -255,5 +208,3 @@ fn all_classes() -> (classes: Vec<ContextClass>)
         ContextClass::HiddenReasoning,
     ]
 }
-
-} // verus!

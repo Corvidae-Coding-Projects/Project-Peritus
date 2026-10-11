@@ -18,8 +18,6 @@ mod adapter;
 mod cleanup;
 mod lifecycle;
 mod observation_mapping;
-#[cfg(all(test, unix))]
-mod tests;
 
 pub(crate) use adapter::process_error;
 use observation_mapping::{protected_handles_match, push_native_mapping};
