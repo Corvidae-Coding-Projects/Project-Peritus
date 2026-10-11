@@ -232,10 +232,13 @@ impl PlatformProcess for PipeProcess {
         {
             let signal = match action {
                 GracefulAction::CloseInput => return Ok(()),
-                GracefulAction::Interrupt => 2,
-                GracefulAction::Terminate => 15,
+                GracefulAction::Interrupt => nix::sys::signal::Signal::SIGINT,
+                GracefulAction::Terminate => nix::sys::signal::Signal::SIGTERM,
             };
-            self.child.signal(signal).map_err(|_| tree_error("process-group signal failed"))
+            #[cfg(target_os = "linux")]
+            return super::linux_tree::signal(self.identity, signal);
+            #[cfg(not(target_os = "linux"))]
+            self.child.signal(signal as i32).map_err(|_| tree_error("process-group signal failed"))
         }
         #[cfg(not(unix))]
         {
@@ -255,9 +258,13 @@ impl PlatformProcess for PipeProcess {
 
     fn force_kill(&mut self) -> Result<(), ProcessError> {
         self.input.take();
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "linux")))]
         {
             self.child.start_kill().map_err(|_| tree_error("forced process-tree kill failed"))
+        }
+        #[cfg(target_os = "linux")]
+        {
+            super::linux_tree::signal(self.identity, nix::sys::signal::Signal::SIGKILL)
         }
         #[cfg(windows)]
         {

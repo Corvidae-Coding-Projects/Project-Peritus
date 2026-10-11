@@ -241,7 +241,7 @@ impl ProductRunService {
                 .remove(&key)
                 .filter(|cached| cached.preview == *preview);
             let (current, text) = if let Some(cached) = cached {
-                self.validate_cached_file(actor, preview)?;
+                self.validate_cached_file(actor, preview, cancelled)?;
                 (cached.preview, cached.text)
             } else {
                 self.prepare_file_cancellable(actor, preview.request(), cancelled)?
@@ -264,47 +264,14 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         preview: &WorkbenchFilePreview,
+        cancelled: impl FnMut() -> bool,
     ) -> Result<(), AppProtocolError> {
-        let request = preview.request();
-        self.require_workspace_permissions(
-            actor,
-            request.query(),
-            &[peritus_product_runner::control::PermissionCapability::Read],
-        )
-        .map_err(error_value)?;
-        let record =
-            self.file_record(actor, request.query(), request.revision()).map_err(error_value)?;
-        let provider = self
-            .select_provider(request.provider(), request.model())
-            .map_err(|_| app_error(Code::MissingRequiredFeature))?;
-        if provider.profile().revision() != preview.provider_revision()
-            || provider.profile().model().as_str() != preview.resolved_model()
-        {
+        // Cached consent still binds the live source, range, permissions and provider.
+        // Reuse its immutable bytes only after the normal fresh read matches every field.
+        let (current, _) = self.prepare_file_cancellable(actor, preview.request(), cancelled)?;
+        if current != *preview {
             return Err(app_error(Code::StaleRevision));
         }
-        let root = self
-            .inner
-            .workspaces
-            .get(&request.query().workspace())
-            .ok_or_else(|| app_error(Code::SessionMismatch))?;
-        let identity = FolderIdentity::observe(root).map_err(|_| app_error(Code::NotReady))?;
-        if identity.digest() != preview.folder() {
-            return Err(app_error(Code::StaleRevision));
-        }
-        if let Some(folder) = self.inner.folders.get(&request.query().workspace()) {
-            folder.verify().map_err(|_| app_error(Code::NotReady))?;
-        }
-        let protected = self.protected_paths(request.query()).map_err(error_value)?;
-        let contract = self
-            .with_controls(false, |store| store.user_instruction_context(&record))
-            .map_err(error_value)?;
-        peritus_product_runner::checked_protected_file(
-            identity.root(),
-            request.path(),
-            &contract,
-            &protected,
-        )
-        .map_err(|_| app_error(Code::ReadOnly))?;
         Ok(())
     }
 }

@@ -18,6 +18,16 @@ pub(super) struct CapturedImage {
     pub(super) captured_unix_millis: u64,
 }
 
+pub(super) enum CaptureAttempt {
+    Image(CapturedImage),
+    Failed(&'static str),
+}
+
+pub(super) enum CapturePublication {
+    Captured(CompletedCapture),
+    Failed(&'static str),
+}
+
 pub(super) trait CapturePublisher {
     async fn publish(
         &mut self,
@@ -147,18 +157,33 @@ fn persist_record(
 pub(super) async fn publish_pending_capture_at(
     root: &Path,
     operation: ControlOperationId,
-    capture: impl FnOnce() -> Result<CapturedImage, AppProtocolError>,
+    capture: impl FnOnce() -> Result<CaptureAttempt, AppProtocolError> + Send + 'static,
     publisher: &mut impl CapturePublisher,
-) -> Result<(CapturedImage, CompletedCapture), AppProtocolError> {
-    let capture = if let Some(capture) = read_record(&pending_capture_path(root, operation))? {
-        capture
-    } else {
-        let capture = capture()?;
-        persist_record(root, operation, &capture)?;
-        capture
-    };
-    let publication_result = publisher.publish(&capture).await?;
-    Ok((capture, publication_result))
+) -> Result<CapturePublication, AppProtocolError> {
+    let root = root.to_path_buf();
+    // Reading/persisting images and running the deadline-owned helper are blocking work. Keep
+    // the request executor available while awaiting this worker; cancelled publication can
+    // retry the same immutable pending record without rerunning a successful capture.
+    let capture =
+        tokio::task::spawn_blocking(move || -> Result<CaptureAttempt, AppProtocolError> {
+            if let Some(capture) = read_record(&pending_capture_path(&root, operation))? {
+                Ok(CaptureAttempt::Image(capture))
+            } else {
+                let capture = capture()?;
+                if let CaptureAttempt::Image(image) = &capture {
+                    persist_record(&root, operation, image)?;
+                }
+                Ok(capture)
+            }
+        })
+        .await
+        .map_err(|_| app_error(Code::Backpressure))??;
+    match capture {
+        CaptureAttempt::Image(capture) => {
+            publisher.publish(&capture).await.map(CapturePublication::Captured)
+        }
+        CaptureAttempt::Failed(detail) => Ok(CapturePublication::Failed(detail)),
+    }
 }
 
 pub(super) fn settle_pending_capture_at(root: &Path, operation: ControlOperationId) {

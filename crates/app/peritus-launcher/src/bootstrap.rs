@@ -184,6 +184,7 @@ fn finish(
         state.advance(BootstrapPhase::RegistryReady)?;
         store.commit(&state)?;
     }
+    configuration::folder_catalog::refresh(&layout, store, &mut state)?;
     let (configuration, configuration_path) = ensure_configuration(&layout, &state)?;
     if state.bootstrap_phase() == BootstrapPhase::RegistryReady {
         state.advance(BootstrapPhase::ConfigurationReady)?;

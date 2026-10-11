@@ -6,7 +6,7 @@ use super::{
     WorkbenchCheckpointPageRequest, WorkbenchCheckpointReceipt, WorkbenchCoverageCursor,
     WorkbenchCoverageSection, WorkbenchRewindConfirmation, WorkbenchRewindCoveragePage,
     WorkbenchRewindPageRequest, WorkbenchRewindPreview, WorkbenchRewindRequest, check_record,
-    error_response, public_checkpoint,
+    checkpoint_revision, error_response, public_checkpoint,
 };
 use peritus_app_protocol::{
     AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
@@ -25,16 +25,8 @@ impl ProductRunService {
             let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             check_record(&record, actor, request.query(), Some(request.revision()))?;
             let checkpoint = load_checkpoint(store, conversation, request.checkpoint())?;
-            let operation = store
-                .operation(
-                    conversation,
-                    peritus_product_runner::control::OperationId::new(
-                        request.checkpoint().into_bytes(),
-                    )?,
-                )?
-                .ok_or(ControlError::NotFound)?;
-            let receipt = store.resolve(&operation)?.ok_or(ControlError::NotFound)?;
-            public_checkpoint(request.query(), receipt.accepted_revision(), &checkpoint)
+            let revision = checkpoint_revision(store, &record, &checkpoint)?;
+            public_checkpoint(request.query(), revision, &checkpoint)
         })
     }
 
@@ -52,16 +44,8 @@ impl ProductRunService {
                 let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
                 check_record(&record, actor, query, Some(page_request.revision()))?;
                 let checkpoint = load_checkpoint(store, conversation, page_request.checkpoint())?;
-                let operation = store
-                    .operation(
-                        conversation,
-                        peritus_product_runner::control::OperationId::new(
-                            page_request.checkpoint().into_bytes(),
-                        )?,
-                    )?
-                    .ok_or(ControlError::NotFound)?;
-                let receipt = store.resolve(&operation)?.ok_or(ControlError::NotFound)?;
-                public_checkpoint(query, receipt.accepted_revision(), &checkpoint)
+                let revision = checkpoint_revision(store, &record, &checkpoint)?;
+                public_checkpoint(query, revision, &checkpoint)
             })
         });
         result.map_or_else(error_response, |receipt| {
@@ -95,16 +79,8 @@ impl ProductRunService {
                     ));
                 }
                 let checkpoint = load_checkpoint(store, conversation, request.checkpoint())?;
-                let operation = store
-                    .operation(
-                        conversation,
-                        peritus_product_runner::control::OperationId::new(
-                            request.checkpoint().into_bytes(),
-                        )?,
-                    )?
-                    .ok_or(ControlError::NotFound)?;
-                let receipt = store.resolve(&operation)?.ok_or(ControlError::NotFound)?;
-                public_checkpoint(request.query(), receipt.accepted_revision(), &checkpoint)
+                let revision = checkpoint_revision(store, &record, &checkpoint)?;
+                public_checkpoint(request.query(), revision, &checkpoint)
             })
         });
         let result = result.and_then(|receipt| {

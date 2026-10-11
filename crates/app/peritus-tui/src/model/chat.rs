@@ -86,6 +86,9 @@ impl ChatUi {
     }
 
     pub(super) fn status(&self) -> String {
+        if let Some(status) = self.goal_terminal_status() {
+            return status.to_owned();
+        }
         self.snapshot.as_ref().map_or_else(
             || "New conversation".to_owned(),
             |snapshot| {
@@ -102,6 +105,16 @@ impl ChatUi {
         self.snapshot.as_ref().is_some_and(|snapshot| {
             snapshot.snapshot().operation().state() == ProductRunOperationState::Running
         })
+    }
+    pub(crate) fn goal_terminal_status(&self) -> Option<&'static str> {
+        self.workbench.goal.as_ref().filter(|goal| self.run_id == Some(goal.run())).and_then(
+            |goal| match goal.state() {
+                peritus_app_protocol::WorkbenchGoalState::Cancelled => {
+                    Some("Cancelled — completed effects retained; this goal cannot resume")
+                }
+                _ => None,
+            },
+        )
     }
     pub(crate) fn matching_commands(&self) -> Vec<(String, &'static str)> {
         catalog::completions(&self.buffer)

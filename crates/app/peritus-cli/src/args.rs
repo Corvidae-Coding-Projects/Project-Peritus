@@ -123,12 +123,19 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
 fn parse_open(parser: &mut Parser) -> Result<Command, CliError> {
     let mut path = None;
     let mut run = None;
+    let mut conversation = None;
     while let Some(argument) = parser.pop() {
         if argument == "--run" {
             let value = parser.value_utf8("--run")?;
             let id = peritus_types::RunId::new(parse_hex_id(&value, "--run")?)
                 .map_err(|_| CliError::usage("invalid --run identifier"))?;
             set_once(&mut run, id, "--run")?;
+        } else if argument == "--conversation" {
+            let value = parser.value_utf8("--conversation")?;
+            let id =
+                peritus_app_protocol::ConversationId::new(parse_hex_id(&value, "--conversation")?)
+                    .map_err(|_| CliError::usage("invalid --conversation identifier"))?;
+            set_once(&mut conversation, id, "--conversation")?;
         } else if argument.to_str().is_some_and(|value| value.starts_with('-')) {
             return Err(CliError::usage(format!(
                 "unknown open option: {}",
@@ -138,7 +145,10 @@ fn parse_open(parser: &mut Parser) -> Result<Command, CliError> {
             set_once(&mut path, PathBuf::from(argument), "PATH")?;
         }
     }
-    Ok(Command::Open { path, run })
+    if run.is_some() && conversation.is_some() {
+        return Err(CliError::usage("Choose either --run or --conversation, not both"));
+    }
+    Ok(Command::Open { path, run, conversation })
 }
 
 fn parse_update(parser: &mut Parser) -> Result<Command, CliError> {

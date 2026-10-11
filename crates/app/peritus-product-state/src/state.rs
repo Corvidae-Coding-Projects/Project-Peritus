@@ -82,6 +82,19 @@ impl ProductState {
         self.generation
     }
 
+    /// Reserves a new immutable configuration generation without changing durable choices.
+    ///
+    /// # Errors
+    ///
+    /// Rejects generation overflow before modifying the state.
+    pub fn advance_configuration_generation(&mut self) -> Result<(), ProductStateError> {
+        let generation = self.generation.checked_add(1).ok_or_else(|| {
+            ProductStateError::InvalidPayload("product-state generation overflow".to_owned())
+        })?;
+        self.generation = generation;
+        Ok(())
+    }
+
     /// Borrows stable non-secret installation identities.
     #[must_use]
     pub const fn identity(&self) -> &InstallIdentity {

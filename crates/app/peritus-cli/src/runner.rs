@@ -58,8 +58,18 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     if matches!(&cli.command, Command::Workspaces) {
         return run_workspace_settings();
     }
-    if let Command::Open { path, run } = &cli.command {
-        return run_interactive_at(path.clone(), *run, cli.endpoint.clone());
+    if let Command::Open { path, run, conversation } = &cli.command {
+        return if let Some(conversation) = conversation {
+            run_interactive_target(
+                InteractiveLaunch::Conversation {
+                    repository: path.clone(),
+                    conversation: *conversation,
+                },
+                cli.endpoint.clone(),
+            )
+        } else {
+            run_interactive_at(path.clone(), *run, cli.endpoint.clone())
+        };
     }
     if matches!(&cli.command, Command::Resume) {
         return run_interactive_resume(cli.endpoint);
@@ -147,7 +157,14 @@ fn run_interactive() -> ExitCode {
 }
 
 enum InteractiveLaunch {
-    Open { repository: Option<std::path::PathBuf>, run: Option<peritus_types::RunId> },
+    Conversation {
+        repository: Option<std::path::PathBuf>,
+        conversation: peritus_app_protocol::ConversationId,
+    },
+    Open {
+        repository: Option<std::path::PathBuf>,
+        run: Option<peritus_types::RunId>,
+    },
     Resume,
 }
 
@@ -182,6 +199,14 @@ fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>)
         }
     };
     let (operation, result) = match target {
+        InteractiveLaunch::Conversation { repository, conversation } => (
+            "open durable conversation",
+            runtime.block_on(peritus_launcher::launch_interactive_conversation(
+                repository,
+                conversation,
+                endpoint,
+            )),
+        ),
         InteractiveLaunch::Open { repository, run } => (
             "launch interactive product",
             runtime.block_on(peritus_launcher::launch_interactive_run(repository, run, endpoint)),

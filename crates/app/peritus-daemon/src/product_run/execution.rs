@@ -347,7 +347,16 @@ impl ProductRunService {
 
     fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
         if self
-            .with_controls(false, |store| store.publish_reply(&record.interaction.workbench, &text))
+            .with_controls(false, |store| {
+                let execution = store.execution_record(&record.interaction.workbench)?;
+                if execution.inputs().invocations().is_empty() {
+                    // A pre-admission refusal has no provider invocation to bind a reply to.
+                    // Its original diagnostic is retained by the run's terminal activity/state;
+                    // do not replace it with a handoff error or manufacture an invocation.
+                    return Ok(());
+                }
+                store.publish_reply(&record.interaction.workbench, &text)
+            })
             .is_err()
         {
             fail_handoff(record);

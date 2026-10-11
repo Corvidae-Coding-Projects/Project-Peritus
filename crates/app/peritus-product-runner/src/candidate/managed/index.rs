@@ -21,6 +21,25 @@ impl StagedEntry {
 }
 
 impl ManagedBaseline {
+    // Empty submodule directories have no source snapshot entry, but their retained
+    // merged index entry still identifies the dependency's exact original commit.
+    pub(super) fn recorded_gitlink(
+        &self,
+        root: &Path,
+        path: &str,
+    ) -> Result<Option<String>, ProductRunnerError> {
+        if let Some(entry) = self.entries.get(path).filter(|entry| entry.mode == "160000") {
+            return Ok(Some(entry.object.clone()));
+        }
+        let staged = self.staged_at(root, path)?;
+        let mut gitlinks = staged.iter().filter(|entry| entry.mode == "160000");
+        let Some(entry) = gitlinks.next() else { return Ok(None) };
+        if entry.stage != 0 || gitlinks.next().is_some() {
+            return Err(failure("cannot export a submodule with an unresolved baseline gitlink"));
+        }
+        Ok(Some(entry.object.clone()))
+    }
+
     pub(super) fn staged_at(
         &self,
         root: &Path,

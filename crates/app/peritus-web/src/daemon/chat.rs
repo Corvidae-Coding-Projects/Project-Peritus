@@ -198,7 +198,7 @@ fn blocked_projection(
     let action = if started {
         "Open Workbench to inspect the current execution and its durable queue."
     } else {
-        "Open Workbench to inspect the durable queue and use /run when execution is idle."
+        "Open Workbench to inspect this conversation's durable queue and use /queue start when the workspace is available."
     };
     json!({
         "models":model_values(&prepared.models),

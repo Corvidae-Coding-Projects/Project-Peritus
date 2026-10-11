@@ -3,7 +3,13 @@
 use super::*;
 mod pending;
 
-use pending::{CapturePublisher, CapturedImage, publish_pending_capture_at};
+use pending::{
+    CaptureAttempt, CapturePublication, CapturePublisher, CapturedImage, publish_pending_capture_at,
+};
+
+// A selected-window snapshot is a finite helper operation, unlike the user's Preview service.
+// C2 owns timeout escalation and complete helper-tree reap before this operation returns.
+const CAPTURE_HELPER_TIMEOUT: Duration = Duration::from_secs(10);
 
 impl ProductRunService {
     #[allow(clippy::too_many_arguments, reason = "authenticated transfer bindings remain explicit")]
@@ -56,9 +62,20 @@ impl ProductRunService {
                     .captures()
                     .iter()
                     .find(|capture| capture.operation() == command.operation())
-                    .map(WorkbenchCaptureReceipt::state)
+                    .map(|capture| {
+                        (
+                            capture.state(),
+                            record
+                                .preview
+                                .operations
+                                .get(&command.operation())
+                                .is_some_and(|operation| operation.completed_sequence > 0),
+                        )
+                    })
             };
-            if prior != Some(WorkbenchCaptureState::Failed) {
+            if prior.is_some_and(|(state, completed)| {
+                state != WorkbenchCaptureState::Failed || completed
+            }) {
                 self.qualify_graphical_goal(run, command, request.launch())?;
                 return Ok(receipt);
             }
@@ -76,14 +93,16 @@ impl ProductRunService {
             scope,
             operation: command.operation(),
         };
-        let (_, completed) = publish_pending_capture_at(
+        let service = self.clone();
+        let operation = command.operation();
+        let completed = publish_pending_capture_at(
             &self.preview_state_root(),
-            command.operation(),
-            || self.capture_window(run, command.operation(), request),
+            operation,
+            move || service.capture_window(run, operation, request),
             &mut publisher,
         )
         .await?;
-        self.update_capture(run, request.launch(), command.operation(), completed)?;
+        self.finish_capture(run, request.launch(), command.operation(), completed)?;
         pending::settle_pending_capture_at(&self.preview_state_root(), command.operation());
         self.qualify_graphical_goal(run, command, request.launch())?;
         Ok(receipt)
@@ -94,7 +113,7 @@ impl ProductRunService {
         run: RunId,
         operation: ControlOperationId,
         request: peritus_app_protocol::WorkbenchCaptureRequest,
-    ) -> Result<CapturedImage, AppProtocolError> {
+    ) -> Result<CaptureAttempt, AppProtocolError> {
         let import = self
             .inner
             .preview_capture
@@ -113,7 +132,7 @@ impl ProductRunService {
         fs::create_dir_all(&directory).map_err(|_| app_error(Code::Backpressure))?;
         let path = directory.join(format!("{}.png", hex(operation.as_bytes())));
         let _cleanup = CaptureFileCleanup(path.clone());
-        let helper = PreviewCommand::new_optional(
+        let helper = PreviewCommand::new(
             import.to_string_lossy().into_owned(),
             vec![
                 "-display".to_owned(),
@@ -127,7 +146,7 @@ impl ProductRunService {
                 .get(&active_launch_run(self, run, request.launch())?)
                 .cloned()
                 .ok_or_else(|| app_error(Code::InvalidIdentifier))?,
-            None,
+            CAPTURE_HELPER_TIMEOUT,
             false,
             24,
             80,
@@ -139,8 +158,26 @@ impl ProductRunService {
             .runtime
             .run_preview_helper(&helper)
             .map_err(|_| app_error(Code::Backpressure))?;
-        if observation.state() != PreviewProcessState::Succeeded {
-            return Err(app_error(Code::Backpressure));
+        match observation.state() {
+            PreviewProcessState::Succeeded => {}
+            PreviewProcessState::TimedOut => {
+                return Ok(CaptureAttempt::Failed(
+                    "selected-window capture timed out; no image published",
+                ));
+            }
+            PreviewProcessState::Failed => {
+                return Ok(CaptureAttempt::Failed(
+                    "selected-window capture helper failed; no image published",
+                ));
+            }
+            PreviewProcessState::Cancelled => {
+                return Ok(CaptureAttempt::Failed(
+                    "selected-window capture helper stopped; no image published",
+                ));
+            }
+            PreviewProcessState::Running | PreviewProcessState::Indeterminate => {
+                return Err(app_error(Code::Backpressure));
+            }
         }
         let metadata = fs::metadata(&path).map_err(|_| app_error(Code::Backpressure))?;
         if !metadata.is_file() || metadata.len() == 0 {
@@ -157,7 +194,12 @@ impl ProductRunService {
         let dimensions = validated.dimensions();
         let bytes =
             validated.into_original_bytes().ok_or_else(|| app_error(Code::MalformedFrame))?;
-        Ok(CapturedImage { digest, dimensions, bytes, captured_unix_millis: unix_millis()? })
+        Ok(CaptureAttempt::Image(CapturedImage {
+            digest,
+            dimensions,
+            bytes,
+            captured_unix_millis: unix_millis()?,
+        }))
     }
 
     #[allow(clippy::too_many_arguments, reason = "artifact authority bindings remain explicit")]
@@ -235,29 +277,56 @@ impl ProductRunService {
         })
     }
 
-    pub(super) fn update_capture(
+    fn finish_capture(
         &self,
         run: RunId,
         launch: ControlOperationId,
         operation: ControlOperationId,
-        completed: CompletedCapture,
+        completed: CapturePublication,
     ) -> Result<(), AppProtocolError> {
-        self.update_launch(run, launch, |current| {
+        let mut records = self.inner.records.write().map_err(|_| app_error(Code::Backpressure))?;
+        let record = records.get_mut(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+        let prior = record
+            .preview
+            .operations
+            .get(&operation)
+            .ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+        let capture = require_launch(&record.preview, launch)?
+            .captures()
+            .iter()
+            .find(|capture| capture.operation() == operation)
+            .ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+        if prior.completed_sequence > 0 || capture.state() != WorkbenchCaptureState::Failed {
+            // Concurrent exact retries cannot overwrite a previously settled capture.
+            return Ok(());
+        }
+        let previous = record.preview.clone();
+        mutate_launch(&mut record.preview, launch, |current| {
             let captures = current
                 .captures()
                 .iter()
                 .map(|value| {
                     if value.operation() == operation {
-                        WorkbenchCaptureReceipt::new(
-                            operation,
-                            WorkbenchCaptureState::Captured,
-                            value.target(),
-                            Some(completed.artifact),
-                            Some(completed.digest),
-                            Some(completed.dimensions),
-                            Some(completed.captured_unix_millis),
-                            text("selected window captured and published")?,
-                        )
+                        match &completed {
+                            CapturePublication::Captured(completed) => {
+                                WorkbenchCaptureReceipt::new(
+                                    operation,
+                                    WorkbenchCaptureState::Captured,
+                                    value.target(),
+                                    Some(completed.artifact),
+                                    Some(completed.digest),
+                                    Some(completed.dimensions),
+                                    Some(completed.captured_unix_millis),
+                                    text("selected window captured and published")?,
+                                )
+                            }
+                            CapturePublication::Failed(detail) => capture_receipt(
+                                operation,
+                                WorkbenchCaptureState::Failed,
+                                value.target(),
+                                detail,
+                            ),
+                        }
                     } else {
                         Ok(value.clone())
                     }
@@ -270,7 +339,16 @@ impl ProductRunService {
                 current.feedback().to_vec(),
                 current.behavior_checks(),
             )
-        })
+        })?;
+        if let Some(value) = record.preview.operations.get_mut(&operation) {
+            value.completed_sequence =
+                record.preview.page.as_ref().map_or(0, WorkbenchResultPage::result_revision);
+        }
+        if super::super::super::persist_record(&self.inner.directory, record).is_err() {
+            record.preview = previous;
+            return Err(app_error(Code::Backpressure));
+        }
+        Ok(())
     }
 }
 

@@ -58,9 +58,23 @@ pub async fn launch_interactive_resume(
     launch_interactive_target(None, InitialConversation::Latest, endpoint).await
 }
 
+/// Opens the exact durable conversation, including one whose execution has not started.
+///
+/// # Errors
+/// Returns a setup, scope, endpoint or terminal failure without changing the selected identity.
+pub async fn launch_interactive_conversation(
+    repository: Option<PathBuf>,
+    conversation: peritus_app_protocol::ConversationId,
+    endpoint: Option<std::ffi::OsString>,
+) -> Result<ExitReason, LauncherError> {
+    launch_interactive_target(repository, InitialConversation::Conversation(conversation), endpoint)
+        .await
+}
+
 #[derive(Clone, Copy)]
 enum InitialConversation {
     Run(Option<peritus_types::RunId>),
+    Conversation(peritus_app_protocol::ConversationId),
     Latest,
 }
 
@@ -86,6 +100,12 @@ async fn launch_interactive_target(
     let product = match initial {
         InitialConversation::Run(run) => product_context(&prepared)?.with_run(run),
         InitialConversation::Latest => product_context(&prepared)?.with_latest_conversation(),
+        InitialConversation::Conversation(conversation) => {
+            let context = product_context(&prepared)?;
+            let query =
+                peritus_app_protocol::WorkbenchQuery::new(conversation, context.workspace_id());
+            context.with_conversation(query).map_err(LauncherError::Tui)?
+        }
     };
     let report = diagnostics::launcher_report(&prepared, &binaries, product.workspace_id())?;
     let mut product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;

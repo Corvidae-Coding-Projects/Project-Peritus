@@ -39,13 +39,38 @@ async fn prepared(app: &App, session: &crate::state::Session, run_error: String)
     match raw_request(app, AppRequestPayload::QueryWorkbenchExecution(query)).await? {
         AppResponsePayload::WorkbenchExecution(state) if state.snapshot().query() == query => {
             let started = state.run().is_some();
+            if let Some(run) = state.run() {
+                let observed_run = hex(run.as_bytes());
+                app.update(|saved| {
+                    let current = saved
+                        .sessions
+                        .iter_mut()
+                        .find(|current| current.id == session.id)
+                        .ok_or_else(|| problem("The selected session no longer exists"))?;
+                    if current.conversation != session.conversation
+                        || current.project != session.project
+                    {
+                        return Err(problem("The selected conversation binding changed"));
+                    }
+                    current.run = observed_run;
+                    Ok(())
+                })?;
+                if let AppResponsePayload::Interaction(value) = raw_request(
+                    app,
+                    AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)),
+                )
+                .await?
+                {
+                    return response(AppResponsePayload::Interaction(value));
+                }
+            }
             Ok(json!({"workbench":{
                 "conversation":hex(conversation.as_bytes()),
                 "revision":state.snapshot().revision().to_string(),
                 "queued":!started,
                 "started":started,
-                "observation":if started {"Execution was admitted, but its run is not currently observable."} else {"The evaluation inputs are durable and execution has not been admitted."},
-                "action":"Open Workbench to inspect the durable queue and resume the exact evaluation request.",
+                "observation":if started {"Execution was admitted, but its run is not currently observable."} else {"The conversation's inputs are durable and execution has not been admitted."},
+                "action":"Open Workbench to inspect this conversation's durable queue; use /queue start when the workspace is available.",
                 "detail":run_error
             }}))
         }

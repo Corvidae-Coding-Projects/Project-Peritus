@@ -1,4 +1,4 @@
-//! Hidden independent owner-death mode for exact daemon-launched process groups.
+//! Hidden independent owner-death mode for exact daemon-launched process sessions.
 
 use std::{
     io::Read as _,
@@ -41,20 +41,7 @@ fn terminate(root: u32, start: u64, group: u32) -> Result<(), ()> {
     }
     match observation {
         ProbeObservation::ExactLive => probe.terminate(identity).map_err(|_| ()),
-        ProbeObservation::ExactAbsent => {
-            let group = i32::try_from(group).map_err(|_| ())?;
-            kill_group(group)
-        }
+        ProbeObservation::ExactAbsent => Ok(()),
         ProbeObservation::Mismatched | ProbeObservation::Unverifiable => Err(()),
     }
-}
-
-#[allow(unsafe_code, reason = "negative-pid kill is the Linux process-group termination boundary")]
-fn kill_group(group: i32) -> Result<(), ()> {
-    // SAFETY: `group` came from a nonzero root identity, was checked to equal the owned process
-    // group, and converted to a positive i32. Negating it selects that exact process group.
-    if unsafe { libc::kill(-group, libc::SIGKILL) } == 0 {
-        return Ok(());
-    }
-    (std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)).then_some(()).ok_or(())
 }

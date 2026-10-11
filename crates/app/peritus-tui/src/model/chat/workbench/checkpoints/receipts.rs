@@ -143,6 +143,7 @@ impl AppModel {
         self.chat.workbench.rewind_request = None;
         self.chat.workbench.rewind_preview = None;
         self.chat.workbench.restore_receipt = Some(receipt.clone());
+        self.chat.workbench.rewind_page = None;
         self.chat.workbench.restore_summary = None;
         self.chat.workbench.message = match receipt.status() {
             WorkbenchRestoreStatus::Applied if request.child().is_some() => format!(
@@ -221,6 +222,7 @@ impl AppModel {
         self.chat.workbench.rewind_preview = None;
         self.chat.workbench.restore_receipt = None;
         self.chat.workbench.restore_summary = Some(summary.clone());
+        self.chat.workbench.rewind_page = None;
         self.chat.workbench.message = match summary.status() {
             WorkbenchRestoreStatus::Applied => format!(
                 "Rewind settled: {} covered path(s) restored. The original conversation history and cumulative accounting remain preserved.",

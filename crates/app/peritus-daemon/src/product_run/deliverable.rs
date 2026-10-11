@@ -240,14 +240,18 @@ fn export_deliverable(
     baseline: Option<&str>,
 ) -> Result<PathBuf, ProductRunServiceError> {
     let root = Path::new(deliverable.workspace_path());
-    let bytes = if deliverable.commit_revision().is_empty() {
-        match baseline {
-            Some(baseline) => ProductRunner::candidate_patch_from_baseline(root, baseline)
-                .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?,
-
-            None => return Err(ProductRunServiceError::WorkspaceUnavailable),
+    let bytes = if let Some(baseline) = baseline {
+        if deliverable.commit_revision().is_empty() {
+            ProductRunner::candidate_patch_from_baseline(root, baseline)
+        } else {
+            ProductRunner::candidate_patch_from_committed_baseline(
+                root,
+                baseline,
+                deliverable.commit_revision(),
+            )
         }
-    } else {
+        .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?
+    } else if !deliverable.commit_revision().is_empty() {
         let output = Command::new("git")
             .env("GIT_LITERAL_PATHSPECS", "1")
             .args(["format-patch", "-1", "--stdout", deliverable.commit_revision()])
@@ -258,6 +262,8 @@ fn export_deliverable(
             return Err(ProductRunServiceError::Unavailable);
         }
         output.stdout
+    } else {
+        return Err(ProductRunServiceError::WorkspaceUnavailable);
     };
     if bytes.is_empty() {
         return Err(ProductRunServiceError::InvalidState);

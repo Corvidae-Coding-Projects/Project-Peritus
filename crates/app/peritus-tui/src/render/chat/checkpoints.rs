@@ -14,14 +14,23 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         model,
         content(model),
         " Checkpoint · safe rewind ",
-        "Esc back · ↑↓/PgUp/PgDn scroll · n/p coverage page · c confirm · r refresh",
+        if model.chat.workbench.restore_receipt.is_some()
+            || model.chat.workbench.restore_summary.is_some()
+        {
+            "Esc back · ↑↓/PgUp/PgDn scroll · r refresh · recovery checkpoint displayed"
+        } else {
+            "Esc back · ↑↓/PgUp/PgDn scroll · n/p coverage page · c confirm · r refresh"
+        },
     );
 }
 
 pub(super) fn content(model: &AppModel) -> Vec<String> {
     let panel = &model.chat.workbench;
     let mut lines = vec![panel.message.clone()];
-    if append_rewind_content(model, &mut lines) {
+    if panel.restore_receipt.is_none()
+        && panel.restore_summary.is_none()
+        && append_rewind_content(model, &mut lines)
+    {
         return lines;
     }
     if let Some(receipt) = &panel.restore_receipt {

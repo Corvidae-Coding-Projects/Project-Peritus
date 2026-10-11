@@ -38,6 +38,14 @@ pub(super) fn ensure_tree_quiescent(
         if process.tree_quiescent()? {
             return Ok(true);
         }
+        // A child can fork while the previous census is being signalled. Re-observe and kill
+        // the same owned tree until it is empty or the existing bounded reap budget expires.
+        if let Err(error) = process.force_kill() {
+            if process.tree_quiescent()? {
+                return Ok(true);
+            }
+            return Err(error);
+        }
         thread::sleep(Duration::from_millis(POLL_MILLIS));
     }
     process.tree_quiescent()

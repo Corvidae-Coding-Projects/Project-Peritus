@@ -8,6 +8,9 @@ use super::{
     reconstruct_rewind_preview,
 };
 
+mod origin;
+pub(super) use origin::checkpoint_revision;
+
 impl ProductRunService {
     pub(in crate::product_run::workbench) fn resolve_workbench_restore(
         &self,
@@ -70,17 +73,8 @@ impl ProductRunService {
                 .load_checkpoint(conversation, restore.checkpoint())?
                 .ok_or(Error::Corrupt("restore source checkpoint missing"))?;
             if let WorkbenchIntent::ConfirmRewind(confirmation) = command.intent() {
-                let checkpoint_operation = store
-                    .operation(conversation, OperationId::new(request.checkpoint().into_bytes())?)?
-                    .ok_or(Error::Corrupt("source checkpoint operation missing"))?;
-                let checkpoint_receipt = store
-                    .resolve(&checkpoint_operation)?
-                    .ok_or(Error::Corrupt("source checkpoint receipt missing"))?;
-                let public = public_checkpoint(
-                    request.query(),
-                    checkpoint_receipt.accepted_revision(),
-                    &checkpoint,
-                )?;
+                let revision = checkpoint_revision(store, &record, &checkpoint)?;
+                let public = public_checkpoint(request.query(), revision, &checkpoint)?;
                 let original_preview = reconstruct_rewind_preview(request, &checkpoint, &recovery)?;
                 if WorkbenchRewindConfirmation::for_preview(request, &public, &original_preview)
                     .map_err(|_| ControlError::InvalidInput)?

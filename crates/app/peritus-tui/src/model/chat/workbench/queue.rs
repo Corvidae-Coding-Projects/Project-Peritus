@@ -34,6 +34,9 @@ impl AppModel {
             return Vec::new();
         }
         self.chat.workbench.message.clear();
+        if action == "start" && text.is_empty() {
+            return self.start_pending_workbench();
+        }
         if text.is_empty() && matches!(action, "" | "pending" | "history") {
             self.chat.workbench.queue_detail = None;
             return self.refresh_queue(0, 0, action == "history");
@@ -186,7 +189,7 @@ impl AppModel {
         }
         if !matches!(action, "edit" | "correct" | "hold" | "release" | "withdraw") {
             return Err(
-                "Use /queue [add <text> | edit <row> <text> | correct <row> <text> | hold <row> | release <row> | withdraw <row> | order <IDs> | move <row/ID> before <ID>/end | history | pending | next | previous | retry]. Draft retained.",
+                "Use /queue [start | add <text> | edit <row> <text> | correct <row> <text> | hold <row> | release <row> | withdraw <row> | order <IDs> | move <row/ID> before <ID>/end | history | pending | next | previous | retry]. Draft retained.",
             );
         }
         let (row, replacement) = split(text);

@@ -99,8 +99,25 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
     } else if panel.goal_draft.is_none() {
         lines.push(String::from("No durable goal is currently loaded."));
     }
+    let controls = match panel.goal.as_ref().map(|goal| goal.state()) {
+        Some(WorkbenchGoalState::Cancelled) => {
+            "This goal is cancelled and cannot resume. Completed effects and history remain retained."
+        }
+        Some(WorkbenchGoalState::Achieved) => {
+            "This goal is achieved. Start a new goal for further work."
+        }
+        Some(
+            WorkbenchGoalState::Paused
+            | WorkbenchGoalState::WaitingForUser
+            | WorkbenchGoalState::Blocked,
+        ) => "/resume [goal-id] · /goal clear",
+        Some(WorkbenchGoalState::Active | WorkbenchGoalState::Pausing) => {
+            "/pause [now|after-operation|before-edit] · /goal clear"
+        }
+        None => "/goal <objective> · inspect the draft before /goal confirm",
+    };
     lines.extend([
-        String::from("/pause [now|after-operation|before-edit] · /resume [goal-id]"),
+        String::from(controls),
         String::from("/usage"),
         String::from("Unknown token or cost observations remain unknown, not zero."),
     ]);

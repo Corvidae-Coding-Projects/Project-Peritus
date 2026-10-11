@@ -30,6 +30,7 @@ mod pages;
 mod projection;
 mod recovery;
 mod rewind;
+use lookup::checkpoint_revision;
 pub(in crate::product_run::workbench) use projection::WorkbenchRestoreProjection;
 use projection::{
     app_error, checkpoint_references, derived_id, digest_id, external_effects, noop_manifest,
@@ -93,11 +94,8 @@ impl ProductRunService {
                         CheckpointId::new(request.checkpoint().into_bytes())?,
                     )?
                     .ok_or(ControlError::NotFound)?;
-                let operation = store
-                    .operation(conversation, OperationId::new(request.checkpoint().into_bytes())?)?
-                    .ok_or(ControlError::NotFound)?;
-                let receipt = store.resolve(&operation)?.ok_or(ControlError::NotFound)?;
-                public_checkpoint(request.query(), receipt.accepted_revision(), &checkpoint)
+                let revision = checkpoint_revision(store, &record, &checkpoint)?;
+                public_checkpoint(request.query(), revision, &checkpoint)
             })
         });
         result.map_or_else(error_response, AppResponsePayload::WorkbenchCheckpoint)

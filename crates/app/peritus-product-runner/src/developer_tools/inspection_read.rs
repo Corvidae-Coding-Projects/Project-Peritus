@@ -47,7 +47,10 @@ pub(super) fn read(
     let file = fs::File::open(path).map_err(|error| tool(error.to_string()))?;
     let mut reader = BufReader::new(file);
     let mut current = 1_usize;
-    let mut raw_budget = max_bytes / 8;
+    // Bound captured source bytes directly, then fit the actual JSON response below.
+    // A worst-case escaping allowance underfills ordinary source pages and forces
+    // needless continuation reads even when the complete file would fit.
+    let mut raw_budget = max_bytes;
     let mut lines = Vec::new();
     let mut next = None;
 
@@ -93,18 +96,22 @@ pub(super) fn read(
     }
 
     let mut value = response(extra, &lines, start, next);
+    let mut omitted = None;
     while encoded_len(&value)? > max_bytes {
         if let Some(last) = lines.pop() {
             next = Some((last.number, last.offset));
             value = response(extra, &lines, start, next);
-            if lines.is_empty() {
-                let (prefix, cursor) = fit_line_prefix(extra, &last, start, max_bytes)?;
-                lines.push(prefix);
-                next = Some(cursor);
-                break;
-            }
+            omitted = Some(last);
         } else {
             return Err(tool("response metadata exceeds max_bytes"));
+        }
+    }
+    if let Some(last) = omitted {
+        if let Some((prefix, cursor)) = fit_line_prefix(extra, &lines, &last, start, max_bytes)? {
+            lines.push(prefix);
+            next = Some(cursor);
+        } else if lines.is_empty() {
+            return Err(tool("max_bytes leaves no room for a nonempty line prefix"));
         }
     }
     if let Some(last) = lines.last()
@@ -121,25 +128,45 @@ pub(super) fn read(
 
 fn fit_line_prefix(
     extra: &[(&'static str, Value)],
+    preceding: &[Line],
     last: &Line,
     start: usize,
     max_bytes: usize,
-) -> Result<(Line, (usize, u64)), DeveloperLoopError> {
-    let metadata = response(extra, &[], start, Some((last.number, last.offset)));
+) -> Result<Option<(Line, (usize, u64))>, DeveloperLoopError> {
+    let metadata = response(extra, preceding, start, Some((last.number, last.offset)));
     if encoded_len(&metadata)? > max_bytes {
         return Err(tool("response metadata exceeds max_bytes"));
     }
-    let mut prefix = last.text.clone();
-    while !prefix.is_empty() {
-        let line = Line { text: prefix.clone(), complete: false, ..last.clone() };
-        let cursor = (last.number, last.offset.saturating_add(prefix.len() as u64));
-        let page = response(extra, std::slice::from_ref(&line), start, Some(cursor));
+    let boundaries = last
+        .text
+        .char_indices()
+        .map(|(offset, _)| offset)
+        .chain(std::iter::once(last.text.len()))
+        .collect::<Vec<_>>();
+    let mut lower = 0;
+    let mut upper = boundaries.len() - 1;
+    while lower < upper {
+        let middle = lower + (upper - lower).div_ceil(2);
+        let length = boundaries[middle];
+        let line = Line { text: last.text[..length].to_owned(), complete: false, ..last.clone() };
+        let cursor = (last.number, last.offset.saturating_add(length as u64));
+        let mut page_lines = preceding.to_vec();
+        page_lines.push(line);
+        let page = response(extra, &page_lines, start, Some(cursor));
         if encoded_len(&page)? <= max_bytes {
-            return Ok((line, cursor));
+            lower = middle;
+        } else {
+            upper = middle - 1;
         }
-        prefix.pop();
     }
-    Err(tool("max_bytes leaves no room for a nonempty line prefix"))
+    let length = boundaries[lower];
+    if length == 0 {
+        return Ok(None);
+    }
+    Ok(Some((
+        Line { text: last.text[..length].to_owned(), complete: false, ..last.clone() },
+        (last.number, last.offset.saturating_add(length as u64)),
+    )))
 }
 
 struct ReadLine {

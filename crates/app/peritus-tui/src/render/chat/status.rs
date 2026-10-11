@@ -13,6 +13,9 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 }
 
 fn online_status(model: &AppModel) -> String {
+    if let Some(status) = model.chat.goal_terminal_status() {
+        return status.to_owned();
+    }
     if model.chat.snapshot.as_ref().is_some_and(|snapshot| {
         snapshot.snapshot().phase() == peritus_app_protocol::ProductRunPhase::RecoveryRequired
     }) {

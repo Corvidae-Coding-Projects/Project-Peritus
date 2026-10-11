@@ -8,6 +8,7 @@ impl AppModel {
     pub(in crate::model) fn paste_chat(&mut self, text: &str) -> bool {
         self.chat.interrupt_requested = false;
         self.chat.mouse_anchor = None;
+        let text = text.replace("\r\n", "\n").replace('\r', "\n");
         let accepted = |ch: &char| !ch.is_control() || matches!(*ch, '\n' | '\t');
         let bytes = text.chars().filter(accepted).map(char::len_utf8).sum::<usize>();
         let selected = self.chat.selection().unwrap_or(self.chat.cursor..self.chat.cursor);

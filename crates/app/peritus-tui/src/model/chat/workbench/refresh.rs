@@ -49,13 +49,14 @@ impl AppModel {
         command: Command,
         arguments: &str,
     ) -> Option<Vec<Effect>> {
-        let uses_snapshot =
-            matches!(command, Command::Checkpoint | Command::Rewind | Command::Fork)
-                || (command == Command::Sessions
-                    && matches!(
-                        arguments.split_whitespace().next(),
-                        Some("rename" | "pin" | "unpin" | "archive" | "unarchive")
-                    ));
+        let uses_snapshot = matches!(
+            command,
+            Command::Checkpoint | Command::Rewind | Command::Fork | Command::Compact
+        ) || (command == Command::Sessions
+            && matches!(
+                arguments.split_whitespace().next(),
+                Some("rename" | "pin" | "unpin" | "archive" | "unarchive")
+            ));
         if !uses_snapshot
             || !self.workbench_available()
             || self.workbench_request_pending()

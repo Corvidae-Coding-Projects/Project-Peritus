@@ -2,11 +2,7 @@
 
 use std::{io::ErrorKind, path::Path};
 
-use nix::{
-    errno::Errno,
-    sys::signal::{Signal, killpg},
-    unistd::Pid,
-};
+use nix::sys::signal::Signal;
 
 use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity};
 
@@ -17,10 +13,22 @@ pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation,
         return Ok(ProbeObservation::Unverifiable);
     };
     match snapshot(identity.root_pid())? {
-        Snapshot::Absent => Ok(ProbeObservation::ExactAbsent),
+        Snapshot::Absent => {
+            if crate::platform::linux_tree::members(identity)?.is_empty() {
+                Ok(ProbeObservation::ExactAbsent)
+            } else {
+                // The persisted identity carries the root birth, not descendant birth tokens.
+                // A matching numeric session alone cannot authorize adoption after a recovery
+                // gap. Keep ownership unresolved instead of guessing absence or signalling it.
+                Ok(ProbeObservation::Unverifiable)
+            }
+        }
         Snapshot::Unverifiable => Ok(ProbeObservation::Unverifiable),
-        Snapshot::Present { state, process_group, start_token } => {
-            if start_token != expected_start || process_group != expected_group {
+        Snapshot::Present { state, process_group, session, start_token } => {
+            if start_token != expected_start
+                || process_group != expected_group
+                || session != expected_group
+            {
                 Ok(ProbeObservation::Mismatched)
             } else if matches!(state, b'Z' | b'X' | b'x') {
                 Ok(ProbeObservation::Unverifiable)
@@ -46,14 +54,7 @@ pub(super) fn terminate(identity: ProcessTreeIdentity) -> Result<(), ProcessErro
             ));
         }
     }
-    let group = identity
-        .process_group()
-        .and_then(|value| i32::try_from(value).ok())
-        .ok_or_else(|| indeterminate("Linux process-group identity is not representable"))?;
-    match killpg(Pid::from_raw(group), Signal::SIGKILL) {
-        Ok(()) | Err(Errno::ESRCH) => Ok(()),
-        Err(_) => Err(indeterminate("Linux exact process-group termination failed")),
-    }
+    crate::platform::linux_tree::signal(identity, Signal::SIGKILL)
 }
 
 fn exact_binding(identity: ProcessTreeIdentity) -> Option<(u64, u32)> {
@@ -70,7 +71,11 @@ fn snapshot(pid: u32) -> Result<Snapshot, ProcessError> {
     }
     let text = match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
         Ok(text) => text,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Snapshot::Absent),
+        Err(error)
+            if error.kind() == ErrorKind::NotFound || error.raw_os_error() == Some(libc::ESRCH) =>
+        {
+            return Ok(Snapshot::Absent);
+        }
         Err(error) if error.kind() == ErrorKind::PermissionDenied => {
             return Ok(Snapshot::Unverifiable);
         }
@@ -93,12 +98,13 @@ fn parse_stat(expected_pid: u32, text: &str) -> Option<Snapshot> {
     }
     let _parent_pid = fields.next()?;
     let process_group = fields.next()?.parse().ok()?;
-    let start_token = fields.nth(16)?.parse().ok()?;
-    Some(Snapshot::Present { state: state[0], process_group, start_token })
+    let session = fields.next()?.parse().ok()?;
+    let start_token = fields.nth(15)?.parse().ok()?;
+    Some(Snapshot::Present { state: state[0], process_group, session, start_token })
 }
 
 enum Snapshot {
     Absent,
     Unverifiable,
-    Present { state: u8, process_group: u32, start_token: u64 },
+    Present { state: u8, process_group: u32, session: u32, start_token: u64 },
 }

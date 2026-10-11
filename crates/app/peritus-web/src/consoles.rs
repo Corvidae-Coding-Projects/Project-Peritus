@@ -98,8 +98,8 @@ pub fn workbench(app: &App, input: &Value) -> Result<Value> {
         daemon::endpoint(app)?.to_string_lossy().into_owned(),
         "open".into(),
         project.root.to_string_lossy().into_owned(),
-        "--run".into(),
-        session.run.clone(),
+        "--conversation".into(),
+        session.conversation.clone(),
     ];
     let console = Console {
         id: id()?,

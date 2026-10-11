@@ -9,7 +9,7 @@ use crate::{LifecyclePhase, ProcessError, ProcessStore, ProcessTreeIdentity};
 pub enum ProbeObservation {
     /// The durable birth identity still names the same live owned tree.
     ExactLive,
-    /// No process exists for the durable root identity.
+    /// No process remains in the durable owned tree on the observing platform.
     ExactAbsent,
     /// The numeric root identity now names a different process.
     Mismatched,

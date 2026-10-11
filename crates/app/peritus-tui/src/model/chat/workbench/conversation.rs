@@ -25,6 +25,7 @@ pub(super) struct Submission {
     queued: bool,
     queue_operation: Option<peritus_app_protocol::ControlOperationId>,
     stopped: bool,
+    start_pending: bool,
 }
 
 impl AppModel {
@@ -60,6 +61,37 @@ impl AppModel {
 
     pub(in crate::model::chat) fn send_workbench_chat(&mut self, text: String) -> Vec<Effect> {
         self.send_workbench_text(text, false)
+    }
+
+    pub(in crate::model::chat) fn start_pending_workbench(&mut self) -> Vec<Effect> {
+        if !self.workbench_conversation_available()
+            || self.chat.workbench.selected.is_none()
+            || self.workbench_request_pending()
+            || self.workbench_chat_pending()
+        {
+            self.notice(NoticeLevel::Warning, "Select the durable conversation and resolve pending receipts before starting its queue; draft retained.");
+            return Vec::new();
+        }
+        let Some(providers) = self.chat_providers() else { return Vec::new() };
+        let Some(run) = self.ids.run() else { return Vec::new() };
+        self.chat.workbench.submission = Some(Submission {
+            input: None,
+            message: None,
+            upload: None,
+            queue_only: false,
+            draft: self.chat.buffer.clone(),
+            settings: WorkbenchExecutionSettings::new(
+                run,
+                providers,
+                self.chat.mode,
+                self.chat.models.clone(),
+            ),
+            queued: true,
+            queue_operation: None,
+            stopped: false,
+            start_pending: true,
+        });
+        self.discover_workbench_execution()
     }
 
     pub(in crate::model::chat::workbench) fn send_workbench_text(
@@ -135,6 +167,7 @@ impl AppModel {
             queued: false,
             queue_operation: None,
             stopped: false,
+            start_pending: false,
         });
         self.chat.selection_anchor = None;
         self.chat.mouse_anchor = None;
@@ -348,24 +381,32 @@ impl AppModel {
         let operation = self.chat.snapshot.as_ref().map(|snapshot| snapshot.snapshot().operation());
         if operation.is_some_and(peritus_app_protocol::ProductRunOperation::may_start_execution) {
             let Some(query) = self.chat.workbench.selected else { return Vec::new() };
-            let Some(original) = self
+            let original = self
                 .chat
                 .workbench
                 .submission
                 .as_ref()
-                .and_then(|submission| submission.queue_operation)
-            else {
-                return Vec::new();
-            };
-            if !self.referenced_messages_available() {
+                .and_then(|submission| submission.queue_operation);
+            if original.is_some() && !self.referenced_messages_available() {
                 self.notice(NoticeLevel::Warning, "Message saved; reconnect to an updated daemon before continuing this exact operation.");
                 return Vec::new();
             }
+            let continuation = if let Some(original) = original {
+                peritus_app_protocol::WorkbenchContinuation::bound(query, mode, original)
+            } else if self
+                .chat
+                .workbench
+                .submission
+                .as_ref()
+                .is_some_and(|submission| submission.start_pending)
+            {
+                peritus_app_protocol::WorkbenchContinuation::new(query, mode)
+            } else {
+                return Vec::new();
+            };
             return self
                 .request(
-                    AppRequestPayload::ContinueWorkbenchExecution(
-                        peritus_app_protocol::WorkbenchContinuation::bound(query, mode, original),
-                    ),
+                    AppRequestPayload::ContinueWorkbenchExecution(continuation),
                     PendingRequest::WorkbenchChatStarted { run },
                 )
                 .into_iter()
