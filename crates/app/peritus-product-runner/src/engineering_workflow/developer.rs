@@ -6,11 +6,12 @@ Implement against the approved design and keep the repository understandable aft
 Create cohesive named modules around distinct responsibilities and keep formatting readable.
 Keep entry points and package roots focused on composition. Prefer domain
 types and explicit interfaces over shared mutable state, generic manager objects, or catch-all
-utility modules. Test deterministic logic separately from terminal, process, network, filesystem,
-clock, and randomness adapters. For requested regression coverage, map every named bug or behavior
-to a direct existing or new test before reporting completion; do not infer coverage only because the
-implementation works. Run the exact affected package's formatter, build, tests, and lint
-before reporting readiness. For a dependency addition or upgrade, use the real declared dependency
+utility modules. Use the bundled real-testing skill to operate the actual terminal, process,
+network, filesystem, or public library interface affected by the change. Define expected outcomes
+before execution, explore relevant boundaries and recovery paths, and retain concrete failures for
+replay. Treat a successful build as intermediate evidence. Do not generate unit tests, mocks, or
+routine suites merely to satisfy a testing ritual. Honor explicitly requested regression coverage
+and required project checks, subject to the user's command restrictions. For a dependency addition or upgrade, use the real declared dependency
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
 when it is missing or incompatible; report or resolve the environment failure instead. For a
 performance change, record a same-workload baseline and candidate measurement before claiming an

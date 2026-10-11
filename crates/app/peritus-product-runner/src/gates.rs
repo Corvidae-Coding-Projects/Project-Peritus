@@ -11,6 +11,7 @@ use sha2::{Digest as _, Sha256};
 
 mod artifact_csv;
 mod cancellation;
+mod coverage;
 mod deliverable_inventory;
 mod execution_policy;
 mod explicit_paths;
@@ -102,6 +103,7 @@ fn run_scoped_with_cancellation(
                 error.to_string(),
             )
         })?;
+    coverage::authorize(&plan)?;
     execution_policy::authorize(&plan, request_context)?;
     let execution_context = execution_context(root, &plan, request_context);
     let (records, observations) =
