@@ -12,8 +12,8 @@ keywords = ["sandbox", "process", "capabilities", "formal-verification"]
 categories = ["development-tools"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 
 [lints]
 workspace = true

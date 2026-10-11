@@ -12,12 +12,12 @@ keywords = ["linux", "sandbox", "bubblewrap", "landlock", "seccomp"]
 categories = ["development-tools", "os::linux-apis"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
-peritus-network = { version = "=0.0.5", path = "../peritus-network" }
-peritus-process = { version = "=0.0.5", path = "../peritus-process" }
-peritus-sandbox = { version = "=0.0.5", path = "../peritus-sandbox" }
-peritus-secrets = { version = "=0.0.5", path = "../peritus-secrets" }
-peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.0.6", path = "../peritus-network" }
+peritus-process = { version = "=0.0.6", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.0.6", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.0.6", path = "../peritus-secrets" }
+peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 zeroize.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]

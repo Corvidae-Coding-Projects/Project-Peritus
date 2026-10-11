@@ -10,7 +10,7 @@ readme = false
 description = "Verified policy, capability, and authority-time core for Project Peritus"
 
 [dependencies]
-peritus-types = { version = "=0.0.5", path = "../peritus-types" }
+peritus-types = { version = "=0.0.6", path = "../peritus-types" }
 
 [lints]
 workspace = true
