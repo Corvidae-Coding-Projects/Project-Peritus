@@ -27,9 +27,14 @@ pub struct ConnectionContext {
     actor_id: ActorId,
     protocol: ProtocolContext,
     negotiated: NegotiatedProtocol,
+    diagnostic_only: bool,
 }
 
 impl ConnectionContext {
+    pub(super) const fn diagnostic_only(&self) -> bool {
+        self.diagnostic_only
+    }
+
     pub(super) fn supports(&self, feature: WellKnownProtocolFeature) -> bool {
         self.negotiated.features().as_slice().iter().any(|name| name.as_str() == feature.as_str())
     }
@@ -117,10 +122,7 @@ pub async fn establish(
                 )
                 .await?;
         }
-    } else {
-        if read_only {
-            return Err(unauthorized("read-only diagnostics require an existing durable session"));
-        }
+    } else if !read_only {
         let session = NewApplicationSession::new(
             candidate,
             principal.actor_id(),
@@ -145,7 +147,15 @@ pub async fn establish(
     let protocol = ProtocolContext::new(client.protocol_id(), negotiated.version(), candidate);
     Ok(Establishment {
         hello,
-        context: Some(ConnectionContext { actor_id: principal.actor_id(), protocol, negotiated }),
+        context: Some(ConnectionContext {
+            actor_id: principal.actor_id(),
+            protocol,
+            negotiated,
+            // A new client can inspect and stop a recovery-mode daemon without writing a
+            // durable session. Its OS principal is still authenticated above, and request
+            // dispatch limits this connection to status and shutdown for its entire lifetime.
+            diagnostic_only: read_only && requested.is_none(),
+        }),
     })
 }
 
