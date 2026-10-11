@@ -11,6 +11,7 @@ mod failure;
 mod selection;
 
 use failure::reported_failure;
+pub(super) use failure::reported_process_failure;
 use selection::select_turn;
 
 const MAX_JSONL_LINES: usize = 100_000;
@@ -25,6 +26,7 @@ pub enum DecodeFailure {
     Capacity,
     QuotaExhausted,
     ContextLimit,
+    InputLimit,
     Reported,
     Malformed,
     InvalidLifecycle,

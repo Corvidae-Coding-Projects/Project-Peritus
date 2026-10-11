@@ -140,9 +140,11 @@ impl CodexRuntimeProvider {
                 output.final_message.as_deref().ok(),
             );
             if !output.process.exit().success() {
+                let decoded_turn = super::output::reported_process_failure(output.process.stderr())
+                    .map_or(decoded.turn, Err);
                 return self.failed_process(
                     &request,
-                    &decoded.turn,
+                    &decoded_turn,
                     decoded.usage,
                     !output.process.stdout().is_empty(),
                     cancellation,

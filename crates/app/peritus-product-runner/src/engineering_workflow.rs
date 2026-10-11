@@ -306,6 +306,11 @@ requested behavior.
    Use the tool protocol efficiently: issue independent reads, writes, and checks together in one
    model response when the calls have no data dependency. Do not serialize independent effects and
    spend a caller's deadline on avoidable round trips.
+   Read a required design or specification as a complete document when it fits the read budget.
+   workspace_read defaults to 1 MiB and has no default line-count cutoff; request a larger
+   max_bytes up to its advertised protocol capacity when the document needs it. Returned pages
+   reach model context intact. Follow the returned continuation cursor only when a page reports
+   omitted content; do not invent smaller line ranges for a document that can be read once.
    Constrain predictable inspection output before it enters model context. When a command queries a
    structured or network response, extract only the fields needed for the current decision. If its
    shape is not known yet, begin with keys, counts, or a bounded representative sample and then

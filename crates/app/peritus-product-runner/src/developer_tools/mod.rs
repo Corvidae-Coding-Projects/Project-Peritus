@@ -74,6 +74,9 @@ pub use folder_patch_request::FolderPatchAuthorityPlanRequest;
 
 pub const DEFAULT_INSPECTION_PAGE_BYTES: usize = 16 * 1024;
 
+/// Default response budget for reading a document, including its line labels and metadata.
+pub const DEFAULT_DOCUMENT_READ_BYTES: usize = 1024 * 1024;
+
 pub use ownership::WorkspaceOwnership;
 pub use preview::{
     PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputMatch,

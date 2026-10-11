@@ -56,6 +56,11 @@ pub(super) fn decode_failure(
             Retryability::Never,
             "openai.codex_runtime.context_limit",
         ),
+        DecodeFailure::InputLimit => (
+            FailureCategory::InvalidRequest,
+            Retryability::Never,
+            "openai.codex_runtime.input_limit",
+        ),
         DecodeFailure::Reported => {
             (FailureCategory::Provider, Retryability::Never, "openai.codex_runtime.reported")
         }

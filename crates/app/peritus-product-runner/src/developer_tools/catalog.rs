@@ -8,7 +8,27 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"depth":{"type":"integer","minimum":1},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"path":{"type":"string"}},"type":"object"}"#;
 const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"max_results":{"type":"integer","minimum":1},"path":{"type":"string"},"query":{"type":"string","minLength":1}},"required":["query"],"type":"object"}"#;
-const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer","minimum":1},"line_byte_offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"path":{"type":"string"},"start_line":{"type":"integer","minimum":1}},"required":["path"],"type":"object"}"#;
+fn workspace_read_schema() -> String {
+    serde_json::json!({
+        "additionalProperties": false,
+        "properties": {
+            "end_line": {"type": "integer", "minimum": 1},
+            "line_byte_offset": {"type": "integer", "minimum": 0},
+            "max_bytes": {
+                "type": "integer",
+                "default": super::DEFAULT_DOCUMENT_READ_BYTES,
+                "minimum": 256,
+                "maximum": super::inspection::MAX_DOCUMENT_READ_BYTES
+            },
+            "path": {"type": "string"},
+            "start_line": {"type": "integer", "minimum": 1}
+        },
+        "required": ["path"],
+        "type": "object"
+    })
+    .to_string()
+}
+
 const ATTACHMENT_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"attachment":{"type":"string","minLength":32,"maxLength":32},"version":{"type":"string","minLength":32,"maxLength":32},"source_sha256":{"type":"string","minLength":64,"maxLength":64},"selected_sha256":{"type":"string","minLength":64,"maxLength":64},"source_bytes":{"type":"integer","minimum":0},"range_start":{"type":"integer","minimum":0},"range_end":{"type":"integer","minimum":0},"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":4,"maximum":32768}},"required":["attachment","version","source_sha256","selected_sha256","source_bytes","range_start","range_end","offset","max_bytes"],"type":"object"}"#;
 const REVIEW_EVIDENCE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","default":16384,"minimum":1,"maximum":524288},"section":{"type":"string","default":"developer_commands","enum":["transcript","diff","gates","developer_commands","prior","correction"]}},"required":["offset","max_bytes"],"type":"object"}"#;
 const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
@@ -22,6 +42,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
 pub fn definitions_for_attachments(
     has_selected_file_attachments: bool,
 ) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    let read_schema = workspace_read_schema();
     let mut definitions = definitions_from(&[
         (
             "workspace_list",
@@ -35,8 +56,8 @@ pub fn definitions_for_attachments(
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. Pages stay within max_bytes and report the actual last displayed line. When next_line equals end_line and next_line_byte_offset is positive, continue that oversized line with the same start_line and line_byte_offset; otherwise continue at next_line with byte offset zero. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
-            WORKSPACE_READ_SCHEMA,
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default reads from line 1 through EOF within a 1 MiB response budget. Request a larger max_bytes for a larger document, up to the advertised protocol capacity. The complete returned page reaches model context without a second head/tail truncation. Pages stay within max_bytes and report the actual last displayed line. When next_line equals end_line and next_line_byte_offset is positive, continue that oversized line with the same start_line and line_byte_offset; otherwise continue at next_line with byte offset zero. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
+            &read_schema,
         ),
         (
             "attachment_read",
@@ -108,6 +129,7 @@ pub fn definitions_for_attachments(
 
 /// Returns the repository-inspection subset used by the mandatory design pass.
 pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    let read_schema = workspace_read_schema();
     let mut definitions = definitions_from(&[
         (
             "workspace_list",
@@ -121,8 +143,8 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. Pages report actual end_line and next_line_byte_offset so oversized lines can resume exactly. External references are read-only.",
-            WORKSPACE_READ_SCHEMA,
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. Without end_line, read through EOF within the default 1 MiB response budget; request larger max_bytes up to the advertised protocol capacity. Returned pages reach model context intact and report actual end_line and next_line_byte_offset so oversized lines can resume exactly. External references are read-only.",
+            &read_schema,
         ),
         (
             "attachment_read",

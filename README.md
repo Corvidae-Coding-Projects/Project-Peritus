@@ -48,7 +48,9 @@ X11 desktops, or attach to an explicitly selected local Chrome DevTools endpoint
 See [computer automation](docs/computer-automation.md) for setup, capabilities, and platform limits.
 
 Input-token profiles guide automatic compaction. Peritus imposes no fixed local 200,000-token
-input ceiling; the selected provider enforces its actual context capacity.
+input ceiling; the selected provider enforces its actual context capacity. Document reads
+default to 1 MiB and can request multi-megabyte pages up to protocol capacity, with complete
+returned pages delivered to the model.
 
 ## Install
 

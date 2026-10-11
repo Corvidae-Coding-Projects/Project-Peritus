@@ -15,7 +15,7 @@ use super::{
     wire::{bounded_usize, object},
 };
 
-use super::inspection::MAX_PAGE_BYTES;
+use super::inspection::MAX_DOCUMENT_READ_BYTES;
 
 #[derive(Clone)]
 struct Line {
@@ -33,16 +33,16 @@ pub(super) fn read(
 ) -> Result<Value, DeveloperLoopError> {
     cancellation.check()?;
     let start = bounded_usize(arguments, "start_line", 1, 1, usize::MAX);
-    let end = bounded_usize(arguments, "end_line", start.saturating_add(499), start, usize::MAX);
+    let end = bounded_usize(arguments, "end_line", usize::MAX, start, usize::MAX);
     let requested_offset = bounded_usize(arguments, "line_byte_offset", 0, 0, usize::MAX);
     let requested_offset =
         u64::try_from(requested_offset).map_err(|_| tool("line byte offset overflow"))?;
     let max_bytes = bounded_usize(
         arguments,
         "max_bytes",
-        super::DEFAULT_INSPECTION_PAGE_BYTES,
+        super::DEFAULT_DOCUMENT_READ_BYTES,
         256,
-        MAX_PAGE_BYTES,
+        MAX_DOCUMENT_READ_BYTES,
     );
     let file = fs::File::open(path).map_err(|error| tool(error.to_string()))?;
     let mut reader = BufReader::new(file);
@@ -79,6 +79,10 @@ pub(super) fn read(
             None
         };
         if current >= start {
+            // Empty lines still consume response space. Without charging the line
+            // label and separator, a newline-only file could allocate an unbounded
+            // line vector before the encoded-response budget is applied.
+            raw_budget = raw_budget.saturating_sub(current.to_string().len() + 3);
             lines.push(Line { number: current, offset, text: line.text, complete });
         }
         current = current.saturating_add(1);
@@ -88,24 +92,34 @@ pub(super) fn read(
         }
     }
 
-    if next.is_none() && arguments.get("end_line").is_none() && current > end {
-        cancellation.check()?;
-        if !reader.fill_buf().map_err(|error| tool(error.to_string()))?.is_empty() {
-            next = Some((current, 0));
-        }
-    }
-
     let mut value = response(extra, &lines, start, next);
-    let mut omitted = None;
-    while encoded_len(&value)? > max_bytes {
-        if let Some(last) = lines.pop() {
-            next = Some((last.number, last.offset));
-            value = response(extra, &lines, start, next);
-            omitted = Some(last);
-        } else {
+    let omitted = if encoded_len(&value)? > max_bytes {
+        if lines.is_empty() {
             return Err(tool("response metadata exceeds max_bytes"));
         }
-    }
+        // Find the largest complete prefix in logarithmic serialization passes.
+        // Removing one line at a time repeatedly rendered the entire response,
+        // which becomes expensive for larger, heavily escaped documents.
+        let mut lower = 0;
+        let mut upper = lines.len() - 1;
+        while lower < upper {
+            cancellation.check()?;
+            let middle = lower + (upper - lower).div_ceil(2);
+            let cursor = Some((lines[middle].number, lines[middle].offset));
+            let page = response(extra, &lines[..middle], start, cursor);
+            if encoded_len(&page)? <= max_bytes {
+                lower = middle;
+            } else {
+                upper = middle - 1;
+            }
+        }
+        let last = lines[lower].clone();
+        next = Some((last.number, last.offset));
+        lines.truncate(lower);
+        Some(last)
+    } else {
+        None
+    };
     if let Some(last) = omitted {
         if let Some((prefix, cursor)) = fit_line_prefix(extra, &lines, &last, start, max_bytes)? {
             lines.push(prefix);

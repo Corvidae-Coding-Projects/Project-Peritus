@@ -57,6 +57,16 @@ compaction and optional evidence selection; required policy, user input and the 
 exchange can exceed that target. The selected provider enforces its actual context capacity.
 Existing byte bounds, working-memory budgets and host resource controls remain in effect.
 
+Document reads default to a 1 MiB response budget with no implicit line-count cutoff. The model
+can request larger pages up to the existing protocol capacity (currently 16 MiB of encoded JSON).
+Workspace, attachment and review-evidence read pages reach model context intact; the generic
+30,000-byte tool-output excerpt policy is not reapplied to these already bounded reads. Page
+metadata identifies any required continuation, including byte offsets within long UTF-8 lines.
+The Codex account runtime also has its own complete-turn text-input limit (currently 1,048,576
+characters, including framing and retained conversation). An upstream rejection reports an input-size
+error with guidance to request smaller pages or select another provider; it does not imply lost
+credentials or network access. Larger read pages do not enlarge a provider’s actual capacity.
+
 ## Owned and existing sessions
 
 Browser `open` creates an independent persistent profile; `visible=true` shows a real window.
