@@ -72,7 +72,7 @@ def main():
     archive_tree(package, archive, epoch)
     checksum = archive.with_name(archive.name + ".sha256")
     with archive.open("rb") as stream:
-        checksum.write_text(hashlib.file_digest(stream, "sha256").hexdigest() + "\n")
+        checksum.write_bytes((hashlib.file_digest(stream, "sha256").hexdigest() + "\n").encode("ascii"))
     record = {"schema_version": 1, "archive": archive.relative_to(ROOT).as_posix(),
               "checksum": checksum.relative_to(ROOT).as_posix(),
               "build_started_unix": started, "build_finished_unix": int(time.time())}
