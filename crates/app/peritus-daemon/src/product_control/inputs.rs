@@ -10,8 +10,10 @@ use peritus_types::{ActorId, WorkspaceId};
 mod archive;
 mod files;
 mod manifest;
+mod observation;
 pub(super) use archive::inspect::inspect_manifest;
 pub(super) use archive::{RequestArchive, validate_archive, verify_manifest};
+pub(crate) use observation::ToolImageObservation;
 
 /// Authenticated read-only input capture. Private fields prevent constructing a false view.
 #[derive(Clone, Debug)]
@@ -122,6 +124,16 @@ impl ControlStore {
         generation: u64,
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<InputAdmission, Error> {
+        self.prepare_execution_with_observations(start, generation, request, &[])
+    }
+
+    pub(crate) fn prepare_execution_with_observations(
+        &mut self,
+        start: &ControlOperation,
+        generation: u64,
+        request: &peritus_model_protocol::ModelRequest,
+        observations: &[ToolImageObservation],
+    ) -> Result<InputAdmission, Error> {
         let captured = self.capture_execution(start)?;
         if captured.inputs().generation() != generation {
             return Ok(InputAdmission::Stale);
@@ -134,7 +146,12 @@ impl ControlStore {
         let mut bytes = [0; 16];
         bytes.copy_from_slice(&digest.as_bytes()[..16]);
         bytes[0] |= 1;
-        self.prepare_inputs(&captured, InvocationId::new(bytes)?, request)
+        self.prepare_inputs_with_observations(
+            &captured,
+            InvocationId::new(bytes)?,
+            request,
+            observations,
+        )
     }
     /// Expands only authenticated user-message and accepted-proposal references for read policy.
     /// The caller must authenticate the record before using its contract as authority.
@@ -267,7 +284,17 @@ impl ControlStore {
         invocation: InvocationId,
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<InputAdmission, Error> {
-        let archive = RequestArchive::new(captured, invocation, request)?;
+        self.prepare_inputs_with_observations(captured, invocation, request, &[])
+    }
+
+    fn prepare_inputs_with_observations(
+        &mut self,
+        captured: &CapturedConversation,
+        invocation: InvocationId,
+        request: &peritus_model_protocol::ModelRequest,
+        observations: &[ToolImageObservation],
+    ) -> Result<InputAdmission, Error> {
+        let archive = RequestArchive::new(captured, invocation, request, observations)?;
         let mut identity = b"peritus-workbench/request-incorporation/v1".to_vec();
         identity.extend_from_slice(invocation.as_bytes());
         identity.extend_from_slice(captured.conversation.as_bytes());

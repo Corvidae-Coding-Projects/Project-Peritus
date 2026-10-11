@@ -41,6 +41,8 @@ struct Manifest {
     files: Vec<super::manifest::FileSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     guidance: Option<GuidanceManifest>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    observations: Vec<super::ToolImageObservation>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -70,8 +72,9 @@ impl RequestArchive {
         captured: &CapturedConversation,
         invocation: InvocationId,
         request: &peritus_model_protocol::ModelRequest,
+        observations: &[super::ToolImageObservation],
     ) -> Result<Self, Error> {
-        let mut requested_images = request
+        let requested_images = request
             .messages()
             .iter()
             .flat_map(peritus_model_protocol::Message::content)
@@ -79,7 +82,18 @@ impl RequestArchive {
                 peritus_model_protocol::ContentBlock::Image(image) => Some(image),
                 _ => None,
             });
-        if !requested_images.by_ref().eq(captured.images.iter()) {
+        let mut selected = captured.images.iter().peekable();
+        let mut used_observations = Vec::new();
+        for image in requested_images {
+            if selected.peek().is_some_and(|expected| *expected == image) {
+                selected.next();
+            } else if let Some(source) = observations.iter().find(|source| source.matches(image)) {
+                used_observations.push(source.clone());
+            } else {
+                return Err(ControlError::InvalidInput.into());
+            }
+        }
+        if selected.next().is_some() {
             return Err(ControlError::InvalidInput.into());
         }
         if !captured.file_context.is_empty()
@@ -126,6 +140,7 @@ impl RequestArchive {
                 request_bytes: bytes.len() as u64,
                 brief: captured.brief.clone(),
                 images: captured.image_sources.clone(),
+                observations: used_observations,
                 files: captured.file_sources.clone(),
                 guidance: (!captured.guidance.identities().is_empty()).then(|| GuidanceManifest {
                     dependency_revision: captured.guidance.dependency_revision(),
@@ -211,6 +226,7 @@ pub(in crate::product_control) fn verify_manifest(
         || manifest.messages.is_empty()
         || manifest.request_bytes == 0
         || manifest.brief.len() > 4
+        || manifest.observations.iter().any(|observation| !observation.valid())
         || manifest.guidance.as_ref().is_some_and(|guidance| {
             guidance.dependency_revision == 0
                 || guidance.identities.is_empty()

@@ -12,6 +12,7 @@ keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]
+peritus-tools-computer = { version = "=0.0.6", path = "../../tools/peritus-tools-computer" }
 getrandom.workspace = true
 image.workspace = true
 peritus-agent = { version = "=0.0.6", path = "../../orchestration/peritus-agent" }

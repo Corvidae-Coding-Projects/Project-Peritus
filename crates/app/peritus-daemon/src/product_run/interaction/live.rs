@@ -181,6 +181,33 @@ impl ConversationView for LiveConversation {
 }
 
 impl DeveloperInteraction for LiveConversation {
+    fn record_observation_images(
+        &self,
+        call: &peritus_model_protocol::CompletedToolCall,
+        images: &[peritus_model_protocol::MediaInput],
+    ) -> Result<(), DeveloperLoopError> {
+        let observations = images
+            .iter()
+            .map(|image| {
+                crate::product_control::ToolImageObservation::from_tool(call, image).map_err(
+                    |error| {
+                        port_error(
+                            "record host image provenance",
+                            crate::product_control::ControlStoreError::from(error).into(),
+                        )
+                    },
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.update(|options, _| {
+            for observation in observations {
+                if !options.observed_images.contains(&observation) {
+                    options.observed_images.push(observation);
+                }
+            }
+            Ok(())
+        })
+    }
     fn allows_semantic_compaction(&self) -> bool {
         false
     }

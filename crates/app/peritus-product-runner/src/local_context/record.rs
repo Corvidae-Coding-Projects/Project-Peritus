@@ -152,6 +152,7 @@ pub(super) struct ViewValidation {
     pub(super) input_tokens_saved: u64,
     pub(super) archive_bytes: u64,
     pub(super) stale_entries: usize,
+    /// Profile compaction target; backend input capacity is enforced by the provider.
     pub(super) max_input_tokens: u64,
     pub(super) selected_observations: Vec<u64>,
     pub(super) omitted_entries: usize,

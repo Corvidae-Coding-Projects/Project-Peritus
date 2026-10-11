@@ -107,6 +107,7 @@ impl CommandRuntime {
                 artifacts,
                 process_store: process_store_for_recovery,
                 gateway: ExecutionGateway::new(process_store),
+                computer: Mutex::new(None),
                 state: Mutex::new(RuntimeState {
                     router: ToolRouter::new(registry, limits),
                     next_ordinal: 0,

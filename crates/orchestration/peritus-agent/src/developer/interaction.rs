@@ -78,6 +78,18 @@ pub enum DeveloperActivity<'a> {
 
 /// Daemon-owned live input and observation port; it cannot grant tool authority.
 pub trait DeveloperInteraction: Send + Sync {
+    /// Records host-validated tool image provenance before admitting an image-bearing request.
+    /// Observations are interface data and do not create governing user input or authority.
+    ///
+    /// # Errors
+    /// Returns a provenance or durable-storage failure before provider dispatch.
+    fn record_observation_images(
+        &self,
+        _call: &peritus_model_protocol::CompletedToolCall,
+        _images: &[peritus_model_protocol::MediaInput],
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
     /// Whether this host explicitly permits legacy provider-authored automatic compaction.
     /// Governed workbench hosts disable it; deterministic local preparation remains available.
     fn allows_semantic_compaction(&self) -> bool {

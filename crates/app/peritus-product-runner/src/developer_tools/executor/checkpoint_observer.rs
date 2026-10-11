@@ -271,6 +271,15 @@ impl WorkspaceDeveloperTools {
             }
         }
         let boundary = match name {
+            "browser_control" | "desktop_control"
+                if result.get("success").and_then(Value::as_bool) == Some(true) =>
+            {
+                if string(arguments, "purpose") == Some("external_effect") {
+                    Some(ToolCheckpointBoundary::ExternalEffect)
+                } else {
+                    Some(ToolCheckpointBoundary::Verification)
+                }
+            }
             "run_command" | "command_poll" | "command_recover" if completed_command => {
                 match string(arguments, "purpose")
                     .or_else(|| result.get("purpose").and_then(Value::as_str))

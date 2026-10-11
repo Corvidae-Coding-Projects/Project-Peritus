@@ -2,6 +2,7 @@
 
 mod authority;
 mod compactor;
+mod computer;
 mod construction;
 mod contract;
 mod control;
@@ -62,6 +63,8 @@ struct RuntimeInner {
     artifacts: StoreConfig,
     process_store: ProcessStore,
     gateway: ExecutionGateway,
+    computer: Mutex<Option<computer::ComputerDriver>>,
+    // Fields drop in declaration order: close GUI sessions before dropping the C2 router.
     state: Mutex<RuntimeState>,
 }
 

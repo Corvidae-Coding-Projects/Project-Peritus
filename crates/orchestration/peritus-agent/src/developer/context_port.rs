@@ -211,12 +211,6 @@ impl ContextSession<'_> {
                 ));
             }
             let estimated = estimated_request_tokens(&candidate, tools);
-            let capacity = profile.limits().max_input_tokens();
-            if estimated > capacity {
-                return Err(DeveloperLoopError::Context(format!(
-                    "local view estimated input tokens {estimated} exceed provider limit {capacity}"
-                )));
-            }
             port.checkpoint(&candidate)?;
             *messages = candidate;
             return Ok(estimated < prior);

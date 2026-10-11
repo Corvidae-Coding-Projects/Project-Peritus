@@ -11,6 +11,7 @@ mod attachment_read;
 mod catalog;
 
 mod command_budget;
+mod computer;
 
 mod command_runtime;
 

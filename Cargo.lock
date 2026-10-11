@@ -2657,6 +2657,7 @@ dependencies = [
  "peritus-spec",
  "peritus-tool-protocol",
  "peritus-tool-router",
+ "peritus-tools-computer",
  "peritus-tools-shell",
  "peritus-types",
  "peritus-workspace",
@@ -3000,6 +3001,13 @@ dependencies = [
  "peritus-protocol",
  "peritus-tool-protocol",
  "peritus-types",
+]
+
+[[package]]
+name = "peritus-tools-computer"
+version = "0.0.6"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

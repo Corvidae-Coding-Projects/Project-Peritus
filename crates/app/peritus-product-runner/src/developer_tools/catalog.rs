@@ -99,6 +99,7 @@ pub fn definitions_for_attachments(
             COMMAND_HANDLE_SCHEMA,
         ),
     ])?;
+    definitions.extend(super::computer::definitions()?);
     if !has_selected_file_attachments {
         definitions.retain(|definition| definition.name().as_str() != "attachment_read");
     }
@@ -107,7 +108,7 @@ pub fn definitions_for_attachments(
 
 /// Returns the repository-inspection subset used by the mandatory design pass.
 pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-    definitions_from(&[
+    let mut definitions = definitions_from(&[
         (
             "workspace_list",
             "List files and directories below one workspace-relative path with current byte size and permission metadata. Pages stay within max_bytes; pass the full next_cursor object as cursor to continue the same path and depth. Check omissions and depth_limited before treating the listing as complete. The result reports the exact workspace_root and confirms that ordinary workspace paths are relative to it; remove that exact prefix once from absolute in-workspace paths. An exact user-named absolute directory outside the workspace is available only as read-only reference evidence.",
@@ -128,7 +129,9 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
             "Read a bounded page from the exact user-confirmed immutable attachment version and selected range listed in the governing input. Continue at next_offset; this never reopens a workspace path.",
             ATTACHMENT_READ_SCHEMA,
         ),
-    ])
+    ])?;
+    definitions.extend(super::computer::observer_definitions()?);
+    Ok(definitions)
 }
 
 /// Adds the run-scoped evidence reader available only to an independent reviewer.
@@ -160,7 +163,7 @@ fn definitions_from(
         .collect()
 }
 
-fn definition(
+pub(super) fn definition(
     name: &str,
     description: &str,
     schema: &str,

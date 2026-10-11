@@ -1,5 +1,6 @@
 //! Embedded production-engineering workflow and role skills.
 
+mod computer;
 mod developer;
 mod real_testing;
 mod reviewer;
@@ -346,14 +347,14 @@ integration points that require serialization.
 pub fn architect() -> String {
     format!(
         "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nArchitect skill:\n{ARCHITECT_SKILL}",
-        real_testing::SKILL
+        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL)
     )
 }
 
 pub fn developer() -> String {
     format!(
         "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nDeveloper skill:\n{}",
-        real_testing::SKILL,
+        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL),
         developer::SKILL
     )
 }
@@ -361,7 +362,7 @@ pub fn developer() -> String {
 pub fn reviewer() -> String {
     format!(
         "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nReviewer skill:\n{}",
-        real_testing::SKILL,
+        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL),
         reviewer::SKILL
     )
 }

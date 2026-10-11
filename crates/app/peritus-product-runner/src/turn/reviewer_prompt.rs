@@ -30,7 +30,7 @@ pub struct ReviewDelivery {
 /// Bounds the initial evidence after charging the system policy, prompt framing and tools.
 ///
 /// # Errors
-/// Rejects excessive protocol text or a profile with no room for independent review evidence.
+/// Rejects excessive protocol text. Profile token estimates are soft projection targets.
 pub fn reviewer_user(prompt: &ReviewerPrompt<'_>) -> Result<String, DeveloperLoopError> {
     let empty = evidence::project(0, 0, [""; 6]);
     let framing = render(prompt, &empty);
@@ -47,18 +47,14 @@ pub fn reviewer_user(prompt: &ReviewerPrompt<'_>) -> Result<String, DeveloperLoo
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let first_result_reserve = evidence::first_tool_result_reserve_tokens(prompt.tools)?;
     let framing_tokens = estimate_developer_request_tokens(&messages, prompt.tools)
         .saturating_add(prompt.additional_framing_tokens)
-        .saturating_add(evidence::first_tool_result_reserve_tokens(prompt.tools)?);
-    let request_target = evidence::request_target(prompt.max_input_tokens);
-    if framing_tokens >= request_target {
-        return Err(DeveloperLoopError::Context(format!(
-            "reviewer policy and tool framing use {framing_tokens} estimated tokens; the {}-token profile has no initial evidence headroom within the {request_target}-token review target",
-            prompt.max_input_tokens
-        )));
-    }
+        .saturating_add(first_result_reserve);
+    let request_target = evidence::request_target(prompt.max_input_tokens)
+        .max(framing_tokens.saturating_add(first_result_reserve));
     let projected = evidence::project(
-        prompt.max_input_tokens,
+        request_target,
         framing_tokens,
         [
             prompt.transcript,

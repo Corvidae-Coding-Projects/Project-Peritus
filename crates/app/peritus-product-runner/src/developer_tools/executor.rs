@@ -63,7 +63,7 @@ pub struct WorkspaceDeveloperTools {
     receipts: Option<EffectReceiptLedger>,
     resources: CommandResources,
     inspection_cancellation: InspectionCancellation,
-    command_runtime: Option<crate::CommandRuntime>,
+    pub(super) command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
     tools_without_delivery_progress: u16,
     progress_nudges: u8,
@@ -75,6 +75,12 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    pub(crate) fn with_computer_runtime(mut self, runtime: crate::CommandRuntime) -> Self {
+        if self.command_runtime.is_none() {
+            self.command_runtime = Some(runtime);
+        }
+        self
+    }
     pub(crate) fn with_reviewer_evidence_sources(
         mut self,
         evidence: ReviewerEvidenceSources,
@@ -268,13 +274,19 @@ fn first_missing_permission(
 }
 
 fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
-    use PermissionCapability::{Process, Read, Write};
+    use PermissionCapability::{Network, Process, Read, Write};
     match tool_name {
         "workspace_list"
         | "workspace_search"
         | "workspace_read"
         | "attachment_read"
-        | "developer_evidence_read" => Some(&[Read]),
+        | "developer_evidence_read"
+        | "view_image" => Some(&[Read]),
+        "computer_status" => Some(&[Read, Process]),
+        "computer_snapshot" => Some(&[Read]),
+        "browser_control" => Some(&[Read, Write, Process, Network]),
+        "desktop_control" => Some(&[Read, Write, Process]),
+        "computer_close" => Some(&[]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
@@ -305,6 +317,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "workspace_read"
                 | "attachment_read"
                 | "developer_evidence_read"
+                | "view_image"
+                | "computer_snapshot"
+                | "computer_status"
         ) {
             DeveloperToolEffect::ReadOnly
         } else {
@@ -339,6 +354,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     | "workspace_read"
                     | "attachment_read"
                     | "developer_evidence_read"
+                    | "view_image"
+                    | "computer_snapshot"
+                    | "computer_status"
             )
         {
             return observation(
@@ -365,6 +383,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "command_resize"
                 | "command_signal"
                 | "command_cancel"
+                | "browser_control"
+                | "desktop_control"
+                | "computer_close"
         ) && self.mode == WorkspaceToolMode::ReadWrite;
         if effect && let Some(observation) = self.replay_effect(call, &arguments)? {
             return Ok(observation);
@@ -426,6 +447,14 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.inspection_progress.observe_model_context(messages);
         Ok(())
+    }
+
+    fn observation_images(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
+        self.computer_observation_images(call, observation)
     }
 
     fn completion_blocker(&self) -> Option<String> {
