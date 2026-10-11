@@ -1,0 +1,6 @@
+# Machine-local overrides (not committed)
+rules.local/
+hook-config.local.json
+.cache/
+agent.json
+.locks-cache/

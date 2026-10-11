@@ -1,0 +1,3 @@
+src/graph.rs:134:    #[allow(
+src/content.rs:83:#[allow(clippy::struct_field_names, reason = "public accessor names spell out each maximum")]
+src/node/metadata.rs:171:    #[allow(clippy::too_many_arguments, reason = "all security metadata is explicit at the boundary")]

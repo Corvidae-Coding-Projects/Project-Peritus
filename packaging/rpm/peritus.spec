@@ -54,6 +54,7 @@ install -Dm 0644 packaging/man/peritus.1 %{buildroot}%{_mandir}/man1/peritus.1
 
 %files
 %license LICENSE THIRD-PARTY-NOTICES.txt
+%doc README.md
 %{_bindir}/peritus
 %{_prefix}/lib/peritus/
 %{_mandir}/man1/peritus.1*

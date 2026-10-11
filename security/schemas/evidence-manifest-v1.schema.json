@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/evidence-manifest-v1.schema.json",
+  "title": "Peritus H0 security evidence manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "candidate", "limits", "cases", "external_review"],
+  "properties": {
+    "schema": {"const": "peritus.security-evidence-manifest.v1"},
+    "candidate": {"$ref": "#/$defs/candidate"},
+    "limits": {"$ref": "#/$defs/limits"},
+    "cases": {
+      "type": "array",
+      "minItems": 42,
+      "maxItems": 42,
+      "items": {"$ref": "#/$defs/case"}
+    },
+    "external_review": {
+      "oneOf": [{"type": "null"}, {"$ref": "external-review-v1.schema.json"}]
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id128": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptance_spec_id", "harness_id", "workspace_id", "workspace_generation", "workspace_revision", "policy_id", "provider_profile_id", "source_sha256", "release_manifest_sha256", "qualification_plan_sha256"],
+      "properties": {
+        "acceptance_spec_id": {"$ref": "#/$defs/id128"},
+        "harness_id": {"$ref": "#/$defs/id128"},
+        "workspace_id": {"$ref": "#/$defs/id128"},
+        "workspace_generation": {"type": "integer", "minimum": 1},
+        "workspace_revision": {"type": "integer", "minimum": 1},
+        "policy_id": {"$ref": "#/$defs/id128"},
+        "provider_profile_id": {"$ref": "#/$defs/id128"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "release_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_duration_millis", "max_processes", "max_peak_memory_bytes", "max_output_bytes", "max_artifacts"],
+      "properties": {
+        "max_duration_millis": {"type": "integer", "minimum": 1},
+        "max_processes": {"type": "integer", "minimum": 1},
+        "max_peak_memory_bytes": {"type": "integer", "minimum": 1},
+        "max_output_bytes": {"type": "integer", "minimum": 1},
+        "max_artifacts": {"type": "integer", "minimum": 1}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe_id", "target", "requirement", "acceptance_criterion", "outcome", "subject_id", "failures", "native_execution", "cleanup"],
+      "properties": {
+        "probe_id": {"type": "string", "pattern": "^h0\\."},
+        "target": {"enum": ["tier-one-host", "linux", "macos", "windows"]},
+        "requirement": {"pattern": "^R-SEC-00[1-7]$"},
+        "acceptance_criterion": {"enum": [9, 10, 11, 12, 17, 18, 19, 24, 25]},
+        "outcome": {"enum": ["not-executed", "failed", "passed"]},
+        "subject_id": {"type": ["string", "null"]},
+        "failures": {"type": "array", "items": {"type": "string"}},
+        "native_execution": {"type": ["object", "null"]},
+        "cleanup": {"type": ["object", "null"]}
+      }
+    }
+  }
+}

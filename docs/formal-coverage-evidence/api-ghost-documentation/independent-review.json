@@ -1,0 +1,60 @@
+{
+  "checkpoint": "ordinary API scanner exact ghost-documentation cfg_attr allowance",
+  "review_mode": "read-only independent source, caller, policy, and evidence review; no source files edited",
+  "source_manifest": "/tmp/peritus-parent-api-ghost-docs-source.sha256",
+  "source_manifest_sha256": "8461809964961fbc57c2b9b444d0d26c8c1d101330b65f4e653fb9927a5871cd",
+  "source_hashes": {
+    "xtask/src/api_contract/expansion/attributes.rs": "6658db35eb793d1787c1f673301948d03c0829e5f4bebf2fc93e2f189ca6d560",
+    "xtask/src/api_contract/expansion_tests.rs": "4cf56d979b2b6b993d8b66c0b8fbd8e66c24ba633e3eae25283157fd8b0058e1"
+  },
+  "verdict": "PASS within the exact source-expansion and current-use scope",
+  "findings": [
+    "audited_ghost_documentation accepts only cfg_attr(verus_keep_ghost, allow(missing_docs, reason = NONBLANK_STRING)), with an optional trailing comma in either parenthesized list.",
+    "Both inner and outer attribute markers reach the same inspected token payload; the tests cover both markers for accepted and rejected forms.",
+    "Exact token counts, identifier checks, and whole-group matching reject a different cfg condition, qualified/nested attributes, multiple conditional attributes, external_body, derives, executable verus_spec attributes, extra lint names, absent reason, and blank reason.",
+    "Adding cfg_attr to the expansion-name inventory causes untrusted direct imports, aliases, and untrusted glob routes to remain under the existing fail-closed import policy.",
+    "Attribute expansion inspection and function signature/header inspection are independent. The focused regression confirms the accepted module attribute does not hide a visible exec function requires clause; code inspection confirms direct outer attributes are skipped structurally before the same header check.",
+    "The current production annotation is an inner attribute in the private work/terminal.rs leaf. Every authored WorkTerminal enum, variant, and field item remains documented.",
+    "Generator evidence is specific: scheduler Verus -07 fails on six synthesized undocumented projection methods; -08 places allow on the verus macro invocation, receives unused_attribute, and still fails the six methods; -09 with the leaf inner cfg_attr passes 57 verified, 0 errors."
+  ],
+  "limits": [
+    "The scanner validates the exact attribute payload, not semantic origin of the undocumented ghost methods. The accepted inner form could suppress missing_docs for other ghost-mode items in the file/module. Current production use contains it to the documented private terminal leaf; that placement remains a review invariant rather than a scanner theorem.",
+    "Existing SIMPLE handling of unconditional allow attributes and the broader trusted-local import model predate this correction and were not widened by the two-file patch.",
+    "This is a lexical/source-policy guarantee. It does not prove behavior of future Rust or Verus attribute expansion versions beyond the pinned toolchain exercised by the scheduler logs."
+  ],
+  "independent_checks": {
+    "focused_api_contract_tests": {
+      "command": "env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-api-ghost-docs-review-01 CCACHE_DISABLE=1 cargo test -p xtask --lib api_contract --locked",
+      "result": "41 passed, 0 failed",
+      "log": "/tmp/peritus-sol-api-ghost-docs-review-tests-01.log"
+    },
+    "ordinary_api": {
+      "command": "env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-api-ghost-docs-review-01 CCACHE_DISABLE=1 cargo xtask ordinary-api-check",
+      "result": "passed on current shared tree: 3435 files, 14649 executable entry points",
+      "log": "/tmp/peritus-sol-api-ghost-docs-review-ordinary-api-01.log"
+    }
+  },
+  "parent_evidence": {
+    "tests2": "41 passed, 0 failed",
+    "clippy2": "passed with -D warnings",
+    "fmt2": "passed",
+    "ordinary_api2": "passed: 3431 files, 14649 executable entry points",
+    "contract2": "not qualification evidence: attempted unsupported api-contract-check command and failed before scanning; superseded by ordinary-api2"
+  },
+  "evidence_sha256": {
+    "/tmp/peritus-parent-api-ghost-docs-source.sha256": "8461809964961fbc57c2b9b444d0d26c8c1d101330b65f4e653fb9927a5871cd",
+    "/tmp/peritus-parent-api-ghost-docs-source/xtask/src/api_contract/expansion/attributes.rs": "6658db35eb793d1787c1f673301948d03c0829e5f4bebf2fc93e2f189ca6d560",
+    "/tmp/peritus-parent-api-ghost-docs-source/xtask/src/api_contract/expansion_tests.rs": "4cf56d979b2b6b993d8b66c0b8fbd8e66c24ba633e3eae25283157fd8b0058e1",
+    "/tmp/peritus-parent-api-ghost-docs-tests2.log": "570158f470a5561c3de3e9424665801327c8abc561dc34ee416fe42b4b31f36a",
+    "/tmp/peritus-parent-api-ghost-docs-clippy2.log": "5f247d421da3160dea2976bbfd6b8d2b0ac4ce96fbbb0a15d13e0d0e9a113e32",
+    "/tmp/peritus-parent-api-ghost-docs-fmt2.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/peritus-parent-api-ghost-docs-ordinary-api2.log": "e0b90e86fc5eba85e8d6f1504ac5c66c41a69f8fab2a29e0bef49b45544141a8",
+    "/tmp/peritus-parent-api-ghost-docs-contract2.log": "782e82abe533e88c1b20c6fc5f6feda1b23cb7d463fd30a03a8c97b3c276d32a",
+    "/tmp/peritus-sol-api-ghost-docs-review-tests-01.log": "e0910039f303a126bc5b345a669527195243f64cfca994299b9ac94f80dd2eaf",
+    "/tmp/peritus-sol-api-ghost-docs-review-ordinary-api-01.log": "07647e715fdc3bd1e44c5bf6e05c93788964155de74a020ea96c5d28f425aa6c",
+    "/tmp/peritus-sol-scheduler-reservation-verus-07.log": "5813793a74c684fac095714b14a740cf52b0c30378e59db63334eb09650279a1",
+    "/tmp/peritus-sol-scheduler-reservation-verus-08.log": "dd4fc151b66fa48136e4c701920e7b6722a81e4e49234d423386430adfa034fa",
+    "/tmp/peritus-sol-scheduler-reservation-verus-09.log": "db9225f69f23dcbe445a272370e4e17cee009423442bbab52f688adfc527541c",
+    "/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler/src/work/terminal.rs": "5bdd7bce318a892f06a49c59bb6567fe150818223a1270f22c1a71373f095a93"
+  }
+}

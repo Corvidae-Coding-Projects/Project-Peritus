@@ -1,0 +1,3 @@
+    Checking peritus-budget v0.0.2 (/tmp/peritus-parent-budget-ancestry.ZH7a1W/crates/foundation/peritus-budget)
+verification results:: 449 verified, 0 errors
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 21.52s

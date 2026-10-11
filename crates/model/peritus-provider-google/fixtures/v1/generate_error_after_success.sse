@@ -1,0 +1,3 @@
+data: {"responseId":"gen_error","modelVersion":"gemini-3.7-flash","candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"partial"}]}}]}
+
+data: {"error":{"code":503,"status":"UNAVAILABLE","message":"sensitive generate detail"}}

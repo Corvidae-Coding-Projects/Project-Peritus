@@ -1,0 +1,11 @@
+--- target/gap3-evidence/81-queue-attempt-mutation.original.rs.txt	2026-09-13 15:17:48.660641118 -0500
++++ crates/orchestration/peritus-scheduler/src/state/queue.rs	2026-09-13 15:17:48.662641122 -0500
+@@ -55,7 +55,7 @@
+             Measure::Waiting => false,
+             Measure::RecoveryPressure =>
+                 matches!(record.phase(), WorkPhase::Reserved | WorkPhase::Running)
+-                    && record.attempts_started() < record.spec().maximum_attempts().get(),
++                    && record.attempts_started() <= record.spec().maximum_attempts().get(),
+             Measure::LegacyOccupancy => matches!(record.phase(),
+                 WorkPhase::Reserved | WorkPhase::Running | WorkPhase::Cancelling),
+         }

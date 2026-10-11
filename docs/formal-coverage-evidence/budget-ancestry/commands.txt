@@ -1,0 +1,11 @@
+Isolated working directory: /tmp/peritus-parent-budget-ancestry.ZH7a1W
+Integrated working directory: /home/doll/Project-Peritus/.worktrees/formal-coverage
+Base source: git archive 1aa9282ff2cfcbf8fac325f11f157f408d33ee30
+CARGO_BUILD_JOBS=2
+CCACHE_DIR=/tmp/peritus-formal-scope-ccache
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-budget-review
+
+Both directories: cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+Isolated: cargo test --locked --package peritus-budget --all-features
+Isolated: cargo clippy --locked --package peritus-budget --all-targets --all-features -- -D warnings
+Isolated parent and reviewer: cargo fmt --package peritus-budget -- --check

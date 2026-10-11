@@ -1,0 +1,215 @@
+//! Tag-bound GitHub release staging behind direct reviewed Cargo commands.
+
+mod publication;
+pub(crate) mod rebuild;
+pub(crate) use publication::stage_draft;
+
+use std::{
+    env, fs,
+    fs::File,
+    io::Read as _,
+    path::{Path, PathBuf},
+    process::{Command, ExitStatus},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use serde::Serialize;
+use sha2::{Digest as _, Sha256};
+
+use crate::XtaskError;
+
+pub(crate) fn create(root: &Path) -> Result<(), XtaskError> {
+    let tag = environment("GITHUB_REF_NAME")?;
+    let sha = environment("GITHUB_SHA")?;
+    let expected = format!("v{}", workspace_version(root)?);
+    if tag != expected {
+        return Err(XtaskError::metadata(format!(
+            "release tag {tag} does not match workspace version {expected}"
+        )));
+    }
+    run(
+        Command::new("git").current_dir(root).args(["fetch", "origin", "main", "--no-tags"]),
+        "fetch the authoritative main branch",
+    )?;
+    run(
+        Command::new("git").current_dir(root).args([
+            "merge-base",
+            "--is-ancestor",
+            &sha,
+            "origin/main",
+        ]),
+        "prove the release tag belongs to main history",
+    )?;
+    let exists = Command::new("gh")
+        .current_dir(root)
+        .args(["release", "view", &tag])
+        .status()
+        .map_err(|error| XtaskError::io("query GitHub release from", root, error))?
+        .success();
+    if !exists {
+        run(
+            Command::new("gh").current_dir(root).args([
+                "release",
+                "create",
+                &tag,
+                "--draft",
+                "--verify-tag",
+                "--generate-notes",
+                "--title",
+                &format!("Peritus {tag}"),
+            ]),
+            "create draft GitHub release",
+        )?;
+    }
+    Ok(())
+}
+
+pub(crate) fn package_stage(root: &Path) -> Result<(), XtaskError> {
+    let build_started_unix = unix_seconds()?;
+    let package = crate::product_package::build(root)?;
+    write_package_stage(root, &package, build_started_unix)
+}
+
+pub(crate) fn package_assemble(root: &Path) -> Result<(), XtaskError> {
+    let build_started_unix = unix_seconds()?;
+    let package = crate::product_package::build_from_release_artifacts(root)?;
+    write_package_stage(root, &package, build_started_unix)
+}
+
+fn write_package_stage(
+    root: &Path,
+    package: &Path,
+    build_started_unix: u64,
+) -> Result<(), XtaskError> {
+    let name = package
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| XtaskError::metadata("native package directory has no UTF-8 name"))?;
+    let extension = if cfg!(windows) { "zip" } else { "tar.gz" };
+    let archive = root.join("dist").join(format!("{name}.{extension}"));
+    archive_package(root, package, &archive)?;
+    let checksum = archive.with_file_name(format!("{name}.{extension}.sha256"));
+    fs::write(&checksum, format!("{}\n", digest(&archive)?))
+        .map_err(|error| XtaskError::io("write release archive checksum at", &checksum, error))?;
+    let record = NativePackageRecord {
+        schema_version: 1,
+        archive: relative_path(root, &archive)?,
+        checksum: relative_path(root, &checksum)?,
+        build_started_unix,
+        build_finished_unix: unix_seconds()?,
+    };
+    let record_path = root.join("dist/peritus-native-package.json");
+    let bytes = serde_json::to_vec(&record).map_err(|error| {
+        XtaskError::metadata(format!("serialize native package record: {error}"))
+    })?;
+    fs::write(&record_path, bytes)
+        .map_err(|error| XtaskError::io("write native package record at", &record_path, error))
+}
+
+#[derive(Serialize)]
+struct NativePackageRecord {
+    schema_version: u32,
+    archive: PathBuf,
+    checksum: PathBuf,
+    build_started_unix: u64,
+    build_finished_unix: u64,
+}
+
+fn relative_path(root: &Path, path: &Path) -> Result<PathBuf, XtaskError> {
+    path.strip_prefix(root)
+        .map(Path::to_owned)
+        .map_err(|_| XtaskError::metadata("native package path escaped the workspace root"))
+}
+
+fn unix_seconds() -> Result<u64, XtaskError> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .map_err(|_| XtaskError::metadata("system clock is before the Unix epoch"))
+}
+
+fn archive_package(root: &Path, package: &Path, archive: &Path) -> Result<(), XtaskError> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args(["log", "-1", "--format=%ct"])
+        .output()
+        .map_err(|error| XtaskError::io("read candidate source epoch in", root, error))?;
+    if !output.status.success() {
+        return Err(XtaskError::metadata("cannot read the candidate source epoch"));
+    }
+    let epoch = String::from_utf8(output.stdout)
+        .map_err(|_| XtaskError::metadata("candidate source epoch is not UTF-8"))?;
+    let epoch = epoch
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| XtaskError::metadata("candidate source epoch is not a gzip timestamp"))?;
+    run(
+        Command::new(if cfg!(windows) { "python" } else { "python3" })
+            .current_dir(root)
+            .arg(root.join("packaging/archive.py"))
+            .arg(package)
+            .arg(archive)
+            .arg(epoch.to_string()),
+        "archive native release package with canonical metadata",
+    )
+}
+
+fn workspace_version(root: &Path) -> Result<String, XtaskError> {
+    let manifest = root.join("Cargo.toml");
+    let text = fs::read_to_string(&manifest)
+        .map_err(|error| XtaskError::io("read workspace manifest from", &manifest, error))?;
+    let value: toml::Value = toml::from_str(&text)
+        .map_err(|error| XtaskError::metadata(format!("workspace manifest is invalid: {error}")))?;
+    value
+        .get("workspace")
+        .and_then(|value| value.get("package"))
+        .and_then(|value| value.get("version"))
+        .and_then(toml::Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| XtaskError::metadata("workspace package version is unavailable"))
+}
+
+fn digest(path: &Path) -> Result<String, XtaskError> {
+    let mut file =
+        File::open(path).map_err(|error| XtaskError::io("open release archive at", path, error))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 8 * 1024];
+    loop {
+        let count = file
+            .read(&mut buffer)
+            .map_err(|error| XtaskError::io("read release archive at", path, error))?;
+        if count == 0 {
+            return Ok(hex(hasher.finalize().into()));
+        }
+        hasher.update(&buffer[..count]);
+    }
+}
+
+fn hex(bytes: [u8; 32]) -> String {
+    use core::fmt::Write as _;
+
+    let mut output = String::with_capacity(64);
+    for byte in bytes {
+        let _ = write!(output, "{byte:02x}");
+    }
+    output
+}
+
+fn environment(name: &'static str) -> Result<String, XtaskError> {
+    env::var(name).map_err(|_| XtaskError::metadata(format!("{name} is required for release work")))
+}
+
+fn run(command: &mut Command, operation: &'static str) -> Result<(), XtaskError> {
+    let status = command
+        .status()
+        .map_err(|error| XtaskError::io(operation, Path::new("<release-command>"), error))?;
+    require_success(status, operation)
+}
+
+fn require_success(status: ExitStatus, operation: &'static str) -> Result<(), XtaskError> {
+    if status.success() {
+        Ok(())
+    } else {
+        Err(XtaskError::metadata(format!("{operation} failed with status {status}")))
+    }
+}

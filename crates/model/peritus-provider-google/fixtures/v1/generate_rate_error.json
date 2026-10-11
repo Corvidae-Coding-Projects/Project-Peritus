@@ -1,0 +1,1 @@
+{"error":{"code":429,"message":"Resource exhausted for this request.","status":"RESOURCE_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"RATE_LIMIT_EXCEEDED","domain":"generativelanguage.googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}}]}}

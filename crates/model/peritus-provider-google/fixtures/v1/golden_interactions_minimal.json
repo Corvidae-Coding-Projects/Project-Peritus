@@ -1,0 +1,1 @@
+{"background":false,"generation_config":{"max_output_tokens":128},"input":[{"content":[{"text":"hello","type":"text"}],"type":"user_input"}],"model":"gemini-3.7-flash","store":false,"stream":true,"tool_choice":"none"}

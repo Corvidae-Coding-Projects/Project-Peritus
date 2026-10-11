@@ -1,0 +1,97 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+
+root = Path('/tmp/peritus-parent-obligations-proof.6ib_z8mo')
+package = Path('crates/orchestration/peritus-obligations')
+prefix = Path('/tmp/peritus-parent-obligations-contracts')
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+env = dict(os.environ, CARGO_BUILD_JOBS='2', CCACHE_DISABLE='1',
+           CARGO_TARGET_DIR='/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent')
+sources = {str(p.relative_to(root)): sha(p) for p in sorted((root / package).rglob('*')) if p.is_file()}
+assert len(sources) == 56
+manifest = Path(str(prefix) + '-full-package.sha256')
+manifest.write_text(''.join(f'{digest}  {name}\n' for name, digest in sources.items()))
+results = {'cwd': str(root), 'source_files': len(sources), 'manifest_sha256': sha(manifest),
+           'environment': {key: env[key] for key in ['CARGO_BUILD_JOBS', 'CCACHE_DISABLE', 'CARGO_TARGET_DIR']},
+           'commands': []}
+record = Path(str(prefix) + '-qualification.json')
+verus = ['cargo', 'verus', 'verify', '--package', 'peritus-obligations', '--all-features',
+         '--locked', '--check-toolchain', '--fwd-verus-args-to', 'roots', '--', '--no-cheating', '--rlimit', '20']
+
+def check_sources():
+    assert {str(p.relative_to(root)) for p in (root / package).rglob('*') if p.is_file()} == sources.keys()
+    for name, digest in sources.items():
+        assert sha(root / name) == digest, name
+
+def run(label, command, expected=0):
+    log = Path(str(prefix) + '-' + label + '.log')
+    print('START ' + label, flush=True)
+    with log.open('w') as output:
+        result = subprocess.run(command, cwd=root, env=env, stdout=output, stderr=subprocess.STDOUT, timeout=600)
+    text = log.read_text()
+    results['commands'].append({'label': label, 'command': command, 'log': str(log),
+                                'exit_code': result.returncode,
+                                'proof_results': re.findall(r'verification results::[^\n]*', text)})
+    record.write_text(json.dumps(results, indent=2) + '\n')
+    print(label + ' exit=' + str(result.returncode), flush=True)
+    assert result.returncode == expected, text[-6000:]
+    return text
+
+check_sources()
+example = root / package / 'examples/qualification_contract_probe.rs'
+assert not example.parent.exists()
+try:
+    example.parent.mkdir()
+    shutil.copyfile('/tmp/peritus-parent-obligations-contracts-probe.rs', example)
+    client = verus[:verus.index('--')] + ['--example', 'qualification_contract_probe'] + verus[verus.index('--'):]
+    run('client', client)
+finally:
+    example.unlink(missing_ok=True)
+    example.parent.rmdir()
+    check_sources()
+
+mutations = [
+    ('negative-error-payload', 'src/qualification/validation.rs',
+     'return Err(ObligationError::requirement(\n                    ObligationErrorKind::UnknownRequirement,\n                    id,\n                ));',
+     'return Err(ObligationError::plain(ObligationErrorKind::UnknownRequirement));'),
+    ('negative-universal-condition', 'src/qualification/completion.rs',
+     '&&& ordinary::all_conditions_resolved(ledger.spec_entries(), conditions)', '&&& true'),
+]
+for label, relative, before, after in mutations:
+    source = root / package / relative
+    original = source.read_text()
+    assert original.count(before) == 1
+    mutant = original.replace(before, after)
+    results.setdefault('mutations', []).append({'label': label, 'path': str(package / relative),
+        'before': before, 'after': after, 'preimage_sha256': sha(source),
+        'mutant_sha256': hashlib.sha256(mutant.encode()).hexdigest()})
+    try:
+        source.write_text(mutant)
+        output = run(label, verus, expected=101)
+        assert 'postcondition not satisfied' in output and relative in output
+    finally:
+        source.write_text(original)
+        check_sources()
+        record.write_text(json.dumps(results, indent=2) + '\n')
+
+commands = [
+    ('restored-verus', verus),
+    ('tests-default', ['cargo', 'test', '--package', 'peritus-obligations', '--locked']),
+    ('tests-all', ['cargo', 'test', '--package', 'peritus-obligations', '--all-features', '--locked']),
+    ('clippy', ['cargo', 'clippy', '--package', 'peritus-obligations', '--all-features', '--all-targets', '--locked', '--', '-D', 'warnings']),
+    ('fmt', ['cargo', 'fmt', '--package', 'peritus-obligations', '--', '--check']),
+    ('api', ['/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask', 'ordinary-api-check']),
+    ('layout', ['/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask', 'source-layout-check']),
+]
+for label, command in commands:
+    check_sources()
+    run(label, command)
+    check_sources()
+results['final_source_files_checked'] = len(sources)
+record.write_text(json.dumps(results, indent=2) + '\n')
+print('Qualification contracts and negative controls passed; all56 final identities restored.', flush=True)

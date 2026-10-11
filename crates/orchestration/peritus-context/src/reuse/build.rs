@@ -35,7 +35,6 @@ pub(super) fn selection_for_entry(
     }
     let role_visible = node.visibility().contains(role.actor_role());
     let class_visible = profile.context().visible().contains(node.context_class());
-    {}
     if !role_visible
         || !class_visible
         || !validation::delivery_matches_authority(entry.delivery(), section.authority())

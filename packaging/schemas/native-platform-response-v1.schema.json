@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://corvidae-coding-projects.github.io/peritus/schemas/native-platform-response-v1.schema.json",
+  "title": "Peritus native H2 scenario response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "subject_id",
+    "scenario_id",
+    "request_sha256",
+    "outcome",
+    "artifact_count",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "subject_id": { "$ref": "#/$defs/identifier" },
+    "scenario_id": { "$ref": "#/$defs/identifier" },
+    "request_sha256": { "$ref": "#/$defs/sha256" },
+    "outcome": { "enum": ["passed", "failed", "unsupported"] },
+    "artifact_count": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/evidence" }
+    }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+    "label": { "type": "string", "pattern": "^[a-z0-9._-]{1,96}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^[A-Za-z0-9._/-]{1,1024}$" },
+    "evidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "value"],
+          "properties": {
+            "kind": { "const": "fact" },
+            "label": { "$ref": "#/$defs/label" },
+            "value": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "value"],
+          "properties": {
+            "kind": { "const": "count" },
+            "label": { "$ref": "#/$defs/label" },
+            "value": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "value"],
+          "properties": {
+            "kind": { "const": "text" },
+            "label": { "$ref": "#/$defs/label" },
+            "value": { "type": "string", "minLength": 1, "maxLength": 8192 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "path", "sha256", "bytes"],
+          "properties": {
+            "kind": { "const": "digest" },
+            "label": { "$ref": "#/$defs/label" },
+            "path": { "$ref": "#/$defs/path" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "bytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
+          }
+        }
+      ]
+    }
+  }
+}

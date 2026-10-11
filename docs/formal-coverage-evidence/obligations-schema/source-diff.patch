@@ -1,0 +1,1585 @@
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/evidence.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/evidence.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/evidence.rs	2026-09-12 16:09:09.335090358 -0500
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/evidence.rs	2026-09-12 16:48:52.761651343 -0500
+@@ -123,7 +123,7 @@
+ }
+ 
+ /// Closed typed evidence vocabulary.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub enum RequirementEvidence {
+     Direct(DirectEvidence),
+     Performance(PerformanceEvidence),
+@@ -134,6 +134,43 @@
+ }
+ 
+ impl RequirementEvidence {
++    /// Complete variant and field equality preserved by evidence cloning.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        match (self, other) {
++            (Self::Direct(left), Self::Direct(right)) =>
++                left.spec_binding().spec_same_content(&right.spec_binding())
++                    && left.spec_satisfied() == right.spec_satisfied(),
++            (Self::Performance(left), Self::Performance(right)) =>
++                left.spec_binding().spec_same_content(&right.spec_binding())
++                    && left.spec_workload() == right.spec_workload()
++                    && left.spec_baseline() == right.spec_baseline()
++                    && left.spec_candidate() == right.spec_candidate()
++                    && left.spec_repetitions() == right.spec_repetitions()
++                    && left.spec_statistic() == right.spec_statistic()
++                    && left.spec_noise() == right.spec_noise()
++                    && left.spec_threshold() == right.spec_threshold(),
++            (Self::Lifecycle(left), Self::Lifecycle(right)) =>
++                left.spec_binding().spec_same_content(&right.spec_binding())
++                    && left.spec_named_ingress() == right.spec_named_ingress()
++                    && left.spec_control_event() == right.spec_control_event()
++                    && left.spec_observed_transition() == right.spec_observed_transition()
++                    && left.spec_final_state() == right.spec_final_state()
++                    && left.spec_observation_kind() == right.spec_observation_kind(),
++            (Self::Schema(left), Self::Schema(right)) => left.spec_same_content(right),
++            (Self::Browser(left), Self::Browser(right)) =>
++                left.spec_binding().spec_same_content(&right.spec_binding())
++                    && left.spec_implementation() == right.spec_implementation()
++                    && left.spec_oracle_identity() == right.spec_oracle_identity()
++                    && left.spec_oracle_passed() == right.spec_oracle_passed(),
++            (Self::ExternalEffect(left), Self::ExternalEffect(right)) =>
++                left.spec_binding().spec_same_content(&right.spec_binding())
++                    && left.spec_effect_identity() == right.spec_effect_identity()
++                    && left.spec_public_boundary() == right.spec_public_boundary()
++                    && left.spec_completed() == right.spec_completed(),
++            _ => false,
++        }
++    }
++
+     /// Exact binding selected by the actual evidence variant.
+     pub closed spec fn spec_binding(&self) -> EvidenceBinding {
+         match self {
+@@ -168,6 +205,21 @@
+     { self.binding().requirement_id() }
+ }
+ 
++impl Clone for RequirementEvidence {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        match self {
++            Self::Direct(inner) => Self::Direct(inner.clone()),
++            Self::Performance(inner) => Self::Performance(inner.clone()),
++            Self::Lifecycle(inner) => Self::Lifecycle(inner.clone()),
++            Self::Schema(inner) => Self::Schema(inner.clone()),
++            Self::Browser(inner) => Self::Browser(inner.clone()),
++            Self::ExternalEffect(inner) => Self::ExternalEffect(inner.clone()),
++        }
++    }
++}
++
+ impl Clone for DirectEvidence {
+     fn clone(&self) -> (value: Self)
+         ensures value.spec_binding().spec_same_content(&self.spec_binding()),
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/limits.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/limits.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/limits.rs	2026-09-12 15:46:25.450120733 -0500
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/limits.rs	2026-09-12 16:48:52.761696815 -0500
+@@ -87,7 +87,12 @@
+ 
+     /// Maximum fields in one directional schema obligation.
+     #[must_use]
+-    pub const fn max_schema_fields(self) -> usize { self.schema_fields }
++    pub const fn max_schema_fields(self) -> (value: usize)
++        ensures value == self.spec_max_schema_fields(),
++    { self.schema_fields }
++
++    /// Logical view of the directional schema-field bound.
++    pub closed spec fn spec_max_schema_fields(&self) -> usize { self.schema_fields }
+ 
+     /// Maximum evidence records supplied for qualification.
+     #[must_use]
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/order.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/order.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/order.rs	2026-09-12 15:46:25.450325880 -0500
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/order.rs	2026-09-12 16:48:52.761676368 -0500
+@@ -73,6 +73,13 @@
+     if index < bytes.len() { reflexive_from(bytes, index + 1); }
+ }
+ 
++/// Canonical byte order is equal on identical complete byte sequences.
++pub(crate) proof fn byte_order_reflexive(bytes: Seq<u8>)
++    ensures byte_order(bytes, bytes) == Ordering::Equal,
++{
++    reflexive_from(bytes, 0);
++}
++
+ proof fn transitive_from(left: Seq<u8>, middle: Seq<u8>, right: Seq<u8>, index: nat)
+     requires
+         left.len() == middle.len(), middle.len() == right.len(), index <= left.len(),
+@@ -89,6 +96,22 @@
+     }
+ }
+ 
++/// Composes two strict canonical byte-order facts of the same fixed width.
++pub(crate) proof fn less_transitive(
++    left: Seq<u8>,
++    middle: Seq<u8>,
++    right: Seq<u8>,
++)
++    requires
++        left.len() == middle.len(),
++        middle.len() == right.len(),
++        byte_order(left, middle) == Ordering::Less,
++        byte_order(middle, right) == Ordering::Less,
++    ensures byte_order(left, right) == Ordering::Less,
++{
++    transitive_from(left, middle, right, 0);
++}
++
+ /// Strict ordering relates any two positions in the canonical identity sequence.
+ pub proof fn ordered_pair(keys: Seq<Seq<u8>>, width: nat, left: int, right: int)
+     requires
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema.rs	2026-09-12 16:09:09.343603964 -0500
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema.rs	2026-09-12 16:48:52.761535252 -0500
+@@ -7,6 +7,13 @@
+ };
+ use vstd::prelude::*;
+ 
++#[path = "schema_coverage.rs"]
++mod coverage;
++#[path = "schema_model.rs"]
++mod model;
++#[path = "schema_validation.rs"]
++mod validation;
++
+ verus! {
+ 
+ /// Direction of a public schema contract.
+@@ -19,13 +26,22 @@
+ }
+ 
+ /// One exact required schema field.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct SchemaField {
+     id: SchemaFieldId,
+     exact_name: Vec<u8>,
+ }
+ 
+ impl SchemaField {
++    /// Logical view of the complete field identity.
++    pub closed spec fn spec_id(&self) -> SchemaFieldId { self.id }
++
++    /// Logical view of every byte in the exact public field spelling.
++    pub closed spec fn spec_exact_name(&self) -> Seq<u8> { self.exact_name@ }
++
++    #[verifier::type_invariant]
++    closed spec fn invariant(&self) -> bool { self.spec_valid() }
++
+     /// Creates a nonempty bounded field name.
+     ///
+     /// # Errors
+@@ -35,7 +51,16 @@
+         id: SchemaFieldId,
+         exact_name: Vec<u8>,
+         maximum_bytes: usize,
+-    ) -> Result<Self, ObligationError> {
++    ) -> (result: Result<Self, ObligationError>)
++        ensures
++            result.is_ok() == (0 < exact_name@.len() <= maximum_bytes),
++            match result {
++                Ok(value) => value.spec_id() == id
++                    && value.spec_exact_name() == exact_name@
++                    && value.spec_valid(),
++                Err(_) => true,
++            },
++    {
+         if exact_name.is_empty() || exact_name.len() > maximum_bytes {
+             Err(ObligationError::numbers(
+                 ObligationErrorKind::InvalidText,
+@@ -49,21 +74,31 @@
+ 
+     /// Stable direction-specific field identity.
+     #[must_use]
+-    pub const fn id(&self) -> SchemaFieldId { self.id }
++    pub const fn id(&self) -> (id: SchemaFieldId)
++        ensures id == self.spec_id(),
++    { self.id }
+ 
+     /// Exact public field spelling.
+     #[must_use]
+-    pub const fn exact_name(&self) -> &[u8] { self.exact_name.as_slice() }
++    pub const fn exact_name(&self) -> (name: &[u8])
++        ensures name@ == self.spec_exact_name(),
++    { self.exact_name.as_slice() }
+ }
+ 
+ /// Required fields for one side of a public interface.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct SchemaRequirement {
+     direction: SchemaDirection,
+     fields: Vec<SchemaField>,
+ }
+ 
+ impl SchemaRequirement {
++    /// Logical view of the exact request or response direction.
++    pub closed spec fn spec_direction(&self) -> SchemaDirection { self.direction }
++
++    #[verifier::type_invariant]
++    closed spec fn invariant(&self) -> bool { self.spec_canonical() }
++
+     /// Creates a nonempty canonical directional field set.
+     ///
+     /// # Errors
+@@ -73,35 +108,27 @@
+         direction: SchemaDirection,
+         fields: Vec<SchemaField>,
+         limits: ObligationLimits,
+-    ) -> Result<Self, ObligationError> {
+-        if fields.is_empty() || fields.len() > limits.max_schema_fields() {
+-            return Err(ObligationError::numbers(
+-                ObligationErrorKind::InvalidSchema,
+-                limits.max_schema_fields() as u64,
+-                fields.len() as u64,
+-            ));
+-        }
+-        let mut index = 0;
+-        while index < fields.len()
+-            invariant index <= fields.len(),
+-            decreases fields.len() - index,
+-        {
+-            if index > 0 {
+-                if fields[index - 1].id() == fields[index].id() {
+-                    return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
+-                }
+-                if fields[index - 1].id() > fields[index].id() {
+-                    return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
+-                }
+-            }
+-            index += 1;
+-        }
++    ) -> (result: Result<Self, ObligationError>)
++        ensures
++            result.is_ok() == (0 < fields@.len()
++                && fields@.len() <= limits.spec_max_schema_fields()
++                && model::required_fields_ordered(fields@)),
++            match result {
++                Ok(value) => value.spec_direction() == direction
++                    && value.spec_fields() == fields@
++                    && value.spec_canonical(),
++                Err(_) => true,
++            },
++    {
++        validation::validate_required_fields(fields.as_slice(), limits.max_schema_fields())?;
+         Ok(Self { direction, fields })
+     }
+ 
+     /// Contract direction.
+     #[must_use]
+-    pub const fn direction(&self) -> SchemaDirection { self.direction }
++    pub const fn direction(&self) -> (direction: SchemaDirection)
++        ensures direction == self.spec_direction(),
++    { self.direction }
+ 
+     /// Exact required fields.
+     pub closed spec fn spec_fields(&self) -> Seq<SchemaField> { self.fields@ }
+@@ -116,7 +143,7 @@
+ }
+ 
+ /// Candidate observation of one direction-specific schema.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct SchemaEvidence {
+     binding: EvidenceBinding,
+     direction: SchemaDirection,
+@@ -124,6 +151,12 @@
+ }
+ 
+ impl SchemaEvidence {
++    /// Logical view of the exact observed direction.
++    pub closed spec fn spec_direction(&self) -> SchemaDirection { self.direction }
++
++    #[verifier::type_invariant]
++    closed spec fn invariant(&self) -> bool { self.spec_canonical() }
++
+     /// Exact binding supplied with the schema observation.
+     pub closed spec fn spec_binding(&self) -> EvidenceBinding { self.binding }
+ 
+@@ -137,29 +170,20 @@
+         direction: SchemaDirection,
+         observed_fields: Vec<SchemaFieldId>,
+         limits: ObligationLimits,
+-    ) -> Result<Self, ObligationError> {
+-        if observed_fields.len() > limits.max_schema_fields() {
+-            return Err(ObligationError::numbers(
+-                ObligationErrorKind::InvalidSchema,
+-                limits.max_schema_fields() as u64,
+-                observed_fields.len() as u64,
+-            ));
+-        }
+-        let mut index = 0;
+-        while index < observed_fields.len()
+-            invariant index <= observed_fields.len(),
+-            decreases observed_fields.len() - index,
+-        {
+-            if index > 0 {
+-                if observed_fields[index - 1] == observed_fields[index] {
+-                    return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
+-                }
+-                if observed_fields[index - 1] > observed_fields[index] {
+-                    return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
+-                }
+-            }
+-            index += 1;
+-        }
++    ) -> (result: Result<Self, ObligationError>)
++        ensures
++            result.is_ok() == (observed_fields@.len() <= limits.spec_max_schema_fields()
++                && model::observed_fields_ordered(observed_fields@)),
++            match result {
++                Ok(value) => value.spec_binding() == binding
++                    && value.spec_direction() == direction
++                    && value.spec_observed_fields() == observed_fields@
++                    && value.spec_canonical(),
++                Err(_) => true,
++            },
++    {
++        validation::validate_observed_fields(
++            observed_fields.as_slice(), limits.max_schema_fields())?;
+         Ok(Self { binding, direction, observed_fields })
+     }
+ 
+@@ -171,7 +195,9 @@
+ 
+     /// Observed interface direction.
+     #[must_use]
+-    pub const fn direction(&self) -> SchemaDirection { self.direction }
++    pub const fn direction(&self) -> (direction: SchemaDirection)
++        ensures direction == self.spec_direction(),
++    { self.direction }
+ 
+     /// Canonical observed field identities.
+     pub closed spec fn spec_observed_fields(&self) -> Seq<SchemaFieldId> {
+@@ -188,36 +214,85 @@
+ 
+     /// Whether the evidence covers the exact required direction and fields.
+     #[must_use]
+-    #[allow(clippy::comparison_chain, reason = "explicit comparisons remain Verus-compatible")]
+-    pub fn covers(&self, requirement: &SchemaRequirement) -> bool {
+-        if self.direction != requirement.direction() {
+-            return false;
+-        }
+-        let mut required_index = 0;
+-        let mut observed_index = 0;
+-        while required_index < requirement.fields().len()
++    pub fn covers(&self, requirement: &SchemaRequirement) -> (covered: bool)
++        ensures covered == self.spec_covers(requirement),
++    {
++        coverage::covers(self, requirement)
++    }
++}
++
++impl SchemaField {
++    fn clone_sequence(fields: &[Self]) -> (result: Vec<Self>)
++        ensures Self::sequence_same_content(fields@, result@),
++    {
++        let mut result = Vec::with_capacity(fields.len());
++        let mut index = 0;
++        while index < fields.len()
+             invariant
+-                required_index <= requirement.spec_fields().len(),
+-                observed_index <= self.spec_observed_fields().len(),
+-            decreases
+-                (requirement.spec_fields().len() - required_index)
+-                    + (self.spec_observed_fields().len() - observed_index),
++                index <= fields.len(),
++                result@.len() == index,
++                forall |prior: int| #![auto]
++                    0 <= prior < index ==>
++                        fields@[prior].spec_same_content(&result@[prior]),
++            decreases fields.len() - index,
+         {
+-            if observed_index >= self.observed_fields.len() {
+-                return false;
+-            }
+-            let required = requirement.fields()[required_index].id();
+-            let observed = self.observed_fields[observed_index];
+-            if observed == required {
+-                required_index += 1;
+-                observed_index += 1;
+-            } else if observed < required {
+-                observed_index += 1;
+-            } else {
+-                return false;
++            result.push(fields[index].clone());
++            index += 1;
++        }
++        result
++    }
++}
++
++impl Clone for SchemaField {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        proof { use_type_invariant(self); }
++        let exact_name = self.exact_name.clone();
++        proof { assert(exact_name@ =~= self.exact_name@); }
++        Self { id: self.id, exact_name }
++    }
++}
++
++impl Clone for SchemaRequirement {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        proof { use_type_invariant(self); }
++        let fields = SchemaField::clone_sequence(self.fields.as_slice());
++        proof {
++            assert(model::required_fields_ordered(fields@)) by {
++                assert forall |index: int| 1 <= index < fields@.len() implies
++                    crate::order::byte_order(
++                        #[trigger] fields@[index - 1].spec_id().spec_digest().spec_bytes()@,
++                        #[trigger] fields@[index].spec_id().spec_digest().spec_bytes()@,
++                    ) == core::cmp::Ordering::Less by {
++                    assert(self.fields@[index - 1].spec_same_content(&fields@[index - 1]));
++                    assert(self.fields@[index].spec_same_content(&fields@[index]));
++                }
+             }
++            model::required_ordered_implies_unique(fields@);
++        }
++        Self { direction: self.direction, fields }
++    }
++}
++
++impl Clone for SchemaEvidence {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        proof { use_type_invariant(self); }
++        let observed_fields = self.observed_fields.clone();
++        proof {
++            assert(observed_fields@ =~= self.observed_fields@);
++            assert(model::observed_fields_ordered(observed_fields@));
++            model::observed_ordered_implies_unique(observed_fields@);
++        }
++        Self {
++            binding: self.binding.clone(),
++            direction: self.direction,
++            observed_fields,
+         }
+-        true
+     }
+ }
+ 
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema_coverage.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema_coverage.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema_coverage.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema_coverage.rs	2026-09-12 16:48:52.761571689 -0500
+@@ -0,0 +1,305 @@
++//! Exact linear subset matching for canonical schema field identities.
++
++use super::{SchemaEvidence, SchemaField, SchemaFieldId, SchemaRequirement};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) open spec fn required_key(fields: Seq<SchemaField>, index: int) -> Seq<u8> {
++    fields[index].spec_id().spec_digest().spec_bytes()@
++}
++
++pub(super) open spec fn observed_key(fields: Seq<SchemaFieldId>, index: int) -> Seq<u8> {
++    fields[index].spec_digest().spec_bytes()@
++}
++
++fn compare_at(
++    required: &[SchemaField],
++    required_index: usize,
++    observed: &[SchemaFieldId],
++    observed_index: usize,
++) -> (order: Ordering)
++    requires required_index < required@.len(), observed_index < observed@.len(),
++    ensures order == crate::order::byte_order(
++        observed_key(observed@, observed_index as int),
++        required_key(required@, required_index as int),
++    ),
++        (order == Ordering::Equal) == (
++            observed_key(observed@, observed_index as int)
++                == required_key(required@, required_index as int)),
++{
++    crate::order::compare(
++        observed[observed_index].digest().as_bytes(),
++        required[required_index].id().digest().as_bytes(),
++    )
++}
++
++proof fn current_is_present(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++    observed_index: int,
++)
++    requires
++        0 <= required_index < required.len(),
++        0 <= observed_index < observed.len(),
++        observed_key(observed, observed_index) == required_key(required, required_index),
++    ensures super::model::required_field_present(required, observed, required_index),
++{
++    assert(exists |found: int| 0 <= found < observed.len()
++        && #[trigger] observed[found].spec_digest().spec_bytes()@
++            == required[required_index].spec_id().spec_digest().spec_bytes()@) by {
++        let found = observed_index;
++    }
++}
++
++proof fn extend_present_prefix(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: nat,
++)
++    requires
++        required_index < required.len(),
++        super::model::required_fields_present_through(required, observed, required_index),
++        super::model::required_field_present(required, observed, required_index as int),
++    ensures super::model::required_fields_present_through(
++        required, observed, required_index + 1),
++{
++    assert forall |index: int| 0 <= index < required_index + 1 implies
++        super::model::required_field_present(required, observed, index) by {
++        if index < required_index {
++            assert(super::model::required_fields_present_through(
++                required, observed, required_index));
++        } else {
++            assert(index == required_index);
++        }
++    }
++}
++
++proof fn missing_breaks_all(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++)
++    requires
++        0 <= required_index < required.len(),
++        !super::model::required_field_present(required, observed, required_index),
++    ensures !super::model::all_required_fields_present(required, observed),
++{
++    if super::model::all_required_fields_present(required, observed) {
++        assert(super::model::required_field_present(required, observed, required_index));
++    }
++}
++
++proof fn exhausted_observation_misses_current(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++    observed_end: nat,
++)
++    requires
++        super::model::observed_before_required(
++            required, observed, required_index, observed_end),
++        observed_end == observed.len(),
++    ensures !super::model::required_field_present(required, observed, required_index),
++{
++    if super::model::required_field_present(required, observed, required_index) {
++        let found = choose |found: int| 0 <= found < observed.len()
++            && #[trigger] observed[found].spec_digest().spec_bytes()@
++                == required[required_index].spec_id().spec_digest().spec_bytes()@;
++        assert(found < observed_end);
++        assert(crate::order::byte_order(
++            observed_key(observed, found), required_key(required, required_index),
++        ) == Ordering::Less);
++        crate::order::byte_order_reflexive(required_key(required, required_index));
++        assert(false);
++    }
++}
++
++proof fn greater_observation_misses_current(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++    observed_index: int,
++)
++    requires
++        super::model::observed_fields_ordered(observed),
++        0 <= observed_index,
++        super::model::observed_before_required(
++            required, observed, required_index, observed_index as nat),
++        observed_index < observed.len(),
++        crate::order::byte_order(
++            observed_key(observed, observed_index),
++            required_key(required, required_index),
++        ) == Ordering::Greater,
++    ensures !super::model::required_field_present(required, observed, required_index),
++{
++    if super::model::required_field_present(required, observed, required_index) {
++        let found = choose |found: int| 0 <= found < observed.len()
++            && #[trigger] observed[found].spec_digest().spec_bytes()@
++                == required[required_index].spec_id().spec_digest().spec_bytes()@;
++        if found < observed_index {
++            assert(crate::order::byte_order(
++                observed_key(observed, found), required_key(required, required_index),
++            ) == Ordering::Less);
++        } else if found == observed_index {
++        } else {
++            super::model::observed_ordered_pair(observed, observed_index, found);
++        }
++        crate::order::byte_order_reflexive(required_key(required, required_index));
++        assert(false);
++    }
++}
++
++proof fn extend_observed_prefix(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++    observed_index: nat,
++)
++    requires
++        super::model::observed_before_required(
++            required, observed, required_index, observed_index),
++        observed_index < observed.len(),
++        crate::order::byte_order(
++            observed_key(observed, observed_index as int),
++            required_key(required, required_index),
++        ) == Ordering::Less,
++    ensures super::model::observed_before_required(
++        required, observed, required_index, observed_index + 1),
++{
++    assert forall |index: int| 0 <= index < observed_index + 1 implies
++        crate::order::byte_order(
++            #[trigger] observed[index].spec_digest().spec_bytes()@,
++            required[required_index].spec_id().spec_digest().spec_bytes()@,
++        ) == Ordering::Less by {
++        if index < observed_index {
++            assert(super::model::observed_before_required(
++                required, observed, required_index, observed_index));
++        } else {
++            assert(index == observed_index);
++        }
++    }
++}
++
++proof fn advance_to_next_requirement(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++    observed_index: nat,
++)
++    requires
++        super::model::required_fields_ordered(required),
++        super::model::observed_before_required(
++            required, observed, required_index, observed_index),
++        required_index + 1 < required.len(),
++        observed_index < observed.len(),
++        observed_key(observed, observed_index as int)
++            == required_key(required, required_index),
++    ensures super::model::observed_before_required(
++        required, observed, required_index + 1, observed_index + 1),
++{
++    super::model::required_ordered_at(required, required_index + 1);
++    assert forall |index: int| 0 <= index < observed_index + 1 implies
++        crate::order::byte_order(
++            #[trigger] observed[index].spec_digest().spec_bytes()@,
++            required[required_index + 1].spec_id().spec_digest().spec_bytes()@,
++        ) == Ordering::Less by {
++        if index < observed_index {
++            crate::order::less_transitive(
++                observed_key(observed, index),
++                required_key(required, required_index),
++                required_key(required, required_index + 1),
++            );
++        } else {
++            assert(index == observed_index);
++        }
++    }
++}
++
++proof fn completed_prefix_is_all(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++)
++    requires super::model::required_fields_present_through(
++        required, observed, required.len()),
++    ensures super::model::all_required_fields_present(required, observed),
++{
++    assert forall |index: int| 0 <= index < required.len() implies
++        super::model::required_field_present(required, observed, index) by {
++        assert(super::model::required_fields_present_through(
++            required, observed, required.len()));
++    }
++}
++
++pub(super) fn covers(
++    evidence: &SchemaEvidence,
++    requirement: &SchemaRequirement,
++) -> (covered: bool)
++    ensures covered == evidence.spec_covers(requirement),
++{
++    proof { use_type_invariant(evidence); use_type_invariant(requirement); }
++    if !evidence.direction.same(requirement.direction()) { return false; }
++    let required = requirement.fields();
++    let observed = evidence.observed_fields();
++    let mut required_index = 0;
++    let mut observed_index = 0;
++    while required_index < required.len()
++        invariant
++            required@ == requirement.spec_fields(),
++            observed@ == evidence.spec_observed_fields(),
++            evidence.spec_direction() == requirement.spec_direction(),
++            requirement.spec_canonical(), evidence.spec_canonical(),
++            required_index <= required@.len(), observed_index <= observed@.len(),
++            super::model::required_fields_present_through(
++                required@, observed@, required_index as nat),
++            required_index < required@.len() ==> super::model::observed_before_required(
++                required@, observed@, required_index as int, observed_index as nat),
++        decreases (required@.len() - required_index) + (observed@.len() - observed_index),
++    {
++        if observed_index >= observed.len() {
++            proof {
++                exhausted_observation_misses_current(
++                    required@, observed@, required_index as int, observed_index as nat);
++                missing_breaks_all(required@, observed@, required_index as int);
++            }
++            return false;
++        }
++        let order = compare_at(required, required_index, observed, observed_index);
++        match order {
++            Ordering::Equal => {
++                proof {
++                    current_is_present(
++                        required@, observed@, required_index as int, observed_index as int);
++                    extend_present_prefix(required@, observed@, required_index as nat);
++                    if required_index + 1 < required.len() {
++                        advance_to_next_requirement(
++                            required@, observed@, required_index as int, observed_index as nat);
++                    }
++                }
++                required_index += 1;
++                observed_index += 1;
++            }
++            Ordering::Less => {
++                proof {
++                    extend_observed_prefix(
++                        required@, observed@, required_index as int, observed_index as nat);
++                }
++                observed_index += 1;
++            }
++            Ordering::Greater => {
++                proof {
++                    greater_observation_misses_current(
++                        required@, observed@, required_index as int, observed_index as int);
++                    missing_breaks_all(required@, observed@, required_index as int);
++                }
++                return false;
++            }
++        }
++    }
++    proof { completed_prefix_is_all(required@, observed@); }
++    true
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema_model.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema_model.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema_model.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema_model.rs	2026-09-12 16:48:52.761600681 -0500
+@@ -0,0 +1,364 @@
++//! Exact logical views of directional schema requirements and observations.
++
++#[cfg(verus_only)]
++use super::SchemaFieldId;
++use super::{SchemaDirection, SchemaEvidence, SchemaField, SchemaRequirement};
++use vstd::prelude::*;
++
++verus! {
++
++/// Complete field-identity bytes in caller-supplied order.
++pub open spec fn required_field_keys(fields: Seq<SchemaField>) -> Seq<Seq<u8>> {
++    fields.map(|_index: int, field: SchemaField| field.spec_id().spec_digest().spec_bytes()@)
++}
++
++/// Complete observed field-identity bytes in caller-supplied order.
++pub open spec fn observed_field_keys(fields: Seq<SchemaFieldId>) -> Seq<Seq<u8>> {
++    fields.map(|_index: int, field: SchemaFieldId| field.spec_digest().spec_bytes()@)
++}
++
++/// Strict canonical ordering of required field identities.
++pub open spec fn required_fields_ordered(fields: Seq<SchemaField>) -> bool {
++    forall |index: int| 1 <= index < fields.len() ==>
++        crate::order::byte_order(
++            #[trigger] fields[index - 1].spec_id().spec_digest().spec_bytes()@,
++            #[trigger] fields[index].spec_id().spec_digest().spec_bytes()@,
++        ) == core::cmp::Ordering::Less
++}
++
++/// Strict canonical ordering through one required-field prefix.
++pub open spec fn required_fields_ordered_through(
++    fields: Seq<SchemaField>,
++    end: nat,
++) -> bool {
++    end <= fields.len()
++        && forall |index: int| 1 <= index < end ==>
++            crate::order::byte_order(
++                #[trigger] fields[index - 1].spec_id().spec_digest().spec_bytes()@,
++                #[trigger] fields[index].spec_id().spec_digest().spec_bytes()@,
++            ) == core::cmp::Ordering::Less
++}
++
++/// Strict canonical ordering of observed field identities.
++pub open spec fn observed_fields_ordered(fields: Seq<SchemaFieldId>) -> bool {
++    forall |index: int| 1 <= index < fields.len() ==>
++        crate::order::byte_order(
++            #[trigger] fields[index - 1].spec_digest().spec_bytes()@,
++            #[trigger] fields[index].spec_digest().spec_bytes()@,
++        ) == core::cmp::Ordering::Less
++}
++
++/// Strict canonical ordering through one observed-field prefix.
++pub open spec fn observed_fields_ordered_through(
++    fields: Seq<SchemaFieldId>,
++    end: nat,
++) -> bool {
++    end <= fields.len()
++        && forall |index: int| 1 <= index < end ==>
++            crate::order::byte_order(
++                #[trigger] fields[index - 1].spec_digest().spec_bytes()@,
++                #[trigger] fields[index].spec_digest().spec_bytes()@,
++            ) == core::cmp::Ordering::Less
++}
++
++/// Global uniqueness of every required field identity byte sequence.
++pub open spec fn required_field_ids_unique(fields: Seq<SchemaField>) -> bool {
++    forall |left: int, right: int| 0 <= left < right < fields.len() ==>
++        #[trigger] fields[left].spec_id().spec_digest().spec_bytes()@
++            != #[trigger] fields[right].spec_id().spec_digest().spec_bytes()@
++}
++
++/// Global uniqueness of every observed field identity byte sequence.
++pub open spec fn observed_field_ids_unique(fields: Seq<SchemaFieldId>) -> bool {
++    forall |left: int, right: int| 0 <= left < right < fields.len() ==>
++        #[trigger] fields[left].spec_digest().spec_bytes()@
++            != #[trigger] fields[right].spec_digest().spec_bytes()@
++}
++
++/// Strictly ordered required fields are globally unique.
++pub proof fn required_ordered_implies_unique(fields: Seq<SchemaField>)
++    requires required_fields_ordered(fields),
++    ensures required_field_ids_unique(fields),
++{
++    assert(crate::order::ordered(required_field_keys(fields))) by {
++        assert forall |index: int| 1 <= index < fields.len() implies
++            crate::order::byte_order(
++                #[trigger] required_field_keys(fields)[index - 1],
++                #[trigger] required_field_keys(fields)[index],
++            ) == core::cmp::Ordering::Less by {
++            assert(required_field_keys(fields)[index - 1]
++                == fields[index - 1].spec_id().spec_digest().spec_bytes()@);
++            assert(required_field_keys(fields)[index]
++                == fields[index].spec_id().spec_digest().spec_bytes()@);
++        }
++    }
++    assert forall |index: int| 0 <= index < required_field_keys(fields).len() implies
++        #[trigger] required_field_keys(fields)[index].len() == 32 by {
++        assert(required_field_keys(fields)[index]
++            == fields[index].spec_id().spec_digest().spec_bytes()@);
++    }
++    crate::order::ordered_implies_unique(required_field_keys(fields), 32);
++    assert forall |left: int, right: int| 0 <= left < right < fields.len() implies
++        #[trigger] fields[left].spec_id().spec_digest().spec_bytes()@
++            != #[trigger] fields[right].spec_id().spec_digest().spec_bytes()@ by {
++        assert(required_field_keys(fields)[left]
++            == fields[left].spec_id().spec_digest().spec_bytes()@);
++        assert(required_field_keys(fields)[right]
++            == fields[right].spec_id().spec_digest().spec_bytes()@);
++    }
++}
++
++/// Strictly ordered observed fields are globally unique.
++pub proof fn observed_ordered_implies_unique(fields: Seq<SchemaFieldId>)
++    requires observed_fields_ordered(fields),
++    ensures observed_field_ids_unique(fields),
++{
++    assert(crate::order::ordered(observed_field_keys(fields))) by {
++        assert forall |index: int| 1 <= index < fields.len() implies
++            crate::order::byte_order(
++                #[trigger] observed_field_keys(fields)[index - 1],
++                #[trigger] observed_field_keys(fields)[index],
++            ) == core::cmp::Ordering::Less by {
++            assert(observed_field_keys(fields)[index - 1]
++                == fields[index - 1].spec_digest().spec_bytes()@);
++            assert(observed_field_keys(fields)[index]
++                == fields[index].spec_digest().spec_bytes()@);
++        }
++    }
++    assert forall |index: int| 0 <= index < observed_field_keys(fields).len() implies
++        #[trigger] observed_field_keys(fields)[index].len() == 32 by {
++        assert(observed_field_keys(fields)[index]
++            == fields[index].spec_digest().spec_bytes()@);
++    }
++    crate::order::ordered_implies_unique(observed_field_keys(fields), 32);
++    assert forall |left: int, right: int| 0 <= left < right < fields.len() implies
++        #[trigger] fields[left].spec_digest().spec_bytes()@
++            != #[trigger] fields[right].spec_digest().spec_bytes()@ by {
++        assert(observed_field_keys(fields)[left]
++            == fields[left].spec_digest().spec_bytes()@);
++        assert(observed_field_keys(fields)[right]
++            == fields[right].spec_digest().spec_bytes()@);
++    }
++}
++
++/// Every required field identity is present in the observed identity set.
++pub open spec fn all_required_fields_present(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++) -> bool {
++    forall |required_index: int| 0 <= required_index < required.len() ==>
++        #[trigger] required_field_present(required, observed, required_index)
++}
++
++/// Exact field membership for one required position.
++pub open spec fn required_field_present(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++) -> bool {
++    exists |observed_index: int| 0 <= observed_index < observed.len()
++        && #[trigger] observed[observed_index].spec_digest().spec_bytes()@
++            == required[required_index].spec_id().spec_digest().spec_bytes()@
++}
++
++/// Every required field before one prefix end is present in the observation.
++pub open spec fn required_fields_present_through(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    end: nat,
++) -> bool {
++    end <= required.len()
++        && forall |required_index: int| 0 <= required_index < end ==>
++            required_field_present(required, observed, required_index)
++}
++
++/// Every observed field before one cursor sorts before the current requirement.
++pub open spec fn observed_before_required(
++    required: Seq<SchemaField>,
++    observed: Seq<SchemaFieldId>,
++    required_index: int,
++    observed_end: nat,
++) -> bool {
++    0 <= required_index < required.len()
++        && observed_end <= observed.len()
++        && forall |observed_index: int| 0 <= observed_index < observed_end ==>
++            crate::order::byte_order(
++                #[trigger] observed[observed_index].spec_digest().spec_bytes()@,
++                required[required_index].spec_id().spec_digest().spec_bytes()@,
++            ) == core::cmp::Ordering::Less
++}
++
++/// Selects one adjacent required-field order fact from the canonical invariant.
++pub proof fn required_ordered_at(fields: Seq<SchemaField>, index: int)
++    requires required_fields_ordered(fields), 1 <= index < fields.len(),
++    ensures crate::order::byte_order(
++        fields[index - 1].spec_id().spec_digest().spec_bytes()@,
++        fields[index].spec_id().spec_digest().spec_bytes()@,
++    ) == core::cmp::Ordering::Less,
++{
++}
++
++/// Selects one required-field order fact from a checked prefix.
++pub proof fn required_ordered_through_at(
++    fields: Seq<SchemaField>,
++    end: nat,
++    index: int,
++)
++    requires required_fields_ordered_through(fields, end), 1 <= index < end,
++    ensures crate::order::byte_order(
++        fields[index - 1].spec_id().spec_digest().spec_bytes()@,
++        fields[index].spec_id().spec_digest().spec_bytes()@,
++    ) == core::cmp::Ordering::Less,
++{
++}
++
++/// Selects one adjacent observed-field order fact from the canonical invariant.
++pub proof fn observed_ordered_at(fields: Seq<SchemaFieldId>, index: int)
++    requires observed_fields_ordered(fields), 1 <= index < fields.len(),
++    ensures crate::order::byte_order(
++        fields[index - 1].spec_digest().spec_bytes()@,
++        fields[index].spec_digest().spec_bytes()@,
++    ) == core::cmp::Ordering::Less,
++{
++}
++
++/// Selects one observed-field order fact from a checked prefix.
++pub proof fn observed_ordered_through_at(
++    fields: Seq<SchemaFieldId>,
++    end: nat,
++    index: int,
++)
++    requires observed_fields_ordered_through(fields, end), 1 <= index < end,
++    ensures crate::order::byte_order(
++        fields[index - 1].spec_digest().spec_bytes()@,
++        fields[index].spec_digest().spec_bytes()@,
++    ) == core::cmp::Ordering::Less,
++{
++}
++
++/// Any two increasing required-field positions are strictly byte ordered.
++pub proof fn required_ordered_pair(
++    fields: Seq<SchemaField>,
++    left: int,
++    right: int,
++)
++    requires required_fields_ordered(fields), 0 <= left < right < fields.len(),
++    ensures crate::order::byte_order(
++        fields[left].spec_id().spec_digest().spec_bytes()@,
++        fields[right].spec_id().spec_digest().spec_bytes()@,
++    ) == core::cmp::Ordering::Less,
++{
++    assert(crate::order::ordered(required_field_keys(fields))) by {
++        assert forall |index: int| 1 <= index < fields.len() implies
++            crate::order::byte_order(
++                #[trigger] required_field_keys(fields)[index - 1],
++                #[trigger] required_field_keys(fields)[index],
++            ) == core::cmp::Ordering::Less by {
++            required_ordered_at(fields, index);
++        }
++    }
++    assert forall |index: int| 0 <= index < required_field_keys(fields).len() implies
++        #[trigger] required_field_keys(fields)[index].len() == 32 by {
++        assert(required_field_keys(fields)[index]
++            == fields[index].spec_id().spec_digest().spec_bytes()@);
++    }
++    crate::order::ordered_pair(required_field_keys(fields), 32, left, right);
++}
++
++/// Any two increasing observed-field positions are strictly byte ordered.
++pub proof fn observed_ordered_pair(
++    fields: Seq<SchemaFieldId>,
++    left: int,
++    right: int,
++)
++    requires observed_fields_ordered(fields), 0 <= left < right < fields.len(),
++    ensures crate::order::byte_order(
++        fields[left].spec_digest().spec_bytes()@,
++        fields[right].spec_digest().spec_bytes()@,
++    ) == core::cmp::Ordering::Less,
++{
++    assert(crate::order::ordered(observed_field_keys(fields))) by {
++        assert forall |index: int| 1 <= index < fields.len() implies
++            crate::order::byte_order(
++                #[trigger] observed_field_keys(fields)[index - 1],
++                #[trigger] observed_field_keys(fields)[index],
++            ) == core::cmp::Ordering::Less by {
++            observed_ordered_at(fields, index);
++        }
++    }
++    assert forall |index: int| 0 <= index < observed_field_keys(fields).len() implies
++        #[trigger] observed_field_keys(fields)[index].len() == 32 by {
++        assert(observed_field_keys(fields)[index]
++            == fields[index].spec_digest().spec_bytes()@);
++    }
++    crate::order::ordered_pair(observed_field_keys(fields), 32, left, right);
++}
++
++impl SchemaDirection {
++    /// Exact executable equality for schema directions.
++    pub(super) const fn same(self, other: Self) -> (same: bool)
++        ensures same == (self == other),
++    {
++        matches!((self, other), (Self::Request, Self::Request) | (Self::Response, Self::Response))
++    }
++}
++
++impl SchemaField {
++    /// Intrinsic field invariant retained after the constructor forgets its caller bound.
++    pub open spec fn spec_valid(&self) -> bool { 0 < self.spec_exact_name().len() }
++
++    /// Complete semantic equality of a schema field.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        self.spec_id() == other.spec_id()
++            && self.spec_exact_name() == other.spec_exact_name()
++    }
++
++    /// Pairwise semantic equality of two field sequences.
++    pub open spec fn sequence_same_content(
++        left: Seq<SchemaField>,
++        right: Seq<SchemaField>,
++    ) -> bool {
++        left.len() == right.len()
++            && forall |index: int| 0 <= index < left.len() ==>
++                #[trigger] left[index].spec_same_content(&right[index])
++    }
++}
++
++impl SchemaRequirement {
++    /// Nonempty canonical required-field identity set.
++    pub open spec fn spec_canonical(&self) -> bool {
++        0 < self.spec_fields().len()
++            && required_fields_ordered(self.spec_fields())
++            && required_field_ids_unique(self.spec_fields())
++    }
++
++    /// Complete semantic equality of a schema requirement.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        self.spec_direction() == other.spec_direction()
++            && SchemaField::sequence_same_content(self.spec_fields(), other.spec_fields())
++    }
++}
++
++impl SchemaEvidence {
++    /// Canonical observed-field identity set.
++    pub open spec fn spec_canonical(&self) -> bool {
++        observed_fields_ordered(self.spec_observed_fields())
++            && observed_field_ids_unique(self.spec_observed_fields())
++    }
++
++    /// Exact direction and all-required-field membership semantics.
++    pub open spec fn spec_covers(&self, requirement: &SchemaRequirement) -> bool {
++        self.spec_direction() == requirement.spec_direction()
++            && all_required_fields_present(
++                requirement.spec_fields(), self.spec_observed_fields())
++    }
++
++    /// Complete semantic equality of schema evidence.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        self.spec_binding().spec_same_content(&other.spec_binding())
++            && self.spec_direction() == other.spec_direction()
++            && self.spec_observed_fields() == other.spec_observed_fields()
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema_validation.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema_validation.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/src/schema_validation.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/src/schema_validation.rs	2026-09-12 16:48:52.761625077 -0500
+@@ -0,0 +1,201 @@
++//! Exact validation of canonical required and observed schema fields.
++
++use super::{SchemaField, SchemaFieldId};
++use crate::{ObligationError, ObligationErrorKind};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++proof fn required_nonless_is_not_ordered(
++    fields: Seq<SchemaField>,
++    index: int,
++    order: Ordering,
++)
++    requires
++        1 <= index < fields.len(),
++        order == crate::order::byte_order(
++            fields[index - 1].spec_id().spec_digest().spec_bytes()@,
++            fields[index].spec_id().spec_digest().spec_bytes()@,
++        ),
++        order != Ordering::Less,
++    ensures !super::model::required_fields_ordered(fields),
++{
++    if super::model::required_fields_ordered(fields) {
++        super::model::required_ordered_at(fields, index);
++    }
++}
++
++proof fn observed_nonless_is_not_ordered(
++    fields: Seq<SchemaFieldId>,
++    index: int,
++    order: Ordering,
++)
++    requires
++        1 <= index < fields.len(),
++        order == crate::order::byte_order(
++            fields[index - 1].spec_digest().spec_bytes()@,
++            fields[index].spec_digest().spec_bytes()@,
++        ),
++        order != Ordering::Less,
++    ensures !super::model::observed_fields_ordered(fields),
++{
++    if super::model::observed_fields_ordered(fields) {
++        super::model::observed_ordered_at(fields, index);
++    }
++}
++
++fn required_pair_order(fields: &[SchemaField], index: usize) -> (order: Ordering)
++    requires 0 < index < fields@.len(),
++    ensures order == crate::order::byte_order(
++        fields@[index as int - 1].spec_id().spec_digest().spec_bytes()@,
++        fields@[index as int].spec_id().spec_digest().spec_bytes()@,
++    ),
++{
++    let previous = fields[index - 1].id();
++    let current = fields[index].id();
++    crate::order::compare(previous.digest().as_bytes(), current.digest().as_bytes())
++}
++
++fn observed_pair_order(fields: &[SchemaFieldId], index: usize) -> (order: Ordering)
++    requires 0 < index < fields@.len(),
++    ensures order == crate::order::byte_order(
++        fields@[index as int - 1].spec_digest().spec_bytes()@,
++        fields@[index as int].spec_digest().spec_bytes()@,
++    ),
++{
++    crate::order::compare(
++        fields[index - 1].digest().as_bytes(), fields[index].digest().as_bytes())
++}
++
++pub(super) fn validate_required_fields(
++    fields: &[SchemaField],
++    maximum: usize,
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == (0 < fields@.len()
++        && fields@.len() <= maximum
++        && super::model::required_fields_ordered(fields@)),
++        result.is_ok() ==> super::model::required_field_ids_unique(fields@),
++{
++    if fields.is_empty() || fields.len() > maximum {
++        return Err(ObligationError::numbers(
++            ObligationErrorKind::InvalidSchema,
++            maximum as u64,
++            fields.len() as u64,
++        ));
++    }
++    let mut index = 0;
++    while index < fields.len()
++        invariant
++            0 < fields.len(),
++            fields.len() <= maximum,
++            index <= fields.len(),
++            super::model::required_fields_ordered_through(fields@, index as nat),
++        decreases fields.len() - index,
++    {
++        if index > 0 {
++            let order = required_pair_order(fields, index);
++            match order {
++                Ordering::Equal => {
++                    proof {
++                        required_nonless_is_not_ordered(fields@, index as int, order);
++                    }
++                    return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
++                }
++                Ordering::Greater => {
++                    proof {
++                        required_nonless_is_not_ordered(fields@, index as int, order);
++                    }
++                    return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
++                }
++                Ordering::Less => {}
++            }
++        }
++        assert(super::model::required_fields_ordered_through(
++            fields@, index as nat + 1)) by {
++            assert forall |ordered_index: int| 1 <= ordered_index < index + 1 implies
++                crate::order::byte_order(
++                    #[trigger] fields@[ordered_index - 1].spec_id().spec_digest().spec_bytes()@,
++                    #[trigger] fields@[ordered_index].spec_id().spec_digest().spec_bytes()@,
++                ) == Ordering::Less by {
++                if ordered_index < index {
++                    super::model::required_ordered_through_at(
++                        fields@, index as nat, ordered_index);
++                } else {
++                    assert(ordered_index == index);
++                    if index == 0 { assert(false); }
++                }
++            }
++        }
++        index += 1;
++    }
++    assert(super::model::required_fields_ordered(fields@));
++    proof { super::model::required_ordered_implies_unique(fields@); }
++    Ok(())
++}
++
++pub(super) fn validate_observed_fields(
++    fields: &[SchemaFieldId],
++    maximum: usize,
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == (fields@.len() <= maximum
++        && super::model::observed_fields_ordered(fields@)),
++        result.is_ok() ==> super::model::observed_field_ids_unique(fields@),
++{
++    if fields.len() > maximum {
++        return Err(ObligationError::numbers(
++            ObligationErrorKind::InvalidSchema,
++            maximum as u64,
++            fields.len() as u64,
++        ));
++    }
++    let mut index = 0;
++    while index < fields.len()
++        invariant
++            fields.len() <= maximum,
++            index <= fields.len(),
++            super::model::observed_fields_ordered_through(fields@, index as nat),
++        decreases fields.len() - index,
++    {
++        if index > 0 {
++            let order = observed_pair_order(fields, index);
++            match order {
++                Ordering::Equal => {
++                    proof {
++                        observed_nonless_is_not_ordered(fields@, index as int, order);
++                    }
++                    return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
++                }
++                Ordering::Greater => {
++                    proof {
++                        observed_nonless_is_not_ordered(fields@, index as int, order);
++                    }
++                    return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
++                }
++                Ordering::Less => {}
++            }
++        }
++        assert(super::model::observed_fields_ordered_through(
++            fields@, index as nat + 1)) by {
++            assert forall |ordered_index: int| 1 <= ordered_index < index + 1 implies
++                crate::order::byte_order(
++                    #[trigger] fields@[ordered_index - 1].spec_digest().spec_bytes()@,
++                    #[trigger] fields@[ordered_index].spec_digest().spec_bytes()@,
++                ) == Ordering::Less by {
++                if ordered_index < index {
++                    super::model::observed_ordered_through_at(
++                        fields@, index as nat, ordered_index);
++                } else {
++                    assert(ordered_index == index);
++                    if index == 0 { assert(false); }
++                }
++            }
++        }
++        index += 1;
++    }
++    assert(super::model::observed_fields_ordered(fields@));
++    proof { super::model::observed_ordered_implies_unique(fields@); }
++    Ok(())
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/tests/schema_semantics.rs /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/tests/schema_semantics.rs
+--- /tmp/peritus-sol-obligations-schema-preimage-01/crates/orchestration/peritus-obligations/tests/schema_semantics.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-obligations-schema-source-01/crates/orchestration/peritus-obligations/tests/schema_semantics.rs	2026-09-12 16:48:52.761717803 -0500
+@@ -0,0 +1,229 @@
++//! Boundary regressions for canonical directional schema contracts and evidence.
++
++mod support;
++
++use peritus_obligations::{
++    ObligationError, ObligationErrorKind, ObligationLimits, ObligationSpec, PublicTaskSource,
++    RequirementDraft, RequirementEvidence, RequirementLedger, SchemaDirection, SchemaEvidence,
++    SchemaField, SchemaFieldId, SchemaRequirement,
++};
++use peritus_types::Sha256Digest;
++
++use support::{binding, candidate, ledger, requirement_id};
++
++const fn late_digest(last: u8) -> Sha256Digest {
++    let mut bytes = [0; 32];
++    bytes[31] = last;
++    Sha256Digest::new(bytes)
++}
++
++fn field(last: u8, name: &[u8]) -> SchemaField {
++    SchemaField::new(SchemaFieldId::new(late_digest(last)), name.to_vec(), 64)
++        .expect("schema field")
++}
++
++fn schema_limits(maximum_fields: usize) -> ObligationLimits {
++    ObligationLimits::new(1024, 512, 16, 16, maximum_fields, 16).expect("schema limits")
++}
++
++fn error_kind<T: core::fmt::Debug>(result: Result<T, ObligationError>) -> ObligationErrorKind {
++    result.expect_err("expected schema rejection").kind()
++}
++
++#[test]
++fn schema_field_retains_exact_identity_and_name_bounds() {
++    let empty = SchemaField::new(SchemaFieldId::new(late_digest(1)), Vec::new(), 3)
++        .expect_err("empty field name");
++    assert_eq!(empty.kind(), ObligationErrorKind::InvalidText);
++    assert_eq!(empty.expected(), Some(3));
++    assert_eq!(empty.actual(), Some(0));
++
++    let oversized = SchemaField::new(SchemaFieldId::new(late_digest(2)), b"four".to_vec(), 3)
++        .expect_err("oversized field name");
++    assert_eq!(oversized.kind(), ObligationErrorKind::InvalidText);
++    assert_eq!(oversized.expected(), Some(3));
++    assert_eq!(oversized.actual(), Some(4));
++
++    let exact_name = vec![0, b'X', 0xff];
++    let accepted =
++        SchemaField::new(SchemaFieldId::new(late_digest(3)), exact_name.clone(), exact_name.len())
++            .expect("bounded binary field name");
++    assert_eq!(accepted.id(), SchemaFieldId::new(late_digest(3)));
++    assert_eq!(accepted.exact_name(), exact_name);
++    assert_eq!(accepted.clone(), accepted);
++}
++
++#[test]
++fn requirement_constructor_enforces_full_identity_order_and_error_priority() {
++    let limits = schema_limits(2);
++    let empty = SchemaRequirement::new(SchemaDirection::Request, Vec::new(), limits)
++        .expect_err("empty requirement");
++    assert_eq!(empty.kind(), ObligationErrorKind::InvalidSchema);
++    assert_eq!(empty.expected(), Some(2));
++    assert_eq!(empty.actual(), Some(0));
++
++    let oversized = SchemaRequirement::new(
++        SchemaDirection::Request,
++        vec![field(3, b"c"), field(2, b"b"), field(2, b"duplicate")],
++        limits,
++    )
++    .expect_err("size limit precedes pair validation");
++    assert_eq!(oversized.kind(), ObligationErrorKind::InvalidSchema);
++    assert_eq!(oversized.expected(), Some(2));
++    assert_eq!(oversized.actual(), Some(3));
++
++    assert_eq!(
++        error_kind(SchemaRequirement::new(
++            SchemaDirection::Request,
++            vec![field(1, b"first"), field(1, b"duplicate")],
++            limits,
++        )),
++        ObligationErrorKind::DuplicateValue,
++    );
++    assert_eq!(
++        error_kind(SchemaRequirement::new(
++            SchemaDirection::Request,
++            vec![field(2, b"later"), field(1, b"earlier")],
++            limits,
++        )),
++        ObligationErrorKind::NonCanonicalOrder,
++    );
++
++    let exact = SchemaRequirement::new(
++        SchemaDirection::Response,
++        vec![field(1, b"one"), field(2, b"two")],
++        limits,
++    )
++    .expect("late-byte canonical order");
++    assert_eq!(exact.direction(), SchemaDirection::Response);
++    assert_eq!(exact.fields().len(), 2);
++    assert_eq!(exact.clone(), exact);
++}
++
++#[test]
++fn evidence_constructor_accepts_empty_and_rejects_noncanonical_identities() {
++    let limits = schema_limits(2);
++    let candidate = candidate(11, 7, 2);
++    let requirement =
++        SchemaRequirement::new(SchemaDirection::Request, vec![field(1, b"one")], limits)
++            .expect("requirement");
++    let ledger = ledger(vec![(
++        1,
++        b"Requests require one field.",
++        ObligationSpec::RequestSchema(requirement),
++        Vec::new(),
++    )]);
++    let evidence_binding = binding(&ledger, candidate, 1, Vec::new(), 41);
++
++    let empty =
++        SchemaEvidence::new(evidence_binding.clone(), SchemaDirection::Request, Vec::new(), limits)
++            .expect("empty observation is canonical");
++    assert!(empty.observed_fields().is_empty());
++
++    let oversized = SchemaEvidence::new(
++        evidence_binding.clone(),
++        SchemaDirection::Request,
++        vec![
++            SchemaFieldId::new(late_digest(3)),
++            SchemaFieldId::new(late_digest(2)),
++            SchemaFieldId::new(late_digest(2)),
++        ],
++        limits,
++    )
++    .expect_err("size limit precedes observation ordering");
++    assert_eq!(oversized.kind(), ObligationErrorKind::InvalidSchema);
++
++    assert_eq!(
++        error_kind(SchemaEvidence::new(
++            evidence_binding.clone(),
++            SchemaDirection::Request,
++            vec![SchemaFieldId::new(late_digest(1)), SchemaFieldId::new(late_digest(1)),],
++            limits,
++        )),
++        ObligationErrorKind::DuplicateValue,
++    );
++    assert_eq!(
++        error_kind(SchemaEvidence::new(
++            evidence_binding,
++            SchemaDirection::Request,
++            vec![SchemaFieldId::new(late_digest(2)), SchemaFieldId::new(late_digest(1)),],
++            limits,
++        )),
++        ObligationErrorKind::NonCanonicalOrder,
++    );
++}
++
++#[test]
++fn covers_is_exact_directional_required_field_membership() {
++    let limits = schema_limits(5);
++    let requirement = SchemaRequirement::new(
++        SchemaDirection::Request,
++        vec![field(2, b"two"), field(4, b"four")],
++        limits,
++    )
++    .expect("requirement");
++    let candidate = candidate(11, 7, 2);
++    let ledger = ledger(vec![(
++        1,
++        b"Requests require fields two and four.",
++        ObligationSpec::RequestSchema(requirement.clone()),
++        Vec::new(),
++    )]);
++    let evidence_binding = binding(&ledger, candidate, 1, Vec::new(), 51);
++    let observed = |direction, identities: &[u8]| {
++        SchemaEvidence::new(
++            evidence_binding.clone(),
++            direction,
++            identities.iter().map(|last| SchemaFieldId::new(late_digest(*last))).collect(),
++            limits,
++        )
++        .expect("canonical observation")
++    };
++
++    let superset = observed(SchemaDirection::Request, &[1, 2, 3, 4, 5]);
++    assert!(superset.covers(&requirement));
++    assert_eq!(superset.clone(), superset);
++    let wrapped = RequirementEvidence::Schema(superset);
++    let wrapped_clone = wrapped.clone();
++    assert_eq!(wrapped_clone, wrapped);
++    assert!(!observed(SchemaDirection::Request, &[1, 2, 3, 5]).covers(&requirement));
++    assert!(!observed(SchemaDirection::Request, &[1, 2, 3]).covers(&requirement));
++    assert!(!observed(SchemaDirection::Response, &[1, 2, 3, 4, 5]).covers(&requirement));
++}
++
++fn shape_mismatch(specification: ObligationSpec) -> ObligationError {
++    let limits = ObligationLimits::production();
++    let source = PublicTaskSource::new(b"directional schema".to_vec(), 7, limits).expect("source");
++    RequirementLedger::extract(
++        &source,
++        vec![RequirementDraft::new(
++            requirement_id(1),
++            0,
++            b"directional schema".len(),
++            specification,
++            Vec::new(),
++        )],
++        limits,
++    )
++    .expect_err("requirement direction mismatch")
++}
++
++#[test]
++fn ledger_rejects_schema_variant_direction_mismatch() {
++    let limits = ObligationLimits::production();
++    let response =
++        SchemaRequirement::new(SchemaDirection::Response, vec![field(1, b"response")], limits)
++            .expect("response requirement");
++    assert_eq!(
++        shape_mismatch(ObligationSpec::RequestSchema(response)).kind(),
++        ObligationErrorKind::RequirementShapeMismatch,
++    );
++
++    let request =
++        SchemaRequirement::new(SchemaDirection::Request, vec![field(1, b"request")], limits)
++            .expect("request requirement");
++    assert_eq!(
++        shape_mismatch(ObligationSpec::ResponseSchema(request)).kind(),
++        ObligationErrorKind::RequirementShapeMismatch,
++    );
++}

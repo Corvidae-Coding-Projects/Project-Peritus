@@ -1,0 +1,9 @@
+# Correction to scheduler worker lookup report
+
+This note corrects one overbroad behavior sentence in `/tmp/peritus-sol-scheduler-worker-lookup-correction-report.md` without changing source or proof results.
+
+The sentence saying the binary-first implementation preserves runtime behavior for every arbitrary unvalidated decoded state is too broad. If an invalid state contains duplicate worker IDs, the binary search may select a different duplicate than the previous first-match linear scan. The private `set_worker_phase` specification still holds because it specifies an identity-matching update rather than which duplicate is selected. Canonical public scheduler state excludes duplicate worker identities, so an existing worker in valid production state is unique and the binary hit preserves the production result, phase assignment, frames, and error ordering.
+
+The retained linear fallback remains necessary after a binary-search miss to preserve the helper's unconditional exact result contract for noncanonical state whose ordering does not support the binary lookup. No asymptotic bound or invalid-state observational-equivalence guarantee is claimed.
+
+Independent source review: `/tmp/peritus-sol-scheduler-worker-lookup-independent-review-20260912T001.md`, SHA-256 `22d29c77015c2b3ff1c3cfc4a8420b6fad599f31b2e20c3412262f9d8cdc615b`.

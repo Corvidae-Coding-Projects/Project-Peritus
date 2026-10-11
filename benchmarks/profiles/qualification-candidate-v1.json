@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "linux-x86_64-production-candidate-v1",
+  "description": "Candidate production SLO profile. Baseline comparison remains mandatory before a ready verdict.",
+  "reference_machine": {
+    "operating_system": "linux",
+    "architecture": "x86_64",
+    "cpu_model": "AMD Ryzen 9 7950X",
+    "logical_cores": 32,
+    "memory_bytes": 68719476736,
+    "storage_class": "nvme-gen4"
+  },
+  "resource_envelope": {
+    "max_active_runs": 64,
+    "max_active_processes": 64,
+    "max_provider_requests": 32,
+    "max_memory_bytes": 17179869184,
+    "max_disk_bytes": 68719476736,
+    "max_tokens": 100000000,
+    "command_queue_capacity": 256,
+    "terminal_queue_capacity": 512,
+    "exporter_queue_capacity": 512,
+    "provider_queue_capacity": 128
+  },
+  "regression_policy": {
+    "warning_basis_points": 500,
+    "blocking_basis_points": 1000,
+    "minimum_absolute_delta": 1,
+    "baseline_required": true
+  },
+  "max_measurements": 1000000,
+  "required_workloads": [
+    "load.concurrent-runs.v1",
+    "load.event-append.v1",
+    "load.terminal-stream.v1",
+    "load.memory-bounds.v1",
+    "load.cancellation.v1",
+    "load.recovery.v1",
+    "load.queue-saturation.v1",
+    "load.exporter-backpressure.v1",
+    "load.provider-backpressure.v1",
+    "load.token-flow.v1",
+    "load.disk-artifacts.v1",
+    "soak.concurrent-runs.8h.v1",
+    "soak.terminal-stream.8h.v1",
+    "soak.recovery.8h.v1",
+    "soak.exporter-backpressure.8h.v1"
+  ],
+  "objectives": [
+    {"id":"concurrent-runs-supported","workload_id":"load.concurrent-runs.v1","metric":"concurrent_runs","statistic":"maximum","bound":"at_least","threshold":32,"minimum_samples":1},
+    {"id":"command-first-event-p95","workload_id":"load.concurrent-runs.v1","metric":"command_to_first_event_latency","statistic":"p95","bound":"at_most","threshold":100000,"minimum_samples":1000},
+    {"id":"event-append-p99","workload_id":"load.event-append.v1","metric":"event_append_latency","statistic":"p99","bound":"at_most","threshold":50000,"minimum_samples":10000},
+    {"id":"terminal-throughput-p50","workload_id":"load.terminal-stream.v1","metric":"terminal_throughput","statistic":"p50","bound":"at_least","threshold":10485760,"minimum_samples":1000},
+    {"id":"memory-per-run-p99","workload_id":"load.memory-bounds.v1","metric":"steady_memory_per_run","statistic":"p99","bound":"at_most","threshold":268435456,"minimum_samples":1000},
+    {"id":"peak-resident-memory","workload_id":"load.memory-bounds.v1","metric":"peak_resident_memory","statistic":"maximum","bound":"at_most","threshold":8589934592,"minimum_samples":100},
+    {"id":"cancellation-p99","workload_id":"load.cancellation.v1","metric":"cancellation_latency","statistic":"p99","bound":"at_most","threshold":2000000,"minimum_samples":500},
+    {"id":"cancellation-success","workload_id":"load.cancellation.v1","metric":"cancellation_success_ratio","statistic":"minimum","bound":"at_least","threshold":10000,"minimum_samples":500},
+    {"id":"recovery-p99","workload_id":"load.recovery.v1","metric":"recovery_latency","statistic":"p99","bound":"at_most","threshold":30000000,"minimum_samples":100},
+    {"id":"recovery-success","workload_id":"load.recovery.v1","metric":"recovery_success_ratio","statistic":"minimum","bound":"at_least","threshold":10000,"minimum_samples":100},
+    {"id":"queue-saturation-wait-p99","workload_id":"load.queue-saturation.v1","metric":"queue_saturation_wait","statistic":"p99","bound":"at_most","threshold":5000000,"minimum_samples":100},
+    {"id":"exporter-backpressure-p99","workload_id":"load.exporter-backpressure.v1","metric":"exporter_backpressure_latency","statistic":"p99","bound":"at_most","threshold":5000000,"minimum_samples":100},
+    {"id":"provider-backpressure-p99","workload_id":"load.provider-backpressure.v1","metric":"provider_backpressure_latency","statistic":"p99","bound":"at_most","threshold":30000000,"minimum_samples":100},
+    {"id":"token-throughput-p50","workload_id":"load.token-flow.v1","metric":"token_throughput","statistic":"p50","bound":"at_least","threshold":100,"minimum_samples":1000},
+    {"id":"token-budget-total","workload_id":"load.token-flow.v1","metric":"tokens_consumed","statistic":"total","bound":"at_most","threshold":100000000,"minimum_samples":1000},
+    {"id":"disk-throughput-p50","workload_id":"load.disk-artifacts.v1","metric":"disk_throughput","statistic":"p50","bound":"at_least","threshold":52428800,"minimum_samples":1000},
+    {"id":"disk-usage-maximum","workload_id":"load.disk-artifacts.v1","metric":"disk_usage","statistic":"maximum","bound":"at_most","threshold":68719476736,"minimum_samples":100},
+    {"id":"artifact-gc-p99","workload_id":"load.disk-artifacts.v1","metric":"artifact_gc_pause","statistic":"p99","bound":"at_most","threshold":2000000,"minimum_samples":100},
+    {"id":"soak-run-memory-p99","workload_id":"soak.concurrent-runs.8h.v1","metric":"steady_memory_per_run","statistic":"p99","bound":"at_most","threshold":268435456,"minimum_samples":10000},
+    {"id":"soak-terminal-memory-p99","workload_id":"soak.terminal-stream.8h.v1","metric":"steady_memory_per_process","statistic":"p99","bound":"at_most","threshold":134217728,"minimum_samples":10000},
+    {"id":"soak-recovery-p99","workload_id":"soak.recovery.8h.v1","metric":"recovery_latency","statistic":"p99","bound":"at_most","threshold":30000000,"minimum_samples":1000},
+    {"id":"soak-exporter-backpressure-p99","workload_id":"soak.exporter-backpressure.8h.v1","metric":"exporter_backpressure_latency","statistic":"p99","bound":"at_most","threshold":5000000,"minimum_samples":1000}
+  ]
+}

@@ -1,0 +1,110 @@
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+package = Path('crates/foundation/peritus-release-policy')
+dest = root / 'docs/formal-coverage-evidence/release-candidate-construction'
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+manifest = Path('/tmp/peritus-sol-release-candidate-final-full-package.sha256')
+assert sha(manifest) == '42cdfd534b84c5f7fa8f1e64aabb8957864343ebcb9336754da4b26806873918'
+expected = {}
+for line in manifest.read_text().splitlines():
+    digest, name = line.split('  ', 1)
+    assert name not in expected
+    expected[name] = digest
+    assert sha(root / name) == digest, name
+assert len(expected) == 65
+assert {str(p.relative_to(root)) for p in (root / package).rglob('*') if p.is_file()} == expected.keys()
+
+worker_evidence = Path('/tmp/peritus-sol-release-candidate-evidence-final.sha256')
+assert sha(worker_evidence) == '3697a0513bda2065b005c118b0a8b9f8ea290f4aad646d6b2e410d91ba42fb71'
+files = {}
+for line in worker_evidence.read_text().splitlines():
+    digest, name = line.split('  ', 1)
+    path = Path(name)
+    assert sha(path) == digest, name
+    retained = path.name.replace('peritus-sol-release-candidate-', 'worker-')
+    if retained.endswith('.rs'):
+        retained += '.txt'
+    elif retained.endswith('.log'):
+        retained = retained[:-4] + '.txt'
+    assert retained not in files
+    files[retained] = str(path)
+
+files.update({
+    'independent-review.md': '/tmp/peritus-parent-release-candidate-independent-review.md',
+    'worker-evidence-sha256.txt': str(worker_evidence),
+    'full-package-sha256.txt': str(manifest),
+    'preimage-sha256.txt': '/tmp/peritus-parent-release377-source-exact.sha256',
+    'changed-source-sha256.txt': '/tmp/peritus-sol-release-candidate-final-changed-source.sha256',
+    'source-diff.patch': '/tmp/peritus-sol-release-candidate-baseline-to-final.patch',
+    'qualification-parent.json': '/tmp/peritus-parent-release-candidate-qualification-integrated.json',
+    'integration-driver.py.txt': '/tmp/peritus-parent-release-candidate-integrate.py',
+    'retention-driver.py.txt': __file__,
+})
+for label in ['verus', 'tests-default', 'tests-all', 'clippy', 'fmt', 'api', 'layout']:
+    files[f'{label}-parent.txt'] = f'/tmp/peritus-parent-release-candidate-{label}-integrated.log'
+
+assert not dest.exists(), dest
+dest.mkdir()
+for name, source in files.items():
+    shutil.copyfile(source, dest / name)
+    assert sha(dest / name) == sha(Path(source))
+(dest / 'audit.md').write_text('''# Release candidate construction correspondence
+
+This independently reviewed eight-file increment strengthens the actual release candidate-family constructors without changing their runtime admission, check order, const qualification, or stored fields. Four existing implementations move to a private construction module. Nominal identity and Git hash scans prove exact nonzero admission and retained bytes; platform, version, toolchain, profile, schema and candidate constructors prove complete supplied fields and observable error categories. Several rejected parameters share one stored error kind; the contracts model that actual observable representation.
+
+Author `/root/sol_acceptance_completion` supplied the implementation. Independent source reviewer `/root` read the complete patch, changed production bodies, stored-field views, existing error representation, new tests and external derived-Clone client. Every 64-file prior and 65-file final identity was checked against the exact frozen source, and all supplied evidence artifact hashes were verified. The parent then guarded integration of the exact eight paths and checked every final package identity before and after qualification.
+
+Integrated strict pinned Verus passed 377 verified with zero errors. Default and all-feature suites each passed 32 executable tests and one compile-fail doc test; Clippy, formatting, ordinary API scanning (3513 files / 14689 entries), and global source layout (4414 files) passed. These are checkpoint results, not newly discharged obligation counts. The worker's earlier layout failure belonged to its separate unfinished scheduler snapshot and is retained with attribution; the actual integrated layout gate subsequently passed.
+
+The supplied external client called the real derived Clone implementations for twelve public Copy types, proving complete values and fields without preconditions; it passed 13/0 after the library's 377/0. A supplied isolated false-contract control changed only require_revision's claimed error category while leaving the runtime unchanged. Verification rejected it at 373/4; exact restoration and subsequent library/client proof passed. No unsupported derived-Clone boundary is claimed.
+
+This proves deterministic input admission and supplied values, not digest provenance, collision resistance, identity issuance, Git object existence, version text, platform/toolchain truth, or manifest construction. The separate exact code-string and downstream ghost-predicate export increment is still pending independent review and integration. Global records, trusted enforcement, final develop synchronization and final-head hosted runners remain open; this record is not an obligation discharge or final shipping approval.
+''')
+record = {
+    'schema': 'peritus.formal-coverage.increment-review', 'schema_version': 1,
+    'status': 'reviewed-bounded-increment-not-obligation-discharge',
+    'recorded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'base_commit': '1aa9282ff2cfcbf8fac325f11f157f408d33ee30',
+    'implementation': '/root/sol_acceptance_completion',
+    'independent_source_reviewer': '/root',
+    'independent_review_kind': 'exact source and supplied evidence, followed by parent integrated qualification',
+    'source_files': 65, 'prior_source_files': 64, 'changed_source_files': 8,
+    'full_package_manifest_sha256': sha(dest / 'full-package-sha256.txt'),
+    'preimage_manifest_sha256': sha(dest / 'preimage-sha256.txt'),
+    'source_patch_sha256': sha(dest / 'source-diff.patch'),
+    'results': {
+        'parent_strict_verified': 377, 'proof_errors': 0,
+        'parent_default_executable_tests': 32, 'parent_default_compile_fail_doc_tests': 1,
+        'parent_all_features_executable_tests': 32, 'parent_all_features_compile_fail_doc_tests': 1,
+        'parent_clippy': 'passed', 'parent_format': 'passed',
+        'parent_api': 'passed 3513 files / 14689 entries',
+        'parent_layout': 'passed 4414 files',
+        'worker_derived_clone_client': '13 verified / 0 errors; library 377 / 0',
+        'worker_false_contract_negative': '373 verified / 4 errors; restored and reverified',
+        'final_head_hosted_ci': 'not run',
+    },
+    'artifact_original_paths': files,
+    'artifacts': {p.name: sha(p) for p in sorted(dest.iterdir()) if p.is_file()},
+}
+(dest / 'review.json').write_text(json.dumps(record, indent=2) + '\n')
+audit = root / 'docs/formal-coverage-audit.md'
+text = audit.read_text()
+heading = '## Release candidate constructor correspondence follow-up\n'
+anchor = '## Completion evidence still required\n'
+assert heading not in text and text.count(anchor) == 1
+text = text.replace(anchor, '''## Release candidate constructor correspondence follow-up
+
+The [release candidate constructor review](formal-coverage-evidence/release-candidate-construction/review.json) covers exact successful fields, nonzero admission, platform matrix slots and complete observable error kinds for the actual candidate-family constructors. The parent independently reviewed the eight-file change and all 64 prior / 65 final package identities before guarded integration. Integrated strict Verus passed 377/0; default and all-feature suites each passed 32 executable tests and one compile-fail doc test. Clippy, formatting, ordinary API and global source layout passed.
+
+A real external client proved exact results from twelve actual derived Clone implementations. An isolated false require_revision error contract was rejected at 373/4, followed by exact restoration and successful verification. These contracts describe supplied values and input checks; they do not establish digest provenance or external platform/manifest facts. Exact diagnostic strings and public ghost-predicate composition are in a separate pending-review increment. Final global records and hosted qualification remain open.
+
+''' + anchor)
+audit.write_text(text)
+for name, digest in record['artifacts'].items():
+    assert sha(dest / name) == digest
+print(json.dumps({'path': str(dest), 'artifacts': len(record['artifacts']), 'review_sha256': sha(dest / 'review.json')}, indent=2))

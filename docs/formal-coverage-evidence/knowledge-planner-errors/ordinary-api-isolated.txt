@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-errors/debug/xtask ordinary-api-check`
+ordinary-api-check passed: 3424 formal-boundary file(s), 14646 ordinary-safe executable entry point(s)

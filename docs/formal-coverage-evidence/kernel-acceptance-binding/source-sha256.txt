@@ -1,0 +1,3 @@
+5426b184bd3e1172879e0f5214908cc09765272de3c74223b069d6ee95c7b4c5  crates/foundation/peritus-kernel/src/inputs.rs
+8c394c7bc385666d83de572799dfe466fd560636ea9f947cd253f2a3ec3a0159  crates/foundation/peritus-kernel/src/reducer.rs
+d72a1f96e86ff0c8acef7fff83bb06661df4ed8c172b3064e692c5b0e3933423  crates/foundation/peritus-kernel/src/reducer/acceptance.rs

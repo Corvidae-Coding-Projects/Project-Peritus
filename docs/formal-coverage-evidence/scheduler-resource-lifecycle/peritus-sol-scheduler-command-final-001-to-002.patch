@@ -1,0 +1,107 @@
+diff --git a/tmp/peritus-sol-scheduler-command-final-source-001/src/state/lookup.rs b/tmp/peritus-sol-scheduler-command-final-source-002/src/state/lookup.rs
+index e958374..688d1d9 100644
+--- a/tmp/peritus-sol-scheduler-command-final-source-001/src/state/lookup.rs
++++ b/tmp/peritus-sol-scheduler-command-final-source-002/src/state/lookup.rs
+@@ -8,16 +8,12 @@ use crate::{DispatchId, SchedulerReservation, WorkId, WorkRecord, WorkerId, Work
+ verus! {
+ 
+ impl SchedulerState {
+-    /// Looks up a worker and proves every returned record has the requested identity.
+-    #[must_use]
+-    pub fn worker(&self, id: WorkerId) -> (result: Option<&WorkerRecord>)
++    /// Locates a worker with the production binary-search algorithm.
++    pub(crate) fn worker_index(&self, id: WorkerId) -> (result: Option<usize>)
+         ensures match result {
+-            Some(record) => {
+-                &&& record.spec_descriptor().spec_id() == id
+-                &&& exists |index: int| #![trigger self.spec_workers()[index]]
+-                    0 <= index < self.spec_workers().len()
+-                        && self.spec_workers()[index].spec_descriptor().spec_id() == id
+-                        && self.spec_workers()[index].spec_phase() == record.spec_phase()
++            Some(index) => {
++                &&& index < self.spec_workers().len()
++                &&& self.spec_workers()[index as int].spec_descriptor().spec_id() == id
+             },
+             None => true,
+         },
+@@ -51,20 +47,42 @@ impl SchedulerState {
+         if self.workers[base].descriptor().id().same(&id) {
+             proof {
+                 assert(self.spec_workers()[base as int].spec_descriptor().spec_id() == id);
+-                assert(exists |index: int| #![trigger self.spec_workers()[index]]
+-                    0 <= index < self.spec_workers().len()
+-                        && self.spec_workers()[index].spec_descriptor().spec_id() == id
+-                        && self.spec_workers()[index].spec_phase()
+-                            == self.spec_workers()[base as int].spec_phase()) by {
+-                    assert(0 <= base as int && (base as int) < self.spec_workers().len());
+-                }
+             }
+-            Some(&self.workers[base])
++            Some(base)
+         } else {
+             None
+         }
+     }
+ 
++    /// Looks up a worker and proves every returned record has the requested identity.
++    #[must_use]
++    pub fn worker(&self, id: WorkerId) -> (result: Option<&WorkerRecord>)
++        ensures match result {
++            Some(record) => {
++                &&& record.spec_descriptor().spec_id() == id
++                &&& exists |index: int| #![trigger self.spec_workers()[index]]
++                    0 <= index < self.spec_workers().len()
++                        && self.spec_workers()[index].spec_descriptor().spec_id() == id
++                        && self.spec_workers()[index].spec_phase() == record.spec_phase()
++            },
++            None => true,
++        },
++    {
++        let found_index = self.worker_index(id)?;
++        proof {
++            assert(self.spec_workers()[found_index as int].spec_descriptor().spec_id() == id);
++            assert(exists |index: int| #![trigger self.spec_workers()[index]]
++                0 <= index < self.spec_workers().len()
++                    && self.spec_workers()[index].spec_descriptor().spec_id() == id
++                    && self.spec_workers()[index].spec_phase()
++                        == self.spec_workers()[found_index as int].spec_phase()) by {
++                assert(0 <= found_index as int
++                    && (found_index as int) < self.spec_workers().len());
++            }
++        }
++        Some(&self.workers[found_index])
++    }
++
+     /// Looks up work and proves every returned record has the requested identity.
+     #[must_use]
+     pub fn work_item(&self, id: WorkId) -> (result: Option<&WorkRecord>)
+diff --git a/tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/worker_update.rs b/tmp/peritus-sol-scheduler-command-final-source-002/src/state/mutation/worker_update.rs
+index e0a269e..2c94f84 100644
+--- a/tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/worker_update.rs
++++ b/tmp/peritus-sol-scheduler-command-final-source-002/src/state/mutation/worker_update.rs
+@@ -137,6 +137,25 @@ pub fn set_worker_phase(
+     let ghost work = state.spec_work();
+     let ghost reservations = state.spec_reservations();
+     let ghost used_dispatches = state.spec_used_dispatches();
++    if let Some(index) = state.worker_index(id) {
++        proof {
++            assert(before[index as int].spec_descriptor().spec_id() == id);
++        }
++        set_worker_phase_at(state, index, id, phase);
++        proof {
++            assert(before == old(state).spec_workers());
++            assert(worker_phase_update_matches(
++                old(state).spec_workers(),
++                state.spec_workers(),
++                id,
++                phase,
++                true,
++            ));
++        }
++        return true;
++    }
++    // Valid scheduler states find retained workers above. Keep a complete fallback so this private
++    // mutator retains its exact result contract even for an unvalidated decoded state.
+     let mut index = 0;
+     while index < state.workers.len()
+         invariant

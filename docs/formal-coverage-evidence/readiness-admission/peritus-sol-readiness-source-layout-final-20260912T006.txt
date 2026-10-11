@@ -1,0 +1,5 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running `/tmp/peritus-sol-readiness-test-final-target/debug/xtask source-layout-check`
+error[PERITUS-XTASK-SOURCE-001]: source-layout-check found 1 violation(s)
+  - crates/foundation/peritus-kernel/src/reducer/waiver.rs: source has 407 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale

@@ -1,0 +1,2 @@
+    Checking peritus-run-knowledge v0.0.2 (/tmp/peritus-parent-readiness-review.q25p5n7e/crates/orchestration/peritus-run-knowledge)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.96s

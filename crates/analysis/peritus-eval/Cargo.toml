@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["evaluation", "agents", "statistics", "formal-verification"]
 categories = ["development-tools::testing"]
 
@@ -20,6 +20,10 @@ peritus-journal = { version = "=0.0.6", path = "../../state/peritus-journal" }
 peritus-model-protocol = { version = "=0.0.6", path = "../../model/peritus-model-protocol" }
 peritus-scheduler = { version = "=0.0.6", path = "../../orchestration/peritus-scheduler" }
 peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
+
+[package.metadata.peritus]
+owner = "E3"
+layer = "analysis"
 
 [lints]
 workspace = true

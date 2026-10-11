@@ -1,0 +1,10 @@
+Diff in /home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler/tests/replay_reconstruction.rs:79:
+         decode_scheduler_event(&encoded, CodecLimits::PRODUCTION)
+             .expect("modified affected identity remains a valid inert event field");
+ 
+-    let error = replay(&events).expect_err("derived affected set must match deterministic reduction");
++    let error =
++        replay(&events).expect_err("derived affected set must match deterministic reduction");
+     assert_eq!(error.kind(), SchedulerErrorKind::ReplayMismatch);
+     assert_eq!(error.detail(), "scheduler event differs from deterministic reduction");
+ }

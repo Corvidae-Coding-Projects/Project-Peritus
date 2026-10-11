@@ -7,9 +7,13 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["linux", "sandbox", "bubblewrap", "landlock", "seccomp"]
 categories = ["development-tools", "os::linux-apis"]
+
+[package.metadata.peritus]
+owner = "C3"
+layer = "runtime"
 
 [dependencies]
 peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }

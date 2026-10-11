@@ -1,0 +1,9 @@
+  274 crates/foundation/peritus-release-policy/src/candidate.rs
+  233 crates/foundation/peritus-release-policy/src/candidate/construction.rs
+  157 crates/foundation/peritus-release-policy/src/candidate/git.rs
+  183 crates/foundation/peritus-release-policy/src/candidate/platform.rs
+   87 crates/foundation/peritus-release-policy/src/candidate/version.rs
+  245 crates/foundation/peritus-release-policy/src/identity.rs
+   77 crates/foundation/peritus-release-policy/src/validation.rs
+  240 crates/foundation/peritus-release-policy/tests/construction.rs
+ 1496 total

@@ -1,0 +1,2 @@
+6658db35eb793d1787c1f673301948d03c0829e5f4bebf2fc93e2f189ca6d560  xtask/src/api_contract/expansion/attributes.rs
+4cf56d979b2b6b993d8b66c0b8fbd8e66c24ba633e3eae25283157fd8b0058e1  xtask/src/api_contract/expansion_tests.rs

@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 
 [dependencies]
 base64.workspace = true
@@ -17,6 +17,10 @@ peritus-provider-core = { version = "=0.0.6", path = "../peritus-provider-core" 
 peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
+
+[package.metadata.peritus]
+owner = "C5"
+layer = "model"
 
 [lints]
 workspace = true

@@ -1,0 +1,51 @@
+# Combined scheduler capacity performance validation
+
+## Scope and exact source
+
+This packet adds timing evidence only. It makes no production, proof, manifest, CI, or workflow changes and introduces no new benchmark shape.
+
+The measured package is the parent-integrated scheduler101 source plus the unchanged test-only dense performance probe:
+
+- combined scheduler101 manifest: `/tmp/peritus-parent-scheduler-combined.sha256`, 101 files, SHA-256 `feeaa698786b412f733ac0215fcd75466a526a0987c4578a12f9374ac33b4333`;
+- combined source was independently re-derived before measurement in `/tmp/peritus-sol-scheduler-combined-live-check-normalized-20260913T001.sha256`; its manifest SHA-256 is the same `feeaa698786b412f733ac0215fcd75466a526a0987c4578a12f9374ac33b4333` and byte comparison passed;
+- measured probe package manifest: `/tmp/peritus-sol-scheduler-combined-probe-package-20260913T001.sha256`, 102 files, SHA-256 `642f32673fa57f6f45f09d9c7d427e4aed6b37dbe06ccbf5ff2e7de274069113`;
+- post-run package recheck: `/tmp/peritus-sol-scheduler-combined-probe-package-recheck-20260913T001.sha256`, byte-identical to the measured package manifest;
+- exact overlay: the test-only `src/selection/performance_probe.rs` plus its `#[cfg(test)]` module declaration in `src/selection.rs`; patch `/tmp/peritus-sol-scheduler-combined-performance-overlay-20260913T001.patch`, SHA-256 `39641e29249f652161f734ac448680616f417f9bc55358fd8856393e603085e5`;
+- unchanged probe source: `/tmp/peritus-sol-scheduler-perf-dense-probe-20260913T001.rs`, SHA-256 `a817312a7f67804e10ac8e6a31d012529547e3cb293221ccdcb20265d8bb57ce`;
+- complete correspondence record: `/tmp/peritus-sol-scheduler-combined-probe-correspondence-20260913T001.txt`.
+
+The workspace `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, and the complete `peritus-codec`, `peritus-evidence`, `peritus-journal`, and `peritus-types` direct path-dependency manifests all matched the shared integration source exactly. The exact identities are recorded in the correspondence record and evidence manifest.
+
+The release test binary was `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release/release/deps/peritus_scheduler-9469d5ca2a851999`, SHA-256 `7e16a15d20dd872e865bd75ff97dcb3794d80795f3c020490fe14c6197aeb33f`.
+
+## Commands and results
+
+Both runs used the same reused disk-backed release target, `CARGO_BUILD_JOBS=1`, and `CCACHE_DISABLE=1`.
+
+```text
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 PERITUS_PERF_RESERVATIONS=1024 PERITUS_PERF_DIMENSIONS=256 PERITUS_PERF_SELECTION_REPEATS=7 PERITUS_PERF_DISPATCH_REPEATS=3 cargo test --release --package peritus-scheduler --lib dense_public_selection_and_dispatch_timings --locked -- --ignored --nocapture --test-threads=1
+
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 PERITUS_PERF_RESERVATIONS=3072 PERITUS_PERF_DIMENSIONS=256 PERITUS_PERF_SELECTION_REPEATS=3 PERITUS_PERF_DISPATCH_REPEATS=2 cargo test --release --package peritus-scheduler --lib dense_public_selection_and_dispatch_timings --locked -- --ignored --nocapture --test-threads=1
+```
+
+Both commands passed with exit 0. The first recorded seven selection and three dispatch samples; the second recorded three selection and two dispatch samples.
+
+| Shape / public path | A git base median ns | B frozen244 median ns | D resource-only aggregate median ns | E combined median ns | E/A | E/B | E/D |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1024x256 select | 699,595 | 24,102,984 | 670,372 | 660,232 | 0.944x | 0.0274x | 0.985x |
+| 1024x256 dispatch | 10,787,751 | 53,332,818 | 9,932,867 | 9,838,898 | 0.912x | 0.184x | 0.991x |
+| 3072x256 select | 2,995,514 | 84,704,761 | 2,047,449 | 2,026,566 | 0.677x | 0.0239x | 0.990x |
+| 3072x256 dispatch | 34,113,858 | 211,055,888.5 | 31,939,457.5 | 32,774,761.5 | 0.961x | 0.155x | 1.026x |
+
+On these retained shapes and samples, the combined-source medians reduce the frozen244 medians by 81.55% to 97.61%. They are 0.677x to 0.961x of the retained git-base medians and within 2.7% of the resource-only aggregate medians. This is bounded wall-clock evidence from one machine and run set. It is not an asymptotic proof, a universal latency guarantee, or evidence for unmeasured workloads.
+
+Raw logs:
+
+- 1024x256: `/tmp/peritus-sol-scheduler-combined-perf-1024x256-20260913T001.log`, SHA-256 `78ed97b4c2c6928482a944de15e393315e212398b8ad5122761017fdc0a5e66f`;
+- 3072x256: `/tmp/peritus-sol-scheduler-combined-perf-3072x256-20260913T001.log`, SHA-256 `6e41fe4d1b6f8e095b72611a24e15d5ce343096744e0bf5a73bca34a91fa9144`;
+- machine-generated A/B/C/D/E summary: `/tmp/peritus-sol-scheduler-combined-perf-summary-20260913T001.json`;
+- exact commands/results: `/tmp/peritus-sol-scheduler-combined-perf-commands-20260913T001.txt`.
+
+## Boundary
+
+The test-only probe constructs valid dense canonical scheduler state and calls the production public selection and dispatch decision paths. It performs no external I/O other than local timing output. Parent-owned combined qualification separately established strict proof, ordinary tests, actual daemon caller tests, Clippy, format, API, layout, and documentation gates for the exact combined source; this timing packet does not rerun or replace those gates.

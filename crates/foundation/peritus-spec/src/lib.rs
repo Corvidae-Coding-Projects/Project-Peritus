@@ -12,6 +12,7 @@ mod gate;
 mod gate_model;
 mod identity;
 mod policy;
+mod proofs;
 mod requirement;
 mod review;
 pub use contract::{AcceptanceContract, ContractBinding};

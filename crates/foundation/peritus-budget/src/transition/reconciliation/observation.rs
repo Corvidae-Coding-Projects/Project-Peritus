@@ -6,9 +6,9 @@ use crate::{
     BudgetReceiptKind, ReservationPhase, UsageFinality, UsageObservation,
 };
 
-mod terminal;
-
 mod in_bounds;
+mod refinement;
+mod terminal;
 
 use in_bounds::{apply_final_validated, apply_interim_validated};
 use terminal::{apply_overrun_validated, replay_final_observation_validated};

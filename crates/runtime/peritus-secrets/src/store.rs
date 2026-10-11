@@ -1,10 +1,16 @@
 //! Exact secret-store boundary and platform credential adapter.
 
+#[cfg(any(test, feature = "test-memory-store"))]
+mod memory;
+
 use peritus_sandbox::SecretReference;
 use peritus_types::ResourceId;
 use zeroize::Zeroize;
 
 use crate::{RecoveryClass, SecretError, SecretErrorKind, SecretMaterial, SecretOperation};
+
+#[cfg(any(test, feature = "test-memory-store"))]
+pub use memory::{MemoryCredentialStore, MemoryStoreOutcome};
 
 /// Truthful credential-store capability probe.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

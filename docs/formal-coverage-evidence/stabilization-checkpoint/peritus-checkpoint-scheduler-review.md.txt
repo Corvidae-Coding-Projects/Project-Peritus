@@ -1,0 +1,20 @@
+# Peritus scheduler proof-only checkpoint review
+
+**Verdict: PASS. Blockers: none in the reviewed source change.**
+
+Scope: compared `target/formal-stabilization/scheduler-before` with `crates/orchestration/peritus-scheduler`, limited to the requested scheduler fix. The package comparison has exactly two changed paths: `src/resource/addition/merge.rs` and the new `src/resource/addition/merge/advance_proofs.rs`.
+
+## Findings
+
+- No public contract, function precondition/postcondition, or `cursor_valid` invariant was weakened. `advance_right` retains the baseline signature, `requires`, and `ensures`; the only added item is a private child module containing a `pub(super) proof fn`, which is unavailable outside the private merge module and erased from executable code.
+- Runtime behavior is unchanged. In both versions, `advance_right` reads `right_entries[cursor.right]`, increments `cursor.right`, pushes that entry into `cursor.entries`, and returns the cursor. All new bindings and calls are `ghost` or inside `proof` blocks.
+- `advance_right_parts` is semantically sufficient. Its requirements are the revealed incoming `cursor_valid` conjuncts plus the existing `advance_right` branch condition. Its guarantees reconstruct the post-mutation cursor bounds, canonicality, strict ordering, length bound, exact `added_entries` prefix, per-kind quantity equality, and both next-cursor cross-order relations. The caller's explicit `usize -> nat` casts preserve the nonnegative cursor values and align helper arithmetic with the spec domains.
+- No trust escape appears in either final file: no `assume`, `admit`, axiom, trusted annotation, `external_body`, unsafe code, stub, or disabled proof. The helper proves its result through the existing checked sequence lemmas and `earlier_tag_is_less`.
+- The saved strict scheduler log reports `verification results:: 375 verified, 0 errors`. This review inspected that artifact but, per scope, did not rerun verification or builds.
+
+## Exact final SHA-256 hashes
+
+- `crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs`: `a793fef32138cf6a2a3887c09b3ac7ba622f92920351c914fdc0426520fcc548`
+- `crates/orchestration/peritus-scheduler/src/resource/addition/merge/advance_proofs.rs`: `18a7a512786e7821d9aec95c0b10a04d15fea9322dd81fd88fcb2d9fba578f41`
+
+Remaining verification gap: the combined app-runner/actual CI path still needs the parent lane's planned run; this is not a source-review blocker for the checkpoint.

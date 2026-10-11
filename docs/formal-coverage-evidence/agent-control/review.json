@@ -1,0 +1,53 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-increment-not-obligation-discharge",
+  "reviewer": "/root",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "review_date": "2026-09-12",
+  "implementation_agent": "/root/formal_runtime_audit",
+  "scope": "Four unconditional production control functions for pause, resume, cancellation request and cancellation completion; exact phase tags and terminal classification; reducer/replay call-site integration and regressions.",
+  "review_procedure": [
+    "Read all seven changed source/test files and checked actual reduce/replay dispatch, error mapping and outer admission behavior against prior production paths.",
+    "Independently checked the strict proof importing the actual production phase/control files, with no copied alternative definitions, and reran five public control integration tests.",
+    "Checked final package strict Verus, both test feature configurations and both standard dependency-inclusive Clippy runs.",
+    "Verified the seven source hashes and all five final qualification log hashes before retaining this checkpoint."
+  ],
+  "commands": {
+    "package_verus": "CCACHE_DIR=/tmp/peritus-formal-runtime-ccache cargo verus verify --package peritus-agent --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+    "default_tests": "CCACHE_DIR=/tmp/peritus-formal-runtime-ccache cargo test --package peritus-agent --all-targets --locked",
+    "no_default_tests": "CCACHE_DIR=/tmp/peritus-formal-runtime-ccache cargo test --package peritus-agent --all-targets --no-default-features --locked",
+    "default_clippy": "CCACHE_DIR=/tmp/peritus-formal-runtime-ccache cargo clippy --package peritus-agent --all-targets --all-features --locked -- -D warnings",
+    "no_default_clippy": "CCACHE_DIR=/tmp/peritus-formal-runtime-ccache cargo clippy --package peritus-agent --all-targets --no-default-features --locked -- -D warnings",
+    "independent_verus": "verus --crate-type lib --edition 2024 --no-cheating --rlimit 20 /tmp/peritus-parent-agent-control.rs"
+  },
+  "results": {
+    "package_verus_verified": 27,
+    "independent_verus_verified": 10,
+    "verus_errors": 0,
+    "default_tests_passed": 78,
+    "no_default_tests_passed": 70,
+    "independent_tests_passed": 5,
+    "both_standard_clippy_configurations": "passed"
+  },
+  "limits": [
+    "This source manifest covers the seven reviewed increment files, not all dependency/compiler inputs or a committed candidate.",
+    "The independent proof fixture retains its exact original absolute import paths; reproduce at that checkout path or regenerate path attributes to the same hashed production sources.",
+    "Control admission, rejection precedence, successful control-field updates and unchanged control fields on rejection are proved. Full reducer/replay/event-digest correspondence is not.",
+    "recovery_checked is a supplied caller fact; cancellation completion proves a phase update, not effect termination. An ordinary regression preserves an outstanding dispatched tool after the phase completes.",
+    "The unused legacy phase predicate still omits the actual streaming-to-requesting retry edge and requires further work.",
+    "Prior optional-feature and usage changes in lib.rs have separate review history.",
+    "No obligation discharge, exclusion, proof-impact approval or GitHub merge restriction is created; subsequent source changes need renewed review."
+  ],
+  "artifacts": {
+    "source-sha256.txt": "b0e649b6324eb073cd7deef44c468de7217ff3fd308f356c35e0252cea4c0384",
+    "verus-output.txt": "7889256fbc13d9118a3e6eff9f76dadae0f4b306da597c8557cb60d9b399f2b9",
+    "default-tests.txt": "4ac0e797b1049786aed7730a6d2811bcf64672655cdaf44aeecb706160907cd5",
+    "no-default-tests.txt": "755d3c5049e76022834d966cc72fcf1df626daa5990bcf7154f3995545e3dae2",
+    "default-clippy.txt": "cc92b74ed8627a78b5bfd006f1c570c3bffa9e18612a86d957427f4b53c91ac6",
+    "no-default-clippy.txt": "e0a828387c011b90486670134e37ddda678a8a75e6984394a851ef617a551d34",
+    "independent-tests.txt": "bdede0172cdfda0a86c087939c489fe8066d0b6ffa8a1e689bbe5fa077e2cd0c",
+    "independent-verus-output.txt": "0db84fdca805e20957a6a5f77ba941cb3a95665386d6103b420b85cfa71f3609",
+    "independent-proof-input.txt": "1400c12a218bd6a9d0c7664343a1d7cabad4b3dc6010afa6329603424940d5c2"
+  }
+}

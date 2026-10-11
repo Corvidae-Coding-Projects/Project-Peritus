@@ -1,0 +1,1 @@
+{"affected_packages": 66, "branch_transitions": 406, "candidate_sources": 3640, "inherited_record_transitions": 218, "obligation_statuses": {"in-progress": 153}, "proposed_transitions": 620, "protected_actual_sources": 3432, "protected_record_sources": 3390, "required_gates": 132}

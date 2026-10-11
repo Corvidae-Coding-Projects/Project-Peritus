@@ -15,6 +15,7 @@ mod error;
 mod evaluator;
 mod evidence;
 mod identity;
+mod model;
 pub mod prelude;
 mod qualification;
 mod qualification_admission;

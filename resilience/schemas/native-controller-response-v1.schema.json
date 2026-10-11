@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/resilience/native-controller-response-v1.schema.json",
+  "title": "Peritus H1 native controller response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage", "sequence", "instance_id", "scenario_id", "request_sha256", "payload"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "stage": {"enum": ["prepare", "inject", "recover", "cleanup"]},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 4},
+    "instance_id": {"type": "string", "pattern": "^h1-[0-9]+-[0-9]+-[0-9]+$"},
+    "scenario_id": {"type": "string", "pattern": "^h1\\.", "maxLength": 96},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "payload": {"type": "object"}
+  },
+  "allOf": [
+    {"if": {"properties": {"stage": {"const": "prepare"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/prepare"}}}},
+    {"if": {"properties": {"stage": {"const": "inject"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/inject"}}}},
+    {"if": {"properties": {"stage": {"const": "recover"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/recover"}}}},
+    {"if": {"properties": {"stage": {"const": "cleanup"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/cleanup"}}}}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "prepare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terminal", "journal_head_sha256"],
+      "properties": {
+        "terminal": {"$ref": "#/$defs/terminal"},
+        "journal_head_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "inject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reached"],
+      "properties": {"reached": {"type": "boolean"}}
+    },
+    "recover": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "acceptance", "journal", "artifacts", "projection", "corruption", "ownership", "retries", "resources", "temporary_objects", "artifact_count", "evidence", "milestones"],
+      "properties": {
+        "outcome": {"enum": ["rolled-back-uncommitted", "replayed-committed", "rebuilt-projection", "quarantined-corruption", "failed-closed", "discarded-unreferenced", "reconciled-owned-work", "retry-budget-exhausted"]},
+        "acceptance": {"$ref": "#/$defs/acceptance"},
+        "journal": {"enum": ["verified", "recovered-and-verified", "hash-divergence-detected", "unavailable"]},
+        "artifacts": {"enum": ["verified", "divergence-detected", "unavailable"]},
+        "projection": {"enum": ["verified", "rebuilt-and-verified", "divergent", "unavailable"]},
+        "corruption": {"$ref": "#/$defs/corruption"},
+        "ownership": {"$ref": "#/$defs/ownership"},
+        "retries": {"$ref": "#/$defs/retries"},
+        "resources": {"$ref": "#/$defs/resources"},
+        "temporary_objects": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "artifact_count": {"type": "integer", "minimum": 0, "maximum": 32},
+        "evidence": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/evidence"}},
+        "milestones": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/milestone"}}
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resources_released", "owned_work_remaining", "cleanup_steps"],
+      "properties": {
+        "resources_released": {"type": "boolean"},
+        "owned_work_remaining": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "cleanup_steps": {"type": "integer", "minimum": 0, "maximum": 65535}
+      }
+    },
+    "terminal": {"enum": ["active", "paused", "blocked", "failed", "cancelled", "exhausted", "accepted"]},
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terminal", "revision_bound", "evidence_current"],
+      "properties": {
+        "terminal": {"$ref": "#/$defs/terminal"},
+        "revision_bound": {"type": "boolean"},
+        "evidence_current": {"type": "boolean"}
+      }
+    },
+    "corruption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detected", "mutation_admitted"],
+      "properties": {
+        "detected": {"type": ["string", "null"], "enum": [null, "journal", "blob", "snapshot", "projection", "acceptance-evidence", "harness-promotion"]},
+        "mutation_admitted": {"type": "boolean"}
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scan_completed", "discovered", "resumed", "failed", "indeterminate", "unaccounted", "orphan_candidates_detected", "orphans_remaining"],
+      "properties": {
+        "scan_completed": {"type": "boolean"},
+        "discovered": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "resumed": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "failed": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "indeterminate": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "unaccounted": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "orphan_candidates_detected": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "orphans_remaining": {"type": "integer", "minimum": 0, "maximum": 65535}
+      }
+    },
+    "retries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "tool", "worker", "reconciliation"],
+      "properties": {
+        "provider": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "tool": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "worker": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "reconciliation": {"type": "integer", "minimum": 0, "maximum": 65535}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["events", "evidence_bytes", "peak_owned_processes", "cleanup_steps", "logical_ticks"],
+      "properties": {
+        "events": {"type": "integer", "minimum": 0},
+        "evidence_bytes": {"type": "integer", "minimum": 0},
+        "peak_owned_processes": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "cleanup_steps": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "logical_ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "path", "sha256", "bytes"],
+      "properties": {
+        "kind": {"enum": ["fault-injection", "journal", "recovery", "ownership", "resource", "final-state"]},
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$", "maxLength": 96},
+        "path": {"type": "string", "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$", "maxLength": 1024},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "milestone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "kind", "detail"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "kind": {"enum": ["prepared", "fault-armed", "fault-observed", "recovery-started", "reconciled", "inspected"]},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 1024}
+      }
+    }
+  }
+}

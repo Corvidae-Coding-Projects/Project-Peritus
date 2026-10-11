@@ -1,0 +1,329 @@
+# G4 product experience
+
+G4 composes Peritus into one local product command. The ordinary interface owns platform paths,
+workspace selection, trust, provider setup, daemon lifecycle, coding runs, and the terminal UI:
+
+```text
+peritus
+```
+
+No normal flow requires an IPC endpoint, an environment export, an internal identifier, or a
+hand-written TOML file. Published releases install through the root POSIX or PowerShell bootstrap;
+from a source checkout, `cargo xtask product-install` creates and installs the same checked native
+package.
+
+## First launch
+
+Peritus discovers the current Git repository, explains the exact repository it found, offers a
+restricted default, and remembers completed choices. A trusted repository receives a separate
+application-managed detached worktree below Peritus state; the user's current checkout is never the
+agent's writable target.
+
+Provider onboarding shows every available route and readiness state. Account-backed Codex and
+Claude routes delegate login and requests to the official `codex` and `claude` executables, which
+remain the credential owners. Direct OpenAI, Anthropic, Gemini, and compatible routes use hidden
+credential input and the operating-system credential store. Peritus stores only provider settings
+and opaque credential references. When at least two routes are selected, setup asks whether a role
+may automatically try another selected provider after its current provider is unavailable. The
+choice defaults off, is stored with provider settings, and returns to off if fewer than two routes
+remain. Offline mode remains available for inspection.
+
+If a selected account tool is missing, setup offers the vendor's native installer. Confirmation
+defaults to no. An approved download uses HTTPS with time and size limits; login starts only after
+installation succeeds. The daemon receives the tool's discovered canonical path, including native
+installation directories that the current terminal's PATH does not yet contain.
+
+Completed setup is resumable. Repeat launch skips healthy decisions, repairs only the provider or
+workspace that needs attention, regenerates immutable daemon configuration when settings change,
+and starts or reuses the packaged local daemon before entering the UI.
+
+The launcher records both the immutable daemon configuration and the installed daemon executable
+digest. After an upgrade it waits for an older daemon to withdraw its endpoint and release its
+instance lock before starting the replacement. If a connection later drops, the offline status
+displays `R restart/reconnect`; that action returns daemon ownership to the launcher, restores
+readiness, and resumes the durable application session.
+
+## Conversation-first work
+
+The default screen is a conversation with a persistent multiline composer. Type ordinary text to
+ask a question or request scoped work. Questions and diagnosis do not implicitly authorize changes.
+`/plan` and `/review` expose read-only tools; the latter uses a fresh reviewer invocation. When the
+request explicitly names an absolute file or directory outside the workspace, Peritus can list and
+read that reference without granting write or command access there. Exact casing is preferred. If a
+path component differs only by case, Peritus uses a single matching sibling and reports its actual
+on-disk spelling; multiple case-insensitive matches fail as ambiguous instead of being guessed.
+`/build <request>` explicitly commissions the checked delivery pipeline described below.
+
+Type `/` to discover commands, use arrows and Tab to complete them, and use Shift-Enter for
+newlines. PageUp/PageDown scroll public activity; `/details` expands bounded tool summaries.
+Drag across visible conversation text, right-click, then click Copy. The selected page stays
+still while daemon work continues; copying resumes live output. Screen wrapping does not add
+newlines to copied text. Esc, scrolling, typing, or clicking the composer clears the selection.
+Copy uses the desktop clipboard helper when available, then terminal OSC 52 as a fallback.
+If the terminal blocks clipboard writes, press F2 to freeze output and use native terminal
+selection and Copy; Esc, F2, or pasting resumes the live view.
+A paste enters the composer without submitting it.
+Raw tool arguments/results stay in the trace rather than being copied into the public activity
+projection. Provider-supplied display summaries appear as Thinking activity; opaque reasoning
+replay is never displayed. Summaries are requested only when the provider declares support;
+otherwise the working line displays elapsed time and the latest host status.
+The bounded activity window explicitly reports
+omitted earlier history; durable conversation records and traces remain available.
+
+Messages submitted during work show separate received and incorporated revisions. New input
+fences remaining stale tool calls at the next safe boundary; it cannot undo an effect already
+running. Ctrl-C or `/stop` interrupts work, while Ctrl-Q or `/quit` only detaches the client.
+`/new` preserves prior work. `/runs` opens the dashboard and Enter reopens a selected conversation.
+Every listed run resolves to its durable workbench conversation; there is no parallel run-local
+message composer.
+
+`/model` queries the configured provider's catalog without inference. Tab changes the role,
+`r` refreshes, and Enter selects the exact advertised ID. A retained cache is marked with its
+timestamp; a failed query cannot substitute a built-in list. Explicit manual fallback is
+`/model [writer|reviewer|fixer] manual MODEL_ID`. Availability and capability claims are not inferred
+from model names. Changes apply only at idle boundaries and create immutable provider bindings;
+interactive requests never silently fall back to another model.
+
+The same discovery is used during provider setup. Existing installations retain their exact
+selected account models when their state is upgraded; old immutable configurations are untouched.
+
+## Project initialization
+
+`/init` inspects local project sources and proposes a managed section in `AGENTS.md`. With
+`app.workbench-init-artifacts`, selected source bytes are captured in immutable chunks and the
+complete review is retained by digest. `/init next` and `/init previous` read bounded pages without
+limiting the total source or diff size. `/init source <manifest|commands|docs|instructions> <path>`
+adds an explicit workspace-relative source, including a nested project. Discovery and parser
+failures appear beside the affected source. `/init command <number>` toggles a discovered command;
+all commands remain unverified and initialization never executes them.
+
+`/init apply` approves the exact retained selection and patch. The daemon checks the actor,
+workspace, conversation revision, current read policy, complete source observations, and original
+instruction-file bytes before using the existing folder patch transaction and durable receipt.
+A changed source requires a new review. Restart preserves review pages and completed receipt replay;
+replaying an applied proposal does not overwrite a later independent edit. Managed markers and
+bytes outside the managed section retain the existing initialization behavior.
+
+Legacy peers keep their original message encoding. Artifact-capable peers send constant-size
+proposal references and individual source/command choices instead of complete source and diff
+bodies. Source capture and review transport are chunked; parsers and the existing final-file patch
+API still materialize individual manifest or instruction-file text when needed.
+
+## Checked coding runs
+
+Use `/build <request>` from the conversation:
+
+1. Enter `/build` followed by the desired coding outcome.
+2. Peritus sends the task and the selected writer, reviewer, and fixer providers to the daemon.
+3. Before code is written, a read-only design pass inspects the real repository and publishes a
+   detailed Markdown design beside the durable run trace. It covers acceptance criteria,
+   repository findings, architecture and interfaces, data and control flow, exact files and
+   modules, implementation slices, verification, and realistic risks. The writer and every fixer
+   receive that exact design; a material conversational redirect regenerates it before more code.
+   The harness requires a successful workspace listing and targeted file reads, then appends those
+   observed paths to the artifact as deterministic grounding evidence.
+4. The production D0 writer inspects and searches the real managed worktree, makes bounded edits,
+   runs structured commands, observes build/test failures, and retries before reporting readiness.
+   Its embedded production-engineering workflow and role skills require cohesive modules, thin
+   composition roots, explicit interfaces, separately testable deterministic logic, and disjoint
+   file ownership for parallel slices. An existing file cannot be written or patched until that
+   exact file has been read during the current developer turn.
+   A model turn is not the lifetime of the run: malformed, empty, timeout, and recoverable
+   transport outcomes receive bounded provider retries. Reaching a developer segment boundary
+   continues in a fresh repository-grounded segment with completed effects and evidence retained.
+   This keeps each model invocation bounded while allowing human goals to continue as required.
+   A malformed or ungrounded
+   task-level terminal receives its exact harness rejection on the next bounded attempt, so a model
+   can correct the contract rather than blindly repeat the same response.
+   Ordinary finite commands use `run_command`. A program that needs terminal input or background
+   progress uses `command_start`, which returns a stable run-owned handle. The writer can poll it,
+   write bounded input, resize its PTY, signal it, cancel its owned process tree, or reconcile an
+   interrupted observation. These controls route through the existing C4 router and daemon-owned
+   C2 process store; G4 does not carry a second shell or PTY manager. Output remains bounded and
+   artifact-backed. Live-handle recovery does not claim to recreate a lost terminal after a daemon
+   process restart; startup instead reconciles C2 state and exposes the product run as recoverable.
+5. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
+   runs source-readability checks and explicit format/compile/build/test/lint commands. Python checks
+   use the project's locked runner or local virtual environment when present. Uncovered files,
+   missing commands, failed
+   commands, or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy
+   a nested game or package.
+6. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
+   correctness, requested-behavior, build-coverage, test-coverage, and security findings block
+   regardless of the reviewer's severity wording. Findings remain open across daemon persistence
+   until a fixer addresses them and a fresh reviewer confirms their absence.
+7. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
+   gates and review until acceptance is complete, the user intervenes, or a concrete failure occurs.
+8. The run completes only when exact-target gates pass and no conserved policy blocker remains.
+   Completion retains the original task-level result plus any verified fixer summaries.
+
+Every run is also a durable conversation. Select it and press Enter or `m` to reply, redirect, add
+context, or say continue; Shift-Enter adds a line. Messages sent during active work are incorporated
+at the next safe writer or reviewer boundary. Messages sent to a Failed, Cancelled, Recovery
+required, Waiting for user, or Complete run resume the same managed worktree with the entire
+conversation. When the writer genuinely needs a material choice it asks one direct question and
+enters Waiting for user instead of guessing or abandoning the run.
+
+Peritus admits one active coding run per managed worktree, preventing two model loops from editing
+the same files at once. A completed but uncommitted deliverable also reserves that worktree until
+it is committed or discarded, preventing a later task from silently absorbing its files. Other
+configured workspaces remain independently usable.
+
+The daemon persists each visible phase: Queued, Designing, Writing, Checking, Reviewing, Fixing,
+Verifying, Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its
+bounded conversation. The Runs view shows that state as text as well as color, the Diff view shows
+tracked and newly created text files, and the Review view shows the latest review or repository
+checks. While a run is active, its status reports elapsed time, time since the last completed
+durable effect, current provider-turn elapsed time, provider requests, tool calls, retries,
+compactions, and normalized token/cache/cost counters when the provider supplies them. A
+provider-switch counter appears after an opted-in fallback. A long quiet provider call therefore
+remains visibly alive without inventing progress or forcing a manual retry at an arbitrary elapsed
+time. Normal interactive runs have no product or provider-turn wall-clock cutoff. The generous
+cumulative counters remain visible measurements. Human goals do not expose budget controls, and
+request counts, tool counts, tokens, cost, workspace growth, repeated findings, or unchanged fixes
+do not impose terminal thresholds. Per-operation resource and integrity bounds remain enforced.
+Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
+the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
+request digest. It syncs the bounded result after completion. An exact completed call replays its
+recorded result without repeating the effect. An interrupted filesystem operation may retry through
+its exact preconditions and no-op behavior, while an interrupted external command becomes an
+explicit ambiguous result and is never relaunched automatically.
+The run summary names the durable detailed-design path.
+After completion, the handoff shows the managed path, exact changed-file count, exact successful
+commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the
+deliverable paths, `p` to export an exact patch, or uppercase `D` to discard only those paths.
+Discard restores the task's starting file contents and staged entries. A Git repository created
+during the task is moved intact into `peritus/discarded` inside its enclosing Git directory;
+the completion status reports the recovery location. Press `i` and scroll to Status to read the
+complete recovery paths. Each recovery directory contains the saved
+`repository` and an `origin.json` identifying its original location. This preserves committed,
+uncommitted, and ignored files. To recover it, inspect that location and move the saved directory
+back only after preserving anything now occupying the original path. For an existing nested
+repository, discard restores its starting commit with a detached HEAD, or a fresh unborn branch
+if it originally had no commit. Existing branches remain unchanged. A `head.json` recovery
+record identifies the previous branch and a retained reference to its commit, including commits
+created while detached. The status reports this record too.
+Commit saves selected files in their owning repositories, including nested repositories, and
+leaves unrelated staged files alone. It first saves an exact source patch; that patch stays
+available through `p` if a commit hook or signing command fails. A saved patch remains available
+after restart even if the live workspace changed and needs fresh checks. Candidate fingerprints
+cover source contents, symlink targets, permissions, and nested repository state, so changes
+hidden by Git's status settings cannot reuse earlier qualification.
+After a partial commit, retrying `c` uses the retained source identity and saved patch; it refuses
+changed source and does not repeat a nested commit that already succeeded. Qualification tied
+to the old Git identity becomes stale. Task and follow-up drafts survive rejected submissions;
+if a connection is interrupted, the restored editor asks you to check Runs before resending
+because the original request may already have been accepted. A late rejection keeps a newer
+draft separate; reopen the same composer to recover the older one.
+Press `x` to cancel a selected run and `r` to retry a failed or cancelled run. After a daemon
+restart, an unfinished run is reconstructed as Recovery required and immediately resumed
+when its provider and workspace are still available; if automatic admission cannot proceed, it
+stays visibly recoverable for manual `r`. Durable conversation, candidate files, traces, and typed
+findings remain conserved.
+
+Provider roles default to the selected provider. In the Runs view, press `w`, `e`, or `f` to cycle
+the writer, reviewer, or fixer independently before starting the next task. If automatic failover
+was enabled in provider settings, each role first exhausts the selected provider's bounded retry
+policy, then considers the other configured tool-capable routes in stable order. A route that lacks
+required image capability is skipped through the same recorded boundary. Safety, refusal,
+cancellation, and ambiguous-acceptance outcomes stop without switching. The trace retains role,
+cycle, previous and next profile identities, and the stable reason for every switch. Press `?` for
+the full keyboard reference. Existing G2 trace, evolution, approval, and terminal views remain
+available.
+
+## Workspace status and settings
+
+The workspace menu uses plain path labels and text status:
+
+- `Ready` means the managed copy is present and clean.
+- `Ready — changes in progress` means the managed copy has uncommitted work and is preserved.
+- `Restricted` means the source repository is remembered without execution authority.
+- `Needs repair` means a retained path, repository identity, worktree, or registration no longer
+  matches.
+
+Forgetting a trusted entry removes it from the recent list but retains the registered managed copy
+for safe daemon recovery and later product cleanup. It never silently discards unfinished changes.
+An interrupted registration publication is recovered from the exact managed worktree rather than
+creating another copy. Repairing a previously trusted copy re-registers its actual validated
+detached HEAD, preserving both agent commits and unfinished files instead of demanding that it
+still match a newer source-checkout HEAD.
+
+Focused settings commands are:
+
+```text
+peritus open [PATH]     Open an explicit repository, defaulting to the current directory
+peritus resume          Open the current folder's most recently active saved conversation
+peritus update          Check for and install the latest public release
+peritus update --disable-checks
+                        Disable automatic startup checks; manual checks still work
+peritus update --enable-checks
+                        Re-enable automatic startup checks
+peritus providers       Add, remove, repair, or select providers
+peritus workspaces      Switch, add, trust, repair, or forget workspaces
+```
+
+Interactive product commands require terminal input and output; they return a usage error instead
+of waiting indefinitely in a pipe or CI job. The existing explicit daemon and protocol commands
+remain available for automation.
+
+## Native packaging and lifecycle
+
+`cargo xtask product-package` builds the host's release binaries and writes a native package below
+`dist/peritus-<platform>-<architecture>`. The package contains `peritus`, `peritusd`,
+`peritus-tui`, the platform sandbox helper, lifecycle scripts, a canonical manifest, and exact
+SHA-256 checksums. Generated binaries stay under ignored build/output directories and are never
+checked into Git.
+
+`cargo xtask product-install` builds that package and installs it for the current user. Install and
+upgrade verify every staged artifact before publishing package-owned files. Upgrade snapshots and
+restores only package-owned files if installation fails. Ordinary uninstall removes the command,
+daemon, TUI, helper, optional supervisor template, and legacy supervisor registration while
+preserving provider credentials, configuration generations, managed worktrees, run state, logs,
+and diagnostics.
+
+The public `install.sh` and `install.ps1` bootstraps resolve the latest GitHub release, select the
+native platform and architecture archive, verify its separately published SHA-256 value, and invoke
+the package's own install or upgrade adapter. A tagged release first creates a retained draft,
+builds and qualifies Linux, macOS, and Windows packages independently, uploads all native archives
+and checksums, and publishes only after every package job succeeds.
+
+Interactive startup offers an already cached release while optional discovery runs independently,
+at most once every six hours. Exiting cancels that discovery; a stalled network request does not
+hold up launch. `peritus update` checks immediately and supports cancellation. Archive downloads
+stream to checksum-bound staging without an archive-size or execution deadline. A retry hashes the
+retained prefix and appends only after validating the server's exact byte range; a complete matching
+archive is reused. Native extraction and installation retain owned process cleanup on cancellation.
+
+Unix updates verify both installed CLI and daemon versions and retain a durable outcome beside the
+staging directory. Windows schedules a detached helper that waits for launcher exit, applies the
+upgrade, verifies both versions, and records pending/running/succeeded/failed outcomes. An interrupted
+or failed installation requires inspecting that outcome and the installed pair before retrying;
+cancellation does not claim successful rollback. Automatic checks default on; `--disable-checks`
+and `--enable-checks` persist the user's choice without affecting manual checks.
+
+Hosted Linux, macOS, and Windows gates assemble native packages from already checked build outputs,
+exercise install, repeat command launch, upgrade, uninstall, the public bootstrap, and checksum
+rejection, and assert protected-state preservation. The production package command separately
+builds optimized locked artifacts.
+
+## Local state
+
+Peritus selects native per-user locations automatically:
+
+- Linux: XDG config/state/cache roots, falling back to `.config`, `.local/state`, and `.cache`.
+- macOS: Application Support plus the native user cache directory.
+- Windows: roaming configuration plus local state/cache directories.
+
+These roots contain immutable product-state generations, generated daemon configurations, the
+public approval registry, managed worktrees, workspace registrations, transaction namespaces,
+persisted product runs, and bounded daemon diagnostics. Secret values remain in the operating-system
+credential store.
+
+## Ergonomic contract
+
+The accepted interaction rules and their research sources live in
+[the G4 design](../.design/single-command-product-experience.md#ergonomic-design-basis). G4 shows
+useful defaults, names exact trust targets, uses recognizable paths instead of IDs, avoids unrelated
+first-run questions, preserves reversible choices, offers focused repair, keeps status textual
+rather than color-only, exposes cancellation and retry beside progress, and never makes the user
+reconstruct internal configuration.

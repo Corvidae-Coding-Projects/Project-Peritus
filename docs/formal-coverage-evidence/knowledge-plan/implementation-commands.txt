@@ -1,0 +1,8 @@
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo verus verify -p peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo test -p peritus-run-knowledge --locked --all-features
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo test -p peritus-run-knowledge --locked
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo clippy -p peritus-run-knowledge --locked --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo run --locked --package xtask -- source-layout-check
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo test -p peritus-context -p peritus-product-runner --locked --all-features
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-audit-01 CCACHE_DISABLE=1 cargo clippy -p peritus-context -p peritus-product-runner --locked --all-targets --all-features -- -D warnings

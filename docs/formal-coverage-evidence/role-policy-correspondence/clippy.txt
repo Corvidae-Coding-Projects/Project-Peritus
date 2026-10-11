@@ -1,0 +1,2 @@
+    Checking peritus-role v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-role)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s

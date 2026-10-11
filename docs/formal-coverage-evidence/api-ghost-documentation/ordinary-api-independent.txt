@@ -1,0 +1,4 @@
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.04s
+     Running `target/peritus-sol-api-ghost-docs-review-01/debug/xtask ordinary-api-check`
+ordinary-api-check passed: 3435 formal-boundary file(s), 14649 ordinary-safe executable entry point(s)

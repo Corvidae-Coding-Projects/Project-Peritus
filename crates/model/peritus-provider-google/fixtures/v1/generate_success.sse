@@ -1,0 +1,4 @@
+data: {"responseId":"gen_123","modelVersion":"gemini-3.7-flash","candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"héllo"}]}}],"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":1,"totalTokenCount":6}}
+
+data: {"responseId":"gen_123","modelVersion":"gemini-3.7-flash","candidates":[{"index":0,"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":5,"cachedContentTokenCount":2,"candidatesTokenCount":3,"totalTokenCount":8}}
+

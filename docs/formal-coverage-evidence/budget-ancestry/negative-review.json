@@ -1,0 +1,21 @@
+{
+  "schema": "peritus.formal-coverage.negative-check",
+  "schema_version": 1,
+  "mutation": "Remove the immediate-parent propagation conjunct from complete_refinement; retain the strengthened public transition contract and all executable code.",
+  "isolated_working_directory": "/tmp/peritus-parent-budget-negative.q1ucad1u",
+  "mutated_file": "crates/foundation/peritus-budget/src/reachability.rs",
+  "original_sha256": "1d6b6978747f7783833cdc73eef9b7329b63436cff18439608afec43cdcbc5a3",
+  "mutated_sha256": "ba4a8d07488289e7be7e87ea448eb146db678582c6fdb5d75295a2b1d1426315",
+  "command": "CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-budget-review cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+  "exit_code": 101,
+  "verified": 446,
+  "proof_errors": 3,
+  "observed_rejections": [
+    "New accepted_result_is_exact cannot establish the ancestor theorem immediate-parent precondition.",
+    "Existing source-equivalence proof loses its parent-propagation witness.",
+    "Existing refinement validator can no longer establish completeness against the weakened predicate."
+  ],
+  "positive_control": "The unmutated reviewed source passed 449 checks with zero errors in isolated and integrated runs.",
+  "scope": "Local strict-verifier enforcement of this dependency only; not a completed trusted-CI or all-contract-weakening test.",
+  "raw_output_sha256": "01cfd576bd5d303032ad3a8c8702452196f79ff478395fb6eec17c7b87e62e2c"
+}

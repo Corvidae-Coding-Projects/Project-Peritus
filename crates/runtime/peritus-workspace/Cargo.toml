@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["workspace", "git", "authorization", "formal-verification"]
 categories = ["filesystem", "development-tools"]
 
@@ -25,6 +25,10 @@ peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" 
 peritus-protocol = { version = "=0.0.6", path = "../../foundation/peritus-protocol" }
 peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 sha2.workspace = true
+
+[package.metadata.peritus]
+owner = "C1"
+layer = "runtime"
 
 [lints]
 workspace = true

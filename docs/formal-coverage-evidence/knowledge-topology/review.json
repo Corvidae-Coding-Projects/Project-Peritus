@@ -1,0 +1,39 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T21:22:42.872477+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_acceptance_completion",
+  "reviewer": "/root",
+  "reviewed_source_manifest_sha256": "186ad26d788c7c3f6c5abe97c0119c568e26e438bb2dd2fdbacb48485082d250",
+  "results": {
+    "implementation_strict_verified": 178,
+    "independent_strict_verified": 178,
+    "proof_errors": 0,
+    "implementation_tests_default": 16,
+    "implementation_tests_all_features": 16,
+    "independent_tests_all_features": 16,
+    "clippy": "passed",
+    "format": "passed",
+    "source_layout": "recorded attempt failed on separately owned active files; not a global pass",
+    "existing_knowledge_clone_warnings": 1
+  },
+  "artifacts": {
+    "audit.md": "ae45ce164932935820dd01b853369a9f137f8350875bfdf45c548270b7af8eb8",
+    "clippy.txt": "9d9a5a66a3627c74624a770396aa6207c92824fa3f9b52c5c3f771ca8ada8e1a",
+    "diff-check.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "full-package-sha256.txt": "b63a26d068c367b03412ef96976856ef37b3f1af8f22c185ea1016d478969d3f",
+    "implementation-commands.txt": "d758a2a7efcdb139fbbd51dd4b311719dfc41f3c6828d340f80805c5866e7dce",
+    "implementation-review.json": "ffa7fca9df294aabdffdbc5d35a33757a0a4a52445e4cfb3b1c88107dc64eec7",
+    "independent-commands.txt": "5937ae1a2a985652db434c6264396893372b36ea12f7c4872c22c64d20aa08fd",
+    "source-layout-transient-failure.txt": "091774088a9fb0847078601b42433361eb68fd4d795f871c98823bf43383005b",
+    "source-sha256.txt": "186ad26d788c7c3f6c5abe97c0119c568e26e438bb2dd2fdbacb48485082d250",
+    "tests-all-features.txt": "1054f188006c99997ce5e89b48fcb8ae56d679bb40ba7eee025c0c3e0c037e48",
+    "tests-default.txt": "4719c89277cbac830fa837bb8861740a6d8a6bddda96c3d05bc2fec3b117e9e7",
+    "tests-independent.txt": "efcf6c1a1e75289bdad77d75e243576f2dd08277069633c1473dc7d9a81c4ba6",
+    "verus-implementation.txt": "b83ec348ed6c93012723ad5bd8f4d45fa8f9971dabf846c63b124b74f9a90321",
+    "verus-independent.txt": "412ef45ac3aafdd0fe0914ea0532622324197df7de03bdc672461a2bab5ac1bc"
+  }
+}

@@ -1,0 +1,364 @@
+--- a/crates/foundation/peritus-kernel/src/aggregate.rs
++++ b/crates/foundation/peritus-kernel/src/aggregate.rs
+@@ -18,7 +18,7 @@
+ use crate::{ActionState, AttemptState, ReviewState, RunState, TurnState, WaiverState};
+ 
+ /// Complete authoritative B0 state for one session event stream.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct KernelAggregate {
+     pub(crate) project_id: ProjectId,
+     pub(crate) revision: RevisionTuple,
+@@ -59,6 +59,39 @@
+ }
+ 
+ impl KernelAggregate {
++    /// Exact scalar fields preserved by cloning.
++    pub closed spec fn scalar_clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.project_id == right.project_id
++            && left.revision == right.revision
++            && left.contract_binding == right.contract_binding
++            && left.session == right.session
++            && left.head_event_id == right.head_event_id
++            && left.last_sequence == right.last_sequence
++    }
++
++    /// Exact sequence fields preserved by cloning.
++    pub closed spec fn sequence_clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.accepted_command_ids@ == right.accepted_command_ids@
++            && left.event_ids@ == right.event_ids@
++            && left.runs@ == right.runs@
++            && left.attempts@ == right.attempts@
++            && left.turns@ == right.turns@
++            && left.reviews@ == right.reviews@
++            && left.waivers@ == right.waivers@
++    }
++
++    /// Semantic action fields preserved by cloning.
++    pub closed spec fn action_clone_equivalent(left: &Self, right: &Self) -> bool {
++        ActionState::sequence_clone_equivalent(left.actions@, right.actions@)
++    }
++
++    /// Exact scalar/sequence and semantic action fields preserved by cloning.
++    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        Self::scalar_clone_equivalent(left, right)
++            && Self::sequence_clone_equivalent(left, right)
++            && Self::action_clone_equivalent(left, right)
++    }
++
+     /// Specification view of the exact current revision.
+     pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
+     /// Specification view of stored review-cycle states.
+@@ -205,4 +238,51 @@
+     pub fn is_valid(&self) -> bool { validation::is_valid(self) }
+ }
+ 
++impl Clone for KernelAggregate {
++    fn clone(&self) -> (result: Self)
++        ensures
++            Self::scalar_clone_equivalent(self, &result),
++            Self::sequence_clone_equivalent(self, &result),
++            Self::action_clone_equivalent(self, &result),
++            Self::clone_equivalent(self, &result),
++            result.spec_revision() == self.spec_revision(),
++            result.spec_reviews() == self.spec_reviews(),
++            result.spec_waivers() == self.spec_waivers(),
++    {
++        let accepted_command_ids = self.accepted_command_ids.clone();
++        let event_ids = self.event_ids.clone();
++        let runs = self.runs.clone();
++        let attempts = self.attempts.clone();
++        let turns = self.turns.clone();
++        let actions = ActionState::clone_sequence(self.actions.as_slice());
++        let reviews = self.reviews.clone();
++        let waivers = self.waivers.clone();
++        proof {
++            assert(accepted_command_ids@ =~= self.accepted_command_ids@);
++            assert(event_ids@ =~= self.event_ids@);
++            assert(runs@ =~= self.runs@);
++            assert(attempts@ =~= self.attempts@);
++            assert(turns@ =~= self.turns@);
++            assert(reviews@ =~= self.reviews@);
++            assert(waivers@ =~= self.waivers@);
++        }
++        Self {
++            project_id: self.project_id,
++            revision: self.revision,
++            contract_binding: self.contract_binding,
++            session: self.session,
++            head_event_id: self.head_event_id,
++            last_sequence: self.last_sequence,
++            accepted_command_ids,
++            event_ids,
++            runs,
++            attempts,
++            turns,
++            actions,
++            reviews,
++            waivers,
++        }
++    }
++}
++
+ } // verus!
+--- a/crates/foundation/peritus-kernel/src/authorization.rs
++++ b/crates/foundation/peritus-kernel/src/authorization.rs
+@@ -10,7 +10,7 @@
+ verus! {
+ 
+ /// Non-authorizing record that B1 checked one exact action-bound capability use.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct ActionAuthorizationWitness {
+     transition_digest: Sha256Digest,
+     resource_id: ResourceId,
+@@ -18,6 +18,14 @@
+ }
+ 
+ impl ActionAuthorizationWitness {
++    /// Exact semantic fields preserved when an authorization witness is cloned.
++    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.transition_digest == right.transition_digest
++            && left.resource_id == right.resource_id
++            && left.capability_name.spec_value() == right.capability_name.spec_value()
++            && left.capability_name.spec_bytes() == right.capability_name.spec_bytes()
++    }
++
+     #[allow(clippy::too_many_arguments)]
+     pub(crate) fn from_transition(
+         action_id: ActionId,
+@@ -56,4 +64,16 @@
+     pub const fn capability_name(&self) -> &CapabilityName { &self.capability_name }
+ }
+ 
++impl Clone for ActionAuthorizationWitness {
++    fn clone(&self) -> (result: Self)
++        ensures Self::clone_equivalent(self, &result),
++    {
++        Self {
++            transition_digest: self.transition_digest,
++            resource_id: self.resource_id,
++            capability_name: self.capability_name.clone(),
++        }
++    }
++}
++
+ } // verus!
+--- a/crates/foundation/peritus-kernel/src/command.rs
++++ b/crates/foundation/peritus-kernel/src/command.rs
+@@ -52,7 +52,7 @@
+ }
+ 
+ /// Complete requests understood by the lifecycle kernel.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+ pub enum KernelCommand {
+     PauseSession,
+     ResumeSession,
+--- a/crates/foundation/peritus-kernel/src/state/action.rs
++++ b/crates/foundation/peritus-kernel/src/state/action.rs
+@@ -33,7 +33,7 @@
+ }
+ 
+ /// Current state of one exact action.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct ActionState {
+     id: ActionId,
+     turn_id: TurnId,
+@@ -46,6 +46,55 @@
+ }
+ 
+ impl ActionState {
++    /// Exact semantic fields preserved when an action state is cloned.
++    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.id == right.id
++            && left.turn_id == right.turn_id
++            && left.digest == right.digest
++            && left.actor_id == right.actor_id
++            && left.role == right.role
++            && left.environment_id == right.environment_id
++            && left.phase == right.phase
++            && match (&left.authorization, &right.authorization) {
++                (Some(left), Some(right)) =>
++                    ActionAuthorizationWitness::clone_equivalent(left, right),
++                (None, None) => true,
++                _ => false,
++            }
++    }
++
++    pub(crate) closed spec fn sequence_clone_equivalent(
++        left: Seq<ActionState>,
++        right: Seq<ActionState>,
++    ) -> bool {
++        left.len() == right.len()
++            && forall |index: int| #![auto]
++                0 <= index < left.len()
++                    ==> Self::clone_equivalent(&left[index], &right[index])
++    }
++
++    pub(crate) fn clone_sequence(actions: &[Self]) -> (result: Vec<Self>)
++        ensures Self::sequence_clone_equivalent(actions@, result@),
++    {
++        let mut result = Vec::with_capacity(actions.len());
++        let mut index = 0;
++        while index < actions.len()
++            invariant
++                index <= actions.len(),
++                result@.len() == index,
++                forall |prior: int| #![auto]
++                    0 <= prior < index ==> Self::clone_equivalent(
++                        &actions@[prior],
++                        &result@[prior],
++                    ),
++            decreases actions.len() - index,
++        {
++            result.push(actions[index].clone());
++            index += 1;
++        }
++        result
++    }
++
+     pub(crate) const fn proposed(
+         id: ActionId,
+         turn_id: TurnId,
+@@ -98,4 +147,33 @@
+     pub(crate) const fn set_phase(&mut self, phase: ActionPhase) { self.phase = phase; }
+ }
+ 
++impl Clone for ActionState {
++    fn clone(&self) -> (result: Self)
++        ensures Self::clone_equivalent(self, &result),
++    {
++        if let Some(witness) = &self.authorization {
++            return Self {
++                id: self.id,
++                turn_id: self.turn_id,
++                digest: self.digest,
++                actor_id: self.actor_id,
++                role: self.role,
++                environment_id: self.environment_id,
++                phase: self.phase,
++                authorization: Some(witness.clone()),
++            };
++        }
++        Self {
++            id: self.id,
++            turn_id: self.turn_id,
++            digest: self.digest,
++            actor_id: self.actor_id,
++            role: self.role,
++            environment_id: self.environment_id,
++            phase: self.phase,
++            authorization: None,
++        }
++    }
++}
++
+ } // verus!
+--- a/crates/foundation/peritus-kernel/src/reducer.rs
++++ b/crates/foundation/peritus-kernel/src/reducer.rs
+@@ -123,19 +123,23 @@
+         };
+         let original = self;
+         let mut next = original.clone();
+-        next.project_id = original.project_id;
+-        next.revision = original.revision;
+-        next.contract_binding = original.contract_binding;
+-        next.head_event_id = original.head_event_id;
+-        next.last_sequence = original.last_sequence;
+         let previous_event_id = original.head_event_id;
++        let ghost apply_input_checkpoint = next;
+         let applied = match apply_command(&mut next, &command, &inputs) {
+             Ok(applied) => applied,
+             Err(error) => return KernelOutcome::Rejected { aggregate: original, error },
+         };
+         proof {
++            if matches!(command, KernelCommand::EvaluateAcceptance { .. })
++                && applied.event_kind == KernelEventKind::AcceptanceAccepted
++            {
++                acceptance::authorization_follows_clone(
++                    &apply_input_checkpoint, &original, &inputs);
++            }
+             if let KernelCommand::GrantWaiver { finding_id } = &command {
+                 if applied.event_kind == KernelEventKind::WaiverGranted {
++                    waiver_correspondence::grant_authorized_is_extensional(
++                        &apply_input_checkpoint, &original, *finding_id, &inputs);
+                     assert(waiver_grant_recorded(&next, *finding_id, &inputs));
+                 }
+             }
+@@ -160,6 +164,8 @@
+                     grant_checkpoint.expose_internal_views();
+                     next.expose_internal_views();
+                     original.expose_internal_views();
++                    waiver_correspondence::grant_revision_follows_clone(
++                        &apply_input_checkpoint, &grant_checkpoint, &original);
+                     assert(grant_checkpoint.spec_revision() == original.spec_revision());
+                     waiver_correspondence::grant_recorded_is_extensional(
+                         &grant_checkpoint, &next, *finding_id, &inputs);
+--- a/crates/foundation/peritus-kernel/src/reducer/acceptance.rs
++++ b/crates/foundation/peritus-kernel/src/reducer/acceptance.rs
+@@ -12,6 +12,20 @@
+ 
+ verus! {
+ 
++pub(super) proof fn authorization_follows_clone(
++    cloned: &KernelAggregate,
++    original: &KernelAggregate,
++    inputs: &ReducerInputs<'_>,
++)
++    requires
++        inputs.spec_acceptance_authorized(cloned.revision),
++        cloned.spec_revision() == original.spec_revision(),
++    ensures inputs.spec_acceptance_authorized(original.revision),
++{
++    cloned.expose_internal_views();
++    original.expose_internal_views();
++}
++
+ pub(super) fn apply(
+     state: &mut KernelAggregate,
+     command: &KernelCommand,
+--- a/crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs
++++ b/crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs
+@@ -68,6 +68,7 @@
+             KernelCommand::GrantWaiver { finding_id } =>
+                 transition.spec_event().spec_kind() == KernelEventKind::WaiverGranted ==>
+                     transition.spec_event().spec_subject() == KernelSubject::Waiver(finding_id)
++                    && waiver_grant_authorized(before, finding_id, inputs)
+                     && waiver_grant_recorded(
+                         &transition.spec_aggregate(), finding_id, inputs),
+             _ => true,
+@@ -173,4 +174,32 @@
+     ensures waiver_grant_recorded(current, finding_id, inputs),
+ {}
+ 
++pub(super) proof fn grant_authorized_is_extensional(
++    established: &KernelAggregate,
++    current: &KernelAggregate,
++    finding_id: FindingId,
++    inputs: &ReducerInputs<'_>,
++)
++    requires
++        waiver_grant_authorized(established, finding_id, inputs),
++        current.spec_revision() == established.spec_revision(),
++        current.spec_reviews() == established.spec_reviews(),
++        current.spec_waivers() == established.spec_waivers(),
++    ensures waiver_grant_authorized(current, finding_id, inputs),
++{}
++
++pub(super) proof fn grant_revision_follows_clone(
++    apply_input: &KernelAggregate,
++    granted: &KernelAggregate,
++    original: &KernelAggregate,
++)
++    requires
++        granted.revision == apply_input.revision,
++        apply_input.spec_revision() == original.spec_revision(),
++    ensures granted.spec_revision() == original.spec_revision(),
++{
++    apply_input.expose_internal_views();
++    granted.expose_internal_views();
++}
++
+ } // verus!

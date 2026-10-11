@@ -1,0 +1,13 @@
+# Isolated cwd: /tmp/peritus-parent-obligations-proof.6ib_z8mo
+# Integrated cwd: /home/doll/Project-Peritus/.worktrees/formal-coverage
+export CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent
+# Strict verification ran in both trees; the integrated source matched all 36 package hashes.
+cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+# Isolated default tests:
+cargo test --locked --package peritus-obligations
+# Isolated and integrated all-feature tests:
+cargo test --locked --all-features --package peritus-obligations
+# Isolated lint/format:
+cargo clippy --locked --package peritus-obligations --all-targets --all-features -- -D warnings
+cargo fmt --package peritus-obligations -- --check
+# negative-role.json records the exact mutation and verification command; source was restored in a finally block and verified again.

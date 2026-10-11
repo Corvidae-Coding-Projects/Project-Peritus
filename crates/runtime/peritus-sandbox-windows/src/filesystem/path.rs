@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", test))]
 use std::path::Path;
 
 use peritus_sandbox::SandboxPath;
@@ -57,7 +57,7 @@ impl WindowsPath {
     ///
     /// # Errors
     /// Rejects non-drive paths or invalid native syntax.
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", test))]
     pub fn from_canonicalized(path: &Path) -> Result<Self, WindowsError> {
         let mut units = native_units(path.as_os_str())?;
         let extended_prefix =

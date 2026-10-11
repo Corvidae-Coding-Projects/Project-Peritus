@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["agents", "launcher", "developer-tools"]
 categories = ["command-line-utilities", "development-tools"]
 
@@ -44,6 +44,10 @@ zeroize.workspace = true
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
 process-wrap = { workspace = true, features = ["tokio1", "kill-on-drop"] }
+
+[package.metadata.peritus]
+owner = "G4"
+layer = "app"
 
 [lints]
 workspace = true

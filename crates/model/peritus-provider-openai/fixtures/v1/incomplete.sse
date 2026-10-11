@@ -1,0 +1,6 @@
+event: response.created
+data: {"type":"response.created","sequence_number":1,"response":{"id":"resp_incomplete","model":"gpt-test","status":"in_progress"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":2,"output_index":0,"item":{"id":"msg_incomplete","type":"message"}}
+

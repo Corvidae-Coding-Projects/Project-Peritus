@@ -1,0 +1,9 @@
+67c142a5f941cb5b9b6513b84d4d28e5ee5ec7a24cbb7a3788da87369aba57a0  /tmp/peritus-sol-release-output-checkpoint-20260912T001.md
+849e5b5d5a8927f8414e897cfdb6f5ec658f70c9d9777340c9ded600c5758d7e  /tmp/peritus-sol-release-output-source-files-20260912T001.txt
+88634c8e6304cbf8c923a2912cef2386b1f8ebc265222560e9bbbe20ce955c86  /tmp/peritus-sol-release-output-source-20260912T001.sha256
+90e6205f2cd4e685a82f0a157a40c7cf2846f9235f0a94098b8b8fc9e9ac33d4  /tmp/peritus-sol-release-output-verus-final-20260912T002.log
+5a8713cc0a5c1a4ccd0010663e8dec357133d596364706e818b5db861de4e6be  /tmp/peritus-sol-readiness-four-package-tests-final-20260912T001.log
+da57dac9e1491ecca6f8b518019cfd3863002a3e8134a5278f293fbbbd5c9aa5  /tmp/peritus-sol-readiness-four-package-clippy-final-20260912T001.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /tmp/peritus-sol-readiness-four-package-fmt-final-20260912T001.log
+657dd79fecbb077dda4eea9db7fb4e8cdbabcd1134b0f5801cabec636f0bb8dc  /tmp/peritus-sol-release-output-ordinary-api-final-20260912T002.log
+ce03613ca848b34218267b68bbaec5b2b3d2f77ee27d58c058faf03e79a569b4  /tmp/peritus-sol-release-output-source-layout-final-20260912T002.log

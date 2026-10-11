@@ -1,0 +1,19 @@
+   Compiling typenum v1.20.1
+   Compiling cpufeatures v0.3.0
+   Compiling cfg-if v1.0.4
+   Compiling hybrid-array v0.4.14
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling digest v0.11.3
+   Compiling sha2 v0.11.0
+   Compiling peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-codec)
+   Compiling peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-context)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.93s
+     Running tests/reuse_matrix.rs (target/formal-knowledge-parent/debug/deps/reuse_matrix-783cc0d073113beb)
+
+running 2 tests
+test changed_source_requires_new_digest_bound_context_before_selection ... ok
+test deterministic_selection_retains_full_provenance_and_packet_order ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

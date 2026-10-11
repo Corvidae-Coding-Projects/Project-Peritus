@@ -1,0 +1,16 @@
+80-queue-running-mutation: exit 101; original source restored
+error: postcondition not satisfied
+verification results:: 465 verified, 1 errors
+error: could not compile `peritus-scheduler` (lib) due to 1 previous error
+81-queue-attempt-mutation: exit 101; original source restored
+error: postcondition not satisfied
+verification results:: 465 verified, 1 errors
+error: could not compile `peritus-scheduler` (lib) due to 1 previous error
+82-legacy-occupancy-mutation: exit 101; original source restored
+error: postcondition not satisfied
+verification results:: 465 verified, 1 errors
+error: could not compile `peritus-scheduler` (lib) due to 1 previous error
+83-semantic-version-mutation: exit 101; original source restored
+error: postcondition not satisfied
+verification results:: 465 verified, 1 errors
+error: could not compile `peritus-scheduler` (lib) due to 1 previous error

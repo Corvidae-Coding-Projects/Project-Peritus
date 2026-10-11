@@ -1,0 +1,5 @@
+    Blocking waiting for file lock on build directory
+    Checking peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+    Checking peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-spec)
+    Checking peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.16s

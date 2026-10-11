@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/xtask-88f979add953e9b2)
+...........................................kill: sending signal to 574476 failed: No such process
+.........................
+----------------------------------------------------------------------
+Ran 68 tests in 10.405s
+
+OK

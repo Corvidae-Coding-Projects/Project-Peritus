@@ -1,0 +1,781 @@
+{
+  "func-details": {
+    "peritus_product_runner::accounting::ProductRunProgress::output_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::apply_usage": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::work::WorkEvent::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::option::impl&%6::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::checked_work": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::model_requests": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::work::WorkEvent::arrow_ModelRequest_retry": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::peak_rss_bytes": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::provider_failovers": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::observation_count_fits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::is_work_update_of": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_workspace_growth_bytes": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingError::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::num::impl&%8::checked_add": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::num::impl&%9::checked_add": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::compactions": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_provider_cost_microunits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::total_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::clone::impls::impl&%41::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::num::impl&%9::checked_sub": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::option::is_some": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_cached_input_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::checked_usage": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::option::impl&%48::from_residual": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::pervasive::cloned": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_input_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::provider_cost_microunits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::elapsed_millis": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::clone::impls::impl&%17::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::option::spec_unwrap": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::usage_observations": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOTAL_TOKENS": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::control_flow::spec_from": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::usage_fits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::work::WorkEvent::arrow_retry": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::work_fits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::usage::UsageSnapshot::empty": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::usage::UsageSnapshot::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::pervasive::strictly_cloned": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::option::OptionAdditionalFns::arrow_0": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_MODEL_REQUESTS": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_compactions": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_workspace_bytes": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "verus_builtin::impl&%7::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::workspace_bytes": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOOL_CALLS": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::usage::replacement_fits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::clone::impls::impl&%6::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_model_requests": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_provider_failovers": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::cached_input_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::function::axiom_fn_mut_call_requires": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::result::is_err": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::is_usage_update_of": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::apply_work": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_usage_observations": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::control_flow::spec_from_blanket_identity": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_elapsed_millis": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::tool_calls": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::clone::impls::impl&%15::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_budget_violation": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::result::impl&%28::from_residual": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::option::impl&%47::branch": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::result::is_ok": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_total_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::input_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_tool_calls": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_retries": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_peak_rss_bytes": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::option::is_none": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::function::axiom_fn_mut_call_ensures": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "verus_builtin::impl&%9::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "alloc::boxed::impl&%15::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::std_specs::option::impl&%0::arrow_0": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::num::impl&%8::checked_sub": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::AccountingState::numeric_usage_fits": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::usage::replace": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::result::impl&%27::branch": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "core::clone::Clone::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::spec_output_tokens": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::retries": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::workspace_growth_bytes": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_COST_MICROUNITS": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_PEAK_RSS_BYTES": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::limits::BudgetViolation::clone": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "peritus_product_runner::accounting::ProductRunProgress::budget_violation": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    }
+  },
+  "verification-results": {
+    "encountered-error": false,
+    "encountered-vir-error": false,
+    "success": true,
+    "verified": 34,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "times-ms": {
+    "verus-build": {
+      "profile": "release",
+      "version": "0.2026.08.09.92f466f"
+    },
+    "num-threads": 1,
+    "total": 4512,
+    "estimated-cpu-time": 4512,
+    "rust": {
+      "total": 2633,
+      "init-and-types": 423,
+      "trait-conflicts": 36,
+      "compile": 2174
+    },
+    "verification": {
+      "total": 1683,
+      "vir": {
+        "total": 1313,
+        "hir": 732,
+        "import": 389,
+        "rust-to-vir": 85
+      }
+    },
+    "total-verify": 347,
+    "total-verify-module-times": [
+      {
+        "module": "accounting::usage",
+        "time": 123
+      },
+      {
+        "module": "accounting::work",
+        "time": 101
+      },
+      {
+        "module": "accounting",
+        "time": 67
+      },
+      {
+        "module": "accounting::limits",
+        "time": 55
+      }
+    ],
+    "air": {
+      "total": 177,
+      "module-times": [
+        {
+          "module": "accounting::usage",
+          "time": 53
+        },
+        {
+          "module": "accounting::work",
+          "time": 44
+        },
+        {
+          "module": "accounting",
+          "time": 42
+        },
+        {
+          "module": "accounting::limits",
+          "time": 36
+        }
+      ]
+    },
+    "smt": {
+      "total": 88,
+      "smt-init": 0,
+      "rlimit-init": 3077,
+      "smt-init-module-times": [
+        {
+          "module": "accounting",
+          "time": 0,
+          "time-micros": 453,
+          "rlimit": 422
+        },
+        {
+          "module": "accounting::limits",
+          "time": 0,
+          "time-micros": 207,
+          "rlimit": 234
+        },
+        {
+          "module": "accounting::work",
+          "time": 0,
+          "time-micros": 165,
+          "rlimit": 973
+        },
+        {
+          "module": "accounting::usage",
+          "time": 0,
+          "time-micros": 149,
+          "rlimit": 1448
+        }
+      ],
+      "smt-run": 88,
+      "rlimit-run": 226683,
+      "smt-run-module-times": [
+        {
+          "module": "accounting::usage",
+          "time": 41,
+          "time-micros": 41504,
+          "rlimit": 108417,
+          "function-breakdown": [
+            {
+              "function": "peritus_product_runner::accounting::usage::replace",
+              "mode:": "exec",
+              "time": 2,
+              "time-micros": 2892,
+              "rlimit": 12530,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::usage::UsageSnapshot::clone",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 52,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::usage::UsageSnapshot::empty",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 516,
+              "rlimit": 1568,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::AccountingState::checked_usage",
+              "mode:": "exec",
+              "time": 33,
+              "time-micros": 33674,
+              "rlimit": 80946,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::AccountingState::apply_usage",
+              "mode:": "exec",
+              "time": 4,
+              "time-micros": 4368,
+              "rlimit": 13371,
+              "success": true
+            }
+          ]
+        },
+        {
+          "module": "accounting::work",
+          "time": 35,
+          "time-micros": 35139,
+          "rlimit": 89084,
+          "function-breakdown": [
+            {
+              "function": "peritus_product_runner::accounting::work::WorkEvent::clone",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 92,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::AccountingState::apply_work",
+              "mode:": "exec",
+              "time": 1,
+              "time-micros": 1972,
+              "rlimit": 4930,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::AccountingState::checked_work",
+              "mode:": "exec",
+              "time": 33,
+              "time-micros": 33074,
+              "rlimit": 84152,
+              "success": true
+            }
+          ]
+        },
+        {
+          "module": "accounting",
+          "time": 7,
+          "time-micros": 7570,
+          "rlimit": 17813,
+          "function-breakdown": [
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::cached_input_tokens",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 469,
+              "rlimit": 1141,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::tool_calls",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 470,
+              "rlimit": 955,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::compactions",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 434,
+              "rlimit": 1065,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::total_tokens",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 451,
+              "rlimit": 1217,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::workspace_bytes",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 460,
+              "rlimit": 1369,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::peak_rss_bytes",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 443,
+              "rlimit": 1445,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::clone",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 240,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::model_requests",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 707,
+              "rlimit": 1027,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::AccountingError::clone",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 36,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::output_tokens",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 423,
+              "rlimit": 1179,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::elapsed_millis",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 445,
+              "rlimit": 1331,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::usage_observations",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 480,
+              "rlimit": 1293,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::retries",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 414,
+              "rlimit": 989,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::input_tokens",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 458,
+              "rlimit": 1107,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::AccountingState::clone",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 217,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::provider_failovers",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 415,
+              "rlimit": 1027,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::provider_cost_microunits",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 415,
+              "rlimit": 1255,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::workspace_growth_bytes",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 583,
+              "rlimit": 1407,
+              "success": true
+            }
+          ]
+        },
+        {
+          "module": "accounting::limits",
+          "time": 4,
+          "time-micros": 4285,
+          "rlimit": 11369,
+          "function-breakdown": [
+            {
+              "function": "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_COST_MICROUNITS",
+              "mode:": "spec",
+              "time": 0,
+              "time-micros": 36,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOTAL_TOKENS",
+              "mode:": "spec",
+              "time": 0,
+              "time-micros": 35,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_MODEL_REQUESTS",
+              "mode:": "spec",
+              "time": 0,
+              "time-micros": 279,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES",
+              "mode:": "spec",
+              "time": 1,
+              "time-micros": 1002,
+              "rlimit": 2931,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::limits::BudgetViolation::clone",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 55,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_PEAK_RSS_BYTES",
+              "mode:": "spec",
+              "time": 0,
+              "time-micros": 772,
+              "rlimit": 1943,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::ProductRunProgress::budget_violation",
+              "mode:": "exec",
+              "time": 2,
+              "time-micros": 2054,
+              "rlimit": 6485,
+              "success": true
+            },
+            {
+              "function": "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOOL_CALLS",
+              "mode:": "spec",
+              "time": 0,
+              "time-micros": 49,
+              "rlimit": 2,
+              "success": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "verus": {
+    "profile": "release",
+    "version": "0.2026.08.09.92f466f",
+    "platform": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "toolchain": "1.97.1-x86_64-unknown-linux-gnu",
+    "commit": "92f466f247f45128c630d1c843fd6e27d2115587"
+  }
+}

@@ -7,6 +7,7 @@ use peritus_types::{
 };
 
 mod projection;
+mod specification;
 
 #[doc = " Maximum credentials in one checked supplied registry snapshot."]
 pub const MAX_CREDENTIAL_REGISTRY_ENTRIES: usize = 4_096;

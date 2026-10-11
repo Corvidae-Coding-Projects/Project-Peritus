@@ -1,0 +1,106 @@
+{
+  "schema_version": 6,
+  "suite": "terminal_bench",
+  "handshake": {
+    "adapter_schema_version": 6,
+    "product_protocol_version": 1,
+    "suite_revision": "ab3575606830479be548b69e9961815e83c6f5e7",
+    "config_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "workspace_available": true,
+    "workspace": "/workspace",
+    "trace_path": "/logs/agent/peritus/developer-round-0001.trace",
+    "evidence_path": "/logs/agent/peritus",
+    "recovery_path": "/logs/agent/peritus-recovery",
+    "agent_identity": {
+      "package_version": "0.0.0",
+      "source_revision": null,
+      "binary_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "provider_routes": [
+      {
+        "role": "writer",
+        "provider": "openai",
+        "model": "gpt-5.6-sol",
+        "route": "account_runtime",
+        "availability": "unchecked",
+        "text": true,
+        "image_input": true,
+        "maximum_context_tokens": 200000,
+        "tool_protocol": true
+      },
+      {
+        "role": "reviewer",
+        "provider": "anthropic",
+        "model": "sonnet",
+        "route": "account_runtime",
+        "availability": "unchecked",
+        "text": true,
+        "image_input": false,
+        "maximum_context_tokens": 200000,
+        "tool_protocol": true
+      }
+    ]
+  },
+  "agent_identity": {
+    "package_version": "0.0.0",
+    "source_revision": null,
+    "binary_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "success": false,
+  "disposition": "failed_no_candidate",
+  "terminal_cause": "adapter",
+  "candidate": null,
+  "qualification": {
+    "stage": "not_observed",
+    "gates": "missing",
+    "obligations": "missing",
+    "review": "missing",
+    "gate_detail": null,
+    "review_detail": null
+  },
+  "provider_routes": [],
+  "external_evaluation": {
+    "reward": null,
+    "verifier_exception": null
+  },
+  "task_id": "fixture-task",
+  "session_id": "fixture-session",
+  "harness_model_id": "peritus-native",
+  "workspace": "/workspace",
+  "baseline_head": null,
+  "initialized_repository": false,
+  "created_artifact_manifest": false,
+  "writer": "openai/gpt-5.6-sol",
+  "reviewer": "anthropic/sonnet",
+  "elapsed_ms": 0,
+  "trace_path": "/logs/agent/peritus/developer-round-0001.trace",
+  "conversation_turn": 1,
+  "session_trace_paths": [],
+  "usage_proxy": null,
+  "projected_responses": 0,
+  "usage": {
+    "requests": 0,
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "provider_cost_microunits": 0
+  },
+  "resources": {
+    "model_requests": 0,
+    "tool_calls": 0,
+    "retries": 0,
+    "provider_failovers": 0,
+    "compactions": 0,
+    "elapsed_millis": 0,
+    "workspace_bytes": 0,
+    "workspace_growth_bytes": 0,
+    "peak_rss_bytes": 0
+  },
+  "last_observation_path": null,
+  "relocatable_paths": null,
+  "summary": null,
+  "changed_paths": [],
+  "failure_kind": "identity",
+  "failure": "benchmark agent identity is invalid: compiled source revision is absent"
+}

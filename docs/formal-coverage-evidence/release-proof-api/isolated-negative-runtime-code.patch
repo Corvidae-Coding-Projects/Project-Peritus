@@ -1,0 +1,11 @@
+--- a/crates/foundation/peritus-release-policy/src/error.rs
++++ b/crates/foundation/peritus-release-policy/src/error.rs
+@@ -65,7 +65,7 @@
+         match self.kind {
+             ConstructionErrorKind::ZeroIdentity => "H4_INPUT_ZERO_IDENTITY",
+             ConstructionErrorKind::ZeroDigest => "H4_INPUT_ZERO_DIGEST",
+-            ConstructionErrorKind::ZeroRevision => "H4_INPUT_ZERO_REVISION",
++            ConstructionErrorKind::ZeroRevision => "H4_INPUT_ZERO_DIGEST",
+             ConstructionErrorKind::InvalidValidityInterval => "H4_INPUT_INVALID_VALIDITY",
+             ConstructionErrorKind::InvalidPlatformMatrix => "H4_INPUT_PLATFORM_MATRIX",
+             ConstructionErrorKind::CollectionLimitExceeded => "H4_INPUT_COLLECTION_LIMIT",

@@ -1,0 +1,5 @@
+# working directory: /home/doll/Project-Peritus/.worktrees/formal-coverage
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-security-verdict cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-security-verdict cargo test --locked --all-features --package peritus-security-policy
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-security-verdict cargo clippy --locked --all-features --all-targets --package peritus-security-policy -- -D warnings
+cargo fmt --check --package peritus-security-policy

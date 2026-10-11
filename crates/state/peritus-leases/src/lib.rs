@@ -9,6 +9,7 @@ mod command;
 mod failure;
 mod model;
 mod port;
+mod proofs;
 mod reconcile;
 mod scope;
 mod state;

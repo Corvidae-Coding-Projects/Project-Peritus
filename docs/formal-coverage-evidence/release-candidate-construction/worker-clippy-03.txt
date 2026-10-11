@@ -1,0 +1,2 @@
+    Checking peritus-release-policy v0.0.2 (/tmp/peritus-sol-release-candidate-contracts-workspace-01/crates/foundation/peritus-release-policy)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.40s

@@ -1,0 +1,36 @@
+[
+  {
+    "command": [
+      "cargo",
+      "verus",
+      "verify",
+      "--package",
+      "peritus-obligations",
+      "--all-features",
+      "--locked",
+      "--check-toolchain",
+      "--fwd-verus-args-to",
+      "roots",
+      "--",
+      "--no-cheating",
+      "--rlimit",
+      "20"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-obligations356-verus-independent.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-obligations",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-obligations356-tests-independent.log",
+    "exit_code": 0
+  }
+]

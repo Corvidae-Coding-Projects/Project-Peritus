@@ -6,9 +6,13 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 
 [dependencies]
+
+[package.metadata.peritus]
+owner = "A1"
+layer = "foundation"
 
 [lints]
 workspace = true

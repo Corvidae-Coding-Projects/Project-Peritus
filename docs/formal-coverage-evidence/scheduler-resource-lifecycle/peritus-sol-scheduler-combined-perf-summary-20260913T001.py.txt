@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Summarize retained dense-capacity A/B/C/D logs and combined-source E logs."""
+
+import json
+import re
+import statistics
+from pathlib import Path
+
+LINE = re.compile(
+    r"scheduler_perf phase=(select_next|dispatch_next) sample=\d+ "
+    r"reservations=(\d+) dimensions=(\d+) elapsed_ns=(\d+)"
+)
+
+SUITES = {
+    "dense_1024x256": {
+        "A_git_base": "/tmp/peritus-sol-scheduler-perf-A-base-20260913T002.log",
+        "B_frozen244": "/tmp/peritus-sol-scheduler-perf-B-frozen244-20260913T002.log",
+        "C_frozen258": "/tmp/peritus-sol-scheduler-perf-C-final-20260913T006.log",
+        "D_resource_aggregate": "/tmp/peritus-sol-scheduler-perf-D-aggregate-20260913T001.log",
+        "E_combined_production": "/tmp/peritus-sol-scheduler-combined-perf-1024x256-20260913T001.log",
+    },
+    "dense_3072x256": {
+        "A_git_base": "/tmp/peritus-sol-scheduler-perf-A-base-highvalid-20260913T005.log",
+        "B_frozen244": "/tmp/peritus-sol-scheduler-perf-B-frozen244-highvalid-20260913T005.log",
+        "C_frozen258": "/tmp/peritus-sol-scheduler-perf-C-final-highvalid-20260913T006.log",
+        "D_resource_aggregate": "/tmp/peritus-sol-scheduler-perf-D-aggregate-highvalid-20260913T001.log",
+        "E_combined_production": "/tmp/peritus-sol-scheduler-combined-perf-3072x256-20260913T001.log",
+    },
+}
+
+
+def samples(path: str) -> dict[str, object]:
+    phases: dict[str, list[int]] = {"select_next": [], "dispatch_next": []}
+    reservations = dimensions = None
+    for line in Path(path).read_text().splitlines():
+        match = LINE.search(line)
+        if match:
+            phase, observed_reservations, observed_dimensions, elapsed = match.groups()
+            reservations = int(observed_reservations)
+            dimensions = int(observed_dimensions)
+            phases[phase].append(int(elapsed))
+    if reservations is None or dimensions is None or any(not values for values in phases.values()):
+        raise RuntimeError(f"missing timing samples in {path}")
+    return {
+        "reservations": reservations,
+        "dimensions": dimensions,
+        "phases": {
+            phase: {
+                "samples_ns": values,
+                "count": len(values),
+                "min_ns": min(values),
+                "median_ns": statistics.median(values),
+                "max_ns": max(values),
+            }
+            for phase, values in phases.items()
+        },
+    }
+
+
+report: dict[str, object] = {"suites": {}}
+for suite, logs in SUITES.items():
+    observations = {label: samples(path) for label, path in logs.items()}
+    first = next(iter(observations.values()))
+    expected_shape = (first["reservations"], first["dimensions"])
+    for label, observation in observations.items():
+        actual_shape = (observation["reservations"], observation["dimensions"])
+        if actual_shape != expected_shape:
+            raise RuntimeError(f"shape mismatch for {suite}/{label}: {actual_shape}")
+    phases: dict[str, object] = {}
+    for phase in ("select_next", "dispatch_next"):
+        measurements = {
+            label: observation["phases"][phase]
+            for label, observation in observations.items()
+        }
+        combined = measurements["E_combined_production"]["median_ns"]
+        ratios = {
+            "combined_over_git_base": combined / measurements["A_git_base"]["median_ns"],
+            "combined_over_frozen244": combined / measurements["B_frozen244"]["median_ns"],
+            "combined_over_frozen258": combined / measurements["C_frozen258"]["median_ns"],
+            "combined_over_resource_aggregate": combined / measurements["D_resource_aggregate"]["median_ns"],
+            "combined_reduction_from_frozen244_percent": (
+                1.0 - combined / measurements["B_frozen244"]["median_ns"]
+            ) * 100.0,
+        }
+        phases[phase] = {**measurements, "median_ratios": ratios}
+    report["suites"][suite] = {
+        "reservations": first["reservations"],
+        "dimensions": first["dimensions"],
+        "logs": logs,
+        "phases": phases,
+    }
+
+print(json.dumps(report, indent=2, sort_keys=True))

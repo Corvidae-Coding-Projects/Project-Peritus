@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "incomplete",
+  "mappings": [
+    { "criterion": "AC-01", "evidence": [] },
+    { "criterion": "AC-02", "evidence": [] },
+    { "criterion": "AC-03", "evidence": [] },
+    { "criterion": "AC-04", "evidence": [] },
+    { "criterion": "AC-05", "evidence": [] },
+    { "criterion": "AC-06", "evidence": [] },
+    { "criterion": "AC-07", "evidence": [] },
+    { "criterion": "AC-08", "evidence": [] },
+    { "criterion": "AC-09", "evidence": [] },
+    { "criterion": "AC-10", "evidence": [] },
+    { "criterion": "AC-11", "evidence": [] },
+    { "criterion": "AC-12", "evidence": [] },
+    { "criterion": "AC-13", "evidence": [] },
+    { "criterion": "AC-14", "evidence": [] },
+    { "criterion": "AC-15", "evidence": [] },
+    { "criterion": "AC-16", "evidence": [] },
+    { "criterion": "AC-17", "evidence": [] },
+    { "criterion": "AC-18", "evidence": [] },
+    { "criterion": "AC-19", "evidence": [] },
+    { "criterion": "AC-20", "evidence": [] },
+    { "criterion": "AC-21", "evidence": [] },
+    { "criterion": "AC-22", "evidence": [] },
+    { "criterion": "AC-23", "evidence": [] },
+    { "criterion": "AC-24", "evidence": [] },
+    { "criterion": "AC-25", "evidence": [] }
+  ]
+}

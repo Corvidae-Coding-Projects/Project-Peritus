@@ -3,6 +3,7 @@
 use super::{ResourceEntry, ResourceQuantity, ResourceVector, VectorAddition};
 
 mod merge;
+mod proofs;
 
 fn combined_entry(left: &ResourceEntry, right: &ResourceEntry) -> Option<ResourceEntry> {
     let quantity = left.quantity().get().checked_add(right.quantity().get())?;

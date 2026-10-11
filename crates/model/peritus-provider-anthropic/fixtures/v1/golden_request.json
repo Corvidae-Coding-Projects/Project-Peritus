@@ -1,0 +1,1 @@
+{"model":"claude-sonnet-4-5","max_tokens":128,"messages":[{"role":"user","content":[{"text":"hello","type":"text"}]}],"stream":true,"tool_choice":{"disable_parallel_tool_use":true,"type":"none"}}

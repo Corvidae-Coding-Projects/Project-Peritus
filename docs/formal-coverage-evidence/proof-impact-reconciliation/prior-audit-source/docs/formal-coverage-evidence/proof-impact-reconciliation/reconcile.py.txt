@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+"""Produce an audit-only reconciliation; never write an approval or verification register.
+
+Uses a built xtask's canonical source discovery on two frozen Git trees. Python 3.12+.
+The caller must supply the actual protected base; Git ancestry alone does not prove protection.
+"""
+
+import argparse
+import collections
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shutil
+import subprocess
+import tempfile
+import tomllib
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def run(argv, cwd):
+    return subprocess.run(argv, cwd=cwd, check=True, capture_output=True).stdout
+
+
+def git(root, *args):
+    return run(["git", *args], root)
+
+
+def save(directory, name, value):
+    data = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+    (directory / name).write_bytes(data)
+    return digest(data)
+
+
+def materialize(root, commit, destination):
+    # Read raw blobs, independent of checkout filters and archive export attributes.
+    entries = git(root, "ls-tree", "-rz", "--full-tree", commit).split(b"\0")
+    expected = {}
+    for entry in filter(None, entries):
+        header, raw_path = entry.split(b"\t", 1)
+        mode, kind, object_id = header.split()
+        path = raw_path.decode()
+        if mode not in (b"100644", b"100755") or kind != b"blob":
+            raise ValueError(f"unsupported Git object: {path}")
+        if PurePosixPath(path).is_absolute() or any(
+            part in ("", ".", "..") or part.lower() == ".git" for part in path.split("/")
+        ) or "\\" in path:
+            raise ValueError(f"non-normal Git path: {path}")
+        if path in expected or len(expected) >= 30_000:
+            raise ValueError("duplicate or excessive Git tree entries")
+        expected[path] = object_id
+    hashes, total = {}, 0
+    with subprocess.Popen(
+        ["git", "cat-file", "--batch"], cwd=root,
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    ) as process:
+        for path, object_id in expected.items():
+            process.stdin.write(object_id + b"\n")
+            process.stdin.flush()
+            oid, kind, raw_size = process.stdout.readline().split()
+            size = int(raw_size)
+            total += size
+            if oid != object_id or kind != b"blob" or size < 0 or total > 512 * 1024 * 1024:
+                raise ValueError("invalid or excessive Git blob data")
+            target = destination / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            sha256 = hashlib.sha256()
+            git_hash = hashlib.sha1(b"blob " + raw_size + b"\0", usedforsecurity=False)
+            remaining = size
+            with target.open("xb") as stream:
+                while remaining:
+                    chunk = process.stdout.read(min(remaining, 65536))
+                    if not chunk:
+                        raise ValueError("truncated Git blob")
+                    stream.write(chunk)
+                    sha256.update(chunk)
+                    git_hash.update(chunk)
+                    remaining -= len(chunk)
+            if process.stdout.read(1) != b"\n" or git_hash.hexdigest().encode() != object_id:
+                raise ValueError("Git blob identity mismatch")
+            hashes[path] = sha256.hexdigest()
+        process.stdin.close()
+        if process.wait() != 0:
+            raise ValueError("Git blob materialization failed")
+    return hashes
+
+
+def read_tree(root, commit, binary, output, label):
+    with tempfile.TemporaryDirectory(prefix="peritus-impact-reconcile-") as temporary:
+        tree = Path(temporary)
+        hashes = materialize(root, commit, tree)
+        inventory = json.loads(run([str(binary), "proof-impact-inventory"], tree))
+        envelope = {
+            "schema": "peritus.proof-impact-inventory", "schema_version": 1,
+            "status": "audit-only", "hash_algorithm": "sha256-raw-bytes-v1",
+        }
+        if any(inventory.get(key) != value for key, value in envelope.items()):
+            raise ValueError("unexpected inventory schema or authority")
+        for path, snapshot in inventory["sources"].items():
+            if hashes[path] != snapshot["sha256"]:
+                raise ValueError(f"inventory differs from Git bytes: {path}")
+        manifest_bytes = (tree / "verification/proof-impact.toml").read_bytes()
+        manifest = tomllib.loads(manifest_bytes.decode())
+        obligations = tomllib.loads((tree / "verification/obligations.toml").read_text())
+        records = {}
+        for path in sorted((tree / "verification/reviews").rglob("*")):
+            if path.is_file():
+                records[str(path.relative_to(tree))] = digest(path.read_bytes())
+        for name in ("actors.toml", "actor-provenance.json"):
+            path = "verification/" + name
+            records[path] = digest((tree / path).read_bytes())
+        identity = {
+            "commit": commit,
+            "tree": git(root, "rev-parse", f"{commit}^{{tree}}").decode().strip(),
+            "inventory_sha256": save(output, label + "-inputs.json", inventory),
+            "proof_impact_sha256": digest(manifest_bytes),
+            "approval_and_actor_artifacts": records,
+        }
+        return identity, inventory["sources"], manifest, obligations["entries"]
+
+
+def transitions(previous, current):
+    return [
+        {"source_file": path, "previous": previous.get(path), "current": current.get(path)}
+        for path in sorted(previous.keys() | current.keys())
+        if previous.get(path) != current.get(path)
+    ]
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base", required=True)
+    parser.add_argument("--candidate", required=True)
+    parser.add_argument("--xtask", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    args = parser.parse_args()
+    root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel").decode().strip())
+    for value in (args.base, args.candidate):
+        if not re.fullmatch(r"[0-9a-f]{40}", value):
+            parser.error("use full lowercase commit identities")
+        if git(root, "cat-file", "-t", value) != b"commit\n":
+            parser.error("object identity must name a commit directly, not a tag")
+    if args.base == args.candidate:
+        parser.error("protected base must differ from candidate")
+    git(root, "merge-base", "--is-ancestor", args.base, args.candidate)
+    binary = args.xtask.resolve(strict=True)
+    destination = args.output.absolute()
+    if os.path.lexists(destination):
+        parser.error("output must be a fresh path; existing files, directories, and symlinks are refused")
+    with tempfile.TemporaryDirectory(prefix="peritus-impact-output-") as temporary:
+        private = Path(temporary)
+        frozen_binary = private / "xtask"
+        before = digest(binary.read_bytes())
+        shutil.copy2(binary, frozen_binary)
+        if digest(frozen_binary.read_bytes()) != before or digest(binary.read_bytes()) != before:
+            raise ValueError("inventory executable changed while being frozen")
+        output = private / "artifacts"
+        output.mkdir()
+        summary = reconcile(root, args, frozen_binary, output)
+        # copytree exclusively creates the output directory and refuses existing symlinks.
+        # Validation failures leave no published result. An I/O failure is a failed command.
+        shutil.copytree(output, destination)
+        print(json.dumps(summary, sort_keys=True))
+
+
+def reconcile(root, args, binary, output):
+    base_id, base, history, base_obligations = read_tree(
+        root, args.base, binary, output, "protected"
+    )
+    candidate_id, candidate, current_history, obligations = read_tree(
+        root, args.candidate, binary, output, "candidate"
+    )
+    if (candidate_id["proof_impact_sha256"] != base_id["proof_impact_sha256"]
+        or current_history != history or candidate_id["approval_and_actor_artifacts"] != base_id[
+        "approval_and_actor_artifacts"
+    ]):
+        raise ValueError("approval history/provenance changed; this reconciliation needs a new audit")
+    declared = {
+        item["source_file"]: {key: item[key] for key in ("sha256", "affected_packages")}
+        for item in history["sources"]
+    }
+    delta = transitions(declared, candidate)
+    impacted = {}
+    for change in delta:
+        for snapshot in (change["previous"], change["current"]):
+            for package in (snapshot or {}).get("affected_packages", []):
+                name, classification = package["package"], package["verification_class"]
+                if name in impacted and impacted[name] != classification:
+                    raise ValueError(f"classification changed for {name}; needs separate policy review")
+                impacted[name] = classification
+    gates = []
+    for package, classification in sorted(impacted.items()):
+        common = f"--package {package} --all-features --locked"
+        strict = "--no-cheating " if classification in ("V", "H") else ""
+        for kind, command in (
+            ("ordinary-test", f"cargo test --package {package} --all-targets --all-features --locked"),
+            ("verus-verify", f"cargo verus verify {common} --check-toolchain --fwd-verus-args-to roots -- {strict}--rlimit 20"),
+        ):
+            gates.append({"kind": kind, "owning_crate": package, "command": command,
+                          "status": "required; no final-candidate pass claimed"})
+    old_obligations = {entry["id"]: entry for entry in base_obligations}
+    obligation_rows = []
+    for entry in obligations:
+        previous = old_obligations.get(entry["id"])
+        paths = sorted({entry["source_file"]} | {item["source_file"] for item in entry["evidence"]})
+        hashes = {path: digest(git(root, "show", f"{args.candidate}:{path}")) for path in paths}
+        changed = []
+        for path in paths:
+            before = subprocess.run(
+                ["git", "show", f"{args.base}:{path}"], cwd=root, capture_output=True
+            )
+            if before.returncode != 0 or digest(before.stdout) != hashes[path]:
+                changed.append(path)
+        obligation_rows.append({
+            "id": entry["id"], "owning_crate": entry["owning_crate"], "owner": entry["owner"],
+            "protected_status": previous["status"] if previous else None,
+            "candidate_status": entry["status"], "declaration_changed": previous != entry,
+            "final_candidate_discharge_review": None,
+            "source_sha256": hashes,
+            "evidence_paths_outside_formal_impact_inventory": [path for path in paths if path not in candidate],
+            "changed_sources_since_protected_base": changed,
+            "reason": "Retained proof/test locators and patch reviews are not final-candidate discharge authorization.",
+        })
+    proposal = {
+        "schema": "peritus.proof-impact-reconciliation", "schema_version": 1,
+        "status": "pending-authorization", "authority": "audit-only",
+        "protected_base": base_id, "candidate": candidate_id,
+        "inventory_tool_binary_sha256": digest(binary.read_bytes()),
+        "approved_history_preserved": True,
+        "approved_change_ids": [change["id"] for change in history["changes"]],
+        "source_transitions": delta,
+        "protected_record_drift": transitions(declared, base),
+        "branch_source_transitions": transitions(base, candidate),
+        "affected_packages": impacted, "required_gates": gates,
+        "obligations": obligation_rows,
+        "removed_obligation_ids": sorted(old_obligations.keys() - {entry["id"] for entry in obligations}),
+        "summary": {
+            "protected_record_sources": len(declared), "protected_actual_sources": len(base),
+            "candidate_sources": len(candidate), "proposed_transitions": len(delta),
+            "inherited_record_transitions": len(transitions(declared, base)),
+            "branch_transitions": len(transitions(base, candidate)),
+            "affected_packages": len(impacted), "required_gates": len(gates),
+            "obligation_statuses": dict(collections.Counter(entry["status"] for entry in obligations)),
+        },
+        "remaining_requirements": [
+            "Retain fresh actual owner/reviewer provenance before freezing an approval candidate; never relabel historical actors.",
+            "Run and retain every exact package gate on the frozen candidate and obtain a source-bound independent verdict.",
+            "Append that verdict and exact transitions through the authorization-only protected-base phase, then apply those exact sources.",
+            "Rerun against the resulting protected base; deploy trusted checker authority and qualify hosted CI separately.",
+        ],
+    }
+    save(output, "reconciliation.json", proposal)
+    return proposal["summary"]
+
+
+if __name__ == "__main__":
+    main()

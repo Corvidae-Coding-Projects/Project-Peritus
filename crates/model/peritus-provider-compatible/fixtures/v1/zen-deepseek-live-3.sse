@@ -1,0 +1,18 @@
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"role":"assistant","content":"","reasoning_content":null}}]}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":"The"}}],"usage":{"prompt_tokens":452,"completion_tokens":1,"total_tokens":453,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" token"}}],"usage":{"prompt_tokens":452,"completion_tokens":2,"total_tokens":454,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" is \"peritus-connection"}}],"usage":{"prompt_tokens":452,"completion_tokens":8,"total_tokens":460,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":"-ok\"."}}],"usage":{"prompt_tokens":452,"completion_tokens":12,"total_tokens":464,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"content":"peritus-connection-ok","reasoning_content":null}}],"usage":{"prompt_tokens":452,"completion_tokens":18,"total_tokens":470,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":"stop","logprobs":null,"delta":{"reasoning_content":null}}]}
+
+data: {"id":"request-3","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[],"usage":{"prompt_tokens":452,"completion_tokens":19,"total_tokens":471,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: [DONE]
+

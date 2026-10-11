@@ -1,0 +1,1 @@
+{"background":false,"input":[{"content":[{"text":"hello","type":"input_text"}],"role":"user","type":"message"}],"max_output_tokens":64,"model":"model-test","parallel_tool_calls":false,"store":false,"stream":true,"text":{"format":{"type":"text"}}}

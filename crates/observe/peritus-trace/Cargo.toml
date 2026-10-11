@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["tracing", "telemetry", "event-sourcing", "formal-verification"]
 categories = ["development-tools::debugging", "data-structures"]
 
@@ -21,4 +21,8 @@ zeroize.workspace = true
 
 [lints]
 workspace = true
+
+[package.metadata.peritus]
+owner = "C7"
+layer = "observe"
 

@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"thread-fixture"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"type":"reasoning"}}
+{"type":"item.completed","item":{"type":"agent_message","text":"{\"content\":\"fixture response\",\"tool_calls\":[]}"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"cached_input_tokens":2,"output_tokens":5,"total_tokens":17}}

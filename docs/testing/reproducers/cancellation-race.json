@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "product-cancellation-race-restartable",
+  "classification": "product_defect",
+  "invariant": "An explicit user cancellation remains Cancelled when shutdown races it.",
+  "original": {
+    "revision": "f75f5dee3976b1c72b85e78fa1d6c50475d5d8fa",
+    "platform": "linux-x86_64",
+    "finding_source": "bounded Daybreak recovery chaos campaign",
+    "independent_reproducer": "primary campaign controller with three fresh temporary state directories",
+    "fresh_fixture_repetitions": 3,
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-daemon explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state -- --nocapture",
+    "exit_code": 101,
+    "failure_signature": "persisted phase left RecoveryRequired, right Cancelled"
+  },
+  "reproducer": {
+    "path": "crates/app/peritus-daemon/src/product_run/tests/recovery/persistence_faults.rs",
+    "test": "explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state",
+    "fault_schedule": ["wait for exactly one provider request", "request user cancellation", "start shutdown", "reload the durable record"],
+    "required_reachability": ["provider request observed", "cancel accepted", "shutdown inventory captured"],
+    "oracle": "persisted ProductRunPhase and exact fake-provider request count",
+    "minimization": "single request, one cancel, one overlapping shutdown, and one durable reload; removing any step loses the race or its persisted oracle"
+  },
+  "fix": {
+    "revision": "16d5fa8701536180595f80dd631478b4827ee11d",
+    "owner": "ProductRunService lifecycle",
+    "root_cause": "shutdown did not distinguish user cancellation from shutdown-originated cancellation"
+  },
+  "fixed_replay": {
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-daemon explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state -- --nocapture",
+    "expected": "exit 0; persisted phase Cancelled; one provider request"
+  },
+  "negative_control": "shutdown-originated cancellation remains RecoveryRequired and retryable",
+  "cleanup": "temporary service state removed; no live provider or unrelated process used",
+  "limitations": ["process-death durability is qualified separately", "no power-loss durability claim"]
+}

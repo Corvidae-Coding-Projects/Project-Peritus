@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["filesystem", "tools", "workspace", "formal-verification"]
 categories = ["development-tools", "filesystem"]
 
@@ -21,6 +21,10 @@ peritus-tool-router = { version = "=0.0.6", path = "../peritus-tool-router" }
 peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.6", path = "../../runtime/peritus-workspace" }
 sha2.workspace = true
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
 
 [lints]
 workspace = true

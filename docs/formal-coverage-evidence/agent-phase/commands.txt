@@ -1,0 +1,7 @@
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/formal-agent-phase-final cargo verus verify --package peritus-agent --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/formal-agent-phase-final cargo test --locked --package peritus-agent --all-targets --all-features
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/formal-agent-phase-final cargo test --locked --package peritus-agent --all-targets --no-default-features
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/formal-agent-phase-final cargo clippy --locked --package peritus-agent --all-targets --all-features -- -D warnings
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/formal-agent-phase-final cargo clippy --locked --package peritus-agent --all-targets --no-default-features -- -D warnings
+cargo fmt --package peritus-agent -- --check
+git diff --check -- crates/orchestration/peritus-agent

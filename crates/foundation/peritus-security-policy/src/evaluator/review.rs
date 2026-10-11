@@ -1,5 +1,7 @@
 //! Independent review completion and release-blocking finding closure.
 
+mod model;
+
 use crate::{IntegratedCandidate, ReviewScope, SecurityEvidence, UnmetSecurityCondition};
 
 const fn scopes_equal(left: ReviewScope, right: ReviewScope) -> bool {

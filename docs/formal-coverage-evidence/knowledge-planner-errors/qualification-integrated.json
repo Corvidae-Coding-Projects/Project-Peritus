@@ -1,0 +1,53 @@
+[
+  {
+    "name": "verus-integrated",
+    "command": [
+      "cargo",
+      "verus",
+      "verify",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--locked",
+      "--check-toolchain",
+      "--fwd-verus-args-to",
+      "roots",
+      "--",
+      "--no-cheating",
+      "--rlimit",
+      "20"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-knowledge-errors-verus-integrated.log",
+    "exit_code": 0
+  },
+  {
+    "name": "tests-integrated",
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-knowledge-errors-tests-integrated.log",
+    "exit_code": 0
+  },
+  {
+    "name": "context-integrated",
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-context",
+      "--locked",
+      "--test",
+      "reuse_matrix"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-knowledge-errors-context-integrated.log",
+    "exit_code": 0
+  }
+]

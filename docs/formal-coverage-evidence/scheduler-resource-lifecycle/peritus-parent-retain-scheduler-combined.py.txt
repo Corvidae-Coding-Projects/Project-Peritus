@@ -1,0 +1,114 @@
+"""Retain reviewed scheduler sources, final gates, and explicit proof boundaries."""
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+destination = root / 'docs/formal-coverage-evidence/scheduler-resource-lifecycle'
+digest = lambda path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+manifest = Path('/tmp/peritus-parent-scheduler-combined.sha256')
+expected = dict((name, value) for value, name in
+                (line.split('  ', 1) for line in manifest.read_text().splitlines()))
+package = root / 'crates/orchestration/peritus-scheduler'
+assert len(expected) == 101
+assert {str(p.relative_to(package)): digest(p) for p in package.rglob('*') if p.is_file()} == expected
+qualification_path = Path('/tmp/peritus-parent-scheduler-combined-qualification.json')
+qualification = json.loads(qualification_path.read_text())
+assert len(qualification['commands']) == 11
+assert all(row['exit_code'] == 0 for row in qualification['commands'])
+files = {}
+
+
+def retain(source):
+    source = Path(source)
+    name = source.name
+    if source.suffix in {'.rs', '.py', '.md'}:
+        name += '.txt'
+    elif source.suffix == '.log':
+        name = name[:-4] + '.txt'
+    if name in files:
+        assert digest(files[name]) == digest(source), name
+    files[name] = str(source)
+
+
+for name in ['peritus-sol-scheduler-command-final-evidence-001.sha256',
+             'peritus-sol-scheduler-worker-lookup-evidence-002.sha256',
+             'peritus-sol-scheduler-perf-aggregate-evidence-20260913T001.sha256']:
+    path = Path('/tmp') / name
+    for line in path.read_text().splitlines():
+        expected_digest, source = line.split('  ', 1)
+        assert digest(source) == expected_digest, source
+        retain(source)
+    retain(path)
+for name in ['peritus-sol-scheduler316-independent-source-review-20260912T001.md',
+             'peritus-sol-scheduler-worker-lookup-independent-review-20260912T001.md',
+             'peritus-sol-scheduler-resource-aggregate-independent-review-20260913T001.md',
+             'peritus-parent-scheduler244-to-317.patch',
+             'peritus-parent-scheduler317-integrated.sha256',
+             'peritus-parent-scheduler317-integration.json',
+             'peritus-parent-scheduler-combined-integration.json',
+             'peritus-parent-scheduler-combined-result-summary.json',
+             'peritus-parent-scheduler-combined-qualification-sandbox.json',
+             'peritus-parent-scheduler-combined-qualify.py',
+             'peritus-parent-scheduler-combined-callers.py',
+             'peritus-parent-develop-fast-forward.json']:
+    retain(Path('/tmp') / name)
+retain(manifest)
+retain(qualification_path)
+retain(__file__)
+for row in qualification['commands']:
+    retain(row['log'])
+    if 'prior_sandbox_attempt' in row:
+        retain(row['prior_sandbox_attempt']['log'])
+assert not destination.exists()
+destination.mkdir()
+for name, source in files.items():
+    shutil.copyfile(source, destination / name)
+(destination / 'audit.md').write_text('''# Scheduler resource and lifecycle integration
+
+The reviewed command/lifecycle increment connects actual scheduler command variants, exact semantic clones, and production mutation routes to reservation-readiness and state-frame contracts. A focused independent follow-up review confirms binary lookup on normal retained-worker phase updates. The fallback preserves the private relation on unvalidated state; duplicate invalid worker IDs can select a different duplicate, so arbitrary invalid-state behavioral identity is not claimed.
+
+A separately authored and independently reviewed resource repair restores aggregate capacity accounting. Its production-called kernels prove exact canonical addition, arithmetic-overflow-before-dimension-limit ordering, exact subtraction including the existing zero-quantity sentinel, indexed lookup, and aggregate/fallback fit correspondence. The parent guarded all ten resource paths against the common 75-file baseline before overlaying them onto the reviewed 95-file runtime package. The final combined package contains 101 exact source files.
+
+All eleven combined qualification gates passed: strict pinned Verus 374/0; default, no-default and all-feature package suites each 27/0; strict Clippy; formatting; ordinary API; source layout; two daemon scheduler-owner lifecycle tests; one authenticated runtime scheduler submission/replay test; and one durable-session restart/replay test. The initial runtime test stopped at a sandbox-denied temporary Unix socket; the permitted rerun and remaining restart test passed. The original denied attempt is retained. The earlier scheduler244 checkpoint's obligation caller tests are not scheduler caller evidence.
+
+The resource-only repair's two existing release fixtures measured median selection/dispatch latency at 0.684 to 0.958 times the original Git baseline. Those bounded measurements recover the introduced dense-workload slowdown. The final combined runtime/resource fixture is a separate pending check at this record's creation; no universal latency or asymptotic theorem is claimed.
+
+This checkpoint is not full scheduler discharge. Remaining original-goal work includes complete admission/sorted-insertion and lookup-miss closure, cancellation/tree and worker-loss loop composition, exact whole-reducer failure/event relations, terminal composition, apply/decide/replay and effect/digest/cursor correspondence, and termination. The ordinary resource wrapper's error mappings are reviewed and tested, while the contracts live on production-called kernels. Final proof-impact records and hosted CI remain required.
+''')
+record = {
+    'schema': 'peritus.formal-coverage.increment-review', 'schema_version': 1,
+    'status': 'reviewed-bounded-increment-not-obligation-discharge',
+    'recorded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'base_commit': '8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493',
+    'runtime_author': '/root/sol_runtime_phase',
+    'resource_author': '/root/sol_readiness_correspondence',
+    'independent_source_reviewer': '/root/sol_acceptance_completion',
+    'integration_owner': '/root', 'source_files': 101,
+    'full_package_manifest_sha256': digest(manifest),
+    'results': json.loads(Path('/tmp/peritus-parent-scheduler-combined-result-summary.json').read_text()),
+    'all_eleven_combined_gates': 'passed',
+    'resource_only_dense_performance': 'recovered relative to original Git baseline',
+    'combined_dense_performance': 'pending', 'final_head_hosted_ci': 'not run',
+    'artifact_original_paths': files,
+    'artifacts': {path.name: digest(path) for path in sorted(destination.iterdir()) if path.is_file()},
+}
+(destination / 'review.json').write_text(json.dumps(record, indent=2) + '\n')
+audit = root / 'docs/formal-coverage-audit.md'
+text = audit.read_text()
+anchor = '## Completion evidence still required\n'
+heading = '## Scheduler resource and lifecycle integration\n'
+assert text.count(anchor) == 1 and heading not in text
+text = text.replace(anchor, heading + '''
+The [scheduler integration review](formal-coverage-evidence/scheduler-resource-lifecycle/review.json) binds the independently reviewed lifecycle and resource-accounting patches to the exact combined 101-file package. Strict Verus passed 374/0, all three package test profiles passed 27/0, and Clippy, formatting, API and source layout passed. Actual daemon caller checks passed two lifecycle tests, scheduler submission/replay, and durable restart/replay after granting the test its temporary Unix-socket permission.
+
+The resource repair's bounded dense measurements recover the original Git baseline performance; final combined timing remains pending. Full command admission, cancellation/worker-loss loops, complete reducer/replay/terminal composition, final records and hosted qualification remain requirements. This checkpoint does not discharge the scheduler's broad obligations.
+
+''' + anchor)
+audit.write_text(text)
+for name, expected_digest in record['artifacts'].items():
+    assert digest(destination / name) == expected_digest, name
+print(json.dumps({'path': str(destination), 'artifacts': len(record['artifacts']),
+                  'review_sha256': digest(destination / 'review.json')}, indent=2))

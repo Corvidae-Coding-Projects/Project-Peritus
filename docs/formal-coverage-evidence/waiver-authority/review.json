@@ -1,0 +1,49 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-increment-not-obligation-discharge",
+  "reviewer": "/root",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "review_date": "2026-09-12",
+  "implementation_agent": "/root/formal_kernel_audit",
+  "scope": "Current finding, waiver and approval lookups; exact waiver failure priority; supplied waiver authorization; blocker resolution; preservation of invalid-waiver diagnostics through acceptance evaluation.",
+  "review_procedure": [
+    "Read all new lookup, waiver, supplied, blocker and diagnostic helpers, input-defined authority predicates, evaluator integration and regression scenarios.",
+    "Checked constructor-derived identity uniqueness and the exact-view bridge proofs; prior constructor behavior was independently reviewed in its separate retained checkpoint.",
+    "Compared input predicates with actual complete identity, revision, authority and evidence checks; checked resolved-finding freshness from constructor invariants.",
+    "Reviewed final strict Verus and Clippy results; independently reran all-target/all-feature quality-policy and kernel tests.",
+    "Verified every source-manifest hash before retaining this checkpoint."
+  ],
+  "commands": {
+    "implementation_verus": "cargo verus verify --package peritus-quality-policy --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+    "implementation_tests": "cargo test --package peritus-quality-policy --package peritus-kernel --all-targets --all-features --locked",
+    "implementation_clippy": "cargo clippy --package peritus-quality-policy --package peritus-kernel --all-targets --all-features --locked -- -D warnings",
+    "independent_tests": "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo +1.97.1 test --locked --all-features --all-targets --package peritus-quality-policy --package peritus-kernel"
+  },
+  "results": {
+    "verus_verified": {
+      "peritus-quality-policy": 232,
+      "peritus-kernel": 274
+    },
+    "verus_errors": 0,
+    "implementation_tests_passed": 52,
+    "independent_tests_passed": 52,
+    "clippy": "passed"
+  },
+  "limits": [
+    "This manifest binds the fourteen reviewed increment files, not all dependency/compiler inputs or a clean candidate commit.",
+    "Canonical constructor and earlier evaluator changes in the same files have separate review history.",
+    "The phase Boolean exactly equals supplied-current-waiver validity and current blocker resolution. Top-level acceptance is only proved to imply these conditions.",
+    "Invalid supplied current waivers are proved to have matching complete finding IDs in final diagnostics. Exact waiver_failure priority is proved separately; total diagnostic order, multiplicity and absence of false positives are not claimed as a theorem.",
+    "Supplied observations, actor identities, evidence digests and authority references are not authenticated by these proofs.",
+    "Full final/unexpected approval semantics and kernel lifecycle correspondence remain further implementation work.",
+    "No obligation discharge, proof-impact approval, exclusion or GitHub merge restriction is created by this checkpoint; changed source needs renewed review."
+  ],
+  "artifacts": {
+    "source-sha256.txt": "b9529965968da77030aefab822259fc46e6cfadd3e83f4d6e0b3f5227ed11abd",
+    "verus-output.txt": "1d799a62498290c3361aa8fed57c3da4d480acd164792052b151a8721573a417",
+    "implementation-tests.txt": "49a304e5be7f248e104843fac3711c73a34b650efff3a9aa7b949702d23bd514",
+    "independent-tests.txt": "55dd4c8e265299f2cfa24bc438fabb159a6f9bcfb0e45e03cede4299fccd6526",
+    "clippy-output.txt": "e2c73077f150292782a8e6e260419c1444c1733fb2f9e3ed74d64c4fbf185526"
+  }
+}

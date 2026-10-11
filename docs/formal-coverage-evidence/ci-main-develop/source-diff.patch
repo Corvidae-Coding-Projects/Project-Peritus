@@ -1,0 +1,658 @@
+--- /tmp/peritus-sol-ci-custody-source-checkpoint-20260912T001/.github/workflows/formal-authority.yml	2026-09-12 16:05:12.958470937 -0500
++++ /tmp/peritus-sol-authority-develop-source-checkpoint-20260912T001/.github/workflows/formal-authority.yml	2026-09-12 16:54:17.058245634 -0500
+@@ -2,14 +2,14 @@
+ 
+ on:
+   pull_request_target:
+-    branches: [main]
++    branches: [main, develop]
+     types: [opened, edited, reopened, synchronize, ready_for_review]
+ 
+ permissions:
+   contents: read
+ 
+ concurrency:
+-  group: formal-authority-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
++  group: formal-authority-${{ github.event.pull_request.number }}-${{ github.workflow_sha }}-${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.head.sha }}
+   cancel-in-progress: false
+ 
+ env:
+@@ -23,18 +23,35 @@
+     runs-on: ubuntu-24.04
+     timeout-minutes: 10
+     env:
+-      AUTHORITY_SHA: ${{ github.event.pull_request.base.sha }}
++      CHECKER_SHA: ${{ github.workflow_sha }}
++      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+       CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+       EVENT_SHA: ${{ github.sha }}
++      EVENT_REF: ${{ github.ref }}
++      WORKFLOW_REF: ${{ github.workflow_ref }}
++      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
++      BASE_REF: ${{ github.event.pull_request.base.ref }}
++      BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
++      BASE_REPOSITORY_ID: ${{ github.event.pull_request.base.repo.id }}
++      REPOSITORY_ID: ${{ github.repository_id }}
++      EVENT_NAME: ${{ github.event_name }}
+     steps:
+-      - name: Check out exact authority revision
++      - name: Check out exact checker revision
+         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           repository: ${{ github.repository }}
+-          ref: ${{ github.event.pull_request.base.sha }}
++          ref: ${{ github.workflow_sha }}
+           path: authority
+           fetch-depth: 0
+           persist-credentials: false
++      - name: Check out exact comparison base
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          repository: ${{ github.repository }}
++          ref: ${{ github.event.pull_request.base.sha }}
++          path: base
++          fetch-depth: 0
++          persist-credentials: false
+       - name: Check out exact candidate revision
+         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+@@ -47,47 +64,85 @@
+         shell: bash
+         run: |
+           set -euo pipefail
+-          authority_head="$(git -C authority rev-parse --verify 'HEAD^{commit}')"
++          require_sha() {
++            local label="$1"
++            local value="$2"
++            if [[ ! "$value" =~ ^[0-9a-f]{40}$ || "$value" == "0000000000000000000000000000000000000000" ]]; then
++              printf '%s is not a nonzero lowercase full commit SHA\n' "$label" >&2
++              exit 1
++            fi
++          }
++          require_sha CHECKER_SHA "$CHECKER_SHA"
++          require_sha EVENT_SHA "$EVENT_SHA"
++          require_sha BASE_SHA "$BASE_SHA"
++          require_sha CANDIDATE_SHA "$CANDIDATE_SHA"
++          test "$EVENT_NAME" = "pull_request_target"
++          test "$DEFAULT_BRANCH" = "main"
++          test "$EVENT_REF" = "refs/heads/main"
++          test "$EVENT_SHA" = "$CHECKER_SHA"
++          test "$WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/formal-authority.yml@refs/heads/main"
++          test "$BASE_REPOSITORY" = "$GITHUB_REPOSITORY"
++          test "$BASE_REPOSITORY_ID" = "$REPOSITORY_ID"
++          case "$BASE_REF" in
++            main) test "$BASE_SHA" = "$CHECKER_SHA" ;;
++            develop) ;;
++            *) printf 'unsupported pull-request base: %s\n' "$BASE_REF" >&2; exit 1 ;;
++          esac
++          checker_head="$(git -C authority rev-parse --verify 'HEAD^{commit}')"
++          base_head="$(git -C base rev-parse --verify 'HEAD^{commit}')"
+           candidate_head="$(git -C candidate rev-parse --verify 'HEAD^{commit}')"
+-          test "$EVENT_SHA" = "$AUTHORITY_SHA"
+-          test "$authority_head" = "$AUTHORITY_SHA"
++          test "$checker_head" = "$CHECKER_SHA"
++          test "$base_head" = "$BASE_SHA"
+           test "$candidate_head" = "$CANDIDATE_SHA"
+-          git -C candidate cat-file -e "$AUTHORITY_SHA^{commit}"
+-          git -C candidate merge-base --is-ancestor "$AUTHORITY_SHA" "$CANDIDATE_SHA"
+-      - name: Reject candidate execution and authority inputs before Cargo metadata
++          git -C candidate cat-file -e "$CHECKER_SHA^{commit}"
++          git -C candidate cat-file -e "$BASE_SHA^{commit}"
++          git -C candidate merge-base --is-ancestor "$BASE_SHA" "$CANDIDATE_SHA"
++      - name: Reject execution inputs before Cargo metadata
+         shell: bash
+         run: |
+           set -euo pipefail
+-          tree_inventory="$RUNNER_TEMP/formal-authority-candidate-tree"
+-          git -C candidate ls-tree -r -z --full-tree "$CANDIDATE_SHA" > "$tree_inventory"
+-          while IFS= read -r -d '' entry; do
+-            header="${entry%%$'\t'*}"
+-            path="${entry#*$'\t'}"
+-            mode="${header%% *}"
+-            remainder="${header#* }"
+-            kind="${remainder%% *}"
+-            case "$mode:$kind" in
+-              100644:blob|100755:blob) ;;
+-              *)
+-                printf 'candidate tree contains non-regular entry: %s\n' "$path" >&2
+-                exit 1
+-                ;;
+-            esac
+-            case "$path" in
+-              .cargo/config|rust-toolchain)
+-                printf 'candidate tree contains alternate Cargo or Rust selector: %s\n' "$path" >&2
+-                exit 1
+-                ;;
+-            esac
+-          done < "$tree_inventory"
+-          git -C candidate diff --no-ext-diff --no-textconv --exit-code \
+-            "$AUTHORITY_SHA" "$CANDIDATE_SHA" -- \
+-            .cargo/config.toml .gitattributes rust-toolchain.toml \
+-            Cargo.toml Cargo.lock \
+-            xtask/Cargo.toml xtask/build.rs xtask/src \
+-            .github/workflows/formal-authority.yml \
+-            .github/workflows/formal-governance.yml \
++          check_tree() {
++            local checkout="$1"
++            local revision="$2"
++            local label="$3"
++            local tree_inventory="$RUNNER_TEMP/formal-authority-$label-tree"
++            git -C "$checkout" ls-tree -r -z --full-tree "$revision" > "$tree_inventory"
++            while IFS= read -r -d '' entry; do
++              header="${entry%%$'\t'*}"
++              path="${entry#*$'\t'}"
++              mode="${header%% *}"
++              remainder="${header#* }"
++              kind="${remainder%% *}"
++              case "$mode:$kind" in
++                100644:blob|100755:blob) ;;
++                *)
++                  printf '%s tree contains non-regular entry: %s\n' "$label" "$path" >&2
++                  exit 1
++                  ;;
++              esac
++              case "$path" in
++                .cargo/config|rust-toolchain)
++                  printf '%s tree contains alternate Cargo or Rust selector: %s\n' "$label" "$path" >&2
++                  exit 1
++                  ;;
++              esac
++            done < "$tree_inventory"
++          }
++          check_tree authority "$CHECKER_SHA" checker
++          check_tree base "$BASE_SHA" base
++          check_tree candidate "$CANDIDATE_SHA" candidate
++          authority_inputs=(
++            .cargo/config.toml .gitattributes rust-toolchain.toml
++            Cargo.toml Cargo.lock
++            xtask/Cargo.toml xtask/build.rs xtask/src
++            .github/workflows/formal-authority.yml
++            .github/workflows/formal-governance.yml
+             docs/formal-governance-ruleset.template.json
++          )
++          git -C candidate diff --no-ext-diff --no-textconv --exit-code \
++            "$CHECKER_SHA" "$BASE_SHA" -- "${authority_inputs[@]}"
++          git -C candidate diff --no-ext-diff --no-textconv --exit-code \
++            "$BASE_SHA" "$CANDIDATE_SHA" -- "${authority_inputs[@]}"
+       - name: Install pinned Rust
+         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+         env:
+--- /tmp/peritus-sol-ci-custody-source-checkpoint-20260912T001/docs/foundation-toolchain.md	2026-09-12 16:05:12.958536326 -0500
++++ /tmp/peritus-sol-authority-develop-source-checkpoint-20260912T001/docs/foundation-toolchain.md	2026-09-12 17:00:04.273636021 -0500
+@@ -73,31 +73,37 @@
+ the stronger Enterprise authority is an explicit future upgrade rather than a current claim.
+ 
+ The checked `.github/workflows/formal-authority.yml` adds a narrower default-branch validation for
+-pull requests targeting `main`. GitHub loads `pull_request_target` workflow code from the default
+-branch. That workflow checks out the event's exact base and head SHAs separately and rejects
+-symlinks, submodules, alternate Cargo configuration, and alternate Rust selectors. Before candidate
+-Cargo metadata, it also requires base equality for the root Cargo manifest and lockfile, the
+-complete `xtask` manifest/source/default-build-script surface, and every current repository file
+-embedded into the checker binary, alongside the root Cargo configuration, line-ending policy, and
+-toolchain selector. It then builds `xtask` from the trusted base into runner temporary storage,
+-primes only the base's locked dependency metadata, and runs that binary from the candidate directory
+-with an offline Cargo home and a PATH reconstructed from the resolved runner Cargo and Git
++pull requests targeting `main` or `develop`. GitHub loads `pull_request_target` workflow code from
++default `main`; the job binds `github.workflow_sha` as the checker revision and binds the PR's exact
++base and head as separate comparison and candidate revisions. It rejects symlinks, submodules,
++alternate Cargo configuration, and alternate Rust selectors in all three trees. Before candidate
++Cargo metadata, it requires exact equality for the root Cargo manifest and lockfile, the complete
++`xtask` manifest/source/default-build-script surface, and every current repository file embedded
++into the checker binary, alongside the root Cargo configuration, line-ending policy, and toolchain
++selector. Both checker-to-base and base-to-candidate comparisons must pass.
++
++The job builds `xtask` from the exact workflow/checker revision into runner temporary storage,
++primes only that revision's locked dependency metadata, and runs that binary from the candidate
++directory with an offline Cargo home and a PATH reconstructed from the resolved runner Cargo and Git
+ directories plus fixed system binary directories. The trusted executable runs both `all` and
+ `verify-trust`; it never builds a candidate package, build script, procedural macro, action, or
+-repository script.
++repository script. `verify-trust` receives the exact PR base as its proof-impact comparison base,
++not the checker revision.
+ 
+ The root manifest and lockfile custody means dependency changes fail before candidate metadata.
+ Other offline candidate metadata deliberately admits only dependencies already primed by the
+-trusted base. A dependency or authority-checker change therefore requires the externally controlled,
+-exact-head bootstrap described in [GitHub governance](github-governance.md); candidate-committed
+-records cannot authorize it. The workflow does not retry candidate metadata online. Its ordinary
+-GitHub Actions result is useful evidence, but it is not an exclusive merge authority: a separately
++trusted checker revision. A dependency or authority-checker change therefore requires the
++externally controlled, exact-head bootstrap described in
++[GitHub governance](github-governance.md); candidate-committed records cannot authorize it. The
++bootstrap must establish identical protected inputs on `main` and `develop` before ordinary develop
++validation resumes. The workflow does not retry candidate metadata online. Its ordinary GitHub
++Actions result is useful evidence, but it is not an exclusive merge authority: a separately
+ configured source-bound GitHub App producer remains required before this result can replace the
+ candidate-controlled required status.
+ 
+-The base-built checker also embeds the exact authority-workflow bytes. A pull request that changes
+-those bytes or any repository-controlled checker build input is rejected even if it changes
+-candidate review or policy files at the same time. A legitimate authority update therefore needs
++The default-branch-built checker also embeds the exact authority-workflow bytes. A PR base or
++candidate that changes those bytes or any repository-controlled checker build input is rejected even
++if it changes review or policy files at the same time. A legitimate authority update therefore needs
+ the independently reviewed exact-head bootstrap documented in
+ [GitHub governance](github-governance.md); candidate files cannot authorize the update.
+ 
+--- /tmp/peritus-sol-ci-custody-source-checkpoint-20260912T001/docs/github-governance.md	2026-09-12 16:05:12.958559669 -0500
++++ /tmp/peritus-sol-authority-develop-source-checkpoint-20260912T001/docs/github-governance.md	2026-09-12 16:59:35.614438717 -0500
+@@ -38,47 +38,56 @@
+ ## Trusted-base validation available in repository code
+ 
+ `.github/workflows/formal-authority.yml` defines a read-only `pull_request_target` validation for
+-pull requests targeting `main`. Once that file is present on the default branch, GitHub obtains its
+-workflow definition from that branch rather than from the pull-request head. The job binds the
+-event base SHA, head SHA, and both checkout HEADs; requires the base to be an ancestor of the head;
+-and uses no candidate action or script.
+-
+-Before invoking Cargo in the candidate checkout, the job rejects every Git tree entry except a
+-regular file and rejects the legacy `.cargo/config` and `rust-toolchain` selectors. It requires the
+-root Cargo configuration, attributes, toolchain selector, manifest, and lockfile to match the exact
+-base bytes and modes. The same base-equality guard covers `xtask`'s manifest, source tree, possible
+-default build script, and every current non-test repository input embedded in the checker binary.
++pull requests targeting `main` or `develop`. Once that file is present on the default `main` branch,
++GitHub obtains its workflow definition from the default branch rather than from the pull-request
++head. GitHub defines `github.sha` and `github.ref` for this event as the last commit and ref on the
++default branch, while `github.workflow_sha` and `github.workflow_ref` identify the exact workflow
++file. The job binds those values to an immutable checker checkout and separately binds the exact PR
++base and head to comparison-base and candidate checkouts. It requires the PR base to be an ancestor
++of the candidate and uses no candidate action or script.
++
++Before invoking Cargo in the candidate checkout, the job rejects every authority, base, or candidate
++Git tree entry except a regular file and rejects the legacy `.cargo/config` and `rust-toolchain`
++selectors. It requires the root Cargo configuration, attributes, toolchain selector, manifest, and
++lockfile to have exact bytes and modes across both custody edges: checker revision to PR base, then PR
++base to candidate. The same two comparisons cover `xtask`'s manifest, source tree, possible default
++build script, and every current non-test repository input embedded in the checker binary. For a
++`main` pull request, the checker and PR base SHAs must also be identical. For a `develop` pull request,
++their commits may differ, but every protected authority input must remain identical.
++
+ `RUSTUP_TOOLCHAIN` and a runner-temporary `CARGO_HOME` are set by the trusted workflow. The job builds
+-`xtask` from the base checkout into `RUNNER_TEMP`, primes the base's locked dependency metadata, and
+-then runs that exact binary against the candidate with offline Cargo metadata and a PATH
+-reconstructed from the resolved runner Cargo and Git directories plus fixed system binary
+-directories. `all` runs before `verify-trust`, and the latter receives the exact event base SHA as
+-`PERITUS_PROOF_IMPACT_BASE`.
++`xtask` from the exact workflow/checker checkout into `RUNNER_TEMP`, primes only that revision's
++locked dependency metadata, and then runs that exact binary against the candidate with offline Cargo
++metadata and a PATH reconstructed from the resolved runner Cargo and Git directories plus fixed
++system binary directories. `all` runs before `verify-trust`. The latter receives the exact PR base
++SHA, not the checker SHA, as `PERITUS_PROOF_IMPACT_BASE`, preserving the candidate's actual
++proof-impact comparison and authorization base.
+ 
+ `cargo metadata` reads candidate manifests and dependency metadata but does not compile candidate
+ build scripts or load candidate procedural macros. Root manifest, lockfile, or authority-checker
+-drift fails before metadata, and the offline boundary also prevents resolution outside the base's
+-primed closure. Before exclusive App enforcement is enabled, the bootstrap path is an independent
+-review bound to the exact candidate head SHA and checker or dependency transition, including every
+-changed checker input or the dependency source, checksum, and executable build or macro surface,
+-followed by the maintainer's merge through the existing Gate A path. The resulting default branch
+-becomes the authority for later pull requests. After exclusive App enforcement, the App producer
+-must support an equivalent separately controlled exact-head bootstrap decision; it must never
+-silently retry candidate resolution online or treat candidate-provided review files as independent
+-authorization.
++drift fails before metadata, and the offline boundary also prevents resolution outside the checker's
++primed closure. There is no label, actor, approval count, candidate record, or workflow input that
++bypasses either custody comparison.
++
++Before exclusive App enforcement is enabled, a checker or dependency transition needs an independent
++review bound to the exact new head and complete protected-input tree, followed by a separately
++controlled exact-head bootstrap. That bootstrap must establish the reviewed checker inputs on
++default `main` and then establish identical protected inputs on `develop`; ordinary develop
++validation remains fail-closed until the two authority surfaces agree. After exclusive App
++enforcement, the App producer must support an equivalent separately controlled exact-head bootstrap
++decision. Neither route may silently retry candidate resolution online or treat candidate-provided
++review files as independent authorization.
+ 
+ This workflow currently produces an ordinary GitHub Actions check. It does not make the required
+ status exclusive because candidate workflows can publish checks through the same GitHub Actions
+ application identity. No App reporter or App credential is present in this repository increment.
+ The code is therefore validation-ready and enforcement-incomplete.
+ 
+-The checker built from the base embeds the exact reviewed authority-workflow bytes. It rejects any
+-candidate change to that workflow or to the repository-controlled checker build inputs even when
+-the candidate also changes review or policy files. A legitimate workflow or checker update must use
+-an explicit bootstrap: before App enforcement, independently review the exact change and merge it
+-through the existing Gate A path; after App enforcement, use an exact-head reviewed bootstrap
+-decision implemented by the separately controlled producer. Candidate-provided records cannot
+-authorize either route.
++The checker built from `github.workflow_sha` embeds the exact reviewed authority-workflow bytes. It
++rejects any PR-base or candidate change to that workflow or to the repository-controlled checker
++build inputs even when review or policy files change at the same time. A legitimate workflow or
++checker update must use the explicit external bootstrap above. Candidate-provided records cannot
++authorize it.
+ 
+ ## Exclusive authority deployment prerequisite
+ 
+--- /tmp/peritus-sol-ci-custody-source-checkpoint-20260912T001/xtask/README.md	2026-09-12 16:05:12.958595708 -0500
++++ /tmp/peritus-sol-authority-develop-source-checkpoint-20260912T001/xtask/README.md	2026-09-12 17:00:04.370636689 -0500
+@@ -9,10 +9,12 @@
+ API runbook because an offline repository process cannot attest to external state.
+ 
+ The same check locks the default-branch `formal-authority.yml` workflow byte-for-byte and validates
+-its exact trigger, permissions, SHA custody, pre-metadata execution guards, checker-build-input
+-custody, trusted-base build, offline candidate evaluation, and ordered `all` plus `verify-trust`
+-calls. Checker or dependency transitions require a separately controlled exact-head bootstrap;
+-candidate records cannot authorize them. This is a repository-code validation contract. Exclusive
++its exact `main`/`develop` trigger, permissions, separate checker/base/candidate SHA custody,
++pre-metadata execution guards, both checker-input equality edges, trusted checker build, offline
++candidate evaluation, and ordered `all` plus `verify-trust` calls. The proof-impact evaluator stays
++bound to the exact PR base. Checker or dependency transitions require a separately controlled
++exact-head bootstrap that establishes identical protected inputs on `main` and `develop`; candidate
++records cannot authorize them. This is a repository-code validation contract. Exclusive
+ required-check authority still depends on the separately deployed and source-bound GitHub App
+ described in `docs/github-governance.md`.
+ 
+--- /tmp/peritus-sol-ci-custody-source-checkpoint-20260912T001/xtask/src/reproducibility/workflow_authority.rs	2026-09-12 15:43:19.330700295 -0500
++++ /tmp/peritus-sol-authority-develop-source-checkpoint-20260912T001/xtask/src/reproducibility/workflow_authority.rs	2026-09-12 16:56:49.942298158 -0500
+@@ -13,6 +13,7 @@
+ const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+ const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
+ const REPOSITORY: &str = "${{ github.repository }}";
++const CHECKER_SHA: &str = "${{ github.workflow_sha }}";
+ const BASE_SHA: &str = "${{ github.event.pull_request.base.sha }}";
+ const HEAD_SHA: &str = "${{ github.event.pull_request.head.sha }}";
+ 
+@@ -41,11 +42,11 @@
+ 
+ pub(super) fn reviewed_run_step(location: &str, script: &str) -> bool {
+     let index = match location {
+-        "jobs.trusted-base-validation.steps[2]" => 2,
+         "jobs.trusted-base-validation.steps[3]" => 3,
+-        "jobs.trusted-base-validation.steps[5]" => 5,
++        "jobs.trusted-base-validation.steps[4]" => 4,
+         "jobs.trusted-base-validation.steps[6]" => 6,
+         "jobs.trusted-base-validation.steps[7]" => 7,
++        "jobs.trusted-base-validation.steps[8]" => 8,
+         _ => return false,
+     };
+     canonical_script(index).as_deref() == Some(script)
+@@ -84,7 +85,7 @@
+         && exact_keys(concurrency, &["group", "cancel-in-progress"])
+         && string(concurrency, "group")
+             == Some(
+-                "formal-authority-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}",
++                "formal-authority-${{ github.event.pull_request.number }}-${{ github.workflow_sha }}-${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.head.sha }}",
+             )
+         && mapping_value(concurrency, "cancel-in-progress").and_then(Yaml::as_bool) == Some(false)
+         && exact_keys(environment, &["CARGO_BUILD_JOBS", "RUST_VERSION", "RUSTUP_TOOLCHAIN"])
+@@ -103,7 +104,7 @@
+         return false;
+     };
+     exact_keys(trigger, &["branches", "types"])
+-        && exact_strings(branches, &["main"])
++        && exact_strings(branches, &["main", "develop"])
+         && exact_strings(
+             types,
+             &["opened", "edited", "reopened", "synchronize", "ready_for_review"],
+@@ -122,32 +123,55 @@
+         && string(job, "name") == Some("Trusted-base validation")
+         && string(job, "runs-on") == Some("ubuntu-24.04")
+         && integer(job, "timeout-minutes") == Some(10)
+-        && exact_keys(environment, &["AUTHORITY_SHA", "CANDIDATE_SHA", "EVENT_SHA"])
+-        && string(environment, "AUTHORITY_SHA") == Some(BASE_SHA)
++        && exact_keys(
++            environment,
++            &[
++                "CHECKER_SHA",
++                "BASE_SHA",
++                "CANDIDATE_SHA",
++                "EVENT_SHA",
++                "EVENT_REF",
++                "WORKFLOW_REF",
++                "DEFAULT_BRANCH",
++                "BASE_REF",
++                "BASE_REPOSITORY",
++                "BASE_REPOSITORY_ID",
++                "REPOSITORY_ID",
++                "EVENT_NAME",
++            ],
++        )
++        && string(environment, "CHECKER_SHA") == Some(CHECKER_SHA)
++        && string(environment, "BASE_SHA") == Some(BASE_SHA)
+         && string(environment, "CANDIDATE_SHA") == Some(HEAD_SHA)
+         && string(environment, "EVENT_SHA") == Some("${{ github.sha }}")
+-        && steps.len() == 8
+-        && exact_checkout(&steps[0], "Check out exact authority revision", BASE_SHA, "authority")
+-        && exact_checkout(&steps[1], "Check out exact candidate revision", HEAD_SHA, "candidate")
+-        && exact_run(&steps[2], 2, "Bind event and checkout identities", None, &[])
++        && string(environment, "EVENT_REF") == Some("${{ github.ref }}")
++        && string(environment, "WORKFLOW_REF") == Some("${{ github.workflow_ref }}")
++        && string(environment, "DEFAULT_BRANCH")
++            == Some("${{ github.event.repository.default_branch }}")
++        && string(environment, "BASE_REF") == Some("${{ github.event.pull_request.base.ref }}")
++        && string(environment, "BASE_REPOSITORY")
++            == Some("${{ github.event.pull_request.base.repo.full_name }}")
++        && string(environment, "BASE_REPOSITORY_ID")
++            == Some("${{ github.event.pull_request.base.repo.id }}")
++        && string(environment, "REPOSITORY_ID") == Some("${{ github.repository_id }}")
++        && string(environment, "EVENT_NAME") == Some("${{ github.event_name }}")
++        && steps.len() == 9
++        && exact_checkout(&steps[0], "Check out exact checker revision", CHECKER_SHA, "authority")
++        && exact_checkout(&steps[1], "Check out exact comparison base", BASE_SHA, "base")
++        && exact_checkout(&steps[2], "Check out exact candidate revision", HEAD_SHA, "candidate")
++        && exact_run(&steps[3], 3, "Bind event and checkout identities", None, &[])
++        && exact_run(&steps[4], 4, "Reject execution inputs before Cargo metadata", None, &[])
++        && exact_rust(&steps[5], &tools.rust)
+         && exact_run(
+-            &steps[3],
+-            3,
+-            "Reject candidate execution and authority inputs before Cargo metadata",
+-            None,
+-            &[],
+-        )
+-        && exact_rust(&steps[4], &tools.rust)
+-        && exact_run(
+-            &steps[5],
+-            5,
++            &steps[6],
++            6,
+             "Build trusted checker and prime locked metadata",
+             None,
+             &[("CARGO_HOME", "${{ runner.temp }}/formal-authority-cargo-home")],
+         )
+         && exact_run(
+-            &steps[6],
+-            6,
++            &steps[7],
++            7,
+             "Evaluate candidate with trusted checker",
+             Some("candidate"),
+             &[
+@@ -158,8 +182,8 @@
+             ],
+         )
+         && exact_run(
+-            &steps[7],
+-            7,
++            &steps[8],
++            8,
+             "Evaluate protected proof-impact trust",
+             Some("candidate"),
+             &[
+--- /tmp/peritus-sol-ci-custody-source-checkpoint-20260912T001/xtask/src/reproducibility/workflow_authority_tests.rs	2026-09-12 16:02:31.592371369 -0500
++++ /tmp/peritus-sol-authority-develop-source-checkpoint-20260912T001/xtask/src/reproducibility/workflow_authority_tests.rs	2026-09-12 17:02:35.218675198 -0500
+@@ -30,7 +30,7 @@
+ fn canonical_authority_workflow_is_exact_and_pinned() {
+     let (actions, diagnostics) = validate(PATH, DocumentKind::Workflow, &canonical());
+ 
+-    assert_eq!(actions, 3);
++    assert_eq!(actions, 4);
+     assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+ }
+ 
+@@ -66,18 +66,29 @@
+ #[test]
+ fn revision_custody_and_pre_metadata_guards_cannot_be_relaxed() {
+     for (before, after) in [
++        ("ref: ${{ github.workflow_sha }}", "ref: ${{ github.event.pull_request.base.sha }}"),
+         ("ref: ${{ github.event.pull_request.base.sha }}", "ref: ${{ github.base_ref }}"),
+         ("ref: ${{ github.event.pull_request.head.sha }}", "ref: ${{ github.sha }}"),
+         ("fetch-depth: 0", "fetch-depth: 1"),
+         ("persist-credentials: false", "persist-credentials: true"),
+-        ("git -C candidate merge-base --is-ancestor \"$AUTHORITY_SHA\" \"$CANDIDATE_SHA\"", "true"),
++        ("require_sha CHECKER_SHA \"$CHECKER_SHA\"", "true"),
++        ("test \"$EVENT_NAME\" = \"pull_request_target\"", "true"),
++        ("test \"$DEFAULT_BRANCH\" = \"main\"", "true"),
++        ("test \"$EVENT_SHA\" = \"$CHECKER_SHA\"", "true"),
++        ("test \"$EVENT_REF\" = \"refs/heads/main\"", "true"),
+         (
+-            "git -C candidate ls-tree -r -z --full-tree \"$CANDIDATE_SHA\" > \"$tree_inventory\"",
++            "test \"$WORKFLOW_REF\" = \"$GITHUB_REPOSITORY/.github/workflows/formal-authority.yml@refs/heads/main\"",
+             "true",
+         ),
++        ("test \"$BASE_REPOSITORY\" = \"$GITHUB_REPOSITORY\"", "true"),
++        ("test \"$BASE_REPOSITORY_ID\" = \"$REPOSITORY_ID\"", "true"),
++        ("main) test \"$BASE_SHA\" = \"$CHECKER_SHA\" ;;", "main) ;;"),
++        ("git -C candidate merge-base --is-ancestor \"$BASE_SHA\" \"$CANDIDATE_SHA\"", "true"),
++        ("check_tree authority \"$CHECKER_SHA\" checker", "true"),
++        ("check_tree base \"$BASE_SHA\" base", "true"),
++        ("check_tree candidate \"$CANDIDATE_SHA\" candidate", "true"),
+         ("100644:blob|100755:blob", "*:blob"),
+         (".cargo/config|rust-toolchain", "rust-toolchain"),
+-        (".cargo/config.toml .gitattributes rust-toolchain.toml", ".gitattributes"),
+         ("CARGO_NET_OFFLINE: \"true\"", "CARGO_NET_OFFLINE: \"false\""),
+         (
+             "${{ runner.temp }}/formal-authority-cargo-home",
+@@ -89,8 +100,9 @@
+ }
+ 
+ #[test]
+-fn checker_build_inputs_cannot_drift_before_candidate_metadata() {
++fn checker_build_inputs_cannot_drift_on_either_custody_edge() {
+     for (before, after) in [
++        (".cargo/config.toml .gitattributes rust-toolchain.toml", ".gitattributes"),
+         ("Cargo.toml Cargo.lock", "Cargo.toml"),
+         (
+             "xtask/Cargo.toml xtask/build.rs xtask/src",
+@@ -99,33 +111,89 @@
+         (".github/workflows/formal-authority.yml", ".github/workflows/formal-authority.yaml"),
+         (".github/workflows/formal-governance.yml", ".github/workflows/formal-governance.yaml"),
+         ("docs/formal-governance-ruleset.template.json", "docs/github-governance.md"),
++        (
++            "\"$CHECKER_SHA\" \"$BASE_SHA\" -- \"${authority_inputs[@]}\"",
++            "\"$CHECKER_SHA\" \"$CHECKER_SHA\" -- \"${authority_inputs[@]}\"",
++        ),
++        (
++            "\"$BASE_SHA\" \"$CANDIDATE_SHA\" -- \"${authority_inputs[@]}\"",
++            "\"$BASE_SHA\" \"$BASE_SHA\" -- \"${authority_inputs[@]}\"",
++        ),
+     ] {
+         assert_rejected(&canonical().replace(before, after));
+     }
+ }
+ 
+ #[test]
+-fn checker_source_only_drift_fails_while_unrelated_drift_preserves_custody() {
++fn unchanged_develop_base_and_candidate_preserve_both_custody_edges() {
+     let unchanged = GitFixture::new();
+     unchanged.write("xtask/src/lib.rs", "pub fn authority() -> bool { true }\n");
+-    unchanged.commit("base");
++    unchanged.commit("checker");
++    let checker = unchanged.head();
++    unchanged.write("docs/base-unrelated.md", "# Develop base\n");
++    unchanged.commit("develop base");
+     let base = unchanged.head();
++    unchanged.write("docs/candidate-unrelated.md", "# Candidate\n");
++    unchanged.commit("candidate");
++    let candidate = unchanged.head();
+ 
+-    unchanged.write("docs/unrelated.md", "# Unrelated\n");
+-    unchanged.commit("unrelated");
+-    assert!(unchanged.diff(&base).success(), "unrelated drift must preserve checker custody");
++    assert!(unchanged.diff(&checker, &base).success());
++    assert!(unchanged.diff(&base, &candidate).success());
++}
+ 
++#[test]
++fn checker_source_only_drift_in_develop_base_fails_closed() {
+     let drift = GitFixture::new();
+     drift.write("xtask/src/lib.rs", "pub fn authority() -> bool { true }\n");
+-    drift.commit("base");
++    drift.commit("checker");
++    let checker = drift.head();
++    drift.write("xtask/src/lib.rs", "pub fn authority() -> bool { false }\n");
++    drift.commit("develop checker drift");
++    let base = drift.head();
++    drift.write("docs/unrelated.md", "# Candidate\n");
++    drift.commit("candidate");
++    let candidate = drift.head();
++
++    assert!(!drift.diff(&checker, &base).success());
++    assert!(drift.diff(&base, &candidate).success());
++}
++
++#[test]
++fn checker_source_only_drift_in_candidate_fails_closed() {
++    let drift = GitFixture::new();
++    drift.write("xtask/src/lib.rs", "pub fn authority() -> bool { true }\n");
++    drift.commit("checker");
++    let checker = drift.head();
++    drift.write("docs/unrelated.md", "# Develop base\n");
++    drift.commit("develop base");
+     let base = drift.head();
+     drift.write("xtask/src/lib.rs", "pub fn authority() -> bool { false }\n");
+-    drift.commit("checker drift");
+-    assert!(!drift.diff(&base).success(), "checker-source-only drift must fail closed");
++    drift.commit("candidate checker drift");
++    let candidate = drift.head();
++
++    assert!(drift.diff(&checker, &base).success());
++    assert!(!drift.diff(&base, &candidate).success());
++}
++
++#[test]
++fn externally_installed_checker_is_a_later_unchanged_authority_baseline() {
++    let installed = GitFixture::new();
++    installed.write("xtask/src/lib.rs", "pub fn authority() -> bool { false }\n");
++    installed.commit("externally installed checker authority");
++    let checker = installed.head();
++    installed.write("docs/base-unrelated.md", "# Develop base\n");
++    installed.commit("develop base after bootstrap");
++    let base = installed.head();
++    installed.write("docs/candidate-unrelated.md", "# Candidate\n");
++    installed.commit("candidate");
++    let candidate = installed.head();
++
++    assert!(installed.diff(&checker, &base).success());
++    assert!(installed.diff(&base, &candidate).success());
+ }
+ 
+ #[test]
+-fn candidate_actions_permissions_and_failure_masking_are_rejected() {
++fn target_identity_permissions_and_failure_masking_are_rejected() {
+     for altered in [
+         canonical().replace("contents: read", "contents: write"),
+         canonical().replace(
+@@ -137,6 +205,18 @@
+             "      - name: Evaluate candidate with trusted checker\n        continue-on-error: true\n",
+         ),
+         canonical().replace("pull_request_target:", "pull_request:"),
++        canonical().replace("branches: [main, develop]", "branches: [main]"),
++        canonical().replace("branches: [main, develop]", "branches: [develop]"),
++        canonical().replace("branches: [main, develop]", "branches: [main, develop, staging]"),
++        canonical().replace(
++            "${{ github.workflow_sha }}-${{ github.event.pull_request.base.sha }}",
++            "${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.base.sha }}",
++        ),
++        canonical().replace("CHECKER_SHA: ${{ github.workflow_sha }}", "CHECKER_SHA: ${{ github.sha }}"),
++        canonical().replace(
++            "PERITUS_PROOF_IMPACT_BASE: ${{ github.event.pull_request.base.sha }}",
++            "PERITUS_PROOF_IMPACT_BASE: ${{ github.workflow_sha }}",
++        ),
+     ] {
+         assert_rejected(&altered);
+     }
+@@ -186,10 +266,10 @@
+         String::from_utf8(output.stdout).expect("fixture HEAD is UTF-8").trim().to_owned()
+     }
+ 
+-    fn diff(&self, base: &str) -> ExitStatus {
++    fn diff(&self, before: &str, after: &str) -> ExitStatus {
+         Command::new("git")
+             .current_dir(&self.root)
+-            .args(["diff", "--no-ext-diff", "--no-textconv", "--exit-code", base, "HEAD", "--"])
++            .args(["diff", "--no-ext-diff", "--no-textconv", "--exit-code", before, after, "--"])
+             .args(AUTHORITY_INPUTS)
+             .stdout(Stdio::null())
+             .stderr(Stdio::null())

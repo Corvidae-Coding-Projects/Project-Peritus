@@ -1,0 +1,100 @@
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+dest = root / 'docs/formal-coverage-evidence/obligations-qualification-contracts'
+prefix = '/tmp/peritus-parent-obligations-contracts-'
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+manifest = Path(prefix + 'full-package.sha256')
+assert sha(manifest) == '548fbb7cf5485c65354c41152cb10fc365d419a77c7740dc566ad0bb00f6dd17'
+expected = {name: digest for digest, name in
+            (line.split('  ', 1) for line in manifest.read_text().splitlines())}
+assert len(expected) == 56
+assert {str(p.relative_to(root)) for p in
+        (root / 'crates/orchestration/peritus-obligations').rglob('*') if p.is_file()} == expected.keys()
+for name, digest in expected.items():
+    assert sha(root / name) == digest, name
+review = '/tmp/peritus-sol-obligations-contracts-independent-review-20260913T001.md'
+correction = '/tmp/peritus-sol-obligations-contracts-independent-review-correction-20260913T001.md'
+assert sha(review) == 'bcbfc71f52cfeeccfa0caf71081904c015e0551116fb305a5c6ecdcb1a393604'
+assert sha(correction) == 'b2edb1a647519fabe538057ab9475ebae52e88d7e4ae9dd7bdcea4f48c7d83f2'
+files = {}
+evidence = Path(prefix + 'evidence.sha256')
+for line in evidence.read_text().splitlines():
+    digest, source = line.split('  ', 1)
+    assert sha(source) == digest, source
+    path = Path(source)
+    name = path.name.replace('peritus-parent-obligations-contracts-', 'isolated-')
+    if path.suffix in {'.rs', '.py'}:
+        name += '.txt'
+    elif path.suffix == '.log':
+        name = name[:-4] + '.txt'
+    assert name not in files
+    files[name] = source
+files.update({
+    'independent-review.txt': review,
+    'independent-review-correction.md': correction,
+    'isolated-evidence-sha256.txt': str(evidence),
+    'qualification-integrated.json': prefix + 'qualification-integrated.json',
+    'integration-driver.py.txt': prefix + 'integrate.py',
+    'retention-driver.py.txt': __file__,
+})
+for label in ['verus', 'tests-default', 'tests-all', 'caller-tests', 'clippy', 'fmt', 'api', 'layout']:
+    files[label + '-integrated.txt'] = prefix + label + '-integrated.log'
+qualification = json.loads(Path(files['qualification-integrated.json']).read_text())
+assert (qualification['prior_files_checked'], qualification['final_files_checked'],
+        qualification['integrated_files']) == (51, 56, 8)
+assert len(qualification['commands']) == 8
+assert all(item['exit_code'] == 0 for item in qualification['commands'])
+assert qualification['environment']['CARGO_BUILD_JOBS'] == '1'
+assert not dest.exists()
+dest.mkdir()
+for name, source in files.items():
+    shutil.copyfile(source, dest / name)
+(dest / 'audit.md').write_text('''# Obligation qualification contracts
+
+The public production qualify boundary now proves exact first errors and all stored payload fields, and its successful verdict is equivalent to an input-defined universal predicate over the actual ledger and supplied typed evidence. Active ordinary requirements need satisfying current evidence, consulted conditions must be resolved, and every alternative group needs one existing complete branch. The preceding exact report counts and ordered diagnostic lists remain part of the contract. The executable validation order and evaluator algorithm are unchanged.
+
+Independent source reviewer /root/sol_readiness_correspondence checked the eight-path increment, all 56 final package identities, 59 direct dependency files, 28 supplied evidence artifacts, and actual gate/product-runner consumers. The separate attribution correction distinguishes the verified extraction kernel from its ordinary SHA wrapper. No reviewer compiler rerun is claimed. Parent guarded integration checked all 51 prior and 56 final package identities and preserved those final identities around every qualification command.
+
+Integrated strict pinned verification passed 361/0. Default and all-feature suites each passed 32 tests; four focused gate/product-runner caller tests also passed. Strict Clippy, formatting, ordinary API scanning (3518 files / 14689 entry points), and source layout (4419 files) passed. The integrated commands used one Cargo job, two Verus threads, no-cheating, rlimit20 and a disk-backed target. The isolated actual-client result is 2/0 with dependency metadata reuse. Discarding the actual unknown-requirement payload failed its postcondition at 360/1. Removing a required condition conjunct was refused at the pinned rlimit; that result is not a semantic counterexample. Original failures, restorations and test-only const correction are retained with accurate provenance.
+
+These guarantees classify supplied evidence; they do not prove its truth or origin. The production-called extraction kernel's exact error contract is a separate unintegrated increment. Ordinary SHA execution, all caller observation policies, final global records and final-head hosted CI remain outside this checkpoint. This record does not discharge the complete goal.
+''')
+record = {
+    'schema': 'peritus.formal-coverage.increment-review', 'schema_version': 1,
+    'status': 'reviewed-bounded-increment-not-obligation-discharge',
+    'recorded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'base_commit': '1aa9282ff2cfcbf8fac325f11f157f408d33ee30',
+    'implementation': '/root', 'independent_source_reviewer': '/root/sol_readiness_correspondence',
+    'independent_review_kind': 'exact source and supplied evidence; no reviewer compiler rerun',
+    'prior_source_files': 51, 'source_files': 56, 'changed_source_files': 8,
+    'full_package_manifest_sha256': sha(manifest),
+    'results': {'parent_integrated_strict_verified': 361, 'proof_errors': 0,
+        'parent_default_tests': 32, 'parent_all_features_tests': 32, 'parent_caller_tests': 4,
+        'parent_clippy': 'passed', 'parent_format': 'passed',
+        'parent_api': 'passed 3518 files / 14689 entries',
+        'parent_layout': 'passed 4419 files', 'final_head_hosted_ci': 'not run'},
+    'artifact_original_paths': files,
+    'artifacts': {p.name: sha(p) for p in sorted(dest.iterdir()) if p.is_file()},
+}
+(dest / 'review.json').write_text(json.dumps(record, indent=2) + '\n')
+audit = root / 'docs/formal-coverage-audit.md'
+text = audit.read_text()
+anchor = '## Completion evidence still required\n'
+heading = '## Obligation qualification contract completion\n'
+assert heading not in text and text.count(anchor) == 1
+text = text.replace(anchor, heading + '''
+The [qualification contract review](formal-coverage-evidence/obligations-qualification-contracts/review.json) closes the previously recorded exact qualification-error and direct universal-verdict gaps. The actual public boundary preserves complete existing report fields, proves first-error precedence and payloads, and connects its qualified bit to actual current evidence, resolved conditions and complete alternative branches. Independent source review and guarded integration cover all eight changed paths and 56 final package identities.
+
+Integrated strict verification, 32 tests in each feature profile, four actual caller tests, Clippy, formatting, ordinary API and source layout all passed. The retained review separates actual payload-mutation rejection from a weakened-predicate run that hit the solver limit. Exact extraction-kernel errors, observation origin, final records and hosted CI remain separately outstanding.
+
+''' + anchor)
+audit.write_text(text)
+for name, digest in record['artifacts'].items():
+    assert sha(dest / name) == digest, name
+print(json.dumps({'path': str(dest), 'artifacts': len(record['artifacts']),
+                  'review_sha256': sha(dest / 'review.json')}, indent=2))

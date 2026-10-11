@@ -24,6 +24,7 @@ override_dh_auto_build:
 	$(CARGO) build --release --frozen $(PRODUCTS) --bins --features peritus-cli/system-package
 
 override_dh_auto_test:
+	@true
 
 override_dh_auto_install:
 	install -d debian/peritus/usr/lib/peritus debian/peritus/usr/bin

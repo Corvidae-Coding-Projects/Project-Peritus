@@ -8,6 +8,7 @@ use peritus_types::{ActionId, ActorId, ApprovalRequestId, Generation, Sha256Dige
 
 mod participant;
 mod projection;
+mod specification;
 
 #[doc = " Maximum exact permissions bound into one request."]
 pub const MAX_APPROVAL_PERMISSIONS: usize = 256;

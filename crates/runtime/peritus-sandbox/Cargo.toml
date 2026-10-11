@@ -7,9 +7,13 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["sandbox", "process", "capabilities", "formal-verification"]
 categories = ["development-tools"]
+
+[package.metadata.peritus]
+owner = "C2"
+layer = "runtime"
 
 [dependencies]
 peritus-codec = { version = "=0.0.6", path = "../../foundation/peritus-codec" }

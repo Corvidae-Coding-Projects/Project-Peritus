@@ -1,0 +1,10 @@
+7575aba44316169790639fbddee7edd5fbd50c9969d74ddeb00aeb1261b86dec  /tmp/peritus-sol-run-knowledge-verus-20.log
+7bd29c353cd14478b4735be6f493899c2679fd11b516a7f238b3c9834d1cde2f  /tmp/peritus-sol-run-knowledge-tests-all-features-02.log
+24be17c7c7d28ae27412169b0471dd4a628e9baf81a28da9372b3537ffdf1ee9  /tmp/peritus-sol-run-knowledge-tests-default-02.log
+f236456be8f1b16c00ed744feeb4f4ae0a914de6f6514a3933d65273dd90adf5  /tmp/peritus-sol-run-knowledge-clippy-03.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /tmp/peritus-sol-run-knowledge-fmt-02.log
+b3c9dbbb413008026a6935bc7fd3626c48980ad6e292997b109ebf50b8082cd1  /tmp/peritus-sol-run-knowledge-source-layout-01.log
+378fb10455f10bc56255907b727a47271535bb9b9582da4336df48e3d302139c  /tmp/peritus-sol-run-knowledge-consumer-tests-01.log
+a23109df50dce507a8419e0ac7b47466e0cf15dc01dcde6ee01b3ad3a4333665  /tmp/peritus-sol-run-knowledge-consumer-clippy-01.log
+45a31f93399b5b9d05422593da9cc3ec0a35f5993453085685d5a0f65211ebfb  /tmp/peritus-sol-run-knowledge-commands-01.txt
+dba2f9cb5bb1f6ef8eca9a06f70f7e98357638c042a9b97b3cb7477e12f2a714  /tmp/peritus-sol-run-knowledge-source-01.sha256

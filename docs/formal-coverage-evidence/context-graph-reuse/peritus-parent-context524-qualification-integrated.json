@@ -1,0 +1,127 @@
+{
+  "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+  "prior_files_checked": 55,
+  "final_files_checked": 72,
+  "changed_files": 25,
+  "parent_review_sha256": "39fccbd1ad4d1f0fede769d2a6abbbf20a79a013f3f845a08e02f879de38182d",
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target"
+  },
+  "commands": [
+    {
+      "label": "verus",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-context",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20",
+        "--num-threads",
+        "2"
+      ],
+      "log": "/tmp/peritus-parent-context524-verus-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "tests-default",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-context",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-context524-tests-default-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "tests-all",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-context",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-context524-tests-all-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "peritus-context",
+        "--all-targets",
+        "--all-features",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/peritus-parent-context524-clippy-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--package",
+        "peritus-context",
+        "--",
+        "--check"
+      ],
+      "log": "/tmp/peritus-parent-context524-fmt-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "caller-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-agent",
+        "--package",
+        "peritus-product-runner",
+        "--all-features",
+        "--lib",
+        "--locked",
+        "context"
+      ],
+      "log": "/tmp/peritus-parent-context524-caller-tests-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "api",
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-context524-api-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "label": "layout",
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-context524-layout-integrated.log",
+      "exit_code": 0
+    }
+  ]
+}

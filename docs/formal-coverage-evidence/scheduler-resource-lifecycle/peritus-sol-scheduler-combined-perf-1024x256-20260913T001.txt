@@ -1,0 +1,20 @@
+   Compiling peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/orchestration/peritus-scheduler)
+    Finished `release` profile [optimized] target(s) in 13.94s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release/release/deps/peritus_scheduler-9469d5ca2a851999)
+
+running 1 test
+test selection::performance_probe::dense_public_selection_and_dispatch_timings ... scheduler_perf phase=setup reservations=1024 dimensions=256 elapsed_ns=22539083
+scheduler_perf phase=select_next sample=0 reservations=1024 dimensions=256 elapsed_ns=667748
+scheduler_perf phase=select_next sample=1 reservations=1024 dimensions=256 elapsed_ns=665470
+scheduler_perf phase=select_next sample=2 reservations=1024 dimensions=256 elapsed_ns=662844
+scheduler_perf phase=select_next sample=3 reservations=1024 dimensions=256 elapsed_ns=655391
+scheduler_perf phase=select_next sample=4 reservations=1024 dimensions=256 elapsed_ns=659310
+scheduler_perf phase=select_next sample=5 reservations=1024 dimensions=256 elapsed_ns=660232
+scheduler_perf phase=select_next sample=6 reservations=1024 dimensions=256 elapsed_ns=651483
+scheduler_perf phase=dispatch_next sample=0 reservations=1024 dimensions=256 elapsed_ns=10326173
+scheduler_perf phase=dispatch_next sample=1 reservations=1024 dimensions=256 elapsed_ns=9838898
+scheduler_perf phase=dispatch_next sample=2 reservations=1024 dimensions=256 elapsed_ns=9781689
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.07s
+

@@ -1,0 +1,36 @@
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.20s
+     Running unittests src/lib.rs (target/sol-authority-develop/debug/deps/xtask-88f979add953e9b2)
+
+running 10 tests
+test reproducibility::workflow_authority_tests::canonical_authority_workflow_is_exact_and_pinned ... ok
+test reproducibility::workflow_authority_tests::checker_source_only_drift_in_candidate_fails_closed ... ok
+test reproducibility::workflow_authority_tests::externally_installed_checker_is_a_later_unchanged_authority_baseline ... ok
+test reproducibility::workflow_authority_tests::checker_source_only_drift_in_develop_base_fails_closed ... ok
+test reproducibility::workflow_authority_tests::unchanged_develop_base_and_candidate_preserve_both_custody_edges ... ok
+test reproducibility::workflow_authority_tests::candidate_cannot_select_or_build_its_own_checker ... ok
+test reproducibility::workflow_authority_tests::both_policy_passes_are_mandatory_and_ordered ... ok
+test reproducibility::workflow_authority_tests::checker_build_inputs_cannot_drift_on_either_custody_edge ... ok
+test reproducibility::workflow_authority_tests::target_identity_permissions_and_failure_masking_are_rejected ... ok
+test reproducibility::workflow_authority_tests::revision_custody_and_pre_metadata_guards_cannot_be_relaxed ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 418 filtered out; finished in 0.20s
+
+     Running unittests src/main.rs (target/sol-authority-develop/debug/deps/xtask-41a90078cef10c75)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/sol-authority-develop/debug/deps/cli-0bf8960b46fe3ccc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/release_staging.rs (target/sol-authority-develop/debug/deps/release_staging-15805a54a9b679f5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+

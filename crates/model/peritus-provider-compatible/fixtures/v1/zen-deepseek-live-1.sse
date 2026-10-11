@@ -1,0 +1,30 @@
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"role":"assistant","content":"","reasoning_content":null}}]}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":"We"}}],"usage":{"prompt_tokens":96,"completion_tokens":1,"total_tokens":97,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" need answer with"}}],"usage":{"prompt_tokens":96,"completion_tokens":4,"total_tokens":100,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" one short word. User asks"}}],"usage":{"prompt_tokens":96,"completion_tokens":10,"total_tokens":106,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" \"Reply with"}}],"usage":{"prompt_tokens":96,"completion_tokens":13,"total_tokens":109,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" one short word to confirm this"}}],"usage":{"prompt_tokens":96,"completion_tokens":19,"total_tokens":115,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" provider route is usable.\" Need"}}],"usage":{"prompt_tokens":96,"completion_tokens":25,"total_tokens":121,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" respond with word maybe \"Yes"}}],"usage":{"prompt_tokens":96,"completion_tokens":31,"total_tokens":127,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":"\" or \"Us"}}],"usage":{"prompt_tokens":96,"completion_tokens":35,"total_tokens":131,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":"able\". One"}}],"usage":{"prompt_tokens":96,"completion_tokens":38,"total_tokens":134,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"reasoning_content":" short word."}}],"usage":{"prompt_tokens":96,"completion_tokens":42,"total_tokens":138,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"content":"Yes","reasoning_content":null}}],"usage":{"prompt_tokens":96,"completion_tokens":43,"total_tokens":139,"prompt_tokens_details":{}}}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":"stop","logprobs":null,"delta":{"reasoning_content":null}}]}
+
+data: {"id":"request-1","object":"chat.completion.chunk","created":1,"model":"deepseek-v4-flash","choices":[],"usage":{"prompt_tokens":96,"completion_tokens":44,"total_tokens":140,"prompt_tokens_details":{}}}
+
+data: [DONE]
+

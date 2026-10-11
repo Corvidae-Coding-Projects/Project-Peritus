@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "posix-uninstall-supervisor-false-success",
+  "classification": "product_defect",
+  "invariant": "Uninstall must retain package state and return failure when an installed supervisor registration cannot be stopped or queried safely.",
+  "original": {
+    "revision": "6dd8059b9ef189b1d8f954b415d83ee252148e8c",
+    "platform": "rootless linux container exercising Linux and macOS script branches",
+    "finding_source": "bounded Daybreak lifecycle chaos campaign",
+    "independent_reproducer": "Python controller with three newly populated profiles per script branch",
+    "fresh_fixture_repetitions": 3,
+    "command": "python3 packaging/test_posix_lifecycle.py -v",
+    "exit_code": 1,
+    "failure_signature": "fake supervisor nonzero; uninstaller zero; registration or package deleted before retry"
+  },
+  "reproducer": {
+    "path": "packaging/test_posix_lifecycle.py",
+    "tests": ["test_linux_controller_failure_is_truthful_and_retryable", "test_macos_controller_access_failure_is_truthful_and_retryable"],
+    "fault_schedule": ["populate isolated package and registration", "inject controller access or stop failure", "run uninstall", "inspect registration, binary, sibling", "clear fault and retry"],
+    "required_reachability": ["controller invoked", "injected failure marker observed", "package state inspected before retry"],
+    "oracle": "subprocess status plus direct registration, binary, and sibling-canary reads",
+    "minimization": "one installed registration, one injected controller failure, one state inspection, and one retry per script branch"
+  },
+  "fix": {
+    "revision": "83706d6094e3647637ac5dc0a5fd09f647799e66",
+    "owner": "Linux and macOS uninstall scripts",
+    "root_cause": "supervisor failures were suppressed and package files were removed before owned-job absence was proven"
+  },
+  "fixed_replay": {
+    "command": "PERITUS_CONTAINER_ENGINE=podman cargo xtask discovery-posix-lifecycle",
+    "expected": "exit 0; 12 scenarios pass; injected failures retain state; retry succeeds"
+  },
+  "negative_control": "an explicit controller not-found result makes absent registration idempotent",
+  "cleanup": "exact named container force-removed and absent; temporary root removed; sibling bytes unchanged",
+  "limitations": ["fake supervisors do not qualify native systemd-user or launchd behavior"]
+}

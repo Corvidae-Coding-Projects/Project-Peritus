@@ -1,0 +1,119 @@
+Peritus formal-authority CI checkpoint 02 independent static review
+Reviewed: 2026-09-12T15:38:24-05:00
+Worktree: /home/doll/Project-Peritus/.worktrees/formal-coverage
+HEAD/base: 1aa9282ff2cfcbf8fac325f11f157f408d33ee30
+
+Checkpoint identity
+
+Manifest: /tmp/peritus-sol-phase-ci-source-checkpoint-02.sha256
+Manifest SHA-256: af91b1d5a50b934c53cdedfc37fe6129c51f32a45db1cb5b0a9788bf48a1d7ee
+`sha256sum -c` passed for all nine files immediately before review.
+
+0439702d0f8a3b06bd0c2a67ba9b20c4aa0730cb8985a05317b75c0ac19d9188  .github/workflows/formal-authority.yml
+cdc705b0b3e8435eb350034d2ed00377cf3878240cf5bc20ba062ff5d0b9a299  docs/foundation-toolchain.md
+597aa2571071d390d73834cc28ae8192bcc25c4392b8034592117047be6ecba3  docs/github-governance.md
+78fee28d2074122070cd08c3aeb413bde7f7b21366a789ce10e626393ff018ff  xtask/README.md
+696af0ec2bc87dd56a8c01ac0927098f69335d8b5b85c5a717dd16e2e197d1fa  xtask/src/reproducibility.rs
+395d32954f71c643bcbbce69182da8afcf51ce5b4e8b73f1deac0b03f2711813  xtask/src/reproducibility/workflow_authority.rs
+1e39e97ce33ed354c33a6847df05ca55d3d0899761701239493056f8e88f2bc4  xtask/src/reproducibility/workflow_authority_tests.rs
+5f379ee57e93c40803bfdd4bec2fa7c9c238464090e233860c9a380cda0b3ce5  xtask/src/reproducibility/workflow_policy.rs
+71d61630c3ea906bb75ee43516e4ffb10dcca9488138f15b2e0a737b9487d100  xtask/src/reproducibility/workflow_run.rs
+
+Verdict
+
+PASS for the bounded current-PR trusted execution design, subject to a material
+trusted-base evolution gap. BLOCKED for any durable exclusive merge-authority
+claim until authority-checker transition custody is added and the documented
+external App/ruleset deployment is completed.
+
+Confirmed behavior
+
+- The pull_request_target workflow is byte-locked by the base-compiled checker.
+  It uses read-only contents permission, immutable action pins, exact event base
+  and head SHA checkouts, exact checkout HEAD checks, EVENT_SHA/base equality,
+  and base-is-ancestor-of-head.
+- Before candidate Cargo metadata, the shell inventories the exact candidate Git
+  tree with NUL-delimited records, admits only regular blobs, rejects legacy
+  Cargo/Rust selectors, and requires the root Cargo config, attributes, and Rust
+  toolchain file to have no base/head diff.
+- The workflow builds xtask from the authority checkout into RUNNER_TEMP. Both
+  `all` and `verify-trust` execute that binary from the candidate directory with
+  an offline fresh Cargo home and a PATH rebuilt from resolved runner Cargo/Git
+  directories plus /usr/bin:/bin. No candidate action or repository script is
+  selected by the workflow.
+- `all` reaches the exact authority validator through cli::execute_all ->
+  reproducibility::check -> workflow_policy::validate_document ->
+  workflow_authority::validate. The authority validator compares full bytes to
+  its include_str base copy and separately requires exact YAML keys, values,
+  order-sensitive steps, scripts, environments, and action pins.
+- Reachable child processes are Cargo metadata from the base checker and Git
+  inspection in protected proof-impact checks. Cargo metadata parses candidate
+  manifests/dependency metadata and does not compile candidate packages, build
+  scripts, or procedural macros. Git reads candidate objects/history. Candidate
+  data is therefore processed; “nonexecution” is limited to no intentional
+  execution of candidate code, actions, scripts, build scripts, or macros.
+- Exact scripts use `set -euo pipefail`, have no continue-on-error, and the
+  command chain returns nonzero on identity, tree, metadata, `all`, or
+  `verify-trust` failure. Offline dependency misses fail closed.
+- Retained checkpoint logs show all five focused authority mutation tests pass
+  and `xtask reproducibility-check` pass. Exact workflow-byte comparison makes
+  every workflow mutation fail even beyond the sampled structural mutations.
+
+Material finding: authority checker has no transition custody
+
+`xtask` is architecture verification class C. Protected proof-impact inventory
+tracks V/H/T compilation sources and shared inputs, not ordinary xtask source.
+The base checker validates candidate repository data but does not require
+candidate `xtask/Cargo.toml`, `xtask/src/**`, or `xtask/tests/**` to equal the
+base, and it does not require an external exact-head admission for an xtask-only
+change. The checker-binding code is reached only during a specially formed
+proof-impact authorization flow; an ordinary xtask-only pull request need not
+enter that flow.
+
+Consequently, a candidate can change `workflow_authority.rs`, `workflow_policy.rs`,
+`workflow_run.rs`, or another authority-critical checker input while leaving the
+canonical workflow and protected formal inputs unchanged. The current run still
+uses the safe base binary and passes. After that candidate is merged, the changed
+checker becomes the base binary for later pull requests and can accept a weakened
+workflow or policy. The focused tests mutate workflow bytes but do not exercise
+this cross-revision checker-source transition.
+
+This is a two-change trusted-computing-base poisoning path. It does not permit
+candidate execution in the current run and does not worsen today's documented
+candidate-controlled Gate A. It does block treating a future source-bound App
+that merely republishes this job's conclusion as durable exclusive authority.
+The smallest complete design correction is to inventory every input that can
+change the authority checker binary and reject its base/head drift by default,
+with legitimate changes admitted only by a separately controlled exact-head
+bootstrap decision. This can retain zero GitHub approvals and maintainer
+self-merge; the admission decision belongs to the external authority producer,
+not candidate-committed records.
+
+Claims and deployment boundary
+
+The docs accurately label this increment “validation-ready and
+enforcement-incomplete,” state that no App reporter/credential exists, preserve
+zero GitHub approvals and maintainer self-merge, and require a later reporter to
+publish a source-bound check on the exact head. They also correctly warn that the
+first pull_request_target workflow cannot validate its own bootstrap.
+
+The App guidance binds a trusted-checker revision but does not establish how a
+new checker revision becomes trusted. Workflow/dependency bootstrap language
+should explicitly include all authority-checker inputs. “Legitimate authority
+update” is broader than the implemented workflow-byte custody if read to include
+checker source changes.
+
+Review boundary
+
+This was a defensive static review of the frozen nine-file checkpoint and its
+local callers in cli, metadata, trust, architecture classification, and
+proof-impact transition code. It relied on retained focused-test and
+reproducibility logs. It did not execute an adversarial candidate, modify CI,
+query live GitHub settings/rulesets/check runs, validate hosted-runner behavior,
+audit the pinned third-party action implementations, authenticate reviewers, or
+deploy/test the absent App reporter. Pinned actions, Rust/Cargo/Git/YAML/TOML
+implementations, base dependency build-time code, GitHub event semantics, hosted
+runner isolation, default-branch custody, and the future external App are part of
+the remaining trusted/external boundary.
+
+Repository files changed by this review: none.

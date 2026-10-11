@@ -1,7 +1,7 @@
 //! Blocker, waiver, and final human-approval evaluation.
 
 mod blockers;
-
+pub(super) mod diagnostics;
 mod lookup;
 mod supplied;
 mod waiver;

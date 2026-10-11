@@ -1,0 +1,26 @@
+"""Audited entry point for first-party distribution release operations."""
+
+import argparse
+
+import build
+import compiled
+import ci_sign
+import sign
+import verify
+import upload
+
+
+def main():
+    actions = {"image": build.build_image, "build": build.build, "sign": sign.sign,
+               "compile": compiled.compile_packages,
+               "package-compiled": compiled.package_compiled,
+               "verify": verify.verify, "sign-ci": ci_sign.sign_ci, "upload": upload.upload,
+               "image-save": build.save_image, "image-restore": build.restore_image}
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("operation", choices=actions)
+    args = parser.parse_args()
+    actions[args.operation]()
+
+
+if __name__ == "__main__":
+    main()

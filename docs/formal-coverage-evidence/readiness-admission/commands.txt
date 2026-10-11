@@ -1,0 +1,11 @@
+Implementation cwd: /home/doll/Project-Peritus/.worktrees/formal-coverage
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/tmp/peritus-sol-readiness-test-final-target cargo test --locked --all-features --package peritus-release-policy --package peritus-security-policy --package peritus-release-qualification --package peritus-security-qualification
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/tmp/peritus-sol-readiness-clippy-final-target cargo clippy --locked --all-features --all-targets --package peritus-release-policy --package peritus-security-policy --package peritus-release-qualification --package peritus-security-qualification -- -D warnings
+cargo fmt --check --package peritus-release-policy --package peritus-security-policy --package peritus-release-qualification --package peritus-security-qualification
+
+Independent cwd: /tmp/peritus-parent-readiness-review.q25p5n7e
+Independent source: git archive 1aa9282ff2cfcbf8fac325f11f157f408d33ee30 plus the exact 33 source-sha256.txt files
+Independent env: CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review
+cargo test --locked --package peritus-release-policy --package peritus-security-policy --package peritus-release-qualification --package peritus-security-qualification --all-features
+cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20

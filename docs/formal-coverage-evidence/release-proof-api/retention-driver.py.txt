@@ -1,0 +1,101 @@
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+package = Path('crates/foundation/peritus-release-policy')
+dest = root / 'docs/formal-coverage-evidence/release-proof-api'
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+manifest = Path('/tmp/peritus-parent-release-api-full-package.sha256')
+assert sha(manifest) == 'e2ecbc4adf8307e78a18f2bbe312683cd2a03d76c6bc6145529f5266be07947f'
+expected = {}
+for line in manifest.read_text().splitlines():
+    digest, name = line.split('  ', 1)
+    expected[name] = digest
+    assert sha(root / name) == digest, name
+assert len(expected) == 65
+assert {str(p.relative_to(root)) for p in (root / package).rglob('*') if p.is_file()} == expected.keys()
+review = Path('/tmp/peritus-sol-release-api-independent-review-20260913T001.md')
+assert sha(review) == '830e8b9ef9be036af4b28a39ef12ce28099ff8fc04e3edbedb0c2296998d8800'
+evidence = Path('/tmp/peritus-parent-release-api-evidence.sha256')
+assert sha(evidence) == '5fadf0e613498c64ad23b8accb615ee18471d0f0f744d4d25ade6188c3866067'
+files = {}
+for line in evidence.read_text().splitlines():
+    digest, source = line.split('  ', 1)
+    path = Path(source)
+    assert sha(path) == digest, source
+    name = path.name.replace('peritus-parent-release-api-', 'isolated-')
+    if path.suffix in {'.rs', '.py'}:
+        name += '.txt'
+    elif name.endswith('.log'):
+        name = name[:-4] + '.txt'
+    assert name not in files
+    files[name] = source
+files.update({
+    'independent-review.md': str(review),
+    'isolated-evidence-sha256.txt': str(evidence),
+    'qualification-integrated.json': '/tmp/peritus-parent-release-api-qualification-integrated.json',
+    'integration-driver.py.txt': '/tmp/peritus-parent-release-api-integrate.py',
+    'retention-driver.py.txt': __file__,
+})
+for label in ['verus', 'tests-default', 'tests-all', 'clippy', 'fmt', 'api', 'layout']:
+    files[label + '-integrated.txt'] = '/tmp/peritus-parent-release-api-' + label + '-integrated.log'
+qualification = json.loads(Path(files['qualification-integrated.json']).read_text())
+assert qualification['prior_files_checked'] == qualification['final_files_checked'] == 65
+assert qualification['changed_files'] == 2
+assert len(qualification['commands']) == 7
+assert all(command['exit_code'] == 0 for command in qualification['commands'])
+assert not dest.exists()
+dest.mkdir()
+for name, source in files.items():
+    shutil.copyfile(source, dest / name)
+(dest / 'audit.md').write_text('''# Release proof API and exact diagnostic correspondence
+
+The independently reviewed two-file increment makes the actual release evaluator's existing complete specification predicates available to downstream verifier clients and proves the exact diagnostic string returned by every ConstructionError category. The six existing H4 literals and executable match are unchanged; only the existing specification predicates are re-exported under cfg(verus_only). There is no new runtime branch, input precondition, substitute body, trust escape, or ordinary executable export.
+
+Author `/root` supplied the implementation. Independent source reviewer `/root/sol_acceptance_completion` checked all 65 frozen source identities, the exact two-file prior/final diff, all 19 isolated evidence hashes, the real evaluator contracts, actual external proof client, and negative runtime control. The reviewer did not rerun the compiler; that qualification is explicitly parent-attributed. The parent then checked all 65 shared preimages before guarded integration and all 65 final identities around each integrated check.
+
+Integrated strict pinned Verus passed 377 verified / 0 errors. Default and all-feature tests each passed 32 executable cases and one compile-fail doc test. Strict all-target Clippy, formatting, ordinary API (3513 files / 14689 entries), and global source layout (4414 files) passed. The isolated external client passed 3/0 using already-produced library metadata; separate initial and restored library verification each passed 377/0. A real runtime mutation mapped ZeroRevision to the ZeroDigest text while leaving the specification intact. It failed the exact code postcondition at 376/1, followed by exact restoration and 377/0. The original command records and raw logs retain this attribution.
+
+The earlier candidate-constructor checkpoint recorded this work as pending; this reviewed increment closes that specific diagnostic-string and proof-predicate visibility gap. Its guarantees remain relative to supplied observations and values. Digest provenance or cryptographic properties, external platform/manifest facts, publication authority, complete caller coverage, final obligation records and trusted hosted CI qualification remain separate work. This is a bounded source-review checkpoint, not a blanket obligation discharge or final shipping approval.
+''')
+record = {
+    'schema': 'peritus.formal-coverage.increment-review', 'schema_version': 1,
+    'status': 'reviewed-bounded-increment-not-obligation-discharge',
+    'recorded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'base_commit': '1aa9282ff2cfcbf8fac325f11f157f408d33ee30',
+    'implementation': '/root', 'independent_source_reviewer': '/root/sol_acceptance_completion',
+    'independent_review_kind': 'exact source and supplied evidence; no reviewer compiler rerun',
+    'source_files': 65, 'prior_source_files': 65, 'changed_source_files': 2,
+    'full_package_manifest_sha256': sha(manifest),
+    'results': {'parent_integrated_strict_verified': 377, 'proof_errors': 0,
+        'parent_default_executable_tests': 32, 'parent_default_compile_fail_doc_tests': 1,
+        'parent_all_features_executable_tests': 32, 'parent_all_features_compile_fail_doc_tests': 1,
+        'parent_clippy': 'passed', 'parent_format': 'passed',
+        'parent_api': 'passed 3513 files / 14689 entries',
+        'parent_layout': 'passed 4414 files',
+        'parent_isolated_client': '3 verified / 0 errors; dependency metadata reused',
+        'parent_isolated_runtime_negative': '376 verified / 1 error; exact restoration then 377 / 0',
+        'final_head_hosted_ci': 'not run'},
+    'artifact_original_paths': files,
+    'artifacts': {p.name: sha(p) for p in sorted(dest.iterdir()) if p.is_file()},
+}
+(dest / 'review.json').write_text(json.dumps(record, indent=2) + '\n')
+audit = root / 'docs/formal-coverage-audit.md'
+text = audit.read_text()
+heading = '## Release diagnostic and proof-API follow-up\n'
+anchor = '## Completion evidence still required\n'
+assert heading not in text and text.count(anchor) == 1
+text = text.replace(anchor, '''## Release diagnostic and proof-API follow-up
+
+The [release proof-API review](formal-coverage-evidence/release-proof-api/review.json) closes the previously recorded exact error-string and predicate-visibility gaps. The actual const error accessor now proves every existing H4 literal. Downstream proof clients can import the evaluator's existing complete input/output predicates; ordinary Rust exports and runtime behavior are unchanged. Independent review checked the exact two-file increment, all 65 final identities, and all 19 isolated evidence artifacts before guarded integration.
+
+Integrated strict Verus passed 377/0; default and all-feature suites each passed 32 executable tests and one compile-fail doc test. Clippy, formatting, ordinary API and global source layout passed. The actual external client passed 3/0, and a wrong runtime diagnostic literal was rejected at 376/1 before restoration and 377/0. These are input-relative production-correspondence guarantees; external observation truth, remaining caller coverage, final records and hosted qualification remain open.
+
+''' + anchor)
+audit.write_text(text)
+for name, digest in record['artifacts'].items():
+    assert sha(dest / name) == digest
+print(json.dumps({'path': str(dest), 'artifacts': len(record['artifacts']), 'review_sha256': sha(dest / 'review.json')}, indent=2))

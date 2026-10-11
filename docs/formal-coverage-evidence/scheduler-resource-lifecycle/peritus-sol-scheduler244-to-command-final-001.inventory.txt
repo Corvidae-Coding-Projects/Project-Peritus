@@ -1,0 +1,35 @@
+Files /tmp/peritus-parent-scheduler244-complete-source/src/binding.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/binding.rs differ
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src: command
+Files /tmp/peritus-parent-scheduler244-complete-source/src/command.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/command.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/identity.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/identity.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/reducer/apply/control.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/reducer/apply/control.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/reducer/apply/worker_control.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/reducer/apply/worker_control.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/reducer/apply.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/reducer/apply.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/clone_impl.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/clone_impl.rs differ
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state: lookup.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: acknowledge_start.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: entity_insertion.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: reservation_command.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: reservation_remove.rs
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation/reservation_update.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/reservation_update.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation/reserve/prepare.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/reserve/prepare.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation/reserve/proof/readiness.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/reserve/proof/readiness.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation/reserve.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/reserve.rs differ
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: scheduler_phase.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: work_command.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation: work_update
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation/work_update.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/work_update.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation/worker_update.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation/worker_update.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state/mutation.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state/mutation.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/state.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/state.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/verified/reservation_transitions.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/verified/reservation_transitions.rs differ
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/verified/reservations: entity_insertion.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/verified/reservations: preservation.rs
+Only in /tmp/peritus-sol-scheduler-command-final-source-001/src/verified/reservations: readiness
+Files /tmp/peritus-parent-scheduler244-complete-source/src/verified/reservations/readiness.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/verified/reservations/readiness.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/verified/reservations.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/verified/reservations.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/verified.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/verified.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/work/record.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/work/record.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/worker/clone_impl.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/worker/clone_impl.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/src/worker.rs and /tmp/peritus-sol-scheduler-command-final-source-001/src/worker.rs differ
+Files /tmp/peritus-parent-scheduler244-complete-source/tests/reservation_preservation.rs and /tmp/peritus-sol-scheduler-command-final-source-001/tests/reservation_preservation.rs differ

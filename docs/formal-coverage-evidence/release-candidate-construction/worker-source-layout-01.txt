@@ -1,0 +1,5 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts/debug/xtask source-layout-check`
+error[PERITUS-XTASK-SOURCE-001]: source-layout-check found 1 violation(s)
+  - crates/orchestration/peritus-scheduler/src/verified/reservations.rs: source has 415 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale

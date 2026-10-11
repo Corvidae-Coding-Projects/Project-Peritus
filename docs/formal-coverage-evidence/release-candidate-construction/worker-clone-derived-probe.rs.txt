@@ -1,0 +1,111 @@
+//! Verifier-client probe for exact compiler-derived Clone semantics.
+
+use peritus_release_policy::{
+    CandidateId, FindingId, GitCommitId, PlatformIdentity, PlatformMatrix, PrincipalId,
+    ProfileIdentity, ReleaseCandidate, ReleaseVersion, ReviewId, SchemaIdentity,
+    ToolchainIdentity,
+};
+use vstd::prelude::*;
+
+verus! {
+
+fn candidate_id_clone_is_exact(value: CandidateId) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_bytes() == value.spec_bytes());
+}
+
+fn principal_id_clone_is_exact(value: PrincipalId) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_bytes() == value.spec_bytes());
+}
+
+fn review_id_clone_is_exact(value: ReviewId) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_bytes() == value.spec_bytes());
+}
+
+fn finding_id_clone_is_exact(value: FindingId) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_bytes() == value.spec_bytes());
+}
+
+fn git_commit_clone_is_exact(value: GitCommitId) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_format() == value.spec_format());
+    assert(cloned.spec_sha1_bytes() == value.spec_sha1_bytes());
+    assert(cloned.spec_sha256_bytes() == value.spec_sha256_bytes());
+}
+
+fn platform_clone_is_exact(value: PlatformIdentity) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_operating_system() == value.spec_operating_system());
+    assert(cloned.spec_architecture() == value.spec_architecture());
+    assert(cloned.spec_profile_digest() == value.spec_profile_digest());
+}
+
+fn platform_matrix_clone_is_exact(value: PlatformMatrix) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_linux() == value.spec_linux());
+    assert(cloned.spec_macos() == value.spec_macos());
+    assert(cloned.spec_windows() == value.spec_windows());
+}
+
+fn version_clone_is_exact(value: ReleaseVersion) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_major() == value.spec_major());
+    assert(cloned.spec_minor() == value.spec_minor());
+    assert(cloned.spec_patch() == value.spec_patch());
+    assert(cloned.spec_descriptor_digest() == value.spec_descriptor_digest());
+}
+
+fn toolchain_clone_is_exact(value: ToolchainIdentity) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_rust_digest() == value.spec_rust_digest());
+    assert(cloned.spec_verus_digest() == value.spec_verus_digest());
+    assert(cloned.spec_vstd_digest() == value.spec_vstd_digest());
+    assert(cloned.spec_solver_digest() == value.spec_solver_digest());
+}
+
+fn profile_clone_is_exact(value: ProfileIdentity) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_revision() == value.spec_revision());
+    assert(cloned.spec_digest() == value.spec_digest());
+}
+
+fn schema_clone_is_exact(value: SchemaIdentity) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_policy() == value.spec_policy());
+    assert(cloned.spec_evidence() == value.spec_evidence());
+    assert(cloned.spec_report() == value.spec_report());
+    assert(cloned.spec_artifact() == value.spec_artifact());
+    assert(cloned.spec_catalog_digest() == value.spec_catalog_digest());
+}
+
+fn release_candidate_clone_is_exact(value: ReleaseCandidate) {
+    let cloned = value.clone();
+    assert(cloned == value);
+    assert(cloned.spec_id() == value.spec_id());
+    assert(cloned.spec_commit() == value.spec_commit());
+    assert(cloned.spec_version() == value.spec_version());
+    assert(cloned.spec_platforms() == value.spec_platforms());
+    assert(cloned.spec_toolchain() == value.spec_toolchain());
+    assert(cloned.spec_profile() == value.spec_profile());
+    assert(cloned.spec_schemas() == value.spec_schemas());
+    assert(cloned.spec_source_revision() == value.spec_source_revision());
+    assert(cloned.spec_manifest_digest() == value.spec_manifest_digest());
+}
+
+fn main() {}
+
+} // verus!

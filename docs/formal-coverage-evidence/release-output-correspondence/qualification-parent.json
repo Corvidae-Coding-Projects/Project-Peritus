@@ -1,0 +1,36 @@
+[
+  {
+    "command": [
+      "cargo",
+      "verus",
+      "verify",
+      "--package",
+      "peritus-release-policy",
+      "--all-features",
+      "--locked",
+      "--check-toolchain",
+      "--fwd-verus-args-to",
+      "roots",
+      "--",
+      "--no-cheating",
+      "--rlimit",
+      "20"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-release377-verus-independent.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-release-policy",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-release377-tests-independent.log",
+    "exit_code": 0
+  }
+]

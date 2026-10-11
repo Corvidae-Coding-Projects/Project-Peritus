@@ -1,0 +1,77 @@
+"""Qualify the exact integrated scheduler package, one process at a time."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+package = root / 'crates/orchestration/peritus-scheduler'
+manifest = Path('/tmp/peritus-parent-scheduler-combined.sha256')
+record = Path('/tmp/peritus-parent-scheduler-combined-qualification.json')
+env = dict(os.environ, CARGO_BUILD_JOBS='1', CCACHE_DISABLE='1',
+           CARGO_TARGET_DIR=str(root / 'target'))
+expected = dict((name.removeprefix('./'), digest) for digest, name in
+                (line.split('  ', 1) for line in manifest.read_text().splitlines()))
+
+
+def check_source():
+    actual = {str(path.relative_to(package)): hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in package.rglob('*') if path.is_file()}
+    assert actual == expected, 'Integrated scheduler source changed during qualification'
+
+
+commands = [
+    ('verus', ['cargo', 'verus', 'verify', '--package', 'peritus-scheduler', '--all-features',
+               '--locked', '--check-toolchain', '--fwd-verus-args-to', 'roots', '--',
+               '--no-cheating', '--rlimit', '20', '--num-threads', '2']),
+    ('tests-default', ['cargo', 'test', '--package', 'peritus-scheduler', '--locked']),
+    ('tests-no-default', ['cargo', 'test', '--package', 'peritus-scheduler',
+                          '--no-default-features', '--locked']),
+    ('tests-all', ['cargo', 'test', '--package', 'peritus-scheduler', '--all-features', '--locked']),
+    ('clippy', ['cargo', 'clippy', '--package', 'peritus-scheduler', '--all-targets',
+                '--all-features', '--locked', '--', '-D', 'warnings']),
+    ('fmt', ['cargo', 'fmt', '--package', 'peritus-scheduler', '--', '--check']),
+    ('api', [str(root / 'target/debug/xtask'), 'ordinary-api-check']),
+    ('layout', [str(root / 'target/debug/xtask'), 'source-layout-check']),
+    ('daemon-owner', ['cargo', 'test', '--package', 'peritus-daemon', '--all-features',
+                      '--lib', '--locked', 'scheduler_']),
+    ('daemon-runtime', ['cargo', 'test', '--package', 'peritus-daemon', '--all-features',
+                        '--test', 'runtime', '--locked',
+                        'runtime_commits_and_replays_registered_scheduler_commands']),
+    ('daemon-restart', ['cargo', 'test', '--package', 'peritus-daemon', '--all-features',
+                        '--test', 'recovery_shutdown', '--locked',
+                        'restart_resumes_the_durable_session_and_replays_the_exact_command_result']),
+]
+results = {
+    'cwd': str(root),
+    'source_files': len(expected),
+    'source_manifest_sha256': hashlib.sha256(manifest.read_bytes()).hexdigest(),
+    'environment': {key: env[key] for key in
+                    ['CARGO_BUILD_JOBS', 'CCACHE_DISABLE', 'CARGO_TARGET_DIR']},
+    'commands': [],
+}
+assert not record.exists(), 'Preserve prior qualification evidence instead of overwriting it'
+for label, command in commands:
+    check_source()
+    log = Path('/tmp/peritus-parent-scheduler-combined-' + label + '.log')
+    assert not log.exists(), log
+    print('START ' + label, flush=True)
+    with log.open('w') as output:
+        try:
+            run = subprocess.run(command, cwd=root, env=env, stdout=output,
+                                 stderr=subprocess.STDOUT, timeout=600)
+            exit_code = run.returncode
+        except subprocess.TimeoutExpired:
+            output.write('\nQualification timed out after 600 seconds.\n')
+            exit_code = 124
+    check_source()
+    results['commands'].append({'label': label, 'command': command,
+                                'log': str(log), 'exit_code': exit_code})
+    record.write_text(json.dumps(results, indent=2) + '\n')
+    print(label + ' exit=' + str(exit_code), flush=True)
+    if exit_code:
+        print(log.read_text()[-5000:], flush=True)
+        raise SystemExit(exit_code)
+print('Combined scheduler qualification passed; exact source identities preserved.', flush=True)

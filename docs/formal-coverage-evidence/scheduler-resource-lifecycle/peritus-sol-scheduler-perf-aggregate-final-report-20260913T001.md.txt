@@ -1,0 +1,115 @@
+# Scheduler capacity aggregate repair: frozen handoff
+
+## Scope and source identity
+
+This is a bounded repair of the proof-induced scheduler capacity regression. It changes only resource arithmetic, resource capacity lookup, selection capacity accounting, and focused resource tests. Scheduler state, work, reducer, command composition, CI, manifests, and GitHub settings were not edited.
+
+- Historical base: git `1aa9282ff2cfcbf8fac325f11f157f408d33ee30`; frozen scheduler244 package `/tmp/peritus-parent-scheduler244-complete-source`, 75 files.
+- Frozen244 full-manifest file: `/tmp/peritus-parent-scheduler244-complete-source.sha256`; SHA-256 `812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40`.
+- Final immutable package root: `/tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001`, 81 files.
+- Final full-package manifest: `/tmp/peritus-sol-scheduler-perf-aggregate-full-package-20260913T001.sha256`; SHA-256 `0c56a4d67868a92691d27ded95e36b5a13375cc49f572274d04952e64c3bf1f8`.
+- Changed-source manifest: `/tmp/peritus-sol-scheduler-perf-aggregate-changed-source-20260913T001.sha256`; SHA-256 `bf731c755755a31c5886629a0113fdc5e4bd4d4461163038222baad7a9c6dfd9`.
+- Exact frozen244-to-final patch: `/tmp/peritus-sol-scheduler244-to-aggregate-final-20260913T001.patch`; SHA-256 `b86fd5e3fd0d2aab92a83c8d343a44a1c68b2937c93b578c7099d24b4fada262`.
+- Ten-path inventory: `/tmp/peritus-sol-scheduler244-to-aggregate-final-paths-20260913T001.txt`; SHA-256 `32f910902e7318813795776ed3ca962db693b5e6f134391679928e9f15d02206`.
+- Frozen manifest verification: all 81 files OK in `/tmp/peritus-sol-scheduler-perf-aggregate-snapshot-verify-20260913T001.log`, SHA-256 `71e1c71b5c9dd14551ca1e035f90150a902d7d0be607e677a6de77f83fbc35c3`.
+- Frozen-versus-qualified-live package diff: empty `/tmp/peritus-sol-scheduler-perf-aggregate-live-diff-20260913T001.log`, SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+The ten changed paths are:
+
+1. `src/resource.rs`
+2. `src/resource/addition.rs`
+3. `src/resource/addition/merge.rs` (new)
+4. `src/resource/addition/proofs.rs` (new)
+5. `src/resource/capacity.rs`
+6. `src/resource/subtraction.rs`
+7. `src/selection/capacity.rs`
+8. `src/selection/capacity/aggregate.rs` (new)
+9. `src/selection/capacity/fallback.rs` (new)
+10. `tests/resource_invariants.rs`
+
+The branch ref advanced independently to `8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493` while this isolated source remained byte-stable. The parent must overlay these ten paths onto the reviewed combined scheduler source and run combined gates; this package snapshot does not claim the other 71 files are the final shared scheduler identities.
+
+## Implemented behavior and proof boundary
+
+The actual selection path now folds global and per-worker reservation quantities once into canonical resource vectors and then checks request dimensions with indexed lookup. If a sum or union cannot be represented by the bounded `ResourceVector`, it uses the prior exact per-reservation fallback. This preserves the capacity decision for overflow cases rather than converting aggregation failure into admission or rejection.
+
+The production-executed Verus functions prove:
+
+- indexed lookup returns the exact present quantity or zero for an absent kind;
+- canonical addition returns exact per-kind sums and ordered union entries, reports arithmetic overflow exactly, and retains overflow-before-dimension-limit priority;
+- the existing dimension guard runs before constructing the bounded `ResourceVector`, so two valid disjoint input vectors may correctly return `LimitExceeded` without asserting a false intermediate invariant;
+- subtraction returns exact differences, detects underflow first, treats quantity zero as the existing absent-dimension sentinel, and returns `ExactZero` exactly when the difference sequence is empty;
+- global and worker aggregate folds equal the actual reservation quantities whenever representable;
+- aggregate and fallback capacity checks both refine the same operational global/worker predicates.
+
+`ResourceVector::checked_add` and `checked_subtract` are ordinary wrappers around these production-called verified kernels. Their enum-to-error mappings and exact strings were source-reviewed and exercised by tests, but the public wrappers themselves do not carry Verus result contracts. The proof does not establish allocator, wall-clock, compiler-optimization, or asymptotic performance properties.
+
+No `assume`, `admit`, axiom, external body, verifier substitute, executable precondition, new runtime admission guard, or lint allowance was added in these paths.
+
+## Qualification
+
+All Cargo runs used `CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1` and disk-backed targets.
+
+Strict proof command:
+
+```text
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-verus-002 CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20 --num-threads 2
+```
+
+Result: PASS, 301 verified / 0 errors, exit 0. Raw log `/tmp/peritus-sol-scheduler-perf-aggregate-verus-20260913T022.log`, SHA-256 `00e3fe778c9459492686444591544333449f4537d09a608d1110400a541ff838`.
+
+Ordinary commands:
+
+```text
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-ordinary CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 cargo test --package peritus-scheduler --locked
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-ordinary CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 cargo test --package peritus-scheduler --no-default-features --locked
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-ordinary CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 cargo test --package peritus-scheduler --all-features --locked
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-ordinary CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 cargo clippy --package peritus-scheduler --all-targets --all-features --locked -- -D warnings
+cargo fmt --all -- --check
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-ordinary CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 cargo run --locked --package xtask -- source-layout-check
+```
+
+Results:
+
+- default tests: PASS, 26/0; `/tmp/peritus-sol-scheduler-perf-aggregate-tests-default-20260913T002.log`, SHA-256 `4d72ea4e0988d846bcfe33f71b1a5f0270d3074360204e1128edbae98e3b78c3`;
+- no-default tests: PASS, 26/0; `/tmp/peritus-sol-scheduler-perf-aggregate-tests-no-default-20260913T002.log`, SHA-256 `95117421295ec52a562e11590176492b1d36be87f0550bf0d1ba8924789ede24`;
+- all-feature tests: PASS, 26/0; `/tmp/peritus-sol-scheduler-perf-aggregate-tests-all-features-20260913T002.log`, SHA-256 `326b13d2f20b91be30bee99a1e318bb2cd840cab271eade201430e74eddb5e7e`;
+- Clippy with warnings denied: PASS; `/tmp/peritus-sol-scheduler-perf-aggregate-clippy-20260913T003.log`, SHA-256 `d7f9fb5dadd3dbf023b5c7b50ff8d210f9afb68956dc941790e5ab3620e026ae`;
+- rustfmt check: PASS; empty success log `/tmp/peritus-sol-scheduler-perf-aggregate-fmt-20260913T001.log`, SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`;
+- source layout: PASS, 4278 source files; `/tmp/peritus-sol-scheduler-perf-aggregate-layout-20260913T001.log`, SHA-256 `67f62c1dba9908054f814fab0bf4cfc4e5bc0129897034bba9a99df2b0c05879`. Largest changed source is `resource/addition/merge.rs` at 358 lines.
+
+The isolated `ordinary-api-check` rebuilt and failed only on frozen-preimage `src/work/terminal.rs:3` using an unsupported `cfg_attr`. That path is outside this patch and has a separately owned combined-source correction. Raw diagnostic `/tmp/peritus-sol-scheduler-perf-aggregate-ordinary-api-20260913T001.log`, SHA-256 `763b8bd2efa79a0684bf628433c42e7fb390b6b1d14385d3eca52a17023d54e2`. The combined scheduler API gate remains required; no resource/selection API violation was reported.
+
+## Bounded A/B/C/D performance evidence
+
+The same synthetic public-path fixture was used for all four variants. Probe source: `/tmp/peritus-sol-scheduler-perf-dense-probe-20260913T001.rs`, SHA-256 `a817312a7f67804e10ac8e6a31d012529547e3cb293221ccdcb20265d8bb57ce`. It constructs valid dense canonical states, calls public `select_next`, and calls public dispatch decision logic. Each suite warms the path before recording samples. The fixture performs no external I/O beyond local timing output.
+
+Final D commands used the same compiled release test binary and differed only in bounded environment parameters:
+
+```text
+PERITUS_PERF_RESERVATIONS=1024 PERITUS_PERF_DIMENSIONS=256 PERITUS_PERF_SELECTION_REPEATS=7 PERITUS_PERF_DISPATCH_REPEATS=3 cargo test --release --package peritus-scheduler --lib dense_public_selection_and_dispatch_timings --locked -- --ignored --nocapture --test-threads=1
+PERITUS_PERF_RESERVATIONS=3072 PERITUS_PERF_DIMENSIONS=256 PERITUS_PERF_SELECTION_REPEATS=3 PERITUS_PERF_DISPATCH_REPEATS=2 cargo test --release --package peritus-scheduler --lib dense_public_selection_and_dispatch_timings --locked -- --ignored --nocapture --test-threads=1
+```
+
+Median elapsed nanoseconds:
+
+| Shape / path | A git base | B frozen244 | C frozen258 indexed lookup | D aggregate | D/A | D/B |
+|---|---:|---:|---:|---:|---:|---:|
+| 1024x256 select | 699,595 | 24,102,984 | 5,104,049 | 670,372 | 0.958x | 0.0278x |
+| 1024x256 dispatch | 10,787,751 | 53,332,818 | 18,481,651 | 9,932,867 | 0.921x | 0.186x |
+| 3072x256 select | 2,995,514 | 84,704,761 | 20,134,914 | 2,047,449 | 0.684x | 0.0242x |
+| 3072x256 dispatch | 34,113,858 | 211,055,888.5 | 63,263,289 | 31,939,457.5 | 0.936x | 0.151x |
+
+The final bounded measurements reduce the frozen244 median by 81.4% to 97.6% and are between 0.684x and 0.958x of the retained git-base medians for these two shapes. This is measured evidence on one machine/run set, not an asymptotic theorem or universal latency guarantee.
+
+- D 1024 raw log: `/tmp/peritus-sol-scheduler-perf-D-aggregate-20260913T001.log`, SHA-256 `e2e8804ff7d005be08967baac070b37bf64788cfa8c5f9720bde24c8b3dc118e`.
+- D 3072 raw log: `/tmp/peritus-sol-scheduler-perf-D-aggregate-highvalid-20260913T001.log`, SHA-256 `9bfa302da6c48ac9a5cc18a3fcc0649a9b41fde5a998e822a595b12ef61e0d29`.
+- Machine-generated four-way summary: `/tmp/peritus-sol-scheduler-perf-aggregate-summary-20260913T001.json`, SHA-256 `5da494eca6f7a58ddf5fd8ec9d0980384ad13ca0e885ab1cae80112267e03996`.
+- Summary script: `/tmp/peritus-sol-scheduler-perf-aggregate-summary-20260913T001.py`, SHA-256 `9d4453486bb6dcea835a874d2c39cd870f46b31c13ca0056c0515a4183c0d709`.
+- D timing-source manifest: `/tmp/peritus-sol-scheduler-perf-D-aggregate-timing-src-20260913T001.sha256`, SHA-256 `056e3b43471b64a606eb43f230b9fd8912b2f6f0e57c35e0ac8c44ca48d2ef8a`.
+- Exact fixture overlay: `/tmp/peritus-sol-scheduler-perf-D-aggregate-fixture-overlay-20260913T001.patch`, SHA-256 `bdbeb54bfec7d1d9014553e01339d0a86605525a6469f7fe957cffe47cd7b620`.
+- D test-binary manifest: `/tmp/peritus-sol-scheduler-perf-D-aggregate-test-binary-20260913T001.sha256`, SHA-256 `52c74b234c8c83d6a36fd4d1c7e234dab8babf1d19d0e7cb22bbb77c074aa908`.
+
+## Remaining integration boundary
+
+The repair is frozen and locally qualified. Parent review must overlay the ten paths onto the combined scheduler317 source, verify exact hashes or review the resulting conflict resolution, and rerun strict scheduler proof, package tests, Clippy, format, ordinary API, and source layout on that combined source. The retained timings support the performance correction on the tested dense shapes; they do not prove performance for every workload or hardware configuration.

@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["codec", "protocol", "canonical", "formal-verification"]
 categories = ["encoding", "data-structures"]
 
@@ -17,4 +17,8 @@ sha2.workspace = true
 
 [lints]
 workspace = true
+
+[package.metadata.peritus]
+owner = "B3"
+layer = "foundation"
 

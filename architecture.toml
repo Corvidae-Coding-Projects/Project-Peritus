@@ -1,0 +1,609 @@
+schema = 3
+soft_source_lines = 500
+hard_source_lines = 500
+root_module_lines = 80
+required_license = "MIT"
+ignored_directories = [
+    ".git",
+    ".crosslink",
+    ".worktrees",
+    "reference-repos",
+    "target",
+    "target-verus",
+    "webui/node_modules",
+    "webui/dist",
+    "webui/test-results",
+    "webui/playwright-report",
+]
+forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
+trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
+source_exceptions = [
+    { path = "crates/foundation/peritus-release-policy/src/catalog.rs", owner = "H4", rationale = "The closed 25-criterion and 44-evidence-requirement H4 catalog keeps stable IDs, exact criterion ownership, source-class mappings, and canonical ordering together as one directly auditable release contract." },
+    { path = "crates/app/peritus-tui/src/model.rs", owner = "G2", rationale = "The bounded presentation state keeps view, notice, prompt, event, terminal, and pending-request invariants together while protocol and interaction transitions remain split into submodules." },
+    { path = "crates/extensions/peritus-mcp/src/server.rs", owner = "G3", rationale = "The MCP server keeps its closed JSON-RPC lifecycle, request dispatch, cancellation registry, bounded pagination, and response mapping in one auditable protocol surface." },
+    { path = "crates/extensions/peritus-plugin-sdk/src/manifest.rs", owner = "G3", rationale = "The canonical plugin manifest keeps the versioned entrypoint, capability, quota, signature, trust, validation, and digest contract together for compatibility review." },
+    { path = "crates/analysis/peritus-eval/src/aggregate/reducer.rs", owner = "E3", rationale = "The pure evaluation reducer keeps its closed command vocabulary, legal phase transitions, and corresponding canonical command encoding in one auditable surface." },
+    { path = "crates/analysis/peritus-eval/src/aggregate/state.rs", owner = "E3", rationale = "Complete evaluation state and its versioned canonical encode/decode implementation remain together so replay digest correspondence can be audited directly." },
+    { path = "crates/analysis/peritus-eval/src/aggregate/types.rs", owner = "E3", rationale = "The closed durable aggregate vocabulary keeps phase, rollout, plan, publication, report, and failure tag mappings visible together." },
+    { path = "crates/analysis/peritus-eval/src/durability/directive.rs", owner = "E3", rationale = "The three closed evaluation outbox directive families keep canonical codecs, deterministic identities, and claimed-message validation together." },
+    { path = "crates/analysis/peritus-eval/src/report/analysis.rs", owner = "E3", rationale = "Evaluation analysis keeps correctness denominators, paired evidence, resource aggregation, missing-data policy, and reliability accounting in one checked derivation." },
+    { path = "crates/analysis/peritus-eval/src/verified.rs", owner = "E3", rationale = "The E3 Verus refinement surface keeps executable predicates adjacent to their specifications and proofs so runtime-to-proof correspondence remains inspectable." },
+    { path = "crates/orchestration/peritus-agent/src/canonical/event_wire.rs", owner = "D0", rationale = "The closed version-one command payload codec keeps its exhaustive encode/decode tag correspondence in one audited source." },
+    { path = "crates/orchestration/peritus-agent/src/reducer.rs", owner = "D0", rationale = "The pure reducer keeps the complete closed command vocabulary and legal phase transitions visible in one exhaustive audit surface." },
+    { path = "crates/orchestration/peritus-agent/src/runtime/driver.rs", owner = "D0", rationale = "The cooperative driver core keeps commit-before-state and commit-before-provider-ack ordering together; C4 tool steps are already split out." },
+    { path = "crates/orchestration/peritus-agent/src/runtime/tools.rs", owner = "D0", rationale = "The C4 coordinator keeps proposal-order slot state and the sole prepare, dispatch, control, recovery, and result projection boundary together." },
+    { path = "crates/orchestration/peritus-agent/tests/runtime_driver.rs", owner = "D0", rationale = "The fake-provider durability matrix shares one exact scripted-provider and request fixture across completion, duplicate, malformed-order, and restart cases." },
+    { path = "crates/orchestration/peritus-agent/tests/runtime_tools.rs", owner = "D0", rationale = "The end-to-end D0/C4 test intentionally shows complete B0/B1/C0 authority and lease assembly beside inspect, edit, run, and test effect ordering." },
+    { path = "crates/orchestration/peritus-review/tests/domain_engine.rs", owner = "D2", rationale = "The D2 engine matrix keeps exact binding, quorum, waiver, terminal, and shared identity fixtures together so each assertion exercises the same deterministic domain construction." },
+    { path = "crates/orchestration/peritus-review/tests/domain_transitions.rs", owner = "D2", rationale = "The D2 transition matrix keeps reconciliation, confirmation, cancellation, supersession, and oscillation sequences beside one shared canonical review-history fixture." },
+]
+forbidden_dependencies = []
+controlled_source_roots = [
+    { path = "crates/app/peritus-product-runner/src/local_context/tools/schema.rs", owner = "G4", kind = "schema", rationale = "G4 owns bounded local memory read and update schemas; proposals grant no execution authority." },
+    { path = "app-protocol/generated", owner = "A3", kind = "generated-schema", rationale = "A3 deterministically generates the reviewed application-protocol JSON Schema, TypeScript declarations, and wire registry." },
+    { path = "benchmarks/schemas", owner = "H3", kind = "schema", rationale = "H3 owns the versioned performance profile, workload, measurement, baseline, evidence, and qualification report interchange schemas." },
+    { path = "compat/app-protocol", owner = "A3", kind = "generated", rationale = "A3 owns minimal, realistic, corrupt, and adversarial application-protocol compatibility fixtures with per-case SHA-256 inventories." },
+    { path = "crates/analysis/peritus-debugger/tests/fixtures/v1", owner = "E2", kind = "generated", rationale = "E2 owns immutable schema-versioned debugger command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/analysis/peritus-eval/tests/fixtures/v1", owner = "E3", kind = "generated", rationale = "E3 owns immutable schema-versioned evaluation command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/analysis/peritus-evolution/tests/fixtures/v1", owner = "F0", kind = "generated", rationale = "F0 owns immutable schema-versioned campaign and production-pointer command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/app/peritus-app-protocol/src/schema", owner = "A3", kind = "schema", rationale = "A3 owns the handwritten application family, variant, error, and field metadata plus deterministic renderers and fixture constructors." },
+    { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
+    { path = "crates/orchestration/peritus-collaboration/tests/fixtures/v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned collaboration command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/orchestration/peritus-harness/tests/fixtures/v1", owner = "E1", kind = "generated", rationale = "E1 owns immutable schema-versioned harness command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/orchestration/peritus-obligations/src/schema.rs", owner = "D1", kind = "schema", rationale = "D1 owns the handwritten directional public-requirement schema model, canonical field validation, and evidence coverage contract." },
+    { path = "crates/orchestration/peritus-orchestrator/tests/fixtures/v1", owner = "E0", kind = "generated", rationale = "E0 owns immutable schema-versioned orchestrator command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/orchestration/peritus-review/tests/fixtures", owner = "D2", kind = "generated", rationale = "D2 owns immutable schema-versioned command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/tools/peritus-tool-protocol/src/schema.rs", owner = "C4", kind = "schema", rationale = "C4 owns the bounded tool schema model, builders, canonical encoding, validation, and compatibility contract." },
+    { path = "crates/tools/peritus-tool-protocol/src/schema", owner = "C4", kind = "schema", rationale = "C4 owns the reviewed tool schema canonicalization, validation, duplicate detection, and compatibility implementation." },
+    { path = "crates/model/peritus-model-protocol/src/schema.rs", owner = "C5", kind = "schema", rationale = "C5 owns the provider-facing bounded JSON Schema representation and canonical validation contract." },
+    { path = "crates/model/peritus-provider-openai/src/runtime/request/schema.rs", owner = "C5", kind = "schema", rationale = "C5 owns the constrained Codex runtime result schema that represents inert host tool proposals without granting executable authority." },
+    { path = "crates/model/peritus-model-protocol/fixtures/v1", owner = "C5", kind = "generated", rationale = "C5 owns immutable version-one model-protocol compatibility fixtures and their digest inventory." },
+    { path = "crates/state/peritus-artifact-store/src/catalog/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the artifact catalog schema used by the shared durable SQLite database." },
+    { path = "crates/state/peritus-evidence/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the durable evidence catalog schema and its provenance constraints." },
+    { path = "crates/state/peritus-journal/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the authoritative journal schema and transactional state tables." },
+    { path = "crates/state/peritus-projection/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns versioned projection generations and atomic activation metadata." },
+    { path = "fixtures/protocol/scheduler-v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned scheduler command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "fixtures/protocol/scheduler-v1-recovery", owner = "D3", kind = "generated", rationale = "D3 retains exact protected-base histories demonstrating legacy admission and recovery compatibility." },
+    { path = "fixtures/protocol/scheduler-v2", owner = "D3", kind = "generated", rationale = "D3 owns strict recovery-pressure scheduler command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "protocol/generated", owner = "B3", kind = "generated-schema", rationale = "B3 deterministically generates the reviewed protocol schema and TypeScript client declarations." },
+    { path = "protocol/fixtures/v1", owner = "B3", kind = "generated", rationale = "B3 deterministically generates the immutable version-one binary compatibility corpus and digest inventory." },
+    { path = "packaging/schemas", owner = "H2", kind = "schema", rationale = "H2 owns the versioned native platform controller and retained qualification report contracts." },
+    { path = "release", owner = "H4", kind = "schema", rationale = "H4 owns the reviewed release evidence schemas, incomplete-safe operator templates, and candidate artifact-layout guidance." },
+    { path = "resilience/schemas", owner = "H1", kind = "schema", rationale = "H1 owns the versioned native-controller request and response contracts used to qualify real release candidates." },
+    { path = "security", owner = "H0", kind = "schema", rationale = "H0 owns the reviewed threat, control, unsafe, TCB, external-review, evidence, and qualification schema contracts." },
+]
+
+[[layers]]
+name = "foundation"
+path = "crates/foundation"
+may_depend_on = ["foundation"]
+may_dev_depend_on = ["foundation", "testing"]
+
+[[layers]]
+name = "state"
+path = "crates/state"
+may_depend_on = ["foundation", "state"]
+may_dev_depend_on = ["foundation", "state", "testing"]
+
+[[layers]]
+name = "runtime"
+path = "crates/runtime"
+may_depend_on = ["foundation", "state", "runtime"]
+may_dev_depend_on = ["foundation", "state", "runtime", "testing"]
+
+[[layers]]
+name = "tools"
+path = "crates/tools"
+may_depend_on = ["foundation", "state", "runtime", "tools"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "testing"]
+
+[[layers]]
+name = "model"
+path = "crates/model"
+may_depend_on = ["foundation", "model"]
+may_dev_depend_on = ["foundation", "model", "testing"]
+
+[[layers]]
+name = "orchestration"
+path = "crates/orchestration"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "testing"]
+
+[[layers]]
+name = "observe"
+path = "crates/observe"
+may_depend_on = ["foundation", "state", "observe"]
+may_dev_depend_on = ["foundation", "state", "observe", "testing"]
+
+[[layers]]
+name = "analysis"
+path = "crates/analysis"
+may_depend_on = ["foundation", "state", "model", "orchestration", "observe", "analysis"]
+may_dev_depend_on = ["foundation", "state", "model", "orchestration", "observe", "analysis", "testing"]
+
+[[layers]]
+name = "testing"
+path = "crates/app/testing"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+
+[[layers]]
+name = "app"
+path = "crates/app"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "testing"]
+
+[[layers]]
+name = "extensions"
+path = "crates/extensions"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "extensions"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "extensions", "testing"]
+
+[[layers]]
+name = "engineering"
+path = "xtask"
+may_depend_on = ["engineering"]
+may_dev_depend_on = ["engineering", "testing"]
+
+[[packages]]
+name = "peritus-app-protocol"
+path = "crates/app/peritus-app-protocol"
+owner = "A3"
+layer = "app"
+
+[[packages]]
+name = "peritus-app-client"
+path = "crates/app/peritus-app-client"
+owner = "G1"
+layer = "app"
+
+[[packages]]
+name = "peritus-cli"
+path = "crates/app/peritus-cli"
+owner = "G1"
+layer = "app"
+
+[[packages]]
+name = "peritus-web"
+path = "crates/app/peritus-web"
+owner = "G1"
+layer = "app"
+
+[[packages]]
+name = "peritus-daemon"
+path = "crates/app/peritus-daemon"
+owner = "G0"
+layer = "app"
+
+[[packages]]
+name = "peritus-launcher"
+path = "crates/app/peritus-launcher"
+owner = "G4"
+layer = "app"
+
+[[packages]]
+name = "peritus-product-state"
+path = "crates/app/peritus-product-state"
+owner = "G4"
+layer = "app"
+
+[[packages]]
+name = "peritus-product-runner"
+path = "crates/app/peritus-product-runner"
+owner = "G4"
+layer = "app"
+
+[[packages]]
+name = "peritus-provider-onboarding"
+path = "crates/app/peritus-provider-onboarding"
+owner = "G4"
+layer = "app"
+
+[[packages]]
+name = "peritus-mcp"
+path = "crates/extensions/peritus-mcp"
+owner = "G3"
+layer = "extensions"
+
+[[packages]]
+name = "peritus-plugin-host"
+path = "crates/extensions/peritus-plugin-host"
+owner = "G3"
+layer = "extensions"
+
+[[packages]]
+name = "peritus-plugin-sdk"
+path = "crates/extensions/peritus-plugin-sdk"
+owner = "G3"
+layer = "extensions"
+
+[[packages]]
+name = "peritus-tui"
+path = "crates/app/peritus-tui"
+owner = "G2"
+layer = "app"
+
+[[packages]]
+name = "peritus-approval"
+path = "crates/state/peritus-approval"
+owner = "B1"
+layer = "state"
+
+[[packages]]
+name = "peritus-artifact-store"
+path = "crates/state/peritus-artifact-store"
+owner = "C0"
+layer = "state"
+
+[[packages]]
+name = "peritus-budget"
+path = "crates/foundation/peritus-budget"
+owner = "B1"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-debugger"
+path = "crates/analysis/peritus-debugger"
+owner = "E2"
+layer = "analysis"
+
+[[packages]]
+name = "peritus-eval"
+path = "crates/analysis/peritus-eval"
+owner = "E3"
+layer = "analysis"
+
+[[packages]]
+name = "peritus-evolution"
+path = "crates/analysis/peritus-evolution"
+owner = "F0"
+layer = "analysis"
+
+[[packages]]
+name = "peritus-evidence"
+path = "crates/state/peritus-evidence"
+owner = "C0"
+layer = "state"
+
+[[packages]]
+name = "peritus-codec"
+path = "crates/foundation/peritus-codec"
+owner = "B3"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-external-benchmarks"
+path = "crates/app/testing/peritus-external-benchmarks"
+owner = "H3"
+layer = "testing"
+
+[[packages]]
+name = "peritus-platform-qualification"
+path = "crates/app/testing/peritus-platform-qualification"
+owner = "H2"
+layer = "testing"
+
+[[packages]]
+name = "peritus-release-artifacts"
+path = "crates/app/testing/peritus-release-artifacts"
+owner = "H4"
+layer = "testing"
+
+[[packages]]
+name = "peritus-release-operator"
+path = "crates/app/testing/peritus-release-operator"
+owner = "H4"
+layer = "testing"
+
+[[packages]]
+name = "peritus-collaboration"
+path = "crates/orchestration/peritus-collaboration"
+owner = "D3"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-git"
+path = "crates/runtime/peritus-git"
+owner = "C1"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-gates"
+path = "crates/orchestration/peritus-gates"
+owner = "D1"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-obligations"
+path = "crates/orchestration/peritus-obligations"
+owner = "D1"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-review"
+path = "crates/orchestration/peritus-review"
+owner = "D2"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-kernel"
+path = "crates/foundation/peritus-kernel"
+owner = "B0"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-journal"
+path = "crates/state/peritus-journal"
+owner = "C0"
+layer = "state"
+
+[[packages]]
+name = "peritus-leases"
+path = "crates/state/peritus-leases"
+owner = "B1"
+layer = "state"
+
+[[packages]]
+name = "peritus-migrations"
+path = "crates/state/peritus-migrations"
+owner = "C0"
+layer = "state"
+
+[[packages]]
+name = "peritus-model-protocol"
+path = "crates/model/peritus-model-protocol"
+owner = "C5"
+layer = "model"
+
+[[packages]]
+name = "peritus-local-socket"
+path = "crates/runtime/peritus-local-socket"
+owner = "G0"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-network"
+path = "crates/runtime/peritus-network"
+owner = "C3"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-patch"
+path = "crates/runtime/peritus-patch"
+owner = "C1"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-policy"
+path = "crates/foundation/peritus-policy"
+owner = "B1"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-process"
+path = "crates/runtime/peritus-process"
+owner = "C2"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-provider-anthropic"
+path = "crates/model/peritus-provider-anthropic"
+owner = "C5"
+layer = "model"
+
+[[packages]]
+name = "peritus-provider-compatible"
+path = "crates/model/peritus-provider-compatible"
+owner = "C5"
+layer = "model"
+
+[[packages]]
+name = "peritus-provider-core"
+path = "crates/model/peritus-provider-core"
+owner = "C5"
+layer = "model"
+
+[[packages]]
+name = "peritus-provider-google"
+path = "crates/model/peritus-provider-google"
+owner = "C5"
+layer = "model"
+
+[[packages]]
+name = "peritus-provider-openai"
+path = "crates/model/peritus-provider-openai"
+owner = "C5"
+layer = "model"
+
+[[packages]]
+name = "peritus-context"
+path = "crates/orchestration/peritus-context"
+owner = "C6"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-memory"
+path = "crates/orchestration/peritus-memory"
+owner = "C6"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-role"
+path = "crates/orchestration/peritus-role"
+owner = "C6"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-agent"
+path = "crates/orchestration/peritus-agent"
+owner = "D0"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-harness"
+path = "crates/orchestration/peritus-harness"
+owner = "E1"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-orchestrator"
+path = "crates/orchestration/peritus-orchestrator"
+owner = "E0"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-run-knowledge"
+path = "crates/orchestration/peritus-run-knowledge"
+owner = "C6"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-run-settlement"
+path = "crates/orchestration/peritus-run-settlement"
+owner = "E0"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-protocol"
+path = "crates/foundation/peritus-protocol"
+owner = "B3"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-projection"
+path = "crates/state/peritus-projection"
+owner = "C0"
+layer = "state"
+
+[[packages]]
+name = "peritus-quality-policy"
+path = "crates/foundation/peritus-quality-policy"
+owner = "B2"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-release-policy"
+path = "crates/foundation/peritus-release-policy"
+owner = "H4"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-security-policy"
+path = "crates/foundation/peritus-security-policy"
+owner = "H0"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-sandbox"
+path = "crates/runtime/peritus-sandbox"
+owner = "C2"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-scheduler"
+path = "crates/orchestration/peritus-scheduler"
+owner = "D3"
+layer = "orchestration"
+
+[[packages]]
+name = "peritus-sandbox-linux"
+path = "crates/runtime/peritus-sandbox-linux"
+owner = "C3"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-sandbox-macos"
+path = "crates/runtime/peritus-sandbox-macos"
+owner = "C3"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-sandbox-windows"
+path = "crates/runtime/peritus-sandbox-windows"
+owner = "C3"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-secrets"
+path = "crates/runtime/peritus-secrets"
+owner = "C3"
+layer = "runtime"
+
+[[packages]]
+name = "peritus-spec"
+path = "crates/foundation/peritus-spec"
+owner = "B2"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-tcb"
+path = "crates/foundation/peritus-tcb"
+owner = "A1"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-telemetry"
+path = "crates/observe/peritus-telemetry"
+owner = "C7"
+layer = "observe"
+
+[[packages]]
+name = "peritus-tool-protocol"
+path = "crates/tools/peritus-tool-protocol"
+owner = "C4"
+layer = "tools"
+
+[[packages]]
+name = "peritus-tool-router"
+path = "crates/tools/peritus-tool-router"
+owner = "C4"
+layer = "tools"
+
+[[packages]]
+name = "peritus-tools-fs"
+path = "crates/tools/peritus-tools-fs"
+owner = "C4"
+layer = "tools"
+
+[[packages]]
+name = "peritus-tools-git"
+path = "crates/tools/peritus-tools-git"
+owner = "C4"
+layer = "tools"
+
+[[packages]]
+name = "peritus-tools-quality"
+path = "crates/tools/peritus-tools-quality"
+owner = "C4"
+layer = "tools"
+
+[[packages]]
+name = "peritus-tools-shell"
+path = "crates/tools/peritus-tools-shell"
+owner = "C4"
+layer = "tools"
+
+[[packages]]
+name = "peritus-trace"
+path = "crates/observe/peritus-trace"
+owner = "C7"
+layer = "observe"
+
+[[packages]]
+name = "peritus-types"
+path = "crates/foundation/peritus-types"
+owner = "A1"
+layer = "foundation"
+
+[[packages]]
+name = "peritus-workspace"
+path = "crates/runtime/peritus-workspace"
+owner = "C1"
+layer = "runtime"
+
+[[packages]]
+name = "xtask"
+path = "xtask"
+owner = "A0"
+layer = "engineering"
+

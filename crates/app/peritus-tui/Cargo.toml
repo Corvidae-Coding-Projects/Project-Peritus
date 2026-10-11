@@ -38,5 +38,9 @@ windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32
 name = "peritus-tui"
 path = "src/main.rs"
 
+[package.metadata.peritus]
+owner = "G2"
+layer = "app"
+
 [lints]
 workspace = true

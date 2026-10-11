@@ -1,0 +1,45 @@
+   Compiling serde_core v1.0.229
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling typenum v1.20.1
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling hybrid-array v0.4.14
+   Compiling cfg_aliases v0.2.2
+   Compiling libc v0.2.189
+   Compiling nix v0.31.3
+   Compiling zmij v1.0.23
+   Compiling cfg-if v1.0.4
+   Compiling syn v3.0.3
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling equivalent v1.0.2
+   Compiling bitflags v2.13.1
+   Compiling serde_json v1.0.149
+   Compiling serde v1.0.229
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling indexmap v2.14.0
+   Compiling digest v0.11.3
+   Compiling serde_derive v1.0.229
+   Compiling hashlink v0.12.1
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling arraydeque v0.5.1
+   Compiling toml_writer v1.1.2+spec-1.1.0
+   Compiling cpufeatures v0.3.0
+   Compiling sha2 v0.11.0
+   Compiling toml v1.1.4+spec-1.1.0
+   Compiling yaml-rust2 v0.12.0
+   Compiling process-wrap v9.1.0
+   Compiling base64 v0.22.1
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 16.21s
+     Running `target/peritus-sol-run-knowledge-topology-01/debug/xtask source-layout-check`
+error[PERITUS-XTASK-SOURCE-001]: source-layout-check found 2 violation(s)
+  - crates/foundation/peritus-release-policy/src/evidence.rs: source has 405 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale
+  - crates/orchestration/peritus-scheduler/src/verified/reservations.rs: source has 761 lines and exceeds the hard budget of 700
+    help: split responsibilities or add a reviewed exception with owner and rationale

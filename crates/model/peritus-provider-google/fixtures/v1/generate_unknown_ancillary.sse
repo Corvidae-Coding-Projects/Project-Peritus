@@ -1,0 +1,4 @@
+data: {"responseId":"gen_unknown","modelVersion":"gemini-3.7-flash","traceMetadata":{"bounded":true},"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"ok"}]}}]}
+
+data: {"responseId":"gen_unknown","candidates":[{"index":0,"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2}}
+

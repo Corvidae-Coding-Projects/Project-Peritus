@@ -1,0 +1,25 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+base64.workspace = true
+process-wrap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+toml.workspace = true
+yaml-rust2.workspace = true
+
+[package.metadata.peritus]
+owner = "A0"
+layer = "engineering"
+
+[lints]
+workspace = true

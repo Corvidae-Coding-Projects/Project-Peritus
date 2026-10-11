@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 publish = false
 autobins = false
-readme = false
+readme = "README.md"
 keywords = ["process", "pty", "sandbox", "authorization", "formal-verification"]
 categories = ["development-tools"]
 
@@ -43,6 +43,18 @@ windows-sys = { workspace = true, features = [
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",
 ] }
+
+[[bin]]
+name = "peritus-native-helper-fixture"
+path = "src/bin/peritus-native-helper-fixture.rs"
+
+[[bin]]
+name = "peritus-process-fixture"
+path = "src/bin/peritus-process-fixture.rs"
+
+[package.metadata.peritus]
+owner = "C2"
+layer = "runtime"
 
 [lints]
 workspace = true

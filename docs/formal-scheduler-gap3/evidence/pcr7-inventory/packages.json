@@ -1,0 +1,266 @@
+[
+  {
+    "package": "peritus-agent",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-app-protocol",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-approval",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-artifact-store",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-budget",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-codec",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-collaboration",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-context",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-daemon",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-debugger",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-eval",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-evidence",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-evolution",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-gates",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-git",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-harness",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-journal",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-kernel",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-leases",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-local-socket",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-mcp",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-memory",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-migrations",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-model-protocol",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-network",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-obligations",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-orchestrator",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-patch",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-plugin-host",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-plugin-sdk",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-policy",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-process",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-product-runner",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-product-state",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-projection",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-protocol",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-provider-anthropic",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-provider-compatible",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-provider-core",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-provider-google",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-provider-openai",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-quality-policy",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-release-policy",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-review",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-role",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-run-knowledge",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-run-settlement",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-sandbox",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-sandbox-linux",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-sandbox-macos",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-sandbox-windows",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-scheduler",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-secrets",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-security-policy",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-spec",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-tcb",
+    "verification_class": "T"
+  },
+  {
+    "package": "peritus-telemetry",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-tool-protocol",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-tool-router",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-tools-fs",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-tools-git",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-tools-quality",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-tools-shell",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-trace",
+    "verification_class": "H"
+  },
+  {
+    "package": "peritus-types",
+    "verification_class": "V"
+  },
+  {
+    "package": "peritus-workspace",
+    "verification_class": "H"
+  }
+]

@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running `target/sol-ci-custody/debug/xtask source-layout-check`
+source-layout-check passed: 4328 source file(s)

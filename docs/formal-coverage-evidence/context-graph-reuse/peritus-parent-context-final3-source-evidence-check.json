@@ -1,0 +1,38 @@
+[
+  {
+    "manifest": "/tmp/peritus-sol-context-preimage-full-package-20260913T004133Z.sha256",
+    "base_directory": "/tmp/peritus-sol-context-preimage-20260913T004133Z/peritus-context",
+    "sha256": "1cfe9105489a6b024578ad00b687ac88e81863ccae6e8f2025b3d38d8b37576c",
+    "checked_entries": 55
+  },
+  {
+    "manifest": "/tmp/peritus-sol-context-final-full-package-20260913T004133Z.sha256",
+    "base_directory": "/tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context",
+    "sha256": "fa6acc10d9389133df32011675c1c4c1d907286854ccd35ad0f17e7a89aeefc6",
+    "checked_entries": 67
+  },
+  {
+    "manifest": "/tmp/peritus-sol-context-final-changed-source-20260913T004133Z.sha256",
+    "base_directory": "/tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context",
+    "sha256": "91e2adc6dc2b8946ea13036a7c017f29316bfb13dd01cb429a838f3fe28c252f",
+    "checked_entries": 20
+  },
+  {
+    "manifest": "/tmp/peritus-sol-context-final-evidence-20260913T004133Z.sha256",
+    "base_directory": "/",
+    "sha256": "2c534cf611e9a391024f2dc29b6809e6f35336b4bb536a9806ff402b13b810e5",
+    "checked_entries": 26
+  },
+  {
+    "manifest": "/tmp/peritus-sol-context-cycle-fix-final3-full-package.sha256",
+    "base_directory": "/tmp/peritus-sol-context-cycle-fix-final-source-003",
+    "sha256": "69681b7b8b68f8cef5ac41f8aeb9762c7f7bd276f91d25d2fd4f7d64ed06f87e",
+    "checked_entries": 72
+  },
+  {
+    "manifest": "/tmp/peritus-sol-context-cycle-fix-final3-changed-source.sha256",
+    "base_directory": "/tmp/peritus-sol-context-cycle-fix-final-source-003",
+    "sha256": "3d3907e64964652ab8c10cdaa7eb0c00dc6ce43be07bb807434fa503fd3cedd3",
+    "checked_entries": 13
+  }
+]

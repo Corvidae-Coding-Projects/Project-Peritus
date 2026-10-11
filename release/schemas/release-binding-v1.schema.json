@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Corvidae-Coding-Projects/Project-Peritus/release/schemas/release-binding-v1.schema.json",
+  "title": "Peritus exact release binding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_commit", "version", "toolchain", "platform", "source_tree_digest"],
+  "properties": {
+    "candidate_commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+    "version": { "type": "string", "minLength": 5, "maxLength": 96 },
+    "toolchain": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "platform": { "type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[!-~]+$" },
+    "source_tree_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

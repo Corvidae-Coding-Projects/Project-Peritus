@@ -1,0 +1,11 @@
+42b180ab0b6903aee71aa7f3aa1e29af78bb96ba9d2d2ac69de418fcb91a02ed  /tmp/peritus-sol-release-remaining-source-files-final-20260912T001.txt
+f98b2c661b7eeedb775274b492f12a5f0fcdf9b25c8469a9319decf0c9c92978  /tmp/peritus-sol-release-remaining-source-sha256-final-20260912T001.txt
+4e0312132bcbbf130436e460891e9b679aec536c9d60e9fae86b65d823ef384c  /tmp/peritus-sol-release-remaining-commands-final-20260912T001.txt
+c43348b4a7a313b0937ecd53bbf6b38503e8eb78a9a59d1ae09eaa22135936f9  /tmp/peritus-sol-release-security-environment-final-20260912T001.txt
+af5d8632c8ef7408f2eeb5d316e0bff62389615f9087b1adcfc689b7c4a25da2  /tmp/peritus-sol-release-remaining-verus-20260912T010.txt
+d2f9f88eac30107feddffc77338beb05c7070f9aaeac429ad19796c9ec6e2adf  /tmp/peritus-sol-release-remaining-tests-20260912T001.txt
+d0761326ea188884d168ff7e98fa38193fa31ed997fff6d01cf8a96cc0802bc2  /tmp/peritus-sol-release-remaining-clippy-20260912T003.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /tmp/peritus-sol-release-remaining-fmt-20260912T002.txt
+05dcfdb569d8cffd2623d6e5ad47f8b72e5c399eda96564689f7a001cfdd2ca7  /tmp/peritus-sol-release-remaining-source-layout-20260912T001.txt
+54065e9ad6805a5f26ab5db03f28566118eef7fae3ea2ed5c72b3bc17bd87b6d  /tmp/peritus-sol-release-remaining-forbidden-scan-20260912T002.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /tmp/peritus-sol-release-remaining-diff-check-20260912T001.txt

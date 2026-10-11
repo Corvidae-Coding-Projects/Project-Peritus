@@ -1,0 +1,4 @@
+data: {"id":"chat_error","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{"role":"assistant","content":"partial"},"finish_reason":null}]}
+
+data: {"error":{"code":"provider_error","message":"private provider detail"}}
+

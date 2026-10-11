@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["agents", "daemon", "ipc", "orchestration"]
 categories = ["development-tools"]
 
@@ -86,6 +86,10 @@ windows-sys = { workspace = true, features = [
 [[bin]]
 name = "peritusd"
 path = "src/bin/peritusd.rs"
+
+[package.metadata.peritus]
+owner = "G0"
+layer = "app"
 
 [lints]
 workspace = true

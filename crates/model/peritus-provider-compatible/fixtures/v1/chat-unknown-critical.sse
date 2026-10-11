@@ -1,0 +1,2 @@
+data: {"id":"chat_critical","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{"future_output":"unsafe"},"finish_reason":null}]}
+

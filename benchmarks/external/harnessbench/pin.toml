@@ -1,0 +1,6 @@
+schema_version = 1
+repository = "https://github.com/Qihoo360/harness-bench.git"
+revision = "1025086a446653702b80cfb48babbeec35db6b2c"
+revision_date = "2026-06-23T10:22:42+08:00"
+task_count = 106
+adapter = "generic_cli"

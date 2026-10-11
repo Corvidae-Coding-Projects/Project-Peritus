@@ -1,0 +1,103 @@
+{
+  "checkpoint": "peritus-run-knowledge constructor topology and transitive invalidation closure",
+  "base_checkpoint": "/tmp/peritus-parent-knowledge-checkpoint",
+  "source_manifest": "/tmp/peritus-sol-run-knowledge-topology-source-01.sha256",
+  "source_manifest_sha256": "186ad26d788c7c3f6c5abe97c0119c568e26e438bb2dd2fdbacb48485082d250",
+  "sources": [
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/identity.rs",
+      "sha256": "84a0b0a37bd4baa250c6ab5431f160967fdbab3fc4ab7ea352546478bc258744"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/kind.rs",
+      "sha256": "6d7d4a2b6f0ec1b79c7ac18c4f11ca24e34b20f7883af24801d18e2d715fad97"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/model.rs",
+      "sha256": "15b275a71241aa2731f8e8437668d1fa1b166b3e2902ff22db158ab68ae10069"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/model/closure.rs",
+      "sha256": "e5bc259de1b0ae39b1a0feb35d5a91603a7fd26f53711a852a9918a045dfba58"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/model/topology.rs",
+      "sha256": "098edb8155878e88001a3d7e25f92c98c5803bea5f62bac5508b8f760a1f85ba"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/plan.rs",
+      "sha256": "b58d92cc43547dc3b18eaa0109dae52b881179df8ff567a822c43b8f790b85e5"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/section.rs",
+      "sha256": "27c0f8d8cae55b60b2930372065caa15af44fc9ae5c3c54197cc0c1d34f7d66b"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/snapshot.rs",
+      "sha256": "0a14c541e0c09931d50063c0e58f18ee18863aa3c9d855be26a770ce1cc0c15d"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs",
+      "sha256": "4ff5fd6b8d2d80a01b1a08610a5f102af02467938f7ff7e35822b185ea677637"
+    },
+    {
+      "path": "crates/orchestration/peritus-run-knowledge/tests/topology.rs",
+      "sha256": "481ba60533e57b772899c2ee386992ec13093a0492c602fa16c45d948fd6d9e0"
+    }
+  ],
+  "verdict": "PASS within the stated bounded scope",
+  "proved": [
+    "Successful RunKnowledgeSnapshot::new returns the exact caller candidate, role, required references, section sequence, and limits and establishes the snapshot topology invariant.",
+    "Admitted section identities are strictly ordered by all canonical identity bytes and globally unique.",
+    "Every declared dependency in an admitted snapshot resolves to an exact earlier section identity; dependency_has_backward_edge exposes the corresponding indexed direct edge.",
+    "The three required section references resolve to exact declared kinds.",
+    "plan_invalidation returns one exact entry per section in source order, retains exact decision values including invalidation reasons, and satisfies transitive_invalidation_closed over the recursively defined finite backward dependency relation.",
+    "RunKnowledgeSnapshot semantic Clone preserves every topology fact."
+  ],
+  "tested": [
+    "Both default and all-features peritus-run-knowledge suites pass 16 tests: 14 knowledge-matrix scenarios and 2 topology scenarios.",
+    "Topology scenarios reject forward and missing dependencies and distinguish late-byte duplicate from late-byte descending identities with existing deterministic error kinds.",
+    "Existing three-to-four-to-eight chain scenario exercises transitive invalidation and exact public decision reasons."
+  ],
+  "preserved_runtime_behavior": [
+    "Validation keeps duplicate before descending error precedence and validates dependencies before required reference lookup.",
+    "The new canonical comparator and exact lookup scan the same complete fixed-width identity bytes used by equality; no executable precondition or verification-only runtime guard was introduced."
+  ],
+  "open_limits": [
+    "The theorem applies to snapshots admitted by RunKnowledgeSnapshot::new and successful plan_invalidation results; it is not a theorem over arbitrary unconstructed graphs.",
+    "delta.rs, context selection, persistence, product resume, and other end-to-end callers are not connected by this checkpoint.",
+    "A non-Copy derived Clone warning in delta.rs remains outside this increment.",
+    "The repository source-layout check in the recorded run was blocked only by two separately owned files: release-policy evidence.rs and scheduler verified/reservations.rs; every owned file is below 400 lines."
+  ],
+  "prohibited_construct_search": "No assume, admit, axiom, external_body, external_fn_specification, or verifier::external occurrence in package src/tests.",
+  "qualification": {
+    "strict_verus": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-verus-23.log",
+      "result": "178 verified, 0 errors"
+    },
+    "tests_all_features": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-tests-all-features-02.log",
+      "result": "16 passed, 0 failed"
+    },
+    "tests_default": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-tests-default-01.log",
+      "result": "16 passed, 0 failed"
+    },
+    "clippy": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-clippy-01.log",
+      "result": "passed with -D warnings"
+    },
+    "fmt": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-fmt-02.log",
+      "result": "passed"
+    },
+    "diff_check": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-diff-check-02.log",
+      "result": "passed"
+    },
+    "source_layout": {
+      "log": "/tmp/peritus-sol-run-knowledge-topology-source-layout-01.log",
+      "result": "failed only on two separately owned files"
+    }
+  }
+}

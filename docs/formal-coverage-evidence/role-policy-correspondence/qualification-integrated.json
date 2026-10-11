@@ -1,0 +1,50 @@
+[
+  {
+    "command": [
+      "cargo",
+      "verus",
+      "verify",
+      "--package",
+      "peritus-role",
+      "--all-features",
+      "--locked",
+      "--check-toolchain",
+      "--fwd-verus-args-to",
+      "roots",
+      "--",
+      "--no-cheating",
+      "--rlimit",
+      "20"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-role-policy-verus-integrated.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-role",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-role-policy-tests-integrated.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-context",
+      "--locked",
+      "--test",
+      "reuse_matrix"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "log": "/tmp/peritus-parent-role-policy-context-integrated.log",
+    "exit_code": 0
+  }
+]

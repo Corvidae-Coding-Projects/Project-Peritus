@@ -1,0 +1,41 @@
+{
+  "implementation": "/root/sol_readiness_correspondence",
+  "reviewer": "/root",
+  "reviewed_source_manifest_sha256": "b6657fcebf70120369269b99b1ad61e2213fbd0e1493ab6617d2cfd26e2fc71f",
+  "results": {
+    "implementation_focused_tests": 7,
+    "independent_focused_tests": 7,
+    "independent_reproducibility": "140 immutable action references",
+    "exclusive_hosted_enforcement": "not implemented or verified",
+    "full_package": "pending stable final source"
+  },
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T21:27:48.743587+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "artifacts": {
+    "actionlint.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit.md": "7b209dfb09cddcc3c10a9390e562538b5cacbb5b2bfd5273863810087831a6c1",
+    "checker-input-modes.txt": "09761e386243135d3fc2f2be8d3a16eebb31de949736d62aa158cfa891fcae95",
+    "checker-input-sha256.txt": "9717b2ff8d5a6fb721ccb39589b5feff98e868a0928f3ee6ca75dd9603a2acea",
+    "clippy.txt": "2a1c050cb9c9c42e617f6acd9a8ff6791b8ef785ed285a826aaeed68e391cd99",
+    "diff-check.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs.txt": "3000e0c5c9892983ec81f206aa6d3285fc680f6b5b9b16d7248913f1828b7729",
+    "focused-tests-implementation.txt": "9f1bf99f0d768e50361aae37c6a2b961bb33fd49d95dbb0ce847f8a32569c769",
+    "focused-tests-independent.txt": "f235c2d228d4108f74c84964d447a2052b9a5bf79ef5b32e13151837a6a50530",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "implementation-commands.txt": "110ff8222b036a6e6ef66ed0296a84a6d99869a889121281cdd934eb25114ce8",
+    "implementation-environment.txt": "ae9b128bae3f036a524563c054656ff13ff3980d70a89af9f5bac3951bb4368d",
+    "initial-independent-finding.txt": "14e5052ab0907ffa530fb766adb49a3d6ccc8af79df49b37c16bda7b5d742f97",
+    "library-tests.txt": "810e65caae4e06e1e925181e7bee89a9aa3e153219082b7eda4ff4066bab433d",
+    "package-tests-transient-failure.txt": "06f047b0e1cc35eb55585c633adf0396d7cd5a083fab7e88b76aa59292d861fa",
+    "release-build-inputs.txt": "560e9340d0dc3b65c01c8c77ff494da18e34cf17a2e14e8d9f56e39e7220a776",
+    "release-build.txt": "b65d97c967cb13bb2fd061b2f5b86011ef366acea387375a92a9808f93395384",
+    "reproducibility-implementation.txt": "15d539acbc9291730dc53d4d050095e43a284714534b47c8cab0a7414dc8bbaa",
+    "reproducibility-independent.txt": "cc040d660df9cef40a1e7409a47896a56807faf38134332b527259113cf6c527",
+    "source-layout.txt": "78c265ee762a2b52a875fb4cca1e3c693258f9c056ff06258df1a319de6f2363",
+    "source-sha256.txt": "b6657fcebf70120369269b99b1ad61e2213fbd0e1493ab6617d2cfd26e2fc71f",
+    "timeout-test-retry.txt": "c616cfd1bc852a33e75e5716cd7e25b497f3c59e4f114d1a1683359589d2341e"
+  }
+}

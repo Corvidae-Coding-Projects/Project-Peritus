@@ -1,0 +1,41 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T22:01:15.011868+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_acceptance_completion",
+  "reviewer": "/root",
+  "reviewed_source_manifest_sha256": "afc016d0b7cbf6812c767c7a6836a1feabcb678a0dba3b875735a19322b19fa2",
+  "results": {
+    "implementation_strict_verified": 222,
+    "independent_strict_verified": 222,
+    "proof_errors": 0,
+    "implementation_tests_default": 21,
+    "implementation_tests_all_features": 21,
+    "independent_tests_all_features": 21,
+    "clippy": "passed",
+    "format": "passed",
+    "source_layout": "passed for recorded then-current 4344 source files; not final tree qualification",
+    "existing_obligations_clone_warnings": 5,
+    "settlement_dependency_clone_warnings": 2
+  },
+  "artifacts": {
+    "audit.md": "ae01f95ad1a8ab8d23b2c7835897e9bd9786bf6cf90c2e4ceb0802a4c78256f5",
+    "clippy.txt": "c83528fe0b149dc53797372979c5b3e18b199fef71fcb6bfdb28f5cb48154829",
+    "diff-check.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "full-package-sha256.txt": "108aafd8040b7e5e80605c349ae96604d72a49a289cde7a1548cfe2eb1711f11",
+    "implementation-commands.txt": "db6dc7673c0c97d7e652b49dd0d2429f102d0609fb4d5e01009fb83eab4adf31",
+    "implementation-review.json": "c3d16d23e300b61ce4f2559437c0261246f63c602af2e8c90f896a214a86743b",
+    "independent-commands.txt": "135cc88dfa6a846a2cc5c22d8d3d8f0ff59fa8040bc78d10d497f34d22405e88",
+    "source-diff.patch": "a2db15851786a34661c393b9415dd6291f15298259414fff85289e25aa627d3c",
+    "source-layout.txt": "fc067186981f58acc68b1507090ec147f9dceaf5efb7cc86ea173486807a0def",
+    "source-sha256.txt": "afc016d0b7cbf6812c767c7a6836a1feabcb678a0dba3b875735a19322b19fa2",
+    "tests-all-features.txt": "2f95d939577d71b7506bddb4aadd64ecb96dd18c9bc1ee55ec2ccd6554c48089",
+    "tests-default.txt": "044e97fa18278d4c874ca61dc3b78ed6d88702b1253298229f67dc4062a7f6d5",
+    "tests-independent.txt": "edfff26f54bd0a58390364d854c390dd6887c21feacc5582ee0f8e239d7a8f76",
+    "verus-implementation.txt": "0d61e07b34e51a6e8eecb2c9943d3cd8d99c48610b6f0664e7aaebd3a45713d3",
+    "verus-independent.txt": "bf70ebde9336e8ceaa8e227dcf28b6a08572acc2cc3c675f45bb9cb1c48b4da8"
+  }
+}

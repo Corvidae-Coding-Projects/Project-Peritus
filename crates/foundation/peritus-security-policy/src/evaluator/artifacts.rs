@@ -1,5 +1,7 @@
 //! Required canonical evidence-manifest role checks.
 
+mod model;
+
 use crate::{EvidenceArtifactKind, IntegratedCandidate, SecurityEvidence, UnmetSecurityCondition};
 
 const fn kinds_equal(left: EvidenceArtifactKind, right: EvidenceArtifactKind) -> bool {

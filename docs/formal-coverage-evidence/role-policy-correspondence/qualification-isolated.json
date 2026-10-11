@@ -1,0 +1,75 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-role",
+      "--locked"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-role-policy-tests-default4.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-role",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-role-policy-tests-all4.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--package",
+      "peritus-role",
+      "--all-features",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-role-policy-clippy4.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "fmt",
+      "--package",
+      "peritus-role",
+      "--",
+      "--check"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-role-policy-format4.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "ordinary-api-check"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-role-policy-ordinary-api3.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "source-layout-check"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "log": "/tmp/peritus-parent-role-policy-source-layout3.log",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:03:56.806085+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_runtime_phase",
+  "reviewer": "/root",
+  "review_provenance": "Independent source review through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not an external signature or protected proof-impact authorization.",
+  "reviewed_source_manifest_sha256": "8cb8da5a87aa975423aeba8a0eb6af964efa424f6a6cb1f03b682cb9ada5a0e3",
+  "reviewer_verdict": "PASS for the exact production-called non-control phase kernel, repaired terminal replay rejection and complete semantic Clone field coverage.",
+  "remaining_limits": [
+    "Payload/digest/limit validation and effectful execution are not proved.",
+    "Provider-in-flight and completion-presence are supplied facts from the ordinary reducer.",
+    "The legacy phase pair relation is only an existential projection.",
+    "Final feature test runs are implementer results reviewed by parent.",
+    "Source checkpoint is not a complete compiler-input attestation or final clean commit."
+  ],
+  "results": {
+    "strict_verified": 56,
+    "proof_errors": 0,
+    "proof_warnings": 0,
+    "all_features_tests_passed": 84,
+    "no_default_features_tests_passed": 76,
+    "both_clippy_configurations": "passed",
+    "format": "passed",
+    "baseline_terminal_replay_probe": "failed as expected",
+    "repaired_terminal_replay_probe": "passed"
+  },
+  "artifacts": {
+    "audit.md": "b7f258de8f472e5ba011ab9c4d6697432f1c70601becd882629b247f8a18cf77",
+    "clippy-all-features.txt": "e05aa810532570ad4b5d5de9746294e0d0ec3525dd4c715dc5c5085805c56386",
+    "clippy-no-default-features.txt": "06d38ce5b22a1f51d0e03ae1b816f5707c2b5b5791096813e85517dd7c5e8147",
+    "commands.txt": "6d41f7e73ac90a8901f6adc2caa362a1e28ea7bc3cc579b7318d126d3d6af051",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "regression-baseline-source.txt": "9da91d8275065859cf1f256c1ae9af30458d2a7d1e8fcbd58fe14fd6e1d1ba57",
+    "regression-baseline.txt": "50ec0114f0a1f6fc8793f50f632bc9a230119f928319e408d9bc28a908c5cfc9",
+    "regression-repaired.txt": "d284e8b9850fa1fced366135b25080ca374f5d751f76a5c85aa2572d42b9431e",
+    "source-check.txt": "7a89aa61b4bf79b9f1d4dd518035c50fda68ba20cc7d094f4280abe3cbf34ddb",
+    "source-sha256.txt": "8cb8da5a87aa975423aeba8a0eb6af964efa424f6a6cb1f03b682cb9ada5a0e3",
+    "tests-all-features.txt": "566a05eec109af239ed8ead9f6b7d64897d4fdc8427eb6d74063e4e7602fd278",
+    "tests-no-default-features.txt": "086cad48aa12e9e3377b179c9413e605bacdc309299125c71901680baa9ed5c1",
+    "verus.txt": "74d228809094f8ebd11a7b0b2b633d1338500a9b40ac23ecddbd4936399a7865"
+  }
+}

@@ -1,0 +1,58 @@
+WORKSPACE=/tmp/peritus-parent-readiness-review.q25p5n7e
+PACKAGE=crates/orchestration/peritus-run-knowledge
+TARGET=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-errors
+
+Input identity checks
+  cd /tmp/peritus-parent-knowledge-admission-source
+  sha256sum -c /tmp/peritus-parent-knowledge-admission-full-package.sha256
+  # exit 0; input manifest SHA256 67b8b133b4fc0f0c5670333d6c05b7fa1736df1398ef763731d6ad7a78e57bb8
+
+Pinned baseline proof, before this patch
+  cd "$WORKSPACE"
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20 > /tmp/peritus-sol-knowledge-errors-baseline-verus-01.log 2>&1
+  # exit 0; 216 verified, 0 errors
+
+Final strict proof
+  cd "$WORKSPACE"
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20 > /tmp/peritus-sol-knowledge-errors-verus-final.log 2>&1
+  # exit 0; 220 verified, 0 errors
+
+Ordinary package tests
+  cd "$WORKSPACE"
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo test --package peritus-run-knowledge --locked > /tmp/peritus-sol-knowledge-errors-tests-default-02.log 2>&1
+  # exit 0; 29 passed, 0 failed
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo test --package peritus-run-knowledge --all-features --locked > /tmp/peritus-sol-knowledge-errors-tests-all-features-02.log 2>&1
+  # exit 0; 29 passed, 0 failed
+
+Strict lint and formatting
+  cd "$WORKSPACE"
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo clippy --package peritus-run-knowledge --all-targets --all-features --locked -- -D warnings > /tmp/peritus-sol-knowledge-errors-clippy-02.log 2>&1
+  # exit 0
+  cargo fmt --package peritus-run-knowledge -- --check > /tmp/peritus-sol-knowledge-errors-fmt-02.log 2>&1
+  # exit 0
+
+Repository source and public API gates
+  cd "$WORKSPACE"
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo run --locked --package xtask -- source-layout-check > /tmp/peritus-sol-knowledge-errors-source-layout-01.log 2>&1
+  # exit 0; 4310 source files
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo run --locked --package xtask -- ordinary-api-check > /tmp/peritus-sol-knowledge-errors-ordinary-api-01.log 2>&1
+  # exit 0; 3424 formal-boundary files, 14646 ordinary-safe executable entry points
+
+Negative proof mutation
+  In the active isolated workspace only, replace the CurrentSnapshotStale
+  KnowledgeError::section(..., entry.section_id()) construction in
+  src/delta.rs with KnowledgeError::plain(CurrentSnapshotStale), then run:
+  cd "$WORKSPACE"
+  env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20 > /tmp/peritus-sol-knowledge-errors-negative-plain-current-error-verus-01.log 2>&1
+  # exit 101; 219 verified, 1 error at src/delta.rs current_snapshot_error assertion
+  Restore src/delta.rs byte-for-byte from the frozen source and run:
+  cd "$WORKSPACE/$PACKAGE"
+  sha256sum -c /tmp/peritus-sol-knowledge-errors-source-final.sha256 > /tmp/peritus-sol-knowledge-errors-restored-source-check.log 2>&1
+  # exit 0; all 38 package files match the frozen source
+
+Freeze
+  cd /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge
+  find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/peritus-sol-knowledge-errors-source-final.sha256
+  # manifest SHA256 6854d6da0f6c0f6bd7b298f75b608a34e0937e32938ee266b233c6e00062e1d2
+  diff -ruN /tmp/peritus-parent-knowledge-admission-source /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge > /tmp/peritus-sol-knowledge-errors.patch
+  # expected diff exit 1; patch SHA256 9da7f3a1d9abadd3bece6b27ec274d55e076f7284c55edc057f56fba2cddf038

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/native-probe-request-v1.schema.json",
+  "title": "Peritus H0 native probe request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "subject_id",
+    "probe_id",
+    "target",
+    "candidate",
+    "limits"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "subject_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "probe_id": {"type": "string", "pattern": "^h0\\."},
+    "target": {"enum": ["tier-one-host", "linux", "macos", "windows"]},
+    "candidate": {"$ref": "#/$defs/candidate"},
+    "limits": {"$ref": "#/$defs/limits"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id128": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acceptance_spec_id",
+        "harness_id",
+        "workspace_id",
+        "workspace_generation",
+        "workspace_revision",
+        "policy_id",
+        "provider_profile_id",
+        "source_sha256",
+        "release_manifest_sha256",
+        "qualification_plan_sha256"
+      ],
+      "properties": {
+        "acceptance_spec_id": {"$ref": "#/$defs/id128"},
+        "harness_id": {"$ref": "#/$defs/id128"},
+        "workspace_id": {"$ref": "#/$defs/id128"},
+        "workspace_generation": {"type": "integer", "minimum": 1},
+        "workspace_revision": {"type": "integer", "minimum": 1},
+        "policy_id": {"$ref": "#/$defs/id128"},
+        "provider_profile_id": {"$ref": "#/$defs/id128"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "release_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duration_millis",
+        "processes",
+        "peak_memory_bytes",
+        "output_bytes",
+        "artifacts"
+      ],
+      "properties": {
+        "duration_millis": {"type": "integer", "minimum": 1, "maximum": 3600000},
+        "processes": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "peak_memory_bytes": {"type": "integer", "minimum": 1},
+        "output_bytes": {"type": "integer", "minimum": 1},
+        "artifacts": {"type": "integer", "minimum": 1, "maximum": 4096}
+      }
+    }
+  }
+}

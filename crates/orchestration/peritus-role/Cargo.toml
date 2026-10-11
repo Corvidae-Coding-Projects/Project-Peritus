@@ -7,11 +7,15 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 
 [dependencies]
 peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" }
 peritus-spec = { version = "=0.0.6", path = "../../foundation/peritus-spec" }
+
+[package.metadata.peritus]
+owner = "C6"
+layer = "orchestration"
 
 [lints]
 workspace = true

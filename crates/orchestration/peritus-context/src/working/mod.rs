@@ -5,12 +5,15 @@
 
 mod binding;
 mod delta;
+mod delta_model;
 mod delta_reducer;
 mod entry;
 mod error;
 mod event;
 mod evidence;
 mod invalidation;
+mod invalidation_environment;
+mod invalidation_model;
 mod limits;
 mod protocol;
 mod staleness;

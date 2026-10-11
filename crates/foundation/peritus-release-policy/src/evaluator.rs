@@ -3,6 +3,7 @@
 use crate::{Diagnostic, ReleaseCandidate, ReleaseDecision, ReleaseEvidence};
 use peritus_types::Sha256Digest;
 
+mod admission;
 mod artifacts;
 mod diagnostics;
 mod findings;

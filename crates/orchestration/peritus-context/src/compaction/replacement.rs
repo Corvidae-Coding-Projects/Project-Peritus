@@ -6,6 +6,7 @@ use crate::{CompactionPolicyId, ContextError, ContextErrorKind, ContextGraph, Co
 
 mod dependencies;
 mod graph;
+pub mod model;
 use graph::build_replacement_graph;
 
 #[doc = " Checked replacement result with audit lineage kept outside the live dependency graph."]

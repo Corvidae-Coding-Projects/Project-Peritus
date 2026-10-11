@@ -1,0 +1,8 @@
+# Isolated source: /tmp/peritus-parent-settlement-proof.e8schfvn
+# Integration: /home/doll/Project-Peritus/.worktrees/formal-coverage
+# CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1; separate disk-backed targets formal-settlement-review / formal-settlement-integration
+cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo test --locked --package peritus-run-settlement --all-targets --all-features
+# Isolated ordinary validation
+cargo clippy --locked --package peritus-run-settlement --all-targets --all-features -- -D warnings
+cargo fmt --package peritus-run-settlement -- --check

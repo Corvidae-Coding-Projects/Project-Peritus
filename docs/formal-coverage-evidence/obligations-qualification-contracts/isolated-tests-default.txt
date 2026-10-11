@@ -1,0 +1,106 @@
+   Compiling peritus-obligations v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-obligations)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.36s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/peritus_obligations-cbcbb3f03b23b6d5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/canonical_encoding.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/canonical_encoding-fd27d93f1fcc74d1)
+
+running 1 test
+test public_extraction_retains_the_existing_canonical_digest ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/evidence_binding.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/evidence_binding-07bce8a60ae1af5c)
+
+running 2 tests
+test canonical_paths_distinguish_the_last_byte_and_clone_retains_them ... ok
+test evidence_currentness_checks_every_requirement_and_ledger_byte ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/evidence_capabilities.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/evidence_capabilities-ad47d9d3a4d38793)
+
+running 5 tests
+test external_effect_requires_public_boundary_completion ... ok
+test malformed_html_claim_needs_a_real_browser_oracle ... ok
+test lifecycle_simulation_cannot_replace_public_ingress ... ok
+test performance_requires_current_same_workload_measurement ... ok
+test request_and_response_schema_fields_are_directional ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/failure_matrix.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/failure_matrix-88cd9e50aa9cd7a2)
+
+running 2 tests
+test ambiguity_asks_once_and_non_code_failures_recover_or_settle ... ok
+test only_candidate_defects_request_a_fixer_cycle ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/foundation_semantics.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/foundation_semantics-c32a025545c3a3b2)
+
+running 4 tests
+test condition_and_requirement_identity_errors_preserve_complete_details ... ok
+test limits_and_public_source_preserve_exact_admission_and_error_details ... ok
+test ledger_clone_preserves_exact_binary_clause_provenance_and_each_path_role ... ok
+test path_validation_retains_size_and_first_pair_error_precedence ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ledger_qualification_correspondence.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/ledger_qualification_correspondence-028c0b890bb0ec79)
+
+running 4 tests
+test extraction_copies_binary_spans_and_matches_the_complete_identity ... ok
+test qualification_rejects_inputs_in_the_existing_public_error_order ... ok
+test incomplete_alternative_groups_keep_first_ledger_occurrence_order ... ok
+test qualification_report_partitions_actual_verdicts_and_alternative_completion ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/performance_margins.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/performance_margins-a6c5ed206c2a0530)
+
+running 2 tests
+test improvement_noise_cannot_hide_a_large_regression ... ok
+test improvement_preserves_inclusive_and_full_width_boundaries ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualification_contracts.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/qualification_contracts-b4ef0c0b6020f271)
+
+running 2 tests
+test qualification_keeps_first_error_and_every_payload_field ... ok
+test qualification_requires_every_active_member_and_one_whole_alternative_branch ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/schema_semantics.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/schema_semantics-32241696aa7eb249)
+
+running 5 tests
+test evidence_constructor_accepts_empty_and_rejects_noncanonical_identities ... ok
+test covers_is_exact_directional_required_field_membership ... ok
+test schema_field_retains_exact_identity_and_name_bounds ... ok
+test ledger_rejects_schema_variant_direction_mismatch ... ok
+test requirement_constructor_enforces_full_identity_order_and_error_priority ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/structure_matrix.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent/debug/deps/structure_matrix-0d6c887b7b052803)
+
+running 5 tests
+test conditional_output_activates_only_when_public_condition_holds ... ok
+test ledger_retains_exact_clause_and_public_provenance ... ok
+test example_clauses_are_informative_without_candidate_evidence ... ok
+test referenced_and_example_paths_are_not_mandatory_outputs ... ok
+test one_complete_alternative_branch_is_required ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_obligations
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

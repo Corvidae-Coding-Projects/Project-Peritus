@@ -7,6 +7,7 @@ use crate::{
     WorkTerminal,
 };
 
+mod reservation_transitions;
 mod reservations;
 
 /// Returns whether every dependency of work is terminal-successful.

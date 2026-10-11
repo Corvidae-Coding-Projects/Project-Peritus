@@ -1,0 +1,32 @@
+schema = "peritus.unsafe-inventory.v1"
+owner = "H0"
+status = "requires-exact-candidate-reconciliation"
+
+[policy]
+source_roots = ["crates"]
+include_generated = true
+require_safety_comment = true
+require_owner = true
+require_threat_reference = true
+require_miri_eligibility_disposition = true
+forbid_undocumented = true
+
+[[category]]
+id = "unsafe-block"
+required_fields = ["path", "line", "owner", "safety-invariant", "threat-id", "miri-disposition"]
+
+[[category]]
+id = "unsafe-function"
+required_fields = ["path", "line", "owner", "caller-obligations", "threat-id", "tests"]
+
+[[category]]
+id = "unsafe-trait-or-impl"
+required_fields = ["path", "line", "owner", "global-invariant", "threat-id", "tests"]
+
+[[category]]
+id = "ffi-build-or-generated"
+required_fields = ["path", "owner", "toolchain-digest", "review", "tests"]
+
+[qualification]
+probe = "h0.inventory.unsafe"
+ready_condition = "exact source scan equals reviewed inventory and no entry lacks required fields"

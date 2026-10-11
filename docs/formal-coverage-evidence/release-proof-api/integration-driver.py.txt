@@ -1,0 +1,70 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+frozen = Path('/tmp/peritus-parent-release-api-source-01')
+package = Path('crates/foundation/peritus-release-policy')
+env = dict(os.environ, CARGO_BUILD_JOBS='2', CCACHE_DISABLE='1', CARGO_TARGET_DIR=str(root / 'target'))
+record = Path('/tmp/peritus-parent-release-api-qualification-integrated.json')
+
+def manifest(path):
+    return {name: digest for digest, name in
+            (line.split('  ', 1) for line in Path(path).read_text().splitlines())}
+
+def check(base, entries):
+    found = {str(p.relative_to(base)) for p in (base / package).rglob('*') if p.is_file()}
+    assert found == set(entries), (str(base), found - set(entries), set(entries) - found)
+    for name, digest in entries.items():
+        assert hashlib.sha256((base / name).read_bytes()).hexdigest() == digest, name
+
+prior = manifest('/tmp/peritus-sol-release-candidate-final-full-package.sha256')
+final = manifest('/tmp/peritus-parent-release-api-full-package.sha256')
+changed = manifest('/tmp/peritus-parent-release-api-changed-source.sha256')
+review = Path('/tmp/peritus-sol-release-api-independent-review-20260913T001.md')
+assert hashlib.sha256(review.read_bytes()).hexdigest() == '830e8b9ef9be036af4b28a39ef12ce28099ff8fc04e3edbedb0c2296998d8800'
+check(root, prior)
+check(frozen, final)
+assert set(prior) <= set(final)
+assert set(changed) == {name for name in final if final[name] != prior.get(name)}
+for name, digest in changed.items():
+    assert digest == final[name]
+    dest = root / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(frozen / name, dest)
+check(root, final)
+results = {'cwd': str(root), 'prior_files_checked': len(prior), 'final_files_checked': len(final),
+           'changed_files': len(changed),
+           'environment': {k: env[k] for k in ['CARGO_BUILD_JOBS', 'CCACHE_DISABLE', 'CARGO_TARGET_DIR']},
+           'commands': []}
+record.write_text(json.dumps(results, indent=2) + '\n')
+commands = [
+    ('verus', ['cargo', 'verus', 'verify', '--package', 'peritus-release-policy', '--all-features',
+               '--locked', '--check-toolchain', '--fwd-verus-args-to', 'roots', '--',
+               '--no-cheating', '--rlimit', '20']),
+    ('tests-default', ['cargo', 'test', '--package', 'peritus-release-policy', '--locked']),
+    ('tests-all', ['cargo', 'test', '--package', 'peritus-release-policy', '--all-features', '--locked']),
+    ('clippy', ['cargo', 'clippy', '--package', 'peritus-release-policy', '--all-features',
+                '--all-targets', '--locked', '--', '-D', 'warnings']),
+    ('fmt', ['cargo', 'fmt', '--package', 'peritus-release-policy', '--', '--check']),
+    ('api', [str(root / 'target/debug/xtask'), 'ordinary-api-check']),
+    ('layout', [str(root / 'target/debug/xtask'), 'source-layout-check']),
+]
+for label, command in commands:
+    check(root, final)
+    log = Path('/tmp/peritus-parent-release-api-' + label + '-integrated.log')
+    print('START ' + label, flush=True)
+    with log.open('w') as output:
+        run = subprocess.run(command, cwd=root, env=env, stdout=output,
+                             stderr=subprocess.STDOUT, timeout=600)
+    check(root, final)
+    results['commands'].append({'command': command, 'log': str(log), 'exit_code': run.returncode})
+    record.write_text(json.dumps(results, indent=2) + '\n')
+    print(label + ' exit=' + str(run.returncode), flush=True)
+    if run.returncode:
+        print(log.read_text()[-6000:], flush=True)
+        raise SystemExit(run.returncode)
+print('Release proof API and diagnostic contract integrated and qualified; all65 final source identities intact.', flush=True)

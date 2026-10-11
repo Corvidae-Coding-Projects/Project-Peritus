@@ -23,7 +23,7 @@ mod platform;
 mod public_api;
 mod quiescence;
 mod recovery;
-
+mod refinement;
 mod registry_storage;
 mod resource;
 mod result_api;

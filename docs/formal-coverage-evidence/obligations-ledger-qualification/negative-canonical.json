@@ -1,0 +1,45 @@
+{
+  "manifest_sha256": "0ca196662727368857d6dfbd0386b2edf97da307db9e3e536240192fd4f13fec",
+  "source_files_checked": 51,
+  "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+  "command": [
+    "cargo",
+    "verus",
+    "verify",
+    "--package",
+    "peritus-obligations",
+    "--all-features",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--no-cheating",
+    "--rlimit",
+    "20"
+  ],
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent"
+  },
+  "mutation": "Change actual Hard obligation encoder tag from 1 to 2; leave byte model unchanged.",
+  "original_sha256": "b76ffd1768c0f8dbdec278ab1ad93ea67ffb58a4cd12c342cd53269ebf4dc1e9",
+  "mutant_sha256": "a87bdba6317bdbeea8ca421ea7144f77b4c4c4a1e1aa2ff0fdaed438ef8689d6",
+  "mutant": {
+    "exit_code": 101,
+    "log": "/tmp/peritus-parent-obligations356-negative-canonical-mutant.log",
+    "verification_results": [
+      "verification results:: 355 verified, 1 errors"
+    ]
+  },
+  "restored_files_checked": 51,
+  "restored": {
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-obligations356-negative-canonical-restored.log",
+    "verification_results": [
+      "verification results:: 356 verified, 0 errors"
+    ]
+  },
+  "final_files_checked": 51
+}

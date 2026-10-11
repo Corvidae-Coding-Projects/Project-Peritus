@@ -13,6 +13,7 @@ mod finding;
 mod gate;
 mod model;
 mod ordinal;
+mod proofs;
 mod review;
 mod revision;
 pub use authority::{ApprovalObservation, ApprovalOutcome, ApprovalSubject, WaiverObservation};

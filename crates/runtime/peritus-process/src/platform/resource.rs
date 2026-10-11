@@ -1,6 +1,6 @@
 //! Platform resource observations used by supervisor enforcement.
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 mod macos;
 #[cfg(target_os = "macos")]
 pub(crate) use macos::process_group_count;

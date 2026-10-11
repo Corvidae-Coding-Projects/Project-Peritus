@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["debugging", "diagnostics", "agents", "formal-verification"]
 categories = ["development-tools::debugging"]
 
@@ -27,6 +27,10 @@ peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+
+[package.metadata.peritus]
+owner = "E2"
+layer = "analysis"
 
 [lints]
 workspace = true

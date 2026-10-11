@@ -1,0 +1,6 @@
+event: response.created
+data: {"type":"response.created","sequence_number":1,"response":{"id":"resp_critical","model":"gpt-test","status":"in_progress"}}
+
+event: response.future_output.delta
+data: {"type":"response.future_output.delta","sequence_number":2,"item_id":"unknown","delta":"unsafe"}
+

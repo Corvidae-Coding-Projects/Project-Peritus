@@ -4,10 +4,13 @@ use crate::{ContextError, ContextErrorKind, ContextLimits, ContextNode, ContextN
 
 mod cycle;
 mod cycle_count_init;
-
+mod cycle_count_model;
 mod cycle_count_update;
 mod cycle_counts;
-
+mod cycle_edge_model;
+mod cycle_model;
+mod cycle_proofs;
+mod model;
 mod validation;
 
 #[doc = " Immutable canonical directed acyclic graph of context nodes."]

@@ -1,0 +1,32 @@
+{
+  "strict": [
+    [
+      "374",
+      "0"
+    ]
+  ],
+  "tests-default": {
+    "passed": 27,
+    "failed": 0
+  },
+  "tests-no-default": {
+    "passed": 27,
+    "failed": 0
+  },
+  "tests-all": {
+    "passed": 27,
+    "failed": 0
+  },
+  "daemon-owner": {
+    "passed": 2,
+    "failed": 0
+  },
+  "daemon-runtime": {
+    "passed": 1,
+    "failed": 0
+  },
+  "daemon-restart": {
+    "passed": 1,
+    "failed": 0
+  }
+}

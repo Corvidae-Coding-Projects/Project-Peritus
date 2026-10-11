@@ -1,5 +1,7 @@
 //! Threat, control, unsafe-code, and trusted-computing-base inventory checks.
 
+mod model;
+
 use crate::{IntegratedCandidate, InventoryKind, SecurityEvidence, UnmetSecurityCondition};
 
 const fn kinds_equal(left: InventoryKind, right: InventoryKind) -> bool {

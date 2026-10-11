@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 description = "Daemon-owned writer-reviewer-fixer product run coordinator for Peritus"
 publish = false
-readme = false
+readme = "README.md"
 keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
@@ -59,6 +59,15 @@ peritus-sandbox-macos = { version = "=0.0.6", path = "../../runtime/peritus-sand
 
 [target.'cfg(target_os = "windows")'.dependencies]
 peritus-sandbox-windows = { version = "=0.0.6", path = "../../runtime/peritus-sandbox-windows" }
+
+[[example]]
+name = "live-account-product-run"
+path = "examples/live_account_product_run.rs"
+test = false
+
+[package.metadata.peritus]
+owner = "G4"
+layer = "app"
 
 [lints]
 workspace = true

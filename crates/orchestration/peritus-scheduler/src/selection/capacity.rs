@@ -4,6 +4,7 @@ use crate::{ResourceEntry, ResourceVector, SchedulerReservation, SchedulerState}
 
 mod aggregate;
 mod fallback;
+mod refinement;
 
 fn worker_count_from(
     reservations: &[SchedulerReservation],

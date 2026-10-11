@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Corvidae-Coding-Projects/Project-Peritus/release/schemas/slsa-provenance-v1.schema.json",
+  "title": "Peritus SLSA-style provenance statement v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": { "const": "https://in-toto.io/Statement/v1" },
+    "subject": { "type": "array", "minItems": 1, "maxItems": 4096 },
+    "predicateType": { "const": "https://slsa.dev/provenance/v1" },
+    "predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["buildDefinition", "runDetails"],
+      "properties": {
+        "buildDefinition": { "type": "object" },
+        "runDetails": { "type": "object" }
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/xtask architecture-check`
+architecture-check passed: 84 package(s), 4567 source file(s)

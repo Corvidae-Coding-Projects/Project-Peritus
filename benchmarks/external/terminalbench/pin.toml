@@ -1,0 +1,15 @@
+schema_version = 1
+harbor_repository = "https://github.com/laude-institute/harbor.git"
+harbor_revision = "61095f400a2f22673c43f672001580baa5e91480"
+harbor_revision_date = "2026-08-28T22:24:39-07:00"
+harbor_version = "0.22.0"
+terminal_bench_repository = "https://github.com/harbor-framework/terminal-bench.git"
+terminal_bench_revision = "ab3575606830479be548b69e9961815e83c6f5e7"
+terminal_bench_revision_date = "2026-08-28T12:07:43-07:00"
+dataset = "terminal-bench/terminal-bench-2@latest"
+dataset_task_count = 89
+dataset_manifest_sha256 = "42ef75c493d172f9f6c8995cfe93cec6bf71ce604653c86a5bfb65006731ed89"
+adapter = "benchmarks.external.terminalbench.peritus_agent:PeritusAgent"
+environment = "podman"
+attempts_per_task = 5
+concurrency = 1

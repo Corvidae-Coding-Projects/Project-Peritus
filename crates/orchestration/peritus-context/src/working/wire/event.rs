@@ -1,7 +1,7 @@
 //! Standalone canonical working-event frames with exact scope checks.
 
-use super::super::{WorkingBinding, WorkingDelta, WorkingError, WorkingEvent, WorkingLimits};
 use super::{WorkingCodecError, count, entry, fields, reader, writer};
+use super::super::{WorkingBinding, WorkingDelta, WorkingError, WorkingEvent, WorkingLimits};
 
 /// Encodes one source/environment/delta event as a version-one canonical payload.
 ///
@@ -25,9 +25,7 @@ pub fn encode_working_event(event: &WorkingEvent) -> Result<Vec<u8>, WorkingCode
             fields::write_binding(&mut w, delta.binding())?;
             w.write_u64(delta.base_revision())?;
             w.write_collection_len(delta.entries().len())?;
-            for proposal in delta.entries() {
-                entry::write_entry(&mut w, proposal)?;
-            }
+            for proposal in delta.entries() { entry::write_entry(&mut w, proposal)?; }
         }
         WorkingEvent::Protocol(update) => {
             w.write_u8(3)?;
@@ -43,11 +41,7 @@ pub fn encode_working_event(event: &WorkingEvent) -> Result<Vec<u8>, WorkingCode
 ///
 /// # Errors
 /// Rejects unknown versions/tags, noncanonical/trailing data, invalid domain values and scope.
-pub fn decode_working_event(
-    bytes: &[u8],
-    expected: WorkingBinding,
-    limits: WorkingLimits,
-) -> Result<WorkingEvent, WorkingCodecError> {
+pub fn decode_working_event(bytes: &[u8], expected: WorkingBinding, limits: WorkingLimits) -> Result<WorkingEvent, WorkingCodecError> {
     let mut r = reader(bytes, *b"PWME")?;
     let (binding, event) = match r.read_u8()? {
         0 => {
@@ -64,27 +58,18 @@ pub fn decode_working_event(
             let revision = r.read_u64()?;
             let length = count(&mut r, limits.operations())?;
             let mut entries = Vec::with_capacity(length);
-            for _ in 0..length {
-                entries.push(entry::read_entry(&mut r, limits)?);
-            }
+            for _ in 0..length { entries.push(entry::read_entry(&mut r, limits)?); }
             (binding, WorkingEvent::Delta(WorkingDelta::new(binding, revision, entries, limits)?))
         }
         3 => {
             let binding = fields::read_binding(&mut r)?;
             let revision = r.read_u64()?;
             let protocol = super::protocol::read_protocol(&mut r, limits)?;
-            (
-                binding,
-                WorkingEvent::Protocol(super::super::WorkingProtocolUpdate::new(
-                    binding, revision, protocol,
-                )),
-            )
+            (binding, WorkingEvent::Protocol(super::super::WorkingProtocolUpdate::new(binding, revision, protocol)))
         }
         _ => return Err(WorkingCodecError::InvalidValue),
     };
     r.finish()?;
-    if !expected.same_lineage(binding) {
-        return Err(WorkingError::BindingMismatch.into());
-    }
+    if !expected.same_lineage(binding) { return Err(WorkingError::BindingMismatch.into()); }
     Ok(event)
 }

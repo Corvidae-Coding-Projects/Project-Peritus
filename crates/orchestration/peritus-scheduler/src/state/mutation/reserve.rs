@@ -1,6 +1,7 @@
 //! Verified production mutation that installs one selected reservation.
 
 mod prepare;
+mod proof;
 
 use crate::{DispatchId, SchedulerReservation, SchedulerState};
 use peritus_types::Sha256Digest;

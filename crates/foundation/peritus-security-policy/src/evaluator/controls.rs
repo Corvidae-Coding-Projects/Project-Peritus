@@ -1,5 +1,7 @@
 //! R-SEC and numbered acceptance-criterion completeness.
 
+mod model;
+
 use crate::{
     AcceptanceCriterion, IntegratedCandidate, SecurityEvidence, SecurityRequirement,
     UnmetSecurityCondition,

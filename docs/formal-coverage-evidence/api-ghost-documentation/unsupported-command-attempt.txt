@@ -1,0 +1,4 @@
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.24s
+     Running `target/formal-api-parent/debug/xtask api-contract-check`
+error[PERITUS-XTASK-CLI-001]: unknown command `api-contract-check`; run `cargo xtask help` for the supported interface

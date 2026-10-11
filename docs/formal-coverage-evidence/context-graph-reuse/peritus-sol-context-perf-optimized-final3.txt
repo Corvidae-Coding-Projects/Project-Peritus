@@ -1,0 +1,11 @@
+   Compiling peritus-context v0.0.2 (/tmp/peritus-sol-context-perf-optimized-001/crates/orchestration/peritus-context)
+    Finished `release` profile [optimized] target(s) in 6.07s
+     Running `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-context-perf-optimized-001/release/examples/context_graph_chain_probe 64,128,256,512,1024,2048,4096 5`
+shape=ascending-chain repeats=5
+n=64 min_ns=7489 median_ns=8641 mean_ns=8992 max_ns=11645
+n=128 min_ns=28295 median_ns=28346 mean_ns=28673 max_ns=29236
+n=256 min_ns=104035 median_ns=104513 mean_ns=104448 max_ns=104641
+n=512 min_ns=402000 median_ns=403093 mean_ns=403686 max_ns=405834
+n=1024 min_ns=1824555 median_ns=1828238 mean_ns=1831734 max_ns=1846262
+n=2048 min_ns=4371366 median_ns=6809582 mean_ns=6184039 max_ns=7662960
+n=4096 min_ns=20200300 median_ns=20236190 mean_ns=21195240 max_ns=23682866

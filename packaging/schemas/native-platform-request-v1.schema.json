@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://corvidae-coding-projects.github.io/peritus/schemas/native-platform-request-v1.schema.json",
+  "title": "Peritus native H2 scenario request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "subject_id",
+    "scenario",
+    "target",
+    "release",
+    "controller_sha256",
+    "limits"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "subject_id": { "$ref": "#/$defs/identifier" },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "required", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "category": { "enum": ["package", "service", "application", "runtime", "lifecycle"] },
+        "required": { "type": "boolean" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "architecture", "version"],
+      "properties": {
+        "platform": { "enum": ["linux", "macos", "windows"] },
+        "architecture": { "enum": ["x86_64", "aarch64"] },
+        "version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["major", "minor", "patch", "build"],
+          "properties": {
+            "major": { "type": "integer", "minimum": 0, "maximum": 65535 },
+            "minor": { "type": "integer", "minimum": 0, "maximum": 65535 },
+            "patch": { "type": "integer", "minimum": 0, "maximum": 65535 },
+            "build": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+          }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "manifest_sha256", "layout_sha256", "manifest_toml"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "layout_sha256": { "$ref": "#/$defs/sha256" },
+        "manifest_toml": { "type": "string", "minLength": 1, "maxLength": 262144 }
+      }
+    },
+    "controller_sha256": { "$ref": "#/$defs/sha256" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duration_millis",
+        "output_bytes",
+        "response_bytes",
+        "artifact_bytes",
+        "package_artifact_bytes",
+        "processes"
+      ],
+      "properties": {
+        "duration_millis": { "$ref": "#/$defs/positive" },
+        "output_bytes": { "$ref": "#/$defs/positive" },
+        "response_bytes": { "$ref": "#/$defs/positive" },
+        "artifact_bytes": { "$ref": "#/$defs/positive" },
+        "package_artifact_bytes": { "$ref": "#/$defs/positive" },
+        "processes": { "type": "integer", "minimum": 1, "maximum": 4294967295 }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "positive": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 }
+  }
+}

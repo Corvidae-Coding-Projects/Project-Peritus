@@ -2,7 +2,7 @@
 
 use crate::{HelperManifest, MacosError, MacosErrorKind, MacosOperation, RecoveryAction};
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", test))]
 mod materialized;
 
 #[cfg(target_os = "macos")]

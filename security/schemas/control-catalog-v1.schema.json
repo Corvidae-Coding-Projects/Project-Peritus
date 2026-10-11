@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/control-catalog-v1.schema.json",
+  "title": "Peritus H0 control catalog v1",
+  "type": "object",
+  "required": ["schema", "owner", "status", "requirements", "acceptance_criteria", "control", "probe_catalog"],
+  "properties": {
+    "schema": {"const": "peritus.security-control-catalog.v1"},
+    "owner": {"const": "H0"},
+    "status": {"const": "qualification-input"},
+    "requirements": {"type": "array", "minItems": 7, "maxItems": 7, "uniqueItems": true},
+    "acceptance_criteria": {"type": "array", "minItems": 9, "maxItems": 9, "uniqueItems": true},
+    "control": {"type": "array", "minItems": 10},
+    "probe_catalog": {
+      "type": "object",
+      "required": ["ids"],
+      "properties": {
+        "ids": {"type": "array", "minItems": 42, "maxItems": 42, "uniqueItems": true}
+      }
+    }
+  }
+}

@@ -8,11 +8,11 @@ mod authority;
 mod authority_validation;
 
 mod core;
-
+mod core_proofs;
 mod fencing;
 mod fencing_apply;
+mod fencing_model;
 mod fencing_rejections;
-
 mod fencing_retire;
 mod fencing_validation;
 mod lifecycle;

@@ -1,16 +1,53 @@
 # Peritus
 
-Peritus is a local coding agent with a terminal interface, a scriptable CLI, and an optional browser workspace. It helps you discuss changes, design an implementation, edit code, run permitted project commands, and review the result.
+Peritus is a coding agent that runs in your terminal. It changes code, runs project checks, and reviews the result.
+You can start in any folder. In a plain folder, requested edits happen in place.
+Git repositories use a separate managed copy. You control which changes to keep.
 
-Git repositories use a separate managed copy so you can inspect, export, accept, or discard a candidate. Plain folders support edits in place after you grant trust. Conversations, task progress, and completed effects are saved between sessions.
+## HarnessBench: 85.46% combined across all 106 tasks
 
-Development version: **0.0.6**. See the [release notes](CHANGELOG.md).
+**Our frozen local run scored above the published HarnessBench leaderboard leader.**
+It scored **85.46% combined** and **88.56% outcome**, with all 106 tasks included and
+adverse results retained in the score.
+
+| Configuration | Combined | Outcome / completion |
+| --- | ---: | ---: |
+| Peritus — frozen local run, GPT-5.6-sol + Sonnet | **85.46%** | **88.56%** |
+| NanoBot + GPT-5.4 — published combined-score leader | 81.3% | 85.1% |
+| Codex + GPT-5.4 — published reference | 80.4% | 86.5% |
+
+Published figures were checked on the [HarnessBench leaderboard](https://www.harness-bench.ai/leaderboard.html)
+on September 6, 2026. Peritus's recorded combined score is 4.16 percentage points higher than
+the published leader's displayed score.
+
+**This is a score comparison, not an official leaderboard placement or a controlled same-model win.**
+Peritus used a mixed-model configuration and GPT-5.6-sol as its process judge; the
+[published evaluation](https://arxiv.org/html/2605.27922v1) used Claude Sonnet 4.6 as its process judge.
+Our result is one retained scored execution per task, not a repeated reliability estimate.
+It does not establish which harness would win with identical models and evaluation conditions.
+
+The run used frozen Peritus revision `a819e58244175711eba1f9c8baaab8ac8b92357c` and
+HarnessBench revision `1025086a446653702b80cfb48babbeec35db6b2c`. Process scored 95.97%
+and security scored 100%; 41 tasks had perfect external outcomes. Native acceptance succeeded
+on 98 tasks; eight retained unaccepted candidates. All remain in the aggregate.
+The retained aggregate's SHA-256 is `88cdb94169783031dcd0e536a38ad0e2ebf84cc5f17e5cfe0467d470c1cffdaf`.
+See the [benchmark integrity policy and findings](docs/benchmark-integrity-appendix.md)
+for how we preserve failures and distinguish product defects from evaluator problems.
+
+## Real testing
+
+Peritus uses the real-testing skill to build and run the actual application, exercise its human interfaces, and retain reproducible defects and replay evidence. We use this approach based on the findings in [Rethinking the Value of Agent-Generated Tests for LLM-Based Software Engineering Agents](https://arxiv.org/html/2602.07900v1). The paper reports limited task-outcome gains from agent-generated tests in the studied settings, with additional token and API costs; our choice of behavioral testing is a project policy informed by those findings.
+
+Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
 
 ## Install
 
-Install the latest published release for your platform.
+Install the latest public release with the command for your platform below. To select an older
+release or install from source, see the [installation instructions](packaging/README.md).
 
 ### Linux and macOS
+
+Run this command in a terminal:
 
 ```sh
 curl -fsSL https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/latest/download/install.sh | sh
@@ -18,124 +55,215 @@ curl -fsSL https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/
 
 ### Windows
 
+Run this command in PowerShell:
+
 ```powershell
 irm https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/latest/download/install.ps1 | iex
 ```
 
-The installers select the package for your operating system and processor, check its download checksum, and install for your user account. Open a new terminal, then run:
+The installer selects the package for your operating system and processor. Packages support x86-64 and ARM64 processors.
+It checks the download and installs Peritus for your user account.
+It also installs missing runtime dependencies. Your operating system can ask for administrator approval to install these dependencies.
+
+Open a new terminal after installation. To check the installation, run:
 
 ```sh
 peritus --version
 ```
 
-## Start working
+For system requirements, manual downloads, and installation options, see [Installation](packaging/README.md).
 
-1. Open a terminal in the folder where you want to work.
+## Start
+
+1. Open a terminal in the folder where you want to work. Git is not required.
 2. Run `peritus`.
-3. Select a provider and complete its login or API setup.
-4. Check the selected folder and its permissions before requesting edits or commands.
-5. Discuss your task or ask Peritus to implement a change.
+3. Select a model provider.
+4. Complete the login steps.
+5. Before you give Peritus permission to edit files or run commands, check the folder path.
 
-Peritus starts its local daemon automatically. Providers include OpenAI, Anthropic, Google Gemini, and compatible API services. ChatGPT and Claude account connections use the separate `codex` and `claude` tools. Provider accounts and usage costs are separate from Peritus.
+Peritus starts its local background process automatically. You do not need to write a configuration file.
 
-To open another folder or reopen its most recent saved conversation:
+You can use OpenAI, Anthropic, Gemini, or a compatible API service.
+ChatGPT and Claude account connections use the separate `codex` and `claude` tools.
+If the selected tool is missing, setup asks before it downloads and runs the provider's installer.
+Model providers can charge for use. An installation does not include a provider account or model weights.
+
+Install the build tools that your project needs. Peritus cannot check a project without its test and build commands.
+
+To open a different folder, run:
 
 ```sh
 peritus open /path/to/folder
+```
+
+To reopen the most recently active saved conversation for the current folder, run:
+
+```sh
 peritus resume
 ```
 
-Ordinary questions and planning remain conversational. Coding requests use the design, writer, project checks, independent reviewer, and fixer pipeline. Task permissions and explicit restrictions determine which commands may run. If checks or review cannot finish, useful edits can remain available with their remaining work clearly recorded.
+This resolves the folder through the normal workspace setup and opens the conversation without
+starting new work. If the folder has no saved conversation, Peritus opens a new conversation and
+says so.
 
-## Terminal controls
+## Experimental browser workspace
 
-Type `/` to discover commands; Tab completes them. The composer remains available while Peritus works, and follow-up messages can redirect the task.
+The [harness improvement inbox](docs/harness-improvements.md) collects evidence-backed suggestions for explicit later patch generation and evaluation. Open `/improvements` in the WebUI or use `peritus improvements` in the CLI.
+
+An optional [WebUI](webui/README.md) provides project/session tabs, file previews
+and small text edits, context attachments, Git controls, and native conversations.
+It uses the existing Peritus daemon; the terminal interface remains available.
+
+The WebUI currently requires a source build and is not included in the standard
+installers. Node is needed to build the frontend, not to run the built application.
+It is intended for one local user, not remote hosting or multi-user access.
+See its [security boundaries](webui/SECURITY.md) and
+[native versus CLI capability map](webui/COMMANDS.md) before use. Full CLI parity,
+cross-platform qualification, and complete accessibility acceptance are not claimed.
+
+## Start a conversation
+
+Type a question, discuss an idea, or request a change, then press Enter.
+Ordinary conversation does not automatically start a build. The composer stays available while
+Peritus works; follow-up messages can correct or redirect it. The status distinguishes input
+received by the daemon from input incorporated into a model request.
+
+When you ask Chat to implement or fix something, it hands the request to the existing design,
+writer, exact-target checks, independent reviewer, and fixer pipeline. Questions, diagnosis,
+planning, and read-only review remain conversational; they do not authorize edits.
+
+The conversation shows your messages and the model's replies, with one `*working (40s)` indicator
+while work is active. Harness status messages and tool activity stay behind `/details`; failures
+remain visible. The timer measures elapsed time since this client observed the current busy period,
+not evidence of model progress.
+The account-backed Codex adapter delivers complete messages, not token-by-token text.
+
+Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
 | --- | --- |
-| `/plan`, `/review` | Discuss a plan or request a read-only review. |
-| `/build <request>` | Start a coding task in the managed Git workflow. |
-| `/model`, `/effort` | Choose models and reasoning effort for each role. |
-| `/new`, `/sessions` | Start or reopen durable conversations. |
-| `/status`, `/diff`, `/details` | Inspect progress, changes, and tool activity. |
-| `/files <path>` | Preview a file before adding its content to context. |
-| `/checkpoint`, `/rewind` | Inspect saved checkpoints and restore covered files. |
-| `/goal`, `/resume` | Inspect a persistent goal or resume its work. |
-| `/preview` | Inspect or operate the task's real program preview. |
-| `/stop` | Stop active work while preserving completed effects. |
+| `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools, including an exact absolute reference path named in your request. |
+| `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
+| `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
+| `/effort` | Select per-role reasoning effort; also press `e` in the model picker. |
+| `/new` | Start another conversation without deleting prior work. |
+| `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
+| `/stop` | Stop the current work and preserve effects already completed. |
 | `/runs` | Open the run and candidate dashboard. |
 
-Use Shift+Enter for a new line. Pasted multiline text stays in the composer until you submit it. Ctrl+Q closes the interface while daemon-owned work continues. Ctrl+C requests a stop during active work and closes the interface when idle.
+Use Shift+Enter for a new line. The mouse wheel or PageUp/PageDown scrolls the conversation.
+In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
+Ctrl+Left/Right, or Home/End to select text; typing, pasting, Backspace, and Delete
+replace or remove the selection. Escape clears it. Click to position the cursor,
+or drag or Shift-click to select. Mouse input requires terminal mouse reporting;
+use your terminal’s selection override (usually Shift-drag) to copy screen text.
+Diff and check reports also support PageUp/PageDown; Home returns to the start.
+Ctrl+C closes the interface when idle. During active work it requests a stop; press it again to
+close without waiting. Ctrl+Q closes the interface without cancelling
+daemon-owned work. Conversations and task state remain available between sessions.
 
-In `/runs`, select a task before using its actions. Enter opens its conversation, `i` inspects the result, `p` exports a patch, and `v` runs its saved launch instructions. Candidate acceptance and commit actions require the appropriate completed checks and review. Read the remaining work before using a retained candidate. Export changes you need before discarding them.
+Plain folders do not need `git init` or an initial commit. You can chat and inspect files before
+trusting the folder. After trust, ask for changes or commands in `/chat`; edits happen in that folder.
+The same pipeline checks individually tracked task files without a whole-folder snapshot. Missing
+check coverage or an interrupted review leaves effects in place with completion still unconfirmed.
+Commands run with your local user permissions. There is no automatic rollback of in-place changes.
+`/diff` shows the available comparison evidence. `/build` and candidate actions such as `/commit`
+and `/discard` require the managed Git workflow; they are not offered for in-place delivery.
 
-Plain-folder changes happen in place with your local user permissions. Inspect `/diff` and checkpoint coverage before a restore; completed changes are not automatically rolled back when work stops.
+In `/runs`, select a task before using these dashboard keys:
 
-## Browser workspace
+| Key | Action |
+| --- | --- |
+| Enter | Open the run's durable conversation. |
+| `m` | Send a follow-up through the durable workbench conversation. |
+| `i` | Inspect the result. |
+| `a` | Accept the result. |
+| `c` | Commit the changed files. |
+| `p` | Export the changes as a patch. |
+| `x` | Cancel the task. |
+| `r` | Retry a failed or cancelled task. |
+| `D` | Discard the task's changed files. |
+| `?` | Show all keyboard commands. |
 
-The optional WebUI provides project and session tabs, file previews and text editing, context attachments, Git controls, terminals, and durable conversations through the existing daemon. It is intended for one local user. The terminal interface remains available.
+**CAUTION:** `D` removes the task's changes. Before you discard changes, export the changes that you need.
 
-Build the frontend and gateway from source, then launch the gateway with the folder you want to open:
+A task can stop with useful changes but incomplete checks. Before you accept or commit that result, read the remaining work.
+For more controls, see the [product guide](docs/g4-product-experience.md).
 
-```sh
-npm --prefix webui ci
-npm --prefix webui run build
-cargo build --locked --release --workspace
-./target/release/peritus-web --root /path/to/folder --assets webui/dist
-```
-
-Open `http://127.0.0.1:4173/`. Use `./target/release/peritus-web --help` for explicit configuration, daemon endpoint, state, and port options.
-
-## Real testing
-
-For development, we use the **real-testing skill**, based on the findings in [Rethinking the Value of Agent-Generated Tests for LLM-Based Software Engineering Agents](https://arxiv.org/html/2602.07900v1).
-
-The paper studies agent-generated tests during software issue resolution. It finds that changing test-writing behavior often has modest effects on resolution outcomes while substantially changing interaction and token costs. Our development workflow applies that evidence by focusing on observable program behavior:
-
-- Build and run the actual changed program.
-- Exercise its real CLI, terminal, browser, service, and background-job interfaces.
-- Define expected results independently of the implementation.
-- Explore varied inputs, action sequences, failure paths, and restart recovery.
-- Preserve reproducible failures and replay them after repairs.
-- Record what was exercised and the remaining coverage limits.
-
-This is the development testing policy. Peritus retains its automatic design, checks, reviewer, and fixer features for the projects it works on.
-
-## Build from source
-
-The repository pins Rust **1.97.1** in `rust-toolchain.toml`.
-
-```sh
-cargo build --locked --release --workspace
-./target/release/peritus
-```
-
-The optional frontend requires a Node version supported by [webui/package.json](webui/package.json). Install the build tools and runtime dependencies needed by the projects you ask Peritus to work on.
-
-## Settings and recovery
+## Change settings
 
 ```sh
 peritus providers
 peritus workspaces
+```
+
+Use `peritus providers` to add a provider, change a provider, or repair a login.
+Use `peritus workspaces` to select a repository or repair its managed copy.
+
+Direct API choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
+Groq, Together AI, Fireworks AI, DeepSeek, and an explicitly configured compatible endpoint.
+In provider settings, press `t` on an existing direct provider to test generation, tool calling,
+and a tool-result round trip. The optional test makes up to three small requests and may use
+paid tokens; saving a key or listing models does not run it. See [provider contracts](docs/provider-contracts.md)
+for API sources, discovery behavior, and test limits.
+
+Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
+when discovery fails; `/model manual MODEL_ID` is an explicit manual fallback.
+Model changes apply at an idle boundary. Interactive selections never silently fail over.
+Automatic coding-run provider failover requires permission in provider settings and is off by default.
+
+## Update
+
+To install an available update, run:
+
+```sh
 peritus update
 ```
 
-Provider settings manage accounts and endpoints. Workspace settings select or repair managed copies. `peritus update` installs an available published update; `--disable-checks` and `--enable-checks` control automatic update checks.
+Peritus also checks for updates when it starts, at most once every six hours.
+A failed update check does not prevent offline use.
 
-If the daemon connection fails, use `/reconnect`; the current conversation and unsent draft are retained. Inspect a stopped task's remaining work before resuming it. Explicitly canceled goals stay canceled, and their completed effects and history remain available.
+To stop automatic update checks, run:
 
-Task state is stored in these locations:
+```sh
+peritus update --disable-checks
+```
 
-| Platform | Default state directory |
+To start automatic update checks again, run:
+
+```sh
+peritus update --enable-checks
+```
+
+## Recover from a problem
+
+- If the connection to the background process fails, use `/reconnect`; the current conversation,
+  selected models, and unsent chat text stay in the interface while daemon readiness is restored.
+- If a provider login fails, run `peritus providers`.
+- If a workspace needs repair, run `peritus workspaces`.
+- Interrupted provider responses retry automatically within the task's limits. After a daemon
+  restart, interrupted tasks continue from preserved work. Tasks you explicitly cancel stay stopped.
+- If a task stops, read its remaining work. Send a message to continue it, or select it in `/runs` and press `r` to retry.
+
+Do not delete the state directory to repair a task. It contains task history and managed repository copies.
+
+The default state directories are:
+
+| Operating system | Directory |
 | --- | --- |
 | Linux | `~/.local/state/peritus` |
 | macOS | `~/Library/Application Support/Peritus/State` |
 | Windows | `%LOCALAPPDATA%\Peritus\State` |
 
-Linux honors `$XDG_STATE_HOME/peritus`. Keep the state directory when diagnosing a problem; it contains saved conversations and managed copies. The `logs/peritusd.log` file contains daemon diagnostics.
+Linux uses `$XDG_STATE_HOME/peritus` when `XDG_STATE_HOME` is set.
+The `logs/peritusd.log` file in the state directory contains background-process diagnostics.
+Keep credentials and private repository content out of public bug reports.
 
-## Help and license
+For context inspection and recovery, see [Local working memory](docs/local-working-memory.md).
+To remove Peritus, see [Uninstall](packaging/README.md#uninstall). Removal keeps your task state and credentials.
 
-Run `peritus --help` for CLI help. Report problems through [GitHub Issues](https://github.com/Corvidae-Coding-Projects/Project-Peritus/issues), including your operating system, version, and reproduction steps. Keep credentials and private repository content out of public reports.
+## Get help
 
-Peritus is distributed under the [MIT license](LICENSE).
+Run `peritus --help` for command help.
+Use [GitHub Issues](https://github.com/Corvidae-Coding-Projects/Project-Peritus/issues) to report a problem.
+Include your operating system, Peritus version, and the steps that reproduce the problem.

@@ -1,0 +1,10 @@
+src/resource/addition/merge.rs
+src/resource/addition/proofs.rs
+src/resource/addition.rs
+src/resource/capacity.rs
+src/resource/subtraction.rs
+src/resource.rs
+src/selection/capacity/aggregate.rs
+src/selection/capacity/fallback.rs
+src/selection/capacity.rs
+tests/resource_invariants.rs

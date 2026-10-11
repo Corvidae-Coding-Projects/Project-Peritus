@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 
 [dependencies]
 peritus-policy = { version = "=0.0.6", path = "../../foundation/peritus-policy" }
@@ -16,6 +16,10 @@ peritus-types = { version = "=0.0.6", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
+
+[package.metadata.peritus]
+owner = "G3"
+layer = "extensions"
 
 [lints]
 workspace = true

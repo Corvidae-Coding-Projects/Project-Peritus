@@ -2317,6 +2317,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-external-benchmarks"
+version = "0.0.6"
+dependencies = [
+ "base64",
+ "peritus-daemon",
+ "peritus-launcher",
+ "peritus-model-protocol",
+ "peritus-process",
+ "peritus-product-runner",
+ "peritus-provider-anthropic",
+ "peritus-provider-core",
+ "peritus-provider-openai",
+ "peritus-run-settlement",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "tokio",
+]
+
+[[package]]
 name = "peritus-gates"
 version = "0.0.6"
 dependencies = [
@@ -2527,6 +2549,27 @@ dependencies = [
  "peritus-codec",
  "peritus-types",
  "sha2 0.11.0",
+]
+
+[[package]]
+name = "peritus-platform-qualification"
+version = "0.0.6"
+dependencies = [
+ "nix 0.31.3",
+ "peritus-approval",
+ "peritus-local-socket",
+ "peritus-sandbox-linux",
+ "peritus-sandbox-macos",
+ "peritus-sandbox-windows",
+ "peritus-types",
+ "portable-pty",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+ "toml",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2761,6 +2804,29 @@ version = "0.0.6"
 dependencies = [
  "peritus-spec",
  "peritus-types",
+]
+
+[[package]]
+name = "peritus-release-artifacts"
+version = "0.0.6"
+dependencies = [
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "peritus-release-operator"
+version = "0.0.6"
+dependencies = [
+ "peritus-release-artifacts",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "toml",
 ]
 
 [[package]]
@@ -4815,6 +4881,19 @@ name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
+
+[[package]]
+name = "xtask"
+version = "0.0.6"
+dependencies = [
+ "base64",
+ "process-wrap",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "toml",
+ "yaml-rust2",
+]
 
 [[package]]
 name = "yaml-rust2"

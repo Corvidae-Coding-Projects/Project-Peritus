@@ -1,0 +1,96 @@
+//! Local chain-construction timing probe.
+
+use std::hint::black_box;
+use std::time::Instant;
+
+use peritus_codec::sha256;
+use peritus_context::{
+    AuthorityClass, ContentKind, ContextGraph, ContextLimits, ContextNode, ContextNodeId,
+    ContextNodeMetadata, Provenance, RequirementMode, RoleVisibility, TrustClass,
+    bind_context_content,
+};
+use peritus_policy::ActorRole;
+use peritus_role::ContextClass;
+
+fn node_id(index: usize) -> ContextNodeId {
+    let value = u64::try_from(index + 1).expect("fixture size fits u64");
+    let mut bytes = [0_u8; 16];
+    bytes[8..].copy_from_slice(&value.to_be_bytes());
+    ContextNodeId::new(bytes).expect("positive ID")
+}
+
+fn chain(size: usize, limits: ContextLimits) -> Vec<ContextNode> {
+    let digest = sha256(b"x");
+    (0..size)
+        .map(|index| {
+            let dependencies = if index == 0 {
+                Vec::new()
+            } else {
+                vec![node_id(index - 1)]
+            };
+            let visibility = RoleVisibility::new(vec![ActorRole::Writer], limits)
+                .expect("valid visibility");
+            let metadata = ContextNodeMetadata::new(
+                node_id(index),
+                Provenance::Repository,
+                AuthorityClass::NonAuthoritative,
+                TrustClass::Constrained,
+                ContextClass::RepositorySource,
+                ContentKind::RepositorySource,
+                1,
+                u64::try_from(index + 1).expect("recency fits u64"),
+                RequirementMode::Optional,
+                0,
+                visibility,
+                dependencies,
+                limits,
+            )
+            .expect("valid chain metadata");
+            let content = bind_context_content(vec![b'x'], digest, limits)
+                .expect("valid content");
+            ContextNode::new(metadata, content)
+        })
+        .collect()
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let sizes = args
+        .get(1)
+        .map_or("64,128,256,512", String::as_str)
+        .split(',')
+        .map(|value| value.parse::<usize>().expect("numeric size"))
+        .collect::<Vec<_>>();
+    let repeats = args.get(2).map_or(5, |value| {
+        value.parse::<usize>().expect("numeric repeat count")
+    });
+
+    println!("shape=ascending-chain repeats={repeats}");
+    for size in sizes {
+        let limits = ContextLimits::new(size, 1, 1, 1).expect("valid limits");
+        let nodes = chain(size, limits);
+
+        let warm_input = nodes.clone();
+        let warm = ContextGraph::new(warm_input, limits).expect("acyclic chain");
+        black_box(warm);
+
+        let mut samples = Vec::with_capacity(repeats);
+        for _ in 0..repeats {
+            let input = nodes.clone();
+            let started = Instant::now();
+            let graph = ContextGraph::new(input, limits).expect("acyclic chain");
+            let elapsed = started.elapsed();
+            black_box(graph);
+            samples.push(elapsed.as_nanos());
+        }
+        samples.sort_unstable();
+        let sum: u128 = samples.iter().sum();
+        println!(
+            "n={size} min_ns={} median_ns={} mean_ns={} max_ns={}",
+            samples[0],
+            samples[samples.len() / 2],
+            sum / u128::try_from(samples.len()).expect("nonempty samples"),
+            samples[samples.len() - 1],
+        );
+    }
+}

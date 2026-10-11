@@ -1,0 +1,4 @@
+24620de5d787a0da6cf0f1250801da7530b4ceafd7958836b27be6f0301af0b4  /tmp/peritus-sol-waiver-kernel-head-baseline-20260912/crates/foundation/peritus-kernel/src/reducer/waiver.rs
+afda80fb74dad8970394bf432534e369a248d7a0ba859ac44cae37e093bd14c6  /tmp/peritus-sol-waiver-kernel-head-baseline-20260912/crates/foundation/peritus-kernel/tests/adversarial.rs
+ab9a9ab7bec1631ed8395c31edc1e1371dbbeb659c1e1eb1076fb6a9fc0e34bf  /tmp/peritus-sol-waiver-kernel-head-baseline-20260912/crates/foundation/peritus-kernel/tests/support/mod.rs
+c443edb7cc8b442d6724ae0ffe5dbb2e43fd068886cfc559fbf00a68b6f7ddf7  /tmp/peritus-sol-waiver-kernel-head-baseline-regression-01.log

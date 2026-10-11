@@ -1,0 +1,43 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-increment-not-obligation-discharge",
+  "implementation_agent": "/root/formal_kernel_audit",
+  "reviewer": "/root",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "review_date": "2026-09-12",
+  "scope": "Canonical constructor increment for ReviewObservation and AcceptanceEvidence, including production validators, input-defined predicates, type invariants, primary identity uniqueness and regression tests.",
+  "review_procedure": [
+    "Read all 13 increment files and compared the former production validation/error paths.",
+    "Checked safe construction/getter paths and kernel/orchestrator consumers.",
+    "Rebuilt both root packages with strict no-cheating Verus and reran their ordinary all-target/all-feature tests.",
+    "Rechecked all 13 raw source hashes after verification."
+  ],
+  "commands": [
+    "cargo clean --target-dir target/formal-verify --package peritus-quality-policy --package peritus-kernel",
+    "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo verus verify --target-dir target/formal-verify --package peritus-quality-policy --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+    "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo test --locked --package peritus-quality-policy --package peritus-kernel --all-targets --all-features"
+  ],
+  "results": {
+    "verus_verified": {
+      "peritus-spec": 176,
+      "peritus-quality-policy": 220,
+      "peritus-kernel": 274
+    },
+    "verus_errors": 0,
+    "ordinary_tests_passed": 50
+  },
+  "limits": [
+    "This source manifest identifies the reviewed increment; it is not the complete dependency/compiler-input inventory.",
+    "The review concerns these constructor changes; prior parent-authored changes in the same files have separate review history.",
+    "Reviewer identity and independence are supplied facts, not authenticated by these proofs.",
+    "Missing approvals remain constructor-admissible; authorization is decided later.",
+    "Error variant/index precedence is source-reviewed and regression-tested, not completely specified in result postconditions.",
+    "No obligation, exclusion or proof-impact approval is created by this checkpoint. Final changed sources require renewed review."
+  ],
+  "artifacts": {
+    "source-sha256.txt": "ff006ad7319918285b97c29906fdddf6d0b0fb021de09eff841ffa16effc8e20",
+    "verus-output.txt": "50f65305d7d8aa6e5b0df6e7eec6e742a06d186c8c202e4e2f694bb15d90d1ef",
+    "ordinary-tests.txt": "2290aaf8216dc69e824e37891420700ab7c727487dbf9582151c88de354c5371"
+  }
+}

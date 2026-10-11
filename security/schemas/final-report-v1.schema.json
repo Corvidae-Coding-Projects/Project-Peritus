@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/final-report-v1.schema.json",
+  "title": "Peritus final H0 qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_source_sha256",
+    "evidence_manifest_sha256",
+    "probe_count",
+    "evidence_manifest_json",
+    "not_ready_reasons"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"enum": ["ready", "not-ready"]},
+    "candidate_source_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "probe_count": {"const": 42},
+    "evidence_manifest_json": {"type": "string", "minLength": 2},
+    "not_ready_reasons": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/reason"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "ready"}}},
+      "then": {"properties": {"not_ready_reasons": {"maxItems": 0}}},
+      "else": {"properties": {"not_ready_reasons": {"minItems": 1}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "code", "subject", "detail"],
+      "properties": {
+        "kind": {"enum": ["probe", "policy"]},
+        "code": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "subject": {"type": ["string", "null"]},
+        "detail": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

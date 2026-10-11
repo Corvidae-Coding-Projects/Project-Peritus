@@ -1,0 +1,10 @@
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler)
+    Checking peritus-collaboration v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-collaboration)
+    Checking peritus-orchestrator v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-orchestrator)
+    Checking peritus-debugger v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/analysis/peritus-debugger)
+    Checking peritus-eval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/analysis/peritus-eval)
+    Checking peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-product-runner)
+    Checking peritus-evolution v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/analysis/peritus-evolution)
+    Checking peritus-daemon v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-daemon)
+    Checking peritus-performance-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-performance-qualification)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 44.80s

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Corvidae-Coding-Projects/Project-Peritus/release/schemas/evidence-manifest-v1.schema.json",
+  "title": "Peritus H4 content-addressed evidence manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "binding", "entries"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "binding": { "$ref": "release-binding-v1.schema.json" },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "path", "byte_length", "payload_digest", "envelope_digest"],
+        "properties": {
+          "role": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "byte_length": { "type": "integer", "minimum": 0 },
+          "payload_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "envelope_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}

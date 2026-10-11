@@ -1,0 +1,4815 @@
+--- a/crates/orchestration/peritus-obligations/src/canonical.rs
++++ b/crates/orchestration/peritus-obligations/src/canonical.rs
+@@ -1,147 +1,16 @@
+ //! Canonical digest preimage for one exact requirement ledger.
+ 
+-use crate::{ObligationSpec, RequirementLedger};
++pub mod encode;
++#[cfg(verus_only)]
++pub mod model;
++
++#[cfg(not(verus_only))]
+ use peritus_types::Sha256Digest;
++#[cfg(not(verus_only))]
+ use sha2::{Digest, Sha256};
+ 
+-const DOMAIN: &[u8] = b"peritus-requirement-ledger-v1\0";
+-
+ /// Hashes exact canonical bytes without assigning authenticity semantics.
++#[cfg(not(verus_only))]
+ pub fn sha256(bytes: &[u8]) -> Sha256Digest {
+     Sha256Digest::new(Sha256::digest(bytes).into())
+ }
+-
+-pub fn ledger_bytes(ledger: &RequirementLedger) -> Vec<u8> {
+-    let mut bytes = Vec::with_capacity(1_024);
+-    bytes.extend_from_slice(DOMAIN);
+-    bytes.extend_from_slice(ledger.source_digest().as_bytes());
+-    bytes.extend_from_slice(&ledger.conversation_revision().to_be_bytes());
+-    append_len(&mut bytes, ledger.entries().len());
+-    for entry in ledger.entries() {
+-        bytes.extend_from_slice(entry.id().digest().as_bytes());
+-        append_bytes(&mut bytes, entry.clause().exact());
+-        let provenance = entry.clause().provenance();
+-        bytes.extend_from_slice(provenance.source_digest().as_bytes());
+-        bytes.extend_from_slice(&provenance.conversation_revision().to_be_bytes());
+-        bytes.extend_from_slice(&provenance.ordinal().to_be_bytes());
+-        append_usize(&mut bytes, provenance.byte_start());
+-        append_usize(&mut bytes, provenance.byte_end());
+-        append_specification(&mut bytes, entry.specification());
+-        append_len(&mut bytes, entry.paths().len());
+-        for path in entry.paths() {
+-            bytes.extend_from_slice(path.id().digest().as_bytes());
+-            bytes.push(path_role_tag(path.role()));
+-            append_bytes(&mut bytes, path.exact());
+-        }
+-    }
+-    bytes
+-}
+-
+-fn append_specification(bytes: &mut Vec<u8>, specification: &ObligationSpec) {
+-    bytes.push(specification_tag(specification));
+-    match specification {
+-        ObligationSpec::Conditional { condition_id } => {
+-            bytes.extend_from_slice(condition_id.digest().as_bytes());
+-        }
+-        ObligationSpec::Alternative { group_id, branch_id } => {
+-            bytes.extend_from_slice(group_id.digest().as_bytes());
+-            bytes.extend_from_slice(branch_id.digest().as_bytes());
+-        }
+-        ObligationSpec::Performance(requirement) => {
+-            bytes.extend_from_slice(requirement.workload_identity().as_bytes());
+-            bytes.push(performance_statistic_tag(requirement.statistic()));
+-            bytes.extend_from_slice(&requirement.minimum_repetitions().to_be_bytes());
+-            append_performance_expectation(bytes, requirement.public_threshold());
+-        }
+-        ObligationSpec::LifecycleIngress(requirement) => {
+-            bytes.extend_from_slice(requirement.named_ingress().as_bytes());
+-            bytes.extend_from_slice(requirement.control_event().as_bytes());
+-            bytes.extend_from_slice(requirement.expected_transition().as_bytes());
+-            bytes.extend_from_slice(requirement.final_state().as_bytes());
+-        }
+-        ObligationSpec::RequestSchema(requirement)
+-        | ObligationSpec::ResponseSchema(requirement) => {
+-            bytes.push(schema_direction_tag(requirement.direction()));
+-            append_len(bytes, requirement.fields().len());
+-            for field in requirement.fields() {
+-                bytes.extend_from_slice(field.id().digest().as_bytes());
+-                append_bytes(bytes, field.exact_name());
+-            }
+-        }
+-        ObligationSpec::BrowserSemantics(requirement) => {
+-            bytes.extend_from_slice(requirement.oracle_identity().as_bytes());
+-        }
+-        ObligationSpec::ExternalEffect { effect_identity } => {
+-            bytes.extend_from_slice(effect_identity.as_bytes());
+-        }
+-        ObligationSpec::Hard | ObligationSpec::Example | ObligationSpec::GeneratedOutput => {}
+-    }
+-}
+-
+-const fn specification_tag(value: &ObligationSpec) -> u8 {
+-    match value {
+-        ObligationSpec::Hard => 1,
+-        ObligationSpec::Conditional { .. } => 2,
+-        ObligationSpec::Alternative { .. } => 3,
+-        ObligationSpec::Example => 4,
+-        ObligationSpec::GeneratedOutput => 5,
+-        ObligationSpec::Performance(_) => 6,
+-        ObligationSpec::LifecycleIngress(_) => 7,
+-        ObligationSpec::RequestSchema(_) => 8,
+-        ObligationSpec::ResponseSchema(_) => 9,
+-        ObligationSpec::BrowserSemantics(_) => 10,
+-        ObligationSpec::ExternalEffect { .. } => 11,
+-    }
+-}
+-
+-const fn path_role_tag(value: crate::PathRole) -> u8 {
+-    match value {
+-        crate::PathRole::RequiredOutput => 1,
+-        crate::PathRole::RequiredModification => 2,
+-        crate::PathRole::RequiredInput => 3,
+-        crate::PathRole::Reference => 4,
+-        crate::PathRole::Example => 5,
+-    }
+-}
+-
+-const fn schema_direction_tag(value: crate::SchemaDirection) -> u8 {
+-    match value {
+-        crate::SchemaDirection::Request => 1,
+-        crate::SchemaDirection::Response => 2,
+-    }
+-}
+-
+-const fn performance_statistic_tag(value: crate::PerformanceStatistic) -> u8 {
+-    match value {
+-        crate::PerformanceStatistic::Mean => 1,
+-        crate::PerformanceStatistic::Median => 2,
+-        crate::PerformanceStatistic::Minimum => 3,
+-        crate::PerformanceStatistic::Maximum => 4,
+-        crate::PerformanceStatistic::Percentile95 => 5,
+-        crate::PerformanceStatistic::Percentile99 => 6,
+-    }
+-}
+-
+-fn append_performance_expectation(bytes: &mut Vec<u8>, value: crate::PerformanceExpectation) {
+-    let (tag, threshold) = match value {
+-        crate::PerformanceExpectation::CandidateAtMost(value) => (1, value),
+-        crate::PerformanceExpectation::CandidateAtLeast(value) => (2, value),
+-        crate::PerformanceExpectation::ImprovementAtLeast(value) => (3, value),
+-        crate::PerformanceExpectation::RegressionAtMost(value) => (4, value),
+-    };
+-    bytes.push(tag);
+-    bytes.extend_from_slice(&threshold.to_be_bytes());
+-}
+-
+-fn append_bytes(output: &mut Vec<u8>, value: &[u8]) {
+-    append_len(output, value.len());
+-    output.extend_from_slice(value);
+-}
+-
+-fn append_len(output: &mut Vec<u8>, value: usize) {
+-    append_usize(output, value);
+-}
+-
+-fn append_usize(output: &mut Vec<u8>, value: usize) {
+-    output.extend_from_slice(&u64::try_from(value).unwrap_or(u64::MAX).to_be_bytes());
+-}
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/canonical/encode.rs
+@@ -0,0 +1,273 @@
++//! Verified executable encoder for the canonical ledger preimage.
++
++#[cfg(verus_only)]
++use super::model;
++use crate::{ObligationSpec, PathMention, RequirementEntry, RequirementLedger, SchemaField};
++use vstd::prelude::*;
++
++verus! {
++
++fn append_slice(output: &mut Vec<u8>, value: &[u8])
++    ensures final(output)@ == old(output)@ + value@,
++{
++    let mut index = 0;
++    while index < value.len()
++        invariant
++            index <= value@.len(),
++            output@ == old(output)@ + value@.take(index as int),
++        decreases value.len() - index,
++    {
++        output.push(value[index]);
++        index += 1;
++    }
++    assert(value@.take(index as int) =~= value@);
++}
++
++fn append_u64(output: &mut Vec<u8>, value: u64)
++    ensures final(output)@ == old(output)@ + model::u64_encoding(value),
++{
++    let little = vstd::bytes::u64_to_le_bytes(value);
++    output.push(little[7]);
++    output.push(little[6]);
++    output.push(little[5]);
++    output.push(little[4]);
++    output.push(little[3]);
++    output.push(little[2]);
++    output.push(little[1]);
++    output.push(little[0]);
++}
++
++fn append_u32(output: &mut Vec<u8>, value: u32)
++    ensures final(output)@ == old(output)@ + model::u32_encoding(value),
++{
++    let little = vstd::bytes::u32_to_le_bytes(value);
++    output.push(little[3]);
++    output.push(little[2]);
++    output.push(little[1]);
++    output.push(little[0]);
++}
++
++fn append_usize(output: &mut Vec<u8>, value: usize)
++    ensures final(output)@ == old(output)@ + model::usize_encoding(value),
++{
++    let bounded = value as u64;
++    append_u64(output, bounded);
++}
++
++fn append_bytes(output: &mut Vec<u8>, value: &[u8])
++    ensures final(output)@ == old(output)@ + model::byte_string_encoding(value@),
++{
++    append_usize(output, value.len());
++    append_slice(output, value);
++}
++
++const fn specification_tag(value: &ObligationSpec) -> (tag: u8)
++    ensures tag == model::specification_tag(value),
++{
++    match value {
++        ObligationSpec::Hard => 1,
++        ObligationSpec::Conditional { .. } => 2,
++        ObligationSpec::Alternative { .. } => 3,
++        ObligationSpec::Example => 4,
++        ObligationSpec::GeneratedOutput => 5,
++        ObligationSpec::Performance(_) => 6,
++        ObligationSpec::LifecycleIngress(_) => 7,
++        ObligationSpec::RequestSchema(_) => 8,
++        ObligationSpec::ResponseSchema(_) => 9,
++        ObligationSpec::BrowserSemantics(_) => 10,
++        ObligationSpec::ExternalEffect { .. } => 11,
++    }
++}
++
++const fn path_role_tag(value: crate::PathRole) -> (tag: u8)
++    ensures tag == model::path_role_tag(value),
++{
++    match value {
++        crate::PathRole::RequiredOutput => 1,
++        crate::PathRole::RequiredModification => 2,
++        crate::PathRole::RequiredInput => 3,
++        crate::PathRole::Reference => 4,
++        crate::PathRole::Example => 5,
++    }
++}
++
++const fn schema_direction_tag(value: crate::SchemaDirection) -> (tag: u8)
++    ensures tag == model::schema_direction_tag(value),
++{
++    match value { crate::SchemaDirection::Request => 1, crate::SchemaDirection::Response => 2 }
++}
++
++const fn performance_statistic_tag(value: crate::PerformanceStatistic) -> (tag: u8)
++    ensures tag == model::performance_statistic_tag(value),
++{
++    match value {
++        crate::PerformanceStatistic::Mean => 1,
++        crate::PerformanceStatistic::Median => 2,
++        crate::PerformanceStatistic::Minimum => 3,
++        crate::PerformanceStatistic::Maximum => 4,
++        crate::PerformanceStatistic::Percentile95 => 5,
++        crate::PerformanceStatistic::Percentile99 => 6,
++    }
++}
++
++fn append_performance_expectation(
++    output: &mut Vec<u8>,
++    value: crate::PerformanceExpectation,
++)
++    ensures final(output)@ == old(output)@ + model::performance_expectation_encoding(value),
++{
++    let (tag, threshold) = match value {
++        crate::PerformanceExpectation::CandidateAtMost(value) => (1, value),
++        crate::PerformanceExpectation::CandidateAtLeast(value) => (2, value),
++        crate::PerformanceExpectation::ImprovementAtLeast(value) => (3, value),
++        crate::PerformanceExpectation::RegressionAtMost(value) => (4, value),
++    };
++    output.push(tag);
++    append_u64(output, threshold);
++}
++
++fn append_fields(output: &mut Vec<u8>, fields: &[SchemaField])
++    ensures final(output)@ == old(output)@ + model::fields_encoding(fields@),
++{
++    let mut index = 0;
++    while index < fields.len()
++        invariant
++            index <= fields@.len(),
++            output@ == old(output)@ + model::fields_encoding(fields@.take(index as int)),
++        decreases fields.len() - index,
++    {
++        let field = &fields[index];
++        let ghost prior = fields@.take(index as int);
++        append_slice(output, field.id().digest().as_bytes());
++        append_bytes(output, field.exact_name());
++        proof {
++            assert(fields@.take(index as int + 1) == prior.push(*field));
++            model::fields_after_push(prior, *field);
++        }
++        index += 1;
++    }
++    assert(fields@.take(index as int) =~= fields@);
++}
++
++fn append_specification(output: &mut Vec<u8>, specification: &ObligationSpec)
++    ensures final(output)@ == old(output)@ + model::specification_encoding(specification),
++{
++    output.push(specification_tag(specification));
++    match specification {
++        ObligationSpec::Conditional { condition_id } => {
++            append_slice(output, condition_id.digest().as_bytes());
++        },
++        ObligationSpec::Alternative { group_id, branch_id } => {
++            append_slice(output, group_id.digest().as_bytes());
++            append_slice(output, branch_id.digest().as_bytes());
++        },
++        ObligationSpec::Performance(requirement) => {
++            append_slice(output, requirement.workload_identity().as_bytes());
++            output.push(performance_statistic_tag(requirement.statistic()));
++            append_u32(output, requirement.minimum_repetitions());
++            append_performance_expectation(output, requirement.public_threshold());
++        },
++        ObligationSpec::LifecycleIngress(requirement) => {
++            append_slice(output, requirement.named_ingress().as_bytes());
++            append_slice(output, requirement.control_event().as_bytes());
++            append_slice(output, requirement.expected_transition().as_bytes());
++            append_slice(output, requirement.final_state().as_bytes());
++        },
++        ObligationSpec::RequestSchema(requirement)
++        | ObligationSpec::ResponseSchema(requirement) => {
++            output.push(schema_direction_tag(requirement.direction()));
++            append_usize(output, requirement.fields().len());
++            append_fields(output, requirement.fields());
++        },
++        ObligationSpec::BrowserSemantics(requirement) => {
++            append_slice(output, requirement.oracle_identity().as_bytes());
++        },
++        ObligationSpec::ExternalEffect { effect_identity } => {
++            append_slice(output, effect_identity.as_bytes());
++        },
++        ObligationSpec::Hard | ObligationSpec::Example | ObligationSpec::GeneratedOutput => {},
++    }
++}
++
++fn append_paths(output: &mut Vec<u8>, paths: &[PathMention])
++    ensures final(output)@ == old(output)@ + model::paths_encoding(paths@),
++{
++    let mut index = 0;
++    while index < paths.len()
++        invariant
++            index <= paths@.len(),
++            output@ == old(output)@ + model::paths_encoding(paths@.take(index as int)),
++        decreases paths.len() - index,
++    {
++        let path = &paths[index];
++        let ghost prior = paths@.take(index as int);
++        append_slice(output, path.id().digest().as_bytes());
++        output.push(path_role_tag(path.role()));
++        append_bytes(output, path.exact());
++        proof {
++            assert(paths@.take(index as int + 1) == prior.push(*path));
++            model::paths_after_push(prior, *path);
++        }
++        index += 1;
++    }
++    assert(paths@.take(index as int) =~= paths@);
++}
++
++fn append_entry(output: &mut Vec<u8>, entry: &RequirementEntry)
++    ensures final(output)@ == old(output)@ + model::entry_encoding(entry),
++{
++    append_slice(output, entry.id().digest().as_bytes());
++    append_bytes(output, entry.clause().exact());
++    let provenance = entry.clause().provenance();
++    append_slice(output, provenance.source_digest().as_bytes());
++    append_u64(output, provenance.conversation_revision());
++    append_u32(output, provenance.ordinal());
++    append_usize(output, provenance.byte_start());
++    append_usize(output, provenance.byte_end());
++    append_specification(output, entry.specification());
++    append_usize(output, entry.paths().len());
++    append_paths(output, entry.paths());
++}
++
++fn append_entries(output: &mut Vec<u8>, entries: &[RequirementEntry])
++    ensures final(output)@ == old(output)@ + model::entries_encoding(entries@),
++{
++    let mut index = 0;
++    while index < entries.len()
++        invariant
++            index <= entries@.len(),
++            output@ == old(output)@ + model::entries_encoding(entries@.take(index as int)),
++        decreases entries.len() - index,
++    {
++        let entry = &entries[index];
++        let ghost prior = entries@.take(index as int);
++        append_entry(output, entry);
++        proof {
++            assert(entries@.take(index as int + 1) == prior.push(*entry));
++            model::entries_after_push(prior, *entry);
++        }
++        index += 1;
++    }
++    assert(entries@.take(index as int) =~= entries@);
++}
++
++pub fn ledger_bytes(ledger: &RequirementLedger) -> (bytes: Vec<u8>)
++    ensures bytes@ == ledger.spec_canonical_bytes(),
++{
++    let mut bytes = Vec::with_capacity(1_024);
++    let domain = vec![
++        112u8, 101u8, 114u8, 105u8, 116u8, 117u8, 115u8, 45u8, 114u8, 101u8, 113u8, 117u8,
++        105u8, 114u8, 101u8, 109u8, 101u8, 110u8, 116u8, 45u8, 108u8, 101u8, 100u8, 103u8,
++        101u8, 114u8, 45u8, 118u8, 49u8, 0u8,
++    ];
++    assert(domain@ == model::domain_encoding());
++    append_slice(&mut bytes, domain.as_slice());
++    append_slice(&mut bytes, ledger.source_digest().as_bytes());
++    append_u64(&mut bytes, ledger.conversation_revision());
++    append_usize(&mut bytes, ledger.entries().len());
++    append_entries(&mut bytes, ledger.entries());
++    assert(bytes@ =~= model::ledger_encoding(ledger));
++    bytes
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/canonical/model.rs
+@@ -0,0 +1,220 @@
++//! Mathematical definition of the exact ledger byte encoding.
++
++use crate::{
++    ObligationSpec, PathMention, PathRole, PerformanceExpectation, PerformanceStatistic,
++    RequirementEntry, RequirementLedger, SchemaDirection, SchemaField,
++};
++use vstd::prelude::*;
++
++verus! {
++
++pub open spec fn singleton_encoding(value: u8) -> Seq<u8> {
++    Seq::empty().push(value)
++}
++
++pub open spec fn u64_encoding(value: u64) -> Seq<u8> {
++    let little = vstd::bytes::spec_u64_to_le_bytes(value);
++    singleton_encoding(little[7]) + singleton_encoding(little[6])
++        + singleton_encoding(little[5]) + singleton_encoding(little[4])
++        + singleton_encoding(little[3]) + singleton_encoding(little[2])
++        + singleton_encoding(little[1]) + singleton_encoding(little[0])
++}
++
++pub open spec fn u32_encoding(value: u32) -> Seq<u8> {
++    let little = vstd::bytes::spec_u32_to_le_bytes(value);
++    singleton_encoding(little[3]) + singleton_encoding(little[2])
++        + singleton_encoding(little[1]) + singleton_encoding(little[0])
++}
++
++pub open spec fn usize_encoding(value: usize) -> Seq<u8> {
++    u64_encoding(value as u64)
++}
++
++pub open spec fn byte_string_encoding(value: Seq<u8>) -> Seq<u8> {
++    usize_encoding(value.len() as usize) + value
++}
++
++pub open spec fn specification_tag(value: &ObligationSpec) -> u8 {
++    match value {
++        ObligationSpec::Hard => 1,
++        ObligationSpec::Conditional { .. } => 2,
++        ObligationSpec::Alternative { .. } => 3,
++        ObligationSpec::Example => 4,
++        ObligationSpec::GeneratedOutput => 5,
++        ObligationSpec::Performance(_) => 6,
++        ObligationSpec::LifecycleIngress(_) => 7,
++        ObligationSpec::RequestSchema(_) => 8,
++        ObligationSpec::ResponseSchema(_) => 9,
++        ObligationSpec::BrowserSemantics(_) => 10,
++        ObligationSpec::ExternalEffect { .. } => 11,
++    }
++}
++
++pub open spec fn path_role_tag(value: PathRole) -> u8 {
++    match value {
++        PathRole::RequiredOutput => 1,
++        PathRole::RequiredModification => 2,
++        PathRole::RequiredInput => 3,
++        PathRole::Reference => 4,
++        PathRole::Example => 5,
++    }
++}
++
++pub open spec fn schema_direction_tag(value: SchemaDirection) -> u8 {
++    match value { SchemaDirection::Request => 1, SchemaDirection::Response => 2 }
++}
++
++pub open spec fn performance_statistic_tag(value: PerformanceStatistic) -> u8 {
++    match value {
++        PerformanceStatistic::Mean => 1,
++        PerformanceStatistic::Median => 2,
++        PerformanceStatistic::Minimum => 3,
++        PerformanceStatistic::Maximum => 4,
++        PerformanceStatistic::Percentile95 => 5,
++        PerformanceStatistic::Percentile99 => 6,
++    }
++}
++
++pub open spec fn performance_expectation_encoding(
++    value: PerformanceExpectation,
++) -> Seq<u8> {
++    match value {
++        PerformanceExpectation::CandidateAtMost(threshold) =>
++            singleton_encoding(1u8) + u64_encoding(threshold),
++        PerformanceExpectation::CandidateAtLeast(threshold) =>
++            singleton_encoding(2u8) + u64_encoding(threshold),
++        PerformanceExpectation::ImprovementAtLeast(threshold) =>
++            singleton_encoding(3u8) + u64_encoding(threshold),
++        PerformanceExpectation::RegressionAtMost(threshold) =>
++            singleton_encoding(4u8) + u64_encoding(threshold),
++    }
++}
++
++pub open spec fn fields_encoding(fields: Seq<SchemaField>) -> Seq<u8>
++    decreases fields.len(),
++{
++    if fields.len() == 0 { Seq::empty() }
++    else { fields_encoding(fields.drop_last()) + field_encoding(&fields.last()) }
++}
++
++pub open spec fn field_encoding(field: &SchemaField) -> Seq<u8> {
++    field.spec_id().spec_digest().spec_bytes()@
++        + byte_string_encoding(field.spec_exact_name())
++}
++
++pub open spec fn specification_encoding(value: &ObligationSpec) -> Seq<u8> {
++    let tag = singleton_encoding(specification_tag(value));
++    match value {
++        ObligationSpec::Conditional { condition_id } =>
++            tag + condition_id.spec_digest().spec_bytes()@,
++        ObligationSpec::Alternative { group_id, branch_id } => tag
++            + group_id.spec_digest().spec_bytes()@
++            + branch_id.spec_digest().spec_bytes()@,
++        ObligationSpec::Performance(requirement) => tag
++            + requirement.spec_workload().spec_bytes()@
++            + singleton_encoding(performance_statistic_tag(requirement.spec_statistic()))
++            + u32_encoding(requirement.spec_repetitions())
++            + performance_expectation_encoding(requirement.spec_threshold()),
++        ObligationSpec::LifecycleIngress(requirement) => tag
++            + requirement.spec_named_ingress().spec_bytes()@
++            + requirement.spec_control_event().spec_bytes()@
++            + requirement.spec_expected_transition().spec_bytes()@
++            + requirement.spec_final_state().spec_bytes()@,
++        ObligationSpec::RequestSchema(requirement)
++        | ObligationSpec::ResponseSchema(requirement) => tag
++            + singleton_encoding(schema_direction_tag(requirement.spec_direction()))
++            + usize_encoding(requirement.spec_fields().len() as usize)
++            + fields_encoding(requirement.spec_fields()),
++        ObligationSpec::BrowserSemantics(requirement) =>
++            tag + requirement.spec_oracle_identity().spec_bytes()@,
++        ObligationSpec::ExternalEffect { effect_identity } =>
++            tag + effect_identity.spec_bytes()@,
++        ObligationSpec::Hard | ObligationSpec::Example | ObligationSpec::GeneratedOutput => tag,
++    }
++}
++
++pub open spec fn paths_encoding(paths: Seq<PathMention>) -> Seq<u8>
++    decreases paths.len(),
++{
++    if paths.len() == 0 { Seq::empty() }
++    else { paths_encoding(paths.drop_last()) + path_encoding(&paths.last()) }
++}
++
++pub open spec fn path_encoding(path: &PathMention) -> Seq<u8> {
++    path.spec_id().spec_digest().spec_bytes()@
++        + singleton_encoding(path_role_tag(path.spec_role()))
++        + byte_string_encoding(path.spec_exact())
++}
++
++pub open spec fn entry_encoding(entry: &RequirementEntry) -> Seq<u8> {
++    let clause = entry.spec_clause();
++    let provenance = clause.spec_provenance();
++    entry.spec_id().spec_digest().spec_bytes()@
++        + byte_string_encoding(clause.spec_exact())
++        + provenance.spec_source_digest().spec_bytes()@
++        + u64_encoding(provenance.spec_conversation_revision())
++        + u32_encoding(provenance.spec_ordinal())
++        + usize_encoding(provenance.spec_byte_start())
++        + usize_encoding(provenance.spec_byte_end())
++        + specification_encoding(&entry.spec_specification())
++        + usize_encoding(entry.spec_paths().len() as usize)
++        + paths_encoding(entry.spec_paths())
++}
++
++pub open spec fn entries_encoding(entries: Seq<RequirementEntry>) -> Seq<u8>
++    decreases entries.len(),
++{
++    if entries.len() == 0 { Seq::empty() }
++    else { entries_encoding(entries.drop_last()) + entry_encoding(&entries.last()) }
++}
++
++pub open spec fn domain_encoding() -> Seq<u8> {
++    singleton_encoding(112u8) + singleton_encoding(101u8)
++        + singleton_encoding(114u8) + singleton_encoding(105u8)
++        + singleton_encoding(116u8) + singleton_encoding(117u8)
++        + singleton_encoding(115u8) + singleton_encoding(45u8)
++        + singleton_encoding(114u8) + singleton_encoding(101u8)
++        + singleton_encoding(113u8) + singleton_encoding(117u8)
++        + singleton_encoding(105u8) + singleton_encoding(114u8)
++        + singleton_encoding(101u8) + singleton_encoding(109u8)
++        + singleton_encoding(101u8) + singleton_encoding(110u8)
++        + singleton_encoding(116u8) + singleton_encoding(45u8)
++        + singleton_encoding(108u8) + singleton_encoding(101u8)
++        + singleton_encoding(100u8) + singleton_encoding(103u8)
++        + singleton_encoding(101u8) + singleton_encoding(114u8)
++        + singleton_encoding(45u8) + singleton_encoding(118u8)
++        + singleton_encoding(49u8) + singleton_encoding(0u8)
++}
++
++/// Exact deterministic preimage bytes for every retained ledger field.
++pub open spec fn ledger_encoding(ledger: &RequirementLedger) -> Seq<u8> {
++    domain_encoding()
++        + ledger.spec_source_digest().spec_bytes()@
++        + u64_encoding(ledger.spec_conversation_revision())
++        + usize_encoding(ledger.spec_entries().len() as usize)
++        + entries_encoding(ledger.spec_entries())
++}
++
++pub(crate) proof fn fields_after_push(fields: Seq<SchemaField>, field: SchemaField)
++    ensures fields_encoding(fields.push(field)) == fields_encoding(fields) + field_encoding(&field),
++{
++    assert(fields.push(field).drop_last() == fields);
++    assert(fields.push(field).last() == field);
++}
++
++pub(crate) proof fn paths_after_push(paths: Seq<PathMention>, path: PathMention)
++    ensures paths_encoding(paths.push(path)) == paths_encoding(paths) + path_encoding(&path),
++{
++    assert(paths.push(path).drop_last() == paths);
++    assert(paths.push(path).last() == path);
++}
++
++pub(crate) proof fn entries_after_push(entries: Seq<RequirementEntry>, entry: RequirementEntry)
++    ensures entries_encoding(entries.push(entry))
++        == entries_encoding(entries) + entry_encoding(&entry),
++{
++    assert(entries.push(entry).drop_last() == entries);
++    assert(entries.push(entry).last() == entry);
++}
++
++} // verus!
+--- a/crates/orchestration/peritus-obligations/src/ledger.rs
++++ b/crates/orchestration/peritus-obligations/src/ledger.rs
+@@ -1,15 +1,20 @@
+ //! Deterministic extraction of typed requirements from exact public source spans.
+ 
+-use crate::{
+-    ObligationError, ObligationErrorKind, ObligationLimits, ObligationSpec, PathMention,
+-    PublicClause, PublicTaskSource, RequirementEntry,
+-};
++mod extraction;
++#[cfg(verus_only)]
++mod model;
++mod validation;
++
++use crate::{ObligationError, ObligationLimits, ObligationSpec, PathMention, RequirementEntry};
++use core::cmp::Ordering;
+ use peritus_spec::RequirementId;
+ use peritus_types::Sha256Digest;
+-use std::collections::{BTreeMap, BTreeSet};
++use vstd::prelude::*;
++
++verus! {
+ 
+ /// One proposed typed extraction retaining its exact public byte span.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct RequirementDraft {
+     id: RequirementId,
+     byte_start: usize,
+@@ -19,6 +24,26 @@
+ }
+ 
+ impl RequirementDraft {
++    /// Exact proposed requirement identity.
++    pub closed spec fn spec_id(&self) -> RequirementId { self.id }
++    /// Exact inclusive public-source offset.
++    pub closed spec fn spec_byte_start(&self) -> usize { self.byte_start }
++    /// Exact exclusive public-source offset.
++    pub closed spec fn spec_byte_end(&self) -> usize { self.byte_end }
++    /// Exact proposed typed requirement.
++    pub closed spec fn spec_specification(&self) -> ObligationSpec { self.specification }
++    /// Exact proposed path sequence.
++    pub closed spec fn spec_paths(&self) -> Seq<PathMention> { self.paths@ }
++
++    /// Complete semantic equality of a draft.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        &&& model::requirement_key(self.spec_id()) == model::requirement_key(other.spec_id())
++        &&& self.spec_byte_start() == other.spec_byte_start()
++        &&& self.spec_byte_end() == other.spec_byte_end()
++        &&& self.spec_specification().spec_same_content(&other.spec_specification())
++        &&& PathMention::sequence_same_content(self.spec_paths(), other.spec_paths())
++    }
++
+     /// Creates an inert extraction proposal. [`RequirementLedger::extract`] validates the span,
+     /// ordering, typed details, paths, and alternative topology against the public source.
+     #[must_use]
+@@ -28,43 +53,63 @@
+         byte_end: usize,
+         specification: ObligationSpec,
+         paths: Vec<PathMention>,
+-    ) -> Self {
++    ) -> (value: Self)
++        ensures value.spec_id() == id,
++            value.spec_byte_start() == byte_start,
++            value.spec_byte_end() == byte_end,
++            value.spec_specification() == specification,
++            value.spec_paths() == paths@,
++    {
+         Self { id, byte_start, byte_end, specification, paths }
+     }
+ 
+     /// Stable requirement identity.
+     #[must_use]
+-    pub const fn id(&self) -> RequirementId {
+-        self.id
+-    }
++    pub const fn id(&self) -> (value: RequirementId)
++        ensures value == self.spec_id(),
++    { self.id }
+ 
+     /// Inclusive public-source byte offset.
+     #[must_use]
+-    pub const fn byte_start(&self) -> usize {
+-        self.byte_start
+-    }
++    pub const fn byte_start(&self) -> (value: usize)
++        ensures value == self.spec_byte_start(),
++    { self.byte_start }
+ 
+     /// Exclusive public-source byte offset.
+     #[must_use]
+-    pub const fn byte_end(&self) -> usize {
+-        self.byte_end
+-    }
++    pub const fn byte_end(&self) -> (value: usize)
++        ensures value == self.spec_byte_end(),
++    { self.byte_end }
+ 
+     /// Proposed typed requirement.
+     #[must_use]
+-    pub const fn specification(&self) -> &ObligationSpec {
+-        &self.specification
+-    }
++    pub const fn specification(&self) -> (value: &ObligationSpec)
++        ensures *value == self.spec_specification(),
++    { &self.specification }
+ 
+     /// Exact classified path mentions.
+     #[must_use]
+-    pub const fn paths(&self) -> &[PathMention] {
+-        self.paths.as_slice()
++    pub const fn paths(&self) -> (value: &[PathMention])
++        ensures value@ == self.spec_paths(),
++    { self.paths.as_slice() }
++}
++
++impl Clone for RequirementDraft {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        Self {
++            id: self.id,
++            byte_start: self.byte_start,
++            byte_end: self.byte_end,
++            specification: self.specification.clone(),
++            paths: PathMention::clone_sequence(self.paths.as_slice()),
++        }
+     }
+ }
+ 
+ /// Canonical exact-clause requirement ledger for one public task source.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct RequirementLedger {
+     source_digest: Sha256Digest,
+     conversation_revision: u64,
+@@ -74,7 +119,248 @@
+ }
+ 
+ impl RequirementLedger {
+-    /// Validates typed extraction proposals and copies the exact public clauses into a ledger.
++    /// Complete input-defined admission for exact extraction.
++    pub open spec fn extraction_inputs_valid(
++        source: &crate::PublicTaskSource,
++        drafts: Seq<RequirementDraft>,
++        limits: ObligationLimits,
++    ) -> bool {
++        model::extraction_inputs_valid(source, drafts, limits)
++    }
++
++    /// Exact supplied public-source digest.
++    pub closed spec fn spec_source_digest(&self) -> Sha256Digest { self.source_digest }
++    /// Exact public conversation revision.
++    pub closed spec fn spec_conversation_revision(&self) -> u64 { self.conversation_revision }
++    /// Exact ordinary SHA-256 result stored for the canonical extraction bytes.
++    pub closed spec fn spec_digest(&self) -> Sha256Digest { self.digest }
++    /// Complete deterministic byte encoding supplied to the ordinary SHA-256 boundary.
++    pub open spec fn spec_canonical_bytes(&self) -> Seq<u8> {
++        crate::canonical::model::ledger_encoding(self)
++    }
++    /// Exact retained requirement sequence.
++    pub closed spec fn spec_entries(&self) -> Seq<RequirementEntry> { self.entries@ }
++    /// Exact retained bounds.
++    pub closed spec fn spec_limits(&self) -> ObligationLimits { self.limits }
++
++    /// Canonical stored invariants independent of digest-authenticity assumptions.
++    pub open spec fn spec_valid(&self) -> bool {
++        model::ledger_valid(
++            self.spec_source_digest(),
++            self.spec_conversation_revision(),
++            self.spec_entries(),
++            self.spec_limits(),
++        )
++    }
++
++    #[verifier::type_invariant]
++    closed spec fn invariant(&self) -> bool { self.spec_valid() }
++
++    /// Complete semantic equality, including the stored ordinary digest result.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        &&& self.spec_source_digest() == other.spec_source_digest()
++        &&& self.spec_conversation_revision() == other.spec_conversation_revision()
++        &&& self.spec_digest() == other.spec_digest()
++        &&& RequirementEntry::sequence_same_content(self.spec_entries(), other.spec_entries())
++        &&& self.spec_limits() == other.spec_limits()
++    }
++
++    /// Exact source, draft, and retained-entry correspondence after successful extraction.
++    pub open spec fn spec_refines_extraction(
++        &self,
++        source: &crate::PublicTaskSource,
++        drafts: Seq<RequirementDraft>,
++        limits: ObligationLimits,
++    ) -> bool {
++        model::ledger_refines_extraction(self, source, drafts, limits)
++    }
++
++    pub(crate) fn extract_preimage(
++        source: &crate::PublicTaskSource,
++        drafts: &[RequirementDraft],
++        limits: ObligationLimits,
++    ) -> (result: Result<Self, ObligationError>)
++        ensures
++            result.is_ok() == Self::extraction_inputs_valid(source, drafts@, limits),
++            match result {
++                Ok(ledger) => ledger.spec_refines_extraction(source, drafts@, limits),
++                Err(_) => true,
++            },
++    {
++        validation::validate_drafts(source, drafts, limits)?;
++        extraction::build(source, drafts, limits)
++    }
++
++    /// Complete public source digest supplied at the ordinary source boundary.
++    #[must_use]
++    pub const fn source_digest(&self) -> (value: Sha256Digest)
++        ensures value == self.spec_source_digest(),
++    { self.source_digest }
++
++    /// Public conversation revision.
++    #[must_use]
++    pub const fn conversation_revision(&self) -> (value: u64)
++        ensures value == self.spec_conversation_revision(),
++    { self.conversation_revision }
++
++    /// Digest returned by the ordinary canonical SHA-256 boundary.
++    #[must_use]
++    pub const fn digest(&self) -> (value: Sha256Digest)
++        ensures value == self.spec_digest(),
++    { self.digest }
++
++    /// Requirements in canonical identity order.
++    #[must_use]
++    pub const fn entries(&self) -> (value: &[RequirementEntry])
++        ensures value@ == self.spec_entries(),
++    { self.entries.as_slice() }
++
++    /// Bounds used for this ledger.
++    #[must_use]
++    pub const fn limits(&self) -> (value: ObligationLimits)
++        ensures value == self.spec_limits(),
++    { self.limits }
++
++    /// Finds the unique requirement with the exact stable identity.
++    #[must_use]
++    pub fn entry(&self, id: RequirementId) -> (result: Option<&RequirementEntry>)
++        ensures match result {
++            Some(entry) => model::requirement_key(entry.spec_id()) == model::requirement_key(id)
++                && exists |index: int| 0 <= index < self.spec_entries().len()
++                    && #[trigger] self.spec_entries()[index].spec_same_content(entry),
++            None => forall |index: int| 0 <= index < self.spec_entries().len() ==>
++                model::requirement_key(#[trigger] self.spec_entries()[index].spec_id())
++                    != model::requirement_key(id),
++        },
++    {
++        proof { use_type_invariant(self); }
++        let mut low = 0usize;
++        let mut high = self.entries.len();
++        while low < high
++            invariant
++                low <= high <= self.spec_entries().len(),
++                crate::order::ordered(model::entry_keys(self.spec_entries())),
++                forall |key_index: int| 0 <= key_index < self.spec_entries().len() ==>
++                    #[trigger] model::entry_keys(self.spec_entries())[key_index].len() == 32,
++                forall |prior: int| 0 <= prior < low ==>
++                    model::requirement_key(#[trigger] self.spec_entries()[prior].spec_id())
++                        != model::requirement_key(id),
++                forall |later: int| high <= later < self.spec_entries().len() ==>
++                    model::requirement_key(#[trigger] self.spec_entries()[later].spec_id())
++                        != model::requirement_key(id),
++            decreases high - low,
++        {
++            let middle = low + (high - low) / 2;
++            assert(low <= middle < high);
++            let order = crate::order::compare(
++                self.entries[middle].id().digest().as_bytes(),
++                id.digest().as_bytes(),
++            );
++            match order {
++                Ordering::Equal => {
++                    let entry = &self.entries[middle];
++                    proof {
++                        assert(*entry == self.spec_entries()[middle as int]);
++                        assert(model::requirement_key(
++                            entry.spec_id())
++                            == model::requirement_key(id));
++                        entry.entry_same_content_reflexive();
++                        assert(self.spec_entries()[middle as int].spec_same_content(
++                            entry));
++                        assert(exists |index: int| 0 <= index < self.spec_entries().len()
++                            && #[trigger] self.spec_entries()[index].spec_same_content(entry)) by {
++                            let index = middle as int;
++                        }
++                        assert(match Some(entry) {
++                            Some(returned) => model::requirement_key(returned.spec_id())
++                                == model::requirement_key(id)
++                                && exists |index: int| 0 <= index < self.spec_entries().len()
++                                    && #[trigger] self.spec_entries()[index]
++                                        .spec_same_content(returned),
++                            None => false,
++                        });
++                    }
++                    return Some(entry);
++                },
++                Ordering::Less => {
++                    proof {
++                        crate::order::less_eliminates_through(
++                            model::entry_keys(self.spec_entries()),
++                            model::requirement_key(id),
++                            32,
++                            middle as int,
++                        );
++                        assert forall |prior: int| 0 <= prior <= middle implies
++                            model::requirement_key(
++                                #[trigger] self.spec_entries()[prior].spec_id())
++                                != model::requirement_key(id) by {
++                            assert(model::entry_keys(self.spec_entries())[prior]
++                                == model::requirement_key(
++                                    self.spec_entries()[prior].spec_id()));
++                        }
++                    }
++                    low = middle + 1;
++                },
++                Ordering::Greater => {
++                    proof {
++                        crate::order::greater_eliminates_from(
++                            model::entry_keys(self.spec_entries()),
++                            model::requirement_key(id),
++                            32,
++                            middle as int,
++                        );
++                        assert forall |later: int|
++                            middle <= later < self.spec_entries().len() implies
++                            model::requirement_key(
++                                #[trigger] self.spec_entries()[later].spec_id())
++                                != model::requirement_key(id) by {
++                            assert(model::entry_keys(self.spec_entries())[later]
++                                == model::requirement_key(
++                                    self.spec_entries()[later].spec_id()));
++                        }
++                    }
++                    high = middle;
++                },
++            }
++        }
++        None
++    }
++}
++
++impl Clone for RequirementLedger {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        proof { use_type_invariant(self); }
++        let entries = RequirementEntry::clone_sequence(self.entries.as_slice());
++        proof {
++            model::clone_preserves_ledger_valid(
++                self.spec_source_digest(),
++                self.spec_conversation_revision(),
++                self.spec_entries(),
++                entries@,
++                self.spec_limits(),
++            );
++        }
++        Self {
++            source_digest: self.source_digest,
++            conversation_revision: self.conversation_revision,
++            digest: self.digest,
++            entries,
++            limits: self.limits,
++        }
++    }
++}
++
++} // verus!
++
++#[cfg(not(verus_only))]
++impl RequirementLedger {
++    /// Validates proposals, copies exact source clauses, and hashes the canonical ledger preimage.
++    ///
++    /// The verified extraction kernel binds every preimage field, and the verified canonical
++    /// encoder supplies the exact deterministic bytes. SHA-256 execution remains an ordinary
++    /// cryptographic boundary and receives no proof axiom.
+     ///
+     /// # Errors
+     ///
+@@ -82,128 +368,15 @@
+     /// spans, incompatible typed details, noncanonical paths, and alternative groups with fewer
+     /// than two distinct branches.
+     pub fn extract(
+-        source: &PublicTaskSource,
++        source: &crate::PublicTaskSource,
+         drafts: Vec<RequirementDraft>,
+         limits: ObligationLimits,
+     ) -> Result<Self, ObligationError> {
+-        if drafts.is_empty() || drafts.len() > limits.max_requirements() {
+-            return Err(ObligationError::numbers(
+-                ObligationErrorKind::LimitExceeded,
+-                limits.max_requirements() as u64,
+-                drafts.len() as u64,
+-            ));
+-        }
+-        let mut entries: Vec<RequirementEntry> = Vec::with_capacity(drafts.len());
+-        for (index, draft) in drafts.into_iter().enumerate() {
+-            if let Some(previous) = entries.last() {
+-                if previous.id() == draft.id {
+-                    return Err(ObligationError::requirement(
+-                        ObligationErrorKind::DuplicateValue,
+-                        draft.id,
+-                    ));
+-                }
+-                if previous.id() > draft.id {
+-                    return Err(ObligationError::requirement(
+-                        ObligationErrorKind::NonCanonicalOrder,
+-                        draft.id,
+-                    ));
+-                }
+-            }
+-            let clause_length = draft.byte_end.saturating_sub(draft.byte_start);
+-            if draft.byte_start >= draft.byte_end
+-                || draft.byte_end > source.content().len()
+-                || clause_length > limits.max_clause_bytes()
+-            {
+-                return Err(ObligationError::requirement(
+-                    ObligationErrorKind::InvalidClauseSpan,
+-                    draft.id,
+-                ));
+-            }
+-            let ordinal = u32::try_from(index).map_err(|_| {
+-                ObligationError::requirement(ObligationErrorKind::LimitExceeded, draft.id)
+-            })?;
+-            let provenance = crate::ClauseProvenance::new(
+-                source.digest(),
+-                source.conversation_revision(),
+-                ordinal,
+-                draft.byte_start,
+-                draft.byte_end,
+-            );
+-            let clause = PublicClause::new(
+-                source.content()[draft.byte_start..draft.byte_end].to_vec(),
+-                provenance,
+-            );
+-            entries.push(RequirementEntry::new(
+-                draft.id,
+-                clause,
+-                draft.specification,
+-                draft.paths,
+-                limits,
+-            )?);
+-        }
+-        validate_alternatives(entries.as_slice())?;
+-        let mut ledger = Self {
+-            source_digest: source.digest(),
+-            conversation_revision: source.conversation_revision(),
+-            digest: Sha256Digest::new([0; 32]),
+-            entries,
+-            limits,
+-        };
++        let result = Self::extract_preimage(source, drafts.as_slice(), limits);
++        drop(drafts);
++        let mut ledger = result?;
+         ledger.digest =
+-            crate::canonical::sha256(crate::canonical::ledger_bytes(&ledger).as_slice());
++            crate::canonical::sha256(crate::canonical::encode::ledger_bytes(&ledger).as_slice());
+         Ok(ledger)
+     }
+-
+-    /// Complete public source digest.
+-    #[must_use]
+-    pub const fn source_digest(&self) -> Sha256Digest {
+-        self.source_digest
+-    }
+-
+-    /// Public conversation revision.
+-    #[must_use]
+-    pub const fn conversation_revision(&self) -> u64 {
+-        self.conversation_revision
+-    }
+-
+-    /// Digest of the exact extraction, including clauses and typed details.
+-    #[must_use]
+-    pub const fn digest(&self) -> Sha256Digest {
+-        self.digest
+-    }
+-
+-    /// Requirements in canonical identity order.
+-    #[must_use]
+-    pub const fn entries(&self) -> &[RequirementEntry] {
+-        self.entries.as_slice()
+-    }
+-
+-    /// Bounds used for this ledger.
+-    #[must_use]
+-    pub const fn limits(&self) -> ObligationLimits {
+-        self.limits
+-    }
+-
+-    /// Finds a requirement by stable identity.
+-    #[must_use]
+-    pub fn entry(&self, id: RequirementId) -> Option<&RequirementEntry> {
+-        self.entries
+-            .binary_search_by_key(&id, RequirementEntry::id)
+-            .ok()
+-            .map(|index| &self.entries[index])
+-    }
+-}
+-
+-fn validate_alternatives(entries: &[RequirementEntry]) -> Result<(), ObligationError> {
+-    let mut groups = BTreeMap::new();
+-    for entry in entries {
+-        if let Some((group, branch)) = entry.specification().alternative() {
+-            groups.entry(group).or_insert_with(BTreeSet::new).insert(branch);
+-        }
+-    }
+-    if groups.values().any(|branches| branches.len() < 2) {
+-        Err(ObligationError::plain(ObligationErrorKind::InvalidAlternative))
+-    } else {
+-        Ok(())
+-    }
+-}
++}
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/ledger/extraction.rs
+@@ -0,0 +1,103 @@
++//! Exact source-span copying after verified extraction admission.
++
++#[cfg(verus_only)]
++use super::model;
++use super::{RequirementDraft, RequirementLedger};
++use crate::{
++    ClauseProvenance, ObligationError, ObligationErrorKind, ObligationLimits, PathMention,
++    PublicClause, PublicTaskSource,
++};
++use peritus_types::Sha256Digest;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn build(
++    source: &PublicTaskSource,
++    drafts: &[RequirementDraft],
++    limits: ObligationLimits,
++) -> (result: Result<RequirementLedger, ObligationError>)
++    requires model::extraction_inputs_valid(source, drafts@, limits),
++    ensures
++        result.is_ok(),
++        match result {
++            Ok(ledger) => model::ledger_refines_extraction(&ledger, source, drafts@, limits),
++            Err(_) => false,
++        },
++{
++    let mut entries = Vec::with_capacity(drafts.len());
++    let mut index = 0;
++    while index < drafts.len()
++        invariant
++            index <= drafts@.len(),
++            model::extraction_inputs_valid(source, drafts@, limits),
++            entries@.len() == index,
++            model::entries_match_draft_prefix(source, drafts@, entries@),
++        decreases drafts.len() - index,
++    {
++        let draft = &drafts[index];
++        let Ok(ordinal) = u32::try_from(index) else {
++            return Err(ObligationError::requirement(
++                ObligationErrorKind::LimitExceeded,
++                draft.id(),
++            ));
++        };
++        let provenance = ClauseProvenance::new(
++            source.digest(),
++            source.conversation_revision(),
++            ordinal,
++            draft.byte_start(),
++            draft.byte_end(),
++        );
++        let exact = copy_span(source.content(), draft.byte_start(), draft.byte_end());
++        let clause = PublicClause::new(exact, provenance);
++        let specification = draft.specification().clone();
++        let paths = PathMention::clone_sequence(draft.paths());
++        let entry = crate::RequirementEntry::new(
++            draft.id(),
++            clause,
++            specification,
++            paths,
++            limits,
++        )?;
++        assert(model::entry_matches_draft(
++            source, draft, index as int, &entry));
++        let ghost prior = entries@;
++        entries.push(entry);
++        proof {
++            model::entry_prefix_after_push(source, drafts@, prior, entry);
++        }
++        index += 1;
++    }
++    assert(model::entries_match_drafts(source, drafts@, entries@));
++    proof {
++        model::extraction_establishes_ledger_valid(source, drafts@, entries@, limits);
++    }
++    Ok(RequirementLedger {
++        source_digest: source.digest(),
++        conversation_revision: source.conversation_revision(),
++        digest: Sha256Digest::new([0; 32]),
++        entries,
++        limits,
++    })
++}
++
++fn copy_span(source: &[u8], start: usize, end: usize) -> (exact: Vec<u8>)
++    requires start < end <= source@.len(),
++    ensures exact@ == source@.subrange(start as int, end as int),
++{
++    let mut exact = Vec::with_capacity(end - start);
++    let mut index = start;
++    while index < end
++        invariant
++            start <= index <= end <= source@.len(),
++            exact@ == source@.subrange(start as int, index as int),
++        decreases end - index,
++    {
++        exact.push(source[index]);
++        index += 1;
++    }
++    exact
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/ledger/model.rs
+@@ -0,0 +1,347 @@
++//! Input-defined ledger extraction, provenance, ordering, and topology model.
++
++use super::{RequirementDraft, RequirementLedger};
++use crate::{
++    AlternativeBranchId, AlternativeGroupId, ObligationLimits, PathMention, PublicTaskSource,
++    RequirementEntry,
++};
++use peritus_spec::RequirementId;
++use peritus_types::Sha256Digest;
++use vstd::prelude::*;
++
++verus! {
++
++/// Every byte of one requirement identity.
++pub open spec fn requirement_key(id: RequirementId) -> Seq<u8> {
++    id.spec_digest().spec_bytes()@
++}
++
++/// Requirement identities of drafts in their supplied order.
++pub open spec fn draft_keys(drafts: Seq<RequirementDraft>) -> Seq<Seq<u8>> {
++    drafts.map(|_index: int, draft: RequirementDraft| requirement_key(draft.spec_id()))
++}
++
++/// Requirement identities of retained entries in stored order.
++pub open spec fn entry_keys(entries: Seq<RequirementEntry>) -> Seq<Seq<u8>> {
++    entries.map(|_index: int, entry: RequirementEntry| requirement_key(entry.spec_id()))
++}
++
++/// Selects one adjacent comparison from canonical sequence ordering.
++pub proof fn ordered_at(keys: Seq<Seq<u8>>, index: int)
++    requires crate::order::ordered(keys), 1 <= index < keys.len(),
++    ensures crate::order::byte_order(keys[index - 1], keys[index])
++        == core::cmp::Ordering::Less,
++{
++}
++
++/// Exact validity of one proposed source span.
++pub open spec fn span_valid(
++    source: &PublicTaskSource,
++    draft: &RequirementDraft,
++    limits: ObligationLimits,
++) -> bool {
++    draft.spec_byte_start() < draft.spec_byte_end()
++        && draft.spec_byte_end() <= source.spec_content().len()
++        && draft.spec_byte_end() - draft.spec_byte_start() <= limits.spec_max_clause_bytes()
++}
++
++/// Exact intrinsic validity of one draft at its eventual ordinal.
++pub open spec fn draft_valid(
++    source: &PublicTaskSource,
++    draft: &RequirementDraft,
++    index: int,
++    limits: ObligationLimits,
++) -> bool {
++    &&& span_valid(source, draft, limits)
++    &&& 0 <= index <= u32::MAX as int
++    &&& draft.spec_specification().spec_valid()
++    &&& draft.spec_paths().len() <= limits.spec_max_paths()
++    &&& crate::order::ordered(PathMention::keys(draft.spec_paths()))
++}
++
++/// Exact group identity equality.
++pub open spec fn same_group(left: AlternativeGroupId, right: AlternativeGroupId) -> bool {
++    left.spec_digest().spec_bytes()@ == right.spec_digest().spec_bytes()@
++}
++
++/// Exact branch identity equality.
++pub open spec fn same_branch(left: AlternativeBranchId, right: AlternativeBranchId) -> bool {
++    left.spec_digest().spec_bytes()@ == right.spec_digest().spec_bytes()@
++}
++
++/// Every alternative draft has another member of the same group on a distinct branch.
++pub open spec fn draft_alternatives_valid(drafts: Seq<RequirementDraft>) -> bool {
++    forall |index: int| 0 <= index < drafts.len() ==>
++        match #[trigger] drafts[index].spec_specification().spec_alternative() {
++            Some((group, branch)) => exists |other: int| 0 <= other < drafts.len()
++                && match #[trigger] drafts[other].spec_specification().spec_alternative() {
++                    Some((other_group, other_branch)) => same_group(group, other_group)
++                        && !same_branch(branch, other_branch),
++                    None => false,
++                },
++            None => true,
++        }
++}
++
++/// Every retained alternative has another member of the same group on a distinct branch.
++pub open spec fn entry_alternatives_valid(entries: Seq<RequirementEntry>) -> bool {
++    forall |index: int| 0 <= index < entries.len() ==>
++        match #[trigger] entries[index].spec_specification().spec_alternative() {
++            Some((group, branch)) => exists |other: int| 0 <= other < entries.len()
++                && match #[trigger] entries[other].spec_specification().spec_alternative() {
++                    Some((other_group, other_branch)) => same_group(group, other_group)
++                        && !same_branch(branch, other_branch),
++                    None => false,
++                },
++            None => true,
++        }
++}
++
++/// Complete input-defined ledger-extraction admission.
++pub open spec fn extraction_inputs_valid(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    limits: ObligationLimits,
++) -> bool {
++    &&& 0 < drafts.len() <= limits.spec_max_requirements()
++    &&& crate::order::ordered(draft_keys(drafts))
++    &&& forall |index: int| 0 <= index < drafts.len() ==>
++        draft_valid(source, &drafts[index], index, limits)
++    &&& draft_alternatives_valid(drafts)
++}
++
++/// One retained entry is the exact source-derived image of one supplied draft.
++pub open spec fn entry_matches_draft(
++    source: &PublicTaskSource,
++    draft: &RequirementDraft,
++    index: int,
++    entry: &RequirementEntry,
++) -> bool {
++    let provenance = entry.spec_clause().spec_provenance();
++    &&& requirement_key(entry.spec_id()) == requirement_key(draft.spec_id())
++    &&& entry.spec_clause().spec_exact() == source.spec_content().subrange(
++        draft.spec_byte_start() as int,
++        draft.spec_byte_end() as int,
++    )
++    &&& provenance.spec_source_digest() == source.spec_digest()
++    &&& provenance.spec_conversation_revision() == source.spec_conversation_revision()
++    &&& provenance.spec_ordinal() as int == index
++    &&& provenance.spec_byte_start() == draft.spec_byte_start()
++    &&& provenance.spec_byte_end() == draft.spec_byte_end()
++    &&& draft.spec_specification().spec_same_content(&entry.spec_specification())
++    &&& PathMention::sequence_same_content(draft.spec_paths(), entry.spec_paths())
++    &&& entry.spec_valid()
++}
++
++/// A constructed entry prefix exactly copies the corresponding draft prefix.
++pub open spec fn entries_match_draft_prefix(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    entries: Seq<RequirementEntry>,
++) -> bool {
++    entries.len() <= drafts.len()
++        && forall |index: int| 0 <= index < entries.len() ==>
++            entry_matches_draft(source, &drafts[index], index, &entries[index])
++}
++
++/// Every retained entry exactly copies its corresponding supplied draft.
++pub open spec fn entries_match_drafts(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    entries: Seq<RequirementEntry>,
++) -> bool {
++    entries.len() == drafts.len()
++        && entries_match_draft_prefix(source, drafts, entries)
++}
++
++/// Stored ledger invariants independent of the unavailable original source bytes.
++pub open spec fn ledger_valid(
++    source_digest: Sha256Digest,
++    conversation_revision: u64,
++    entries: Seq<RequirementEntry>,
++    limits: ObligationLimits,
++) -> bool {
++    &&& 0 < entries.len() <= limits.spec_max_requirements()
++    &&& crate::order::ordered(entry_keys(entries))
++    &&& crate::order::unique(entry_keys(entries))
++    &&& entry_alternatives_valid(entries)
++    &&& forall |index: int| 0 <= index < entries.len() ==> {
++        let entry = #[trigger] entries[index];
++        let provenance = entry.spec_clause().spec_provenance();
++        &&& entry.spec_valid()
++        &&& entry.spec_paths().len() <= limits.spec_max_paths()
++        &&& provenance.spec_source_digest() == source_digest
++        &&& provenance.spec_conversation_revision() == conversation_revision
++        &&& provenance.spec_ordinal() as int == index
++        &&& provenance.spec_byte_start() < provenance.spec_byte_end()
++        &&& entry.spec_clause().spec_exact().len()
++            == provenance.spec_byte_end() - provenance.spec_byte_start()
++        &&& entry.spec_clause().spec_exact().len() <= limits.spec_max_clause_bytes()
++    }
++}
++
++/// A ledger is the exact successful image of its source, drafts, and limits.
++pub open spec fn ledger_refines_extraction(
++    ledger: &RequirementLedger,
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    limits: ObligationLimits,
++) -> bool {
++    &&& extraction_inputs_valid(source, drafts, limits)
++    &&& ledger.spec_source_digest() == source.spec_digest()
++    &&& ledger.spec_conversation_revision() == source.spec_conversation_revision()
++    &&& ledger.spec_limits() == limits
++    &&& entries_match_drafts(source, drafts, ledger.spec_entries())
++    &&& ledger.spec_valid()
++}
++
++/// Appending the next exact entry extends the exact draft correspondence prefix.
++pub proof fn entry_prefix_after_push(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    entries: Seq<RequirementEntry>,
++    entry: RequirementEntry,
++)
++    requires
++        entries_match_draft_prefix(source, drafts, entries),
++        entries.len() < drafts.len(),
++        entry_matches_draft(source, &drafts[entries.len() as int], entries.len() as int, &entry),
++    ensures entries_match_draft_prefix(source, drafts, entries.push(entry)),
++{
++    assert forall |index: int| 0 <= index < entries.push(entry).len() implies
++        entry_matches_draft(source, &drafts[index], index, &entries.push(entry)[index]) by {
++        if index < entries.len() {
++            assert(entries.push(entry)[index] == entries[index]);
++        } else {
++            assert(index == entries.len());
++            assert(entries.push(entry)[index] == entry);
++        }
++    }
++}
++
++/// Complete input validity and exact entry correspondence establish all stored invariants.
++pub proof fn extraction_establishes_ledger_valid(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    entries: Seq<RequirementEntry>,
++    limits: ObligationLimits,
++)
++    requires
++        extraction_inputs_valid(source, drafts, limits),
++        entries_match_drafts(source, drafts, entries),
++    ensures ledger_valid(
++        source.spec_digest(), source.spec_conversation_revision(), entries, limits),
++{
++    assert(entry_keys(entries) =~= draft_keys(drafts)) by {
++        assert forall |index: int| 0 <= index < entries.len() implies
++            #[trigger] entry_keys(entries)[index] == #[trigger] draft_keys(drafts)[index] by {
++            assert(entry_matches_draft(source, &drafts[index], index, &entries[index]));
++        }
++    }
++    assert(crate::order::ordered(entry_keys(entries)));
++    crate::order::ordered_implies_unique(entry_keys(entries), 32);
++    assert(entry_alternatives_valid(entries)) by {
++        assert forall |index: int| 0 <= index < entries.len() implies
++            match #[trigger] entries[index].spec_specification().spec_alternative() {
++                Some((group, branch)) => exists |other: int| 0 <= other < entries.len()
++                    && match #[trigger] entries[other].spec_specification().spec_alternative() {
++                        Some((other_group, other_branch)) => same_group(group, other_group)
++                            && !same_branch(branch, other_branch),
++                        None => false,
++                    },
++                None => true,
++            } by {
++            assert(entry_matches_draft(source, &drafts[index], index, &entries[index]));
++            if let Some((group, branch)) = drafts[index].spec_specification().spec_alternative() {
++                let other = choose |other: int| 0 <= other < drafts.len()
++                    && match #[trigger] drafts[other].spec_specification().spec_alternative() {
++                        Some((other_group, other_branch)) => same_group(group, other_group)
++                            && !same_branch(branch, other_branch),
++                        None => false,
++                    };
++                assert(entry_matches_draft(source, &drafts[other], other, &entries[other]));
++            }
++        }
++    }
++    assert forall |index: int| 0 <= index < entries.len() implies {
++        let entry = #[trigger] entries[index];
++        let provenance = entry.spec_clause().spec_provenance();
++        &&& entry.spec_valid()
++        &&& entry.spec_paths().len() <= limits.spec_max_paths()
++        &&& provenance.spec_source_digest() == source.spec_digest()
++        &&& provenance.spec_conversation_revision() == source.spec_conversation_revision()
++        &&& provenance.spec_ordinal() as int == index
++        &&& provenance.spec_byte_start() < provenance.spec_byte_end()
++        &&& entry.spec_clause().spec_exact().len()
++            == provenance.spec_byte_end() - provenance.spec_byte_start()
++        &&& entry.spec_clause().spec_exact().len() <= limits.spec_max_clause_bytes()
++    } by {
++        assert(entry_matches_draft(source, &drafts[index], index, &entries[index]));
++        assert(draft_valid(source, &drafts[index], index, limits));
++    }
++}
++
++/// Complete semantic entry cloning preserves every stored ledger invariant.
++pub proof fn clone_preserves_ledger_valid(
++    source_digest: Sha256Digest,
++    conversation_revision: u64,
++    original: Seq<RequirementEntry>,
++    cloned: Seq<RequirementEntry>,
++    limits: ObligationLimits,
++)
++    requires
++        ledger_valid(source_digest, conversation_revision, original, limits),
++        RequirementEntry::sequence_same_content(original, cloned),
++    ensures ledger_valid(source_digest, conversation_revision, cloned, limits),
++{
++    assert(entry_keys(original) =~= entry_keys(cloned)) by {
++        assert forall |index: int| 0 <= index < original.len() implies
++            #[trigger] entry_keys(original)[index] == #[trigger] entry_keys(cloned)[index] by {
++            assert(original[index].spec_same_content(&cloned[index]));
++        }
++    }
++    assert(entry_alternatives_valid(cloned)) by {
++        assert forall |index: int| 0 <= index < cloned.len() implies
++            match #[trigger] cloned[index].spec_specification().spec_alternative() {
++                Some((group, branch)) => exists |other: int| 0 <= other < cloned.len()
++                    && match #[trigger] cloned[other].spec_specification().spec_alternative() {
++                        Some((other_group, other_branch)) => same_group(group, other_group)
++                            && !same_branch(branch, other_branch),
++                        None => false,
++                    },
++                None => true,
++            } by {
++            assert(original[index].spec_same_content(&cloned[index]));
++            if let Some((group, branch)) = original[index].spec_specification().spec_alternative() {
++                let other = choose |other: int| 0 <= other < original.len()
++                    && match #[trigger] original[other].spec_specification().spec_alternative() {
++                        Some((other_group, other_branch)) => same_group(group, other_group)
++                            && !same_branch(branch, other_branch),
++                        None => false,
++                    };
++                assert(original[other].spec_same_content(&cloned[other]));
++            }
++        }
++    }
++    assert forall |index: int| 0 <= index < cloned.len() implies {
++        let entry = #[trigger] cloned[index];
++        let provenance = entry.spec_clause().spec_provenance();
++        &&& entry.spec_valid()
++        &&& entry.spec_paths().len() <= limits.spec_max_paths()
++        &&& provenance.spec_source_digest() == source_digest
++        &&& provenance.spec_conversation_revision() == conversation_revision
++        &&& provenance.spec_ordinal() as int == index
++        &&& provenance.spec_byte_start() < provenance.spec_byte_end()
++        &&& entry.spec_clause().spec_exact().len()
++            == provenance.spec_byte_end() - provenance.spec_byte_start()
++        &&& entry.spec_clause().spec_exact().len() <= limits.spec_max_clause_bytes()
++    } by {
++        assert(original[index].spec_same_content(&cloned[index]));
++        original[index].same_content_preserves_valid(&cloned[index]);
++        assert(original[index].spec_clause().spec_same_content(
++            &cloned[index].spec_clause()));
++        assert(original[index].spec_paths().len() == cloned[index].spec_paths().len());
++    }
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/ledger/validation.rs
+@@ -0,0 +1,234 @@
++//! Verified extraction admission in production error order.
++
++use super::RequirementDraft;
++#[cfg(verus_only)]
++use super::model;
++use crate::{ObligationError, ObligationErrorKind, ObligationLimits, PublicTaskSource};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++fn validate_pair(
++    _source: &PublicTaskSource,
++    drafts: &[RequirementDraft],
++    index: usize,
++    _limits: ObligationLimits,
++) -> (result: Result<(), ObligationError>)
++    requires 1 <= index < drafts@.len(),
++    ensures
++        result.is_ok() == (crate::order::byte_order(
++            model::draft_keys(drafts@)[index as int - 1],
++            model::draft_keys(drafts@)[index as int],
++        ) == Ordering::Less),
++        result.is_err() ==> !model::extraction_inputs_valid(_source, drafts@, _limits),
++{
++    let order = crate::order::compare(
++        drafts[index - 1].id().digest().as_bytes(),
++        drafts[index].id().digest().as_bytes(),
++    );
++    assert(model::draft_keys(drafts@)[index as int - 1]
++        == model::requirement_key(drafts@[index as int - 1].spec_id()));
++    assert(model::draft_keys(drafts@)[index as int]
++        == model::requirement_key(drafts@[index as int].spec_id()));
++    assert(order == crate::order::byte_order(
++        model::draft_keys(drafts@)[index as int - 1],
++        model::draft_keys(drafts@)[index as int],
++    ));
++    match order {
++        Ordering::Equal => {
++            assert(!crate::order::ordered(model::draft_keys(drafts@))) by {
++                if crate::order::ordered(model::draft_keys(drafts@)) {
++                    model::ordered_at(model::draft_keys(drafts@), index as int);
++                }
++            }
++            Err(ObligationError::requirement(
++                ObligationErrorKind::DuplicateValue,
++                drafts[index].id(),
++            ))
++        },
++        Ordering::Greater => {
++            assert(!crate::order::ordered(model::draft_keys(drafts@))) by {
++                if crate::order::ordered(model::draft_keys(drafts@)) {
++                    model::ordered_at(model::draft_keys(drafts@), index as int);
++                }
++            }
++            Err(ObligationError::requirement(
++                ObligationErrorKind::NonCanonicalOrder,
++                drafts[index].id(),
++            ))
++        },
++        Ordering::Less => Ok(()),
++    }
++}
++
++fn validate_draft(
++    source: &PublicTaskSource,
++    drafts: &[RequirementDraft],
++    index: usize,
++    limits: ObligationLimits,
++) -> (result: Result<(), ObligationError>)
++    requires index < drafts@.len(),
++    ensures
++        result.is_ok() == model::draft_valid(source, &drafts@[index as int], index as int, limits),
++        result.is_err() ==> !model::extraction_inputs_valid(source, drafts@, limits),
++{
++    let draft = &drafts[index];
++    let clause_length = draft.byte_end().saturating_sub(draft.byte_start());
++    if draft.byte_start() >= draft.byte_end()
++        || draft.byte_end() > source.content().len()
++        || clause_length > limits.max_clause_bytes()
++    {
++        return Err(ObligationError::requirement(
++            ObligationErrorKind::InvalidClauseSpan,
++            draft.id(),
++        ));
++    }
++    if index > u32::MAX as usize {
++        return Err(ObligationError::requirement(
++            ObligationErrorKind::LimitExceeded,
++            draft.id(),
++        ));
++    }
++    draft.specification().validate()?;
++    crate::path::validate_paths(draft.paths(), limits.max_paths_per_requirement())?;
++    Ok(())
++}
++
++pub(super) fn validate_drafts(
++    source: &PublicTaskSource,
++    drafts: &[RequirementDraft],
++    limits: ObligationLimits,
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == model::extraction_inputs_valid(source, drafts@, limits),
++{
++    if drafts.is_empty() || drafts.len() > limits.max_requirements() {
++        assert(!model::extraction_inputs_valid(source, drafts@, limits));
++        return Err(ObligationError::numbers(
++            ObligationErrorKind::LimitExceeded,
++            limits.max_requirements() as u64,
++            drafts.len() as u64,
++        ));
++    }
++    let mut index = 0;
++    while index < drafts.len()
++        invariant
++            0 < drafts@.len() <= limits.spec_max_requirements(),
++            index <= drafts@.len(),
++            forall |prior: int| 0 <= prior < index ==>
++                model::draft_valid(source, &drafts@[prior], prior, limits),
++            forall |prior: int| 1 <= prior < index ==>
++                crate::order::byte_order(
++                    #[trigger] model::draft_keys(drafts@)[prior - 1],
++                    #[trigger] model::draft_keys(drafts@)[prior],
++                ) == Ordering::Less,
++        decreases drafts.len() - index,
++    {
++        if index > 0 {
++            validate_pair(source, drafts, index, limits)?;
++            assert(crate::order::byte_order(
++                model::draft_keys(drafts@)[index as int - 1],
++                model::draft_keys(drafts@)[index as int],
++            ) == Ordering::Less);
++        }
++        validate_draft(source, drafts, index, limits)?;
++        assert(model::draft_valid(source, &drafts@[index as int], index as int, limits));
++        index += 1;
++    }
++    assert(crate::order::ordered(model::draft_keys(drafts@)));
++    validate_alternatives(drafts)?;
++    assert(model::extraction_inputs_valid(source, drafts@, limits));
++    Ok(())
++}
++
++fn validate_alternatives(
++    drafts: &[RequirementDraft],
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == model::draft_alternatives_valid(drafts@),
++{
++    let mut index = 0;
++    while index < drafts.len()
++        invariant
++            index <= drafts@.len(),
++            forall |prior: int| 0 <= prior < index ==>
++                match #[trigger] drafts@[prior].spec_specification().spec_alternative() {
++                    Some((group, branch)) => exists |other: int| 0 <= other < drafts@.len()
++                        && match #[trigger] drafts@[other].spec_specification().spec_alternative() {
++                            Some((other_group, other_branch)) =>
++                                model::same_group(group, other_group)
++                                    && !model::same_branch(branch, other_branch),
++                            None => false,
++                        },
++                    None => true,
++                },
++        decreases drafts.len() - index,
++    {
++        if let Some((group, branch)) = drafts[index].specification().alternative() {
++            let mut other = 0;
++            let mut found = false;
++            let ghost mut witness_index = 0usize;
++            while other < drafts.len() && !found
++                invariant
++                    other <= drafts@.len(),
++                    found ==> witness_index < other && match
++                        #[trigger] drafts@[witness_index as int]
++                            .spec_specification().spec_alternative()
++                    {
++                        Some((other_group, other_branch)) =>
++                            model::same_group(group, other_group)
++                                && !model::same_branch(branch, other_branch),
++                        None => false,
++                    },
++                    !found ==> forall |prior: int| 0 <= prior < other ==>
++                        match #[trigger] drafts@[prior].spec_specification().spec_alternative() {
++                            Some((other_group, other_branch)) =>
++                                !model::same_group(group, other_group)
++                                    || model::same_branch(branch, other_branch),
++                            None => true,
++                        },
++                decreases drafts.len() - other,
++            {
++                match drafts[other].specification().alternative() {
++                    Some((other_group, other_branch))
++                        if crate::matching::group_ids_match(group, other_group)
++                            && !crate::matching::branch_ids_match(branch, other_branch) =>
++                    {
++                        proof { witness_index = other; }
++                        found = true;
++                    },
++                    _ => {},
++                }
++                other += 1;
++            }
++            if found {
++                assert(witness_index < drafts@.len());
++            }
++            if !found {
++                assert(!model::draft_alternatives_valid(drafts@)) by {
++                    if model::draft_alternatives_valid(drafts@) {
++                        let witness = index as int;
++                    }
++                }
++                return Err(ObligationError::plain(ObligationErrorKind::InvalidAlternative));
++            }
++            assert(match drafts@[witness_index as int]
++                .spec_specification().spec_alternative()
++            {
++                Some((other_group, other_branch)) => model::same_group(group, other_group)
++                    && !model::same_branch(branch, other_branch),
++                None => false,
++            });
++            assert(exists |other: int| 0 <= other < drafts@.len()
++                && match #[trigger] drafts@[other].spec_specification().spec_alternative() {
++                    Some((other_group, other_branch)) => model::same_group(group, other_group)
++                        && !model::same_branch(branch, other_branch),
++                    None => false,
++                });
++        }
++        index += 1;
++    }
++    assert(model::draft_alternatives_valid(drafts@));
++    Ok(())
++}
++
++} // verus!
+--- a/crates/orchestration/peritus-obligations/src/lib.rs
++++ b/crates/orchestration/peritus-obligations/src/lib.rs
+@@ -1,7 +1,7 @@
+ //! Verified public requirement obligations, qualification evidence, and failure ownership.
+ 
+ mod browser;
+-mod canonical;
++pub(crate) mod canonical;
+ mod condition;
+ mod error;
+ mod evidence;
+@@ -10,6 +10,7 @@
+ mod ledger;
+ mod lifecycle;
+ mod limits;
++mod matching;
+ mod order;
+ mod path;
+ mod performance;
+@@ -34,6 +35,8 @@
+     PerformanceEvidence, PerformanceExpectation, PerformanceRequirement, PerformanceStatistic,
+ };
+ pub use provenance::{ClauseProvenance, PublicClause, PublicTaskSource};
++#[cfg(verus_only)]
++pub use qualification::qualification_inputs_valid;
+ pub use qualification::{EvidenceVerdict, QualificationReport, qualify};
+ pub use requirement::{ObligationSpec, RequirementClass, RequirementEntry};
+ pub use schema::{SchemaDirection, SchemaEvidence, SchemaField, SchemaRequirement};
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/matching.rs
+@@ -0,0 +1,34 @@
++//! Exact byte identity comparisons shared by verified obligation kernels.
++
++use crate::{AlternativeBranchId, AlternativeGroupId};
++use vstd::prelude::*;
++
++verus! {
++
++/// Compares every byte of two alternative-group identities.
++pub fn group_ids_match(
++    left: AlternativeGroupId,
++    right: AlternativeGroupId,
++) -> (same: bool)
++    ensures same == (left.spec_digest().spec_bytes()@ == right.spec_digest().spec_bytes()@),
++{
++    matches!(
++        crate::order::compare(left.digest().as_bytes(), right.digest().as_bytes()),
++        core::cmp::Ordering::Equal
++    )
++}
++
++/// Compares every byte of two alternative-branch identities.
++pub fn branch_ids_match(
++    left: AlternativeBranchId,
++    right: AlternativeBranchId,
++) -> (same: bool)
++    ensures same == (left.spec_digest().spec_bytes()@ == right.spec_digest().spec_bytes()@),
++{
++    matches!(
++        crate::order::compare(left.digest().as_bytes(), right.digest().as_bytes()),
++        core::cmp::Ordering::Equal
++    )
++}
++
++} // verus!
+--- a/crates/orchestration/peritus-obligations/src/order.rs
++++ b/crates/orchestration/peritus-obligations/src/order.rs
+@@ -128,6 +128,73 @@
+     }
+ }
+ 
++/// A key below the query eliminates its position and every earlier ordered position.
++pub(crate) proof fn less_eliminates_through(
++    keys: Seq<Seq<u8>>,
++    query: Seq<u8>,
++    width: nat,
++    middle: int,
++)
++    requires
++        ordered(keys),
++        forall |index: int| 0 <= index < keys.len() ==>
++            #[trigger] keys[index].len() == width,
++        query.len() == width,
++        0 <= middle < keys.len(),
++        byte_order(keys[middle], query) == Ordering::Less,
++    ensures forall |index: int| 0 <= index <= middle ==>
++        #[trigger] keys[index] != query,
++{
++    assert forall |index: int| 0 <= index <= middle implies
++        #[trigger] keys[index] != query by {
++        if index < middle {
++            ordered_pair(keys, width, index, middle);
++            less_transitive(keys[index], keys[middle], query);
++            if keys[index] == query {
++                byte_order_reflexive(query);
++            }
++        } else {
++            assert(index == middle);
++            if keys[index] == query {
++                byte_order_reflexive(query);
++            }
++        }
++    }
++}
++
++/// A key above the query eliminates its position and every later ordered position.
++pub(crate) proof fn greater_eliminates_from(
++    keys: Seq<Seq<u8>>,
++    query: Seq<u8>,
++    width: nat,
++    middle: int,
++)
++    requires
++        ordered(keys),
++        forall |index: int| 0 <= index < keys.len() ==>
++            #[trigger] keys[index].len() == width,
++        query.len() == width,
++        0 <= middle < keys.len(),
++        byte_order(keys[middle], query) == Ordering::Greater,
++    ensures forall |index: int| middle <= index < keys.len() ==>
++        #[trigger] keys[index] != query,
++{
++    assert forall |index: int| middle <= index < keys.len() implies
++        #[trigger] keys[index] != query by {
++        if middle < index {
++            ordered_pair(keys, width, middle, index);
++            if keys[index] == query {
++                assert(byte_order(keys[middle], query) == Ordering::Less);
++            }
++        } else {
++            assert(index == middle);
++            if keys[index] == query {
++                byte_order_reflexive(query);
++            }
++        }
++    }
++}
++
+ /// Strict canonical ordering proves global identity uniqueness, not just adjacent inequality.
+ pub proof fn ordered_implies_unique(keys: Seq<Seq<u8>>, width: nat)
+     requires
+--- a/crates/orchestration/peritus-obligations/src/qualification.rs
++++ b/crates/orchestration/peritus-obligations/src/qualification.rs
+@@ -1,12 +1,20 @@
+ //! Fail-closed qualification of exact public obligations against current typed evidence.
+ 
++mod evaluation;
++#[cfg(verus_only)]
++mod model;
++mod validation;
++mod verdict;
++
+ use crate::{
+-    AlternativeBranchId, AlternativeGroupId, ConditionId, ConditionObservation, ConditionState,
+-    ObligationError, ObligationErrorKind, ObligationSpec, RequirementEntry, RequirementEvidence,
++    AlternativeGroupId, ConditionId, ConditionObservation, ObligationError, RequirementEvidence,
+     RequirementLedger,
+ };
+ use peritus_run_settlement::CandidateIdentity;
+ use peritus_spec::RequirementId;
++use vstd::prelude::*;
++
++verus! {
+ 
+ /// Outcome of matching one requirement against its evidence.
+ #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+@@ -21,8 +29,17 @@
+     Satisfied,
+ }
+ 
++/// Complete input-defined admission for qualification.
++pub open spec fn qualification_inputs_valid(
++    ledger: &RequirementLedger,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> bool {
++    model::qualification_inputs_valid(ledger, conditions, evidence)
++}
++
+ /// Complete deterministic result of qualifying one requirement ledger.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct QualificationReport {
+     qualified: bool,
+     required_count: usize,
+@@ -36,58 +53,133 @@
+ }
+ 
+ impl QualificationReport {
++    /// Exact stored qualification verdict.
++    pub closed spec fn spec_qualified(&self) -> bool { self.qualified }
++    /// Exact active ordinary-obligation plus alternative-group count.
++    pub closed spec fn spec_required_count(&self) -> nat { self.required_count as nat }
++    /// Exact satisfying ordinary-obligation plus complete-alternative count.
++    pub closed spec fn spec_satisfied_count(&self) -> nat { self.satisfied_count as nat }
++    /// Exact missing ordinary-evidence count.
++    pub closed spec fn spec_missing_count(&self) -> nat { self.missing_count as nat }
++    /// Exact stale ordinary-evidence count.
++    pub closed spec fn spec_stale_count(&self) -> nat { self.stale_count as nat }
++    /// Exact invalid ordinary-evidence count.
++    pub closed spec fn spec_invalid_count(&self) -> nat { self.invalid_count as nat }
++    /// Exact unsatisfied ordinary requirement identities in ledger order.
++    pub closed spec fn spec_unsatisfied_requirements(&self) -> Seq<RequirementId> {
++        self.unsatisfied_requirements@
++    }
++    /// Exact unresolved condition identities in ledger-entry order.
++    pub closed spec fn spec_unresolved_conditions(&self) -> Seq<ConditionId> {
++        self.unresolved_conditions@
++    }
++    /// Exact first-seen incomplete alternative groups.
++    pub closed spec fn spec_incomplete_alternatives(&self) -> Seq<AlternativeGroupId> {
++        self.incomplete_alternatives@
++    }
++
++    /// Complete successful report correspondence to supplied ledger, candidate, and evidence.
++    pub open spec fn spec_refines(
++        &self,
++        ledger: &RequirementLedger,
++        candidate: &CandidateIdentity,
++        conditions: Seq<ConditionObservation>,
++        evidence: Seq<RequirementEvidence>,
++    ) -> bool {
++        model::report_refines(self, ledger, candidate, conditions, evidence)
++    }
++
++    /// Complete semantic report equality preserved by cloning.
++    pub open spec fn spec_same_content(&self, other: &Self) -> bool {
++        &&& self.spec_qualified() == other.spec_qualified()
++        &&& self.spec_required_count() == other.spec_required_count()
++        &&& self.spec_satisfied_count() == other.spec_satisfied_count()
++        &&& self.spec_missing_count() == other.spec_missing_count()
++        &&& self.spec_stale_count() == other.spec_stale_count()
++        &&& self.spec_invalid_count() == other.spec_invalid_count()
++        &&& self.spec_unsatisfied_requirements() == other.spec_unsatisfied_requirements()
++        &&& self.spec_unresolved_conditions() == other.spec_unresolved_conditions()
++        &&& self.spec_incomplete_alternatives() == other.spec_incomplete_alternatives()
++    }
++
+     /// Whether all active obligations have current satisfying evidence.
+     #[must_use]
+-    pub const fn qualified(&self) -> bool {
+-        self.qualified
+-    }
++    pub const fn qualified(&self) -> (value: bool)
++        ensures value == self.spec_qualified(),
++    { self.qualified }
+ 
+     /// Active ordinary obligations plus alternative groups.
+     #[must_use]
+-    pub const fn required_count(&self) -> usize {
+-        self.required_count
+-    }
++    pub const fn required_count(&self) -> (value: usize)
++        ensures value as nat == self.spec_required_count(),
++    { self.required_count }
+ 
+     /// Active obligations or groups that are completely satisfied.
+     #[must_use]
+-    pub const fn satisfied_count(&self) -> usize {
+-        self.satisfied_count
+-    }
++    pub const fn satisfied_count(&self) -> (value: usize)
++        ensures value as nat == self.spec_satisfied_count(),
++    { self.satisfied_count }
+ 
+     /// Missing evidence observations.
+     #[must_use]
+-    pub const fn missing_count(&self) -> usize {
+-        self.missing_count
+-    }
++    pub const fn missing_count(&self) -> (value: usize)
++        ensures value as nat == self.spec_missing_count(),
++    { self.missing_count }
+ 
+     /// Evidence observations bound to an older ledger or candidate.
+     #[must_use]
+-    pub const fn stale_count(&self) -> usize {
+-        self.stale_count
+-    }
++    pub const fn stale_count(&self) -> (value: usize)
++        ensures value as nat == self.spec_stale_count(),
++    { self.stale_count }
+ 
+     /// Current observations that do not meet their typed obligation.
+     #[must_use]
+-    pub const fn invalid_count(&self) -> usize {
+-        self.invalid_count
+-    }
++    pub const fn invalid_count(&self) -> (value: usize)
++        ensures value as nat == self.spec_invalid_count(),
++    { self.invalid_count }
+ 
+     /// Active non-alternative requirements that remain unsatisfied.
+     #[must_use]
+-    pub const fn unsatisfied_requirements(&self) -> &[RequirementId] {
+-        self.unsatisfied_requirements.as_slice()
+-    }
++    pub const fn unsatisfied_requirements(&self) -> (value: &[RequirementId])
++        ensures value@ == self.spec_unsatisfied_requirements(),
++    { self.unsatisfied_requirements.as_slice() }
+ 
+     /// Public conditions that were not resolved.
+     #[must_use]
+-    pub const fn unresolved_conditions(&self) -> &[ConditionId] {
+-        self.unresolved_conditions.as_slice()
+-    }
++    pub const fn unresolved_conditions(&self) -> (value: &[ConditionId])
++        ensures value@ == self.spec_unresolved_conditions(),
++    { self.unresolved_conditions.as_slice() }
+ 
+     /// Alternative groups lacking one complete branch.
+     #[must_use]
+-    pub const fn incomplete_alternatives(&self) -> &[AlternativeGroupId] {
+-        self.incomplete_alternatives.as_slice()
++    pub const fn incomplete_alternatives(&self) -> (value: &[AlternativeGroupId])
++        ensures value@ == self.spec_incomplete_alternatives(),
++    { self.incomplete_alternatives.as_slice() }
++}
++
++impl Clone for QualificationReport {
++    fn clone(&self) -> (value: Self)
++        ensures self.spec_same_content(&value),
++    {
++        let unsatisfied_requirements = self.unsatisfied_requirements.clone();
++        let unresolved_conditions = self.unresolved_conditions.clone();
++        let incomplete_alternatives = self.incomplete_alternatives.clone();
++        proof {
++            assert(unsatisfied_requirements@ =~= self.unsatisfied_requirements@);
++            assert(unresolved_conditions@ =~= self.unresolved_conditions@);
++            assert(incomplete_alternatives@ =~= self.incomplete_alternatives@);
++        }
++        Self {
++            qualified: self.qualified,
++            required_count: self.required_count,
++            satisfied_count: self.satisfied_count,
++            missing_count: self.missing_count,
++            stale_count: self.stale_count,
++            invalid_count: self.invalid_count,
++            unsatisfied_requirements,
++            unresolved_conditions,
++            incomplete_alternatives,
++        }
+     }
+ }
+ 
+@@ -102,237 +194,16 @@
+     candidate: &CandidateIdentity,
+     conditions: &[ConditionObservation],
+     evidence: &[RequirementEvidence],
+-) -> Result<QualificationReport, ObligationError> {
+-    validate_conditions(conditions)?;
+-    validate_evidence(ledger, evidence)?;
+-    let mut report = QualificationReport {
+-        qualified: false,
+-        required_count: 0,
+-        satisfied_count: 0,
+-        missing_count: 0,
+-        stale_count: 0,
+-        invalid_count: 0,
+-        unsatisfied_requirements: Vec::new(),
+-        unresolved_conditions: Vec::new(),
+-        incomplete_alternatives: Vec::new(),
+-    };
+-
+-    for entry in ledger.entries() {
+-        if entry.specification().is_example() || entry.specification().alternative().is_some() {
+-            continue;
+-        }
+-        if let Some(condition_id) = entry.specification().condition_id() {
+-            match condition_state(conditions, condition_id) {
+-                Some(ConditionState::DoesNotHold) => continue,
+-                Some(ConditionState::Holds) => {}
+-                Some(ConditionState::Unknown) | None => {
+-                    report.unresolved_conditions.push(condition_id);
+-                    continue;
+-                }
+-            }
+-        }
+-        report.required_count += 1;
+-        let verdict =
+-            evidence_verdict(ledger, candidate, entry, evidence_for(evidence, entry.id()));
+-        record_verdict(&mut report, entry.id(), verdict);
+-    }
+-
+-    qualify_alternatives(ledger, candidate, evidence, &mut report);
+-    let required_current = report.satisfied_count == report.required_count
+-        && report.missing_count == 0
+-        && report.stale_count == 0
+-        && report.invalid_count == 0;
+-    report.qualified = crate::verified::qualification_allowed(
+-        required_current,
+-        report.incomplete_alternatives.is_empty(),
+-        report.unresolved_conditions.is_empty(),
+-    );
+-    Ok(report)
+-}
+-
+-fn validate_conditions(conditions: &[ConditionObservation]) -> Result<(), ObligationError> {
+-    for pair in conditions.windows(2) {
+-        if pair[0].condition_id() == pair[1].condition_id() {
+-            return Err(ObligationError::plain(ObligationErrorKind::InvalidCondition));
+-        }
+-        if pair[0].condition_id() > pair[1].condition_id() {
+-            return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
+-        }
+-    }
+-    Ok(())
+-}
+-
+-fn validate_evidence(
+-    ledger: &RequirementLedger,
+-    evidence: &[RequirementEvidence],
+-) -> Result<(), ObligationError> {
+-    if evidence.len() > ledger.limits().max_evidence() {
+-        return Err(ObligationError::numbers(
+-            ObligationErrorKind::LimitExceeded,
+-            ledger.limits().max_evidence() as u64,
+-            evidence.len() as u64,
+-        ));
+-    }
+-    for pair in evidence.windows(2) {
+-        if pair[0].requirement_id() == pair[1].requirement_id() {
+-            return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
+-        }
+-        if pair[0].requirement_id() > pair[1].requirement_id() {
+-            return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
+-        }
+-    }
+-    if let Some(unknown) =
+-        evidence.iter().find(|item| ledger.entry(item.requirement_id()).is_none())
+-    {
+-        return Err(ObligationError::requirement(
+-            ObligationErrorKind::UnknownRequirement,
+-            unknown.requirement_id(),
+-        ));
+-    }
+-    Ok(())
+-}
+-
+-fn condition_state(conditions: &[ConditionObservation], id: ConditionId) -> Option<ConditionState> {
+-    conditions
+-        .binary_search_by_key(&id, |observation| observation.condition_id())
+-        .ok()
+-        .map(|index| conditions[index].state())
+-}
+-
+-fn evidence_for(
+-    evidence: &[RequirementEvidence],
+-    id: RequirementId,
+-) -> Option<&RequirementEvidence> {
+-    evidence
+-        .binary_search_by_key(&id, RequirementEvidence::requirement_id)
+-        .ok()
+-        .map(|index| &evidence[index])
+-}
+-
+-fn evidence_verdict(
+-    ledger: &RequirementLedger,
+-    candidate: &CandidateIdentity,
+-    entry: &RequirementEntry,
+-    evidence: Option<&RequirementEvidence>,
+-) -> EvidenceVerdict {
+-    let Some(evidence) = evidence else { return EvidenceVerdict::Missing };
+-    if !evidence.binding().is_current_for(entry.id(), ledger.digest(), candidate) {
+-        return EvidenceVerdict::Stale;
+-    }
+-    if entry
+-        .paths()
+-        .iter()
+-        .filter(|path| path.role().requires_candidate_evidence())
+-        .any(|path| !evidence.binding().contains_path(path.id()))
+-    {
+-        return EvidenceVerdict::Invalid;
+-    }
+-    let satisfied = match (entry.specification(), evidence) {
+-        (
+-            ObligationSpec::Hard
+-            | ObligationSpec::Conditional { .. }
+-            | ObligationSpec::Alternative { .. }
+-            | ObligationSpec::GeneratedOutput,
+-            RequirementEvidence::Direct(value),
+-        ) => value.satisfied(),
+-        (ObligationSpec::Performance(requirement), RequirementEvidence::Performance(value)) => {
+-            value.satisfies(*requirement)
+-        }
+-        (ObligationSpec::LifecycleIngress(requirement), RequirementEvidence::Lifecycle(value)) => {
+-            value.satisfies(*requirement)
+-        }
+-        (
+-            ObligationSpec::RequestSchema(requirement)
+-            | ObligationSpec::ResponseSchema(requirement),
+-            RequirementEvidence::Schema(value),
+-        ) => value.covers(requirement),
+-        (ObligationSpec::BrowserSemantics(requirement), RequirementEvidence::Browser(value)) => {
+-            value.satisfies(*requirement)
+-        }
+-        (
+-            ObligationSpec::ExternalEffect { effect_identity },
+-            RequirementEvidence::ExternalEffect(value),
+-        ) => value.satisfies(*effect_identity),
+-        (ObligationSpec::Example, _) => true,
+-        _ => false,
+-    };
+-    if satisfied { EvidenceVerdict::Satisfied } else { EvidenceVerdict::Invalid }
+-}
+-
+-fn record_verdict(
+-    report: &mut QualificationReport,
+-    requirement_id: RequirementId,
+-    verdict: EvidenceVerdict,
+-) {
+-    match verdict {
+-        EvidenceVerdict::Satisfied => report.satisfied_count += 1,
+-        EvidenceVerdict::Missing => {
+-            report.missing_count += 1;
+-            report.unsatisfied_requirements.push(requirement_id);
+-        }
+-        EvidenceVerdict::Stale => {
+-            report.stale_count += 1;
+-            report.unsatisfied_requirements.push(requirement_id);
+-        }
+-        EvidenceVerdict::Invalid => {
+-            report.invalid_count += 1;
+-            report.unsatisfied_requirements.push(requirement_id);
+-        }
+-    }
+-}
+-
+-fn qualify_alternatives(
+-    ledger: &RequirementLedger,
+-    candidate: &CandidateIdentity,
+-    evidence: &[RequirementEvidence],
+-    report: &mut QualificationReport,
+-) {
+-    let mut seen_groups = Vec::new();
+-    for entry in ledger.entries() {
+-        let Some((group, _)) = entry.specification().alternative() else { continue };
+-        if seen_groups.contains(&group) {
+-            continue;
+-        }
+-        seen_groups.push(group);
+-        report.required_count += 1;
+-        if any_branch_complete(ledger, candidate, evidence, group) {
+-            report.satisfied_count += 1;
+-        } else {
+-            report.incomplete_alternatives.push(group);
+-        }
+-    }
+-}
+-
+-fn any_branch_complete(
+-    ledger: &RequirementLedger,
+-    candidate: &CandidateIdentity,
+-    evidence: &[RequirementEvidence],
+-    group: AlternativeGroupId,
+-) -> bool {
+-    let mut seen_branches: Vec<AlternativeBranchId> = Vec::new();
+-    for entry in ledger.entries() {
+-        let Some((entry_group, branch)) = entry.specification().alternative() else { continue };
+-        if entry_group != group || seen_branches.contains(&branch) {
+-            continue;
+-        }
+-        seen_branches.push(branch);
+-        let complete = ledger
+-            .entries()
+-            .iter()
+-            .filter(|candidate_entry| {
+-                candidate_entry.specification().alternative() == Some((group, branch))
+-            })
+-            .all(|candidate_entry| {
+-                evidence_verdict(
+-                    ledger,
+-                    candidate,
+-                    candidate_entry,
+-                    evidence_for(evidence, candidate_entry.id()),
+-                ) == EvidenceVerdict::Satisfied
+-            });
+-        if complete {
+-            return true;
+-        }
+-    }
+-    false
+-}
++) -> (result: Result<QualificationReport, ObligationError>)
++    ensures
++        result.is_ok() == qualification_inputs_valid(ledger, conditions@, evidence@),
++        match result {
++            Ok(report) => report.spec_refines(ledger, candidate, conditions@, evidence@),
++            Err(_) => true,
++        },
++{
++    validation::validate_inputs(ledger, conditions, evidence)?;
++    Ok(evaluation::evaluate(ledger, candidate, conditions, evidence))
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/evaluation.rs
+@@ -0,0 +1,161 @@
++//! Verified ordinary and alternative qualification traversal.
++
++mod alternatives;
++
++#[cfg(verus_only)]
++use super::model;
++use super::{EvidenceVerdict, QualificationReport, verdict};
++use crate::{
++    ConditionId, ConditionObservation, ConditionState, RequirementEntry, RequirementEvidence,
++    RequirementLedger,
++};
++use peritus_run_settlement::CandidateIdentity;
++use vstd::prelude::*;
++
++verus! {
++
++enum OrdinaryAction {
++    Ignored,
++    Unresolved(ConditionId),
++    Active,
++}
++
++fn ordinary_action(
++    entry: &RequirementEntry,
++    conditions: &[ConditionObservation],
++) -> (action: OrdinaryAction)
++    requires crate::order::ordered(model::condition_keys(conditions@)),
++    ensures match action {
++        OrdinaryAction::Ignored => !model::ordinary_entry_active(entry, conditions@)
++            && model::entry_unresolved_condition(entry, conditions@).is_none(),
++        OrdinaryAction::Unresolved(id) => !model::ordinary_entry_active(entry, conditions@)
++            && model::entry_unresolved_condition(entry, conditions@) == Some(id),
++        OrdinaryAction::Active => model::ordinary_entry_active(entry, conditions@)
++            && model::entry_unresolved_condition(entry, conditions@).is_none(),
++    },
++{
++    if entry.specification().is_example() || entry.specification().alternative().is_some() {
++        return OrdinaryAction::Ignored;
++    }
++    if let Some(condition_id) = entry.specification().condition_id() {
++        return match verdict::condition_state(conditions, condition_id) {
++            Some(ConditionState::DoesNotHold) => OrdinaryAction::Ignored,
++            Some(ConditionState::Holds) => OrdinaryAction::Active,
++            Some(ConditionState::Unknown) | None => OrdinaryAction::Unresolved(condition_id),
++        };
++    }
++    OrdinaryAction::Active
++}
++
++pub(super) fn evaluate(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    conditions: &[ConditionObservation],
++    evidence: &[RequirementEvidence],
++) -> (report: QualificationReport)
++    requires model::qualification_inputs_valid(ledger, conditions@, evidence@),
++    ensures model::report_refines(&report, ledger, candidate, conditions@, evidence@),
++{
++    let entries = ledger.entries();
++    let mut report = QualificationReport {
++        qualified: false,
++        required_count: 0,
++        satisfied_count: 0,
++        missing_count: 0,
++        stale_count: 0,
++        invalid_count: 0,
++        unsatisfied_requirements: Vec::new(),
++        unresolved_conditions: Vec::new(),
++        incomplete_alternatives: Vec::new(),
++    };
++    let mut index = 0;
++    while index < entries.len()
++        invariant
++            entries@ == ledger.spec_entries(),
++            index <= entries@.len(),
++            crate::order::ordered(model::condition_keys(conditions@)),
++            crate::order::ordered(model::evidence_keys(evidence@)),
++            report.required_count as nat == model::ordinary_required_count(
++                entries@.take(index as int), conditions@),
++            report.satisfied_count as nat == model::ordinary_satisfied_count(
++                ledger, candidate, entries@.take(index as int), conditions@, evidence@),
++            report.missing_count as nat == model::missing_count(
++                ledger, candidate, entries@.take(index as int), conditions@, evidence@),
++            report.stale_count as nat == model::stale_count(
++                ledger, candidate, entries@.take(index as int), conditions@, evidence@),
++            report.invalid_count as nat == model::invalid_count(
++                ledger, candidate, entries@.take(index as int), conditions@, evidence@),
++            report.unsatisfied_requirements@ == model::unsatisfied_requirements(
++                ledger, candidate, entries@.take(index as int), conditions@, evidence@),
++            report.unresolved_conditions@ == model::unresolved_conditions(
++                entries@.take(index as int), conditions@),
++            report.incomplete_alternatives@.len() == 0,
++            report.required_count <= index,
++            report.satisfied_count <= report.required_count,
++            report.missing_count <= report.required_count,
++            report.stale_count <= report.required_count,
++            report.invalid_count <= report.required_count,
++        decreases entries.len() - index,
++    {
++        let entry = &entries[index];
++        let ghost prefix = entries@.take(index as int);
++        match ordinary_action(entry, conditions) {
++            OrdinaryAction::Ignored => {},
++            OrdinaryAction::Unresolved(condition_id) => {
++                report.unresolved_conditions.push(condition_id);
++            },
++            OrdinaryAction::Active => {
++                report.required_count += 1;
++                let evidence_verdict =
++                    verdict::evidence_verdict(ledger, candidate, entry, evidence);
++                match evidence_verdict {
++                    EvidenceVerdict::Satisfied => report.satisfied_count += 1,
++                    EvidenceVerdict::Missing => {
++                        report.missing_count += 1;
++                        report.unsatisfied_requirements.push(entry.id());
++                    },
++                    EvidenceVerdict::Stale => {
++                        report.stale_count += 1;
++                        report.unsatisfied_requirements.push(entry.id());
++                    },
++                    EvidenceVerdict::Invalid => {
++                        report.invalid_count += 1;
++                        report.unsatisfied_requirements.push(entry.id());
++                    },
++                }
++            },
++        }
++        proof {
++            assert(entries@.take(index as int + 1) == prefix.push(*entry));
++            model::ordinary_after_push(
++                ledger, candidate, prefix, *entry, conditions@, evidence@);
++        }
++        index += 1;
++    }
++
++    assert(entries@.take(index as int) =~= entries@);
++
++    let alternative = alternatives::evaluate(ledger, candidate, evidence);
++    proof {
++        model::ordinary_group_partition_bound(ledger.spec_entries(), conditions@);
++        assert(report.required_count + alternative.0 <= entries.len());
++        assert(report.satisfied_count + alternative.1
++            <= report.required_count + alternative.0);
++    }
++    report.required_count += alternative.0;
++    report.satisfied_count += alternative.1;
++    report.incomplete_alternatives = alternative.2;
++
++    let required_current = report.satisfied_count == report.required_count
++        && report.missing_count == 0
++        && report.stale_count == 0
++        && report.invalid_count == 0;
++    report.qualified = crate::verified::qualification_allowed(
++        required_current,
++        report.incomplete_alternatives.is_empty(),
++        report.unresolved_conditions.is_empty(),
++    );
++    report
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/evaluation/alternatives.rs
+@@ -0,0 +1,345 @@
++//! Verified first-seen alternative groups and complete-branch evaluation.
++
++#[cfg(verus_only)]
++use super::super::model;
++use super::super::{EvidenceVerdict, verdict};
++use crate::{AlternativeBranchId, AlternativeGroupId, RequirementEvidence, RequirementLedger};
++use peritus_run_settlement::CandidateIdentity;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn evaluate(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    evidence: &[RequirementEvidence],
++) -> (result: (usize, usize, Vec<AlternativeGroupId>))
++    requires crate::order::ordered(model::evidence_keys(evidence@)),
++    ensures
++        result.0 as nat == model::alternative_groups(ledger.spec_entries()).len(),
++        result.1 as nat == model::completed_group_count(
++            ledger,
++            candidate,
++            ledger.spec_entries(),
++            evidence@,
++            model::alternative_groups(ledger.spec_entries()),
++        ),
++        result.2@ == model::incomplete_groups(
++            ledger,
++            candidate,
++            ledger.spec_entries(),
++            evidence@,
++            model::alternative_groups(ledger.spec_entries()),
++        ),
++        result.1 <= result.0,
++{
++    assert(crate::order::ordered(model::evidence_keys(evidence@)));
++    let groups = collect_groups(ledger.entries());
++    let mut satisfied = 0;
++    let mut incomplete = Vec::new();
++    let mut index = 0;
++    while index < groups.len()
++        invariant
++            groups@ == model::alternative_groups(ledger.spec_entries()),
++            index <= groups@.len(),
++            crate::order::ordered(model::evidence_keys(evidence@)),
++            satisfied as nat == model::completed_group_count(
++                ledger, candidate, ledger.spec_entries(), evidence@,
++                groups@.take(index as int)),
++            incomplete@ == model::incomplete_groups(
++                ledger, candidate, ledger.spec_entries(), evidence@,
++                groups@.take(index as int)),
++            satisfied <= index,
++        decreases groups.len() - index,
++    {
++        let group = groups[index];
++        let ghost prior = groups@.take(index as int);
++        let complete = any_branch_complete(ledger, candidate, evidence, group);
++        if complete {
++            satisfied += 1;
++        } else {
++            incomplete.push(group);
++        }
++        proof {
++            assert(groups@.take(index as int + 1) == prior.push(group));
++            model::group_accounting_after_push(
++                ledger, candidate, ledger.spec_entries(), evidence@, prior, group);
++        }
++        index += 1;
++    }
++    assert(groups@.take(index as int) =~= groups@);
++    (groups.len(), satisfied, incomplete)
++}
++
++fn collect_groups(
++    entries: &[crate::RequirementEntry],
++) -> (groups: Vec<AlternativeGroupId>)
++    ensures groups@ == model::alternative_groups(entries@),
++{
++    let mut groups = Vec::new();
++    let mut index = 0;
++    while index < entries.len()
++        invariant
++            index <= entries@.len(),
++            groups@ == model::alternative_groups(entries@.take(index as int)),
++        decreases entries.len() - index,
++    {
++        let entry = &entries[index];
++        let ghost prior_entries = entries@.take(index as int);
++        let ghost prior_groups = groups@;
++        match entry.specification().alternative() {
++            Some((group, _)) if !group_present(groups.as_slice(), group) => {
++                groups.push(group);
++            },
++            _ => {},
++        }
++        proof {
++            assert(entries@.take(index as int + 1) == prior_entries.push(*entry));
++            model::alternative_groups_after_push(prior_entries, *entry);
++        }
++        index += 1;
++    }
++    assert(entries@.take(index as int) =~= entries@);
++    groups
++}
++
++fn group_present(groups: &[AlternativeGroupId], group: AlternativeGroupId) -> (present: bool)
++    ensures present == model::group_present(groups@, group),
++{
++    let mut index = 0;
++    while index < groups.len()
++        invariant
++            index <= groups@.len(),
++            forall |prior: int| 0 <= prior < index ==>
++                !model::same_group(#[trigger] groups@[prior], group),
++        decreases groups.len() - index,
++    {
++        if crate::matching::group_ids_match(groups[index], group) {
++            return true;
++        }
++        index += 1;
++    }
++    false
++}
++
++fn checked_branch_present(
++    branches: &[AlternativeBranchId],
++    branch: AlternativeBranchId,
++) -> (present: bool)
++    ensures present == model::branch_present(branches@, branch),
++{
++    let mut index = 0;
++    while index < branches.len()
++        invariant
++            index <= branches@.len(),
++            forall |prior: int| 0 <= prior < index ==>
++                !model::same_branch(#[trigger] branches@[prior], branch),
++        decreases branches.len() - index,
++    {
++        if crate::matching::branch_ids_match(branches[index], branch) {
++            return true;
++        }
++        index += 1;
++    }
++    false
++}
++
++fn any_branch_complete(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    evidence: &[RequirementEvidence],
++    group: AlternativeGroupId,
++) -> (complete: bool)
++    requires crate::order::ordered(model::evidence_keys(evidence@)),
++    ensures complete == model::group_complete(
++        ledger, candidate, ledger.spec_entries(), evidence@, group),
++{
++    assert(crate::order::ordered(model::evidence_keys(evidence@)));
++    let entries = ledger.entries();
++    let mut checked_branches = Vec::new();
++    let mut index = 0;
++    while index < entries.len()
++        invariant
++            entries@ == ledger.spec_entries(),
++            index <= entries@.len(),
++            crate::order::ordered(model::evidence_keys(evidence@)),
++            model::checked_branches_sound(entries@, index as int, group, checked_branches@),
++            forall |prior: int| 0 <= prior < index ==>
++                match #[trigger] entries@[prior].spec_specification().spec_alternative() {
++                    Some((entry_group, branch)) if model::same_group(entry_group, group) =>
++                        !model::branch_complete(
++                            ledger, candidate, ledger.spec_entries(), evidence@, group, branch),
++                    _ => true,
++                },
++        decreases entries.len() - index,
++    {
++        match entries[index].specification().alternative() {
++            Some((entry_group, branch))
++                if crate::matching::group_ids_match(entry_group, group) =>
++            {
++                let already_checked =
++                    checked_branch_present(checked_branches.as_slice(), branch);
++                if already_checked {
++                    proof {
++                        model::checked_branch_is_incomplete(
++                            ledger,
++                            candidate,
++                            ledger.spec_entries(),
++                            evidence@,
++                            index as int,
++                            group,
++                            checked_branches@,
++                            branch,
++                        );
++                    };
++                }
++                if !already_checked {
++                    let complete = branch_complete(ledger, candidate, evidence, group, branch);
++                    if complete {
++                        return true;
++                    }
++                    assert(!model::branch_complete(
++                        ledger, candidate, ledger.spec_entries(), evidence@, group, branch));
++                    let ghost prior_checked = checked_branches@;
++                    checked_branches.push(branch);
++                    proof {
++                        model::checked_branches_after_push(
++                            entries@, index as int, group, prior_checked, branch,
++                        );
++                    };
++                }
++            },
++            _ => {},
++        }
++        index += 1;
++    }
++    assert(index == entries.len());
++    assert(!model::group_complete(
++        ledger, candidate, ledger.spec_entries(), evidence@, group)) by {
++        if model::group_complete(ledger, candidate, ledger.spec_entries(), evidence@, group) {
++            let branch_entry = choose |branch_entry: int|
++                0 <= branch_entry < ledger.spec_entries().len()
++                    && match #[trigger] ledger.spec_entries()[branch_entry]
++                        .spec_specification().spec_alternative()
++                    {
++                        Some((entry_group, branch)) => model::same_group(entry_group, group)
++                            && model::branch_complete(
++                                ledger, candidate, ledger.spec_entries(), evidence@, group, branch),
++                        None => false,
++                    };
++            assert(branch_entry < index);
++        }
++    }
++    false
++}
++
++fn branch_complete(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    evidence: &[RequirementEvidence],
++    group: AlternativeGroupId,
++    branch: AlternativeBranchId,
++) -> (complete: bool)
++    requires crate::order::ordered(model::evidence_keys(evidence@)),
++    ensures complete == model::branch_complete(
++        ledger, candidate, ledger.spec_entries(), evidence@, group, branch),
++{
++    assert(crate::order::ordered(model::evidence_keys(evidence@)));
++    let entries = ledger.entries();
++    let mut index = 0;
++    while index < entries.len()
++        invariant
++            entries@ == ledger.spec_entries(),
++            index <= entries@.len(),
++            crate::order::ordered(model::evidence_keys(evidence@)),
++            forall |prior: int| 0 <= prior < index ==>
++                match #[trigger] entries@[prior].spec_specification().spec_alternative() {
++                    Some((member_group, member_branch))
++                        if model::same_group(member_group, group)
++                            && model::same_branch(member_branch, branch) =>
++                    {
++                        model::supplied_evidence_verdict(
++                            ledger, candidate, &entries@[prior], evidence@,
++                        ) == EvidenceVerdict::Satisfied
++                    },
++                    _ => true,
++                },
++        decreases entries.len() - index,
++    {
++        let entry = &entries[index];
++        assert(*entry == entries@[index as int]);
++        if is_branch_member(entry, group, branch) {
++            let value = verdict::evidence_verdict(
++                ledger, candidate, entry, evidence);
++            assert(value == model::supplied_evidence_verdict(
++                ledger, candidate, entry, evidence@));
++            match value {
++                EvidenceVerdict::Satisfied => {
++                    assert(model::supplied_evidence_verdict(
++                        ledger, candidate, entry, evidence@,
++                    ) == EvidenceVerdict::Satisfied);
++                },
++                EvidenceVerdict::Missing
++                | EvidenceVerdict::Stale
++                | EvidenceVerdict::Invalid => {
++                    assert(!model::branch_complete(
++                        ledger,
++                        candidate,
++                        ledger.spec_entries(),
++                        evidence@,
++                        group,
++                        branch,
++                    )) by {
++                        if model::branch_complete(
++                            ledger,
++                            candidate,
++                            ledger.spec_entries(),
++                            evidence@,
++                            group,
++                            branch,
++                        ) {
++                            model::branch_complete_member(
++                                ledger,
++                                candidate,
++                                ledger.spec_entries(),
++                                evidence@,
++                                group,
++                                branch,
++                                index as int,
++                            );
++                            assert(model::supplied_evidence_verdict(
++                                ledger, candidate, entry, evidence@,
++                            ) == EvidenceVerdict::Satisfied);
++                        }
++                    }
++                    return false;
++                }
++            }
++        }
++        index += 1;
++    }
++    assert(index == entries.len());
++    true
++}
++
++fn is_branch_member(
++    entry: &crate::RequirementEntry,
++    group: AlternativeGroupId,
++    branch: AlternativeBranchId,
++) -> (member: bool)
++    ensures member == match entry.spec_specification().spec_alternative() {
++        Some((member_group, member_branch)) => model::same_group(member_group, group)
++            && model::same_branch(member_branch, branch),
++        None => false,
++    },
++{
++    match entry.specification().alternative() {
++        Some((member_group, member_branch)) => {
++            crate::matching::group_ids_match(member_group, group)
++                && crate::matching::branch_ids_match(member_branch, branch)
++        },
++        None => false,
++    }
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/model.rs
+@@ -0,0 +1,306 @@
++//! Input-defined qualification admission, lookup, evidence, and report model.
++
++mod alternatives;
++mod ordinary;
++
++pub use alternatives::{
++    alternative_groups, alternative_groups_after_push, branch_complete, branch_complete_member,
++    branch_present, checked_branch_is_incomplete, checked_branches_after_push,
++    checked_branches_sound, completed_group_count, group_accounting_after_push, group_complete,
++    group_present, incomplete_groups, ordinary_group_partition_bound, same_branch,
++    same_branch_preserves_completion, same_group,
++};
++pub use ordinary::{
++    invalid_count, missing_count, ordinary_after_push, ordinary_after_push_dummy,
++    ordinary_required_count, ordinary_satisfied_count, stale_count, unresolved_conditions,
++    unsatisfied_requirements,
++};
++
++use super::{EvidenceVerdict, QualificationReport};
++use crate::{
++    ConditionId, ConditionObservation, ConditionState, ObligationSpec, PathMention,
++    RequirementEntry, RequirementEvidence, RequirementLedger,
++};
++use peritus_run_settlement::CandidateIdentity;
++use peritus_spec::RequirementId;
++use vstd::prelude::*;
++
++verus! {
++
++/// Every byte of one requirement identity.
++pub open spec fn requirement_key(id: RequirementId) -> Seq<u8> {
++    id.spec_digest().spec_bytes()@
++}
++
++/// Every byte of one condition identity.
++pub open spec fn condition_key(id: ConditionId) -> Seq<u8> {
++    id.spec_digest().spec_bytes()@
++}
++
++/// Condition identities in supplied order.
++pub open spec fn condition_keys(conditions: Seq<ConditionObservation>) -> Seq<Seq<u8>> {
++    conditions.map(|_index: int, value: ConditionObservation|
++        condition_key(value.spec_condition_id()))
++}
++
++/// Evidence requirement identities in supplied order.
++pub open spec fn evidence_keys(evidence: Seq<RequirementEvidence>) -> Seq<Seq<u8>> {
++    evidence.map(|_index: int, value: RequirementEvidence|
++        requirement_key(value.spec_binding().spec_requirement_id()))
++}
++
++/// Selects one adjacent comparison from canonical sequence ordering.
++pub proof fn ordered_at(keys: Seq<Seq<u8>>, index: int)
++    requires crate::order::ordered(keys), 1 <= index < keys.len(),
++    ensures crate::order::byte_order(keys[index - 1], keys[index])
++        == core::cmp::Ordering::Less,
++{
++}
++
++/// A strictly ordered identity sequence has at most one matching position.
++pub proof fn ordered_matching_index_unique(
++    keys: Seq<Seq<u8>>,
++    left: int,
++    right: int,
++)
++    requires
++        crate::order::ordered(keys),
++        forall |index: int| 0 <= index < keys.len() ==>
++            #[trigger] keys[index].len() == 32,
++        0 <= left < keys.len(),
++        0 <= right < keys.len(),
++        keys[left] == keys[right],
++    ensures left == right,
++{
++    crate::order::ordered_implies_unique(keys, 32);
++    if left < right {
++        assert(keys[left] != keys[right]);
++    } else if right < left {
++        assert(keys[right] != keys[left]);
++    }
++}
++
++/// Whether the ledger contains one exact requirement identity.
++pub open spec fn ledger_contains(entries: Seq<RequirementEntry>, id: RequirementId) -> bool {
++    exists |index: int| 0 <= index < entries.len()
++        && requirement_key(#[trigger] entries[index].spec_id()) == requirement_key(id)
++}
++
++/// Every evidence value names a requirement in the supplied ledger.
++pub open spec fn all_evidence_known(
++    ledger: &RequirementLedger,
++    evidence: Seq<RequirementEvidence>,
++) -> bool {
++    forall |index: int| 0 <= index < evidence.len() ==>
++        ledger_contains(
++            ledger.spec_entries(),
++            #[trigger] evidence[index].spec_binding().spec_requirement_id(),
++        )
++}
++
++/// Complete input-defined qualification admission.
++pub open spec fn qualification_inputs_valid(
++    ledger: &RequirementLedger,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> bool {
++    &&& crate::order::ordered(condition_keys(conditions))
++    &&& evidence.len() <= ledger.spec_limits().spec_max_evidence()
++    &&& crate::order::ordered(evidence_keys(evidence))
++    &&& all_evidence_known(ledger, evidence)
++}
++
++/// Index of the first exact condition observation by identity.
++pub open spec fn condition_index(
++    conditions: Seq<ConditionObservation>,
++    id: ConditionId,
++) -> Option<int> {
++    if exists |index: int| 0 <= index < conditions.len()
++        && condition_key(#[trigger] conditions[index].spec_condition_id()) == condition_key(id)
++    {
++        Some(choose |index: int| 0 <= index < conditions.len()
++            && condition_key(#[trigger] conditions[index].spec_condition_id()) == condition_key(id))
++    } else {
++        None
++    }
++}
++
++/// Index of the first exact evidence value by requirement identity.
++pub open spec fn evidence_index(
++    evidence: Seq<RequirementEvidence>,
++    id: RequirementId,
++) -> Option<int> {
++    if exists |index: int| 0 <= index < evidence.len()
++        && requirement_key(#[trigger] evidence[index].spec_binding().spec_requirement_id())
++            == requirement_key(id)
++    {
++        Some(choose |index: int| 0 <= index < evidence.len()
++            && requirement_key(#[trigger] evidence[index].spec_binding().spec_requirement_id())
++                == requirement_key(id))
++    } else {
++        None
++    }
++}
++
++/// Every candidate-output path declared by an entry occurs in the evidence binding.
++pub open spec fn required_paths_current(
++    entry: &RequirementEntry,
++    evidence: &RequirementEvidence,
++) -> bool {
++    forall |index: int| 0 <= index < entry.spec_paths().len()
++        && #[trigger] entry.spec_paths()[index].spec_role().spec_requires_candidate_evidence() ==>
++            evidence.spec_binding().spec_contains_path(entry.spec_paths()[index].spec_id())
++}
++
++/// Exact typed satisfaction for the actual obligation and evidence variants.
++pub open spec fn typed_evidence_satisfied(
++    entry: &RequirementEntry,
++    evidence: &RequirementEvidence,
++) -> bool {
++    match (entry.spec_specification(), evidence) {
++        (
++            ObligationSpec::Hard
++            | ObligationSpec::Conditional { .. }
++            | ObligationSpec::Alternative { .. }
++            | ObligationSpec::GeneratedOutput,
++            RequirementEvidence::Direct(value),
++        ) => value.spec_satisfied(),
++        (ObligationSpec::Performance(requirement), RequirementEvidence::Performance(value)) =>
++            value.spec_satisfies(requirement),
++        (ObligationSpec::LifecycleIngress(requirement), RequirementEvidence::Lifecycle(value)) =>
++            value.spec_satisfies(requirement),
++        (
++            ObligationSpec::RequestSchema(requirement)
++            | ObligationSpec::ResponseSchema(requirement),
++            RequirementEvidence::Schema(value),
++        ) => value.spec_covers(&requirement),
++        (ObligationSpec::BrowserSemantics(requirement), RequirementEvidence::Browser(value)) =>
++            value.spec_satisfies(requirement),
++        (
++            ObligationSpec::ExternalEffect { effect_identity },
++            RequirementEvidence::ExternalEffect(value),
++        ) => value.spec_satisfies(effect_identity),
++        (ObligationSpec::Example, _) => true,
++        _ => false,
++    }
++}
++
++/// Exact missing, stale, path-invalid, typed-invalid, or satisfied evidence verdict.
++pub open spec fn evidence_verdict(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entry: &RequirementEntry,
++    evidence: Option<RequirementEvidence>,
++) -> EvidenceVerdict {
++    match evidence {
++        None => EvidenceVerdict::Missing,
++        Some(value) => if !value.spec_binding().spec_is_current_for(
++            entry.spec_id(), ledger.spec_digest(), candidate)
++        {
++            EvidenceVerdict::Stale
++        } else if !required_paths_current(entry, &value) {
++            EvidenceVerdict::Invalid
++        } else if typed_evidence_satisfied(entry, &value) {
++            EvidenceVerdict::Satisfied
++        } else {
++            EvidenceVerdict::Invalid
++        },
++    }
++}
++
++/// Verdict selected from the complete supplied evidence sequence.
++pub open spec fn supplied_evidence_verdict(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entry: &RequirementEntry,
++    evidence: Seq<RequirementEvidence>,
++) -> EvidenceVerdict {
++    match evidence_index(evidence, entry.spec_id()) {
++        Some(index) => evidence_verdict(ledger, candidate, entry, Some(evidence[index])),
++        None => EvidenceVerdict::Missing,
++    }
++}
++
++/// Exact condition state selected from the supplied observations.
++pub open spec fn supplied_condition_state(
++    conditions: Seq<ConditionObservation>,
++    id: ConditionId,
++) -> Option<ConditionState> {
++    match condition_index(conditions, id) {
++        Some(index) => Some(conditions[index].spec_state()),
++        None => None,
++    }
++}
++
++/// Whether one ordinary entry is active and therefore requires evidence.
++pub open spec fn ordinary_entry_active(
++    entry: &RequirementEntry,
++    conditions: Seq<ConditionObservation>,
++) -> bool {
++    if entry.spec_specification().spec_class() == crate::RequirementClass::Example
++        || entry.spec_specification().spec_alternative().is_some()
++    {
++        false
++    } else {
++        match entry.spec_specification().spec_condition_id() {
++            Some(id) => supplied_condition_state(conditions, id) == Some(ConditionState::Holds),
++            None => true,
++        }
++    }
++}
++
++/// Unresolved active condition recorded for one ordinary entry, if any.
++pub open spec fn entry_unresolved_condition(
++    entry: &RequirementEntry,
++    conditions: Seq<ConditionObservation>,
++) -> Option<ConditionId> {
++    if entry.spec_specification().spec_class() == crate::RequirementClass::Example
++        || entry.spec_specification().spec_alternative().is_some()
++    {
++        None
++    } else {
++        match entry.spec_specification().spec_condition_id() {
++            Some(id) => match supplied_condition_state(conditions, id) {
++                Some(ConditionState::Unknown) | None => Some(id),
++                _ => None,
++            },
++            None => None,
++        }
++    }
++}
++
++/// Complete input-defined successful qualification report.
++pub open spec fn report_refines(
++    report: &QualificationReport,
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> bool {
++    let entries = ledger.spec_entries();
++    let groups = alternative_groups(entries);
++    let required = ordinary_required_count(entries, conditions) + groups.len();
++    let satisfied = ordinary_satisfied_count(ledger, candidate, entries, conditions, evidence)
++        + completed_group_count(ledger, candidate, entries, evidence, groups);
++    let missing = missing_count(ledger, candidate, entries, conditions, evidence);
++    let stale = stale_count(ledger, candidate, entries, conditions, evidence);
++    let invalid = invalid_count(ledger, candidate, entries, conditions, evidence);
++    let unsatisfied = unsatisfied_requirements(ledger, candidate, entries, conditions, evidence);
++    let unresolved = unresolved_conditions(entries, conditions);
++    let incomplete = incomplete_groups(ledger, candidate, entries, evidence, groups);
++    &&& qualification_inputs_valid(ledger, conditions, evidence)
++    &&& report.spec_required_count() == required
++    &&& report.spec_satisfied_count() == satisfied
++    &&& report.spec_missing_count() == missing
++    &&& report.spec_stale_count() == stale
++    &&& report.spec_invalid_count() == invalid
++    &&& report.spec_unsatisfied_requirements() == unsatisfied
++    &&& report.spec_unresolved_conditions() == unresolved
++    &&& report.spec_incomplete_alternatives() == incomplete
++    &&& report.spec_qualified() == (
++        satisfied == required && missing == 0 && stale == 0 && invalid == 0
++            && unresolved.len() == 0 && incomplete.len() == 0
++    )
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/model/alternatives.rs
+@@ -0,0 +1,357 @@
++//! Exact first-group order and complete-branch qualification model.
++
++use super::supplied_evidence_verdict;
++use crate::{
++    AlternativeBranchId, AlternativeGroupId, ConditionObservation, RequirementEntry,
++    RequirementEvidence, RequirementLedger,
++};
++use peritus_run_settlement::CandidateIdentity;
++use vstd::prelude::*;
++
++verus! {
++
++/// Exact alternative-group identity equality.
++pub open spec fn same_group(left: AlternativeGroupId, right: AlternativeGroupId) -> bool {
++    left.spec_digest().spec_bytes()@ == right.spec_digest().spec_bytes()@
++}
++
++/// Exact alternative-branch identity equality.
++pub open spec fn same_branch(left: AlternativeBranchId, right: AlternativeBranchId) -> bool {
++    left.spec_digest().spec_bytes()@ == right.spec_digest().spec_bytes()@
++}
++
++/// Whether an exact branch identity already occurs in a checked branch sequence.
++pub open spec fn branch_present(
++    branches: Seq<AlternativeBranchId>,
++    branch: AlternativeBranchId,
++) -> bool {
++    exists |index: int| 0 <= index < branches.len()
++        && same_branch(#[trigger] branches[index], branch)
++}
++
++/// Every retained checked branch came from an earlier entry of the selected group.
++pub open spec fn checked_branches_sound(
++    entries: Seq<RequirementEntry>,
++    end: int,
++    group: AlternativeGroupId,
++    branches: Seq<AlternativeBranchId>,
++) -> bool {
++    forall |checked: int| #![trigger branches[checked]] 0 <= checked < branches.len()
++        ==> exists |entry: int|
++        0 <= entry < end
++            && match #[trigger] entries[entry].spec_specification().spec_alternative() {
++                Some((entry_group, entry_branch)) => same_group(entry_group, group)
++                    && same_branch(entry_branch, branches[checked]),
++                None => false,
++            }
++}
++
++/// A previously evaluated alias of a checked branch retains its incomplete result.
++pub proof fn checked_branch_is_incomplete(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    end: int,
++    group: AlternativeGroupId,
++    checked_branches: Seq<AlternativeBranchId>,
++    branch: AlternativeBranchId,
++)
++    requires
++        0 <= end <= entries.len(),
++        checked_branches_sound(entries, end, group, checked_branches),
++        branch_present(checked_branches, branch),
++        forall |prior: int| 0 <= prior < end ==>
++            match #[trigger] entries[prior].spec_specification().spec_alternative() {
++                Some((entry_group, prior_branch)) if same_group(entry_group, group) =>
++                    !branch_complete(ledger, candidate, entries, evidence, group, prior_branch),
++                _ => true,
++            },
++    ensures !branch_complete(ledger, candidate, entries, evidence, group, branch),
++{
++    let checked = choose |checked: int| 0 <= checked < checked_branches.len()
++        && same_branch(#[trigger] checked_branches[checked], branch);
++    let origin = choose |origin: int| 0 <= origin < end
++        && match #[trigger] entries[origin].spec_specification().spec_alternative() {
++            Some((origin_group, origin_branch)) => same_group(origin_group, group)
++                && same_branch(origin_branch, checked_branches[checked]),
++            None => false,
++        };
++    let origin_alternative = entries[origin].spec_specification().spec_alternative();
++    assert(origin_alternative.is_some());
++    let origin_branch = origin_alternative.unwrap().1;
++    assert(same_branch(origin_branch, branch));
++    same_branch_preserves_completion(
++        ledger, candidate, entries, evidence, group, origin_branch, branch,
++    );
++}
++
++/// Recording the current branch preserves checked-branch origin correspondence.
++pub proof fn checked_branches_after_push(
++    entries: Seq<RequirementEntry>,
++    index: int,
++    group: AlternativeGroupId,
++    prior: Seq<AlternativeBranchId>,
++    branch: AlternativeBranchId,
++)
++    requires
++        0 <= index < entries.len(),
++        checked_branches_sound(entries, index, group, prior),
++        match entries[index].spec_specification().spec_alternative() {
++            Some((entry_group, entry_branch)) => same_group(entry_group, group)
++                && same_branch(entry_branch, branch),
++            None => false,
++        },
++    ensures checked_branches_sound(entries, index + 1, group, prior.push(branch)),
++{
++    assert forall |checked: int| #![trigger prior.push(branch)[checked]]
++        0 <= checked < prior.push(branch).len()
++        implies exists |origin: int| 0 <= origin < index + 1
++            && match #[trigger] entries[origin].spec_specification().spec_alternative() {
++                Some((origin_group, origin_branch)) => same_group(origin_group, group)
++                    && same_branch(origin_branch, prior.push(branch)[checked]),
++                None => false,
++            } by {
++        if checked < prior.len() {
++            let origin = choose |origin: int| 0 <= origin < index
++                && match #[trigger] entries[origin].spec_specification().spec_alternative() {
++                    Some((origin_group, origin_branch)) => same_group(origin_group, group)
++                        && same_branch(origin_branch, prior[checked]),
++                    None => false,
++                };
++            assert(prior.push(branch)[checked] == prior[checked]);
++        } else {
++            assert(checked == prior.len());
++            assert(prior.push(branch)[checked] == branch);
++            let origin = index;
++        }
++    }
++}
++
++/// Whether a group already occurs in a first-seen group sequence.
++pub open spec fn group_present(groups: Seq<AlternativeGroupId>, group: AlternativeGroupId) -> bool {
++    exists |index: int| 0 <= index < groups.len()
++        && same_group(#[trigger] groups[index], group)
++}
++
++/// Alternative groups in order of their first ledger occurrence.
++pub open spec fn alternative_groups(
++    entries: Seq<RequirementEntry>,
++) -> Seq<AlternativeGroupId>
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        Seq::empty()
++    } else {
++        let prior = alternative_groups(entries.drop_last());
++        match entries.last().spec_specification().spec_alternative() {
++            Some((group, _)) if !group_present(prior, group) => prior.push(group),
++            _ => prior,
++        }
++    }
++}
++
++/// One branch of a group has satisfying current evidence for every member.
++pub open spec fn branch_complete(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    group: AlternativeGroupId,
++    branch: AlternativeBranchId,
++) -> bool {
++    forall |member: int| 0 <= member < entries.len() ==>
++        match #[trigger] entries[member].spec_specification().spec_alternative() {
++            Some((member_group, member_branch))
++                if same_group(member_group, group) && same_branch(member_branch, branch) =>
++            {
++                supplied_evidence_verdict(ledger, candidate, &entries[member], evidence)
++                    == crate::EvidenceVerdict::Satisfied
++            },
++            _ => true,
++        }
++}
++
++/// Exact branch aliases have the same input-defined completion result.
++pub proof fn same_branch_preserves_completion(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    group: AlternativeGroupId,
++    left: AlternativeBranchId,
++    right: AlternativeBranchId,
++)
++    requires same_branch(left, right),
++    ensures branch_complete(ledger, candidate, entries, evidence, group, left)
++        == branch_complete(ledger, candidate, entries, evidence, group, right),
++{
++    assert forall |member: int| 0 <= member < entries.len() implies
++        match #[trigger] entries[member].spec_specification().spec_alternative() {
++            Some((member_group, member_branch))
++                if same_group(member_group, group) && same_branch(member_branch, left) =>
++            {
++                supplied_evidence_verdict(
++                    ledger, candidate, &entries[member], evidence,
++                ) == crate::EvidenceVerdict::Satisfied
++            },
++            _ => true,
++        } == match entries[member].spec_specification().spec_alternative() {
++            Some((member_group, member_branch))
++                if same_group(member_group, group) && same_branch(member_branch, right) =>
++            {
++                supplied_evidence_verdict(
++                    ledger, candidate, &entries[member], evidence,
++                ) == crate::EvidenceVerdict::Satisfied
++            },
++            _ => true,
++        } by {}
++}
++
++/// A complete branch supplies satisfying evidence for each exact member.
++pub proof fn branch_complete_member(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    group: AlternativeGroupId,
++    branch: AlternativeBranchId,
++    member: int,
++)
++    requires
++        branch_complete(ledger, candidate, entries, evidence, group, branch),
++        0 <= member < entries.len(),
++        match entries[member].spec_specification().spec_alternative() {
++            Some((member_group, member_branch)) => same_group(member_group, group)
++                && same_branch(member_branch, branch),
++            None => false,
++        },
++    ensures supplied_evidence_verdict(ledger, candidate, &entries[member], evidence)
++        == crate::EvidenceVerdict::Satisfied,
++{
++}
++
++/// One branch of a group has satisfying current evidence for every member.
++pub open spec fn group_complete(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    group: AlternativeGroupId,
++) -> bool {
++    exists |branch_entry: int| 0 <= branch_entry < entries.len()
++        && match #[trigger] entries[branch_entry].spec_specification().spec_alternative() {
++            Some((entry_group, branch)) => same_group(entry_group, group)
++                && branch_complete(ledger, candidate, entries, evidence, group, branch),
++            None => false,
++        }
++}
++
++/// Number of first-seen alternative groups with one complete branch.
++pub open spec fn completed_group_count(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    groups: Seq<AlternativeGroupId>,
++) -> nat
++    decreases groups.len(),
++{
++    if groups.len() == 0 {
++        0
++    } else {
++        completed_group_count(ledger, candidate, entries, evidence, groups.drop_last())
++            + if group_complete(ledger, candidate, entries, evidence, groups.last()) {
++                1nat
++            } else {
++                0nat
++            }
++    }
++}
++
++/// First-seen alternative groups without any complete branch.
++pub open spec fn incomplete_groups(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    groups: Seq<AlternativeGroupId>,
++) -> Seq<AlternativeGroupId>
++    decreases groups.len(),
++{
++    if groups.len() == 0 {
++        Seq::empty()
++    } else {
++        let prior = incomplete_groups(
++            ledger, candidate, entries, evidence, groups.drop_last());
++        if group_complete(ledger, candidate, entries, evidence, groups.last()) {
++            prior
++        } else {
++            prior.push(groups.last())
++        }
++    }
++}
++
++/// Appending one entry updates the first-seen group sequence exactly.
++pub proof fn alternative_groups_after_push(
++    entries: Seq<RequirementEntry>,
++    entry: RequirementEntry,
++)
++    ensures alternative_groups(entries.push(entry)) == {
++        let prior = alternative_groups(entries);
++        match entry.spec_specification().spec_alternative() {
++            Some((group, _)) if !group_present(prior, group) => prior.push(group),
++            _ => prior,
++        }
++    },
++{
++    assert(entries.push(entry).drop_last() == entries);
++    assert(entries.push(entry).last() == entry);
++}
++
++/// Appending one first-seen group updates completion accounting exactly.
++pub proof fn group_accounting_after_push(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    evidence: Seq<RequirementEvidence>,
++    groups: Seq<AlternativeGroupId>,
++    group: AlternativeGroupId,
++)
++    ensures
++        completed_group_count(
++            ledger, candidate, entries, evidence, groups.push(group))
++            == completed_group_count(ledger, candidate, entries, evidence, groups)
++                + if group_complete(ledger, candidate, entries, evidence, group) {
++                    1nat
++                } else {
++                    0nat
++                },
++        incomplete_groups(ledger, candidate, entries, evidence, groups.push(group))
++            == if group_complete(ledger, candidate, entries, evidence, group) {
++                incomplete_groups(ledger, candidate, entries, evidence, groups)
++            } else {
++                incomplete_groups(ledger, candidate, entries, evidence, groups).push(group)
++            },
++{
++    assert(groups.push(group).drop_last() == groups);
++    assert(groups.push(group).last() == group);
++}
++
++/// Ordinary required entries and first-seen alternative groups partition ledger positions.
++pub proof fn ordinary_group_partition_bound(
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++)
++    ensures super::ordinary_required_count(entries, conditions)
++        + alternative_groups(entries).len() <= entries.len(),
++    decreases entries.len(),
++{
++    if entries.len() > 0 {
++        ordinary_group_partition_bound(entries.drop_last(), conditions);
++        super::ordinary_after_push_dummy(entries.drop_last(), entries.last(), conditions);
++        alternative_groups_after_push(entries.drop_last(), entries.last());
++    }
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/model/ordinary.rs
+@@ -0,0 +1,235 @@
++//! Exact ordinary-entry counts and ordered diagnostic sequences.
++
++use super::{entry_unresolved_condition, ordinary_entry_active, supplied_evidence_verdict};
++use crate::{
++    ConditionId, ConditionObservation, EvidenceVerdict, RequirementEntry, RequirementEvidence,
++    RequirementLedger,
++};
++use peritus_run_settlement::CandidateIdentity;
++use peritus_spec::RequirementId;
++use vstd::prelude::*;
++
++verus! {
++
++/// Number of active non-alternative obligations.
++pub open spec fn ordinary_required_count(
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        ordinary_required_count(entries.drop_last(), conditions)
++            + if ordinary_entry_active(&entries.last(), conditions) { 1nat } else { 0nat }
++    }
++}
++
++/// Number of active ordinary obligations with satisfying current evidence.
++pub open spec fn ordinary_satisfied_count(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        let entry = entries.last();
++        ordinary_satisfied_count(ledger, candidate, entries.drop_last(), conditions, evidence)
++            + if ordinary_entry_active(&entry, conditions)
++                && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                    == EvidenceVerdict::Satisfied
++            { 1nat } else { 0nat }
++    }
++}
++
++/// Number of active ordinary obligations with no supplied evidence.
++pub open spec fn missing_count(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        let entry = entries.last();
++        missing_count(ledger, candidate, entries.drop_last(), conditions, evidence)
++            + if ordinary_entry_active(&entry, conditions)
++                && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                    == EvidenceVerdict::Missing
++            { 1nat } else { 0nat }
++    }
++}
++
++/// Number of active ordinary obligations with stale evidence.
++pub open spec fn stale_count(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        let entry = entries.last();
++        stale_count(ledger, candidate, entries.drop_last(), conditions, evidence)
++            + if ordinary_entry_active(&entry, conditions)
++                && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                    == EvidenceVerdict::Stale
++            { 1nat } else { 0nat }
++    }
++}
++
++/// Number of active ordinary obligations with current but invalid evidence.
++pub open spec fn invalid_count(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        let entry = entries.last();
++        invalid_count(ledger, candidate, entries.drop_last(), conditions, evidence)
++            + if ordinary_entry_active(&entry, conditions)
++                && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                    == EvidenceVerdict::Invalid
++            { 1nat } else { 0nat }
++    }
++}
++
++/// Active ordinary requirement identities whose verdict is not satisfied, in ledger order.
++pub open spec fn unsatisfied_requirements(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++) -> Seq<RequirementId>
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        Seq::empty()
++    } else {
++        let entry = entries.last();
++        let prior = unsatisfied_requirements(
++            ledger, candidate, entries.drop_last(), conditions, evidence);
++        if ordinary_entry_active(&entry, conditions)
++            && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                != EvidenceVerdict::Satisfied
++        {
++            prior.push(entry.spec_id())
++        } else {
++            prior
++        }
++    }
++}
++
++/// Unresolved conditional identities in ledger-entry order, preserving repeated declarations.
++pub open spec fn unresolved_conditions(
++    entries: Seq<RequirementEntry>,
++    conditions: Seq<ConditionObservation>,
++) -> Seq<ConditionId>
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        Seq::empty()
++    } else {
++        let entry = entries.last();
++        let prior = unresolved_conditions(entries.drop_last(), conditions);
++        match entry_unresolved_condition(&entry, conditions) {
++            Some(id) => prior.push(id),
++            None => prior,
++        }
++    }
++}
++
++/// Appending one ledger entry gives the exact next ordinary report contribution.
++pub proof fn ordinary_after_push(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entries: Seq<RequirementEntry>,
++    entry: RequirementEntry,
++    conditions: Seq<ConditionObservation>,
++    evidence: Seq<RequirementEvidence>,
++)
++    ensures
++        ordinary_required_count(entries.push(entry), conditions)
++            == ordinary_required_count(entries, conditions)
++                + if ordinary_entry_active(&entry, conditions) { 1nat } else { 0nat },
++        ordinary_satisfied_count(ledger, candidate, entries.push(entry), conditions, evidence)
++            == ordinary_satisfied_count(ledger, candidate, entries, conditions, evidence)
++                + if ordinary_entry_active(&entry, conditions)
++                    && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                        == EvidenceVerdict::Satisfied
++                { 1nat } else { 0nat },
++        missing_count(ledger, candidate, entries.push(entry), conditions, evidence)
++            == missing_count(ledger, candidate, entries, conditions, evidence)
++                + if ordinary_entry_active(&entry, conditions)
++                    && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                        == EvidenceVerdict::Missing
++                { 1nat } else { 0nat },
++        stale_count(ledger, candidate, entries.push(entry), conditions, evidence)
++            == stale_count(ledger, candidate, entries, conditions, evidence)
++                + if ordinary_entry_active(&entry, conditions)
++                    && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                        == EvidenceVerdict::Stale
++                { 1nat } else { 0nat },
++        invalid_count(ledger, candidate, entries.push(entry), conditions, evidence)
++            == invalid_count(ledger, candidate, entries, conditions, evidence)
++                + if ordinary_entry_active(&entry, conditions)
++                    && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                        == EvidenceVerdict::Invalid
++                { 1nat } else { 0nat },
++        unsatisfied_requirements(
++            ledger, candidate, entries.push(entry), conditions, evidence)
++            == if ordinary_entry_active(&entry, conditions)
++                && supplied_evidence_verdict(ledger, candidate, &entry, evidence)
++                    != EvidenceVerdict::Satisfied
++            {
++                unsatisfied_requirements(ledger, candidate, entries, conditions, evidence)
++                    .push(entry.spec_id())
++            } else {
++                unsatisfied_requirements(ledger, candidate, entries, conditions, evidence)
++            },
++        unresolved_conditions(entries.push(entry), conditions)
++            == match entry_unresolved_condition(&entry, conditions) {
++                Some(id) => unresolved_conditions(entries, conditions).push(id),
++                None => unresolved_conditions(entries, conditions),
++            },
++{
++    assert(entries.push(entry).drop_last() == entries);
++    assert(entries.push(entry).last() == entry);
++}
++
++/// Entry-local required-count update used by partition proofs.
++pub proof fn ordinary_after_push_dummy(
++    entries: Seq<RequirementEntry>,
++    entry: RequirementEntry,
++    conditions: Seq<ConditionObservation>,
++)
++    ensures ordinary_required_count(entries.push(entry), conditions)
++        == ordinary_required_count(entries, conditions)
++            + if ordinary_entry_active(&entry, conditions) { 1nat } else { 0nat },
++{
++    assert(entries.push(entry).drop_last() == entries);
++    assert(entries.push(entry).last() == entry);
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/validation.rs
+@@ -0,0 +1,189 @@
++//! Verified condition and evidence admission in production error order.
++
++#[cfg(verus_only)]
++use super::model;
++use crate::{
++    ConditionObservation, ObligationError, ObligationErrorKind, RequirementEvidence,
++    RequirementLedger,
++};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn validate_inputs(
++    ledger: &RequirementLedger,
++    conditions: &[ConditionObservation],
++    evidence: &[RequirementEvidence],
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == model::qualification_inputs_valid(ledger, conditions@, evidence@),
++{
++    validate_conditions(conditions)?;
++    validate_evidence(ledger, evidence)?;
++    Ok(())
++}
++
++fn validate_conditions(
++    conditions: &[ConditionObservation],
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == crate::order::ordered(model::condition_keys(conditions@)),
++{
++    if conditions.len() < 2 {
++        assert(crate::order::ordered(model::condition_keys(conditions@)));
++        return Ok(());
++    }
++    let mut index = 1;
++    while index < conditions.len()
++        invariant
++            1 <= index <= conditions@.len(),
++            forall |prior: int| 1 <= prior < index ==>
++                crate::order::byte_order(
++                    #[trigger] model::condition_keys(conditions@)[prior - 1],
++                    #[trigger] model::condition_keys(conditions@)[prior],
++                ) == Ordering::Less,
++        decreases conditions.len() - index,
++    {
++        let order = crate::order::compare(
++            conditions[index - 1].condition_id().digest().as_bytes(),
++            conditions[index].condition_id().digest().as_bytes(),
++        );
++        assert(order == crate::order::byte_order(
++            model::condition_keys(conditions@)[index as int - 1],
++            model::condition_keys(conditions@)[index as int],
++        ));
++        match order {
++            Ordering::Equal => {
++                assert(!crate::order::ordered(model::condition_keys(conditions@))) by {
++                    if crate::order::ordered(model::condition_keys(conditions@)) {
++                        model::ordered_at(model::condition_keys(conditions@), index as int);
++                    }
++                }
++                return Err(ObligationError::plain(ObligationErrorKind::InvalidCondition));
++            },
++            Ordering::Greater => {
++                assert(!crate::order::ordered(model::condition_keys(conditions@))) by {
++                    if crate::order::ordered(model::condition_keys(conditions@)) {
++                        model::ordered_at(model::condition_keys(conditions@), index as int);
++                    }
++                }
++                return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
++            },
++            Ordering::Less => {},
++        }
++        index += 1;
++    }
++    assert(crate::order::ordered(model::condition_keys(conditions@)));
++    Ok(())
++}
++
++fn validate_evidence(
++    ledger: &RequirementLedger,
++    evidence: &[RequirementEvidence],
++) -> (result: Result<(), ObligationError>)
++    ensures result.is_ok() == (
++        evidence@.len() <= ledger.spec_limits().spec_max_evidence()
++            && crate::order::ordered(model::evidence_keys(evidence@))
++            && model::all_evidence_known(ledger, evidence@)
++    ),
++{
++    if evidence.len() > ledger.limits().max_evidence() {
++        return Err(ObligationError::numbers(
++            ObligationErrorKind::LimitExceeded,
++            ledger.limits().max_evidence() as u64,
++            evidence.len() as u64,
++        ));
++    }
++    if evidence.len() < 2 {
++        assert(crate::order::ordered(model::evidence_keys(evidence@)));
++    }
++    let mut index = 1;
++    while index < evidence.len()
++        invariant
++            evidence@.len() <= ledger.spec_limits().spec_max_evidence(),
++            1 <= index,
++            evidence@.len() < 2 || index <= evidence@.len(),
++            forall |prior: int| 1 <= prior < index ==>
++                crate::order::byte_order(
++                    #[trigger] model::evidence_keys(evidence@)[prior - 1],
++                    #[trigger] model::evidence_keys(evidence@)[prior],
++                ) == Ordering::Less,
++        decreases evidence.len() - index,
++    {
++        let order = crate::order::compare(
++            evidence[index - 1].requirement_id().digest().as_bytes(),
++            evidence[index].requirement_id().digest().as_bytes(),
++        );
++        assert(order == crate::order::byte_order(
++            model::evidence_keys(evidence@)[index as int - 1],
++            model::evidence_keys(evidence@)[index as int],
++        ));
++        match order {
++            Ordering::Equal => {
++                assert(!crate::order::ordered(model::evidence_keys(evidence@))) by {
++                    if crate::order::ordered(model::evidence_keys(evidence@)) {
++                        model::ordered_at(model::evidence_keys(evidence@), index as int);
++                    }
++                }
++                return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
++            },
++            Ordering::Greater => {
++                assert(!crate::order::ordered(model::evidence_keys(evidence@))) by {
++                    if crate::order::ordered(model::evidence_keys(evidence@)) {
++                        model::ordered_at(model::evidence_keys(evidence@), index as int);
++                    }
++                }
++                return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
++            },
++            Ordering::Less => {},
++        }
++        index += 1;
++    }
++    assert(crate::order::ordered(model::evidence_keys(evidence@)));
++
++    index = 0;
++    while index < evidence.len()
++        invariant
++            evidence@.len() <= ledger.spec_limits().spec_max_evidence(),
++            crate::order::ordered(model::evidence_keys(evidence@)),
++            index <= evidence@.len(),
++            forall |prior: int| 0 <= prior < index ==>
++                model::ledger_contains(
++                    ledger.spec_entries(),
++                    #[trigger] evidence@[prior].spec_binding().spec_requirement_id(),
++                ),
++        decreases evidence.len() - index,
++    {
++        let id = evidence[index].requirement_id();
++        match ledger.entry(id) {
++            None => {
++                assert(!model::ledger_contains(ledger.spec_entries(), id));
++                assert(!model::all_evidence_known(ledger, evidence@)) by {
++                    if model::all_evidence_known(ledger, evidence@) {
++                        assert(model::ledger_contains(
++                            ledger.spec_entries(),
++                            evidence@[index as int].spec_binding().spec_requirement_id(),
++                        ));
++                    }
++                }
++                return Err(ObligationError::requirement(
++                    ObligationErrorKind::UnknownRequirement,
++                    id,
++                ));
++            },
++            Some(_entry) => {
++                assert(model::requirement_key(_entry.spec_id()) == model::requirement_key(id));
++                assert(model::ledger_contains(ledger.spec_entries(), id)) by {
++                    let witness = choose |witness: int| 0 <= witness < ledger.spec_entries().len()
++                        && #[trigger] ledger.spec_entries()[witness].spec_same_content(_entry);
++                    assert(model::requirement_key(ledger.spec_entries()[witness].spec_id())
++                        == model::requirement_key(_entry.spec_id()));
++                };
++            },
++        }
++        index += 1;
++    }
++    assert(model::all_evidence_known(ledger, evidence@));
++    Ok(())
++}
++
++} // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/qualification/verdict.rs
+@@ -0,0 +1,308 @@
++//! Verified lookups, required-path checks, and typed evidence verdicts.
++
++use super::EvidenceVerdict;
++#[cfg(verus_only)]
++use super::model;
++use crate::{
++    ConditionId, ConditionObservation, ConditionState, ObligationSpec, RequirementEntry,
++    RequirementEvidence, RequirementLedger,
++};
++use core::cmp::Ordering;
++use peritus_run_settlement::CandidateIdentity;
++use peritus_spec::RequirementId;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn condition_state(
++    conditions: &[ConditionObservation],
++    id: ConditionId,
++) -> (state: Option<ConditionState>)
++    requires crate::order::ordered(model::condition_keys(conditions@)),
++    ensures state == model::supplied_condition_state(conditions@, id),
++{
++    let mut low = 0usize;
++    let mut high = conditions.len();
++    while low < high
++        invariant
++            low <= high <= conditions@.len(),
++            crate::order::ordered(model::condition_keys(conditions@)),
++            forall |key_index: int| 0 <= key_index < conditions@.len() ==>
++                #[trigger] model::condition_keys(conditions@)[key_index].len() == 32,
++            forall |prior: int| 0 <= prior < low ==>
++                model::condition_key(#[trigger] conditions@[prior].spec_condition_id())
++                    != model::condition_key(id),
++            forall |later: int| high <= later < conditions@.len() ==>
++                model::condition_key(#[trigger] conditions@[later].spec_condition_id())
++                    != model::condition_key(id),
++        decreases high - low,
++    {
++        let middle = low + (high - low) / 2;
++        assert(low <= middle < high);
++        let order = crate::order::compare(
++            conditions[middle].condition_id().digest().as_bytes(),
++            id.digest().as_bytes(),
++        );
++        match order {
++            Ordering::Equal => {
++                proof {
++                    let selected = choose |selected: int| 0 <= selected < conditions@.len()
++                        && model::condition_key(
++                            #[trigger] conditions@[selected].spec_condition_id())
++                            == model::condition_key(id);
++                    assert(model::condition_key(conditions@[selected].spec_condition_id())
++                        == model::condition_key(
++                            conditions@[middle as int].spec_condition_id()));
++                    model::ordered_matching_index_unique(
++                        model::condition_keys(conditions@), selected, middle as int);
++                    assert(model::condition_index(conditions@, id) == Some(middle as int));
++                }
++                return Some(conditions[middle].state());
++            },
++            Ordering::Less => {
++                proof {
++                    crate::order::less_eliminates_through(
++                        model::condition_keys(conditions@),
++                        model::condition_key(id),
++                        32,
++                        middle as int,
++                    );
++                    assert forall |prior: int| 0 <= prior <= middle implies
++                        model::condition_key(
++                            #[trigger] conditions@[prior].spec_condition_id())
++                            != model::condition_key(id) by {
++                        assert(model::condition_keys(conditions@)[prior]
++                            == model::condition_key(
++                                conditions@[prior].spec_condition_id()));
++                    }
++                }
++                low = middle + 1;
++            },
++            Ordering::Greater => {
++                proof {
++                    crate::order::greater_eliminates_from(
++                        model::condition_keys(conditions@),
++                        model::condition_key(id),
++                        32,
++                        middle as int,
++                    );
++                    assert forall |later: int| middle <= later < conditions@.len() implies
++                        model::condition_key(
++                            #[trigger] conditions@[later].spec_condition_id())
++                            != model::condition_key(id) by {
++                        assert(model::condition_keys(conditions@)[later]
++                            == model::condition_key(
++                                conditions@[later].spec_condition_id()));
++                    }
++                }
++                high = middle;
++            },
++        }
++    }
++    assert(model::condition_index(conditions@, id).is_none());
++    None
++}
++
++fn evidence_index(
++    evidence: &[RequirementEvidence],
++    id: RequirementId,
++) -> (result: Option<usize>)
++    requires crate::order::ordered(model::evidence_keys(evidence@)),
++    ensures match result {
++        Some(index) => model::evidence_index(evidence@, id) == Some(index as int),
++        None => model::evidence_index(evidence@, id).is_none(),
++    },
++{
++    let mut low = 0usize;
++    let mut high = evidence.len();
++    while low < high
++        invariant
++            low <= high <= evidence@.len(),
++            crate::order::ordered(model::evidence_keys(evidence@)),
++            forall |key_index: int| 0 <= key_index < evidence@.len() ==>
++                #[trigger] model::evidence_keys(evidence@)[key_index].len() == 32,
++            forall |prior: int| 0 <= prior < low ==>
++                model::requirement_key(
++                    #[trigger] evidence@[prior].spec_binding().spec_requirement_id())
++                    != model::requirement_key(id),
++            forall |later: int| high <= later < evidence@.len() ==>
++                model::requirement_key(
++                    #[trigger] evidence@[later].spec_binding().spec_requirement_id())
++                    != model::requirement_key(id),
++        decreases high - low,
++    {
++        let middle = low + (high - low) / 2;
++        assert(low <= middle < high);
++        let order = crate::order::compare(
++            evidence[middle].requirement_id().digest().as_bytes(),
++            id.digest().as_bytes(),
++        );
++        match order {
++            Ordering::Equal => {
++                proof {
++                    let selected = choose |selected: int| 0 <= selected < evidence@.len()
++                        && model::requirement_key(
++                            #[trigger] evidence@[selected].spec_binding().spec_requirement_id())
++                            == model::requirement_key(id);
++                    assert(model::requirement_key(
++                        evidence@[selected].spec_binding().spec_requirement_id())
++                        == model::requirement_key(
++                            evidence@[middle as int].spec_binding().spec_requirement_id()));
++                    model::ordered_matching_index_unique(
++                        model::evidence_keys(evidence@), selected, middle as int);
++                    assert(model::evidence_index(evidence@, id) == Some(middle as int));
++                }
++                return Some(middle);
++            },
++            Ordering::Less => {
++                proof {
++                    crate::order::less_eliminates_through(
++                        model::evidence_keys(evidence@),
++                        model::requirement_key(id),
++                        32,
++                        middle as int,
++                    );
++                    assert forall |prior: int| 0 <= prior <= middle implies
++                        model::requirement_key(
++                            #[trigger] evidence@[prior]
++                                .spec_binding().spec_requirement_id())
++                            != model::requirement_key(id) by {
++                        assert(model::evidence_keys(evidence@)[prior]
++                            == model::requirement_key(
++                                evidence@[prior].spec_binding().spec_requirement_id()));
++                    }
++                }
++                low = middle + 1;
++            },
++            Ordering::Greater => {
++                proof {
++                    crate::order::greater_eliminates_from(
++                        model::evidence_keys(evidence@),
++                        model::requirement_key(id),
++                        32,
++                        middle as int,
++                    );
++                    assert forall |later: int| middle <= later < evidence@.len() implies
++                        model::requirement_key(
++                            #[trigger] evidence@[later]
++                                .spec_binding().spec_requirement_id())
++                            != model::requirement_key(id) by {
++                        assert(model::evidence_keys(evidence@)[later]
++                            == model::requirement_key(
++                                evidence@[later].spec_binding().spec_requirement_id()));
++                    }
++                }
++                high = middle;
++            },
++        }
++    }
++    assert(model::evidence_index(evidence@, id).is_none());
++    None
++}
++
++fn required_paths_current(
++    entry: &RequirementEntry,
++    evidence: &RequirementEvidence,
++) -> (current: bool)
++    ensures current == model::required_paths_current(entry, evidence),
++{
++    let paths = entry.paths();
++    let mut index = 0;
++    while index < paths.len()
++        invariant
++            paths@ == entry.spec_paths(),
++            index <= paths@.len(),
++            forall |prior: int| 0 <= prior < index
++                && #[trigger] paths@[prior].spec_role().spec_requires_candidate_evidence() ==>
++                    evidence.spec_binding().spec_contains_path(paths@[prior].spec_id()),
++        decreases paths.len() - index,
++    {
++        if paths[index].role().requires_candidate_evidence()
++            && !evidence.binding().contains_path(paths[index].id())
++        {
++            assert(!model::required_paths_current(entry, evidence)) by {
++                if model::required_paths_current(entry, evidence) {
++                    assert(evidence.spec_binding().spec_contains_path(paths@[index as int].spec_id()));
++                }
++            }
++            return false;
++        }
++        index += 1;
++    }
++    true
++}
++
++fn typed_evidence_satisfied(
++    entry: &RequirementEntry,
++    evidence: &RequirementEvidence,
++) -> (satisfied: bool)
++    ensures satisfied == model::typed_evidence_satisfied(entry, evidence),
++{
++    match (entry.specification(), evidence) {
++        (
++            ObligationSpec::Hard
++            | ObligationSpec::Conditional { .. }
++            | ObligationSpec::Alternative { .. }
++            | ObligationSpec::GeneratedOutput,
++            RequirementEvidence::Direct(value),
++        ) => value.satisfied(),
++        (ObligationSpec::Performance(requirement), RequirementEvidence::Performance(value)) => {
++            value.satisfies(*requirement)
++        },
++        (ObligationSpec::LifecycleIngress(requirement), RequirementEvidence::Lifecycle(value)) => {
++            value.satisfies(*requirement)
++        },
++        (
++            ObligationSpec::RequestSchema(requirement)
++            | ObligationSpec::ResponseSchema(requirement),
++            RequirementEvidence::Schema(value),
++        ) => value.covers(requirement),
++        (ObligationSpec::BrowserSemantics(requirement), RequirementEvidence::Browser(value)) => {
++            value.satisfies(*requirement)
++        },
++        (
++            ObligationSpec::ExternalEffect { effect_identity },
++            RequirementEvidence::ExternalEffect(value),
++        ) => value.satisfies(*effect_identity),
++        (ObligationSpec::Example, _) => true,
++        _ => false,
++    }
++}
++
++fn verdict_for_value(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entry: &RequirementEntry,
++    evidence: &RequirementEvidence,
++) -> (verdict: EvidenceVerdict)
++    ensures verdict == model::evidence_verdict(ledger, candidate, entry, Some(*evidence)),
++{
++    if !evidence.binding().is_current_for(entry.id(), ledger.digest(), candidate) {
++        return EvidenceVerdict::Stale;
++    }
++    if !required_paths_current(entry, evidence) {
++        return EvidenceVerdict::Invalid;
++    }
++    if typed_evidence_satisfied(entry, evidence) {
++        EvidenceVerdict::Satisfied
++    } else {
++        EvidenceVerdict::Invalid
++    }
++}
++
++pub(super) fn evidence_verdict(
++    ledger: &RequirementLedger,
++    candidate: &CandidateIdentity,
++    entry: &RequirementEntry,
++    evidence: &[RequirementEvidence],
++) -> (verdict: EvidenceVerdict)
++    requires crate::order::ordered(model::evidence_keys(evidence@)),
++    ensures verdict == model::supplied_evidence_verdict(ledger, candidate, entry, evidence@),
++{
++    let Some(index) = evidence_index(evidence, entry.id()) else {
++        return EvidenceVerdict::Missing;
++    };
++    verdict_for_value(ledger, candidate, entry, &evidence[index])
++}
++
++} // verus!
+--- a/crates/orchestration/peritus-obligations/src/requirement.rs
++++ b/crates/orchestration/peritus-obligations/src/requirement.rs
+@@ -114,6 +114,22 @@
+             _ => Ok(()),
+         }
+     }
++
++    pub(crate) proof fn same_content_preserves_valid(&self, other: &Self)
++        requires self.spec_same_content(other), self.spec_valid(),
++        ensures other.spec_valid(),
++    {
++        match (self, other) {
++            (Self::RequestSchema(_), Self::RequestSchema(_)) => {},
++            (Self::ResponseSchema(_), Self::ResponseSchema(_)) => {},
++            _ => {},
++        }
++    }
++
++    pub(crate) proof fn same_content_reflexive(&self)
++        ensures self.spec_same_content(self),
++    {
++    }
+ }
+ 
+ /// One exact public clause and its enforceable obligation shape.
+@@ -151,6 +167,35 @@
+             && self.spec_clause().spec_same_content(&other.spec_clause())
+             && self.spec_specification().spec_same_content(&other.spec_specification())
+             && PathMention::sequence_same_content(self.spec_paths(), other.spec_paths())
++    }
++
++    /// Complete semantic equality in the same sequence order.
++    pub open spec fn sequence_same_content(
++        left: Seq<Self>,
++        right: Seq<Self>,
++    ) -> bool {
++        left.len() == right.len() && forall |index: int| 0 <= index < left.len() ==>
++            #[trigger] left[index].spec_same_content(&right[index])
++    }
++
++    pub(crate) proof fn same_content_preserves_valid(&self, other: &Self)
++        requires self.spec_same_content(other), self.spec_valid(),
++        ensures other.spec_valid(),
++    {
++        self.spec_specification().same_content_preserves_valid(&other.spec_specification());
++        assert(PathMention::keys(self.spec_paths()) =~= PathMention::keys(other.spec_paths())) by {
++            assert forall |index: int| 0 <= index < self.spec_paths().len() implies
++                #[trigger] PathMention::keys(self.spec_paths())[index]
++                    == #[trigger] PathMention::keys(other.spec_paths())[index] by {
++                assert(self.spec_paths()[index].spec_same_content(&other.spec_paths()[index]));
++            }
++        }
++    }
++
++    pub(crate) proof fn entry_same_content_reflexive(&self)
++        ensures self.spec_same_content(self),
++    {
++        self.spec_specification().same_content_reflexive();
+     }
+ 
+     pub(crate) fn new(
+@@ -247,4 +292,26 @@
+     }
+ }
+ 
++
++impl RequirementEntry {
++    pub(crate) fn clone_sequence(entries: &[Self]) -> (result: Vec<Self>)
++        ensures Self::sequence_same_content(entries@, result@),
++    {
++        let mut result = Vec::with_capacity(entries.len());
++        let mut index = 0;
++        while index < entries.len()
++            invariant
++                index <= entries.len(),
++                result@.len() == index,
++                forall |prior: int| 0 <= prior < index ==>
++                    #[trigger] entries@[prior].spec_same_content(&result@[prior]),
++            decreases entries.len() - index,
++        {
++            result.push(entries[index].clone());
++            index += 1;
++        }
++        result
++    }
++}
++
+ } // verus!
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/tests/canonical_encoding.rs
+@@ -0,0 +1,127 @@
++//! Compatibility regression for the public ledger digest preimage.
++
++mod support;
++
++use peritus_obligations::{
++    AlternativeBranchId, AlternativeGroupId, BrowserRequirement, ConditionId, LifecycleRequirement,
++    ObligationLimits, ObligationSpec, PathMention, PathRole, PerformanceExpectation,
++    PerformanceRequirement, PerformanceStatistic, SchemaDirection, SchemaField, SchemaFieldId,
++    SchemaRequirement,
++};
++use support::{digest, ledger, path_id};
++
++fn schema_field(identity: u8, name: &[u8]) -> SchemaField {
++    SchemaField::new(
++        SchemaFieldId::new(digest(identity)),
++        name.to_vec(),
++        ObligationLimits::production().max_clause_bytes(),
++    )
++    .expect("bounded schema field")
++}
++
++fn path(identity: u8, exact: &[u8], role: PathRole) -> PathMention {
++    PathMention::new(
++        path_id(identity),
++        exact.to_vec(),
++        role,
++        ObligationLimits::production().max_clause_bytes(),
++    )
++    .expect("bounded path")
++}
++
++#[test]
++fn public_extraction_retains_the_existing_canonical_digest() {
++    let limits = ObligationLimits::production();
++    let group = AlternativeGroupId::new(digest(13));
++    let request = SchemaRequirement::new(
++        SchemaDirection::Request,
++        vec![schema_field(21, b"alpha"), schema_field(22, &[0xff, b'b'])],
++        limits,
++    )
++    .expect("request schema");
++    let response =
++        SchemaRequirement::new(SchemaDirection::Response, vec![schema_field(23, b"omega")], limits)
++            .expect("response schema");
++    let performance = PerformanceRequirement::new(
++        digest(16),
++        PerformanceStatistic::Percentile99,
++        7,
++        PerformanceExpectation::ImprovementAtLeast(123_456_789),
++    )
++    .expect("performance requirement");
++    let ledger = ledger(vec![
++        (
++            1,
++            b"hard\0binary",
++            ObligationSpec::Hard,
++            vec![
++                path(1, b"out/result", PathRole::RequiredOutput),
++                path(2, b"src/input", PathRole::RequiredModification),
++                path(3, b"config/input", PathRole::RequiredInput),
++                path(4, b"docs/reference", PathRole::Reference),
++                path(5, b"examples/sample", PathRole::Example),
++            ],
++        ),
++        (
++            2,
++            b"conditional",
++            ObligationSpec::Conditional { condition_id: ConditionId::new(digest(12)) },
++            Vec::new(),
++        ),
++        (
++            3,
++            b"alternative-a",
++            ObligationSpec::Alternative {
++                group_id: group,
++                branch_id: AlternativeBranchId::new(digest(14)),
++            },
++            Vec::new(),
++        ),
++        (
++            4,
++            b"alternative-b",
++            ObligationSpec::Alternative {
++                group_id: group,
++                branch_id: AlternativeBranchId::new(digest(15)),
++            },
++            Vec::new(),
++        ),
++        (5, b"example", ObligationSpec::Example, Vec::new()),
++        (6, b"generated", ObligationSpec::GeneratedOutput, Vec::new()),
++        (7, b"performance", ObligationSpec::Performance(performance), Vec::new()),
++        (
++            8,
++            b"lifecycle",
++            ObligationSpec::LifecycleIngress(LifecycleRequirement::new(
++                digest(17),
++                digest(18),
++                digest(19),
++                digest(20),
++            )),
++            Vec::new(),
++        ),
++        (9, b"request-schema", ObligationSpec::RequestSchema(request), Vec::new()),
++        (10, b"response-schema", ObligationSpec::ResponseSchema(response), Vec::new()),
++        (
++            11,
++            b"browser",
++            ObligationSpec::BrowserSemantics(BrowserRequirement::new(digest(24))),
++            Vec::new(),
++        ),
++        (
++            12,
++            b"external-effect",
++            ObligationSpec::ExternalEffect { effect_identity: digest(25) },
++            Vec::new(),
++        ),
++    ]);
++
++    assert_eq!(
++        ledger.digest().as_bytes(),
++        &[
++            0x73, 0xee, 0x3a, 0x1d, 0x6b, 0x4f, 0x33, 0x16, 0x6b, 0x98, 0xbd, 0xe4, 0x8c, 0xf3,
++            0x7f, 0x7f, 0xaf, 0x90, 0xf3, 0xcf, 0xfa, 0xe7, 0x76, 0xe9, 0xed, 0x4f, 0x92, 0x9b,
++            0xa2, 0x06, 0xb8, 0xa4,
++        ]
++    );
++}
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/tests/ledger_qualification_correspondence.rs
+@@ -0,0 +1,206 @@
++//! Production-boundary regressions for exact ledger extraction and qualification accounting.
++
++mod support;
++
++use peritus_obligations::{
++    AlternativeBranchId, AlternativeGroupId, ConditionId, ConditionObservation, ConditionState,
++    DirectEvidence, EvidenceBinding, ObligationErrorKind, ObligationLimits, ObligationSpec,
++    PathMention, PathRole, PublicTaskSource, QualificationReport, RequirementDraft,
++    RequirementEvidence, RequirementLedger, qualify,
++};
++use peritus_spec::RequirementId;
++use peritus_types::Sha256Digest;
++use support::{binding, candidate, digest, ledger, path_id, requirement_id};
++
++const fn trailing_id(last: u8) -> RequirementId {
++    let mut bytes = [0; 32];
++    bytes[31] = last;
++    RequirementId::new(Sha256Digest::new(bytes))
++}
++
++fn direct(
++    ledger: &RequirementLedger,
++    candidate: peritus_run_settlement::CandidateIdentity,
++    requirement: u8,
++    paths: Vec<peritus_obligations::PathId>,
++    satisfied: bool,
++) -> RequirementEvidence {
++    RequirementEvidence::Direct(DirectEvidence::new(
++        binding(ledger, candidate, requirement, paths, requirement.wrapping_add(90)),
++        satisfied,
++    ))
++}
++
++fn assert_report_copy(report: &QualificationReport) {
++    let copy = report.clone();
++    assert_eq!(copy, *report);
++    assert_eq!(copy.unsatisfied_requirements(), report.unsatisfied_requirements());
++    assert_eq!(copy.unresolved_conditions(), report.unresolved_conditions());
++    assert_eq!(copy.incomplete_alternatives(), report.incomplete_alternatives());
++}
++
++#[test]
++fn extraction_copies_binary_spans_and_matches_the_complete_identity() {
++    let limits = ObligationLimits::production();
++    let source =
++        PublicTaskSource::new(vec![9, 0, 0xff, 8, 0x80, 1], 41, limits).expect("binary source");
++    let first = trailing_id(1);
++    let second = trailing_id(2);
++    let drafts = vec![
++        RequirementDraft::new(first, 1, 3, ObligationSpec::Hard, Vec::new()),
++        RequirementDraft::new(second, 4, 6, ObligationSpec::GeneratedOutput, Vec::new()),
++    ];
++
++    let ledger = RequirementLedger::extract(&source, drafts, limits).expect("exact extraction");
++    assert_eq!(ledger.entries().len(), 2);
++    assert_eq!(ledger.entry(first).expect("first identity").clause().exact(), &[0, 0xff]);
++    assert_eq!(ledger.entry(second).expect("second identity").clause().exact(), &[0x80, 1]);
++    assert!(ledger.entry(trailing_id(0)).is_none());
++    assert!(ledger.entry(trailing_id(3)).is_none());
++
++    for (ordinal, entry) in ledger.entries().iter().enumerate() {
++        let provenance = entry.clause().provenance();
++        assert_eq!(provenance.source_digest(), source.digest());
++        assert_eq!(provenance.conversation_revision(), 41);
++        assert_eq!(provenance.ordinal(), u32::try_from(ordinal).expect("two entries"));
++    }
++    assert_eq!(ledger.clone(), ledger);
++}
++
++#[test]
++fn qualification_report_partitions_actual_verdicts_and_alternative_completion() {
++    let condition = ConditionId::new(digest(40));
++    let group = AlternativeGroupId::new(digest(50));
++    let branch_a = AlternativeBranchId::new(digest(51));
++    let branch_b = AlternativeBranchId::new(digest(52));
++    let required_output =
++        PathMention::new(path_id(61), b"dist/result.bin".to_vec(), PathRole::RequiredOutput, 128)
++            .expect("required output");
++    let ledger = ledger(vec![
++        (1, b"Missing ordinary evidence.", ObligationSpec::Hard, Vec::new()),
++        (2, b"Stale ordinary evidence.", ObligationSpec::Hard, Vec::new()),
++        (
++            3,
++            b"Current evidence must name the candidate output.",
++            ObligationSpec::GeneratedOutput,
++            vec![required_output],
++        ),
++        (
++            4,
++            b"An unresolved condition remains fail closed.",
++            ObligationSpec::Conditional { condition_id: condition },
++            Vec::new(),
++        ),
++        (
++            5,
++            b"Alternative branch A.",
++            ObligationSpec::Alternative { group_id: group, branch_id: branch_a },
++            Vec::new(),
++        ),
++        (
++            6,
++            b"Alternative branch B.",
++            ObligationSpec::Alternative { group_id: group, branch_id: branch_b },
++            Vec::new(),
++        ),
++    ]);
++    let current_candidate = candidate(11, 7, 2);
++    let evidence = vec![
++        direct(&ledger, candidate(10, 7, 1), 2, Vec::new(), true),
++        direct(&ledger, current_candidate, 3, Vec::new(), true),
++        direct(&ledger, current_candidate, 6, Vec::new(), true),
++    ];
++    let conditions = [ConditionObservation::new(condition, ConditionState::Unknown, digest(70))];
++
++    let report = qualify(&ledger, &current_candidate, &conditions, &evidence)
++        .expect("canonical supplied inputs");
++    assert!(!report.qualified());
++    assert_eq!(report.required_count(), 4);
++    assert_eq!(report.satisfied_count(), 1);
++    assert_eq!(report.missing_count(), 1);
++    assert_eq!(report.stale_count(), 1);
++    assert_eq!(report.invalid_count(), 1);
++    assert_eq!(
++        report.unsatisfied_requirements(),
++        &[requirement_id(1), requirement_id(2), requirement_id(3)]
++    );
++    assert_eq!(report.unresolved_conditions(), &[condition]);
++    assert!(report.incomplete_alternatives().is_empty());
++    assert_report_copy(&report);
++}
++
++#[test]
++fn qualification_rejects_inputs_in_the_existing_public_error_order() {
++    let ledger = ledger(vec![(1, b"One hard requirement.", ObligationSpec::Hard, Vec::new())]);
++    let candidate = candidate(11, 7, 2);
++    let descending_conditions = [
++        ConditionObservation::new(ConditionId::new(digest(2)), ConditionState::Holds, digest(20)),
++        ConditionObservation::new(ConditionId::new(digest(1)), ConditionState::Holds, digest(21)),
++    ];
++    let unknown = RequirementEvidence::Direct(DirectEvidence::new(
++        EvidenceBinding::new(
++            requirement_id(9),
++            ledger.digest(),
++            candidate,
++            digest(99),
++            Vec::new(),
++            ledger.limits(),
++        )
++        .expect("unknown binding"),
++        true,
++    ));
++    let condition_error =
++        qualify(&ledger, &candidate, &descending_conditions, core::slice::from_ref(&unknown))
++            .expect_err("condition ordering is checked first");
++    assert_eq!(condition_error.kind(), ObligationErrorKind::NonCanonicalOrder);
++
++    let duplicate = direct(&ledger, candidate, 1, Vec::new(), true);
++    let duplicate_error = qualify(&ledger, &candidate, &[], &[duplicate.clone(), duplicate])
++        .expect_err("duplicate evidence");
++    assert_eq!(duplicate_error.kind(), ObligationErrorKind::DuplicateValue);
++
++    let unknown_error =
++        qualify(&ledger, &candidate, &[], &[unknown]).expect_err("unknown evidence identity");
++    assert_eq!(unknown_error.kind(), ObligationErrorKind::UnknownRequirement);
++    assert_eq!(unknown_error.requirement_id(), Some(requirement_id(9)));
++}
++
++#[test]
++fn incomplete_alternative_groups_keep_first_ledger_occurrence_order() {
++    let group_late = AlternativeGroupId::new(digest(82));
++    let group_early = AlternativeGroupId::new(digest(81));
++    let branch_a = AlternativeBranchId::new(digest(91));
++    let branch_b = AlternativeBranchId::new(digest(92));
++    let ledger = ledger(vec![
++        (
++            1,
++            b"Late group first branch.",
++            ObligationSpec::Alternative { group_id: group_late, branch_id: branch_a },
++            Vec::new(),
++        ),
++        (
++            2,
++            b"Early group first branch.",
++            ObligationSpec::Alternative { group_id: group_early, branch_id: branch_a },
++            Vec::new(),
++        ),
++        (
++            3,
++            b"Late group second branch.",
++            ObligationSpec::Alternative { group_id: group_late, branch_id: branch_b },
++            Vec::new(),
++        ),
++        (
++            4,
++            b"Early group second branch.",
++            ObligationSpec::Alternative { group_id: group_early, branch_id: branch_b },
++            Vec::new(),
++        ),
++    ]);
++
++    let report = qualify(&ledger, &candidate(11, 7, 2), &[], &[]).expect("empty evidence report");
++    assert_eq!(report.required_count(), 2);
++    assert_eq!(report.satisfied_count(), 0);
++    assert_eq!(report.incomplete_alternatives(), &[group_late, group_early]);
++    assert_eq!((report.missing_count(), report.stale_count(), report.invalid_count()), (0, 0, 0));
++}

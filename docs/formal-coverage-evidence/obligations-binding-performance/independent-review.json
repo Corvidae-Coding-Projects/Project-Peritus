@@ -1,0 +1,55 @@
+{
+  "reviewer": "/root/sol_acceptance_completion",
+  "verdict": "PASS within the bounded checkpoint scope",
+  "reviewed_source_root": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+  "reviewed_source_manifest": {
+    "path": "/tmp/peritus-parent-obligations-checkpoint-source.sha256",
+    "sha256": "b0b43113846b3951876b5313a828403c6df3f7f314956216f76d12e8c90182d1",
+    "all_entries_independently_recomputed_and_matched": true,
+    "entries": [
+      {"sha256":"b02977d9a5161d3f6f4c8441849a3d0c9df8ef4d09fa796f145d83693ca81117","path":"crates/orchestration/peritus-obligations/src/evidence/binding.rs"},
+      {"sha256":"8265c5916689ff75e71ac74f73bec6ea597b5a5109cb4bcbb32ad89e0b688916","path":"crates/orchestration/peritus-obligations/src/evidence.rs"},
+      {"sha256":"a9b9aa885f48309495db23ddb2cc0a68c50bfdf9632e01cab27f2183aab381cc","path":"crates/orchestration/peritus-obligations/src/failure.rs"},
+      {"sha256":"9410b7eba92a92e443e6a60a11f6c278d39d77ac85424e0cbf62e96294903832","path":"crates/orchestration/peritus-obligations/src/identity.rs"},
+      {"sha256":"4e092f8960e94fab5c22d3d95c9ccd2d2343a237a0d8fdde1b0690eb813654a9","path":"crates/orchestration/peritus-obligations/src/lib.rs"},
+      {"sha256":"b754bf90139e76acc8a969d36e1297beb69c4fbfcccb90b7bbe4942f08977eb3","path":"crates/orchestration/peritus-obligations/src/limits.rs"},
+      {"sha256":"84ad4f531cd9042ea3771697586d86952e4e440e78a0fe9103c3b8605fef5ce9","path":"crates/orchestration/peritus-obligations/src/order.rs"},
+      {"sha256":"fb0857681f1298b3380573c0982d63aa84027c7e0af9215b288c7cfa98241851","path":"crates/orchestration/peritus-obligations/src/performance/model.rs"},
+      {"sha256":"730c4558785f32843262541e96b99a7339a2396f60639e704f0020219ab42912","path":"crates/orchestration/peritus-obligations/src/performance.rs"},
+      {"sha256":"424ff850876a92fd1967001db83f3eb7241106e3200c2f0c2395d9951d2e5b9b","path":"crates/orchestration/peritus-obligations/tests/evidence_binding.rs"},
+      {"sha256":"bb6ac565da7fd7e3be0452d703f4efcb9075f965dd199b47fa35a26c6429198f","path":"crates/orchestration/peritus-obligations/tests/performance_margins.rs"}
+    ]
+  },
+  "review_findings": {
+    "proved_by_reviewed_source": [
+      "EvidenceBinding construction yields the exact maximum path bound and strict full-byte path ordering; canonicality implies unique paths.",
+      "EvidenceBinding currentness exactly binds requirements, ledger, candidate lineage/content/conversation, and observation sequence at or before the current sequence.",
+      "contains_path is an exact full-digest lookup and semantic Clone retains all binding fields.",
+      "FailureDisposition exactly maps only CandidateDefect to RequestFixer and retains owner/context correspondence.",
+      "PerformanceEvidence satisfaction is an iff over exact workload, statistic, repetitions, copied threshold, and mathematical integer threshold semantics.",
+      "The Improvement branch uses full-width u128 addition on both sides, so noise greater than delta cannot erase an arbitrary regression."
+    ],
+    "nonvacuity": [
+      "The clean-base regression fails because the old saturating subtraction accepts a 900-unit regression under a ten-unit noise margin.",
+      "A negative proof tree differing only by the old Improvement arithmetic fails the threshold_met postcondition at 191 verified and 1 error, while the reviewed source verifies 192 and 0."
+    ],
+    "remaining_scope": [
+      "qualification.rs checks binding and path before type satisfaction, but this checkpoint does not prove an end-to-end qualification-loop theorem.",
+      "PerformanceEvidence::satisfies does not itself include binding currentness; the separate evidence verdict checks currentness first.",
+      "Other typed evidence correspondence remains open.",
+      "Thirteen existing non-Copy Clone warnings remain outside this bounded checkpoint."
+    ]
+  },
+  "parent_produced_evidence_inspected": [
+    {"path":"/tmp/peritus-parent-obligations-final-verus.log","sha256":"dabaff50d45937556c2506865982860c7744f9bc8dedc91f55d43830394a7c9c","reported_command":"cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20","result":"192 verified, 0 errors; 13 existing Clone warnings"},
+    {"path":"/tmp/peritus-parent-obligations-final-tests.log","sha256":"066e1c7c58200d0853d6efd8e11492aba8a8ae7e436b750557d98cf8664079c0","reported_command":"cargo test --package peritus-obligations --all-features --locked","result":"16 passed, 0 failed"},
+    {"path":"/tmp/peritus-parent-obligations-final-clippy.log","sha256":"933a48f84162abfad29502f2b6acd2240bcfcaccd74fda999b7d0e493db508a4","reported_command":"cargo clippy --package peritus-obligations --all-targets --all-features --locked -- -D warnings","result":"passed"},
+    {"path":"/tmp/peritus-parent-obligations-final-fmt.log","sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","reported_command":"cargo fmt --package peritus-obligations -- --check","result":"passed; empty log"},
+    {"path":"/tmp/peritus-parent-improvement-clean-baseline.log","sha256":"df53c004d40746b92b0b701614ac804f8c051ad5b4a20fc373ae4e6a615481db","source_root":"/tmp/peritus-parent-improvement-baseline.sa2ufbqi","result":"expected failure: improvement_noise_cannot_hide_a_large_regression exposes the old arithmetic"},
+    {"path":"/tmp/peritus-parent-obligations-negative-verus.log","sha256":"3efffd7c13b7348dcac15237a7b3e69bed84157996e3a2d96e5d15da84d8d746","source_root":"/tmp/peritus-parent-obligations-negative.qcg84gl6","negative_source_manifest_path":"/tmp/peritus-parent-obligations-negative-source.sha256","negative_source_manifest_sha256":"d764a792f8fe122d12cda2e052e8613c87a24e4ba440a64d3ed3ae0a1202b9b0","result":"191 verified, 1 error at threshold_met exact postcondition"}
+  ],
+  "independent_execution": {
+    "clean_base_regression_rerun_by_reviewer": false,
+    "note": "The reviewer inspected the parent-produced clean-base and negative-proof logs and independently reviewed source/hashes. The reviewer did not execute a separate clean-base rerun, so no reviewer command/result/log is claimed."
+  }
+}

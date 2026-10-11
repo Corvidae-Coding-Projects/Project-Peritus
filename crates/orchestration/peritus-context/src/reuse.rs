@@ -7,7 +7,7 @@ use peritus_run_knowledge::{
 };
 
 mod build;
-
+mod model;
 mod validation;
 
 #[doc = " Canonical link from one knowledge section to its exact context node."]

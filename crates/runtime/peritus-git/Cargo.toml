@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
-readme = false
+readme = "README.md"
 description = "Structured Git repository and detached-worktree operations for Project Peritus"
 keywords = ["git", "worktree", "snapshots", "formal-verification"]
 categories = ["development-tools", "filesystem"]
@@ -18,6 +18,10 @@ process-wrap.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
+
+[package.metadata.peritus]
+owner = "C1"
+layer = "runtime"
 
 [lints]
 workspace = true

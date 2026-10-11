@@ -1,0 +1,98 @@
+"""Disposable Git probes for the audit script's input and publication boundaries."""
+
+import importlib.util
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+sys.dont_write_bytecode = True
+SCRIPT = Path(__file__).with_name("reconcile.py")
+SPEC = importlib.util.spec_from_file_location("reconcile", SCRIPT)
+AUDIT = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(AUDIT)
+
+
+class ReconciliationBoundaries(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="peritus-impact-probe-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.git("init", "-q")
+        (self.root / ".gitattributes").write_text("*.txt export-subst\n")
+        (self.root / "source.txt").write_text("$Format:%H$\n")
+        self.base = self.commit()
+        (self.root / "second.txt").write_text("second source\n")
+        self.candidate = self.commit()
+
+    def git(self, *args, data=None):
+        return subprocess.run(
+            ["git", *args], cwd=self.root, input=data, check=True, capture_output=True
+        ).stdout
+
+    def commit(self):
+        self.git("add", ".gitattributes", "source.txt")
+        if (self.root / "second.txt").exists():
+            self.git("add", "second.txt")
+        self.git("-c", "user.name=Audit fixture", "-c", "user.email=fixture@example.invalid",
+                 "-c", "commit.gpgsign=false", "commit", "-qm", "fixture")
+        return self.git("rev-parse", "HEAD").decode().strip()
+
+    def invoke(self, base, output):
+        return subprocess.run(
+            [sys.executable, str(SCRIPT), "--base", base, "--candidate", self.candidate,
+             "--xtask", sys.executable, "--output", str(output)],
+            cwd=self.root, capture_output=True,
+        )
+
+    def test_materialization_preserves_raw_bytes_despite_export_substitution(self):
+        destination = self.root / "materialized"
+        destination.mkdir()
+        hashes = AUDIT.materialize(self.root, self.candidate, destination)
+        self.assertEqual((destination / "source.txt").read_bytes(), b"$Format:%H$\n")
+        self.assertEqual(hashes["source.txt"], AUDIT.digest(b"$Format:%H$\n"))
+
+    def test_full_annotated_tag_identity_is_rejected_as_a_commit(self):
+        self.git("-c", "user.name=Audit fixture", "-c", "user.email=fixture@example.invalid",
+                 "-c", "tag.gpgsign=false", "tag", "-a", "fixture", self.base, "-m", "fixture")
+        tag = self.git("rev-parse", "fixture").decode().strip()
+        result = self.invoke(tag, self.root / "output")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn(b"must name a commit directly", result.stderr)
+
+    def test_existing_output_and_symlink_are_never_overwritten(self):
+        target = self.root / "existing"
+        target.mkdir()
+        sentinel = target / "reconciliation.json"
+        sentinel.write_bytes(b"preserve me")
+        alias = self.root / "alias"
+        alias.symlink_to(target, target_is_directory=True)
+        for output in (target, alias):
+            result = self.invoke(self.base, output)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn(b"output must be a fresh path", result.stderr)
+            self.assertEqual(sentinel.read_bytes(), b"preserve me")
+
+    def test_failed_inventory_publishes_no_result_directory(self):
+        output = self.root / "output"
+        # Python is deliberately not an xtask exporter; inventory execution must fail.
+        result = self.invoke(self.base, output)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(output.exists())
+
+    def test_symlink_and_excessive_tree_entries_fail_before_materialization(self):
+        blob = self.git("hash-object", "-w", "--stdin", data=b"bytes").decode().strip()
+        for rows in (
+            f"120000 blob {blob}\tlink\n".encode(),
+            b"".join(f"100644 blob {blob}\tp{index:05d}\n".encode() for index in range(30001)),
+        ):
+            tree = self.git("mktree", data=rows).decode().strip()
+            destination = self.root / "refused"
+            with self.assertRaises(ValueError):
+                AUDIT.materialize(self.root, tree, destination)
+            self.assertFalse(destination.exists())
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

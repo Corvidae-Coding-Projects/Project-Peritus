@@ -1,0 +1,7 @@
+# peritus protocol compatibility corpus v1
+651714fe3c9c2e0bf2ffb0901e84e10aa63178ca4f5056f12881ceda906de04c  protocol/fixtures/v1/kernel-command-pause-session.bin
+3a8e061887b57c16f3b32f3d9b736977b7be90e51bbd2f3819572b6b5ce3df60  protocol/fixtures/v1/command-envelope.bin
+8dc25add5406898ca6d6708ec5f3bce670ec79d762f8bbecc8c810cdc70c0c82  protocol/fixtures/v1/budget-amounts.bin
+c95f5a343477438eafc118df6b4bca1e8d43d6ac0f2a598af01f4cd3c0aadd58  protocol/fixtures/v1/action-intent.bin
+257b1804495655c36dea1f47f5676aa702b844e51c38894b3ac8361923f90e48  protocol/fixtures/v1/policy-amendment.bin
+8bdab4beebf74ef168e079580d192eaaa4085480cb19959d9eefd5b80ddd068d  protocol/fixtures/v1/acceptance-contract.bin

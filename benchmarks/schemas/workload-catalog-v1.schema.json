@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-peritus.invalid/schemas/h3/workload-catalog-v1.json",
+  "title": "Peritus H3 workload catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workloads"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "workloads": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {"$ref": "#/$defs/workload"}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[A-Za-z0-9._-]+$"},
+    "positiveInteger": {"type": "integer", "minimum": 1},
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "description", "scenario", "duration_seconds", "operations_per_second",
+        "max_concurrency", "payload_bytes", "memory_reservation_bytes",
+        "disk_reservation_bytes", "token_reservation", "queue_capacity", "seed"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "description": {"type": "string", "minLength": 1, "maxLength": 512},
+        "scenario": {
+          "enum": [
+            "concurrent_runs", "event_append", "terminal_streaming", "memory_bounds",
+            "cancellation", "recovery", "queue_saturation", "exporter_backpressure",
+            "provider_backpressure", "token_flow", "disk_artifacts"
+          ]
+        },
+        "duration_seconds": {"$ref": "#/$defs/positiveInteger"},
+        "operations_per_second": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "max_concurrency": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "payload_bytes": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "memory_reservation_bytes": {"$ref": "#/$defs/positiveInteger"},
+        "disk_reservation_bytes": {"$ref": "#/$defs/positiveInteger"},
+        "token_reservation": {"$ref": "#/$defs/positiveInteger"},
+        "queue_capacity": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "seed": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+--- a/crates/orchestration/peritus-scheduler/src/reducer/reconstruction.rs
++++ b/crates/orchestration/peritus-scheduler/src/reducer/reconstruction.rs
+@@ -41,7 +41,7 @@
+         },
+         Event::WorkRetryQueued { work_id } => Command::RetryWork { work_id: *work_id },
+         Event::WorkCancelled { work_id, descendants, .. } => {
+-            if *descendants {
++            if !*descendants {
+                 Command::CancelWorkTree { work_id: *work_id }
+             } else {
+                 Command::CancelWork { work_id: *work_id }

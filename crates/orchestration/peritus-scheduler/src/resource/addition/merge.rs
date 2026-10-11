@@ -4,6 +4,8 @@ use std::cmp::Ordering;
 
 use crate::{ResourceEntry, ResourceVector};
 
+mod advance_proofs;
+
 pub(super) enum MergeOutcome {
     Value(Vec<ResourceEntry>),
     Overflow,

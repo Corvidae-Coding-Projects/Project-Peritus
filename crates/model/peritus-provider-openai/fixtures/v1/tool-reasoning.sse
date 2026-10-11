@@ -1,0 +1,35 @@
+event: response.created
+data: {"type":"response.created","sequence_number":1,"response":{"id":"resp_tools","model":"gpt-test","status":"in_progress"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":2,"output_index":0,"item":{"id":"reasoning_1","type":"reasoning"}}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","sequence_number":3,"item_id":"reasoning_1","output_index":0,"summary_index":0,"delta":"checked"}
+
+event: response.reasoning_summary_text.done
+data: {"type":"response.reasoning_summary_text.done","sequence_number":4,"item_id":"reasoning_1","output_index":0,"summary_index":0,"text":"checked"}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"reasoning_1","type":"reasoning","encrypted_content":"opaque-replay"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":6,"output_index":1,"item":{"id":"call_item_1","type":"function_call","call_id":"call_1","name":"lookup","arguments":""}}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":7,"item_id":"call_item_1","output_index":1,"delta":"{\"id\":"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":8,"item_id":"call_item_1","output_index":1,"delta":"\"42\"}"}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","sequence_number":9,"item_id":"call_item_1","output_index":1,"name":"lookup","arguments":"{\"id\":\"42\"}"}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":10,"output_index":1,"item":{"id":"call_item_1","type":"function_call","call_id":"call_1","name":"lookup","arguments":"{\"id\":\"42\"}"}}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":11,"response":{"id":"resp_tools","status":"completed","usage":{"input_tokens":20,"output_tokens":8,"output_tokens_details":{"reasoning_tokens":4},"total_tokens":28}}}
+
+data: [DONE]
+

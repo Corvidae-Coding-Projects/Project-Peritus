@@ -1,0 +1,32 @@
+{
+  "prior_files": 36,
+  "final_files": 51,
+  "changed_files": 21,
+  "new_files": 15,
+  "changed_paths": [
+    "crates/orchestration/peritus-obligations/src/canonical.rs",
+    "crates/orchestration/peritus-obligations/src/canonical/encode.rs",
+    "crates/orchestration/peritus-obligations/src/canonical/model.rs",
+    "crates/orchestration/peritus-obligations/src/ledger.rs",
+    "crates/orchestration/peritus-obligations/src/ledger/extraction.rs",
+    "crates/orchestration/peritus-obligations/src/ledger/model.rs",
+    "crates/orchestration/peritus-obligations/src/ledger/validation.rs",
+    "crates/orchestration/peritus-obligations/src/lib.rs",
+    "crates/orchestration/peritus-obligations/src/matching.rs",
+    "crates/orchestration/peritus-obligations/src/order.rs",
+    "crates/orchestration/peritus-obligations/src/qualification.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/evaluation.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/evaluation/alternatives.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/model.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/model/alternatives.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/model/ordinary.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/validation.rs",
+    "crates/orchestration/peritus-obligations/src/qualification/verdict.rs",
+    "crates/orchestration/peritus-obligations/src/requirement.rs",
+    "crates/orchestration/peritus-obligations/tests/canonical_encoding.rs",
+    "crates/orchestration/peritus-obligations/tests/ledger_qualification_correspondence.rs"
+  ],
+  "patch_sha256": "ee0886d2f9a3fd9ee8207ceeb2e83cdcc1037d446b14d07f3db626bb2a6e2951",
+  "changed_manifest_sha256": "0e3e35b44ada9596bb5119ac5ef6fc05e2919b752672a3a09b9eb296a7d32050",
+  "shared_preimage_checked": true
+}

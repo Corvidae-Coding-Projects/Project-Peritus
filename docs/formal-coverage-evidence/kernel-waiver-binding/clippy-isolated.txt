@@ -1,0 +1,2 @@
+    Checking peritus-kernel v0.0.2 (/tmp/peritus-sol-waiver-kernel-clone-work-20260912/crates/foundation/peritus-kernel)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.12s
