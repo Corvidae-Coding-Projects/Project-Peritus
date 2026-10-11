@@ -1,4 +1,4 @@
-name: Validate or stage Peritus release
+name: Build Peritus release packages
 
 on:
   workflow_dispatch:
@@ -494,3 +494,69 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: cargo run --locked --package xtask -- release-stage
+
+  native-package:
+    if: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v') }}
+    name: Native package (${{ matrix.target.os }})
+    runs-on: ${{ matrix.target.os }}
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { os: ubuntu-24.04, python: python3 }
+          - { os: ubuntu-24.04-arm, python: python3 }
+          - { os: macos-15, python: python3 }
+          - { os: macos-15-intel, python: python3 }
+          - { os: windows-2025, python: python }
+          - { os: windows-11-arm, python: python }
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: "1.97.1"
+      - name: Install the pinned Windows x86-64 C compiler when needed
+        if: ${{ matrix.target.os == 'windows-2025' }}
+        shell: pwsh
+        run: |
+          $compiler = Get-Command clang-cl -ErrorAction SilentlyContinue
+          if ($compiler -and ((& clang-cl --version | Select-Object -First 1) -match '^clang version 20\.1\.8(?:\s|$)')) { exit 0 }
+          $installer = Join-Path $env:RUNNER_TEMP 'LLVM-20.1.8-win64.exe'
+          Invoke-WebRequest -Uri 'https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/LLVM-20.1.8-win64.exe' -OutFile $installer
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '3197846a2b19063687dd56e93e34cd941e3548d907f23a6131571321bdf9fe7b') { throw 'LLVM installer checksum mismatch' }
+          $installation = Join-Path $env:RUNNER_TEMP 'llvm-20.1.8'
+          $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$installation") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "LLVM installer exited $($process.ExitCode)" }
+          (Join-Path $installation 'bin') | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Build native products and assemble their release archive
+        run: ${{ matrix.target.python }} packaging/native_release.py
+      - name: Generate inventory, SBOM, and provenance
+        id: evidence
+        run: cargo run --locked --package peritus-release-operator -- generate dist/peritus-native-package.json
+      - name: Attest the native package
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.evidence.outputs.archive }}
+      - name: Attest the package SBOM
+        id: sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.evidence.outputs.archive }}
+          sbom-path: ${{ steps.evidence.outputs.sbom }}
+      - name: Upload the package and release metadata to the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          cargo run --locked --package peritus-release-operator -- retain-and-upload
+          dist/peritus-native-package.json
+          "${{ steps.provenance.outputs.bundle-path }}"
+          "${{ steps.sbom.outputs.bundle-path }}"
