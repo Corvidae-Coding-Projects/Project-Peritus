@@ -60,7 +60,7 @@ pub async fn complete(
         let request = prepare_request(
             input,
             &evidence,
-            providers.current().profile().limits().max_input_tokens(),
+            providers.current().context_input_target(),
             correction.as_deref(),
             accounting.remaining(),
             memory.as_ref(),

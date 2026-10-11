@@ -112,8 +112,12 @@ impl ProductRunInput {
         role: &str,
     ) -> Result<Option<LocalContextHandle>, ProductRunnerError> {
         if self.workspace_kind.is_in_place() {
-            if role == "reviewer" {
-                Ok(None)
+            if matches!(role, "reviewer" | "designer") {
+                LocalContextHandle::open_folder_for_role(
+                    self,
+                    role,
+                    self.workspace_kind.protected_paths(),
+                )
             } else {
                 LocalContextHandle::open_folder(self, self.workspace_kind.protected_paths())
             }

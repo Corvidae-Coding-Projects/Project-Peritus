@@ -2,6 +2,7 @@
 
 mod evidence;
 mod exchanges;
+mod transport;
 mod validation;
 mod working;
 
@@ -75,7 +76,7 @@ impl LocalMemory {
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.prepare_view_with_governing(profile, tools, invocation_policy, None)
+        self.prepare_view_with_governing(profile, tools, invocation_policy, None, None)
     }
 
     pub(in crate::local_context) fn prepare_view_with_governing(
@@ -84,6 +85,7 @@ impl LocalMemory {
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
         governing_input: Option<&Message>,
+        provider: Option<&dyn peritus_provider_core::ModelProvider>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
         self.refresh()?;
         self.profile = Some(profile.clone());
@@ -111,6 +113,9 @@ impl LocalMemory {
         let (uncompacted, target) =
             self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
         evidence::append(self, &mut messages, &mut selected, tools, target)?;
+        if let Some(provider) = provider {
+            transport::fit(self, &mut messages, tools, provider)?;
+        }
         let estimated = estimate_developer_request_tokens(&messages, tools);
         selected.sort_unstable();
         selected.dedup();

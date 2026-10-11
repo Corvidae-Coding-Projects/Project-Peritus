@@ -10,7 +10,9 @@ use std::{
     time::SystemTime,
 };
 
-pub(super) const MAX_RUN_RECORD_BYTES: u64 = 16 * 1024 * 1024;
+// This bounds a metadata/activity projection, not accumulated continuation evidence.
+// Large continuation payloads are separate verified artifacts, without byte-array expansion.
+pub(super) const MAX_RUN_RECORD_BYTES: u64 = 128 * 1024 * 1024;
 
 pub(in crate::product_run) fn load_workbench_records(
     root: &Path,
@@ -62,7 +64,7 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
-        let persisted: PersistedRecord = match serde_json::from_slice(&bytes) {
+        let mut persisted: PersistedRecord = match serde_json::from_slice(&bytes) {
             Ok(persisted) => persisted,
             Err(error) => {
                 quarantine_record(
@@ -73,6 +75,27 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
+        if let Some(artifact) = persisted.resume_artifact.take() {
+            if persisted.format_version != 7 || persisted.resume_state.is_some() {
+                quarantine_record(
+                    &path,
+                    "workbench continuation has conflicting representations",
+                    None,
+                );
+                continue;
+            }
+            match super::continuation::load(&directory, &artifact) {
+                Ok(bytes) => persisted.resume_state = Some(bytes),
+                Err(error) => {
+                    quarantine_record(
+                        &path,
+                        "workbench continuation artifact is unavailable or corrupt",
+                        Some(&error),
+                    );
+                    continue;
+                }
+            }
+        }
         let operation = persisted.interaction.workbench.clone();
         if recovering
             && !matches!(

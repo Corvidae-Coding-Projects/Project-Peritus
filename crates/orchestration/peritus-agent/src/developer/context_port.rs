@@ -18,6 +18,8 @@ pub fn estimate_developer_request_tokens(messages: &[Message], tools: &[ToolDefi
 
 /// Inputs to local selection. The host must preserve current policy and protocol obligations.
 pub struct DeveloperContextAssembly<'a> {
+    /// The receiving adapter's separate transport envelope, when one exists.
+    pub provider: &'a dyn peritus_provider_core::ModelProvider,
     /// Exact replaceable user-governing projection. Preserve it as a user message, not system
     /// authority or optional archive evidence. Unincorporated revisions must not accumulate.
     pub governing_input: Option<&'a Message>,
@@ -185,6 +187,7 @@ impl ContextSession<'_> {
 
     pub(super) fn prepare(
         &mut self,
+        provider: &dyn peritus_provider_core::ModelProvider,
         messages: &mut Vec<Message>,
         tools: &[ToolDefinition],
         profile: &ProviderProfile,
@@ -194,6 +197,7 @@ impl ContextSession<'_> {
         if let Some(port) = &mut self.0 {
             let prior = estimated_request_tokens(messages, tools);
             let candidate = port.assemble(DeveloperContextAssembly {
+                provider,
                 governing_input,
                 invocation_policy,
                 messages,

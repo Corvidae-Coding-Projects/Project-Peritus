@@ -68,6 +68,7 @@ pub async fn create(
         return artifact::create(input);
     }
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
+    let memory = input.working_memory("designer")?;
     let mut invocation = 0_u32;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
@@ -112,7 +113,7 @@ pub async fn create(
                 trace_path: &input.trace_path,
                 accounting,
             },
-            None,
+            memory.as_ref(),
             input.conversation.interaction(),
             peritus_agent::DeveloperModelRole::Writer,
         )

@@ -33,7 +33,10 @@ pub(super) struct PersistedRecord {
     pub(super) progress: PersistedProgress,
     pub(super) checkpoint: Option<PersistedCheckpoint>,
     pub(super) settlement_cause: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) resume_state: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) resume_artifact: Option<super::continuation::ContinuationArtifact>,
     pub(super) remaining_work: Vec<String>,
     pub(super) interruption_cause: String,
     pub(super) candidate_actionable: bool,

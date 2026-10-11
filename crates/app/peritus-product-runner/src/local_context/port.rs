@@ -56,6 +56,14 @@ impl LocalContextHandle {
         Self::open_scoped(input, "writer", Some(protected))
     }
 
+    pub(crate) fn open_folder_for_role(
+        input: &ProductRunInput,
+        role: &str,
+        protected: &[std::path::PathBuf],
+    ) -> Result<Option<Self>, ProductRunnerError> {
+        Self::open_scoped(input, role, Some(protected))
+    }
+
     fn open_scoped(
         input: &ProductRunInput,
         role: &str,
@@ -68,10 +76,23 @@ impl LocalContextHandle {
         let harness_role = match role {
             "writer" => HarnessRole::Writer,
             "fixer" => HarnessRole::Fixer,
-            "reviewer" => HarnessRole::Reviewer,
+            "reviewer" | "designer" => HarnessRole::Reviewer,
             _ => return Err(crate::turn::developer_error(&error("unsupported local memory role"))),
         };
-        let task = ContextNodeId::new(input.run_id.into_bytes())
+        // Design is a separate read-only subtask. Its handles must never resolve in the
+        // independent review archive, even though both exclude writer-derived memory.
+        let task_bytes = if role == "designer" {
+            let mut key = b"peritus-read-only-design-context-v1".to_vec();
+            key.extend_from_slice(input.run_id.as_bytes());
+            let digest = peritus_codec::sha256(&key);
+            let mut task = [0; 16];
+            task.copy_from_slice(&digest.as_bytes()[..16]);
+            task[0] |= 1;
+            task
+        } else {
+            input.run_id.into_bytes()
+        };
+        let task = ContextNodeId::new(task_bytes)
             .map_err(|_| crate::turn::developer_error(&error("invalid logical task identity")))?;
         let binding = WorkingBinding::new(
             input.run_id,
@@ -205,6 +226,7 @@ impl DeveloperContextPort for LocalContextHandle {
             request.tools,
             Some(request.invocation_policy),
             request.governing_input,
+            Some(request.provider),
         )
     }
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {

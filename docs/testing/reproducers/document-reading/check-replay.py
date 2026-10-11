@@ -26,7 +26,7 @@ while position < len(raw):
     position += size
     if len(payload) != size:
         raise RuntimeError('Incomplete real trace frame payload')
-    if tag == 2:
+    if tag in (2, 7):  # legacy observation or scope-bound local-memory observation
         tool = json.loads(payload)
         if tool['name'] == 'workspace_read':
             reads.append({'arguments':json.loads(tool['arguments']), 'output':json.loads(tool['output']), 'is_error':tool['is_error']})

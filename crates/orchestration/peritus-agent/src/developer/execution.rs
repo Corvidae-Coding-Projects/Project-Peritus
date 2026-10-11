@@ -104,6 +104,7 @@ impl DeveloperLoop {
             let invocation_policy = invocation::policy(&request, turn, required_tool.as_deref())?;
             if context.is_local() {
                 if context.prepare(
+                    provider,
                     &mut messages,
                     &request.tools,
                     profile,

@@ -26,6 +26,7 @@ impl RetryContext<'_, '_> {
         request: &DeveloperLoopRequest,
         messages: &[Message],
         profile: &peritus_model_protocol::ProviderProfile,
+        provider: &dyn ModelProvider,
         position: (u16, ModelTurnKind, u8, Option<&str>),
         trace: &mut dyn DeveloperTrace,
     ) -> Result<Option<Vec<Message>>, DeveloperLoopError> {
@@ -37,7 +38,9 @@ impl RetryContext<'_, '_> {
         let owner = owner.ok_or_else(|| {
             DeveloperLoopError::Context("required-tool retry has no context owner".to_owned())
         })?;
-        owner.assemble(request, messages, profile, (step, attempt, required_tool), trace).map(Some)
+        owner
+            .assemble(request, messages, profile, provider, (step, attempt, required_tool), trace)
+            .map(Some)
     }
 
     fn assemble(
@@ -45,6 +48,7 @@ impl RetryContext<'_, '_> {
         request: &DeveloperLoopRequest,
         messages: &[Message],
         profile: &peritus_model_protocol::ProviderProfile,
+        provider: &dyn ModelProvider,
         position: (u16, u8, &str),
         trace: &mut dyn DeveloperTrace,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
@@ -54,6 +58,7 @@ impl RetryContext<'_, '_> {
         messages[0] = policy.clone();
         let count = if self.context.is_local() {
             u16::from(self.context.prepare(
+                provider,
                 &mut messages,
                 &request.tools,
                 profile,
@@ -124,6 +129,7 @@ pub(super) async fn complete_turn(
             request,
             messages,
             profile,
+            provider,
             (turn, kind, attempt, required_tool),
             trace,
         )? {

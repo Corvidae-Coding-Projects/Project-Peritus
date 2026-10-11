@@ -1,0 +1,102 @@
+//! Fit a known adapter envelope using retrievable prefixes of already durable observations.
+
+use super::super::{error, memory::LocalMemory, record::ArchiveKind, tools::source_handle};
+use peritus_agent::DeveloperLoopError;
+use peritus_model_protocol::{
+    CanonicalJson, ContentBlock, JsonBounds, Message, ProtocolLimits, ToolDefinition, ToolResult,
+};
+use peritus_provider_core::ModelProvider;
+
+pub(super) fn fit(
+    memory: &LocalMemory,
+    messages: &mut [Message],
+    tools: &[ToolDefinition],
+    provider: &dyn ModelProvider,
+) -> Result<(), DeveloperLoopError> {
+    if provider
+        .context_input_fits(messages, tools)
+        .map_err(|_| error("encode selected provider context projection"))?
+    {
+        return Ok(());
+    }
+    for index in 0..messages.len() {
+        for block in 0..messages[index].content().len() {
+            let ContentBlock::ToolResult(result) = &messages[index].content()[block] else {
+                continue;
+            };
+            if result.output().canonical_bytes().len() <= 4_096 {
+                continue;
+            }
+            let Some(source) = memory.sources.iter().rev().find(|source| {
+                source.kind == ArchiveKind::ToolOutput
+                    && source
+                        .call
+                        .as_ref()
+                        .is_some_and(|call| call.id == result.call_id().expose_for_wire())
+            }) else {
+                return Err(error("oversized tool view has no durable exact source"));
+            };
+            let exact = memory.artifact(source.sequence)?;
+            let exact = std::str::from_utf8(&exact)
+                .map_err(|_| error("archived JSON observation is not UTF-8"))?;
+            let original = result.clone();
+            let handle = source_handle(memory, source.sequence);
+            let mut content = messages[index].content().to_vec();
+            let role = messages[index].role();
+            let mut install = |end: usize,
+                               messages: &mut [Message]|
+             -> Result<(), DeveloperLoopError> {
+                let end = exact.floor_char_boundary(end);
+                let value = serde_json::json!({
+                    "peritus_provider_view": {
+                        "truncated": true,
+                        "reason": "The full observation exceeds this provider's submitted-turn character capacity. It is durably retained, and this is a contiguous prefix of its JSON bytes, not a complete file-read result. Retrieve the remainder with context_read using the exact source handle and next_offset; do not repeat settled effects.",
+                        "source": handle,
+                        "original_bytes": exact.len(),
+                        "visible_bytes": end,
+                        "next_offset": end,
+                        "prefix": &exact[..end],
+                    }
+                });
+                let output = CanonicalJson::parse(
+                    &value.to_string(),
+                    JsonBounds::value(ProtocolLimits::PRODUCTION),
+                )?;
+                content[block] = ContentBlock::ToolResult(ToolResult::new(
+                    original.call_id().clone(),
+                    output,
+                    original.is_error(),
+                ));
+                messages[index] = Message::new(role, content.clone(), ProtocolLimits::PRODUCTION)?;
+                Ok(())
+            };
+            install(0, messages)?;
+            if !provider
+                .context_input_fits(messages, tools)
+                .map_err(|_| error("encode selected provider context projection"))?
+            {
+                // Other oversized results must also receive explicit retrievable views.
+                continue;
+            }
+            let mut low = 0;
+            let mut high = exact.len();
+            while low < high {
+                let middle = low + (high - low).div_ceil(2);
+                install(middle, messages)?;
+                if provider
+                    .context_input_fits(messages, tools)
+                    .map_err(|_| error("encode selected provider context projection"))?
+                {
+                    low = middle;
+                } else {
+                    high = middle - 1;
+                }
+            }
+            install(low, messages)?;
+            return Ok(());
+        }
+    }
+    Err(error(
+        "current required instructions exceed the selected provider's submitted-turn capacity; use a provider that accepts larger input",
+    ))
+}

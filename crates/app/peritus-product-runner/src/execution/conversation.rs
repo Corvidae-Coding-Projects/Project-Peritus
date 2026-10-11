@@ -35,7 +35,9 @@ impl ProductRunner {
         let allow_pipeline = writable
             && mode == ConversationMode::Chat
             && input.conversation.permits_pipeline_handoff();
-        let memory = if allow_pipeline { input.working_memory("writer")? } else { None };
+        // Read-only turns also need retrievable exact observations and transport-aware views.
+        // Their separate reviewer lineage excludes writer-derived memory and workspace writes.
+        let memory = input.working_memory(if allow_pipeline { "writer" } else { "reviewer" })?;
         let mut continuing_segment = false;
         loop {
             accounting.check()?;

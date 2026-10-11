@@ -39,6 +39,18 @@ impl ModelProvider for HostedProvider {
         self.adapter.profile()
     }
 
+    fn context_input_target(&self) -> u64 {
+        self.adapter.context_input_target()
+    }
+
+    fn context_input_fits(
+        &self,
+        messages: &[peritus_model_protocol::Message],
+        tools: &[peritus_model_protocol::ToolDefinition],
+    ) -> Result<bool, ProviderCoreError> {
+        self.adapter.context_input_fits(messages, tools)
+    }
+
     fn route(&self) -> peritus_provider_core::ProviderRoute {
         peritus_provider_core::ProviderRoute::CompatibleApi
     }

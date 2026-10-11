@@ -49,8 +49,11 @@ See [computer automation](docs/computer-automation.md) for setup, capabilities, 
 
 Input-token profiles guide automatic compaction. Peritus imposes no fixed local 200,000-token
 input ceiling; the selected provider enforces its actual context capacity. Document reads
-default to 1 MiB and can request multi-megabyte pages up to protocol capacity, with complete
-returned pages delivered to the model.
+default to 1 MiB and can request multi-megabyte pages up to protocol capacity. Pages that
+fit the selected transport reach the model intact. When a result exceeds Codex's separate
+submitted-turn character limit, Peritus retains the full observation locally and supplies
+an explicitly bounded view with exact retrieval handles. Large stopped continuations are
+saved separately from their small run snapshots so history can survive restart.
 
 ## Install
 
