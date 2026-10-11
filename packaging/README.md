@@ -138,7 +138,8 @@ Debian and RPM installations use the system package manager instead, as describe
 
 ## Debian and RPM packages
 
-Releases also provide signed Debian 13 and Fedora 44 packages for x86-64 and ARM64.
+Release `0.0.5` provides signed Debian 13 and Fedora 44 packages for x86-64 and ARM64.
+Release `0.0.6` provides the six native archives; distribution packages must be built from source.
 These distribution packages have their own distribution-native library requirements;
 the glibc baseline above applies to the portable Linux archive.
 
@@ -236,28 +237,22 @@ cargo xtask product-install
 This command builds a release package and runs the same native installer.
 Rust and native build-tool installation are required only for source builds, not downloaded Peritus packages.
 
-## Package and release checks
+## Package and release builds
 
 `cargo xtask product-package` creates `dist/peritus-<platform>-<architecture>`.
 The package contains `manifest.toml`, `SHA256SUMS`, four executables, lifecycle scripts, and an inactive service template.
 
-`cargo xtask release-bootstrap-smoke` tests installation, upgrade, removal, public download, and checksum rejection.
-Native CI runs the lifecycle and all 18 H2 scenarios on each release target.
+The manually dispatched release workflow builds Linux, macOS, and Windows packages on native
+x86-64 and ARM64 runners. `packaging/native_release.py` builds the CLI, daemon, terminal interface,
+and sandbox helper, assembles their package, reads back the native executable versions, and creates
+an archive with checksums. Windows x86-64 uses pinned LLVM `clang-cl` 20.1.8 with the MSVC ABI;
+Windows binaries use deterministic final linking.
 
-Tagged release jobs build each binary on its target system.
-Windows x86-64 uses native `clang-cl` 20.1.8 for C dependencies and the MSVC ABI,
-with the locked Rust toolchain and `/Brepro` final linking. This avoids an
-observed MSVC C-code generation difference between otherwise identical SQLite
-builds. The compiler version, target and executable hash are recorded in build
-logs; unexpected compiler versions fail rather than falling back. CI also
-compares two fresh bundled SQLite compilations. Windows ARM64 retains its
-native toolchain. All six targets still require byte-identical independent
-release archives; no executable bytes are rewritten to make comparisons pass.
-They attach archives, checksums, inventories, SBOMs, provenance, and GitHub attestations to a draft release.
-Publication requires all six target archives and their evidence, plus signed
-Debian/RPM bundles and main packages for both Linux architectures.
-The publisher then attaches version-bound `install.sh` and `install.ps1` files, with checksums, before it publishes the release.
+The release operator creates the artifact inventory, SPDX SBOM, and provenance. GitHub signs the
+archive and SBOM attestations; the operator authenticates these signed artifacts and uploads them
+to the unpublished release draft. The publisher waits for all six native archives before attaching
+version-bound `install.sh` and `install.ps1` bootstraps and publishing the release.
 
-These mechanisms do not approve a production release.
-See [Release qualification](../docs/h4-release-qualification.md) for the approval requirements.
-See [Native platform qualification](../docs/h2-platform-qualification.md) for the test protocol and retained evidence.
+Only the native package job is enabled. Repository tests, formal proof tooling, and qualification
+campaigns are not run. Development behavior is exercised through the real-testing skill; the
+completed campaign is reused when the application source is unchanged.
