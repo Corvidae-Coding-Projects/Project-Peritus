@@ -35,6 +35,13 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn observation_images(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
+        self.base.observation_images(call, observation)
+    }
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.base.observe_model_context(messages)
     }

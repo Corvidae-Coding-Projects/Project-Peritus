@@ -1,6 +1,6 @@
 //! Provider-neutral adapter ownership contract.
 
-use peritus_model_protocol::{ModelRequest, ProviderProfile, ResponseId};
+use peritus_model_protocol::{Message, ModelRequest, ProviderProfile, ResponseId, ToolDefinition};
 
 use crate::{
     BoxFuture, CancellationToken, ContinuationRestoreOutcome, OwnedModelStream,
@@ -27,6 +27,25 @@ pub enum ResponseCancellationOutcome {
 pub trait ModelProvider: Send + Sync {
     /// Returns the exact profile implemented by this provider instance.
     fn profile(&self) -> &ProviderProfile;
+
+    /// Soft selection target accounting for a transport-specific input envelope.
+    /// This does not replace the model's token capacity or impose a global token ceiling.
+    fn context_input_target(&self) -> u64 {
+        self.profile().limits().max_input_tokens()
+    }
+
+    /// Whether a prospective context fits this adapter's known transport envelope.
+    /// The default leaves transport enforcement to adapters without a separate message cap.
+    ///
+    /// # Errors
+    /// Returns an encoding failure without starting a request or invoking credentials.
+    fn context_input_fits(
+        &self,
+        _messages: &[Message],
+        _tools: &[ToolDefinition],
+    ) -> Result<bool, ProviderCoreError> {
+        Ok(true)
+    }
 
     /// Explicit effort bound to this immutable selection; absent retains the caller's default.
     fn reasoning_effort(&self) -> Option<peritus_model_protocol::ReasoningEffort> {

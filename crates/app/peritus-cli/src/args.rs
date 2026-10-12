@@ -86,6 +86,16 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
     let command = parser.command("command")?;
     match command.as_str() {
         "update" => parse_update(parser),
+        "automation" => {
+            let operation = parser.command("automation operation")?;
+            let setup = match operation.as_str() {
+                "setup" => true,
+                "status" => false,
+                _ => return Err(CliError::usage("usage: peritus automation <setup|status>")),
+            };
+            parser.finish()?;
+            Ok(Command::Automation { setup })
+        }
         "providers" => {
             parser.finish()?;
             Ok(Command::Providers)

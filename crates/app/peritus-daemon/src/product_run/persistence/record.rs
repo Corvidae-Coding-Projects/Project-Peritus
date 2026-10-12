@@ -8,7 +8,7 @@ use super::{
     encode_workbench_result_value, interaction, restore_preview, restore_settlement,
 };
 
-const FORMAT_VERSION: u16 = 6;
+const FORMAT_VERSION: u16 = 7;
 
 impl PersistedRecord {
     pub(super) fn from_record(record: &RunRecord) -> Result<Self, ProductRunServiceError> {
@@ -45,6 +45,7 @@ impl PersistedRecord {
                 .map(ProductRunResume::encode_durable)
                 .transpose()
                 .map_err(|_| ProductRunServiceError::Unavailable)?,
+            resume_artifact: None,
             remaining_work: record.remaining_work.clone(),
             interruption_cause: record.interruption_cause.clone(),
             candidate_actionable: record.candidate_actionable,
@@ -95,7 +96,7 @@ impl PersistedRecord {
         // Resumable execution crosses its process boundary while decoding the continuation.
         // Terminal handoffs are reconciled later, after crash-safe commit/discard receipts have
         // been inspected against the exact identity that created them.
-        if self.format_version != FORMAT_VERSION {
+        if !matches!(self.format_version, 6 | FORMAT_VERSION) || self.resume_artifact.is_some() {
             return Err(ProductRunServiceError::InvalidMessage);
         }
         let interaction = self.interaction.restore()?;

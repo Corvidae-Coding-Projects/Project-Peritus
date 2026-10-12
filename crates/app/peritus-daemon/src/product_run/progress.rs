@@ -166,7 +166,14 @@ impl RunProgress {
         self.cached_input_tokens =
             self.cached_input_tokens.saturating_add(usage.cached_input_tokens().unwrap_or(0));
         self.output_tokens = self.output_tokens.saturating_add(usage.output_tokens().unwrap_or(0));
-        self.total_tokens = self.total_tokens.saturating_add(usage.total_tokens().unwrap_or(0));
+        let total = usage.total_tokens().unwrap_or_else(|| {
+            usage
+                .input_tokens()
+                .unwrap_or(0)
+                .saturating_add(usage.output_tokens().unwrap_or(0))
+                .saturating_add(usage.tool_tokens().unwrap_or(0))
+        });
+        self.total_tokens = self.total_tokens.saturating_add(total);
         self.provider_cost_microunits = self
             .provider_cost_microunits
             .saturating_add(usage.provider_cost_microunits().unwrap_or(0));

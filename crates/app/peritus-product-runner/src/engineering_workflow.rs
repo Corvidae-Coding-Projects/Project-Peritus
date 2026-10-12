@@ -1,11 +1,25 @@
 //! Embedded production-engineering workflow and role skills.
 
+mod computer;
 mod developer;
+mod real_testing;
 mod reviewer;
 
 // These constants mirror the adjacent Markdown artifacts. They are literal strings because this
 // formal-boundary crate intentionally rejects source-inclusion macros.
 const WORKFLOW: &str = r"# Production engineering workflow
+
+Tool execution contract: use exact paths from current workspace observations, including hyphens
+and underscores. When a planned file is missing, list its containing directory and reconcile the
+plan with the actual files instead of guessing neighboring names. Read each existing target in the
+current host invocation before editing it; prior-role reads do not grant current grounding.
+Structured program/argv commands have no shell expansion: wildcards, pipes and redirects are
+literal arguments. Discover exact dependency paths before searching them. Use an ordinary scoped
+script for compound work rather than unsupported shell command-string flags. Poll interactive
+handles before sending input, use newline delimiters for line protocols, and inspect completed
+results instead of writing to a dead handle. Use command_output for exact retained output pages;
+never repeat an effect just to obtain output. Git metadata is not a task deliverable, and a plain
+folder does not imply a Git repository. These rules do not expand tool permissions.
 
 Follow this workflow for every coding run, scaled to the requested change without dropping any
 requested behavior.
@@ -209,7 +223,7 @@ requested behavior.
 4. Make independently actionable slices own disjoint files whenever practical. Identify shared
    integration files explicitly so parallel workers do not overwrite one another.
 5. Implement the complete requested behavior with typed errors, deterministic core logic, clear
-   side-effect boundaries, and tests at the lowest useful layer. Preserve unrelated user work.
+   side-effect boundaries, and real-interface behavioral testing. Preserve unrelated user work.
    When the user requires a named acceptance command or test suite to pass, treat task-related
    failures inside the stated mutation paths and domain as actionable even when they predate the
    first edit. `Pre-existing` does not mean `out of scope`. Do not ask for permission merely because
@@ -230,8 +244,12 @@ requested behavior.
    harmful cross-input trigger. Trigger words, instruction-like grammar, quoted examples, and
    security or policy discussion are not proof by themselves. Preserve safe content and explain
    material uncertainty.
-7. Run focused checks while implementing. Independent acceptance must inspect the exact candidate,
-   enforce source layout, build the affected package, execute its tests, and run its language lint.
+7. Use the bundled real-testing skill as the default behavioral acceptance workflow. Build and
+   operate the exact candidate through its real interfaces, check independently justified expected
+   outcomes, explore relevant input and lifecycle variations, and preserve reproducible failures.
+   Compilation, startup, or a green suite alone cannot establish the requested behavior. Run an
+   existing automated check only when the user or project requires it or it adds relevant evidence,
+   and honor explicit restrictions. Do not generate unit tests or mocks merely to satisfy a ritual.
    When the user explicitly asks for regression tests or lists behaviors that tests must cover,
    maintain a requirement-to-test ledger. Give every independently observable named behavior a
    direct repository test and assertion unless an existing test already proves that exact behavior.
@@ -300,6 +318,11 @@ requested behavior.
    Use the tool protocol efficiently: issue independent reads, writes, and checks together in one
    model response when the calls have no data dependency. Do not serialize independent effects and
    spend a caller's deadline on avoidable round trips.
+   Read a required design or specification as a complete document when it fits the read budget.
+   workspace_read defaults to 1 MiB and has no default line-count cutoff; request a larger
+   max_bytes up to its advertised protocol capacity when the document needs it. Returned pages
+   reach model context intact. Follow the returned continuation cursor only when a page reports
+   omitted content; do not invent smaller line ranges for a document that can be read once.
    Constrain predictable inspection output before it enters model context. When a command queries a
    structured or network response, extract only the fields needed for the current decision. If its
    shape is not known yet, begin with keys, counts, or a bounded representative sample and then
@@ -339,16 +362,24 @@ integration points that require serialization.
 ";
 
 pub fn architect() -> String {
-    format!("Production engineering workflow:\n{WORKFLOW}\n\nArchitect skill:\n{ARCHITECT_SKILL}")
+    format!(
+        "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nArchitect skill:\n{ARCHITECT_SKILL}",
+        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL)
+    )
 }
 
 pub fn developer() -> String {
     format!(
-        "Production engineering workflow:\n{WORKFLOW}\n\nDeveloper skill:\n{}",
+        "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nDeveloper skill:\n{}",
+        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL),
         developer::SKILL
     )
 }
 
 pub fn reviewer() -> String {
-    format!("Production engineering workflow:\n{WORKFLOW}\n\nReviewer skill:\n{}", reviewer::SKILL)
+    format!(
+        "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nReviewer skill:\n{}",
+        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL),
+        reviewer::SKILL
+    )
 }

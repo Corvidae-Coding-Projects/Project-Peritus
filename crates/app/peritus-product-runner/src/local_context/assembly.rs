@@ -2,6 +2,7 @@
 
 mod evidence;
 mod exchanges;
+mod transport;
 mod validation;
 mod working;
 
@@ -57,14 +58,7 @@ impl LocalMemory {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
         messages.push(self.scope_message()?);
-        let pinned = estimate_developer_request_tokens(&messages, &self.tools);
-        if pinned >= capacity {
-            return Err(error("successor working state leaves no provider input capacity"));
-        }
         working::append_state(self, state, &mut messages, &mut selected, &self.tools, capacity)?;
-        if estimate_developer_request_tokens(&messages, &self.tools) > capacity {
-            return Err(error("successor working state exceeds complete request capacity"));
-        }
         Ok(())
     }
 
@@ -82,7 +76,7 @@ impl LocalMemory {
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.prepare_view_with_governing(profile, tools, invocation_policy, None)
+        self.prepare_view_with_governing(profile, tools, invocation_policy, None, None)
     }
 
     pub(in crate::local_context) fn prepare_view_with_governing(
@@ -91,6 +85,7 @@ impl LocalMemory {
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
         governing_input: Option<&Message>,
+        provider: Option<&dyn peritus_provider_core::ModelProvider>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
         self.refresh()?;
         self.profile = Some(profile.clone());
@@ -114,21 +109,14 @@ impl LocalMemory {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
         messages.push(self.scope_message()?);
-        let pinned_tokens = estimate_developer_request_tokens(&messages, tools);
-        if pinned_tokens >= capacity {
-            return Err(error("pinned instructions and pending operations exceed input capacity"));
-        }
         let working = working::append(self, &mut messages, &mut selected, tools, capacity)?;
-        if estimate_developer_request_tokens(&messages, tools) > capacity {
-            return Err(error("required working context exceeds complete request capacity"));
-        }
         let (uncompacted, target) =
             self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
         evidence::append(self, &mut messages, &mut selected, tools, target)?;
-        let estimated = estimate_developer_request_tokens(&messages, tools);
-        if estimated > capacity {
-            return Err(error("local view exceeds complete input request capacity"));
+        if let Some(provider) = provider {
+            transport::fit(self, &mut messages, tools, provider)?;
         }
+        let estimated = estimate_developer_request_tokens(&messages, tools);
         selected.sort_unstable();
         selected.dedup();
         let validation = self.view_validation(
@@ -181,11 +169,11 @@ impl LocalMemory {
             for previous in chosen.iter().rev() {
                 candidate.extend(exchanges::messages(previous));
             }
-            // Preserve the configured recent exchanges when they fit the active provider,
-            // so source and result reads can coexist for comparison. The soft target
-            // bounds optional retrieved evidence; the recent window and hard capacity
-            // still bound complete protocol history.
-            if estimate_developer_request_tokens(&candidate, tools) > capacity {
+            // Keep the newest complete exchange even when pinned input already exceeds
+            // the profile target. Otherwise a successful tool result could disappear
+            // before the provider sees it. Older optional exchanges use the soft budget.
+            if !chosen.is_empty() && estimate_developer_request_tokens(&candidate, tools) > capacity
+            {
                 omitted.push(group.clone());
                 continue;
             }
@@ -204,11 +192,12 @@ impl LocalMemory {
             if estimate_developer_request_tokens(&candidate, tools) <= capacity {
                 break;
             }
-            let Some(displaced) = chosen.pop() else {
-                return Err(error(
-                    "required context leaves no room to identify omitted completed tool evidence",
-                ));
-            };
+            // Keep the current exchange and the notice identifying older evidence.
+            // Actual provider capacity, rather than a fixed local number, is final.
+            if chosen.len() <= 1 {
+                break;
+            }
+            let Some(displaced) = chosen.pop() else { break };
             omitted.push(displaced);
             notice = exchanges::omission_notice(self, &omitted)
                 .map(|body| text_message(Role::User, body))

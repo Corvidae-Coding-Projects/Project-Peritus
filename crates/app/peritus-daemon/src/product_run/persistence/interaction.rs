@@ -20,6 +20,8 @@ pub(super) struct PersistedInteraction {
     public_input_count: usize,
     next_sequence: u64,
     activities: Vec<(u64, u16, String, String)>,
+    #[serde(default)]
+    observed_images: Vec<crate::product_control::ToolImageObservation>,
 }
 impl PersistedInteraction {
     pub(super) fn capture(value: &InteractionOptions) -> Self {
@@ -33,6 +35,7 @@ impl PersistedInteraction {
             incorporated: value.incorporated,
             public_input_count: value.public_input_count,
             next_sequence: value.next_sequence,
+            observed_images: value.observed_images.clone(),
             activities: value
                 .activities
                 .iter()
@@ -98,13 +101,18 @@ impl PersistedInteraction {
         value.next_sequence = self.next_sequence;
         value.incorporated = self.incorporated;
         value.public_input_count = self.public_input_count;
+        if self.observed_images.iter().any(|image| !image.valid()) {
+            return Err(invalid());
+        }
+        value.observed_images = self.observed_images;
         Ok(value)
     }
 }
 
 impl Serialize for PersistedInteraction {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("PersistedInteraction", 8)?;
+        let fields = 8 + usize::from(!self.observed_images.is_empty());
+        let mut state = serializer.serialize_struct("PersistedInteraction", fields)?;
         state.serialize_field("workbench", &self.workbench)?;
         state.serialize_field("mode", &self.mode)?;
         state.serialize_field("models", &self.models)?;
@@ -113,6 +121,9 @@ impl Serialize for PersistedInteraction {
         state.serialize_field("incorporated", &self.incorporated)?;
         state.serialize_field("next_sequence", &self.next_sequence)?;
         state.serialize_field("activities", &self.activities)?;
+        if !self.observed_images.is_empty() {
+            state.serialize_field("observed_images", &self.observed_images)?;
+        }
         state.end()
     }
 }

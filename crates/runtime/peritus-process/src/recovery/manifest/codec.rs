@@ -74,7 +74,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
         return Err(corrupt("process manifest checksum differs"));
     }
     let mut reader = Reader::new(&bytes[magic.len()..payload_end]);
-    let manifest = ExecutionManifest {
+    let mut manifest = ExecutionManifest {
         identity: decode_identity(&mut reader)?,
         action_digest: reader.digest()?,
         plan_digest: reader.digest()?,
@@ -94,8 +94,14 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
         tree_quiescent: reader.boolean()?,
         support_tasks_joined: reader.boolean()?,
         terminal_digest: reader.optional_digest()?,
-        terminal: decode_terminal_payload(&mut reader)?,
+        terminal: None,
     };
+    manifest.terminal = decode_terminal_payload(&mut reader, manifest.terminal_digest)?;
+    if let Some(terminal) = &manifest.terminal {
+        // The original payload digest was checked above. Keep the decoded representation
+        // consistent with the current encoder if a later ownership update persists it.
+        manifest.terminal_digest = Some(crate::terminal::terminal_digest(terminal)?);
+    }
     if !reader.is_empty()
         || manifest.retained_output > manifest.observed_output
         || manifest.dropped_output != manifest.observed_output - manifest.retained_output

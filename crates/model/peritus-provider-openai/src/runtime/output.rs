@@ -11,6 +11,7 @@ mod failure;
 mod selection;
 
 use failure::reported_failure;
+pub(super) use failure::reported_process_failure;
 use selection::select_turn;
 
 const MAX_JSONL_LINES: usize = 100_000;
@@ -25,11 +26,13 @@ pub enum DecodeFailure {
     Capacity,
     QuotaExhausted,
     ContextLimit,
+    InputLimit,
     Reported,
     Malformed,
     InvalidLifecycle,
     InvalidEnvelope,
     InvalidToolArguments,
+    InvalidToolArgumentsAt { call: usize, line: usize, column: usize },
     InvalidToolChoice,
     OutputLimit,
     InvalidUsage,
@@ -302,7 +305,14 @@ fn validate_turn(
             &format!("codex.tool_calls[{}].arguments_json", tool_calls.len()),
             ProtocolLimits::PRODUCTION,
         )
-        .map_err(|_| DecodeFailure::InvalidToolArguments)?
+        .map_err(|_| match serde_json::from_str::<Value>(&call.arguments_json) {
+            Err(error) => DecodeFailure::InvalidToolArgumentsAt {
+                call: tool_calls.len(),
+                line: error.line(),
+                column: error.column(),
+            },
+            Ok(_) => DecodeFailure::InvalidToolArguments,
+        })?
         .into_parts();
         repairs.extend(audit);
         tool_calls.push(RuntimeToolCall { name: call.name, arguments });

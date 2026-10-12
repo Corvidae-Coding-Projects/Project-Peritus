@@ -8,7 +8,27 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"depth":{"type":"integer","minimum":1},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"path":{"type":"string"}},"type":"object"}"#;
 const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"max_results":{"type":"integer","minimum":1},"path":{"type":"string"},"query":{"type":"string","minLength":1}},"required":["query"],"type":"object"}"#;
-const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer","minimum":1},"line_byte_offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"path":{"type":"string"},"start_line":{"type":"integer","minimum":1}},"required":["path"],"type":"object"}"#;
+fn workspace_read_schema() -> String {
+    serde_json::json!({
+        "additionalProperties": false,
+        "properties": {
+            "end_line": {"type": "integer", "minimum": 1},
+            "line_byte_offset": {"type": "integer", "minimum": 0},
+            "max_bytes": {
+                "type": "integer",
+                "default": super::DEFAULT_DOCUMENT_READ_BYTES,
+                "minimum": 256,
+                "maximum": super::inspection::MAX_DOCUMENT_READ_BYTES
+            },
+            "path": {"type": "string"},
+            "start_line": {"type": "integer", "minimum": 1}
+        },
+        "required": ["path"],
+        "type": "object"
+    })
+    .to_string()
+}
+
 const ATTACHMENT_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"attachment":{"type":"string","minLength":32,"maxLength":32},"version":{"type":"string","minLength":32,"maxLength":32},"source_sha256":{"type":"string","minLength":64,"maxLength":64},"selected_sha256":{"type":"string","minLength":64,"maxLength":64},"source_bytes":{"type":"integer","minimum":0},"range_start":{"type":"integer","minimum":0},"range_end":{"type":"integer","minimum":0},"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":4,"maximum":32768}},"required":["attachment","version","source_sha256","selected_sha256","source_bytes","range_start","range_end","offset","max_bytes"],"type":"object"}"#;
 const REVIEW_EVIDENCE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","default":16384,"minimum":1,"maximum":524288},"section":{"type":"string","default":"developer_commands","enum":["transcript","diff","gates","developer_commands","prior","correction"]}},"required":["offset","max_bytes"],"type":"object"}"#;
 const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
@@ -22,6 +42,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
 pub fn definitions_for_attachments(
     has_selected_file_attachments: bool,
 ) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    let read_schema = workspace_read_schema();
     let mut definitions = definitions_from(&[
         (
             "workspace_list",
@@ -35,8 +56,8 @@ pub fn definitions_for_attachments(
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. Pages stay within max_bytes and report the actual last displayed line. When next_line equals end_line and next_line_byte_offset is positive, continue that oversized line with the same start_line and line_byte_offset; otherwise continue at next_line with byte offset zero. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
-            WORKSPACE_READ_SCHEMA,
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default reads from line 1 through EOF within a 1 MiB response budget. Request a larger max_bytes for a larger document, up to the advertised protocol capacity. The complete returned page reaches model context without a second head/tail truncation. Pages stay within max_bytes and report the actual last displayed line. When next_line equals end_line and next_line_byte_offset is positive, continue that oversized line with the same start_line and line_byte_offset; otherwise continue at next_line with byte offset zero. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
+            &read_schema,
         ),
         (
             "attachment_read",
@@ -50,7 +71,7 @@ pub fn definitions_for_attachments(
         ),
         (
             "workspace_patch",
-            "Replace an exact text fragment in one workspace-relative file after listing the workspace and reading this exact target in the current turn. By default the old fragment must occur exactly once.",
+            "Replace an exact text fragment in one workspace-relative file after listing the workspace and reading this exact target in the current host invocation. By default the old fragment must occur exactly once.",
             r#"{"additionalProperties":false,"properties":{"new":{"type":"string"},"old":{"type":"string"},"path":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["new","old","path"],"type":"object"}"#,
         ),
         (
@@ -67,6 +88,11 @@ pub fn definitions_for_attachments(
             "command_start",
             "Start a structured command through the same C4/C2 ownership as run_command and return a stable handle immediately. Use interactive=true for programs that need terminal input; otherwise use false for a background pipe process. Follow with command_poll, command_stdin, command_resize, command_signal, command_cancel, or command_recover. The same grounding, resource, timeout, and non-destructive-command rules as run_command apply.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"columns":{"default":80,"maximum":65535,"minimum":1,"type":"integer"},"cwd":{"type":"string"},"interactive":{"default":true,"type":"boolean"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"rows":{"default":24,"maximum":65535,"minimum":1,"type":"integer"},"timeout_seconds":{"default":120,"maximum":18446744073709551,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
+        ),
+        (
+            "command_output",
+            "Read an exact bounded byte page from stdout, stderr, or terminal output of a command owned by this run, including when artifact publication failed. Never rerun a command solely to retrieve its output. Continue at next_offset until null. data is UTF-8 or hexadecimal according to encoding; offsets and returned_bytes always refer to original bytes. For interactive commands select terminal, not stdout. Output of a live process may grow between reads.",
+            r#"{"type":"object","additionalProperties":false,"properties":{"handle":{"type":"string"},"stream":{"type":"string","enum":["stdout","stderr","terminal"]},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":1,"maximum":1048576,"default":16384}},"required":["handle","stream"]}"#,
         ),
         (
             "command_poll",
@@ -99,6 +125,7 @@ pub fn definitions_for_attachments(
             COMMAND_HANDLE_SCHEMA,
         ),
     ])?;
+    definitions.extend(super::computer::definitions()?);
     if !has_selected_file_attachments {
         definitions.retain(|definition| definition.name().as_str() != "attachment_read");
     }
@@ -107,7 +134,8 @@ pub fn definitions_for_attachments(
 
 /// Returns the repository-inspection subset used by the mandatory design pass.
 pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-    definitions_from(&[
+    let read_schema = workspace_read_schema();
+    let mut definitions = definitions_from(&[
         (
             "workspace_list",
             "List files and directories below one workspace-relative path with current byte size and permission metadata. Pages stay within max_bytes; pass the full next_cursor object as cursor to continue the same path and depth. Check omissions and depth_limited before treating the listing as complete. The result reports the exact workspace_root and confirms that ordinary workspace paths are relative to it; remove that exact prefix once from absolute in-workspace paths. An exact user-named absolute directory outside the workspace is available only as read-only reference evidence.",
@@ -120,15 +148,17 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. Pages report actual end_line and next_line_byte_offset so oversized lines can resume exactly. External references are read-only.",
-            WORKSPACE_READ_SCHEMA,
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. Without end_line, read through EOF within the default 1 MiB response budget; request larger max_bytes up to the advertised protocol capacity. Returned pages reach model context intact and report actual end_line and next_line_byte_offset so oversized lines can resume exactly. External references are read-only.",
+            &read_schema,
         ),
         (
             "attachment_read",
             "Read a bounded page from the exact user-confirmed immutable attachment version and selected range listed in the governing input. Continue at next_offset; this never reopens a workspace path.",
             ATTACHMENT_READ_SCHEMA,
         ),
-    ])
+    ])?;
+    definitions.extend(super::computer::observer_definitions()?);
+    Ok(definitions)
 }
 
 /// Adds the run-scoped evidence reader available only to an independent reviewer.
@@ -145,7 +175,7 @@ pub fn reviewer_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError>
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "workspace_scope",
-        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
+        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory, build-cache tree, or Git metadata such as .git/HEAD or .git/config; these are not task deliverables.",
         r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
     )
 }
@@ -160,7 +190,7 @@ fn definitions_from(
         .collect()
 }
 
-fn definition(
+pub(super) fn definition(
     name: &str,
     description: &str,
     schema: &str,
@@ -172,6 +202,21 @@ fn definition(
         )
     } else {
         description.to_owned()
+    };
+    let description = match name {
+        "run_command" | "command_start" => format!(
+            "{description} program and args execute directly, without a shell: wildcard paths, pipes, redirects and command substitutions are literal arguments. Discover exact dependency paths with rg --files before searching them. Shell command-string flags such as bash -lc are unavailable here; for compound work use an ordinary scoped script and invoke its interpreter. A plain folder is not necessarily a Git repository; inspect before issuing Git-specific commands and do not initialize Git merely to satisfy a check. Complete stdout/stderr is retained; use command_output with the returned handle for additional byte pages."
+        ),
+        "workspace_read" | "workspace_search" => format!(
+            "{description} Use the exact spelling from observed directory entries, including hyphens versus underscores. If a file is missing, list its containing directory and use the observed path; do not repeatedly guess nearby names. Dependency sources outside the workspace are not workspace-relative tool paths; inspect authorized external dependencies using a scoped command with their observed exact paths."
+        ),
+        "workspace_write" | "workspace_patch" => format!(
+            "{description} Read every existing target in this host invocation before editing it, including documentation. If an edit is rejected for missing grounding, read that exact target, then retry with its current content; do not repeat the rejected edit unchanged."
+        ),
+        "command_stdin" => format!(
+            "{description} Poll the handle before writing. If the process has completed, inspect its result rather than sending input again. Use newline (\\n) for line-oriented input; a carriage return alone is not a pipe-protocol newline."
+        ),
+        _ => description,
     };
     Ok(ToolDefinition::new(
         ToolName::new(name.to_owned()).map_err(|error| protocol(&error))?,

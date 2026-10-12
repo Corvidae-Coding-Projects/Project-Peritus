@@ -25,6 +25,7 @@ mod interaction;
 mod preview;
 mod progress;
 use preview::restore_preview;
+mod continuation;
 mod settlement;
 mod workbench;
 pub(super) use workbench::load_workbench_records;
@@ -62,12 +63,15 @@ pub(super) fn write_record(
         ProductRunServiceError::persistence("create the workbench run directory", error)
     })?;
     let directory = workbench_directory.as_path();
-    let persisted = PersistedRecord::from_record(record)?;
-    let bytes = serde_json::to_vec_pretty(&persisted).map_err(|error| {
+    let mut persisted = PersistedRecord::from_record(record)?;
+    if let Some(bytes) = persisted.resume_state.take() {
+        persisted.resume_artifact = Some(continuation::store(directory, &bytes)?);
+    }
+    let bytes = serde_json::to_vec(&persisted).map_err(|error| {
         ProductRunServiceError::persistence("serialize the product-run record", error)
     })?;
     if bytes.len() as u64 > workbench::MAX_RUN_RECORD_BYTES {
-        return Err(ProductRunServiceError::persistence(
+        return Err(ProductRunServiceError::persistence_capacity(
             "serialize the workbench run record",
             format!(
                 "record is {} bytes; the durable limit is {} bytes",

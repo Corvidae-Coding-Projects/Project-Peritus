@@ -39,7 +39,10 @@ pub(super) fn append_state(
     messages.push(text_message(Role::User, body.clone())?);
     let framed_tokens = estimate_developer_request_tokens(messages, tools);
     messages.pop();
-    let available = capacity.saturating_sub(framed_tokens);
+    // Input-token profiles are compaction targets. Keep the separately configured
+    // working-state budget available even when required framing exceeds that target.
+    let available =
+        capacity.saturating_sub(framed_tokens).max(memory.config.working_state_max_tokens);
     let working = render_working_state_with_headroom(
         state,
         state.binding(),

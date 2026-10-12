@@ -21,6 +21,12 @@ pub(super) fn model_visible_tool_output(
     limits: ProtocolLimits,
 ) -> Result<CanonicalJson, DeveloperLoopError> {
     let output = project_command_output(tool_name, output, limits)?;
+    if matches!(tool_name, "workspace_read" | "attachment_read" | "developer_evidence_read") {
+        // These readers already return explicitly byte-bounded pages and exact
+        // continuation cursors. A second head/tail projection would discard the
+        // requested document's middle and force redundant reads.
+        return Ok(output);
+    }
     let token_budget = (provider_input_tokens / CONTEXT_FRACTION).clamp(MIN_TOKENS, MAX_TOKENS);
     let byte_budget = usize::try_from(token_budget)
         .unwrap_or(usize::MAX)

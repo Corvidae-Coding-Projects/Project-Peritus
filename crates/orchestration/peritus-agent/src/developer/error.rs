@@ -57,7 +57,7 @@ impl fmt::Display for DeveloperLoopError {
                 if let Some(status) = http_status {
                     write!(formatter, "; HTTP {status}")?;
                 }
-                write!(formatter, "). {}", failure_hint(*category))
+                write!(formatter, "). {}", failure_hint(*category, diagnostic_code))
             }
             Self::Trace(detail) => write!(formatter, "persist developer trace: {detail}"),
             Self::Context(detail) => write!(formatter, "prepare developer context: {detail}"),
@@ -95,7 +95,13 @@ impl std::error::Error for DeveloperLoopError {
     }
 }
 
-const fn failure_hint(category: peritus_model_protocol::FailureCategory) -> &'static str {
+fn failure_hint(
+    category: peritus_model_protocol::FailureCategory,
+    diagnostic_code: &str,
+) -> &'static str {
+    if diagnostic_code == "openai.codex_runtime.input_limit" {
+        return "Codex rejected the input size. Read smaller document pages or choose a provider that accepts larger requests.";
+    }
     use peritus_model_protocol::FailureCategory as Category;
     match category {
         Category::Authentication => {

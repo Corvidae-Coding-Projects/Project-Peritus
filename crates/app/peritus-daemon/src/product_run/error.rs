@@ -37,7 +37,22 @@ impl ProductRunServiceError {
             subsystem: ResponsibleSubsystem::Daemon,
             operation,
             detail: format!(
-                "{error}. Peritus stopped the run because its conversation history was not durable. Restore write access to the Peritus state directory, restart Peritus, then retry"
+                "{error}. Peritus stopped the run because its conversation history could not be saved. Check the reported storage error and available disk space or permissions before restarting and retrying"
+            ),
+        }
+    }
+
+    pub(super) fn persistence_capacity(
+        operation: &'static str,
+        error: impl std::fmt::Display,
+    ) -> Self {
+        Self::Context {
+            code: AppErrorCode::LimitExceeded,
+            retry: RetryDisposition::AfterRecovery,
+            subsystem: ResponsibleSubsystem::Daemon,
+            operation,
+            detail: format!(
+                "{error}. Peritus could not save this run's metadata projection. The existing saved record and workspace effects are retained. This is a storage-format capacity error, not evidence of lost write access"
             ),
         }
     }

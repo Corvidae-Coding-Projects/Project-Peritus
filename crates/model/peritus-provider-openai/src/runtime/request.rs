@@ -9,7 +9,34 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
-const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Continue the assistant at the end of its messages array, using the latest tool results; do not restart the initial user task. A fresh Codex process is only a transport for the next step, not a new Peritus host invocation. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. The first returned object with a nonempty tool_calls array is a suspension boundary: emit no later assistant message until Peritus supplies those host results. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
+const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Continue the assistant at the end of its messages array, using the latest tool results; do not restart the initial user task. A fresh Codex process is only a transport for the next step, not a new Peritus host invocation. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. The first returned object with a nonempty tool_calls array is a suspension boundary: emit no later assistant message until Peritus supplies those host results. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it. Encode each arguments_json as one valid JSON object serialized into a JSON string exactly once. Escape newlines, quotes, and backslashes at both JSON layers; never place literal control characters inside an arguments_json string. Match the selected host tool schema and prefer focused patches over very large source replacements.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
+
+// Codex 0.162.1 validates the sum of new-turn text characters locally, before inference.
+// Keep this transport envelope separate from model token limits and document-reader bounds.
+pub(super) const MAX_INPUT_CHARACTERS: usize = 1 << 20;
+const CONTEXT_FRAMING_RESERVE_CHARACTERS: usize = 4_096;
+
+pub(super) fn context_fits(
+    messages: &[peritus_model_protocol::Message],
+    tools: &[peritus_model_protocol::ToolDefinition],
+) -> Result<bool, ProviderCoreError> {
+    let mut images = Vec::new();
+    let messages = messages
+        .iter()
+        .map(|item| message(item, &mut images, false))
+        .collect::<Result<Vec<_>, _>>()?;
+    let tools = tools.iter().map(tool).collect::<Result<Vec<_>, _>>()?;
+    let projected =
+        object(vec![("messages", Value::Array(messages)), ("host_tools", Value::Array(tools))]);
+    let text = serde_json::to_string(&projected)
+        .map_err(|_| invalid("Codex context projection could not be encoded"))?;
+    Ok(text
+        .chars()
+        .count()
+        .saturating_add(PROMPT_PREFIX.chars().count())
+        .saturating_add(CONTEXT_FRAMING_RESERVE_CHARACTERS)
+        <= MAX_INPUT_CHARACTERS)
+}
 
 pub struct RuntimeRequest {
     pub prompt: Vec<u8>,
@@ -42,7 +69,7 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
     let messages = request
         .messages()
         .iter()
-        .map(|item| message(item, &mut images))
+        .map(|item| message(item, &mut images, true))
         .collect::<Result<Vec<_>, _>>()?;
     let tools = request.tools().iter().map(tool).collect::<Result<Vec<_>, _>>()?;
     let payload = object(vec![
@@ -113,11 +140,12 @@ const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, Provi
 fn message(
     message: &peritus_model_protocol::Message,
     images: &mut Vec<RuntimeImage>,
+    include_image_bytes: bool,
 ) -> Result<Value, ProviderCoreError> {
     let content = message
         .content()
         .iter()
-        .map(|block| content(block, images))
+        .map(|block| content(block, images, include_image_bytes))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(object(vec![
         ("role", Value::String(role_name(message.role()).to_owned())),
@@ -128,6 +156,7 @@ fn message(
 fn content(
     block: &ContentBlock,
     images: &mut Vec<RuntimeImage>,
+    include_image_bytes: bool,
 ) -> Result<Value, ProviderCoreError> {
     match block {
         ContentBlock::Text(text) | ContentBlock::Refusal(text) => Ok(object(vec![
@@ -146,7 +175,7 @@ fn content(
             ("output", json_value(result.output().canonical_bytes())?),
             ("is_error", Value::Bool(result.is_error())),
         ])),
-        ContentBlock::Image(media) => image(media, images),
+        ContentBlock::Image(media) => image(media, images, include_image_bytes),
         ContentBlock::Audio(_)
         | ContentBlock::Document(_)
         | ContentBlock::Reasoning(_)
@@ -156,7 +185,11 @@ fn content(
     }
 }
 
-fn image(media: &MediaInput, images: &mut Vec<RuntimeImage>) -> Result<Value, ProviderCoreError> {
+fn image(
+    media: &MediaInput,
+    images: &mut Vec<RuntimeImage>,
+    include_image_bytes: bool,
+) -> Result<Value, ProviderCoreError> {
     if media.kind() != MediaKind::Image {
         return Err(invalid("Codex runtime image block contains another media kind"));
     }
@@ -166,7 +199,7 @@ fn image(media: &MediaInput, images: &mut Vec<RuntimeImage>) -> Result<Value, Pr
     let index = images.len();
     images.push(RuntimeImage {
         media_type: media.media_type().as_str().to_owned(),
-        bytes: bytes.to_vec(),
+        bytes: if include_image_bytes { bytes.to_vec() } else { Vec::new() },
     });
     let digest = media
         .digest()

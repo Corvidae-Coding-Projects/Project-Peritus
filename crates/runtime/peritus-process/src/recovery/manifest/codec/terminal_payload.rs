@@ -1,5 +1,8 @@
 //! Complete terminal payload embedded in a durable manifest.
 
+use peritus_types::Sha256Digest;
+use sha2::{Digest, Sha256};
+
 use crate::{
     LifecyclePhase, ProcessError, TerminalResult,
     recovery::manifest::ExecutionManifest,
@@ -27,13 +30,21 @@ pub(super) fn encode_terminal_payload(
 
 pub(super) fn decode_terminal_payload(
     reader: &mut Reader<'_>,
+    saved_digest: Option<Sha256Digest>,
 ) -> Result<Option<TerminalResult>, ProcessError> {
     match reader.u8()? {
         0 => Ok(None),
         1 => {
             let length = usize::try_from(reader.u32()?)
                 .map_err(|_| corrupt("terminal result length is not representable"))?;
-            decode_terminal(reader.bytes(length)?).map(Some)
+            let bytes = reader.bytes(length)?;
+            // Saved results can use an older canonical format. Authenticate those exact bytes
+            // before decoding; re-encoding with the current format changes their digest.
+            let observed = Sha256Digest::new(Sha256::digest(bytes).into());
+            if saved_digest != Some(observed) {
+                return Err(corrupt("embedded terminal result checksum differs"));
+            }
+            decode_terminal(bytes).map(Some)
         }
         _ => Err(corrupt("manifest has an invalid optional terminal-result tag")),
     }

@@ -10,7 +10,7 @@ time-bound artifact task does not spend most of its deadline generating repetiti
 Both paths cover acceptance, findings, architecture, data flow, file plan, implementation slices,
 verification, and explicit risks or non-goals. The adapter then joins:
 
-- embedded production-engineering, architect, developer, and reviewer workflow skills;
+- embedded production-engineering, architect, developer, reviewer, and real-testing workflow skills;
 - the `peritus-agent` D0 provider/tool loop for real inspect, search, edit, command, test, and retry,
   with unread existing files protected from mutation and recoverable malformed, transport, and
   timeout terminals retried as fresh bounded provider attempts;
@@ -21,6 +21,17 @@ verification, and explicit risks or non-goals. The adapter then joins:
 - `peritus-orchestrator` fail-closed E0 accept/fix decisions; and
 - a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
   and explicit deliverable handoff consumed by the daemon.
+
+Every coding run includes the bundled [real-testing skill](skills/real-testing.md) in the design,
+writer/fixer, and reviewer prompts. Behavioral acceptance defaults to operating the actual program,
+checking independent expectations, exploring relevant inputs and lifecycle transitions, and
+preserving reproducible failures. User restrictions remain authoritative. The existing design,
+check, reviewer, and fixer stages remain in place.
+
+A changed file without an applicable executable check contract stops at check planning, retaining
+the current candidate and naming the uncovered files. Missing check support is reported as a planning prerequisite
+instead of entering speculative reviewer/fixer cycles. Existing supported checks and
+candidate-failure repair continue normally; an unsupported candidate is not reported qualified.
 
 The terminal contract is a verified `RunSettlement`, not success-or-error collapse. The runner
 records a digest-bound checkpoint after each material mutation, successful verification command,

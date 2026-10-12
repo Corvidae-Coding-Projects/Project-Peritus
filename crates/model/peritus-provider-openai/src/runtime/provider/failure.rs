@@ -56,6 +56,11 @@ pub(super) fn decode_failure(
             Retryability::Never,
             "openai.codex_runtime.context_limit",
         ),
+        DecodeFailure::InputLimit => (
+            FailureCategory::InvalidRequest,
+            Retryability::Never,
+            "openai.codex_runtime.input_limit",
+        ),
         DecodeFailure::Reported => {
             (FailureCategory::Provider, Retryability::Never, "openai.codex_runtime.reported")
         }
@@ -74,6 +79,7 @@ pub(super) fn decode_failure(
         | DecodeFailure::InvalidLifecycle
         | DecodeFailure::InvalidEnvelope
         | DecodeFailure::InvalidToolArguments
+        | DecodeFailure::InvalidToolArgumentsAt { .. }
         | DecodeFailure::InvalidToolChoice
         | DecodeFailure::OutputLimit
         | DecodeFailure::InvalidUsage
@@ -96,9 +102,15 @@ pub(super) fn decode_failure(
         ) => (TransportPhase::Completed, OutcomeCertainty::DefinitelyNotAccepted, false),
         _ => (TransportPhase::Completed, OutcomeCertainty::Terminal, false),
     };
+    let detail = match reason {
+        DecodeFailure::InvalidToolArgumentsAt { call, line, column } => {
+            format!("{code}.call_{call}.line_{line}.column_{column}")
+        }
+        _ => code.to_owned(),
+    };
     CodexRuntimeStream::failed_observed(
         model,
-        failure(provider, category, phase, certainty, retryability, code, None)?,
+        failure(provider, category, phase, certainty, retryability, &detail, None)?,
         b"openai-codex-runtime-decoding",
         partial,
         usage,
@@ -110,7 +122,9 @@ const fn decoding_code(reason: &DecodeFailure) -> &'static str {
         DecodeFailure::Malformed => "openai.codex_runtime.invalid_jsonl",
         DecodeFailure::InvalidLifecycle => "openai.codex_runtime.invalid_lifecycle",
         DecodeFailure::InvalidEnvelope => "openai.codex_runtime.invalid_envelope",
-        DecodeFailure::InvalidToolArguments => "openai.codex_runtime.invalid_tool_arguments",
+        DecodeFailure::InvalidToolArguments | DecodeFailure::InvalidToolArgumentsAt { .. } => {
+            "openai.codex_runtime.invalid_tool_arguments"
+        }
         DecodeFailure::InvalidToolChoice => "openai.codex_runtime.invalid_tool_choice",
         DecodeFailure::OutputLimit => "openai.codex_runtime.output_limit",
         DecodeFailure::InvalidUsage => "openai.codex_runtime.invalid_usage",
@@ -127,7 +141,7 @@ pub(super) fn failure(
     phase: TransportPhase,
     certainty: OutcomeCertainty,
     retryability: Retryability,
-    code: &'static str,
+    code: &str,
     retry_after_millis: Option<u64>,
 ) -> Result<ModelFailure, ProviderCoreError> {
     let diagnostic = RedactedDiagnostic::new(code.to_owned(), None, None, None).map_err(|_| {

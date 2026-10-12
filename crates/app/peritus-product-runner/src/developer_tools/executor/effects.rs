@@ -119,8 +119,17 @@ impl WorkspaceDeveloperTools {
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),
             "workspace_remove" => self.remove(arguments),
+            "computer_status" | "browser_control" | "desktop_control" | "computer_snapshot"
+            | "computer_close" | "view_image" => self.computer_tool(call, arguments),
             "run_command" => self.run_command(arguments, call.id().expose_for_wire()),
             "command_start" => self.start_command(arguments, call.id().expose_for_wire()),
+            "command_output" => {
+                self.attach_command_owner_from_handle(arguments)?;
+                self.command_runtime
+                    .as_ref()
+                    .ok_or_else(|| tool("writable tools have no command runtime"))?
+                    .read_command_output(arguments)
+            }
             "command_poll" => {
                 self.attach_command_owner_from_handle(arguments)?;
                 self.poll_command(arguments)
@@ -313,10 +322,17 @@ impl WorkspaceDeveloperTools {
                 | "command_signal"
                 | "command_cancel"
                 | "command_recover"
+                | "browser_control"
+                | "desktop_control"
         ) && result.get("success").and_then(Value::as_bool) == Some(true)
+            && accepted
             && (string(arguments, "purpose") == Some("external_effect")
                 || result.get("purpose").and_then(Value::as_str) == Some("external_effect"));
-        if workspace_mutation || external_effect {
+        let gui_progress = accepted
+            && matches!(name, "browser_control" | "desktop_control")
+            && result.get("success").and_then(Value::as_bool) == Some(true)
+            && !matches!(string(arguments, "action"), Some("list" | "evaluate"));
+        if workspace_mutation || external_effect || gui_progress {
             self.tools_without_delivery_progress = 0;
             self.progress_feedback_pending = false;
             self.progress_nudges = 0;
@@ -334,6 +350,20 @@ impl WorkspaceDeveloperTools {
     }
 
     pub(super) fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
+        if matches!(
+            name,
+            "workspace_scope"
+                | "workspace_read"
+                | "workspace_write"
+                | "workspace_patch"
+                | "workspace_remove"
+        ) {
+            self.command_evidence.record_named(
+                name,
+                &crate::developer_tools::computer::file_review_evidence(arguments),
+                &crate::developer_tools::computer::file_review_evidence(result),
+            );
+        }
         match name {
             "workspace_list"
                 if result.get("path_kind").and_then(Value::as_str)
@@ -355,6 +385,17 @@ impl WorkspaceDeveloperTools {
                 if let Some(path) = string(arguments, "path") {
                     self.grounding.record_mutation(path);
                 }
+            }
+            "browser_control" | "desktop_control" | "computer_snapshot" | "computer_close" => {
+                let mut declared = arguments.clone();
+                if declared.get("purpose").is_none() {
+                    declared["purpose"] = Value::String("verification".into());
+                }
+                self.command_evidence.record_named(
+                    name,
+                    &declared,
+                    &crate::developer_tools::computer::review_evidence(result),
+                );
             }
             "run_command" => self.command_evidence.record(arguments, result),
             _ => {}

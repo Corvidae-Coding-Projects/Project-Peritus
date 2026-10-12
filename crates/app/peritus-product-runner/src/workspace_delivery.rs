@@ -66,6 +66,7 @@ impl ProductRunInput {
     ) -> WorkspaceDeveloperTools {
         let reference_authority = self.conversation.reference_authority_context();
         tools
+            .with_computer_runtime(self.command_runtime.clone())
             .with_inspection_cancellation(
                 std::sync::Arc::clone(&self.cancelled),
                 self.provider_cancellation.clone(),
@@ -111,8 +112,12 @@ impl ProductRunInput {
         role: &str,
     ) -> Result<Option<LocalContextHandle>, ProductRunnerError> {
         if self.workspace_kind.is_in_place() {
-            if role == "reviewer" {
-                Ok(None)
+            if matches!(role, "reviewer" | "designer") {
+                LocalContextHandle::open_folder_for_role(
+                    self,
+                    role,
+                    self.workspace_kind.protected_paths(),
+                )
             } else {
                 LocalContextHandle::open_folder(self, self.workspace_kind.protected_paths())
             }

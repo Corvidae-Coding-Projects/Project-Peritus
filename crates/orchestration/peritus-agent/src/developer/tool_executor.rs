@@ -41,6 +41,18 @@ pub trait DeveloperToolExecutor: Send {
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError>;
 
+    /// Returns actual image observations associated with the completed tool result.
+    ///
+    /// Implementations must authenticate and bound the bytes before supplying them. The loop
+    /// retains these in its provider-neutral transcript rather than rendering base64 as text.
+    fn observation_images(
+        &mut self,
+        _call: &CompletedToolCall,
+        _observation: &DeveloperToolObservation,
+    ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
+        Ok(Vec::new())
+    }
+
     /// Explains why a text-only model response cannot yet complete this tool session.
     ///
     /// The developer loop feeds this reason back into the same conversation and keeps the

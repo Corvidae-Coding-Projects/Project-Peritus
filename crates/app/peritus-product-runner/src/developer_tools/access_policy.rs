@@ -121,7 +121,7 @@ impl WorkspaceAccessPolicy {
 
     pub(super) fn authorize(&self, tool: &str, arguments: &Value) -> Result<(), String> {
         match tool {
-            "workspace_list" | "workspace_search" | "workspace_read" => {
+            "workspace_list" | "workspace_search" | "workspace_read" | "view_image" => {
                 if let Some(path) = arguments.get("path").and_then(Value::as_str) {
                     self.authorize_path(path)?;
                 }
@@ -133,6 +133,11 @@ impl WorkspaceAccessPolicy {
                 }
             }
             "run_command" | "command_start" | "command_stdin" => {
+                self.authorize_command(arguments)?;
+            }
+            "browser_control" | "desktop_control" => {
+                // GUI input is an unconstrained host effect, just like a command. A live
+                // leave-alone constraint must not be bypassed through an editor window.
                 self.authorize_command(arguments)?;
             }
             _ => {}

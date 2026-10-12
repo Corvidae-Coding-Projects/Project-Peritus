@@ -26,6 +26,7 @@ COMMANDS:
   update [--enable-checks | --disable-checks]
                                Update now, or configure automatic startup checks
   providers                    Open provider settings
+  automation <setup|status>     Install or inspect browser/native automation dependencies
   workspaces                   Switch, add, trust, repair, or forget workspaces
   open [PATH] [--run ID | --conversation ID]
                                Launch PATH and select an exact run or durable conversation
@@ -85,6 +86,9 @@ pub enum Command {
     Completions(Shell),
     Update(UpdateArgs),
     Providers,
+    Automation {
+        setup: bool,
+    },
     Workspaces,
     Open {
         path: Option<PathBuf>,

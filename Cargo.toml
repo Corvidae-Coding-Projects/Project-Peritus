@@ -72,6 +72,7 @@ members = [
     "crates/observe/peritus-telemetry",
     "crates/tools/peritus-tool-protocol",
     "crates/tools/peritus-tool-router",
+    "crates/tools/peritus-tools-computer",
     "crates/tools/peritus-tools-fs",
     "crates/tools/peritus-tools-git",
     "crates/tools/peritus-tools-quality",
@@ -82,7 +83,7 @@ default-members = ["xtask"]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.6"
+version = "0.0.7"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"

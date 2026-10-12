@@ -1,0 +1,20 @@
+[package]
+name = "peritus-tools-computer"
+description = "Persistent browser and desktop automation host adapters for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+serde_json.workspace = true
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
+
+[lints]
+workspace = true

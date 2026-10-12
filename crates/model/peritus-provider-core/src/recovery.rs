@@ -110,7 +110,10 @@ impl ProviderTerminal {
                 ProviderRecoveryDisposition::TryAuthorizedFallback,
             );
         }
-        if diagnostic.contains("context_limit") || diagnostic.contains("context_overflow") {
+        if diagnostic.contains("context_limit")
+            || diagnostic.contains("context_overflow")
+            || diagnostic.contains("input_limit")
+        {
             return Self::new(
                 ProviderTerminalCause::ContextOverflow,
                 ProviderRecoveryDisposition::CompactThenRetry,

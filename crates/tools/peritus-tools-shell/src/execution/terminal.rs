@@ -25,6 +25,7 @@ pub(super) fn build(
     finished_at: AuthorityInstant,
     progress_count: u32,
     progress_truncated: bool,
+    publication_error: Option<&str>,
 ) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
     let limits = prepared.call().limits();
     let rendering = render::output(retained, limits.model_bytes(), limits.human_bytes());
@@ -61,7 +62,10 @@ pub(super) fn build(
                     subsystem,
                     retryability,
                     recovery,
-                    checked_text(detail.to_owned()),
+                    checked_text(publication_error.map_or_else(
+                        || detail.to_owned(),
+                        |error| format!("{detail}; publication: {error}"),
+                    )),
                 ),
                 Some(structured),
                 rendering.human,

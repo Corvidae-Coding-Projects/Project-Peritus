@@ -123,13 +123,28 @@ impl ShellExecution {
         let owner = self.owner.take().ok_or_else(|| {
             failure::adapter("shell-owner-missing", "owned process was already consumed")
         })?;
-        let terminal = match owner.wait_and_publish(&self.artifacts, self.creating_event) {
-            Ok(terminal) => terminal,
-            Err(error) => error
-                .terminal_result()
-                .cloned()
-                .ok_or_else(|| failure::process(error.process_error()))?,
-        };
+        let (terminal, publication_error) =
+            match owner.wait_and_publish(&self.artifacts, self.creating_event) {
+                Ok(terminal) => (terminal, None),
+                Err(error) => {
+                    let terminal = error
+                        .terminal_result()
+                        .cloned()
+                        .ok_or_else(|| failure::process(error.process_error()))?;
+                    let mut detail = error.process_error().to_string();
+                    let mut source = std::error::Error::source(error.process_error());
+                    for _ in 0..8 {
+                        let Some(cause) = source else { break };
+                        detail.push_str(": ");
+                        detail.push_str(&cause.to_string());
+                        source = cause.source();
+                    }
+                    while detail.len() > 2048 {
+                        detail.pop();
+                    }
+                    (terminal, Some(detail))
+                }
+            };
         let retained = self.control.retained_output();
         let result = terminal::build(
             &self.prepared,
@@ -139,6 +154,7 @@ impl ShellExecution {
             observed_at,
             self.next_progress,
             self.progress_truncated,
+            publication_error.as_deref(),
         )?;
         self.terminal = Some(result.clone());
         Ok(result)

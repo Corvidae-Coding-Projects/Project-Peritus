@@ -34,10 +34,10 @@ impl CompactionCandidate {
     }
 }
 
-/// Compacts complete old transcript units until the request fits its input limit.
+/// Compacts complete old transcript units toward the profile's input target.
 ///
-/// The normal pass retains recent exchanges. A second pass compacts a recent complete exchange
-/// only when retaining it would make the next provider request impossible.
+/// Preserve required framing and recent complete exchanges even above that soft
+/// target; only the selected backend knows its actual input capacity.
 pub(super) fn prepare_messages(
     messages: &mut Vec<Message>,
     tools: &[ToolDefinition],
@@ -46,7 +46,7 @@ pub(super) fn prepare_messages(
     limits: ProtocolLimits,
     protected_prefix: usize,
 ) -> Result<Vec<DeveloperContextCompaction>, DeveloperLoopError> {
-    let (usable_input, trigger) = context_thresholds(profile, reserved_output_tokens)?;
+    let (_, trigger) = context_thresholds(profile, reserved_output_tokens)?;
     let mut records = Vec::new();
     while estimated_request_tokens(messages, tools) > trigger {
         let Some(record) =
@@ -56,18 +56,9 @@ pub(super) fn prepare_messages(
         };
         records.push(record);
     }
-    while estimated_request_tokens(messages, tools) > usable_input {
-        let Some(record) = compact_once(messages, limits, 0, protected_prefix)? else {
-            break;
-        };
-        records.push(record);
-    }
-    let estimated = estimated_request_tokens(messages, tools);
-    if estimated > usable_input {
-        return Err(DeveloperLoopError::Context(format!(
-            "estimated input tokens {estimated} exceed provider limit {usable_input} after deterministic compaction"
-        )));
-    }
+    // Profile input estimates guide compaction; they are not a local hard ceiling.
+    // Required policy, user input and complete current exchanges may exceed that
+    // target. The selected provider enforces its actual context capacity.
     Ok(records)
 }
 

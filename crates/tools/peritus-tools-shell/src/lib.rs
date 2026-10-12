@@ -9,7 +9,7 @@ mod json_value;
 mod plan;
 mod render;
 
-pub use catalog::{exec_descriptor, script_descriptor};
+pub use catalog::{exec_descriptor, exec_descriptor_with_output_limit, script_descriptor};
 pub use dispatcher::{RawShellDispatcher, ShellDispatcher};
 pub use error::{ShellError, ShellErrorKind};
 pub use execution::ShellExecution;

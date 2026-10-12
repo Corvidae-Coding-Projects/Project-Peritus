@@ -60,7 +60,12 @@ impl LiveConversation {
         let admission = self
             .service
             .with_controls(false, |store| {
-                let admission = store.prepare_execution(start, revision, request)?;
+                let admission = store.prepare_execution_with_observations(
+                    start,
+                    revision,
+                    request,
+                    &options.observed_images,
+                )?;
                 if admission.developer_admission() == DeveloperRequestAdmission::Stale {
                     return Ok(DeveloperRequestAdmission::Stale);
                 }

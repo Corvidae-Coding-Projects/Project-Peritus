@@ -80,6 +80,17 @@ impl CodexRuntimeProvider {
         Box::pin(async move {
             validate_request_profile(self.config.profile(), &request)?;
             let runtime = super::request::encode(&request)?;
+            if runtime.prompt.iter().filter(|byte| (**byte & 0xc0) != 0x80).count()
+                > super::request::MAX_INPUT_CHARACTERS
+            {
+                let stream = decode_failure(
+                    request.model().clone(),
+                    self.config.profile().provider().clone(),
+                    &DecodeFailure::InputLimit,
+                    peritus_model_protocol::UsageCounters::default(),
+                )?;
+                return Ok(OwnedModelStream::new(stream, cancellation));
+            }
             if let Err(error) = self.require_authenticated(&cancellation).await {
                 let stream = if error.kind() == ProviderCoreErrorKind::Cancelled {
                     CodexRuntimeStream::cancelled(request.model().clone())?
@@ -140,9 +151,11 @@ impl CodexRuntimeProvider {
                 output.final_message.as_deref().ok(),
             );
             if !output.process.exit().success() {
+                let decoded_turn = super::output::reported_process_failure(output.process.stderr())
+                    .map_or(decoded.turn, Err);
                 return self.failed_process(
                     &request,
-                    &decoded.turn,
+                    &decoded_turn,
                     decoded.usage,
                     !output.process.stdout().is_empty(),
                     cancellation,
@@ -215,6 +228,21 @@ impl CodexRuntimeProvider {
 }
 
 impl ModelProvider for CodexRuntimeProvider {
+    fn context_input_target(&self) -> u64 {
+        self.profile()
+            .limits()
+            .max_input_tokens()
+            .min((super::request::MAX_INPUT_CHARACTERS as u64) / 6)
+    }
+
+    fn context_input_fits(
+        &self,
+        messages: &[peritus_model_protocol::Message],
+        tools: &[peritus_model_protocol::ToolDefinition],
+    ) -> Result<bool, ProviderCoreError> {
+        super::request::context_fits(messages, tools)
+    }
+
     fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
         self.profile()
             .capabilities()

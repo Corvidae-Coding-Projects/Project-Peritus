@@ -83,7 +83,7 @@ fn publish_stream(
     );
     let mut writer = store
         .begin_write(request)
-        .map_err(|_| artifact_error("artifact writer cannot be created"))?;
+        .map_err(|error| artifact_error("artifact writer cannot be created").with_source(error))?;
     let mut file =
         File::open(&path).map_err(|_| artifact_error("retained spool cannot be reopened"))?;
     let mut buffer = [0_u8; 16 * 1_024];
@@ -93,11 +93,13 @@ fn publish_stream(
         if read == 0 {
             break;
         }
-        writer
-            .write_chunk(&buffer[..read])
-            .map_err(|_| artifact_error("retained spool cannot be written to artifact store"))?;
+        writer.write_chunk(&buffer[..read]).map_err(|error| {
+            artifact_error("retained spool cannot be written to artifact store").with_source(error)
+        })?;
     }
-    writer.finalize().map_err(|_| artifact_error("output artifact cannot be finalized"))?;
+    writer.finalize().map_err(|error| {
+        artifact_error("output artifact cannot be finalized").with_source(error)
+    })?;
     Ok(OutputArtifact::new(stream.stream(), digest, size, 0, size, stream.completeness()))
 }
 

@@ -16,4 +16,5 @@ pub use init::{
 };
 
 pub use error::ControlStoreError;
+pub(crate) use inputs::ToolImageObservation;
 pub use storage::ControlStore;

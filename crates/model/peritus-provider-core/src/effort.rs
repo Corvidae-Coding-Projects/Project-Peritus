@@ -40,6 +40,18 @@ impl ModelProvider for EffortSelection {
         self.provider.profile()
     }
 
+    fn context_input_target(&self) -> u64 {
+        self.provider.context_input_target()
+    }
+
+    fn context_input_fits(
+        &self,
+        messages: &[peritus_model_protocol::Message],
+        tools: &[peritus_model_protocol::ToolDefinition],
+    ) -> Result<bool, ProviderCoreError> {
+        self.provider.context_input_fits(messages, tools)
+    }
+
     fn reasoning_effort(&self) -> Option<ReasoningEffort> {
         Some(self.effort)
     }

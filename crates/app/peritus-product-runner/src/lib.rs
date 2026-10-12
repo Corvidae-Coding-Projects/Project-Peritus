@@ -4,6 +4,7 @@
 //! already-resolved provider and workspace capabilities.
 mod accounting;
 pub mod attachment;
+pub use peritus_tools_computer::{setup as computer_setup, status as computer_status};
 mod attachment_read;
 
 mod budget;

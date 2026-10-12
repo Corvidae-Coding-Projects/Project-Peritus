@@ -40,6 +40,21 @@ Peritus uses the real-testing skill to build and run the actual application, exe
 
 Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
 
+Peritus can exercise browser pages and Linux desktop apps during coding runs. Install the optional
+browser runtime with `peritus automation setup`, then inspect availability with
+`peritus automation status`. The model receives real screenshots alongside DOM or native accessible
+controls, and keeps sessions alive between actions. It can launch fresh browser profiles and isolated
+X11 desktops, or attach to an explicitly selected local Chrome DevTools endpoint or native app PID.
+See [computer automation](docs/computer-automation.md) for setup, capabilities, and platform limits.
+
+Input-token profiles guide automatic compaction. Peritus imposes no fixed local 200,000-token
+input ceiling; the selected provider enforces its actual context capacity. Document reads
+default to 1 MiB and can request multi-megabyte pages up to protocol capacity. Pages that
+fit the selected transport reach the model intact. When a result exceeds Codex's separate
+submitted-turn character limit, Peritus retains the full observation locally and supplies
+an explicitly bounded view with exact retrieval handles. Large stopped continuations are
+saved separately from their small run snapshots so history can survive restart.
+
 ## Install
 
 Install the latest public release with the command for your platform below. To select an older

@@ -68,7 +68,6 @@ pub(super) fn validate_checkpoint(
         .all(|sequence| *sequence > 0 && *sequence <= sources.len() as u64);
     if validation.state_revision != state.revision()
         || validation.through_observation != state.through_observation()
-        || validation.estimated_input_tokens > validation.max_input_tokens
         || validation.max_input_tokens == 0
         || validation.input_tokens_saved
             != validation.uncompacted_input_tokens.saturating_sub(validation.estimated_input_tokens)

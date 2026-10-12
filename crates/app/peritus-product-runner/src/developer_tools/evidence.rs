@@ -73,7 +73,7 @@ impl CommandEvidence {
         let request = serde_json::to_string(arguments).unwrap_or_else(|_| "<invalid JSON>".into());
         let rendered_result =
             serde_json::to_string(result).unwrap_or_else(|_| "<invalid JSON>".into());
-        let record = format!("request: {request}\nresult: {rendered_result}");
+        let record = format!("tool: {tool}\nrequest: {request}\nresult: {rendered_result}");
         self.records.push_back(record);
         if result.get("success").and_then(Value::as_bool) == Some(true)
             && let Some(purpose) = CommandPurpose::from_arguments(arguments)

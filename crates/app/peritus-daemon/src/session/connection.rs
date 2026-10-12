@@ -86,6 +86,16 @@ pub async fn run_connection(
                                 .await?;
                             return Ok(());
                         }
+                        if context.diagnostic_only()
+                            && !matches!(
+                                request.payload(),
+                                peritus_app_protocol::AppRequestPayload::DaemonStatus
+                                    | peritus_app_protocol::AppRequestPayload::Shutdown(_)
+                            )
+                        {
+                            write_error(&mut frames, &request, AppErrorCode::ReadOnly).await?;
+                            continue;
+                        }
                         if request
                             .payload()
                             .required_workbench_feature()

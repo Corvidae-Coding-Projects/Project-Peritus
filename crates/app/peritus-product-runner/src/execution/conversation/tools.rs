@@ -34,6 +34,13 @@ impl ConversationTools {
 }
 
 impl DeveloperToolExecutor for ConversationTools {
+    fn observation_images(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
+        self.workspace.observation_images(call, observation)
+    }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if call.name().as_str() == "run_pipeline" {
             DeveloperToolEffect::MutationCapable

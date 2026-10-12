@@ -18,12 +18,22 @@ const MAX_ARGUMENTS: u32 = 4_096;
 /// # Errors
 /// Returns a typed error only if an internal descriptor constant violates the protocol contract.
 pub fn exec_descriptor() -> Result<ToolDescriptor, ShellError> {
+    exec_descriptor_with_output_limit(8 * 1024 * 1024)
+}
+
+/// Selects an explicit retained-output ceiling while preserving structured-argv permissions.
+///
+/// # Errors
+/// Rejects a zero ceiling or an invalid descriptor. Callers must align this ceiling with their
+/// artifact storage and process resource policy; it does not grant additional effect authority.
+pub fn exec_descriptor_with_output_limit(output_bytes: u64) -> Result<ToolDescriptor, ShellError> {
     descriptor(
         "shell.exec",
         exec_schema()?,
         vec![RiskClass::Execution],
         "peritus-tools-shell/shell.exec/v1",
         "Execute literal structured argv through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
+        output_bytes,
     )
 }
 
@@ -38,6 +48,7 @@ pub fn script_descriptor() -> Result<ToolDescriptor, ShellError> {
         vec![RiskClass::Execution, RiskClass::ExternalSideEffect],
         "peritus-tools-shell/shell.script/v1",
         "Execute explicit interpreter and script text through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
+        8 * 1024 * 1024,
     )
 }
 
@@ -71,6 +82,7 @@ fn descriptor(
     risks: Vec<RiskClass>,
     implementation: &str,
     description: &str,
+    output_bytes: u64,
 ) -> Result<ToolDescriptor, ShellError> {
     let name = CapabilityName::new(name.to_owned())
         .map_err(|error| internal(format!("invalid shell capability name: {error:?}")))?;
@@ -86,7 +98,7 @@ fn descriptor(
         LeaseRequirement::None,
         IdempotencySemantics::ReportPriorOutcome,
         ImplementationIdentity::new(implementation.to_owned())?,
-        ToolLimits::new(u64::MAX, 8 * 1_024 * 1_024, 16_384, 16_384, 4_096, 3, 65_536)?
+        ToolLimits::new(u64::MAX, output_bytes, 16_384, 16_384, 4_096, 3, 65_536)?
             .without_timeout(),
         ControlSet::new(true, true, true, true, true),
         ProtocolCompatibility::V1,

@@ -15,6 +15,9 @@ use super::{
 use crate::file_metadata;
 
 pub(super) const MAX_PAGE_BYTES: usize = 512 * 1024;
+pub(super) const MAX_DOCUMENT_READ_BYTES: usize =
+    peritus_model_protocol::JsonBounds::value(peritus_model_protocol::ProtocolLimits::PRODUCTION)
+        .max_bytes();
 
 pub(super) use super::inspection_list::list;
 
