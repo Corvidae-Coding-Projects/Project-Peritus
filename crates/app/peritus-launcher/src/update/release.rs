@@ -4,6 +4,7 @@ use crate::LauncherError;
 
 const LATEST_RELEASE: &str =
     "https://api.github.com/repos/Corvidae-Coding-Projects/Project-Peritus/releases/latest";
+const MAX_RELEASE_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct Release {
@@ -72,11 +73,21 @@ pub(super) async fn latest_from(url: &str) -> Result<Option<Release>, LauncherEr
     if response.status() == reqwest::StatusCode::NOT_FOUND {
         return Ok(None);
     }
-    let response =
+    let mut response =
         response.error_for_status().map_err(|error| update("query current release", &error))?;
-    let bytes = response.bytes().await.map_err(|error| update("read current release", &error))?;
-    if bytes.len() > 64 * 1024 {
-        return Err(LauncherError::Update("current release response exceeds 64 KiB".to_owned()));
+    if response.content_length().is_some_and(|length| {
+        usize::try_from(length).map_or(true, |length| length > MAX_RELEASE_RESPONSE_BYTES)
+    }) {
+        return Err(response_too_large());
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) =
+        response.chunk().await.map_err(|error| update("read current release", &error))?
+    {
+        if chunk.len() > MAX_RELEASE_RESPONSE_BYTES - bytes.len() {
+            return Err(response_too_large());
+        }
+        bytes.extend_from_slice(&chunk);
     }
     let document: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|error| LauncherError::Update(format!("decode current release: {error}")))?;
@@ -101,4 +112,8 @@ fn malformed(value: &str) -> LauncherError {
 
 fn update(operation: &'static str, error: &reqwest::Error) -> LauncherError {
     LauncherError::Update(format!("{operation}: {error}"))
+}
+
+fn response_too_large() -> LauncherError {
+    LauncherError::Update("current release response exceeds 4 MiB".to_owned())
 }
