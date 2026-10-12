@@ -13,6 +13,7 @@ mod journal;
 mod kernel;
 mod lease;
 mod ordinal;
+mod output;
 mod plan;
 mod preview;
 mod preview_terminal;
@@ -248,11 +249,12 @@ impl CommandRuntime {
         let process_request = process_authority.request(&ids, &command.execution);
         let artifacts = ArtifactStore::open(self.inner.artifacts.clone())
             .map_err(|error| tool(error.to_string()))?;
-        let mut dispatcher = RawShellDispatcher::new(
+        let mut dispatcher = RawShellDispatcher::new_with_output_limit(
             &self.inner.gateway,
             &process_request,
             command.execution.clone(),
             artifacts,
+            plan::OUTPUT_BYTES,
         )
         .map_err(|error| tool(error.to_string()))?;
         let tool_request = tool_authority.request(&ids, &command.prepared);

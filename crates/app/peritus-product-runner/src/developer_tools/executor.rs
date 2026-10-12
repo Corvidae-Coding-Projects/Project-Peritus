@@ -281,7 +281,8 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         | "workspace_read"
         | "attachment_read"
         | "developer_evidence_read"
-        | "view_image" => Some(&[Read]),
+        | "view_image"
+        | "command_output" => Some(&[Read]),
         "computer_status" => Some(&[Read, Process]),
         "computer_snapshot" => Some(&[Read]),
         "browser_control" => Some(&[Read, Write, Process, Network]),

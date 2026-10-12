@@ -12,7 +12,7 @@ use peritus_tool_router::{AuthorizedInvocation, DispatchFailure, ToolDispatcher,
 use crate::execution::failure;
 use crate::{
     ExecInput, ScriptInput, ShellError, ShellErrorKind, ShellExecution, exec_descriptor,
-    script_descriptor,
+    exec_descriptor_with_output_limit, script_descriptor,
 };
 
 /// One-use dispatcher bound to exact C2 authority, plan, C3 admission/backend, and artifact store.
@@ -60,7 +60,32 @@ impl<'gateway, 'authority> RawShellDispatcher<'gateway, 'authority> {
         plan: ExecutionPlan,
         artifacts: ArtifactStore,
     ) -> Result<Self, ShellError> {
-        let descriptor = bound_descriptor(&plan)?;
+        Self::new_with_descriptor(gateway, authorization, plan, artifacts, None)
+    }
+
+    /// Binds a raw execution plan to the canonical structured-argv descriptor with an explicit
+    /// retained-output ceiling. The caller binding must contain that exact descriptor digest.
+    ///
+    /// # Errors
+    /// Rejects invalid limits, non-raw plans, and mismatched descriptor bindings.
+    pub fn new_with_output_limit(
+        gateway: &'gateway ExecutionGateway,
+        authorization: &'gateway ExecutionAuthorizationRequest<'authority>,
+        plan: ExecutionPlan,
+        artifacts: ArtifactStore,
+        output_bytes: u64,
+    ) -> Result<Self, ShellError> {
+        Self::new_with_descriptor(gateway, authorization, plan, artifacts, Some(output_bytes))
+    }
+
+    fn new_with_descriptor(
+        gateway: &'gateway ExecutionGateway,
+        authorization: &'gateway ExecutionAuthorizationRequest<'authority>,
+        plan: ExecutionPlan,
+        artifacts: ArtifactStore,
+        output_bytes: Option<u64>,
+    ) -> Result<Self, ShellError> {
+        let descriptor = bound_descriptor_with_output_limit(&plan, output_bytes)?;
         if plan.isolation() != ExecutionIsolation::ExplicitRawEffect {
             return Err(mismatch("raw shell dispatcher requires an explicit raw-effect plan"));
         }
@@ -210,12 +235,22 @@ impl ToolDispatcher for RawShellDispatcher<'_, '_> {
 fn bound_descriptor(
     plan: &ExecutionPlan,
 ) -> Result<peritus_tool_protocol::ToolDescriptor, ShellError> {
+    bound_descriptor_with_output_limit(plan, None)
+}
+
+fn bound_descriptor_with_output_limit(
+    plan: &ExecutionPlan,
+    output_bytes: Option<u64>,
+) -> Result<peritus_tool_protocol::ToolDescriptor, ShellError> {
     let binding = plan
         .caller_binding()
         .ok_or_else(|| mismatch("shell execution plan has no C4 caller binding"))?;
     let descriptor = match binding.capability_name().as_str() {
-        "shell.exec" => exec_descriptor()?,
-        "shell.script" => script_descriptor()?,
+        "shell.exec" => match output_bytes {
+            Some(limit) => exec_descriptor_with_output_limit(limit)?,
+            None => exec_descriptor()?,
+        },
+        "shell.script" if output_bytes.is_none() => script_descriptor()?,
         _ => return Err(mismatch("shell plan names another tool")),
     };
     if descriptor.descriptor_digest().get() != binding.descriptor_digest() {

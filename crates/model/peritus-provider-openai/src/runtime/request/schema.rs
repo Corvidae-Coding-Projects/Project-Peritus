@@ -64,7 +64,7 @@ pub(super) fn result_contract(request: &ModelRequest) -> Result<ResultContract, 
                         (
                             "description",
                             Value::String(
-                                "A JSON object encoded as text and matching the selected host tool schema"
+                                "One complete JSON object serialized as text exactly once, matching the selected host tool schema. Escape quotes, newlines and backslashes correctly; no literal control characters, comments, trailing commas or truncated containers."
                                     .to_owned(),
                             ),
                         ),

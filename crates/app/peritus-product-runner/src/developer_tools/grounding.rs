@@ -49,7 +49,9 @@ impl GroundingEvidence {
     pub fn ensure_mutation_allowed(&self, path: &str, exists: bool) -> Result<(), String> {
         self.validate().map_err(str::to_owned)?;
         if exists && !self.read_paths.contains(&PathBuf::from(path)) {
-            return Err(format!("read the existing target before mutating it: {path}"));
+            return Err(format!(
+                "read the existing target before mutating it: {path}. Call workspace_read with this exact path, inspect its current content, then retry the edit. Reads from another writer/fixer invocation do not count; multiple provider requests within this invocation share grounding."
+            ));
         }
         Ok(())
     }

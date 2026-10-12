@@ -30,10 +30,14 @@ pub(super) fn terminal(
     let mut stdout = String::new();
     let mut stderr = String::new();
     for artifact in result.artifacts() {
-        let bytes = store
-            .read(ArtifactDigest::from_sha256(artifact.digest()), artifact.size())
-            .map_err(|error| format!("read command output artifact: {error}"))?;
-        let output = output_text(&bytes, artifact.completeness() != ArtifactCompleteness::Complete);
+        let output = output_prefix(
+            &store,
+            *artifact.digest().as_bytes(),
+            artifact.size(),
+            handle,
+            artifact.label().as_str(),
+            artifact.completeness() != ArtifactCompleteness::Complete,
+        )?;
         match artifact.label().as_str() {
             "stdout" | "terminal" => stdout = output,
             "stderr" => stderr = output,
@@ -95,7 +99,7 @@ pub(super) fn terminal_from_durable_owner(
     terminal: &TerminalResult,
     artifact_config: &StoreConfig,
 ) -> Result<Value, String> {
-    let (stdout, stderr) = durable_output(terminal, artifact_config)?;
+    let (stdout, stderr) = durable_output(handle, terminal, artifact_config)?;
     let status = durable_status(terminal);
     let timed_out = terminal.disposition() == TerminalDisposition::TimedOut;
     let exit_code = match terminal.os_exit() {
@@ -131,6 +135,7 @@ pub(super) fn terminal_from_durable_owner(
 }
 
 fn durable_output(
+    handle: &str,
     terminal: &TerminalResult,
     artifact_config: &StoreConfig,
 ) -> Result<(String, String), String> {
@@ -139,10 +144,19 @@ fn durable_output(
     let mut stdout = String::new();
     let mut stderr = String::new();
     for artifact in terminal.artifacts() {
-        let bytes = store
-            .read(ArtifactDigest::from_sha256(artifact.digest()), artifact.size())
-            .map_err(|error| format!("read command output artifact: {error}"))?;
-        let output = output_text(&bytes, artifact.completeness() != OutputCompleteness::Complete);
+        let stream = match artifact.stream() {
+            OutputStream::Stdout => "stdout",
+            OutputStream::Stderr => "stderr",
+            OutputStream::Terminal => "terminal",
+        };
+        let output = output_prefix(
+            &store,
+            *artifact.digest().as_bytes(),
+            artifact.size(),
+            handle,
+            stream,
+            artifact.completeness() != OutputCompleteness::Complete,
+        )?;
         match artifact.stream() {
             OutputStream::Stdout | OutputStream::Terminal => stdout = output,
             OutputStream::Stderr => stderr = output,
@@ -290,4 +304,30 @@ fn output_text(bytes: &[u8], incomplete: bool) -> String {
     } else {
         text.into_owned()
     }
+}
+
+/// Keep complete output durable without allocating an entire large stream for each poll.
+fn output_prefix(
+    store: &ArtifactStore,
+    digest: [u8; 32],
+    size: u64,
+    handle: &str,
+    stream: &str,
+    incomplete: bool,
+) -> Result<String, String> {
+    let mut reader = store
+        .open_read(ArtifactDigest::from_sha256(peritus_types::Sha256Digest::new(digest)))
+        .map_err(|error| format!("open command output artifact: {error}"))?;
+    let bytes = reader
+        .read_chunk(super::plan::MODEL_OUTPUT_BYTES as usize)
+        .map_err(|error| format!("read command output prefix: {error}"))?
+        .map_or_else(Vec::new, |chunk| chunk.bytes().to_vec());
+    let mut output = output_text(&bytes, incomplete);
+    if size > bytes.len() as u64 {
+        output.push_str(&format!(
+            "\n[Peritus retained {size} bytes; displayed the first {} bytes. Retrieve exact remaining bytes with command_output handle={handle} stream={stream} offset={}.]",
+            bytes.len(), bytes.len()
+        ));
+    }
+    Ok(output)
 }

@@ -147,6 +147,10 @@ fn report_rejected_connection(error: &DaemonError) {
 
 fn report_connection_event(prefix: &[u8], error: &DaemonError) {
     let mut stderr = std::io::stderr().lock();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_millis());
+    let _ = write!(stderr, "ts_unix_ms={timestamp} pid={} ", std::process::id());
     let _ = stderr.write_all(prefix);
     let _ = stderr.write_all(error.code().as_bytes());
     let _ = stderr.write_all(b" during ");

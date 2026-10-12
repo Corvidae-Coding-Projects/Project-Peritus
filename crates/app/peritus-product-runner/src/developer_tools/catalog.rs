@@ -71,7 +71,7 @@ pub fn definitions_for_attachments(
         ),
         (
             "workspace_patch",
-            "Replace an exact text fragment in one workspace-relative file after listing the workspace and reading this exact target in the current turn. By default the old fragment must occur exactly once.",
+            "Replace an exact text fragment in one workspace-relative file after listing the workspace and reading this exact target in the current host invocation. By default the old fragment must occur exactly once.",
             r#"{"additionalProperties":false,"properties":{"new":{"type":"string"},"old":{"type":"string"},"path":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["new","old","path"],"type":"object"}"#,
         ),
         (
@@ -88,6 +88,11 @@ pub fn definitions_for_attachments(
             "command_start",
             "Start a structured command through the same C4/C2 ownership as run_command and return a stable handle immediately. Use interactive=true for programs that need terminal input; otherwise use false for a background pipe process. Follow with command_poll, command_stdin, command_resize, command_signal, command_cancel, or command_recover. The same grounding, resource, timeout, and non-destructive-command rules as run_command apply.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"columns":{"default":80,"maximum":65535,"minimum":1,"type":"integer"},"cwd":{"type":"string"},"interactive":{"default":true,"type":"boolean"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"rows":{"default":24,"maximum":65535,"minimum":1,"type":"integer"},"timeout_seconds":{"default":120,"maximum":18446744073709551,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
+        ),
+        (
+            "command_output",
+            "Read an exact bounded byte page from stdout, stderr, or terminal output of a command owned by this run, including when artifact publication failed. Never rerun a command solely to retrieve its output. Continue at next_offset until null. data is UTF-8 or hexadecimal according to encoding; offsets and returned_bytes always refer to original bytes. For interactive commands select terminal, not stdout. Output of a live process may grow between reads.",
+            r#"{"type":"object","additionalProperties":false,"properties":{"handle":{"type":"string"},"stream":{"type":"string","enum":["stdout","stderr","terminal"]},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":1,"maximum":1048576,"default":16384}},"required":["handle","stream"]}"#,
         ),
         (
             "command_poll",
@@ -170,7 +175,7 @@ pub fn reviewer_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError>
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "workspace_scope",
-        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
+        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory, build-cache tree, or Git metadata such as .git/HEAD or .git/config; these are not task deliverables.",
         r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
     )
 }
@@ -197,6 +202,21 @@ pub(super) fn definition(
         )
     } else {
         description.to_owned()
+    };
+    let description = match name {
+        "run_command" | "command_start" => format!(
+            "{description} program and args execute directly, without a shell: wildcard paths, pipes, redirects and command substitutions are literal arguments. Discover exact dependency paths with rg --files before searching them. Shell command-string flags such as bash -lc are unavailable here; for compound work use an ordinary scoped script and invoke its interpreter. A plain folder is not necessarily a Git repository; inspect before issuing Git-specific commands and do not initialize Git merely to satisfy a check. Complete stdout/stderr is retained; use command_output with the returned handle for additional byte pages."
+        ),
+        "workspace_read" | "workspace_search" => format!(
+            "{description} Use the exact spelling from observed directory entries, including hyphens versus underscores. If a file is missing, list its containing directory and use the observed path; do not repeatedly guess nearby names. Dependency sources outside the workspace are not workspace-relative tool paths; inspect authorized external dependencies using a scoped command with their observed exact paths."
+        ),
+        "workspace_write" | "workspace_patch" => format!(
+            "{description} Read every existing target in this host invocation before editing it, including documentation. If an edit is rejected for missing grounding, read that exact target, then retry with its current content; do not repeat the rejected edit unchanged."
+        ),
+        "command_stdin" => format!(
+            "{description} Poll the handle before writing. If the process has completed, inspect its result rather than sending input again. Use newline (\\n) for line-oriented input; a carriage return alone is not a pipe-protocol newline."
+        ),
+        _ => description,
     };
     Ok(ToolDefinition::new(
         ToolName::new(name.to_owned()).map_err(|error| protocol(&error))?,

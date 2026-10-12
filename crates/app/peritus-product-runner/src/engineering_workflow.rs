@@ -9,6 +9,18 @@ mod reviewer;
 // formal-boundary crate intentionally rejects source-inclusion macros.
 const WORKFLOW: &str = r"# Production engineering workflow
 
+Tool execution contract: use exact paths from current workspace observations, including hyphens
+and underscores. When a planned file is missing, list its containing directory and reconcile the
+plan with the actual files instead of guessing neighboring names. Read each existing target in the
+current host invocation before editing it; prior-role reads do not grant current grounding.
+Structured program/argv commands have no shell expansion: wildcards, pipes and redirects are
+literal arguments. Discover exact dependency paths before searching them. Use an ordinary scoped
+script for compound work rather than unsupported shell command-string flags. Poll interactive
+handles before sending input, use newline delimiters for line protocols, and inspect completed
+results instead of writing to a dead handle. Use command_output for exact retained output pages;
+never repeat an effect just to obtain output. Git metadata is not a task deliverable, and a plain
+folder does not imply a Git repository. These rules do not expand tool permissions.
+
 Follow this workflow for every coding run, scaled to the requested change without dropping any
 requested behavior.
 

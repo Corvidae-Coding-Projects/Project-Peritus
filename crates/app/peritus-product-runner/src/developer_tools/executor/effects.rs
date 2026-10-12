@@ -123,6 +123,13 @@ impl WorkspaceDeveloperTools {
             | "computer_close" | "view_image" => self.computer_tool(call, arguments),
             "run_command" => self.run_command(arguments, call.id().expose_for_wire()),
             "command_start" => self.start_command(arguments, call.id().expose_for_wire()),
+            "command_output" => {
+                self.attach_command_owner_from_handle(arguments)?;
+                self.command_runtime
+                    .as_ref()
+                    .ok_or_else(|| tool("writable tools have no command runtime"))?
+                    .read_command_output(arguments)
+            }
             "command_poll" => {
                 self.attach_command_owner_from_handle(arguments)?;
                 self.poll_command(arguments)

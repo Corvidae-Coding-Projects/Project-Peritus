@@ -36,6 +36,9 @@ impl ConnectionHeartbeat {
             if self.missed >= MAX_MISSED_REPLIES {
                 return Err(heartbeat_failure());
             }
+            // Keep the original challenge valid while allowing the configured reply grace.
+            // Replacing it here rejects a legitimate reply that was delayed by one interval.
+            return Ok(());
         }
         let sequence = self.next_sequence;
         self.next_sequence = sequence.checked_add(1).ok_or_else(heartbeat_failure)?;

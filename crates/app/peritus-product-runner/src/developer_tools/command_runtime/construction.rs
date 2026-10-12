@@ -5,7 +5,7 @@ use peritus_artifact_store::StoreConfig;
 use peritus_policy::{OperationDescriptor, OperationRegistry, RiskSet};
 use peritus_process::{ExecutionGateway, ProcessStore};
 use peritus_tool_router::{RouterLimits, ToolRegistry, ToolRouter};
-use peritus_tools_shell::exec_descriptor;
+use peritus_tools_shell::exec_descriptor_with_output_limit;
 use peritus_types::RunId;
 use std::{
     collections::BTreeMap,
@@ -82,7 +82,8 @@ impl CommandRuntime {
             ARTIFACT_QUOTA_BYTES,
         )
         .map_err(|error| runtime_open(error.to_string()))?;
-        let descriptor = exec_descriptor().map_err(|error| runtime_open(error.to_string()))?;
+        let descriptor = exec_descriptor_with_output_limit(plan::OUTPUT_BYTES)
+            .map_err(|error| runtime_open(error.to_string()))?;
         let operation = OperationDescriptor::new(
             descriptor.operation().name().clone(),
             descriptor.operation().operation_class(),
