@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.0.7
+
+### Added
+
+- Let coding agents operate real browser pages and Linux desktop applications with screenshots, DOM or accessibility controls, and persistent sessions. Support isolated sessions and explicitly selected existing browser endpoints or app processes; expose optional runtime setup through `peritus automation setup` and `peritus automation status`.
+- Read exact bounded pages of retained command output through `command_output`, including after artifact publication fails, without repeating the command.
+
+### Fixed
+
+- Keep delayed TUI heartbeat replies valid during the configured grace period instead of disconnecting a healthy client; retain genuine missed-reply timeouts and add timestamp/PID attribution to daemon connection diagnostics.
+- Include input and output usage in live token totals when the provider omits an explicit total, without counting cached input twice.
+- Publish larger command output with matching artifact and command-admission limits, and send bounded previews to the model while preserving full retained bytes.
+- Preserve larger document reads in model context and fit requests to the selected provider transport without reinstating a fixed local 200,000-token input ceiling.
+- Persist large conversation continuations separately from compact run snapshots, accept existing version-six records, and validate continuation length and digest on reopen. Distinguish capacity failures from permission failures.
+- Recover historical process results and provider restarts, and stop fixer retries when the candidate has no applicable check contract.
+- Improve tool guidance for exact observed paths, existing-file reads before edits, direct argv execution, completed command handles, and correctly escaped provider arguments. Malformed native-provider arguments now identify the call index and JSON line/column without copying argument contents into diagnostics.
+
 ## 0.0.6
 
 ### Fixed

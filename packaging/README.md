@@ -139,7 +139,7 @@ Debian and RPM installations use the system package manager instead, as describe
 ## Debian and RPM packages
 
 Release `0.0.5` provides signed Debian 13 and Fedora 44 packages for x86-64 and ARM64.
-Release `0.0.6` provides the six native archives; distribution packages must be built from source.
+Release `0.0.7` provides the six native archives; distribution packages must be built from source.
 These distribution packages have their own distribution-native library requirements;
 the glibc baseline above applies to the portable Linux archive.
 
