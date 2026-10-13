@@ -28,6 +28,7 @@ impl DaemonRuntime {
         let _ = self.workers.begin_draining();
         let _ = self.server_stop.send(true);
         let timeout = Duration::from_millis(self.config.limits().shutdown_millis());
+        self.rsi_stopping.store(true, std::sync::atomic::Ordering::Release);
         if let Some(mut outbox) = self.outbox.take() {
             retain_cleanup_failure(
                 &mut coordinator,

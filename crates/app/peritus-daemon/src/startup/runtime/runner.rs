@@ -112,6 +112,8 @@ impl DaemonRuntime {
             processes.clone(),
         )?;
         progress.complete(StartupPhase::DomainRecovery)?;
+        crate::rsi::recovery::recover_owned(&mut journal, &artifacts, &processes, &config)?;
+        crate::rsi::completion::recover_complete(&mut journal, &artifacts)?;
         let diagnostic = reconcile_processes(&processes, &live_command_owners)?;
         progress.complete(StartupPhase::EffectRecovery)?;
         reconcile_application(&mut journal)?;
@@ -141,12 +143,14 @@ impl DaemonRuntime {
             authority_epoch.get(),
             config.limits().authority_queue(),
         )?;
+        let rsi_stopping = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let outbox = if read_only {
             None
         } else {
             Some(OutboxRuntime::start(
                 authority.clone(),
-                DestinationRouter::production_children(&authority, 64)?,
+                DestinationRouter::production(&authority, std::sync::Arc::new(crate::rsi::runtime::NativeRsiPort::new(
+                    authority.clone(), config.clone(), processes.clone(), rsi_stopping.clone())), 64)?,
                 authority_epoch.get(),
             )?)
         };
@@ -173,6 +177,7 @@ impl DaemonRuntime {
             shutdown_requests,
             accepted_shutdown: None,
             outbox,
+            rsi_stopping,
             telemetry,
             workers,
             terminals,

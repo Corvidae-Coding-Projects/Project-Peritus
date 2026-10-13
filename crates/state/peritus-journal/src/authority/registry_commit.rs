@@ -1,6 +1,6 @@
 //! Canonical credential-registry history construction and commit.
 
-use peritus_codec::{CodecLimits, encode_frame, sha256};
+use peritus_codec::{CanonicalReader, CodecLimits, decode_frame, encode_frame, sha256};
 use peritus_types::{CommandId, EventId, EventSequence, OneBasedNumberError, Sha256Digest};
 
 use crate::{
@@ -18,6 +18,99 @@ const EVENT_ID_DOMAIN: &[u8] = b"peritus.c0.credential-registry.event.v1\0";
 const REQUEST_DIGEST_DOMAIN: &[u8] = b"peritus.c0.credential-registry.request.v1\0";
 
 impl SqliteJournal {
+    /// Validates the complete canonical registry lineage against the current durable snapshot.
+    ///
+    /// Each install changes the snapshot digest used as its journal revision. Replay checks the
+    /// owning store, canonical public snapshot, exact successor, increasing generation, derived
+    /// identities and current row; it does not infer approval authority from event bytes.
+    ///
+    /// # Errors
+    /// Returns a corruption or storage error for incomplete, noncanonical or contradictory history.
+    pub fn validate_credential_registry_history(&self) -> Result<(), JournalError> {
+        let aggregate = registry_aggregate(self.store_id)?;
+        let identities = self.aggregate_ids(AggregateKind::CredentialRegistry, 1)?;
+        if identities.is_empty() {
+            return match self.current_credential_registry() {
+                Err(error) if error.kind() == JournalErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error),
+                Ok(_) => Err(history_error()),
+            };
+        }
+        if identities[0] != aggregate.id() {
+            return Err(history_error());
+        }
+        let records = self.records_for_aggregate(aggregate)?;
+        let mut previous: Option<CredentialRegistryInstall> = None;
+        for record in &records {
+            let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
+                .map_err(|_| history_error())?;
+            if frame.header().family() != EVENT_FRAME_FAMILY
+                || frame.header().schema_version() != EVENT_FRAME_SCHEMA
+            {
+                return Err(history_error());
+            }
+            let payload = frame.payload();
+            let mut reader = CanonicalReader::new(payload, CodecLimits::PRODUCTION);
+            if reader
+                .read_fixed::<{ EVENT_PAYLOAD_DOMAIN.len() }>()
+                .map_err(|_| history_error())?
+                .as_slice()
+                != EVENT_PAYLOAD_DOMAIN
+                || reader.read_fixed::<16>().map_err(|_| history_error())?
+                    != *self.store_id.as_bytes()
+                || reader.read_fixed::<9>().map_err(|_| history_error())?
+                    != expected_revision_bytes(
+                        previous.as_ref().map(CredentialRegistryInstall::revision),
+                    )
+            {
+                return Err(history_error());
+            }
+            let revision = reader.read_u64().map_err(|_| history_error())?;
+            let generation = reader.read_u64().map_err(|_| history_error())?;
+            let digest = reader.read_fixed::<32>().map_err(|_| history_error())?;
+            let length = usize::try_from(reader.read_u64().map_err(|_| history_error())?)
+                .map_err(|_| history_error())?;
+            if length != reader.remaining() {
+                return Err(history_error());
+            }
+            let snapshot = ExactFrame::new(payload[reader.offset()..].to_vec())
+                .map_err(|_| history_error())?;
+            let snapshot = peritus_approval::decode_credential_registry(
+                crate::authority::credential_registry_payload(&snapshot)?,
+            )
+            .map_err(|_| history_error())?;
+            let install = CredentialRegistryInstall::new(
+                previous.as_ref().map(CredentialRegistryInstall::revision),
+                generation,
+                &snapshot,
+            )
+            .map_err(|_| history_error())?;
+            if previous.as_ref().is_some_and(|prior| prior.generation() >= generation)
+                || revision != install.revision()
+                || digest != *install.digest().as_bytes()
+                || record.sequence().get() != revision
+                || record.revision_digest() != install.digest()
+                || record.event_id() != event_id(self.store_id, &install)?
+                || record.command_id() != command_id(self.store_id, &install)?
+                || record.frame_bytes() != registry_event_frame(self.store_id, &install)?.bytes()
+            {
+                return Err(history_error());
+            }
+            previous = Some(install);
+        }
+        let last = previous.ok_or_else(history_error)?;
+        let position = records.last().ok_or_else(history_error)?.global_position();
+        let current = self.current_credential_registry()?;
+        if current.revision() != last.revision()
+            || current.generation() != last.generation()
+            || current.digest() != last.digest()
+            || current.snapshot_bytes() != last.snapshot_bytes()
+            || current.producing_position() != position
+        {
+            return Err(history_error());
+        }
+        Ok(())
+    }
     /// Commits one credential-registry install through the store's canonical registry history.
     ///
     /// Aggregate, command, and event identities are deterministically derived from the bound store
@@ -74,6 +167,14 @@ impl SqliteJournal {
         );
         self.append(request.plan()?)
     }
+}
+
+const fn history_error() -> JournalError {
+    JournalError::new(
+        JournalErrorKind::CorruptJournal,
+        "replay credential registry history",
+        "canonical registry lineage differs from its owning store, successor, snapshot or current row",
+    )
 }
 
 fn registry_aggregate(store_id: StoreId) -> Result<AggregateKey, JournalError> {

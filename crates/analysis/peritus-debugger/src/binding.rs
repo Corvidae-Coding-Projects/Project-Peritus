@@ -9,6 +9,25 @@ use peritus_types::{
     AttemptId, EnvironmentId, EventId, RevisionTuple, RunId, SessionId, Sha256Digest,
 };
 
+mod local_evaluation;
+pub use local_evaluation::LocalEvaluationSource;
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+enum AnalysisSubjectSource {
+    ModelLoop(ModelSubjectSource),
+    LocalProcess(LocalEvaluationSource),
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+struct ModelSubjectSource {
+    orchestrator_event_id: EventId,
+    orchestrator_state_digest: Sha256Digest,
+    orchestrator_journal_position: u64,
+    agent_event_id: EventId,
+    agent_state_digest: Sha256Digest,
+    agent_journal_position: u64,
+}
+
 const SUBJECT_ID_DOMAIN: &[u8] = b"peritus-e2-analysis-subject-id-v1\0";
 const SUBJECT_CANONICAL_DOMAIN: &[u8] = b"peritus-e2-analysis-subject-v1\0";
 
@@ -22,12 +41,7 @@ pub struct AnalysisSubject {
     environment_id: EnvironmentId,
     revision: RevisionTuple,
     harness_revision: HarnessRevisionIdentity,
-    orchestrator_event_id: EventId,
-    orchestrator_state_digest: Sha256Digest,
-    orchestrator_journal_position: u64,
-    agent_event_id: EventId,
-    agent_state_digest: Sha256Digest,
-    agent_journal_position: u64,
+    source: AnalysisSubjectSource,
 }
 
 impl AnalysisSubject {
@@ -80,12 +94,14 @@ impl AnalysisSubject {
             environment_id: agent_binding.environment_id(),
             revision,
             harness_revision,
-            orchestrator_event_id: orchestrator.last_event_id(),
-            orchestrator_state_digest: orchestrator.state_digest(),
-            orchestrator_journal_position,
-            agent_event_id: agent.last_event_id(),
-            agent_state_digest: agent.state_digest(),
-            agent_journal_position,
+            source: AnalysisSubjectSource::ModelLoop(ModelSubjectSource {
+                orchestrator_event_id: orchestrator.last_event_id(),
+                orchestrator_state_digest: orchestrator.state_digest(),
+                orchestrator_journal_position,
+                agent_event_id: agent.last_event_id(),
+                agent_state_digest: agent.state_digest(),
+                agent_journal_position,
+            }),
         };
         subject.id = SubjectId::derive(SUBJECT_ID_DOMAIN, &subject.canonical_binding_bytes())?;
         Ok(subject)
@@ -128,33 +144,51 @@ impl AnalysisSubject {
     }
     /// Returns the E0 state-producing event.
     #[must_use]
-    pub const fn orchestrator_event_id(&self) -> EventId {
-        self.orchestrator_event_id
+    pub const fn orchestrator_event_id(&self) -> Option<EventId> {
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => Some(source.orchestrator_event_id),
+            AnalysisSubjectSource::LocalProcess(_) => None,
+        }
     }
     /// Returns the complete recovered E0 state digest.
     #[must_use]
-    pub const fn orchestrator_state_digest(&self) -> Sha256Digest {
-        self.orchestrator_state_digest
+    pub const fn orchestrator_state_digest(&self) -> Option<Sha256Digest> {
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => Some(source.orchestrator_state_digest),
+            AnalysisSubjectSource::LocalProcess(_) => None,
+        }
     }
     /// Returns the E0 source journal position.
     #[must_use]
-    pub const fn orchestrator_journal_position(&self) -> u64 {
-        self.orchestrator_journal_position
+    pub const fn orchestrator_journal_position(&self) -> Option<u64> {
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => Some(source.orchestrator_journal_position),
+            AnalysisSubjectSource::LocalProcess(_) => None,
+        }
     }
     /// Returns the D0 state-producing event.
     #[must_use]
-    pub const fn agent_event_id(&self) -> EventId {
-        self.agent_event_id
+    pub const fn agent_event_id(&self) -> Option<EventId> {
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => Some(source.agent_event_id),
+            AnalysisSubjectSource::LocalProcess(_) => None,
+        }
     }
     /// Returns the complete recovered D0 state digest.
     #[must_use]
-    pub const fn agent_state_digest(&self) -> Sha256Digest {
-        self.agent_state_digest
+    pub const fn agent_state_digest(&self) -> Option<Sha256Digest> {
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => Some(source.agent_state_digest),
+            AnalysisSubjectSource::LocalProcess(_) => None,
+        }
     }
     /// Returns the D0 source journal position.
     #[must_use]
-    pub const fn agent_journal_position(&self) -> u64 {
-        self.agent_journal_position
+    pub const fn agent_journal_position(&self) -> Option<u64> {
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => Some(source.agent_journal_position),
+            AnalysisSubjectSource::LocalProcess(_) => None,
+        }
     }
 
     /// Returns whether a complete production C7 binding belongs to this subject.
@@ -187,12 +221,24 @@ impl AnalysisSubject {
         bytes.extend_from_slice(self.harness_revision.harness_id().as_bytes());
         bytes.extend_from_slice(&self.harness_revision.number().get().to_be_bytes());
         bytes.extend_from_slice(self.harness_revision.digest().as_bytes());
-        bytes.extend_from_slice(self.orchestrator_event_id.as_bytes());
-        bytes.extend_from_slice(self.orchestrator_state_digest.as_bytes());
-        bytes.extend_from_slice(&self.orchestrator_journal_position.to_be_bytes());
-        bytes.extend_from_slice(self.agent_event_id.as_bytes());
-        bytes.extend_from_slice(self.agent_state_digest.as_bytes());
-        bytes.extend_from_slice(&self.agent_journal_position.to_be_bytes());
+        match &self.source {
+            AnalysisSubjectSource::ModelLoop(source) => {
+                bytes.extend_from_slice(source.orchestrator_event_id.as_bytes());
+                bytes.extend_from_slice(source.orchestrator_state_digest.as_bytes());
+                bytes.extend_from_slice(&source.orchestrator_journal_position.to_be_bytes());
+                bytes.extend_from_slice(source.agent_event_id.as_bytes());
+                bytes.extend_from_slice(source.agent_state_digest.as_bytes());
+                bytes.extend_from_slice(&source.agent_journal_position.to_be_bytes());
+            }
+            AnalysisSubjectSource::LocalProcess(source) => {
+                // Native subjects use a distinct domain; legacy model subject bytes remain exact.
+                bytes.splice(
+                    ..SUBJECT_CANONICAL_DOMAIN.len(),
+                    b"peritus-e2-local-evaluation-subject-v1\0".iter().copied(),
+                );
+                bytes.extend_from_slice(&source.canonical_bytes());
+            }
+        }
         bytes
     }
 }

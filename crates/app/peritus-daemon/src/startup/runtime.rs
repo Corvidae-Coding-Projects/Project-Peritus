@@ -42,6 +42,7 @@ pub struct DaemonRuntime {
     shutdown_requests: mpsc::Receiver<ShutdownCommand>,
     accepted_shutdown: Option<ShutdownCommand>,
     outbox: Option<OutboxRuntime>,
+    rsi_stopping: std::sync::Arc<std::sync::atomic::AtomicBool>,
     telemetry: Option<TelemetryRuntime>,
     workers: WorkerSupervisor,
     terminals: TerminalRegistry,

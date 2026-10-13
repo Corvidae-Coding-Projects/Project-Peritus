@@ -27,7 +27,10 @@ mod wire;
 pub use binding::ReviewBinding;
 pub use command::{ReviewCommand, ReviewCommandKind};
 pub use disposition::{DispositionKind, DispositionRecord, FixerResponse};
-pub use durability::{REVIEW_STATE_NAMESPACE, commit_review_transition, load_review_replay};
+pub use durability::{
+    REVIEW_STATE_NAMESPACE, commit_review_transition, commit_review_transition_with_artifacts,
+    load_review_replay,
+};
 pub use error::{ReviewError, ReviewErrorKind, ReviewRecoveryAction};
 pub use event::{ReviewEvent, ReviewEventKind, ReviewTransition};
 pub use finding::{Finding, FindingLocation, FindingSource, ReviewSubmission};

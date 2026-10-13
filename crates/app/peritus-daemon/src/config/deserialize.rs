@@ -70,6 +70,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             product: Option<ProductRunPolicy>,
             context: Option<super::ContextPolicy>,
             telemetry: TelemetryExport,
+            rsi: Option<super::RsiExecutionConfiguration>,
         }
 
         let representation = Representation::deserialize(deserializer)?;
@@ -89,6 +90,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             context: representation.context.unwrap_or_default(),
             telemetry: representation.telemetry,
             process_crash_watchdog: None,
+            rsi: representation.rsi,
         })
     }
 }

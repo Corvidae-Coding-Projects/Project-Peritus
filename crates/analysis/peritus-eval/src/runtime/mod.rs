@@ -97,6 +97,20 @@ impl<'a> EvaluationRuntime<'a> {
         Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
     }
 
+    /// Commits an exact claimed attempt start before any external execution.
+    ///
+    /// # Errors
+    /// Rejects a mismatched native claim, stale owner fence or journal failure.
+    pub fn commit_claimed(
+        &mut self,
+        command: &EvaluationCommand,
+        transition: &EvaluationTransition,
+        claim: impl Into<crate::EvaluationDirectiveClaim>,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        let batch = crate::commit_evaluation_claimed_transition(self.journal, command, transition, claim)?;
+        Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+    }
+
     /// Borrows the underlying journal for C0 claim/replay composition.
     #[must_use]
     pub const fn journal(&mut self) -> &mut SqliteJournal {

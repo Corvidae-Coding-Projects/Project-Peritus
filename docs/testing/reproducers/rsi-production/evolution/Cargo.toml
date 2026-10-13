@@ -1,0 +1,66 @@
+[package]
+name = "peritus-rsi-evolution-replay"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+peritus-daemon = { path = "../../../../../crates/app/peritus-daemon" }
+peritus-product-runner = { path = "../../../../../crates/app/peritus-product-runner" }
+peritus-harness = { path = "../../../../../crates/orchestration/peritus-harness" }
+peritus-evolution = { path = "../../../../../crates/analysis/peritus-evolution" }
+peritus-artifact-store = { path = "../../../../../crates/state/peritus-artifact-store" }
+peritus-journal = { path = "../../../../../crates/state/peritus-journal" }
+peritus-evidence = { path = "../../../../../crates/state/peritus-evidence" }
+peritus-git = { path = "../../../../../crates/runtime/peritus-git" }
+peritus-workspace = { path = "../../../../../crates/runtime/peritus-workspace" }
+peritus-patch = { path = "../../../../../crates/runtime/peritus-patch" }
+peritus-types = { path = "../../../../../crates/foundation/peritus-types" }
+peritus-review = { path = "../../../../../crates/orchestration/peritus-review" }
+peritus-codec = { path = "../../../../../crates/foundation/peritus-codec" }
+serde_json = "1"
+
+peritus-debugger = { path = "../../../../../crates/analysis/peritus-debugger" }
+peritus-eval = { path = "../../../../../crates/analysis/peritus-eval" }
+peritus-context = { path = "../../../../../crates/orchestration/peritus-context" }
+peritus-role = { path = "../../../../../crates/orchestration/peritus-role" }
+peritus-quality-policy = { path = "../../../../../crates/foundation/peritus-quality-policy" }
+
+peritus-approval = { path = "../../../../../crates/state/peritus-approval" }
+peritus-budget = { path = "../../../../../crates/foundation/peritus-budget" }
+peritus-kernel = { path = "../../../../../crates/foundation/peritus-kernel" }
+peritus-policy = { path = "../../../../../crates/foundation/peritus-policy" }
+peritus-protocol = { path = "../../../../../crates/foundation/peritus-protocol" }
+peritus-spec = { path = "../../../../../crates/foundation/peritus-spec" }
+ed25519-dalek = { version = "=3.0.0", default-features = false }
+
+peritus-trace = { path = "../../../../../crates/observe/peritus-trace" }
+
+[[bin]]
+name = "peritus-rsi-activation-real-consumer"
+path = "activation.rs"
+
+[[bin]]
+name = "peritus-rsi-f0-real-consumer"
+path = "f0.rs"
+
+[[bin]]
+name = "peritus-rsi-review-real-consumer"
+path = "review.rs"
+
+[[bin]]
+name = "peritus-rsi-evolution-real-consumer"
+path = "e1.rs"
+
+[[bin]]
+name = "peritus-rsi-publication-real-consumer"
+path = "publication.rs"
+
+[profile.release]
+codegen-units = 1
+incremental = false
+lto = "thin"
+overflow-checks = true
+panic = "abort"
+strip = "symbols"

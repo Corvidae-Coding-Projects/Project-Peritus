@@ -242,6 +242,25 @@ pub struct ExecutedRollout {
 }
 
 impl ExecutedRollout {
+    /// Reconstructs the terminal from two actually observed stages during native recovery.
+    /// The adapter must verify their protected process receipts; this value grants no authority.
+    ///
+    /// # Errors
+    /// Rejects cross-rollout, attempt, finalized-output or execution-binding drift.
+    pub fn from_observed_stages(
+        candidate: CandidateObservation,
+        evaluator: EvaluatorObservation,
+    ) -> Result<Self, EvaluationError> {
+        if candidate.rollout_id() != evaluator.rollout_id()
+            || candidate.attempt() != evaluator.attempt()
+            || candidate.output() != evaluator.candidate_output()
+            || candidate.observed_execution_digest() != evaluator.observed_execution_digest()
+        {
+            return Err(invalid("recovered candidate and evaluator stage bindings differ"));
+        }
+        Self::terminal(candidate.attempt(), evaluator.result_digest(),
+            outcome_from_verdict(evaluator.verdict(), evaluator.result_digest()), Some(candidate), Some(evaluator))
+    }
     #[allow(
         clippy::large_types_passed_by_value,
         reason = "the fixed-size checked observations are consumed exactly once into the terminal record"

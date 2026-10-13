@@ -23,13 +23,19 @@ mod provider;
 mod request_name;
 pub(crate) use request_name::invocation as fresh_request_prefix;
 mod reviewer_prompt;
-mod writer_prompt;
+pub(crate) mod writer_prompt;
 pub use reviewer_prompt::{ReviewDelivery, reviewer_system, reviewer_user};
 use writer_prompt::{writer_system, writer_user};
 mod terminal;
 
 pub use evidence::ReviewerPrompt;
 use terminal::TerminalTurn;
+
+#[derive(Clone, Copy)]
+pub(crate) struct DeveloperEvidence<'a> {
+    pub(crate) diff: &'a str,
+    pub(crate) gates: &'a str,
+}
 
 pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
     request_name::format(run_id, role, cycle)
@@ -47,6 +53,7 @@ pub async fn complete_developer_turn(
     cycle: u32,
     design: &str,
     findings: Option<&str>,
+    evidence: Option<DeveloperEvidence<'_>>,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
     recorder: &CandidateRecorder,
@@ -83,6 +90,7 @@ pub async fn complete_developer_turn(
             InvocationContext {
                 design,
                 findings,
+                evidence,
                 correction: correction.as_deref(),
                 ownership,
                 remaining,
@@ -218,6 +226,7 @@ struct InvocationContext<'a> {
     memory: Option<&'a LocalContextHandle>,
     design: &'a str,
     findings: Option<&'a str>,
+    evidence: Option<DeveloperEvidence<'a>>,
     correction: Option<&'a str>,
     ownership: &'a WorkspaceOwnership,
     remaining: Option<Duration>,
@@ -264,12 +273,55 @@ async fn run_developer_invocation(
 > {
     let transcript = input.conversation.render();
     let media = input.media(&transcript, model.profile())?;
-    let prompt = writer_user(
-        &input.conversation.stable_request_context(),
-        context.design,
-        context.findings,
-        context.correction,
-    );
+    let stable_context = input.conversation.stable_request_context();
+    let instructions =
+        writer_user(&stable_context, context.design, context.findings, context.correction);
+    let system = writer_system(
+        identity.role,
+        input.delivery_scope,
+        crate::delivery_requirement::ExternalEffectRequirement::from_task(
+            input.delivery_scope,
+            &input.task,
+        ),
+        context.remaining,
+    ) + input.delivery_instructions();
+    let mut definitions = input.developer_definitions()?;
+    let mut archive = None;
+    let prompt = if let Some(evidence) = context.evidence {
+        definitions.push(crate::developer_tools::evidence_definition()?);
+        let mut budget_tools = definitions.clone();
+        if let Some(memory) = context.memory {
+            budget_tools
+                .extend(memory.tool_definitions().map_err(|error| developer_error(&error))?);
+        }
+        let prompt =
+            writer_prompt::project_developer_evidence(&writer_prompt::DeveloperEvidencePrompt {
+                system: &system,
+                instructions: &instructions,
+                tools: &budget_tools,
+                diff: evidence.diff,
+                gates: evidence.gates,
+                max_input_tokens: model.context_input_target(),
+                additional_framing_tokens: context
+                    .memory
+                    .map(LocalContextHandle::additional_request_framing_tokens)
+                    .transpose()
+                    .map_err(|error| developer_error(&error))?
+                    .unwrap_or(0),
+            })
+            .map_err(|error| developer_error(&error))?;
+        archive = Some(crate::developer_tools::ReviewerEvidenceSources::new(
+            stable_context,
+            evidence.diff.to_owned(),
+            evidence.gates.to_owned(),
+            String::new(),
+            context.findings.unwrap_or_default().to_owned(),
+            context.correction.unwrap_or_default().to_owned(),
+        ));
+        prompt
+    } else {
+        instructions
+    };
     let (prompt, attachments) = media.into_parts(prompt);
     let request_prefix = request_name::invocation(
         input.run_id,
@@ -290,22 +342,17 @@ async fn run_developer_invocation(
         .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
         .with_task_contract(&transcript),
     );
+    if let Some(archive) = archive {
+        tools = tools.with_reviewer_evidence_sources(archive);
+    }
     let result = crate::local_context::run_live_invocation(
         model,
         DeveloperLoopRequest {
             request_prefix,
-            system: writer_system(
-                identity.role,
-                input.delivery_scope,
-                crate::delivery_requirement::ExternalEffectRequirement::from_task(
-                    input.delivery_scope,
-                    &input.task,
-                ),
-                context.remaining,
-            ) + input.delivery_instructions(),
+            system,
             prompt,
             attachments,
-            tools: input.developer_definitions()?,
+            tools: definitions,
             limits: DeveloperLoopLimits::new(48, 512).map_err(|error| developer_error(&error))?,
             cancellation: input.provider_cancellation.clone(),
         },

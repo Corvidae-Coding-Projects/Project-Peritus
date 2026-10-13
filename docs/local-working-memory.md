@@ -39,6 +39,14 @@ additional headroom they need. This also applies when reopening existing memory 
 If protected instructions or required evidence closure cannot fit the provider's actual input
 capacity, assembly reports a capacity error; it never drops those entries to continue.
 
+Fixer requests keep the complete literal conversation, approved design, and conserved review
+ledger. Generated candidate diffs and check history use non-authoritative bounded previews after
+reserving the retained required working closure. Their complete immutable sections remain
+available through `developer_evidence_read`, with UTF-8 offsets, byte lengths, and SHA-256 digests.
+Even when no preview fits, the initial request retains the exact section manifests. Projection
+errors preserve the underlying context category, affected entry identity, and numeric bounds;
+structural failures are not mislabeled as token exhaustion.
+
 `fully_offline = true` additionally requires every configured route to be a compatible provider
 with a literal loopback endpoint and disables automatic provider failover. DNS names (including
 localhost), remote endpoints, and provider subprocess routes are rejected. Configure the local

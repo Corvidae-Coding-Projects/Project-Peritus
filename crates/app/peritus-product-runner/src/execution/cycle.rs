@@ -112,6 +112,7 @@ pub(super) async fn initial_write(
         1,
         design,
         findings,
+        None,
         ownership,
         accounting,
         recorder,
@@ -304,17 +305,14 @@ pub(super) async fn apply_fix(
         accounting,
     )?;
     check_cancelled(input)?;
-    let findings = format!(
-        "Current diff:\n{}\n\nExact-target checks:\n{}\n\nConserved review ledger:\n{}",
-        evidence.diff, evidence.gates, evidence.review,
-    );
     let turn = crate::turn::complete_developer_turn(
         input,
         &input.providers.fixer,
         "fixer",
         fixer_cycle,
         state.design.markdown(),
-        Some(&findings),
+        Some(&evidence.review),
+        Some(crate::turn::DeveloperEvidence { diff: &evidence.diff, gates: &evidence.gates }),
         ownership,
         accounting,
         recorder,

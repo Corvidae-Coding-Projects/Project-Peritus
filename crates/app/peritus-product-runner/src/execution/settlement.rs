@@ -307,6 +307,8 @@ fn context_failure(detail: &str) -> bool {
     normalized.contains("context window")
         || normalized.contains("context limit")
         || normalized.contains("context overflow")
+        || normalized.contains("prepare developer context")
+        || normalized.contains("local working memory")
 }
 
 fn remaining_work(
@@ -326,6 +328,12 @@ fn remaining_work(
         remaining.push("complete a current independent blocker-free review".to_owned());
     }
     match cause {
+        SettlementCause::Context => {
+            remaining.push(
+                "resume the interrupted phase after correcting the reported context failure"
+                    .to_owned(),
+            );
+        }
         SettlementCause::Provider => {
             remaining
                 .push("recover the selected provider and resume the interrupted phase".to_owned());

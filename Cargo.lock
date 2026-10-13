@@ -2220,6 +2220,7 @@ dependencies = [
  "peritus-role",
  "peritus-run-settlement",
  "peritus-sandbox",
+ "peritus-sandbox-linux",
  "peritus-scheduler",
  "peritus-secrets",
  "peritus-spec",
@@ -2252,6 +2253,7 @@ dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
  "peritus-context",
+ "peritus-eval",
  "peritus-evidence",
  "peritus-harness",
  "peritus-journal",
@@ -2277,6 +2279,8 @@ dependencies = [
  "peritus-model-protocol",
  "peritus-scheduler",
  "peritus-types",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2635,6 +2639,7 @@ dependencies = [
  "peritus-codec",
  "peritus-context",
  "peritus-gates",
+ "peritus-harness",
  "peritus-journal",
  "peritus-kernel",
  "peritus-leases",

@@ -295,12 +295,7 @@ pub fn verify_signed_decision(
         return Err(crate::ApprovalError::InvalidCryptoEncoding);
     }
     let parsed = Signature::from_bytes(signature_bytes.as_bytes());
-    let mut message_encoder = crate::digest::CanonicalEncoder::record(
-        b"approval-signed-decision",
-        crate::MAX_APPROVAL_KEY_ID_PREIMAGE_BYTES,
-    )?;
-    message_encoder.field(1, decision.digest().sha256().as_bytes())?;
-    let message = message_encoder.finish();
+    let message = decision.signing_bytes()?;
     if verifying.verify_strict(&message, &parsed).is_err() {
         return Err(crate::ApprovalError::SignatureInvalid);
     }

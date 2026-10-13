@@ -89,6 +89,7 @@ impl ProductRunner {
                     state.coordinator.completed_fixer_cycles() + 2,
                     state.design.markdown(),
                     Some(&prior),
+                    None,
                     &mut workspace_ownership,
                     accounting,
                     &execution.recorder,

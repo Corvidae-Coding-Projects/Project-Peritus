@@ -15,7 +15,7 @@ pub use lifecycle::{
     LIFECYCLE_PHASE_VARIANTS, LIFECYCLE_VARIANTS, VariantSet, VariantTag,
 };
 pub use registry::{
-    ARTIFACT_SCOPE_CLAIM_FAMILY, ARTIFACT_UPLOAD_ACCEPTED_FAMILY, FAMILIES, MessageFamily,
-    MessageRole,
+    ARTIFACT_SCOPE_CLAIM_FAMILY, ARTIFACT_UPLOAD_ACCEPTED_FAMILY, AUTHORITY_OWNER_RECORD_FAMILY,
+    FAMILIES, MessageFamily, MessageRole,
 };
 pub use render::{GeneratedArtifact, generated_artifacts};

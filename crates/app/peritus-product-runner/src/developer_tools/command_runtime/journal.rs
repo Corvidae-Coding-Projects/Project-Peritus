@@ -40,8 +40,13 @@ pub(super) fn append(
     let command_id = ids.command(command_label)?;
     let event_id = ids.event(event_label)?;
     let frame = ExactFrame::new(
-        encode_frame(300, 1, &[u8::try_from(sequence).unwrap_or(u8::MAX)], CodecLimits::PRODUCTION)
-            .map_err(|error| format!("encode command authority frame: {error}"))?,
+        encode_frame(
+            peritus_protocol::schema::AUTHORITY_OWNER_RECORD_FAMILY,
+            1,
+            &[u8::try_from(sequence).unwrap_or(u8::MAX)],
+            CodecLimits::PRODUCTION,
+        )
+        .map_err(|error| format!("encode command authority frame: {error}"))?,
     )
     .map_err(|error| format!("construct command authority frame: {error}"))?;
     let draft = EventDraft::new(

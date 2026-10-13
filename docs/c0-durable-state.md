@@ -186,9 +186,22 @@ journal-catalog, actual artifact references, and evidence references. A fold rec
 does not receive a database, filesystem, network, process, clock, or other effect handle.
 
 `replay_from_genesis` checks the export range, global ordering, aggregate sequence and predecessors,
-constant revision binding within each aggregate, registered family/schema, typed B3 decoding, fold
-invariants, and deterministic encoded state. The artifact-reference projection additionally folds
+constant revision binding for fixed-scope aggregates, registered family/schema, typed B3 decoding,
+fold invariants, and deterministic encoded state. E1 harness, F0 campaign/pointer and credential
+registry aggregates carry their owning versioned revision lineage instead; daemon startup replays those owners before
+the generic folds accept revision changes in their registered event families. The artifact-reference projection additionally folds
 the actual batch dependencies from `IntegrityExport`, not claims reconstructed from event payloads.
+
+Family 300 is the existing inert B1 owner-record envelope used for capability, budget, lease and
+approval commit data. It is registered as a record, and generic replay accepts it only on Approval,
+Budget or Lease aggregates. Its opaque bytes do not recreate permissions or approvals: the typed
+durable adapters and their actual receipts remain the authority boundary. Other unknown families
+and unrelated aggregate bindings still fail replay.
+
+Credential-registry replay verifies every canonical family-94 install against its complete public
+snapshot, store-derived identities, exact revision successor and increasing generation. It also
+compares the final event to the durable current snapshot and producing position. The event revision
+is that install's snapshot digest, so an authenticated credential rotation changes it legitimately.
 
 A `Checkpoint` binds projection name and version, schema digest, last journal position,
 journal-head digest, and payload digest. The replay result separately records an invariant digest

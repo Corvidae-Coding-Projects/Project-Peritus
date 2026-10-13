@@ -48,6 +48,22 @@ pub struct FrozenProviderSnapshot {
 }
 
 impl FrozenProviderSnapshot {
+    // Recovery restores inert, artifact-bound facts, never provider execution authority.
+    pub(super) fn restore(
+        profile_id: ProviderProfileId,
+        revision: u64,
+        digest: Sha256Digest,
+        sampling_controls: bool,
+    ) -> Result<Self, EvaluationError> {
+        if revision == 0 {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Profile,
+                EvaluationOperation::FreezeProfile,
+                "stored provider snapshot has a zero revision",
+            ));
+        }
+        Ok(Self { profile_id, revision, digest, sampling_controls })
+    }
     /// Captures the complete public C5 profile without trusting a caller digest.
     /// Unsupported capabilities added after v1 retain the v1 fingerprint. New
     /// supported or unknown capabilities use the extensible v2 fingerprint.

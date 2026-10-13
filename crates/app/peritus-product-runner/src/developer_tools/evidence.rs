@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 use serde_json::Value;
 
-/// Exact immutable source sections from one independent reviewer request.
+/// Exact immutable source sections from one developer or independent reviewer request.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ReviewerEvidenceSources {
     transcript: String,
@@ -16,6 +16,7 @@ pub struct ReviewerEvidenceSources {
 }
 
 impl ReviewerEvidenceSources {
+    /// Retains exact immutable sections for one developer or reviewer invocation.
     pub const fn new(
         transcript: String,
         diff: String,
@@ -27,6 +28,8 @@ impl ReviewerEvidenceSources {
         Self { transcript, diff, gates, developer_commands, prior, correction }
     }
 
+    /// Borrows a named exact source without changing its bytes or authority.
+    #[must_use]
     pub fn section(&self, name: &str) -> Option<&str> {
         match name {
             "transcript" => Some(&self.transcript),
@@ -37,6 +40,30 @@ impl ReviewerEvidenceSources {
             "correction" => Some(&self.correction),
             _ => None,
         }
+    }
+
+    /// Reads the same bounded exact UTF-8 page returned by `developer_evidence_read`.
+    ///
+    /// # Errors
+    /// Rejects unknown sections, invalid bounds, non-UTF-8 offsets, or non-progressing pages.
+    pub fn read(
+        &self,
+        section: &str,
+        offset: u64,
+        maximum: usize,
+    ) -> Result<Value, peritus_agent::DeveloperLoopError> {
+        let error = |text: &str| peritus_agent::DeveloperLoopError::Tool(text.to_owned());
+        if !(1..=super::inspection::MAX_PAGE_BYTES).contains(&maximum) {
+            return Err(error("max_bytes must be between 1 and 524288"));
+        }
+        let evidence =
+            self.section(section).ok_or_else(|| error("unknown historical evidence section"))?;
+        let start =
+            usize::try_from(offset).map_err(|_| error("offset exceeds addressable size"))?;
+        if start > evidence.len() || !evidence.is_char_boundary(start) {
+            return Err(error("offset is outside the evidence or not a UTF-8 boundary"));
+        }
+        super::executor::reviewer_evidence_page(section, evidence, offset, start, maximum)
     }
 }
 

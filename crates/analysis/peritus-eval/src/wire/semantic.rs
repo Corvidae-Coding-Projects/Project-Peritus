@@ -106,6 +106,20 @@ pub(super) fn decode(bytes: &[u8]) -> Result<EvaluationCommandKind, EvaluationEr
             rollout_id: rollout(&mut reader)?,
             observation_digest: digest(&mut reader)?,
         },
+        17 => {
+            let length = reader.read_collection_len().map_err(codec)?;
+            if length == 0 || length > 256 {
+                return Err(protocol("physical artifact roster exceeds its bound"));
+            }
+            let mut artifacts = Vec::with_capacity(length);
+            for _ in 0..length {
+                artifacts.push(ArtifactDigest::from_sha256(digest(&mut reader)?));
+            }
+            if artifacts.windows(2).any(|p| p[0] >= p[1]) {
+                return Err(protocol("physical artifact roster is not canonical"));
+            }
+            EvaluationCommandKind::RecordArtifacts { artifacts }
+        }
         _ => return Err(protocol("unknown evaluation semantic tag")),
     };
     reader.finish().map_err(codec)?;

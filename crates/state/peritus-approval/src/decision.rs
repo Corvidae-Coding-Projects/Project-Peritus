@@ -35,6 +35,26 @@ pub struct ApprovalDecision {
     pub(crate) digest: crate::ApprovalDecisionDigest,
 }
 impl ApprovalDecision {
+    /// Returns the exact domain-separated message an external Ed25519 approver must sign.
+    ///
+    /// The message binds the complete canonical decision digest. Returning bytes grants no
+    /// approval; the strict verifier still checks the signature, current credential, scope,
+    /// expiration, and independence requirements.
+    ///
+    /// # Errors
+    /// Rejects a stale decision digest or an oversized canonical signing preimage.
+    pub fn signing_bytes(&self) -> Result<Vec<u8>, crate::ApprovalError> {
+        if crate::ApprovalDecisionDigest::compute(self)? != self.digest() {
+            return Err(crate::ApprovalError::DecisionDigestMismatch);
+        }
+        let mut encoder = crate::digest::CanonicalEncoder::record(
+            b"approval-signed-decision",
+            crate::MAX_APPROVAL_KEY_ID_PREIMAGE_BYTES,
+        )?;
+        encoder.field(1, self.digest().sha256().as_bytes())?;
+        Ok(encoder.finish())
+    }
+
     #[doc = " Returns the unique command identity."]
     #[must_use]
     pub const fn command_id(&self) -> CommandId {

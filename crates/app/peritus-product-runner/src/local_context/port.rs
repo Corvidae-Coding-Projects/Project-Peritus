@@ -19,6 +19,8 @@ use peritus_types::Sha256Digest;
 use serde_json::Value;
 use std::sync::{Arc, Mutex, MutexGuard};
 
+/// Exclusive durable local-context owner shared through the production context port.
+/// Clones share the owner; dropping the final handle releases its storage lock.
 #[derive(Clone)]
 pub struct LocalContextHandle {
     inner: Arc<Mutex<LocalMemory>>,
@@ -26,11 +28,33 @@ pub struct LocalContextHandle {
 }
 
 impl LocalContextHandle {
-    pub(crate) fn additional_request_framing_tokens(&self) -> Result<u64, DeveloperLoopError> {
+    /// Recovers the same lineage selected by the production run's delivery adapter.
+    ///
+    /// In-place writer and fixer invocations share the writer lineage. This may append
+    /// recovered host projections, but never dispatches effects or invokes a provider.
+    ///
+    /// # Errors
+    /// Rejects invalid storage, unavailable ownership, or inconsistent durable recovery.
+    pub fn for_run(
+        input: &ProductRunInput,
+        role: &str,
+    ) -> Result<Option<Self>, ProductRunnerError> {
+        input.working_memory(role)
+    }
+
+    /// Estimates existing literal pins and complete required working-state framing.
+    ///
+    /// # Errors
+    /// Rejects invalid scope, unavailable artifacts, or a structurally invalid projection.
+    pub fn additional_request_framing_tokens(&self) -> Result<u64, DeveloperLoopError> {
         self.lock()?.additional_request_framing_tokens()
     }
 
-    pub(crate) fn tool_definitions(
+    /// Returns exact memory tool definitions for this owner's configured policy.
+    ///
+    /// # Errors
+    /// Rejects poisoned ownership or invalid bounded schemas.
+    pub fn tool_definitions(
         &self,
     ) -> Result<Vec<peritus_model_protocol::ToolDefinition>, DeveloperLoopError> {
         super::tools::definitions_with_config(&self.lock()?.config)

@@ -108,7 +108,8 @@ fn validate_command_fence(
             }
         }
         Some(state) => {
-            if state.phase().terminal()
+            if (state.phase().terminal()
+                && !matches!(command.kind(), EvaluationCommandKind::RecordArtifacts { .. }))
                 || command.expected_sequence() != state.sequence()
                 || command.expected_previous_event() != Some(state.last_event_id())
                 || command.prior_state_digest() != state.state_digest()
@@ -174,6 +175,16 @@ fn apply_kind(
     state.last_event_id = event_id;
     match kind {
         EvaluationCommandKind::CreateCampaign { .. } => return Err(transition()),
+        EvaluationCommandKind::RecordArtifacts { artifacts } => {
+            if state.phase == EvaluationPhase::Published
+                || artifacts.is_empty()
+                || artifacts.len() > 256
+                || artifacts.windows(2).any(|p| p[0] >= p[1])
+            {
+                return Err(binding("physical evidence retention is closed or noncanonical"));
+            }
+            // No progress, metric, verdict, or permission changes. C0 owns finalized dependencies.
+        }
         EvaluationCommandKind::RecordPlanBatch { plan_id, plan_digest, batch } => {
             require_phase(&state, &[EvaluationPhase::Created])?;
             if state.plan.is_some()
@@ -509,6 +520,13 @@ pub(crate) fn encode_kind(
             writer.write_u8(15).map_err(codec)?;
             writer.write_u8(failure.code().tag()).map_err(codec)?;
             writer.write_fixed(failure.digest().as_bytes()).map_err(codec)?;
+        }
+        EvaluationCommandKind::RecordArtifacts { artifacts } => {
+            writer.write_u8(17).map_err(codec)?;
+            writer.write_collection_len(artifacts.len()).map_err(codec)?;
+            for artifact in artifacts {
+                writer.write_fixed(artifact.as_bytes()).map_err(codec)?;
+            }
         }
     }
     Ok(())

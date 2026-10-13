@@ -24,6 +24,13 @@ pub struct EvaluationAnalysis {
 }
 
 impl EvaluationAnalysis {
+    /// Encodes the complete deterministic analysis under its frozen profile binding.
+    ///
+    /// # Errors
+    /// Rejects canonical encoding beyond production bounds.
+    pub fn canonical_bytes(&self, profile: crate::ProfileDigest) -> Result<Vec<u8>, EvaluationError> {
+        super::canonical::analysis_bytes(profile, self)
+    }
     /// Baseline correctness evidence.
     #[must_use]
     pub const fn baseline(&self) -> &ArmCorrectness {

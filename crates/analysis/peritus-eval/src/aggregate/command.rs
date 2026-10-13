@@ -121,6 +121,12 @@ pub enum EvaluationCommandKind {
         /// Redaction-safe failure record.
         failure: CampaignFailure,
     },
+    /// Retains finalized evidence as explicit dependencies of a new C0 batch.
+    /// This records artifact dependencies without changing any task outcome or authority.
+    RecordArtifacts {
+        /// Canonical, nonempty finalized content roots; these grant no execution authority.
+        artifacts: Vec<peritus_artifact_store::ArtifactDigest>,
+    },
 }
 
 /// One exact fenced command for an evaluation aggregate.
@@ -237,6 +243,13 @@ impl EvaluationCommand {
 
 fn validate_kind(kind: &EvaluationCommandKind) -> Result<(), EvaluationError> {
     match kind {
+        EvaluationCommandKind::RecordArtifacts { artifacts }
+            if artifacts.is_empty()
+                || artifacts.len() > 256
+                || artifacts.windows(2).any(|p| p[0] >= p[1]) =>
+        {
+            Err(invalid("retained physical artifact roots are empty, excessive or noncanonical"))
+        }
         EvaluationCommandKind::StartRollout { attempt, started_at_tick, .. }
             if *attempt == 0 || *started_at_tick == 0 =>
         {

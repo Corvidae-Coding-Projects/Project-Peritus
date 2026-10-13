@@ -12,6 +12,7 @@ keywords = ["debugging", "diagnostics", "agents", "formal-verification"]
 categories = ["development-tools::debugging"]
 
 [dependencies]
+peritus-eval = { version = "=0.0.7", path = "../peritus-eval" }
 peritus-agent = { version = "=0.0.7", path = "../../orchestration/peritus-agent" }
 peritus-artifact-store = { version = "=0.0.7", path = "../../state/peritus-artifact-store" }
 peritus-codec = { version = "=0.0.7", path = "../../foundation/peritus-codec" }

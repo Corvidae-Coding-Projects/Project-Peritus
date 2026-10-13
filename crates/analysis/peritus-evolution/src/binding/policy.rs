@@ -255,6 +255,21 @@ impl PromotionPolicy {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+
+    /// Returns the actual protected E1 component bytes whose SHA-256 is this policy's digest.
+    ///
+    /// Materialization producers use these bytes instead of reconstructing private policy fields
+    /// or asserting a declaration digest for unrelated component content.
+    #[must_use]
+    pub fn canonical_bytes(&self) -> Vec<u8> {
+        policy_component_bytes(
+            self.thresholds,
+            &self.objectives,
+            &self.review_required_kinds,
+            self.allow_cross_lineage,
+            self.maximum_variants,
+        )
+    }
 }
 
 /// Typed policy tied to the protected E1 `EvolutionStrategy` declaration.
@@ -369,6 +384,22 @@ fn policy_digest(
     allow_cross_lineage: bool,
     maximum_variants: u16,
 ) -> Sha256Digest {
+    peritus_codec::sha256(&policy_component_bytes(
+        thresholds,
+        objectives,
+        review_kinds,
+        allow_cross_lineage,
+        maximum_variants,
+    ))
+}
+
+fn policy_component_bytes(
+    thresholds: PromotionThresholds,
+    objectives: &[Objective],
+    review_kinds: &[ComponentKind],
+    allow_cross_lineage: bool,
+    maximum_variants: u16,
+) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(160);
     bytes.extend_from_slice(&thresholds.minimum_paired_lower_millionths.to_be_bytes());
     bytes.extend_from_slice(&thresholds.maximum_critical_regressions.to_be_bytes());
@@ -385,7 +416,9 @@ fn policy_digest(
     push_bytes(&mut bytes, &review_kinds.iter().map(|value| value.tag()).collect::<Vec<_>>());
     bytes.push(u8::from(allow_cross_lineage));
     bytes.extend_from_slice(&maximum_variants.to_be_bytes());
-    digest_parts(b"peritus.f0.promotion-policy.v1\0", &[&bytes])
+    let mut preimage = b"peritus.f0.promotion-policy.v1\0".to_vec();
+    push_bytes(&mut preimage, &bytes);
+    preimage
 }
 
 const fn mismatch() -> EvolutionError {

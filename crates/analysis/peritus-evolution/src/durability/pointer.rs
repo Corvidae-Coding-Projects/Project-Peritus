@@ -27,6 +27,14 @@ pub fn commit_pointer_transition(
     command: &PointerCommand,
     transition: &PointerTransition,
 ) -> Result<CommittedBatch, EvolutionError> {
+    if matches!(
+        command.kind(),
+        PointerCommandKind::ActivatePromotion { .. } | PointerCommandKind::ActivateRollback { .. }
+    ) {
+        return Err(binding::binding(
+            "production activation requires an atomic approve-once commit",
+        ));
+    }
     binding::validate_pointer(command, transition)?;
     let aggregate = pointer_aggregate_key(command.project_id())?;
     let state_key = pointer_state_key(command.project_id());

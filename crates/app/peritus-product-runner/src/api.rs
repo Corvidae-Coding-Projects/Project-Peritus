@@ -10,9 +10,11 @@ pub use crate::context_config::{
 pub use crate::conversation_mode::ConversationMode;
 
 pub use crate::developer_tools::{
-    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
-    UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, checked_protected_file,
-    uncertain_effects,
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan,
+    MaterializationAuthorityContext, MaterializationAuthorityRequest,
+    OwnedMaterializationAuthority, OwnedRestrictedProcessAuthority, PreviewTerminal,
+    RestrictedProcessContext, UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect,
+    checked_protected_file, uncertain_effects,
 };
 pub use crate::developer_tools::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
