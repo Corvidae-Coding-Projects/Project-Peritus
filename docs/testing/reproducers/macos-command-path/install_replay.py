@@ -6,7 +6,7 @@ are portable, but this does not claim execution of the published Mach-O binary.
 The published Apple-silicon archive is separately inspected with its checksum.
 HOME is unchanged: bubblewrap redirects that path only inside its namespace.
 """
-import argparse, hashlib, json, os, shutil, subprocess, tarfile
+import argparse, hashlib, json, os, shutil, subprocess, tarfile, tomllib
 from pathlib import Path
 
 p=argparse.ArgumentParser()
@@ -15,7 +15,8 @@ p.add_argument('--root',type=Path,required=True)
 a=p.parse_args();repo=a.repo.resolve();root=a.root.resolve()
 root.mkdir(parents=True,exist_ok=True)
 (root/'tmp').mkdir(exist_ok=True)
-version='v0.0.7'
+release=tomllib.loads((repo/'Cargo.toml').read_text())['workspace']['package']['version']
+version='v'+release
 
 def stage(platform):
  bundle=root/'bundles'/f'peritus-{platform}-x86_64'
@@ -30,7 +31,7 @@ def stage(platform):
  shutil.copy2(repo/'packaging'/platform/share,bundle/'share/peritus'/share)
  # Truthful fixture manifest: these are Linux consumers used for file-layout
  # replay, not a native Mac release or a claim of notarized/public assets.
- (bundle/'manifest.toml').write_text('schema=1\nrelease="0.0.7"\nplatform="linux"\narchitecture="x86_64"\n')
+ (bundle/'manifest.toml').write_text(f'schema=1\nrelease="{release}"\nplatform="linux"\narchitecture="x86_64"\n')
  files=sorted(p for p in bundle.rglob('*') if p.is_file() and p.name!='SHA256SUMS')
  (bundle/'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(bundle))+'\n' for p in files))
  for f in [*bundle.glob('*.sh'),*(bundle/'bin').iterdir(),*(bundle/'libexec').iterdir()]:f.chmod(0o755)

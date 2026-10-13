@@ -262,6 +262,11 @@ and sandbox helper, assembles their package, reads back the native executable ve
 an archive with checksums. Windows x86-64 uses pinned LLVM `clang-cl` 20.1.8 with the MSVC ABI;
 Windows binaries use deterministic final linking.
 
+Unix release runners install their actual package into the disposable runner's home and
+operate the installed command through offline setup, a daemon-connected terminal session,
+client exit, and clean daemon shutdown. macOS uses the installer's separate CLI symlink,
+so this journey exercises discovery of the daemon beside the real executable.
+
 The release operator creates the artifact inventory, SPDX SBOM, and provenance. GitHub signs the
 archive and SBOM attestations; the operator authenticates these signed artifacts and uploads them
 to the unpublished release draft. The publisher waits for all six native archives before attaching

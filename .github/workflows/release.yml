@@ -538,6 +538,16 @@ jobs:
           (Join-Path $installation 'bin') | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
       - name: Build native products and assemble their release archive
         run: ${{ matrix.target.python }} packaging/native_release.py
+      - name: Install and run the real offline terminal through its Unix command path
+        if: ${{ runner.os != 'Windows' }}
+        run: ${{ matrix.target.python }} packaging/real_startup.py
+      - name: Retain actual Unix installation and startup observations
+        if: ${{ always() && runner.os != 'Windows' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: startup-${{ matrix.target.os }}
+          path: dist/startup-evidence
+          if-no-files-found: ignore
       - name: Generate inventory, SBOM, and provenance
         id: evidence
         run: cargo run --locked --package peritus-release-operator -- generate dist/peritus-native-package.json
