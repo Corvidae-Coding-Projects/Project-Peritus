@@ -238,3 +238,7 @@ dialog[open]{animation:panel-engage 250ms var(--spring)}
 @media(max-height:850px) and (min-width:761px){.ready-state{padding-top:18px;padding-bottom:18px}.ready-instrument{margin-bottom:18px}.instrument.large .tube{width:38px;height:66px}.instrument.large .cathodes span{font-size:57px}.ready-state h2{font-size:2.35rem}.ready-state>p{margin-top:10px}.starter-commands{margin-top:19px}.setup-prompt{margin-top:12px}.signal-readout{margin-top:18px}.advanced-controls{margin-top:19px}.bank-nameplate{padding-top:18px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cathodes span{transform:none!important}dialog::backdrop{backdrop-filter:none}}
 [data-motion=reduced] *,[data-motion=reduced] *::before,[data-motion=reduced] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+
+/* Keep conversation authority visible at narrow widths and available to assistive tech. */
+.composer-mode-hint{margin:0;padding:0 0 10px;font-size:.75rem;line-height:1.45;color:var(--muted);overflow-wrap:anywhere}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}

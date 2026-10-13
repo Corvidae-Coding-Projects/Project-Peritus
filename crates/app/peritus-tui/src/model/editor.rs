@@ -69,7 +69,8 @@ impl AppModel {
             return effects;
         }
         if let KeyCode::Char(character) = key.code
-            && !key.modifiers.contains(KeyModifiers::CONTROL)
+            && crate::input::text_motion(key).is_none()
+            && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER)
         {
             self.paste_editor(&character.to_string());
             return Vec::new();

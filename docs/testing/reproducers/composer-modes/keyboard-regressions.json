@@ -1,0 +1,92 @@
+{
+  "interface": "Actual peritus open TUI via PTY",
+  "baseline_sha256": "865293f480b3f12103e20f3e3927d507995bdcac01aea0a4e535be7c83ec445e",
+  "fixed_sha256": "603cf2ba6369cfc2e93c88e7affbd84817904ee563d7ea8f59981604ce921edf",
+  "cases": [
+    {
+      "name": "option-left",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3344",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha |beta",
+      "before": "alpha bet|a",
+      "after": "alpha |beta",
+      "resolved": true
+    },
+    {
+      "name": "legacy-alt-b",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b62",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha |beta",
+      "before": "alpha betab|",
+      "after": "alpha |beta",
+      "resolved": true
+    },
+    {
+      "name": "cmd-current-line-start",
+      "input": "first line\nsecond line",
+      "keys_hex": [
+        "1b5b313b3944",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "first line\n|second line",
+      "before": "first line\nsecond lin|e",
+      "after": "first line\n|second line",
+      "resolved": true
+    },
+    {
+      "name": "shift-option-replace",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3444",
+        "58"
+      ],
+      "expected": "alpha X",
+      "before": "alpha betX",
+      "after": "alpha X",
+      "resolved": true
+    },
+    {
+      "name": "selected-then-legacy",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3244",
+        "1b62",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha |beta",
+      "before": "alpha betb|",
+      "after": "alpha |beta",
+      "resolved": true
+    },
+    {
+      "name": "option-delete-word",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b7f",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha |",
+      "before": "alpha bet|",
+      "after": "alpha |",
+      "resolved": true
+    },
+    {
+      "name": "super-char-no-insertion",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b39383b3975",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha beta|",
+      "before": "alpha betab|",
+      "after": "alpha beta|",
+      "resolved": true
+    }
+  ]
+}

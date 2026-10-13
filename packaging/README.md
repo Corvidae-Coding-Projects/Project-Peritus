@@ -51,6 +51,20 @@ The package includes the command, background process, terminal interface, and sa
 The installer also saves an uninstaller and configures the user command path.
 It does not register an always-on system service.
 
+### macOS 0.0.7 command-path error
+
+If setup finishes but startup reports a missing `~/.local/bin/peritusd`, launch the
+installed command directly:
+
+```sh
+"$HOME/Library/Application Support/Peritus/bin/peritus"
+```
+
+The macOS installer places `peritusd` beside this command and creates a separate
+`~/.local/bin/peritus` shortcut. Release 0.0.7 can look beside that shortcut instead
+of its target. Direct invocation keeps your existing configuration and credentials.
+The corrected launcher resolves the command's real path before finding its daemon.
+
 ## Runtime dependencies
 
 The installer keeps working dependencies that are already present.

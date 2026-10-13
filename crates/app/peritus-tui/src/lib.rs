@@ -12,6 +12,7 @@ mod help;
 pub(crate) mod image_import;
 mod input;
 mod model;
+mod modes;
 mod render;
 mod runtime;
 mod sanitize;

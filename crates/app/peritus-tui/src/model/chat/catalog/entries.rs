@@ -6,25 +6,27 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         command: Command::Chat,
         name: "/chat",
-        description: "Talk or request scoped work",
+        description: crate::modes::description(peritus_app_protocol::ProductInteractionMode::Chat),
         arguments: Arguments::Message,
     },
     CommandSpec {
         command: Command::Plan,
         name: "/plan",
-        description: "Read-only planning",
+        description: crate::modes::description(peritus_app_protocol::ProductInteractionMode::Plan),
         arguments: Arguments::Message,
     },
     CommandSpec {
         command: Command::Review,
         name: "/review",
-        description: "Fresh independent read-only review",
+        description: crate::modes::description(
+            peritus_app_protocol::ProductInteractionMode::Review,
+        ),
         arguments: Arguments::Message,
     },
     CommandSpec {
         command: Command::Build,
         name: "/build",
-        description: "Checked writer / reviewer / fixer delivery",
+        description: crate::modes::description(peritus_app_protocol::ProductInteractionMode::Build),
         arguments: Arguments::Message,
     },
     CommandSpec {
