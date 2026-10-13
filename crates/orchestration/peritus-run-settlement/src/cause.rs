@@ -5,6 +5,8 @@
 pub enum SettlementCause {
     #[doc = " All intended phases reached their normal terminal boundary."]
     Completed,
+    #[doc = " An explicitly authorized investigation completed with review and no patch."]
+    NoChangeComplete,
     #[doc = " A material user answer is required."]
     UserWait,
     #[doc = " The user explicitly cancelled the run."]
@@ -34,6 +36,7 @@ impl SettlementCause {
     pub const fn tag(self) -> u16 {
         match self {
             Self::Completed => 1,
+            Self::NoChangeComplete => 13,
             Self::UserWait => 2,
             Self::Cancellation => 3,
             Self::Deadline => 4,
@@ -52,6 +55,7 @@ impl SettlementCause {
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
             1 => Some(Self::Completed),
+            13 => Some(Self::NoChangeComplete),
             2 => Some(Self::UserWait),
             3 => Some(Self::Cancellation),
             4 => Some(Self::Deadline),

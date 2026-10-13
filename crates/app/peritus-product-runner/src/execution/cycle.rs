@@ -281,7 +281,7 @@ pub(super) async fn inspect_gates(
 pub(super) async fn apply_fix(
     input: &ProductRunInput,
     observe: &RunObserver,
-    inspected: &CycleInspection,
+    evidence: &RunEvidence,
     state: &mut RunState,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
@@ -298,7 +298,7 @@ pub(super) async fn apply_fix(
         ProductRunPhase::Fixing,
         fixer_cycle + 1,
         "Fixer is addressing exact check failures and every conserved blocker",
-        &inspected.evidence,
+        evidence,
         &state.task_summary,
         Some(&state.findings),
         accounting,
@@ -306,7 +306,7 @@ pub(super) async fn apply_fix(
     check_cancelled(input)?;
     let findings = format!(
         "Current diff:\n{}\n\nExact-target checks:\n{}\n\nConserved review ledger:\n{}",
-        inspected.evidence.diff, inspected.evidence.gates, inspected.evidence.review,
+        evidence.diff, evidence.gates, evidence.review,
     );
     let turn = crate::turn::complete_developer_turn(
         input,
@@ -341,7 +341,7 @@ pub(super) async fn apply_fix(
                 ProductRunPhase::Fixing,
                 fixer_cycle + 1,
                 "Fixer completed; fresh verification is pending",
-                &inspected.evidence,
+                evidence,
                 &state.task_summary,
                 Some(&state.findings),
                 accounting,

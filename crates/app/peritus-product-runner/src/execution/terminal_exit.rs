@@ -61,7 +61,13 @@ impl ActiveExit {
     }
 
     pub(super) const fn with_deadline(mut self, reached: bool) -> Self {
-        if reached && !matches!(self.cause, SettlementCause::Completed | SettlementCause::UserWait)
+        if reached
+            && !matches!(
+                self.cause,
+                SettlementCause::Completed
+                    | SettlementCause::NoChangeComplete
+                    | SettlementCause::UserWait
+            )
         {
             self.cause = SettlementCause::Deadline;
         }

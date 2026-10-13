@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 
 use peritus_app_protocol::{ProductDeliverable, ProductRunPhase, ProductRunSnapshot};
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateStage, EvidenceStatus, QualificationEvidence,
+    CandidateCheckpoint, CandidateStage, EvidenceStatus, QualificationEvidence, RunDisposition,
 };
 
 use crate::id::hex;
@@ -17,7 +17,7 @@ pub(super) fn observed_json(run: &ObservedRun) -> serde_json::Value {
     serde_json::json!({
         "run_id": hex(snapshot.run_id().as_bytes()),
         "workspace_id": hex(snapshot.workspace_id().as_bytes()),
-        "state": state_name(snapshot),
+        "state": state_name(run),
         "phase": format!("{:?}", snapshot.phase()),
         "cycle": snapshot.cycle(),
         "task": snapshot.task(),
@@ -71,7 +71,7 @@ pub(super) fn observed_human(run: &ObservedRun) -> String {
     let mut text = format!(
         "{}  {}\n{}\n{}",
         hex(snapshot.run_id().as_bytes()),
-        state_name(snapshot),
+        state_name(run),
         snapshot.task(),
         snapshot.status(),
     );
@@ -162,7 +162,13 @@ fn display_list(values: &[String]) -> String {
     if values.is_empty() { "  (none)".to_owned() } else { format!("  {}", values.join("\n  ")) }
 }
 
-const fn state_name(snapshot: &ProductRunSnapshot) -> &'static str {
+fn state_name(run: &ObservedRun) -> &'static str {
+    if run.settlement.as_ref().is_some_and(|settlement| {
+        settlement.disposition() == RunDisposition::CompletedWithoutCandidate
+    }) {
+        return "Completed without candidate";
+    }
+    let snapshot = &run.snapshot;
     match (snapshot.phase(), snapshot.deliverable()) {
         (ProductRunPhase::Complete, _) => "Accepted",
         (ProductRunPhase::WaitingForUser, _) => "Waiting for you",

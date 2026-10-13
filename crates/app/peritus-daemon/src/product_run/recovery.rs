@@ -142,7 +142,9 @@ fn project_reconciled(
         ProductRunPhase::RecoveryRequired
     } else {
         match settlement.disposition() {
-            RunDisposition::Accepted => ProductRunPhase::Complete,
+            RunDisposition::Accepted | RunDisposition::CompletedWithoutCandidate => {
+                ProductRunPhase::Complete
+            }
             RunDisposition::CandidateAvailable | RunDisposition::FailedNoCandidate => {
                 ProductRunPhase::Failed
             }

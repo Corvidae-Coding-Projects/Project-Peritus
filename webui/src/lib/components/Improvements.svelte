@@ -27,7 +27,7 @@
   async function moreRuns(){if(runsNext===null)return;const page=await query<import('../types').RunPage>('runs',{offset:runsNext});runs=[...runs,...page.runs];runsNext=page.next;}
 </script>
 
-<p class="dialog-description">Collect evidence-backed suggestions here. Generate a patch and run tests only when you choose to evaluate one.</p>
+<p class="dialog-description">Collect evidence-backed suggestions here. Generate a patch and exercise the actual program with the real-testing skill only when you choose to evaluate one.</p>
 {#if error}<p role="alert">{error}</p><button class="key" onclick={()=>void refresh()}>Retry loading inbox</button>{/if}
 <form onsubmit={(event)=>{event.preventDefault();void attempt(async()=>{await mutate({action:'suggest',run:source,proposal});proposal='';notify('Suggestion saved. No evaluation started.');});}}>
   {#if runsNext!==null}<button type="button" class="key small" onclick={()=>void attempt(moreRuns)}>Load more evidence runs</button>{/if}
@@ -35,7 +35,6 @@
   <label>Improvement suggestion<textarea bind:value={proposal} required maxlength="4096" rows="3" placeholder="What might improve the harness, and why does this run support investigating it?"></textarea></label>
   <button class="key" disabled={busy||!source||!proposal.trim()}>Collect suggestion</button>
 </form>
-{#if inbox.candidates.filter(c=>!c.dismissed).length>=32}<p role="status">The inbox is full. Dismiss a suggestion to make room; additional run evidence remains in run history.</p>{/if}
 <div class="evaluation-target"><label for="improvement-target">Peritus source workspace</label><select id="improvement-target" bind:value={target}><option value="">Choose where to generate and test patches</option>{#each ui.workspace.projects.filter(p=>!p.closed) as project}<option value={project.id}>{project.name} · {project.root}</option>{/each}</select><p class="setting-note">Select a registered Git checkout of Peritus. Evaluation uses its configured provider and normal run limits. You can stop the run, inspect its patch and checks, then explicitly export or commit it. The running harness is never updated automatically.</p></div>
 <label class="dismissed"><input type="checkbox" bind:checked={showDismissed}/> Show dismissed suggestions</label>
 {#each inbox.candidates.filter(c=>showDismissed||!c.dismissed) as item(item.id)}

@@ -41,6 +41,11 @@ current product-run records for an older binary; use a verified pre-upgrade back
 an earlier state format. Native package checks do not establish that the full H4 upgrade,
 long-duration, and independent-review requirements passed.
 
+Current development adds a reviewed no-patch investigation settlement and requires application
+protocol 2.1. Update the CLI, TUI, WebUI server, and daemon together. Protocol 2.0 clients are
+rejected during negotiation before receiving new settlement tags; current durable conversation,
+run, and session identities remain unchanged.
+
 ## Authority and protected data
 
 The release operator may replace package-owned binaries, helpers, manifests, and supervisor

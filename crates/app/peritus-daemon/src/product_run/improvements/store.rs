@@ -27,6 +27,9 @@ pub(super) struct Evaluation {
     pub(super) run: [u8; 16],
     pub(super) target: [u8; 16],
     pub(super) providers: [[u8; 16]; 3],
+    // Accepted workbench operations must replay byte-for-byte across prompt upgrades.
+    #[serde(default)]
+    pub(super) directive_version: u8,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -68,6 +71,9 @@ impl Candidate {
             .evaluation
             .as_ref()
             .map(|e| {
+                if e.directive_version > 1 {
+                    return Err(problem("unsupported evaluation directive version"));
+                }
                 let actor =
                     ActorId::new(e.actor).map_err(|_| problem("invalid evaluation actor"))?;
                 let conversation = ConversationId::new(e.conversation)
@@ -119,6 +125,30 @@ impl Candidate {
 }
 
 impl Store {
+    // Reservations belong to the source inbox; execution may use a different target workspace.
+    pub(super) fn is_evaluation(&self, run: RunId) -> Result<bool, Error> {
+        let run_json = serde_json::to_string(&run.into_bytes()).map_err(problem)?;
+        let mut statement = self.0.prepare(
+            "SELECT workspace, id FROM improvements WHERE json_extract(record, '$.evaluation.run')=?1",
+        ).map_err(problem)?;
+        let matches = statement
+            .query_map([run_json], |row| {
+                Ok((row.get::<_, [u8; 16]>(0)?, row.get::<_, [u8; 32]>(1)?))
+            })
+            .map_err(problem)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(problem)?;
+        for (workspace, id) in matches {
+            let workspace =
+                WorkspaceId::new(workspace).map_err(|_| problem("invalid source workspace"))?;
+            let item = self.get(workspace, id)?.ok_or(Error::NotFound)?;
+            if item.evaluation.is_some_and(|evaluation| evaluation.run == run.into_bytes()) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     pub(in crate::product_run) fn open(path: &Path) -> Result<Self, Error> {
         let conn = connection(path)?;
         let version: u32 =

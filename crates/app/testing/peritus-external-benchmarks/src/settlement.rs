@@ -267,6 +267,7 @@ fn settlement_error(error: SettlementError) -> BenchmarkError {
 const fn disposition_name(value: RunDisposition) -> &'static str {
     match value {
         RunDisposition::Accepted => "accepted",
+        RunDisposition::CompletedWithoutCandidate => "completed_without_candidate",
         RunDisposition::CandidateAvailable => "candidate_available",
         RunDisposition::WaitingForUser => "waiting_for_user",
         RunDisposition::FailedNoCandidate => "failed_no_candidate",
@@ -278,6 +279,7 @@ const fn disposition_name(value: RunDisposition) -> &'static str {
 const fn cause_name(value: SettlementCause) -> &'static str {
     match value {
         SettlementCause::Completed => "completed",
+        SettlementCause::NoChangeComplete => "no_change_complete",
         SettlementCause::UserWait => "user_wait",
         SettlementCause::Cancellation => "cancellation",
         SettlementCause::Deadline => "deadline",

@@ -52,24 +52,13 @@ impl ProductRunService {
     fn collect_improvements(&self, workspace: WorkspaceId) -> Result<(), Error> {
         let records = self.inner.records.read().map_err(|_| Error::Unavailable)?;
         let mut store = locked(&self.inner.improvements)?;
-        let evaluating = store
-            .inbox(workspace)?
-            .candidates()
-            .iter()
-            .filter_map(peritus_app_protocol::ImprovementCandidate::evaluation)
-            .map(peritus_app_protocol::ImprovementEvaluation::run)
-            .collect::<Vec<_>>();
         for record in records.values().filter(|r| r.request.workspace_id() == workspace) {
-            if !evaluating.contains(&record.request.run_id()) {
-                match collect(&mut store, record) {
-                    // A full inbox must remain readable and dismissible. The source run remains
-                    // retained and can be collected on a later visit after the user makes room.
-                    Ok(())
-                    | Err(Error::Control(
-                        peritus_product_runner::control::ControlError::Capacity,
-                    )) => {}
-                    Err(error) => return Err(error),
-                }
+            match collect(&mut store, record) {
+                // A full inbox must remain readable and dismissible. The source run remains
+                // retained and can be collected on a later visit after the user makes room.
+                Ok(())
+                | Err(Error::Control(peritus_product_runner::control::ControlError::Capacity)) => {}
+                Err(error) => return Err(error),
             }
         }
         Ok(())
@@ -82,9 +71,7 @@ impl ProductRunService {
 
 fn collect(store: &mut Store, record: &RunRecord) -> Result<(), Error> {
     let snapshot = &record.snapshot;
-    if !snapshot.phase().terminal()
-        || record.request.execution_task().starts_with("PERITUS HARNESS EVALUATION\n")
-    {
+    if !snapshot.phase().terminal() || store.is_evaluation(record.request.run_id())? {
         return Ok(());
     }
     let suggestion = if snapshot.phase() == ProductRunPhase::Failed {

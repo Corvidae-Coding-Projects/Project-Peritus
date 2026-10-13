@@ -5,6 +5,8 @@
 pub enum RunDisposition {
     #[doc = " Current gates, public obligations, and independent review accepted the candidate."]
     Accepted,
+    #[doc = " A reviewed investigation completed without creating or accepting a candidate."]
+    CompletedWithoutCandidate,
     #[doc = " Exact candidate work is available but strict acceptance is incomplete."]
     CandidateAvailable,
     #[doc = " A material user answer is required before work can continue."]
@@ -22,6 +24,7 @@ impl RunDisposition {
     pub const fn tag(self) -> u16 {
         match self {
             Self::Accepted => 1,
+            Self::CompletedWithoutCandidate => 7,
             Self::CandidateAvailable => 2,
             Self::WaitingForUser => 3,
             Self::FailedNoCandidate => 4,
@@ -34,6 +37,7 @@ impl RunDisposition {
     pub const fn from_tag(tag: u16) -> Option<Self> {
         match tag {
             1 => Some(Self::Accepted),
+            7 => Some(Self::CompletedWithoutCandidate),
             2 => Some(Self::CandidateAvailable),
             3 => Some(Self::WaitingForUser),
             4 => Some(Self::FailedNoCandidate),

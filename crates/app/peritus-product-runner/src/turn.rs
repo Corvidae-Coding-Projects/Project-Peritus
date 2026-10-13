@@ -21,6 +21,7 @@ mod correction;
 mod evidence;
 mod provider;
 mod request_name;
+pub(crate) use request_name::invocation as fresh_request_prefix;
 mod reviewer_prompt;
 mod writer_prompt;
 pub use reviewer_prompt::{ReviewDelivery, reviewer_system, reviewer_user};
