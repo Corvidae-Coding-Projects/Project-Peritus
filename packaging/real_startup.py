@@ -42,9 +42,11 @@ def main():
     evidence.mkdir()
     workspace = evidence / "workspace"
     workspace.mkdir()
-    environment = dict(os.environ, PERITUS_INSTALL_DEPS="0")
+    # Fresh Linux runners lack the sandbox and credential-store packages. Exercise
+    # the installer's supported dependency setup there; Macs already provide Git.
+    environment = dict(os.environ, PERITUS_INSTALL_DEPS="1" if system == "Linux" else "0")
     installed = subprocess.run(["sh", str(bundle / "Install-Peritus.sh"), str(bundle)],
-                               env=environment, capture_output=True, text=True, timeout=60)
+                               env=environment, capture_output=True, text=True, timeout=300)
     (evidence / "install.log").write_text(installed.stdout + installed.stderr)
     if installed.returncode:
         raise RuntimeError("actual release installer failed; see install.log")
@@ -101,7 +103,7 @@ def main():
             fields = dict(line.split("=", 1) for line in instance.read_text().splitlines())
             endpoint = str(instance.parent / (fields["endpoint"] + ".sock"))
             # Unix socket paths use the same documented launcher shortening on long roots.
-            if len(endpoint.encode()) > 107:
+            if len(endpoint.encode()) > (107 if system == "Linux" else 103):
                 digest = hashlib.sha256(b"peritus/unix-runtime-endpoint/v1\0" + endpoint.encode()).hexdigest()[:32]
                 endpoint = "/tmp/peritus-" + digest + "/daemon.sock"
             shutdown = subprocess.run([str(command), "--endpoint", endpoint, "shutdown", "--wait"],
