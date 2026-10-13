@@ -5,9 +5,17 @@ use super::{
     ROOT_NAMESPACE, aggregate,
 };
 use peritus_codec::{CodecLimits, decode_frame, sha256};
+use peritus_journal::ReplayObservation;
 use peritus_product_runner::control::{
     ControlOperation, ConversationId, ConversationRecord, ConversationReplay,
 };
+use std::sync::Arc;
+
+pub(super) struct CachedReplay {
+    conversation: ConversationId,
+    replay: Arc<ConversationReplay>,
+    observation: ReplayObservation,
+}
 
 impl ControlStore {
     /// Verifies bounded immutable history against the current C0 state root without recovery writes.
@@ -15,8 +23,44 @@ impl ControlStore {
         Ok(self.load_replay(id)?.current().cloned())
     }
 
-    pub(super) fn load_replay(&self, id: ConversationId) -> Result<ConversationReplay, Error> {
-        self.load_at_revision(id, None).map(|(replay, _)| replay)
+    fn load_replay(&self, id: ConversationId) -> Result<Arc<ConversationReplay>, Error> {
+        self.observed_replay(id).map(|(replay, _)| replay)
+    }
+
+    pub(super) fn observed_replay(
+        &self,
+        id: ConversationId,
+    ) -> Result<(Arc<ConversationReplay>, ReplayObservation), Error> {
+        let cached = self.replay.borrow_mut().take();
+        if let Some(cached) = cached
+            && cached.conversation == id
+            && self.journal.replay_observation_is_current(&cached.observation)?
+        {
+            let result = (Arc::clone(&cached.replay), cached.observation.clone());
+            *self.replay.borrow_mut() = Some(cached);
+            return Ok(result);
+        }
+        let observation = self.journal.observe_replay()?;
+        let (replay, _) = self.load_at_revision(id, None)?;
+        // Archive reads occur outside the chain snapshot. Never bless a replay assembled
+        // across an external commit, even if the final root happens to remain identical.
+        if !self.journal.replay_observation_is_current(&observation)? {
+            return Err(peritus_product_runner::control::ControlError::StaleRevision.into());
+        }
+        self.cache_replay(id, replay, observation.clone());
+        let cached = self.replay.borrow();
+        let replay = cached.as_ref().ok_or(Error::Corrupt("verified replay missing"))?;
+        Ok((Arc::clone(&replay.replay), observation))
+    }
+
+    pub(super) fn cache_replay(
+        &self,
+        conversation: ConversationId,
+        replay: ConversationReplay,
+        observation: ReplayObservation,
+    ) {
+        *self.replay.borrow_mut() =
+            Some(CachedReplay { conversation, replay: Arc::new(replay), observation });
     }
 
     /// Reads an exact historical state while still verifying the complete current archive.

@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 /// Replays a conversation while retaining the last revision that changed user-controlled state.
 /// Background accounting may advance after an inspected revision without invalidating an edit.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ConversationReplay {
     current: Option<ConversationRecord>,
     edit_revision: u64,

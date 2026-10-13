@@ -40,7 +40,15 @@ fn online_status(model: &AppModel) -> String {
 }
 
 fn render_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel, status: &str) {
-    let notice = model.notice.as_ref().map_or("", |notice| notice.text.as_str());
+    // A transient notice expires after six seconds. Keep the actual connection failure
+    // visible for as long as the client is offline, including unattended long runs.
+    let notice = model.notice.as_ref().map_or_else(
+        || match &model.connection {
+            ConnectionStatus::Disconnected(error) => error.as_str(),
+            ConnectionStatus::Connecting | ConnectionStatus::Online { .. } => "",
+        },
+        |notice| notice.text.as_str(),
+    );
     frame.render_widget(
         Paragraph::new(vec![
             Line::styled(
