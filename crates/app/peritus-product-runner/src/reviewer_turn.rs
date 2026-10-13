@@ -82,10 +82,13 @@ pub async fn complete(
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
-                request_prefix: format!(
-                    "{}-invocation-{invocation}",
-                    turn::request_name(input.run_id, "reviewer", cycle),
-                ),
+                request_prefix: turn::fresh_request_prefix(
+                    input.run_id,
+                    "reviewer",
+                    cycle,
+                    input.conversation.revision(),
+                    invocation,
+                )?,
                 system: request.system,
                 prompt,
                 attachments,

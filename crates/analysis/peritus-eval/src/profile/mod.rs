@@ -3,8 +3,12 @@
 mod binding;
 mod policy;
 mod provider;
+mod storage;
 
-pub use binding::{EvaluationArm, ExecutionBinding, FrozenEvaluationProfile, HarnessArmBinding};
+pub use binding::{
+    EvaluationArm, EvaluationExecutionMode, ExecutionBinding, FrozenEvaluationProfile,
+    HarnessArmBinding,
+};
 pub use policy::{
     EvaluationRetryPolicy, InfrastructurePolicy, InfrastructureTreatment, MetricPolicy,
     SeedDeliveryPolicy,

@@ -16,13 +16,38 @@ pub fn edit_text(buffer: &mut String, cursor: &mut usize, key: KeyEvent) -> bool
     if !is_active_key(key) {
         return false;
     }
+    if let Some(motion) = text_motion(key) {
+        *cursor = match motion {
+            TextMotion::Left => buffer[..*cursor].char_indices().next_back().map_or(0, |(i, _)| i),
+            TextMotion::Right => {
+                buffer[*cursor..].chars().next().map_or(*cursor, |ch| *cursor + ch.len_utf8())
+            }
+            TextMotion::WordLeft => word_left(buffer, *cursor),
+            TextMotion::WordRight => word_right(buffer, *cursor),
+            TextMotion::LineStart => buffer[..*cursor].rfind('\n').map_or(0, |i| i + 1),
+            TextMotion::LineEnd => {
+                buffer[*cursor..].find('\n').map_or(buffer.len(), |i| *cursor + i)
+            }
+            TextMotion::BufferStart => 0,
+            TextMotion::BufferEnd => buffer.len(),
+        };
+        return true;
+    }
     match key.code {
-        KeyCode::Char(character) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char(character)
+            if !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER) =>
+        {
             buffer.insert(*cursor, character);
             *cursor += character.len_utf8();
             true
         }
         KeyCode::Backspace if *cursor > 0 => {
+            if key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) {
+                let start = word_left(buffer, *cursor);
+                buffer.replace_range(start..*cursor, "");
+                *cursor = start;
+                return true;
+            }
             if let Some((index, _)) = buffer[..*cursor].char_indices().next_back() {
                 buffer.remove(index);
                 *cursor = index;
@@ -33,35 +58,41 @@ pub fn edit_text(buffer: &mut String, cursor: &mut usize, key: KeyEvent) -> bool
             buffer.remove(*cursor);
             true
         }
-        KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            *cursor = word_left(buffer, *cursor);
-            true
-        }
-        KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            *cursor = word_right(buffer, *cursor);
-            true
-        }
-        KeyCode::Left if *cursor > 0 => {
-            if let Some((index, _)) = buffer[..*cursor].char_indices().next_back() {
-                *cursor = index;
-            }
-            true
-        }
-        KeyCode::Right if *cursor < buffer.len() => {
-            if let Some(character) = buffer[*cursor..].chars().next() {
-                *cursor += character.len_utf8();
-            }
-            true
-        }
-        KeyCode::Home => {
-            *cursor = 0;
-            true
-        }
-        KeyCode::End => {
-            *cursor = buffer.len();
-            true
-        }
         _ => false,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum TextMotion {
+    Left,
+    Right,
+    WordLeft,
+    WordRight,
+    LineStart,
+    LineEnd,
+    BufferStart,
+    BufferEnd,
+}
+
+pub(super) fn text_motion(key: KeyEvent) -> Option<TextMotion> {
+    let word = key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
+    let line = key.modifiers.contains(KeyModifiers::SUPER);
+    match key.code {
+        KeyCode::Left if line => Some(TextMotion::LineStart),
+        KeyCode::Right if line => Some(TextMotion::LineEnd),
+        KeyCode::Left if word => Some(TextMotion::WordLeft),
+        KeyCode::Right if word => Some(TextMotion::WordRight),
+        KeyCode::Char('b' | 'B') if key.modifiers.contains(KeyModifiers::ALT) && !line => {
+            Some(TextMotion::WordLeft)
+        }
+        KeyCode::Char('f' | 'F') if key.modifiers.contains(KeyModifiers::ALT) && !line => {
+            Some(TextMotion::WordRight)
+        }
+        KeyCode::Left => Some(TextMotion::Left),
+        KeyCode::Right => Some(TextMotion::Right),
+        KeyCode::Home => Some(TextMotion::BufferStart),
+        KeyCode::End => Some(TextMotion::BufferEnd),
+        _ => None,
     }
 }
 

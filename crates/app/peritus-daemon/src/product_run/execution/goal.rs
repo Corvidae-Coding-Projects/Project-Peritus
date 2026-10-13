@@ -18,7 +18,9 @@ impl ProductRunService {
         let (settlement, unresolved_effects) = match result {
             Ok(outcome) => {
                 let settlement = match outcome.settlement().disposition() {
-                    RunDisposition::Accepted => GoalSettlement::Accepted,
+                    RunDisposition::Accepted | RunDisposition::CompletedWithoutCandidate => {
+                        GoalSettlement::Accepted
+                    }
                     RunDisposition::WaitingForUser => GoalSettlement::WaitingForUser,
                     RunDisposition::RecoveryRequired => GoalSettlement::RecoveryRequired,
                     RunDisposition::Cancelled => GoalSettlement::Cancelled,
@@ -26,10 +28,13 @@ impl ProductRunService {
                         GoalSettlement::Failed
                     }
                 };
-                let unresolved = outcome.settlement().disposition() != RunDisposition::Accepted
-                    || outcome.candidate().is_none()
-                    || outcome.settlement().checkpoint().is_none()
-                    || !outcome.remaining_work().is_empty();
+                let no_change_complete =
+                    outcome.settlement().disposition() == RunDisposition::CompletedWithoutCandidate;
+                let unresolved = !no_change_complete
+                    && (outcome.settlement().disposition() != RunDisposition::Accepted
+                        || outcome.candidate().is_none()
+                        || outcome.settlement().checkpoint().is_none()
+                        || !outcome.remaining_work().is_empty());
                 (settlement, unresolved)
             }
             Err(error)

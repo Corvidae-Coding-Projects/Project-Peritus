@@ -8,6 +8,7 @@ mod conversation;
 mod cycle;
 mod deadline;
 mod folder;
+mod no_change;
 mod obligations;
 mod resume;
 mod review_phase;
@@ -88,6 +89,7 @@ impl ProductRunner {
                     state.coordinator.completed_fixer_cycles() + 2,
                     state.design.markdown(),
                     Some(&prior),
+                    None,
                     &mut workspace_ownership,
                     accounting,
                     &execution.recorder,
@@ -125,6 +127,60 @@ impl ProductRunner {
                     AppliedTurn::Rejected { error, host } => {
                         state.merge_host(&host);
                         return Err(error);
+                    }
+                }
+                continue;
+            }
+            if matches!(
+                execution.next_phase,
+                ProductRunPhase::Checking | ProductRunPhase::Verifying
+            ) && no_change::eligible(input, &execution.baseline, &execution.recorder)?
+            {
+                let completed = no_change::review(
+                    input,
+                    observe,
+                    state,
+                    accounting,
+                    &execution.baseline,
+                    &execution.obligations,
+                    &mut execution.evidence,
+                )
+                .await?;
+                match completed {
+                    no_change::ReviewResult::Complete => {
+                        execution.next_phase = ProductRunPhase::Finalizing;
+                        return Ok(ActiveExit::stopped(
+                            SettlementCause::NoChangeComplete,
+                            state.task_summary.clone(),
+                            ProductRunPhase::Finalizing,
+                        ));
+                    }
+                    no_change::ReviewResult::ConversationChanged => {
+                        execution.next_phase = ProductRunPhase::Designing;
+                    }
+                    no_change::ReviewResult::FixRequired => {
+                        execution.next_phase = ProductRunPhase::Fixing;
+                        if let Some((question, revision)) = apply_fix(
+                            input,
+                            observe,
+                            &execution.evidence,
+                            state,
+                            &mut workspace_ownership,
+                            accounting,
+                            &execution.recorder,
+                        )
+                        .await?
+                        {
+                            return Ok(ActiveExit::waiting(
+                                question,
+                                revision,
+                                ProductRunPhase::Fixing,
+                            ));
+                        }
+                        if let Some(summary) = state.fix_summaries.last() {
+                            state.task_summary.clone_from(summary);
+                        }
+                        execution.next_phase = ProductRunPhase::Checking;
                     }
                 }
                 continue;
@@ -219,7 +275,7 @@ impl ProductRunner {
                     if let Some((question, revision)) = apply_fix(
                         input,
                         observe,
-                        &inspected,
+                        &inspected.evidence,
                         state,
                         &mut workspace_ownership,
                         accounting,

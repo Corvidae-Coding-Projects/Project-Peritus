@@ -57,6 +57,66 @@ pub(super) enum AuthorityMessage {
         claim: OrchestratorDirectiveClaim,
         respond: Response<()>,
     },
+    QueryEvaluation {
+        campaign: peritus_eval::EvaluationCampaignId,
+        respond: Response<Option<peritus_eval::EvaluationState>>,
+    },
+    StartEvaluation {
+        campaign: peritus_eval::EvaluationCampaignId,
+        profile: Box<peritus_eval::FrozenEvaluationProfile>,
+        respond: Response<peritus_eval::EvaluationState>,
+    },
+    CancelEvaluation {
+        campaign: peritus_eval::EvaluationCampaignId,
+        reason: Sha256Digest,
+        respond: Response<peritus_eval::EvaluationState>,
+    },
+    DeliverEvaluationSchedule {
+        claim: peritus_eval::ScheduleDirectiveClaim,
+        respond: Response<()>,
+    },
+    BeginEvaluation {
+        claim: peritus_eval::ExecutionDirectiveClaim,
+        cancellation: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        respond: Response<Option<crate::rsi::authority::EvaluationWork>>,
+    },
+    FinishEvaluation {
+        claim: peritus_eval::ExecutionDirectiveClaim,
+        record: peritus_eval::RolloutRecord,
+        processes: peritus_process::ProcessStore,
+        state_root: std::path::PathBuf,
+        respond: Response<()>,
+    },
+    RetainEvaluationArtifacts {
+        claim: peritus_eval::ExecutionDirectiveClaim,
+        roots: Vec<peritus_artifact_store::ArtifactDigest>,
+        respond: Response<()>,
+    },
+    PublishEvaluation {
+        claim: peritus_eval::PublicationDirectiveClaim,
+        database: std::path::PathBuf,
+        respond: Response<()>,
+    },
+    FailEvaluation {
+        claim: peritus_eval::EvaluationDirectiveClaim,
+        detail: String,
+        processes: peritus_process::ProcessStore,
+        config: Box<crate::DaemonConfig>,
+        respond: Response<()>,
+    },
+    PublishEvolution {
+        claim: peritus_evolution::EvolutionPublicationClaim,
+        database: std::path::PathBuf,
+        maximum_bytes: u64,
+        respond: Response<()>,
+    },
+    PublishDebugger {
+        claim: peritus_debugger::PublicationDirectiveClaim,
+        database: std::path::PathBuf,
+        state_root: std::path::PathBuf,
+        maximum_bytes: u64,
+        respond: Response<()>,
+    },
     RegisterPrompt {
         actor_id: ActorId,
         session_id: SessionId,

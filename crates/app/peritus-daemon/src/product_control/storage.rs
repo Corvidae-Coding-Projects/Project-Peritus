@@ -11,6 +11,7 @@ use peritus_product_runner::control::{
 };
 use peritus_types::{CommandId, EventId, EventSequence};
 use std::{
+    cell::RefCell,
     fs::{File, OpenOptions},
     path::Path,
     time::Duration,
@@ -37,6 +38,8 @@ mod reservations;
 pub struct ControlStore {
     journal: SqliteJournal,
     store: StoreId,
+    // One aggregate, with a connection-bound mutation observation. No persisted cache format.
+    replay: RefCell<Option<replay::CachedReplay>>,
     // Fields are dropped in declaration order: close the journal before releasing ownership.
     _owner: ControlOwner,
 }
@@ -73,7 +76,7 @@ impl ControlStore {
             store,
             SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
         )?;
-        Ok(Self { journal, store, _owner: owner })
+        Ok(Self { journal, store, replay: RefCell::new(None), _owner: owner })
     }
 
     /// Atomically publishes exact intent, successor state and original receipt through C0.
@@ -179,7 +182,8 @@ impl ControlStore {
         operation: &ControlOperation,
         mut artifacts: Vec<StateInstall>,
     ) -> Result<ControlReceipt, Error> {
-        let mut replay = self.load_replay(operation.conversation())?;
+        let (replay, observation) = self.observed_replay(operation.conversation())?;
+        let mut replay = (*replay).clone();
         let current = replay.current().cloned();
         self.check_creation_reservation(operation, current.is_none())?;
         let receipt = replay.apply(operation)?;
@@ -232,8 +236,14 @@ impl ControlStore {
         .plan()?;
         // Even an indeterminate append is resolved by its original exact identity. A caller
         // never receives success solely from the pre-commit pure transition above.
-        match self.journal.append(plan) {
-            Ok(_) => self.resolve(operation)?.ok_or(Error::Corrupt("committed receipt missing")),
+        match self.journal.append_observed(plan, &observation) {
+            Ok((batch, observation)) => {
+                let durable =
+                    self.resolve(operation)?.ok_or(Error::Corrupt("committed receipt missing"))?;
+                self.verify_request_archive(operation, batch.last_position(), current.as_ref())?;
+                self.cache_replay(operation.conversation(), replay, observation);
+                Ok(durable)
+            }
             Err(error) => match self.resolve(operation)? {
                 Some(receipt) => Ok(receipt),
                 None => Err(error.into()),

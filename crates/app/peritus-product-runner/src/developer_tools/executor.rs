@@ -131,14 +131,12 @@ impl WorkspaceDeveloperTools {
         let archive = self
             .reviewer_evidence
             .as_ref()
-            .ok_or_else(|| tool("full developer evidence is unavailable in this reviewer turn"))?;
+            .ok_or_else(|| tool("full historical evidence is unavailable in this role turn"))?;
         let section = match arguments.get("section") {
             None => "developer_commands",
             Some(Value::String(section)) => section.as_str(),
             Some(_) => return Err(tool("section must be a named string")),
         };
-        let evidence =
-            archive.section(section).ok_or_else(|| tool("unknown reviewer evidence section"))?;
         let offset = arguments
             .get("offset")
             .and_then(Value::as_u64)
@@ -151,11 +149,7 @@ impl WorkspaceDeveloperTools {
                 .filter(|value| (1..=inspection::MAX_PAGE_BYTES).contains(value))
                 .ok_or_else(|| tool("max_bytes must be between 1 and 524288"))?,
         };
-        let start = usize::try_from(offset).map_err(|_| tool("offset exceeds addressable size"))?;
-        if start > evidence.len() || !evidence.is_char_boundary(start) {
-            return Err(tool("offset is outside the evidence or not a UTF-8 boundary"));
-        }
-        reviewer_evidence_page(section, evidence, offset, start, maximum)
+        archive.read(section, offset, maximum)
     }
 
     fn permission_denial(&self, tool_name: &str) -> Option<String> {
@@ -186,7 +180,7 @@ impl WorkspaceDeveloperTools {
     }
 }
 
-fn reviewer_evidence_page(
+pub(super) fn reviewer_evidence_page(
     section: &str,
     evidence: &str,
     offset: u64,

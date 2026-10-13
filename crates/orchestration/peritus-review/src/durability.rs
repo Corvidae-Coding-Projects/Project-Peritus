@@ -5,10 +5,10 @@ mod binding;
 use peritus_codec::{CodecLimits, decode_message, encode_message, sha256};
 use peritus_evidence::revision_digest;
 use peritus_journal::{
-    AggregateId, AggregateKey, AggregateKind, AppendRequest, CommandResolution, CommittedBatch,
-    EventDraft, ExactFrame, HeadExpectation, SqliteJournal, StateInstall,
+    AggregateId, AggregateKey, AggregateKind, AppendRequest, ArtifactDependency, CommandResolution,
+    CommittedBatch, EventDraft, ExactFrame, HeadExpectation, SqliteJournal, StateInstall,
 };
-use peritus_types::RunId;
+use peritus_types::{RunId, Sha256Digest};
 
 use crate::wire::{ReviewCommandFrame, ReviewEventFrame, ReviewStateFrame};
 use crate::{
@@ -56,6 +56,39 @@ pub fn commit_review_transition(
     command: &ReviewCommand,
     transition: &ReviewTransition,
 ) -> Result<CommittedBatch, ReviewError> {
+    commit_transition(journal, command, transition, &[])
+}
+
+/// Commits a checked review transition with its actual finalized provenance artifacts.
+///
+/// The artifacts provide durable input or response provenance. They confer no reviewer,
+/// approval, or completion authority. Existing dependency-free commits retain their exact
+/// command digest; this entry point binds the canonical artifact set into its request digest.
+///
+/// # Errors
+/// Rejects empty, duplicated, unordered, oversized, or missing artifact dependencies, as well
+/// as every fence and binding failure rejected by [`commit_review_transition`].
+pub fn commit_review_transition_with_artifacts(
+    journal: &mut SqliteJournal,
+    command: &ReviewCommand,
+    transition: &ReviewTransition,
+    artifacts: &[Sha256Digest],
+) -> Result<CommittedBatch, ReviewError> {
+    if artifacts.is_empty()
+        || artifacts.len() > 4_096
+        || artifacts.windows(2).any(|pair| pair[0] >= pair[1])
+    {
+        return Err(binding_error("review provenance artifact set is not bounded and canonical"));
+    }
+    commit_transition(journal, command, transition, artifacts)
+}
+
+fn commit_transition(
+    journal: &mut SqliteJournal,
+    command: &ReviewCommand,
+    transition: &ReviewTransition,
+    artifacts: &[Sha256Digest],
+) -> Result<CommittedBatch, ReviewError> {
     validate_binding(command, transition)?;
     let event = transition.event();
     let state = transition.state();
@@ -79,7 +112,19 @@ pub fn commit_review_transition(
             "canonical review command, event, or checkpoint exceeds its configured byte limit",
         ));
     }
-    let request_digest = sha256(&command_bytes);
+    let request_digest = if artifacts.is_empty() {
+        sha256(&command_bytes)
+    } else {
+        let mut bytes = Vec::with_capacity(command_bytes.len() + artifacts.len() * 32 + 64);
+        bytes.extend_from_slice(b"peritus.review.provenance-commit.v1\0");
+        bytes.extend_from_slice(&(command_bytes.len() as u64).to_be_bytes());
+        bytes.extend_from_slice(&command_bytes);
+        bytes.extend_from_slice(&(artifacts.len() as u64).to_be_bytes());
+        for digest in artifacts {
+            bytes.extend_from_slice(digest.as_bytes());
+        }
+        sha256(&bytes)
+    };
     if let Some(batch) = resolve_existing(
         journal,
         command,
@@ -138,7 +183,7 @@ pub fn commit_review_transition(
         vec![expectation],
         vec![draft],
         vec![install],
-        Vec::new(),
+        artifacts.iter().copied().map(ArtifactDependency::new).collect(),
         None,
         None,
         Vec::new(),
@@ -154,7 +199,7 @@ fn resolve_existing(
     state_key: &[u8],
     event_bytes: &[u8],
     state: &ReviewRunState,
-    request_digest: peritus_types::Sha256Digest,
+    request_digest: Sha256Digest,
 ) -> Result<Option<CommittedBatch>, ReviewError> {
     let batch = match journal
         .resolve_command(command.command_id(), request_digest)

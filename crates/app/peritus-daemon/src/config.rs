@@ -28,6 +28,18 @@ pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind}
 
 pub const DAEMON_VERSION: &str = "0.0.0";
 
+/// Host-owned native components for restricted local candidate execution.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RsiExecutionConfiguration {
+    /// Absolute path to the host-owned bubblewrap executable.
+    pub bubblewrap: PathBuf,
+    /// Absolute path to the matching Peritus Linux isolation helper.
+    pub linux_helper: PathBuf,
+    /// Writable delegated cgroup root used for bounded owned processes.
+    pub cgroup_root: PathBuf,
+}
+
 /// Offline-provisioned local human identity bound to the operating-system account.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -168,9 +180,15 @@ pub struct DaemonConfig {
     context: ContextPolicy,
     telemetry: TelemetryExport,
     process_crash_watchdog: Option<PathBuf>,
+    rsi: Option<RsiExecutionConfiguration>,
 }
 
 impl DaemonConfig {
+    /// Returns explicitly configured native candidate isolation components.
+    #[must_use]
+    pub const fn rsi(&self) -> Option<&RsiExecutionConfiguration> {
+        self.rsi.as_ref()
+    }
     /// Parses strict TOML configuration and rejects unknown authority-relevant fields.
     ///
     /// # Errors
@@ -326,6 +344,16 @@ impl DaemonConfig {
         provider::validate(&self.providers)?;
         self.product.validate()?;
         self.context.validate(&self.providers, self.product)?;
+        if let Some(native) = &self.rsi {
+            for path in [&native.bubblewrap, &native.linux_helper, &native.cgroup_root] {
+                if !path.is_absolute() || path.components().any(|part| part == Component::ParentDir)
+                {
+                    return Err(invalid(
+                        "RSI native components require absolute paths without parent traversal",
+                    ));
+                }
+            }
+        }
         if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry
             && (!directory.is_absolute()
                 || directory.components().any(|part| part == Component::ParentDir)

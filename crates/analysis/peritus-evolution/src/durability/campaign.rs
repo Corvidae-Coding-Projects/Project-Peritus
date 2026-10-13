@@ -28,6 +28,11 @@ pub fn commit_campaign_transition(
     command: &CampaignCommand,
     transition: &CampaignTransition,
 ) -> Result<CommittedBatch, EvolutionError> {
+    if matches!(command.kind(), CampaignCommandKind::ActivatePromotion { .. }) {
+        return Err(binding::binding(
+            "promotion activation requires the atomic pointer and approve-once commit",
+        ));
+    }
     binding::validate_campaign(command, transition)?;
     let aggregate = campaign_aggregate_key(command.campaign_id())?;
     let state_key = campaign_state_key(command.campaign_id());

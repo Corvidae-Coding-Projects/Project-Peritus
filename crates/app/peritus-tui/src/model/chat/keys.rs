@@ -127,7 +127,12 @@ impl AppModel {
             _ => {
                 let selected_bytes = self.chat.selection().map_or(0, |range| range.len());
                 let inserted_bytes = match key.code {
-                    KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    KeyCode::Char(ch)
+                        if crate::input::text_motion(key).is_none()
+                            && !key
+                                .modifiers
+                                .intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER) =>
+                    {
                         ch.len_utf8()
                     }
                     _ => 0,

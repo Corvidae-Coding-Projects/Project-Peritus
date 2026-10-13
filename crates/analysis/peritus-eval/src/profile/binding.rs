@@ -96,8 +96,18 @@ impl HarnessArmBinding {
 }
 
 /// Frozen runtime-neutral C2/C3 execution requirements.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EvaluationExecutionMode {
+    /// Execution invokes a C5 model provider and must retain its actual usage.
+    ModelBacked,
+    /// Restricted local processes make no model requests and cannot access the network.
+    LocalProcess,
+}
+
+/// Frozen runtime-neutral C2/C3 execution requirements.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExecutionBinding {
+    mode: EvaluationExecutionMode,
     sandbox_plan_digest: Sha256Digest,
     backend_admission_digest: Sha256Digest,
     environment_digest: Sha256Digest,
@@ -155,6 +165,7 @@ impl ExecutionBinding {
         writer.write_bool(require_complete_teardown).map_err(codec)?;
         let digest = peritus_codec::sha256(&writer.into_bytes());
         Ok(Self {
+            mode: EvaluationExecutionMode::ModelBacked,
             sandbox_plan_digest,
             backend_admission_digest,
             environment_digest,
@@ -166,6 +177,31 @@ impl ExecutionBinding {
             require_complete_teardown,
             digest,
         })
+    }
+    /// Selects a network-denied local process campaign with no C5 model execution.
+    ///
+    /// # Errors
+    /// Rejects local execution without required restricted isolation and complete teardown.
+    pub fn with_local_process(mut self) -> Result<Self, EvaluationError> {
+        if !self.require_restricted_isolation || !self.require_complete_teardown {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Isolation,
+                EvaluationOperation::FreezeProfile,
+                "local-process evaluation requires restricted isolation and complete teardown",
+            ));
+        }
+        if self.mode != EvaluationExecutionMode::LocalProcess {
+            let mut bytes = b"peritus.evaluation.execution-local-process.v1\0".to_vec();
+            bytes.extend_from_slice(self.digest.as_bytes());
+            self.digest = peritus_codec::sha256(&bytes);
+            self.mode = EvaluationExecutionMode::LocalProcess;
+        }
+        Ok(self)
+    }
+    /// Exact frozen execution mode; local process use never claims model capability evidence.
+    #[must_use]
+    pub const fn mode(&self) -> EvaluationExecutionMode {
+        self.mode
     }
     /// Sandbox-plan digest.
     #[must_use]
@@ -263,6 +299,8 @@ impl FrozenEvaluationProfile {
         limits: EvaluationLimits,
     ) -> Result<Self, EvaluationError> {
         if partitions.is_empty()
+            || execution.mode() == EvaluationExecutionMode::LocalProcess
+                && model.seed_delivery() == crate::SeedDeliveryPolicy::Required
             || partitions.windows(2).any(|pair| pair[0] >= pair[1])
             || rollouts_per_task == 0
             || baseline.digest() == candidate.digest()

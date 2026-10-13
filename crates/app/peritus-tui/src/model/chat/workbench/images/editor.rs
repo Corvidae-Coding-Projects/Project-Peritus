@@ -1,7 +1,7 @@
 //! Local path/caption editing is inert; only separate keyboard actions read or confirm.
 
 use super::{AppModel, Effect, ImageField, NoticeLevel};
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 impl AppModel {
     pub(in crate::model::chat::workbench) fn image_key(
@@ -58,6 +58,8 @@ impl AppModel {
             ImageField::Caption => (&mut image.caption, 8192),
         };
         if let KeyCode::Char(character) = key.code
+            && crate::input::text_motion(key).is_none()
+            && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER)
             && (character.is_control() || buffer.len().saturating_add(character.len_utf8()) > limit)
         {
             return;

@@ -8,9 +8,47 @@ use peritus_types::EventSequence;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use super::{corrupt, digest_from_blob, event_id_from_blob, positive_u64};
-use crate::{AggregateHead, AggregateKey, CommittedRecord, JournalError, SqliteJournal};
+use crate::{
+    AggregateHead, AggregateId, AggregateKey, AggregateKind, CommittedRecord, JournalError,
+    SqliteJournal,
+};
 
 impl SqliteJournal {
+    /// Discovers retained aggregate identities for bounded recovery.
+    /// Returned identities do not replace checked aggregate replay.
+    ///
+    /// # Errors
+    /// Rejects invalid bounds, excess retained heads, or malformed identities.
+    pub fn aggregate_ids(
+        &self,
+        kind: AggregateKind,
+        maximum: usize,
+    ) -> Result<Vec<AggregateId>, JournalError> {
+        if maximum == 0 || maximum > 16384 {
+            return Err(corrupt("aggregate discovery bound is invalid"));
+        }
+        let mut query = self.connection.prepare(
+            "SELECT aggregate_id FROM aggregate_heads WHERE aggregate_kind=?1 ORDER BY aggregate_id LIMIT ?2"
+        ).map_err(|error| JournalError::sqlite("prepare aggregate discovery", error))?;
+        let rows = query
+            .query_map(params![kind.tag(), (maximum + 1) as i64], |row| row.get::<_, Vec<u8>>(0))
+            .map_err(|error| JournalError::sqlite("discover aggregate identities", error))?;
+        let mut ids = Vec::new();
+        for row in rows {
+            let bytes: [u8; 16] = row
+                .map_err(|error| JournalError::sqlite("read aggregate identity", error))?
+                .try_into()
+                .map_err(|_| corrupt("aggregate identity is malformed"))?;
+            ids.push(
+                AggregateId::new(bytes).map_err(|_| corrupt("aggregate identity is invalid"))?,
+            );
+            if ids.len() > maximum {
+                return Err(corrupt("aggregate discovery exceeds its bound"));
+            }
+        }
+        Ok(ids)
+    }
+
     /// Observes the exact current aggregate head.
     ///
     /// # Errors

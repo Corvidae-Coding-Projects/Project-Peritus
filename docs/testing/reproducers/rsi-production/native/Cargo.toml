@@ -1,0 +1,29 @@
+[package]
+name="peritus-rsi-native-real-consumer"
+version="0.1.0"
+edition="2024"
+
+[workspace]
+
+[dependencies]
+peritus-daemon = { path = "../../../../../crates/app/peritus-daemon" }
+peritus-app-protocol = { path = "../../../../../crates/app/peritus-app-protocol" }
+peritus-eval = { path = "../../../../../crates/analysis/peritus-eval" }
+peritus-artifact-store = { path = "../../../../../crates/state/peritus-artifact-store" }
+peritus-approval = { path = "../../../../../crates/state/peritus-approval" }
+peritus-journal = { path = "../../../../../crates/state/peritus-journal" }
+peritus-harness = { path = "../../../../../crates/orchestration/peritus-harness" }
+peritus-scheduler = { path = "../../../../../crates/orchestration/peritus-scheduler" }
+peritus-model-protocol = { path = "../../../../../crates/model/peritus-model-protocol" }
+peritus-types = { path = "../../../../../crates/foundation/peritus-types" }
+peritus-codec = { path = "../../../../../crates/foundation/peritus-codec" }
+serde_json="1"
+tokio={version="1",features=["rt-multi-thread","macros","time"]}
+
+[profile.release]
+codegen-units=1
+incremental=false
+lto="thin"
+overflow-checks=true
+panic="abort"
+strip="symbols"

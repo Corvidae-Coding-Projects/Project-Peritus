@@ -113,6 +113,28 @@ fn commit(
     )? {
         return Ok(batch);
     }
+    if let CommitMode::Claimed(claim) = &mode {
+        let message = journal
+            .outbox_message(claim.id()?)
+            .map_err(journal_error)?
+            .ok_or_else(|| binding::binding("claimed evaluation row is absent"))?;
+        let current = match claim {
+            EvaluationDirectiveClaim::Schedule(value) => {
+                crate::ScheduleDirectiveClaim::from_message(&message)? == *value
+            }
+            EvaluationDirectiveClaim::Execution(value) => {
+                crate::ExecutionDirectiveClaim::from_message(&message)? == *value
+            }
+            EvaluationDirectiveClaim::Publication(value) => {
+                crate::PublicationDirectiveClaim::from_message(&message)? == *value
+            }
+        };
+        if !current {
+            return Err(binding::binding(
+                "evaluation claim is no longer the exact current native delivery",
+            ));
+        }
+    }
     let head = journal.head(aggregate).map_err(journal_error)?;
     let current =
         journal.state_record(EVALUATION_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
@@ -234,6 +256,9 @@ fn artifact_dependencies(kind: &EvaluationEventKind) -> Vec<ArtifactDependency> 
         EvaluationCommandKind::CompleteReport { report } => {
             vec![ArtifactDependency::new(report.artifact().sha256())]
         }
+        EvaluationCommandKind::RecordArtifacts { artifacts } => {
+            artifacts.iter().map(|a| ArtifactDependency::new(a.sha256())).collect()
+        }
         _ => Vec::new(),
     };
     dependencies.sort_unstable();
@@ -259,6 +284,21 @@ fn validate_mode(
             _ => Ok(()),
         },
         CommitMode::Claimed(claim) => match (command.kind(), claim) {
+            (EvaluationCommandKind::RecordArtifacts { .. }, claim)
+                if match claim {
+                    EvaluationDirectiveClaim::Schedule(value) => {
+                        value.directive().campaign_id() == command.campaign_id()
+                    }
+                    EvaluationDirectiveClaim::Execution(value) => {
+                        value.directive().campaign_id() == command.campaign_id()
+                    }
+                    EvaluationDirectiveClaim::Publication(value) => {
+                        value.directive().campaign_id() == command.campaign_id()
+                    }
+                } =>
+            {
+                Ok(())
+            }
             (
                 EvaluationCommandKind::StartRollout { rollout_id, .. },
                 EvaluationDirectiveClaim::Execution(value),
@@ -283,6 +323,17 @@ fn validate_settlement(
     claim: &EvaluationDirectiveClaim,
 ) -> Result<(), EvaluationError> {
     let matches = match (command.kind(), claim) {
+        (EvaluationCommandKind::FailCampaign { .. }, EvaluationDirectiveClaim::Schedule(value)) => {
+            value.directive().campaign_id() == command.campaign_id()
+        }
+        (
+            EvaluationCommandKind::FailCampaign { .. },
+            EvaluationDirectiveClaim::Execution(value),
+        ) => value.directive().campaign_id() == command.campaign_id(),
+        (
+            EvaluationCommandKind::FailCampaign { .. },
+            EvaluationDirectiveClaim::Publication(value),
+        ) => value.directive().campaign_id() == command.campaign_id(),
         (
             EvaluationCommandKind::RecordSchedule { rollout_id, .. },
             EvaluationDirectiveClaim::Schedule(value),

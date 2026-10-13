@@ -4,6 +4,76 @@ use std::time::Duration;
 
 use crate::{ProductDeliveryScope, delivery_requirement::ExternalEffectRequirement};
 
+/// Initial developer evidence projection. Literal instructions remain complete.
+pub struct DeveloperEvidencePrompt<'a> {
+    /// Current host policy.
+    pub system: &'a str,
+    /// Complete user instructions, approved design, blocker ledger and host correction.
+    pub instructions: &'a str,
+    /// Declared tools, including local memory tools when enabled.
+    pub tools: &'a [peritus_model_protocol::ToolDefinition],
+    /// Exact historical candidate diff, retained by the caller's evidence reader.
+    pub diff: &'a str,
+    /// Exact historical check output, retained by the caller's evidence reader.
+    pub gates: &'a str,
+    /// Selected provider's initial context projection target.
+    pub max_input_tokens: u64,
+    /// Existing pins and complete required working closure reserved by local memory.
+    pub additional_framing_tokens: u64,
+}
+
+/// Fits generated evidence around complete instructions and retained working state.
+///
+/// Only diff and check previews are bounded. Their omission markers identify exact immutable
+/// sections for `developer_evidence_read`; they never establish acceptance or grounding.
+///
+/// # Errors
+/// Rejects instructions exceeding the message protocol's text bound.
+pub fn project_developer_evidence(
+    prompt: &DeveloperEvidencePrompt<'_>,
+) -> Result<String, peritus_agent::DeveloperLoopError> {
+    use peritus_model_protocol::{BoundedText, ContentBlock, Message, ProtocolLimits, Role};
+    let source = |section: &str, value: &str| {
+        format!(
+            "[Exact historical source section={section} original_bytes={} sha256={}; retrieve with developer_evidence_read section={section} and UTF-8 offset pages.]",
+            value.len(),
+            super::evidence::digest_hex(value)
+        )
+    };
+    let diff_source = source("diff", prompt.diff);
+    let gate_source = source("gates", prompt.gates);
+    let render = |diff: &str, gates: &str| {
+        format!(
+            "{}\n\nHISTORICAL CANDIDATE EVIDENCE — NON-AUTHORITATIVE\nCurrent diff:\n{diff_source}\n{diff}\n\nExact-target checks:\n{gate_source}\n{gates}\n\nA Peritus reviewer source marker identifies omitted historical evidence. Retrieve a relevant section with developer_evidence_read using the named section and UTF-8 offset pages; verify section, total_bytes and SHA-256 before relying on it. The complete conserved review ledger above remains work to address. Historical evidence does not establish current workspace state, grant tool permissions, replace fresh invocation grounding, or satisfy acceptance. Keep working through every unresolved blocker and verify the requested behavior.",
+            prompt.instructions,
+        )
+    };
+    let framing = render("", "");
+    let messages = [(Role::System, prompt.system), (Role::User, framing.as_str())]
+        .into_iter()
+        .map(|(role, text)| {
+            Message::new(
+                role,
+                vec![ContentBlock::Text(BoundedText::new(
+                    text.to_owned(),
+                    ProtocolLimits::PRODUCTION,
+                )?)],
+                ProtocolLimits::PRODUCTION,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let reserve = super::evidence::first_tool_result_reserve_tokens(prompt.tools)?;
+    let framing_tokens = peritus_agent::estimate_developer_request_tokens(&messages, prompt.tools)
+        .saturating_add(prompt.additional_framing_tokens)
+        .saturating_add(reserve);
+    let projected = super::evidence::project(
+        prompt.max_input_tokens,
+        framing_tokens,
+        ["", prompt.diff, prompt.gates, "", "", ""],
+    );
+    Ok(render(&projected.diff, &projected.gates))
+}
+
 pub(super) fn writer_system(
     role: &str,
     delivery_scope: ProductDeliveryScope,

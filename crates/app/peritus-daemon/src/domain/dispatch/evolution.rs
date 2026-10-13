@@ -26,6 +26,16 @@ pub(super) fn dispatch_campaign(
         Ok(command) => command,
         Err(_) => return semantic_rejection(),
     };
+    if !matches!(
+        command.kind(),
+        peritus_evolution::CampaignCommandKind::FreezeCampaign
+            | peritus_evolution::CampaignCommandKind::CancelCampaign { .. }
+            | peritus_evolution::CampaignCommandKind::FailCampaign { .. }
+    ) {
+        // Decoded summaries are inert. The production operator must reload actual E1/E2/E3/D2
+        // owners before deriving evidence and proposals; activation uses atomic B0/B1 consumption.
+        return semantic_rejection();
+    }
     if !binding_matches_without_revision(
         submission,
         command.command_id(),
@@ -61,6 +71,9 @@ pub(super) fn dispatch_pointer(
         Ok(command) => command,
         Err(_) => return semantic_rejection(),
     };
+    if !matches!(command.kind(), peritus_evolution::PointerCommandKind::CancelPending { .. }) {
+        return semantic_rejection();
+    }
     if !binding_matches_without_revision(
         submission,
         command.command_id(),

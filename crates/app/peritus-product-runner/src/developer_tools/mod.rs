@@ -58,9 +58,13 @@ mod wire;
 pub use catalog::{
     definitions_for_attachments, in_place_definition, read_only_definitions, reviewer_definitions,
 };
+pub(crate) use catalog::evidence_definition;
 
 pub use command_runtime::{
-    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan,
+    MaterializationAuthorityContext, MaterializationAuthorityRequest,
+    OwnedMaterializationAuthority, OwnedRestrictedProcessAuthority, PreviewTerminal,
+    RestrictedProcessContext,
 };
 
 pub use evidence::ReviewerEvidenceSources;

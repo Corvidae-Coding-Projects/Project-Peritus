@@ -67,6 +67,7 @@
     {"tag": 92, "name": "production-harness-event", "schemaVersion": 1, "supportedSchemaVersions": [1], "inertOnly": true},
     {"tag": 93, "name": "production-harness-state", "schemaVersion": 1, "supportedSchemaVersions": [1], "inertOnly": true},
     {"tag": 94, "name": "credential-registry-event", "schemaVersion": 1, "supportedSchemaVersions": [1], "inertOnly": true},
+    {"tag": 300, "name": "authority-owner-record", "schemaVersion": 1, "supportedSchemaVersions": [1], "inertOnly": true},
     {"tag": 3500, "name": "application-artifact-scope-claim", "schemaVersion": 1, "supportedSchemaVersions": [1], "inertOnly": true},
     {"tag": 65000, "name": "application-artifact-upload-accepted", "schemaVersion": 1, "supportedSchemaVersions": [1], "inertOnly": true}
   ],

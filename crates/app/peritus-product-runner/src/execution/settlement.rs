@@ -94,11 +94,17 @@ pub(super) fn finalize(
     let conversation_revision = request.input.conversation.revision();
     let mut cause = request.cause;
     let mut detail = request.detail.take();
+    if cause == SettlementCause::NoChangeComplete
+        && request.state.is_none_or(|state| state.conversation_revision != conversation_revision)
+    {
+        cause = SettlementCause::Review;
+        detail = Some("The public request changed after no-patch review; the investigation is not complete for the current request.".to_owned());
+    }
     if let Err(error) = request.recorder.refresh(conversation_revision) {
         if fatal(&error) {
             return Err(error);
         }
-        if cause == SettlementCause::Completed {
+        if matches!(cause, SettlementCause::Completed | SettlementCause::NoChangeComplete) {
             cause = cause_from_error(&error, false);
         }
         append_detail(&mut detail, &error);
@@ -301,6 +307,8 @@ fn context_failure(detail: &str) -> bool {
     normalized.contains("context window")
         || normalized.contains("context limit")
         || normalized.contains("context overflow")
+        || normalized.contains("prepare developer context")
+        || normalized.contains("local working memory")
 }
 
 fn remaining_work(
@@ -320,6 +328,12 @@ fn remaining_work(
         remaining.push("complete a current independent blocker-free review".to_owned());
     }
     match cause {
+        SettlementCause::Context => {
+            remaining.push(
+                "resume the interrupted phase after correcting the reported context failure"
+                    .to_owned(),
+            );
+        }
         SettlementCause::Provider => {
             remaining
                 .push("recover the selected provider and resume the interrupted phase".to_owned());

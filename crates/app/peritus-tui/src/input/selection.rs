@@ -18,14 +18,13 @@ pub fn edit(
         return false;
     }
     let selected = range(*anchor, *cursor);
-    if matches!(key.code, KeyCode::Left | KeyCode::Right | KeyCode::Home | KeyCode::End) {
+    if let Some(motion) = super::text_motion(key) {
         if key.modifiers.contains(KeyModifiers::SHIFT) {
             anchor.get_or_insert(*cursor);
         } else {
             *anchor = None;
             if let Some(selected) = selected
-                && !key.modifiers.contains(KeyModifiers::CONTROL)
-                && matches!(key.code, KeyCode::Left | KeyCode::Right)
+                && matches!(motion, super::TextMotion::Left | super::TextMotion::Right)
             {
                 *cursor = if key.code == KeyCode::Left { selected.start } else { selected.end };
                 return true;
@@ -33,8 +32,8 @@ pub fn edit(
         }
         return super::edit_text(buffer, cursor, key);
     }
-    let typing =
-        matches!(key.code, KeyCode::Char(_)) && !key.modifiers.contains(KeyModifiers::CONTROL);
+    let typing = matches!(key.code, KeyCode::Char(_))
+        && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER);
     let deleting = matches!(key.code, KeyCode::Backspace | KeyCode::Delete);
     if typing || deleting {
         *anchor = None;

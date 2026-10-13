@@ -1,0 +1,209 @@
+{
+  "schema": "peritus-real-owner-evidence-index-v1",
+  "note": "Historical observed evidence metadata, never an input receipt or promotion authorization.",
+  "materialization": {
+    "baseline_receipt": "384e3066fe4cfbe657333a0d18e853dfebce9d77225f105bbdaee1580b10db38",
+    "candidate_receipt": "5017d23c5c40ef9715f343759c63917b0f45d658f2e36f9761bb4aefb1097b8c",
+    "baseline_executable": "858cc628c8065cf6c2fd8dd399575f53c5c27ef87201e5fd70d3076f11e60df1",
+    "candidate_executable": "ee7aa1257e3529bf454eb8be1341b06f3caf8ad75f1e8b857cd50dd58eca5bd0",
+    "protected_policy": "de1fa6247279963b234e18435f8f00f4d1c9889c1f212b7af2394e5e0ea7ae5b"
+  },
+  "independent_review": {
+    "actual_input_artifact": "65cdf009f6e757c9198b3bf7a4ee90200f574fc52419ea69f361a7b2911f8e13",
+    "actual_response_artifact": "003c9b98b2d4ed76b74a3d09f0b19beb40693a3bb9fcfe1a5e9037591115c846",
+    "actual_D2_state": "d3c7811ea2e7ee3a6de7ba031a18fb1616bb51d836a4ba2f3f95ad15ee30307c",
+    "terminal": "Completed",
+    "scope": "Mechanical CLI behavior and exact E1 bindings only",
+    "provider": null,
+    "model_family": null
+  },
+  "selection": {
+    "broad": {
+      "campaign": "3d381a8d92a6fee50a9090c8e6a41b4f",
+      "result": "Rejected",
+      "failed": [
+        "PairedCorrectness",
+        "CriticalRegressions",
+        "MandatoryPredictions"
+      ],
+      "unavailable": []
+    },
+    "focused": {
+      "campaign": "e215e8812e889a8b7c1f45756563694c",
+      "result": "PromotionReview",
+      "paired_lower_millionths": 1000000,
+      "reliability_lower_millionths": 675592
+    },
+    "infrastructure_only": {
+      "campaign": "1b4c2f826af2341d6c1e061515be8608",
+      "result": "Rejected",
+      "failed": [
+        "Reliability",
+        "AttributionCoverage",
+        "MandatoryPredictions",
+        "TraceCompleteness",
+        "TeardownCompleteness"
+      ],
+      "unavailable": [
+        "PairedCorrectness",
+        "Latency",
+        "Cost",
+        "InputTokens",
+        "OutputTokens"
+      ]
+    }
+  },
+  "promotion": {
+    "actual_proposal": "37b78157091da6d8e2ae8211c8670f76ac38a413d79442658c7aa4f73c55c038",
+    "actual_kernel_batch": "3830df0070a7884ff6b8341ecb0057c0fcf984600830e6f1ddefc7daf000a135",
+    "actual_capability_batch": "57abfbbad407956f55eb6c12df2bb021c3d5932809c1d5388dcde07eba8ec849",
+    "generation": 2,
+    "history_entries": 2,
+    "actual_binding": "65a70e393fb9170a58b4e6264b0b00d295ee991151785a3c9fc2dd10f8de3f66",
+    "fresh_approve_once_consumed": true,
+    "wrong_signature_rejected": true,
+    "wrong_action_rejected": true,
+    "wrong_project_rejected": true,
+    "wrong_revision_rejected": true,
+    "consumed_signature_replay": "C0 StaleHead state CAS rejection; no append"
+  },
+  "future_execution_and_rollback": {
+    "before": {
+      "capture": {
+        "artifact": "858cc628c8065cf6c2fd8dd399575f53c5c27ef87201e5fd70d3076f11e60df1",
+        "binding_digest": "935e03c6adef2c8db410e92c95db6a30bd409995fd2e77be864ef359cb7c7c6a",
+        "bytes": 13642728,
+        "harness_digest": "cb5c5bad8315c00145751094e873868b51153b25df3c5b143ac73c96c4dd8e69",
+        "harness_revision": 1,
+        "materialization_receipt_digest": "384e3066fe4cfbe657333a0d18e853dfebce9d77225f105bbdaee1580b10db38",
+        "selected_arm": "Baseline",
+        "source": "fresh actual current_program lookup; inert metadata, not execution authority"
+      },
+      "result": {
+        "phase": "Published",
+        "counts": "LedgerCounts { expected: 4, passed: 2, task_failed: 2, infrastructure_failed: 0, cancelled: 0, ambiguous: 0 }"
+      },
+      "shutdown": {
+        "disposition": "Clean",
+        "failures": "[]",
+        "remaining": "[]"
+      },
+      "capture_file_sha256": "1e803fc6f2154bbc04480b4bf6fbbd97aac2486f5d626f6adbf7392d1bb08f0b",
+      "result_file_sha256": "39576bfc654777edd87df2874499f382daecfd3715f36a69db84ca54e218771b"
+    },
+    "after": {
+      "capture": {
+        "artifact": "ee7aa1257e3529bf454eb8be1341b06f3caf8ad75f1e8b857cd50dd58eca5bd0",
+        "binding_digest": "65a70e393fb9170a58b4e6264b0b00d295ee991151785a3c9fc2dd10f8de3f66",
+        "bytes": 14024552,
+        "harness_digest": "3c8e8542898e632da99e0e742b4f7063351a7bd36de1fe257fa1aea1731f08ef",
+        "harness_revision": 2,
+        "materialization_receipt_digest": "5017d23c5c40ef9715f343759c63917b0f45d658f2e36f9761bb4aefb1097b8c",
+        "selected_arm": "Candidate",
+        "source": "fresh actual current_program lookup; inert metadata, not execution authority"
+      },
+      "result": {
+        "phase": "Published",
+        "counts": "LedgerCounts { expected: 4, passed: 2, task_failed: 2, infrastructure_failed: 0, cancelled: 0, ambiguous: 0 }"
+      },
+      "shutdown": {
+        "disposition": "Clean",
+        "failures": "[]",
+        "remaining": "[]"
+      },
+      "capture_file_sha256": "468572ca8b62c1dbc9cc21ec1bb08ae20d2d467b01b25032294736682f5784f8",
+      "result_file_sha256": "93ad5325bfedab80a12f35812c87658c520578a646f00902c2ebf497d42d73eb"
+    },
+    "rollback": {
+      "capture": {
+        "artifact": "858cc628c8065cf6c2fd8dd399575f53c5c27ef87201e5fd70d3076f11e60df1",
+        "binding_digest": "935e03c6adef2c8db410e92c95db6a30bd409995fd2e77be864ef359cb7c7c6a",
+        "bytes": 13642728,
+        "harness_digest": "cb5c5bad8315c00145751094e873868b51153b25df3c5b143ac73c96c4dd8e69",
+        "harness_revision": 1,
+        "materialization_receipt_digest": "384e3066fe4cfbe657333a0d18e853dfebce9d77225f105bbdaee1580b10db38",
+        "selected_arm": "Baseline",
+        "source": "fresh actual current_program lookup; inert metadata, not execution authority"
+      },
+      "result": {
+        "phase": "Published",
+        "counts": "LedgerCounts { expected: 4, passed: 2, task_failed: 2, infrastructure_failed: 0, cancelled: 0, ambiguous: 0 }"
+      },
+      "shutdown": {
+        "disposition": "Clean",
+        "failures": "[]",
+        "remaining": "[]"
+      },
+      "capture_file_sha256": "1e803fc6f2154bbc04480b4bf6fbbd97aac2486f5d626f6adbf7392d1bb08f0b",
+      "result_file_sha256": "c5f4d79df2a9588eeab9ceab37cbc1091dc1a4a47909131cfc2d9ed1966955a8"
+    },
+    "retained_before_capture_unchanged": true,
+    "actual_baseline_candidate_baseline_adoption": true
+  },
+  "portable_consumers": {
+    "build": "PASS - pinned Rust 1.97.1, offline release, two jobs",
+    "fresh_E1_receipts": {
+      "baseline": "c1e37ff8ee5de117b4f7c2950f0c0dcea615b3a07fdd031fa77cfa76af78d354",
+      "candidate": "6e2590aea2d54f1fbadea8ed759372f29b0828c442ae266fcd63305e8ef4c762"
+    },
+    "fresh_host_admission_negatives": [
+      "no exact pending proposal rejected, events8 to8",
+      "missing owned fixture marker rejected, events8 to8"
+    ],
+    "actual_completed_D2_retry": "PASS - exact input, response, context and reviewer retained",
+    "wrong_expected_review_task": "rejected, events575 to575",
+    "final_build": "PASS - original source plus retained-response retry guard and named existing authority frame",
+    "changed_supplied_response": "rejected against original SubmitReview artifact dependencies, events575 to575; exact actual response retry PASS with no append"
+  },
+  "rollback": {
+    "actual_capability_batch": "12ec00a3902bba0dee490bd0a2cb649da594a9811da15f63ea9ee42684cce9e0",
+    "actual_kernel_batch": "6e075458d0ab57cb43951628b90e32cc4a711b9cee2d13a7777532f28116890f",
+    "current_binding": "935e03c6adef2c8db410e92c95db6a30bd409995fd2e77be864ef359cb7c7c6a",
+    "fresh_approve_once_consumed": true,
+    "future_invocation_oracle_pending": false,
+    "generation": 3,
+    "history_entries": 3,
+    "mode": "rollback",
+    "proposal": "c79962b555c8513ec315fb07df8fc7b5b9ebc76d0a32f51f915831845ca7511a",
+    "status": "PASS",
+    "wrong_action_consumption_rejected": true
+  },
+  "publication_readback": {
+    "activations": [
+      {
+        "artifact": "5074ba3f7462942ffaa3a977fc00d381e1164c99d549bd18eae8477641f431e0",
+        "evidence": "cdae35074063039ab431800da2ac79b4",
+        "kind": "harness-activation",
+        "outbox": "7076f847d158dd3794dcdc3926ae475e",
+        "outbox_state": "Acknowledged",
+        "producing_position": 259,
+        "record_digest": "32a448ec6a78439e69b252992b2f9429a815afb653b4b67abe224dd69262da9f",
+        "semantic_digest": "7ca5ef53acf176c65442331f9a8a13437622c089350ee46a559744184bd5dbca"
+      },
+      {
+        "artifact": "098e61e9c842fabcedf896068425d5c068d014763ad9009534da2fd0bbf520a3",
+        "evidence": "eccc002d87ce9d1e06e56aca86d428f3",
+        "kind": "harness-activation",
+        "outbox": "568b389a646bdd42ad021823ca7a1e0f",
+        "outbox_state": "Acknowledged",
+        "producing_position": 350,
+        "record_digest": "b97ea03b59dc69265b162dad207d0fc52a951758b23f764133eca3453d2c840e",
+        "semantic_digest": "098e61e9c842fabcedf896068425d5c068d014763ad9009534da2fd0bbf520a3"
+      }
+    ],
+    "decision": {
+      "artifact": "5074ba3f7462942ffaa3a977fc00d381e1164c99d549bd18eae8477641f431e0",
+      "evidence": "ef45032aec88744c5bd49b42b546f049",
+      "kind": "evolution-decision",
+      "outbox": "ae37bb0073575494dc33707a4f48371b",
+      "outbox_state": "Acknowledged",
+      "producing_position": 156,
+      "record_digest": "13f0b99effec5e62e840d72af6e69fb79a577c96176ffb113b0cabec8de6df16",
+      "semantic_digest": "37b78157091da6d8e2ae8211c8670f76ac38a413d79442658c7aa4f73c55c038"
+    },
+    "exact_owner_acknowledged": true,
+    "exact_retry_no_append": true,
+    "wrong_receipt_no_append": true,
+    "wrong_receipt_rejected": "EvolutionError { kind: IncompleteEvidence, operation: Recover, recovery: ObtainEvidence, detail: \"published immutable evidence is stale or invalidated\" }"
+  }
+}

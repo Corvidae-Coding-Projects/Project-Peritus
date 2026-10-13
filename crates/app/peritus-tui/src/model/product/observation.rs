@@ -55,6 +55,12 @@ impl AppModel {
             return Vec::new();
         }
         let mut effects: Vec<Effect> = self.poll_chat();
+        // The conversation snapshot already updates its run and settlement. Hidden run panels
+        // do not need a second interaction read or a scan of every historical effect ledger.
+        // Opening a panel resumes its normal periodic inspection on the next tick.
+        if self.view == crate::model::View::Conversation {
+            return effects;
+        }
         if self.view == crate::model::View::Preview
             && let Some(page) = self.product.as_ref().and_then(|product| product.preview.as_ref())
             && page

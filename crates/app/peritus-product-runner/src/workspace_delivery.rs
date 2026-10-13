@@ -77,7 +77,12 @@ impl ProductRunInput {
             .with_in_place_scope(self.in_place_scope())
     }
 
-    pub(crate) fn developer_definitions(&self) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    /// Returns the production developer catalog for this delivery and attachment scope.
+    /// Memory and invocation-specific historical evidence tools are supplied by their owners.
+    ///
+    /// # Errors
+    /// Rejects invalid bounded tool definitions.
+    pub fn developer_definitions(&self) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         let mut definitions = crate::developer_tools::definitions_for_attachments(
             self.conversation.has_selected_file_attachments(),
         )?;

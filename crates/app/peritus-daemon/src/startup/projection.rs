@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use peritus_journal::{IntegrityExport, SqliteJournal};
+use peritus_journal::{AggregateKind, IntegrityExport, SqliteJournal};
 use peritus_projection::{
     AgentProjection, ArtifactReferenceProjection, AuthorityProjection, BudgetProjection,
     EvidenceCatalogProjection, JournalCatalogProjection, LifecycleProjection, Projection,
@@ -16,6 +16,7 @@ pub fn ensure_current(
     journal: &mut SqliteJournal,
     database: &Path,
 ) -> Result<ProjectionStore, DaemonError> {
+    validate_lineage_owners(journal)?;
     let export = journal.integrity_export().map_err(|error| {
         DaemonError::with_source(
             DaemonErrorCode::CorruptState,
@@ -36,6 +37,58 @@ pub fn ensure_current(
     ensure(&mut store, &export, &AgentProjection::new().map_err(projection_error)?)?;
     ensure(&mut store, &export, &TraceProjection::new().map_err(projection_error)?)?;
     Ok(store)
+}
+
+/// E1/F0 revisions intentionally evolve. Validate the full owning chain before generic folds;
+/// the generic cursor still verifies exact predecessor, sequence, hash and registered family.
+fn validate_lineage_owners(journal: &SqliteJournal) -> Result<(), DaemonError> {
+    journal.validate_credential_registry_history().map_err(lineage_error)?;
+    for id in journal.aggregate_ids(AggregateKind::Harness, 16384).map_err(lineage_error)? {
+        let harness = peritus_types::HarnessId::new(*id.as_bytes()).map_err(lineage_error)?;
+        if peritus_harness::load_harness_replay(journal, harness)
+            .map_err(lineage_error)?
+            .rebuild()
+            .map_err(lineage_error)?
+            .is_none()
+        {
+            return Err(lineage_error("retained E1 aggregate has no owning state"));
+        }
+    }
+    for id in
+        journal.aggregate_ids(AggregateKind::EvolutionCampaign, 16384).map_err(lineage_error)?
+    {
+        let campaign =
+            peritus_evolution::EvolutionCampaignId::new(*id.as_bytes()).map_err(lineage_error)?;
+        if peritus_evolution::recover_campaign(journal, campaign)
+            .map_err(lineage_error)?
+            .state()
+            .is_none()
+        {
+            return Err(lineage_error("retained F0 campaign has no owning state"));
+        }
+    }
+    for id in
+        journal.aggregate_ids(AggregateKind::ProductionHarness, 16384).map_err(lineage_error)?
+    {
+        let project = peritus_types::ProjectId::new(*id.as_bytes()).map_err(lineage_error)?;
+        if peritus_evolution::recover_pointer(journal, project)
+            .map_err(lineage_error)?
+            .state()
+            .is_none()
+        {
+            return Err(lineage_error("retained F0 pointer has no owning state"));
+        }
+    }
+    Ok(())
+}
+
+fn lineage_error(error: impl core::fmt::Debug) -> DaemonError {
+    DaemonError::new(
+        DaemonErrorCode::CorruptState,
+        DaemonRecovery::ReadOnly,
+        "replay evolving lineage owner",
+        format!("owning lineage validation failed: {error:?}"),
+    )
 }
 
 fn ensure<P: Projection>(

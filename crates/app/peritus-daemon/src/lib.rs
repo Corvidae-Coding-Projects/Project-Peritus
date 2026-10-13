@@ -46,6 +46,7 @@ mod outbox;
 mod product_control;
 mod product_run;
 mod prompt;
+pub mod rsi;
 pub(crate) mod qualification;
 pub(crate) mod session;
 mod shutdown;

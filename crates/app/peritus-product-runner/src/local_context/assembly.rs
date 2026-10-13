@@ -26,7 +26,7 @@ impl LocalMemory {
     pub(in crate::local_context) fn additional_request_framing_tokens(
         &self,
     ) -> Result<u64, DeveloperLoopError> {
-        let (mut messages, _) = self.pinned_messages()?;
+        let (mut messages, mut selected) = self.pinned_messages()?;
         if let Some(index) = messages.iter().position(|message| message.role() == Role::System) {
             messages.remove(index);
         }
@@ -42,6 +42,9 @@ impl LocalMemory {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
         messages.push(self.scope_message()?);
+        // Initial role evidence must leave room for the already retained working closure.
+        // This is an estimate-only projection: no journal, pins, entries or sources change.
+        working::append_state(self, &self.state, &mut messages, &mut selected, &[], u64::MAX)?;
         let with_memory = estimate_developer_request_tokens(&messages, &[]);
         let estimator_overhead = estimate_developer_request_tokens(&[], &[]);
         Ok(with_memory.saturating_sub(estimator_overhead))

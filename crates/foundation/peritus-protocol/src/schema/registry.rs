@@ -2,6 +2,9 @@
 
 /// G0-owned immutable actor/conversation/workspace artifact claim event.
 pub const ARTIFACT_SCOPE_CLAIM_FAMILY: u16 = 3500;
+/// Inert opaque data attached to an actual B1 capability, budget, lease or approval commit.
+/// The owning durable adapter validates authority separately; these bytes never reconstruct it.
+pub const AUTHORITY_OWNER_RECORD_FAMILY: u16 = 300;
 /// G0-owned artifact upload acceptance event; preserves the existing publication allocation.
 pub const ARTIFACT_UPLOAD_ACCEPTED_FAMILY: u16 = 65_000;
 

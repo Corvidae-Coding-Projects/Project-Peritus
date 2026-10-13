@@ -103,6 +103,13 @@ fn run_scoped_with_cancellation(
                 error.to_string(),
             )
         })?;
+    let plan = if execution_policy::real_interface_acceptance(request_context) {
+        plan.with_conventional_checks_unselected()
+    } else if execution_policy::real_testing_only(request_context) {
+        plan.with_test_suites_unselected()
+    } else {
+        plan
+    };
     coverage::authorize(&plan)?;
     execution_policy::authorize(&plan, request_context)?;
     let execution_context = execution_context(root, &plan, request_context);
@@ -128,6 +135,28 @@ fn execute_plan(
     let mut records = Vec::new();
     let mut observations = Vec::new();
     for specification in plan.commands() {
+        if cancellation.is_cancelled() {
+            records.push(GateExecutionRecord {
+                command: specification.display(),
+                label: specification.label().to_owned(),
+                exit_code: None,
+                output: "Run was cancelled; this check was not executed.".to_owned(),
+            });
+            break;
+        }
+        if specification.program() != "peritus-internal"
+            && specification.optional_when_not_selected()
+            && (execution_policy::real_interface_acceptance(request_context)
+                || (execution_policy::real_testing_only(request_context)
+                    && specification.label().to_ascii_lowercase().contains("test")))
+        {
+            observations.push(GateObservation {
+                command: specification.display(),
+                label: specification.label().to_owned(),
+                output: "NOT EVALUATED: the authoritative request selected the real-testing skill and excluded this conventional suite. Inspect the actual baseline/candidate operations and independent review for behavioral evidence.".to_owned(),
+            });
+            continue;
+        }
         if specification.program() == "peritus-internal" {
             let outcome = match specification.arguments().first().map(String::as_str) {
                 Some("source-readability") => GateOutcome::Required(source_layout::run(
@@ -215,7 +244,7 @@ fn execute_plan(
 
 fn execution_context(root: &Path, plan: &TargetGatePlan, request_context: &str) -> Sha256Digest {
     let mut hasher = Sha256::new();
-    hasher.update(b"peritus-gate-execution-context-v1\0");
+    hasher.update(b"peritus-gate-execution-context-v2\0");
     hash_bytes(&mut hasher, std::env::consts::OS.as_bytes());
     hash_bytes(&mut hasher, std::env::consts::ARCH.as_bytes());
     hash_bytes(&mut hasher, root.as_os_str().as_encoded_bytes());
@@ -235,6 +264,7 @@ fn execution_context(root: &Path, plan: &TargetGatePlan, request_context: &str) 
     for command in plan.commands() {
         hasher.update([1]);
         hash_bytes(&mut hasher, command.display().as_bytes());
+        hasher.update([u8::from(command.optional_when_not_selected())]);
         hash_bytes(&mut hasher, command.current_dir().as_os_str().as_encoded_bytes());
         observe_program(&mut hasher, root, command.current_dir(), command.program());
     }

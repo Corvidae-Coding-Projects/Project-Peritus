@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.0.8
+
+### Fixed
+
+- Resolve the installed command's real path before locating its packaged daemon, fixing macOS startup through the installer's `~/.local/bin/peritus` symlink.
+- Preserve ordinary-folder sessions across reconnects and accept larger GitHub release metadata responses during updates.
+- Keep long-running conversations responsive by avoiding repeated full-history replay and hidden-panel polling; retain disconnect details after transient notices expire.
+- Complete native RSI candidate scheduling, restricted execution, evaluation, evidence publication, frozen-policy selection, and explicitly approved promotion and rollback, with durable recovery through cancellation and restart.
+- Honor real-testing evaluation directives and finish reviewed no-patch improvement investigations without inventing candidate authority.
+- Fit developer context without discarding steering, blockers, or unknown-operation warnings when generated fixer evidence becomes large.
+- Support Option/Alt word movement and deletion and delivered Cmd/Super line movement throughout shared terminal editors, including at input capacity. Negotiate optional enhanced keyboard input and restore terminal state on exit.
+
+### Changed
+
+- Explain Chat, Plan, Review, and Build modes beside the composer and in command help in both terminal and web interfaces; make read-only restrictions and explicit mode changes visible.
+- Retain reproducible real-interface campaigns for daemon recovery, RSI, context preparation, composer controls, and installer paths. Unit tests, formal checks, and repository qualification suites remain excluded.
+
 ## 0.0.7
 
 ### Added

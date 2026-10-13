@@ -4,7 +4,7 @@ use peritus_types::RunId;
 
 /// A fresh host invocation is new work, even when its role/cycle/revision did not change.
 /// Its identity is retained by the existing context and effect journals before tool dispatch.
-pub(super) fn invocation(
+pub(crate) fn invocation(
     run_id: RunId,
     role: &str,
     cycle: u32,

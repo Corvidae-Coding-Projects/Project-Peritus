@@ -134,7 +134,9 @@ impl ProductRunService {
                     && outcome.settlement().checkpoint().is_some();
             if matches!(
                 outcome.settlement().disposition(),
-                RunDisposition::Accepted | RunDisposition::WaitingForUser
+                RunDisposition::Accepted
+                    | RunDisposition::CompletedWithoutCandidate
+                    | RunDisposition::WaitingForUser
             ) {
                 // The runner has returned, so its in-place writes have reached a completed owned
                 // boundary. A failed seal remains visibly unsealed and can never be overwritten.
@@ -286,6 +288,7 @@ impl ProductRunService {
         outcome: &ProductRunOutcome,
     ) -> String {
         let phase = match outcome.settlement().disposition() {
+            RunDisposition::CompletedWithoutCandidate => ProductRunPhase::Complete,
             RunDisposition::Cancelled => ProductRunPhase::Cancelled,
             RunDisposition::RecoveryRequired => ProductRunPhase::RecoveryRequired,
             RunDisposition::CandidateAvailable | RunDisposition::FailedNoCandidate => {
@@ -296,6 +299,7 @@ impl ProductRunService {
         let has_candidate = outcome.candidate().is_some();
         let in_place = self.inner.folders.contains_key(&record.request.workspace_id());
         let status = match (outcome.settlement().disposition(), has_candidate) {
+            (RunDisposition::CompletedWithoutCandidate, false) => "Evaluation complete — no patch",
             (RunDisposition::Cancelled, _) if in_place => {
                 "Cancelled — in-place effects retained, not verified complete"
             }

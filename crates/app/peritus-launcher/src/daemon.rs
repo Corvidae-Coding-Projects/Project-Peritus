@@ -26,17 +26,28 @@ impl SiblingBinaries {
     ///
     /// Returns an actionable packaging error if the executable is absent or version-mismatched.
     pub fn discover() -> Result<Self, LauncherError> {
-        let current = std::env::current_exe().map_err(|error| {
-            LauncherError::DaemonBinary(format!("cannot locate running executable: {error}"))
-        })?;
-        let directory = current
+        Self::from_application(running_application()?)
+    }
+
+    /// Resolves a packaged application's real location and validates its sibling daemon.
+    ///
+    /// Command-path symlinks may live outside the package's `bin` directory. Resolve the
+    /// executable itself before looking for companions, including on platforms where
+    /// [`std::env::current_exe`] reports the symlink used to launch the application.
+    ///
+    /// # Errors
+    /// Returns an actionable packaging error for an unavailable application or a missing,
+    /// non-file, or version-mismatched sibling daemon.
+    pub fn from_application(application: PathBuf) -> Result<Self, LauncherError> {
+        let application = canonical_application(application)?;
+        let directory = application
             .parent()
             .ok_or_else(|| {
                 LauncherError::DaemonBinary("running executable has no parent directory".to_owned())
             })?
             .to_path_buf();
         let name = if cfg!(windows) { "peritusd.exe" } else { "peritusd" };
-        Self::from_paths(current, directory.join(name))
+        Self::from_paths(application, directory.join(name))
     }
 
     /// Validates one explicit daemon executable path.
@@ -45,9 +56,7 @@ impl SiblingBinaries {
     ///
     /// Returns an actionable packaging error for a missing, non-file, or mismatched executable.
     pub fn from_daemon(daemon: PathBuf) -> Result<Self, LauncherError> {
-        let application = std::env::current_exe().map_err(|error| {
-            LauncherError::DaemonBinary(format!("cannot locate running executable: {error}"))
-        })?;
+        let application = canonical_application(running_application()?)?;
         Self::from_paths(application, daemon)
     }
 
@@ -95,6 +104,30 @@ impl SiblingBinaries {
     pub const fn verified_version(&self) -> &'static str {
         env!("CARGO_PKG_VERSION")
     }
+}
+
+fn running_application() -> Result<PathBuf, LauncherError> {
+    std::env::current_exe().map_err(|error| {
+        LauncherError::DaemonBinary(format!("cannot locate running executable: {error}"))
+    })
+}
+
+fn canonical_application(application: PathBuf) -> Result<PathBuf, LauncherError> {
+    let resolved = fs::canonicalize(&application).map_err(|error| {
+        LauncherError::DaemonBinary(format!(
+            "cannot resolve packaged application {}: {error}",
+            application.display()
+        ))
+    })?;
+    let metadata = fs::metadata(&resolved)
+        .map_err(|error| LauncherError::DaemonBinary(format!("{}: {error}", resolved.display())))?;
+    if !metadata.is_file() {
+        return Err(LauncherError::DaemonBinary(format!(
+            "{} is not a regular application file",
+            resolved.display()
+        )));
+    }
+    Ok(resolved)
 }
 
 /// Outcome of establishing live daemon readiness.

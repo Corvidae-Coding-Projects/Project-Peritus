@@ -51,6 +51,20 @@ The package includes the command, background process, terminal interface, and sa
 The installer also saves an uninstaller and configures the user command path.
 It does not register an always-on system service.
 
+### macOS 0.0.7 command-path error
+
+If setup finishes but startup reports a missing `~/.local/bin/peritusd`, launch the
+installed command directly:
+
+```sh
+"$HOME/Library/Application Support/Peritus/bin/peritus"
+```
+
+The macOS installer places `peritusd` beside this command and creates a separate
+`~/.local/bin/peritus` shortcut. Release 0.0.7 can look beside that shortcut instead
+of its target. Direct invocation keeps your existing configuration and credentials.
+The corrected launcher resolves the command's real path before finding its daemon.
+
 ## Runtime dependencies
 
 The installer keeps working dependencies that are already present.
@@ -247,6 +261,11 @@ x86-64 and ARM64 runners. `packaging/native_release.py` builds the CLI, daemon, 
 and sandbox helper, assembles their package, reads back the native executable versions, and creates
 an archive with checksums. Windows x86-64 uses pinned LLVM `clang-cl` 20.1.8 with the MSVC ABI;
 Windows binaries use deterministic final linking.
+
+Unix release runners install their actual package into the disposable runner's home and
+operate the installed command through offline setup, a daemon-connected terminal session,
+client exit, and clean daemon shutdown. macOS uses the installer's separate CLI symlink,
+so this journey exercises discovery of the daemon beside the real executable.
 
 The release operator creates the artifact inventory, SPDX SBOM, and provenance. GitHub signs the
 archive and SBOM attestations; the operator authenticates these signed artifacts and uploads them

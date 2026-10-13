@@ -49,7 +49,11 @@ pub(super) fn append_state(
         memory.config.working_state_max_tokens,
         available,
     )
-    .map_err(|_| error("required working-state closure exceeds input capacity"))?;
+    .map_err(|cause| {
+        DeveloperLoopError::Context(format!(
+            "local working memory: working-state projection failed: {cause}"
+        ))
+    })?;
     if let Some(plan) = working.plan() {
         for segment in plan.segments() {
             let entry = state

@@ -12,7 +12,8 @@ pub use crate::component::{
 pub use crate::config::{
     ApprovalRegistryDeclaration, ContextPolicy, DaemonConfig, DaemonLimits, DaemonPaths,
     FolderDeclaration, LocalHumanPrincipal, ProjectDeclaration, ProviderProfileDeclaration,
-    ProviderRoute, ProviderRouteKind, TelemetryExport, ToolPolicy, WorkspaceDeclaration,
+    ProviderRoute, ProviderRouteKind, RsiExecutionConfiguration, TelemetryExport, ToolPolicy,
+    WorkspaceDeclaration,
 };
 pub use crate::error::{DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use crate::identity::DaemonIdentity;

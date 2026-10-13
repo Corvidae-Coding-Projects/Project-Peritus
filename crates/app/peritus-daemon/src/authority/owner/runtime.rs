@@ -30,6 +30,10 @@ pub(super) async fn run(
     mut receiver: mpsc::Receiver<AuthorityMessage>,
 ) -> Result<(), DaemonError> {
     let mut scheduler_session = peritus_scheduler::SchedulerSession::default();
+    let mut evaluation_cancellations = std::collections::BTreeMap::<
+        peritus_eval::EvaluationCampaignId,
+        std::sync::Weak<std::sync::atomic::AtomicBool>,
+    >::new();
     while let Some(message) = receiver.recv().await {
         match message {
             AuthorityMessage::Status { respond } => reply(
@@ -75,6 +79,167 @@ pub(super) async fn run(
             AuthorityMessage::DeliverOrchestratorChild { claim, respond } => {
                 let result = require_mutation(&lifecycle)
                     .and_then(|()| deliver_child_directive(&mut journal, &claim));
+                reply(respond, result);
+            }
+            AuthorityMessage::QueryEvaluation { campaign, respond } => {
+                reply(
+                    respond,
+                    require_diagnostic(&lifecycle)
+                        .and_then(|()| crate::rsi::evaluation::load_optional(&journal, campaign)),
+                );
+            }
+            AuthorityMessage::StartEvaluation { campaign, profile, respond } => {
+                reply(
+                    respond,
+                    require_mutation(&lifecycle).and_then(|()| {
+                        crate::rsi::evaluation::EvaluationOperator::new(
+                            &mut journal,
+                            artifacts.store(),
+                        )
+                        .start(campaign, &profile)
+                    }),
+                );
+            }
+            AuthorityMessage::CancelEvaluation { campaign, reason, respond } => {
+                let result = require_diagnostic(&lifecycle).and_then(|()| {
+                    crate::rsi::evaluation::EvaluationOperator::new(&mut journal, artifacts.store())
+                        .cancel(campaign, reason)
+                });
+                if result.is_ok()
+                    && let Some(token) =
+                        evaluation_cancellations.get(&campaign).and_then(std::sync::Weak::upgrade)
+                {
+                    token.store(true, std::sync::atomic::Ordering::Release);
+                }
+                reply(respond, result);
+            }
+            AuthorityMessage::DeliverEvaluationSchedule { claim, respond } => {
+                reply(
+                    respond,
+                    require_mutation(&lifecycle).and_then(|()| {
+                        crate::rsi::authority::schedule(&mut journal, artifacts.store(), claim)
+                    }),
+                );
+            }
+            AuthorityMessage::BeginEvaluation { claim, cancellation, respond } => {
+                let campaign = claim.directive().campaign_id();
+                let result = require_mutation(&lifecycle).and_then(|()| {
+                    crate::rsi::authority::begin(&mut journal, artifacts.store(), claim)
+                });
+                evaluation_cancellations.retain(|_, token| token.strong_count() > 0);
+                if matches!(&result, Ok(Some(_))) {
+                    evaluation_cancellations
+                        .insert(campaign, std::sync::Arc::downgrade(&cancellation));
+                }
+                reply(respond, result);
+            }
+            AuthorityMessage::FinishEvaluation {
+                claim,
+                record,
+                processes,
+                state_root,
+                respond,
+            } => {
+                reply(
+                    respond,
+                    require_diagnostic(&lifecycle).and_then(|()| {
+                        crate::rsi::authority::finish(
+                            &mut journal,
+                            artifacts.store(),
+                            &processes,
+                            &state_root,
+                            claim,
+                            record,
+                        )
+                    }),
+                );
+            }
+            AuthorityMessage::RetainEvaluationArtifacts { claim, roots, respond } => {
+                reply(
+                    respond,
+                    require_diagnostic(&lifecycle).and_then(|()| {
+                        crate::rsi::evaluation::retain(
+                            &mut journal,
+                            artifacts.store(),
+                            claim.directive().campaign_id(),
+                            roots,
+                            Some(claim.into()),
+                        )
+                        .map(|_| ())
+                    }),
+                );
+            }
+            AuthorityMessage::PublishEvaluation { claim, database, respond } => {
+                reply(
+                    respond,
+                    require_diagnostic(&lifecycle).and_then(|()| {
+                        crate::rsi::authority::publish(
+                            &mut journal,
+                            artifacts.store(),
+                            &database,
+                            claim,
+                        )
+                    }),
+                );
+            }
+            AuthorityMessage::FailEvaluation { claim, detail, processes, config, respond } => {
+                reply(
+                    respond,
+                    require_diagnostic(&lifecycle).and_then(|()| {
+                        crate::rsi::authority::fail(
+                            &mut journal,
+                            artifacts.store(),
+                            &processes,
+                            &config,
+                            claim,
+                            detail,
+                        )
+                    }),
+                );
+            }
+            AuthorityMessage::PublishEvolution { claim, database, maximum_bytes, respond } => {
+                let result = require_diagnostic(&lifecycle).and_then(|()| {
+                    let mut evidence = peritus_evidence::EvidenceStore::open(
+                        &database,
+                        peritus_evidence::EvidenceStoreOptions::default(),
+                    )
+                    .map_err(crate::rsi::evaluation::error)?;
+                    crate::rsi::evolution::publish_evolution_claim(
+                        &mut journal,
+                        artifacts.store(),
+                        &mut evidence,
+                        &claim,
+                        maximum_bytes,
+                    )
+                    .map(|_| ())
+                    .map_err(crate::rsi::evaluation::error)
+                });
+                reply(respond, result);
+            }
+            AuthorityMessage::PublishDebugger {
+                claim,
+                database,
+                state_root,
+                maximum_bytes,
+                respond,
+            } => {
+                let result = require_diagnostic(&lifecycle).and_then(|()| {
+                    let mut evidence = peritus_evidence::EvidenceStore::open(
+                        &database,
+                        peritus_evidence::EvidenceStoreOptions::default(),
+                    )
+                    .map_err(crate::rsi::evaluation::error)?;
+                    crate::rsi::evolution::publish_debugger_claim(
+                        &mut journal,
+                        artifacts.store(),
+                        &mut evidence,
+                        claim,
+                        &state_root,
+                        maximum_bytes,
+                    )
+                    .map(|_| ())
+                    .map_err(crate::rsi::evaluation::error)
+                });
                 reply(respond, result);
             }
             AuthorityMessage::RegisterPrompt {
@@ -301,6 +466,17 @@ pub(super) async fn run(
                 let result = require_mutation(&lifecycle).and_then(|()| {
                     crate::domain::dispatch(&mut journal, &mut scheduler_session, submission)
                 });
+                if matches!(&result, Ok(crate::domain::DomainOutcome::Committed(_))) {
+                    for (campaign, weak) in &evaluation_cancellations {
+                        if let Some(token) = weak.upgrade()
+                            && matches!(crate::rsi::evaluation::load_optional(&journal, *campaign),
+                                Ok(Some(state)) if matches!(state.phase(), peritus_eval::EvaluationPhase::Cancelling
+                                    | peritus_eval::EvaluationPhase::Cancelled | peritus_eval::EvaluationPhase::Failed))
+                        {
+                            token.store(true, std::sync::atomic::Ordering::Release);
+                        }
+                    }
+                }
                 reply(respond, result);
             }
             AuthorityMessage::SettleCommand { command_id, request_digest, settlement, respond } => {

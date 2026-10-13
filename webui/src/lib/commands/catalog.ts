@@ -1,3 +1,5 @@
+import { modeDescriptions } from '../modes';
+
 export interface Command { id: string; label: string; detail: string; group: string; slash: string; args?: string }
 export const commands: Command[] = [
   {id:'improvements',label:'Improvement inbox',detail:'Collect suggestions; explicitly generate and test selected harness patches',group:'Harness',slash:'/improvements'},
@@ -8,10 +10,10 @@ export const commands: Command[] = [
   {id:'git',label:'Source control',detail:'Branches, remotes, staging, commit, fetch, pull, and push',group:'Workspace',slash:'/git'},
   {id:'settings',label:'Configure console',detail:'Theme, behavior, layout, shortcuts, and dotfile',group:'Workspace',slash:'/settings'},
   {id:'sessions',label:'Session library',detail:'Reopen and organize saved sessions',group:'Workspace',slash:'/sessions'},
-  {id:'chat',label:'Chat mode',detail:'Discuss or direct the harness',group:'Conversation',slash:'/chat'},
-  {id:'plan',label:'Plan mode',detail:'Read-only planning and discussion',group:'Conversation',slash:'/plan'},
-  {id:'review',label:'Review mode',detail:'Independent read-only review',group:'Conversation',slash:'/review'},
-  {id:'build',label:'Build mode',detail:'Writer, checks, reviewer, and fixer pipeline',group:'Conversation',slash:'/build'},
+  {id:'chat',label:'Chat mode',detail:modeDescriptions.chat,group:'Conversation',slash:'/chat'},
+  {id:'plan',label:'Plan mode',detail:modeDescriptions.plan,group:'Conversation',slash:'/plan'},
+  {id:'review',label:'Review mode',detail:modeDescriptions.review,group:'Conversation',slash:'/review'},
+  {id:'build',label:'Build mode',detail:modeDescriptions.build,group:'Conversation',slash:'/build'},
   {id:'stop',label:'Stop current work',detail:'Keep effects already completed',group:'Conversation',slash:'/stop'},
   {id:'model',label:'Models and reasoning',detail:'Select models and effort for each role',group:'Conversation',slash:'/model'},
   {id:'effort',label:'Reasoning effort',detail:'Adjust per-role reasoning depth',group:'Conversation',slash:'/effort'},

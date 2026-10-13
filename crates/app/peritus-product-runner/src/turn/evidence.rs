@@ -161,7 +161,7 @@ fn omission_marker(source: &str, total: usize, digest: &str, start: usize, end: 
     )
 }
 
-fn digest_hex(value: &str) -> String {
+pub(super) fn digest_hex(value: &str) -> String {
     let mut encoded = String::with_capacity(64);
     for byte in Sha256::digest(value.as_bytes()) {
         let _ = write!(encoded, "{byte:02x}");

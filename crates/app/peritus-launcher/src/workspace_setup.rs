@@ -19,11 +19,11 @@ pub fn ensure_configured(
     requested: Option<&Path>,
 ) -> Result<PreparedProduct, LauncherError> {
     if let Some(path) = requested {
-        let discovered = DiscoveredRepository::open(path)?;
+        let discovered = discover_for_launch(&prepared, path)?;
         return activate_repository(prepared, discovered);
     }
     if let Ok(current) = env::current_dir()
-        && let Ok(discovered) = DiscoveredRepository::open(&current)
+        && let Ok(discovered) = discover_for_launch(&prepared, &current)
     {
         return activate_repository(prepared, discovered);
     }
@@ -35,6 +35,32 @@ pub fn ensure_configured(
         }
     }
     choose_workspace(prepared)
+}
+
+fn discover_for_launch(
+    prepared: &PreparedProduct,
+    path: &Path,
+) -> Result<DiscoveredRepository, LauncherError> {
+    let folder = DiscoveredRepository::folder(path)?;
+    // Initializing Git must not replace a remembered folder's authority or conversation scope.
+    let remembered_folder = |folder: &DiscoveredRepository| {
+        prepared
+            .state()
+            .workspaces()
+            .find_repository(folder.root_text(), folder.identity_text())
+            .is_some_and(WorkspaceProfile::is_direct_folder)
+    };
+    if remembered_folder(&folder) {
+        return Ok(folder);
+    }
+    let repository = DiscoveredRepository::open(path)?;
+    if repository.root_text() != folder.root_text() {
+        let root = DiscoveredRepository::folder(Path::new(repository.root_text()))?;
+        if remembered_folder(&root) {
+            return Ok(root);
+        }
+    }
+    Ok(repository)
 }
 
 /// Opens focused workspace settings for switching, adding, trusting, repairing, or forgetting.

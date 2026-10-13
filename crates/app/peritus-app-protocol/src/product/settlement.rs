@@ -27,6 +27,13 @@ impl ProductRunSettlementSnapshot {
     ) -> Result<Self, ProductRunMessageError> {
         let candidate = settlement.checkpoint();
         let deliverable = snapshot.deliverable();
+        if settlement.disposition() == RunDisposition::CompletedWithoutCandidate
+            && (snapshot.phase() != ProductRunPhase::Complete
+                || candidate.is_some()
+                || deliverable.is_some())
+        {
+            return Err(ProductRunMessageError::InvalidSettlement);
+        }
         if candidate.is_some() != deliverable.is_some() {
             return Err(ProductRunMessageError::InvalidSettlement);
         }

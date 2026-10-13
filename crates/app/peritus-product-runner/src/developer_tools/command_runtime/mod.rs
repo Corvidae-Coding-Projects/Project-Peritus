@@ -12,6 +12,7 @@ mod identity;
 mod journal;
 mod kernel;
 mod lease;
+mod materialization_authority;
 mod ordinal;
 mod output;
 mod plan;
@@ -20,10 +21,15 @@ mod preview_terminal;
 pub use preview_terminal::PreviewTerminal;
 mod projections;
 mod recovery;
+mod restricted_process;
 mod result;
 mod sandbox;
 
 pub use folder_patch::{FolderPatchAuthority, FolderPatchAuthorityPlan};
+pub use materialization_authority::{
+    MaterializationAuthorityContext, MaterializationAuthorityRequest, OwnedMaterializationAuthority,
+};
+pub use restricted_process::{OwnedRestrictedProcessAuthority, RestrictedProcessContext};
 
 use std::{
     collections::BTreeMap,

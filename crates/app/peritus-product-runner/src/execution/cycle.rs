@@ -112,6 +112,7 @@ pub(super) async fn initial_write(
         1,
         design,
         findings,
+        None,
         ownership,
         accounting,
         recorder,
@@ -281,7 +282,7 @@ pub(super) async fn inspect_gates(
 pub(super) async fn apply_fix(
     input: &ProductRunInput,
     observe: &RunObserver,
-    inspected: &CycleInspection,
+    evidence: &RunEvidence,
     state: &mut RunState,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
@@ -298,23 +299,20 @@ pub(super) async fn apply_fix(
         ProductRunPhase::Fixing,
         fixer_cycle + 1,
         "Fixer is addressing exact check failures and every conserved blocker",
-        &inspected.evidence,
+        evidence,
         &state.task_summary,
         Some(&state.findings),
         accounting,
     )?;
     check_cancelled(input)?;
-    let findings = format!(
-        "Current diff:\n{}\n\nExact-target checks:\n{}\n\nConserved review ledger:\n{}",
-        inspected.evidence.diff, inspected.evidence.gates, inspected.evidence.review,
-    );
     let turn = crate::turn::complete_developer_turn(
         input,
         &input.providers.fixer,
         "fixer",
         fixer_cycle,
         state.design.markdown(),
-        Some(&findings),
+        Some(&evidence.review),
+        Some(crate::turn::DeveloperEvidence { diff: &evidence.diff, gates: &evidence.gates }),
         ownership,
         accounting,
         recorder,
@@ -341,7 +339,7 @@ pub(super) async fn apply_fix(
                 ProductRunPhase::Fixing,
                 fixer_cycle + 1,
                 "Fixer completed; fresh verification is pending",
-                &inspected.evidence,
+                evidence,
                 &state.task_summary,
                 Some(&state.findings),
                 accounting,

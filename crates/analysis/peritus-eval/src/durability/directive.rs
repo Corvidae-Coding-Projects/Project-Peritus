@@ -379,6 +379,7 @@ impl ExecutionDirectiveClaim {
 pub struct PublicationDirectiveClaim {
     directive: PublicationDirective,
     fence: u64,
+    producing_position: u64,
 }
 
 impl PublicationDirectiveClaim {
@@ -395,6 +396,7 @@ impl PublicationDirectiveClaim {
         Ok(Self {
             directive,
             fence: message.fence().ok_or_else(|| binding("claimed directive has no fence"))?,
+            producing_position: message.producing_position(),
         })
     }
 
@@ -408,6 +410,11 @@ impl PublicationDirectiveClaim {
     #[must_use]
     pub const fn fence(&self) -> u64 {
         self.fence
+    }
+    /// Actual C0 report-producing position retained from the claimed outbox row.
+    #[must_use]
+    pub const fn producing_position(&self) -> u64 {
+        self.producing_position
     }
 }
 
@@ -423,6 +430,18 @@ pub enum EvaluationDirectiveClaim {
 }
 
 impl EvaluationDirectiveClaim {
+    /// Identity derived from the exact immutable claimed effect payload.
+    ///
+    /// # Errors
+    /// Rejects an invalid domain identity.
+    pub fn outbox_id(&self) -> Result<OutboxId, EvaluationError> {
+        self.id()
+    }
+    /// Exact native claim fence, never a caller-selected acknowledgement token.
+    #[must_use]
+    pub const fn claim_fence(&self) -> u64 {
+        self.fence()
+    }
     pub(crate) fn id(&self) -> Result<OutboxId, EvaluationError> {
         match self {
             Self::Schedule(value) => value.directive.outbox_id(),

@@ -3022,8 +3022,8 @@
       "additionalProperties": false,
       "x-rust-type": "RunSettlement",
       "properties": {
-        "disposition": { "type": "string", "enum": ["accepted", "candidate-available", "waiting-for-user", "failed-no-candidate", "cancelled", "recovery-required"], "x-canonical-wire": "u16-be", "x-rust-type": "RunDisposition" },
-        "cause": { "type": "string", "enum": ["completed", "user-wait", "cancellation", "deadline", "provider", "context", "gate", "review", "repository", "adapter", "recovery", "internal-invariant"], "x-canonical-wire": "u16-be", "x-rust-type": "SettlementCause" },
+        "disposition": { "type": "string", "enum": ["accepted", "candidate-available", "waiting-for-user", "failed-no-candidate", "cancelled", "recovery-required", "completed-without-candidate"], "x-canonical-wire": "u16-be", "x-rust-type": "RunDisposition" },
+        "cause": { "type": "string", "enum": ["completed", "user-wait", "cancellation", "deadline", "provider", "context", "gate", "review", "repository", "adapter", "recovery", "internal-invariant", "no-change-complete"], "x-canonical-wire": "u16-be", "x-rust-type": "SettlementCause" },
         "checkpoint": { "$ref": "#/$defs/CandidateCheckpoint", "x-canonical-wire": "option+value", "x-rust-type": "Option<CandidateCheckpoint>" }
       },
       "required": ["disposition", "cause"]

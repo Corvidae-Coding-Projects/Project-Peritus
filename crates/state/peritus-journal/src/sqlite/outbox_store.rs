@@ -8,6 +8,56 @@ use super::SqliteJournal;
 type OutboxClaimRow = (Vec<u8>, i64, String, Vec<u8>, i64, i64, Option<i64>);
 
 impl SqliteJournal {
+    /// Reads an exact retained delivery row without claiming or changing any work.
+    ///
+    /// # Errors
+    /// Rejects malformed durable fields and returns typed storage failures.
+    pub fn outbox_message(&self, id: OutboxId) -> Result<Option<OutboxMessage>, JournalError> {
+        type Row = (i64, String, Vec<u8>, i64, i64, i64, Option<i64>, Option<i64>);
+        let row: Option<Row> = self.connection.query_row(
+            "SELECT producing_position,destination,payload,attempts,max_attempts,state,fence,lease_until FROM outbox WHERE outbox_id=?1",
+            params![id.as_bytes().as_slice()],
+            |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?)))
+            .optional().map_err(|error| JournalError::sqlite("read exact outbox row", error))?;
+        let Some((position, destination, payload, attempts, maximum, state, fence, lease)) = row
+        else {
+            return Ok(None);
+        };
+        let attempts = u16::try_from(attempts)
+            .map_err(|_| super::query::corrupt("stored outbox attempts are invalid"))?;
+        let max_attempts = u16::try_from(maximum)
+            .map_err(|_| super::query::corrupt("stored outbox attempt bound is invalid"))?;
+        let state = match state {
+            1 => OutboxState::Pending,
+            2 => OutboxState::Claimed,
+            3 => OutboxState::Acknowledged,
+            4 => OutboxState::Exhausted,
+            _ => return Err(super::query::corrupt("stored outbox state is invalid")),
+        };
+        let fence = fence.map(|v| super::query::positive_u64(v, "outbox fence")).transpose()?;
+        let lease_until =
+            lease.map(|v| super::query::positive_u64(v, "outbox lease")).transpose()?;
+        if max_attempts == 0
+            || attempts > max_attempts
+            || destination.is_empty()
+            || (state == OutboxState::Claimed
+                && (attempts == 0 || fence.is_none() || lease_until.is_none()))
+            || (state != OutboxState::Claimed && lease_until.is_some())
+        {
+            return Err(super::query::corrupt("stored outbox delivery fields disagree"));
+        }
+        Ok(Some(OutboxMessage {
+            id,
+            producing_position: super::query::positive_u64(position, "outbox position")?,
+            destination,
+            payload,
+            attempts,
+            max_attempts,
+            state,
+            fence,
+            lease_until,
+        }))
+    }
     /// Claims the next pending or expired outbox row under a monotonically increasing fence.
     ///
     /// `lease_until` and `now` are caller-observed positive monotonic ticks; the journal compares
@@ -42,7 +92,7 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("mark exhausted outbox rows", error))?;
         let selected: Option<OutboxClaimRow> = transaction
             .query_row(
-                "SELECT outbox_id, producing_position, destination, payload, attempts, max_attempts, fence FROM outbox WHERE (state = 1 OR (state = 2 AND lease_until <= ?1)) AND attempts < max_attempts ORDER BY outbox_id LIMIT 1",
+                "SELECT outbox_id, producing_position, destination, payload, attempts, max_attempts, fence FROM outbox WHERE (state = 1 OR (state = 2 AND lease_until <= ?1)) AND attempts < max_attempts ORDER BY producing_position, outbox_id LIMIT 1",
                 params![now_i64],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?)),
             )

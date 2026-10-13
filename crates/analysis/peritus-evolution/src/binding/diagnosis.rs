@@ -58,6 +58,7 @@ impl PublishedDebuggerEvidence {
         limits: EvolutionLimits,
     ) -> Result<Self, EvolutionError> {
         let report = validated.report();
+        let artifact_digest = peritus_codec::sha256(validated.canonical_bytes());
         let record = state.report().ok_or_else(incomplete)?;
         let publication = state.publication().ok_or_else(incomplete)?;
         let canonical = !citations.is_empty()
@@ -65,10 +66,10 @@ impl PublishedDebuggerEvidence {
             && citations.windows(2).all(|pair| pair[0] < pair[1]);
         if state.phase() != DebuggerPhase::Published
             || record.id() != validated.id()
-            || record.digest() != validated.digest()
+            || record.digest() != artifact_digest
             || record.size() != u64::try_from(validated.canonical_bytes().len()).unwrap_or(u64::MAX)
             || publication.report_id() != validated.id()
-            || publication.artifact_digest() != validated.digest()
+            || publication.artifact_digest() != artifact_digest
             || publication.artifact_size() != record.size()
             || !canonical
         {

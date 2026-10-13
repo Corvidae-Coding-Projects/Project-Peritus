@@ -1,6 +1,9 @@
 //! Complete stable message-family allocation.
 
-use super::{ARTIFACT_SCOPE_CLAIM_FAMILY, ARTIFACT_UPLOAD_ACCEPTED_FAMILY, MessageFamily};
+use super::{
+    ARTIFACT_SCOPE_CLAIM_FAMILY, ARTIFACT_UPLOAD_ACCEPTED_FAMILY, AUTHORITY_OWNER_RECORD_FAMILY,
+    MessageFamily,
+};
 
 /// Complete B3 family registry, strictly ordered by tag.
 pub const FAMILIES: &[MessageFamily] = &[
@@ -364,6 +367,13 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily {
         tag: 94,
         name: "credential-registry-event",
+        schema_version: 1,
+        supported_schema_versions: &[1],
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: AUTHORITY_OWNER_RECORD_FAMILY,
+        name: "authority-owner-record",
         schema_version: 1,
         supported_schema_versions: &[1],
         inert_only: true,

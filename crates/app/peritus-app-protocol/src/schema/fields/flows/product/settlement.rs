@@ -13,6 +13,7 @@ const DISPOSITIONS: &[&str] = &[
     "failed-no-candidate",
     "cancelled",
     "recovery-required",
+    "completed-without-candidate",
 ];
 const CAUSES: &[&str] = &[
     "completed",
@@ -27,6 +28,7 @@ const CAUSES: &[&str] = &[
     "adapter",
     "recovery",
     "internal-invariant",
+    "no-change-complete",
 ];
 
 pub(in crate::schema::fields) const SETTLEMENT_TYPES: &[AppTypeDescriptor] = &[

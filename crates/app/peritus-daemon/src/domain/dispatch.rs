@@ -114,6 +114,19 @@ fn review(
     ) {
         return binding_rejection();
     }
+    // Wire-supplied assertions are not fresh independent reviewer execution or observed waiver
+    // authority. Actual trusted review adapters commit these through their owning D2 boundary.
+    if matches!(
+        command.kind(),
+        peritus_review::ReviewCommandKind::AssignReviewer { .. }
+            | peritus_review::ReviewCommandKind::SubmitReview { .. }
+            | peritus_review::ReviewCommandKind::ConfirmResolution { .. }
+            | peritus_review::ReviewCommandKind::ConfirmInvalidation { .. }
+            | peritus_review::ReviewCommandKind::ConfirmSupersession { .. }
+            | peritus_review::ReviewCommandKind::ObserveWaiver { .. }
+    ) {
+        return semantic_rejection();
+    }
     let replay = peritus_review::load_review_replay(journal, command.run_id())
         .map_err(|error| domain_failure("load review aggregate", error))?;
     let prior =

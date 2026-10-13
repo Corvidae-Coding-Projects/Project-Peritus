@@ -191,7 +191,10 @@ impl AppModel {
         self.chat.mode = mode;
         if text.is_empty() {
             self.clear_chat_command();
-            self.notice(NoticeLevel::Info, format!("{} selected", mode.label()));
+            self.notice(
+                NoticeLevel::Info,
+                format!("{} selected. {}", mode.label(), crate::modes::description(mode)),
+            );
             Vec::new()
         } else {
             self.send_chat_message(text.to_owned())

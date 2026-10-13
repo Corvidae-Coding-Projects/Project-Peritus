@@ -21,6 +21,10 @@ impl RunSettlement {
             None => false,
         };
         let disposition = match cause {
+            SettlementCause::NoChangeComplete if checkpoint.is_none() => {
+                RunDisposition::CompletedWithoutCandidate
+            }
+            SettlementCause::NoChangeComplete => RunDisposition::CandidateAvailable,
             SettlementCause::UserWait => RunDisposition::WaitingForUser,
             SettlementCause::Cancellation => RunDisposition::Cancelled,
             SettlementCause::Recovery => RunDisposition::RecoveryRequired,

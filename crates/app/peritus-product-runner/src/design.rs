@@ -96,10 +96,13 @@ pub async fn create(
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
-                request_prefix: format!(
-                    "{}-invocation-{invocation}",
-                    crate::turn::request_name(input.run_id, "designer", cycle)
-                ),
+                request_prefix: crate::turn::fresh_request_prefix(
+                    input.run_id,
+                    "designer",
+                    cycle,
+                    input.conversation.revision(),
+                    invocation,
+                )?,
                 system: system_prompt(accounting.remaining()) + input.delivery_instructions(),
                 prompt,
                 attachments,

@@ -151,7 +151,12 @@ fn draw_composer(
     )
     .block(
         Block::default().borders(Borders::ALL).border_style(Style::default().fg(ACCENT)).title(
-            if model.chat.active() { " Message / steer active work " } else { " Message Peritus " },
+            crate::modes::composer_title(
+                model.chat.mode,
+                model.direct_folder_chat(),
+                model.chat.active(),
+                area.width,
+            ),
         ),
     );
     frame.render_widget(composer, area);

@@ -5,8 +5,8 @@ use crate::{
     RecoveryClass,
 };
 use peritus_codec::{CodecLimits, decode_frame};
-use peritus_journal::{AggregateKey, IntegrityExport};
-use peritus_protocol::schema::FAMILIES;
+use peritus_journal::{AggregateKey, AggregateKind, IntegrityExport};
+use peritus_protocol::schema::{AUTHORITY_OWNER_RECORD_FAMILY, FAMILIES};
 use peritus_types::{EventId, Sha256Digest};
 use std::collections::BTreeMap;
 
@@ -71,7 +71,8 @@ struct AggregateCursor {
 /// # Errors
 ///
 /// Rejects range mismatches, gaps, order violations, unknown families, unsupported schemas,
-/// aggregate revision changes, typed fold failures, and final invariant failures.
+/// unauthorized fixed-scope revision changes, typed fold failures, and final invariant failures.
+/// E1/F0 lineage aggregates retain changing revisions; their owning replay validates semantics.
 pub fn replay_from_genesis<P: Projection>(
     projection: &P,
     export: &IntegrityExport,
@@ -89,13 +90,13 @@ pub fn replay_from_genesis<P: Projection>(
             };
             return Err(journal_error(kind, "global positions are not contiguous from one"));
         }
-        validate_aggregate_record(&mut aggregates, record)?;
         let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION).map_err(|_| {
             journal_error(ProjectionErrorKind::InvalidFrame, "record frame is not canonical B3")
         })?;
         let family = frame.header().family();
         let schema_version = frame.header().schema_version();
         validate_family(family, schema_version)?;
+        validate_aggregate_record(&mut aggregates, record, family)?;
         projection.fold(&mut state, FoldContext { record, family, schema_version })?;
         last_position = record.global_position();
     }
@@ -133,7 +134,19 @@ fn validate_export_range(export: &IntegrityExport) -> Result<(), ProjectionError
 fn validate_aggregate_record(
     cursors: &mut BTreeMap<AggregateKey, AggregateCursor>,
     record: &peritus_journal::CommittedRecord,
+    family: u16,
 ) -> Result<(), ProjectionError> {
+    if family == AUTHORITY_OWNER_RECORD_FAMILY
+        && !matches!(
+            record.aggregate().kind(),
+            AggregateKind::Approval | AggregateKind::Budget | AggregateKind::Lease
+        )
+    {
+        return Err(journal_error(
+            ProjectionErrorKind::InvalidFrame,
+            "inert B1 owner record belongs to an unrelated aggregate",
+        ));
+    }
     let prior = cursors.get(&record.aggregate()).copied();
     let (last_sequence, expected_id, expected_hash, expected_revision) = prior.map_or_else(
         || (0, None, Sha256Digest::new([0; 32]), None),
@@ -148,7 +161,16 @@ fn validate_aggregate_record(
             "aggregate sequence or predecessor is invalid",
         ));
     }
-    if expected_revision.is_some_and(|revision| revision != record.revision_digest()) {
+    let lineage_event = matches!(
+        (record.aggregate().kind(), family),
+        (AggregateKind::Harness, 80)
+            | (AggregateKind::EvolutionCampaign, 89)
+            | (AggregateKind::ProductionHarness, 92)
+            | (AggregateKind::CredentialRegistry, 94)
+    );
+    if !lineage_event
+        && expected_revision.is_some_and(|revision| revision != record.revision_digest())
+    {
         return Err(journal_error(
             ProjectionErrorKind::StaleRevision,
             "aggregate changed its exact revision binding during replay",

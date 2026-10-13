@@ -9,6 +9,8 @@ pub enum WorkingError {
     InvalidLimit,
     #[doc = " A collection or content exceeded the configured limit."]
     Capacity,
+    #[doc = " Context projection failed with its exact structural category and numeric bounds."]
+    Projection(crate::ContextError),
     #[doc = " A source range exceeded the exact artifact length."]
     SourceRange,
     #[doc = " A source handle was reused for different evidence."]

@@ -55,6 +55,9 @@ struct Upload {
 }
 
 impl ArtifactAuthority {
+    pub(crate) const fn store(&self) -> &ArtifactStore {
+        &self.store
+    }
     pub(crate) fn new(
         store: ArtifactStore,
         maximum_artifact_bytes: u64,

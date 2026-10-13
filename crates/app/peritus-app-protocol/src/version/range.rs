@@ -3,11 +3,11 @@
 use crate::{AppErrorCode, AppProtocolError};
 
 /// Exact application-protocol version implemented by current clients and the daemon.
-pub const CURRENT_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion { major: 2, minor: 0 };
+pub const CURRENT_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion { major: 2, minor: 1 };
 
 /// Sole application-protocol range implemented by current clients and the daemon.
 pub const CURRENT_PROTOCOL_RANGE: VersionRange =
-    VersionRange { major: 2, minor_min: 0, minor_max: 0 };
+    VersionRange { major: 2, minor_min: 1, minor_max: 1 };
 
 /// One nonzero-major application-protocol version.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

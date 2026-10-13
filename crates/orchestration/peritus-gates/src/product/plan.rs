@@ -192,6 +192,32 @@ impl TargetGatePlan {
         &self.commands
     }
 
+    /// Marks conventional test suites as unselected for an explicitly requested real-testing
+    /// workflow. The executor must retain a truthful observation for every excluded command;
+    /// exclusion is not a successful test result. Other checks remain required.
+    #[must_use]
+    pub fn with_test_suites_unselected(mut self) -> Self {
+        for command in &mut self.commands {
+            if command.label.to_ascii_lowercase().contains("test") {
+                command.optional_when_not_selected = true;
+            }
+        }
+        self
+    }
+
+    /// Retains conventional qualification commands as unselected observations when the caller
+    /// explicitly chooses real-interface acceptance instead of those suites. Internal artifact
+    /// and source checks remain required; missing observations cannot satisfy the plan.
+    #[must_use]
+    pub fn with_conventional_checks_unselected(mut self) -> Self {
+        for command in &mut self.commands {
+            if command.program != "peritus-internal" {
+                command.optional_when_not_selected = true;
+            }
+        }
+        self
+    }
+
     /// Changed paths for which no executable project contract was found.
     #[must_use]
     pub fn uncovered_paths(&self) -> &[PathBuf] {

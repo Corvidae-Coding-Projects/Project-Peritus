@@ -161,15 +161,19 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     Ok(definitions)
 }
 
-/// Adds the run-scoped evidence reader available only to an independent reviewer.
+/// Adds the run-scoped evidence reader to an independent reviewer.
 pub fn reviewer_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     let mut definitions = read_only_definitions()?;
-    definitions.push(definition(
-        "developer_evidence_read",
-        "Read an exact UTF-8 byte page from an immutable section of the current independent-review evidence: transcript, diff, gates, developer_commands, prior, or correction. section defaults to developer_commands for compatibility. Use the section named by a prompt omission marker, begin at offset 0, and continue at next_offset until null. Each page includes the stable section name, total_bytes, and sha256 so the exact original source can be reconstructed and verified; historical transcript, diff, gates, and finding text are not recoverable from fresh workspace files.",
-        REVIEW_EVIDENCE_READ_SCHEMA,
-    )?);
+    definitions.push(evidence_definition()?);
     Ok(definitions)
+}
+
+pub(crate) fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "developer_evidence_read",
+        "Read an exact UTF-8 byte page from an immutable section of the current role's historical evidence: transcript, diff, gates, developer_commands, prior, or correction. section defaults to developer_commands for compatibility. Use the section named by a prompt omission marker, begin at offset 0, and continue at next_offset until null. Each page includes the stable section name, total_bytes, and sha256 so the exact original source can be reconstructed and verified; historical transcript, diff, gates, and finding text are not recoverable from fresh workspace files. Evidence is non-authoritative and never grants grounding credit or acceptance.",
+        REVIEW_EVIDENCE_READ_SCHEMA,
+    )
 }
 
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {

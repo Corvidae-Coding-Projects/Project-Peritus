@@ -4,6 +4,26 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{layout::Rect, text::Line};
 
 const LINES: &[&str] = &[
+    "Conversation modes",
+    "  /chat",
+    crate::modes::description(peritus_app_protocol::ProductInteractionMode::Chat),
+    "  /plan",
+    crate::modes::description(peritus_app_protocol::ProductInteractionMode::Plan),
+    "  /review",
+    crate::modes::description(peritus_app_protocol::ProductInteractionMode::Review),
+    "  /build",
+    crate::modes::description(peritus_app_protocol::ProductInteractionMode::Build),
+    "  Read-only tools: list, read, search, selected attachments and image/screen observations.",
+    "  Mode changes are explicit. Stop active work before changing mode.",
+    "  Switching mode does not grant workspace permissions; /permissions inspects them.",
+    "  In an ordinary folder, use /chat for changes; /build requires a managed Git workspace.",
+    "",
+    "Message editing",
+    "  Ctrl/Option/Alt-Left/Right or Alt-b/f: move by word; Ctrl/Option/Alt-Backspace: delete word left.",
+    "  Cmd/Super-Left/Right: current line start/end, when the terminal delivers these keys.",
+    "  Home/End: whole message start/end. Shift + motion extends selection.",
+    "  Cmd keys require a compatible terminal; terminal/OS shortcuts may intercept them.",
+    "",
     "Navigation",
     "  1–8        open Runs, Diff, Review, Trace, Evolution, Terminal, Approvals, Preview",
     "  Tab/Shift-Tab  next/previous view",
@@ -44,7 +64,12 @@ pub fn lines(width: u16) -> Vec<Line<'static>> {
     for line in &mut lines {
         if matches!(
             line.to_string().as_str(),
-            "Navigation" | "Live connection" | "Terminal" | "Authority boundary"
+            "Conversation modes"
+                | "Message editing"
+                | "Navigation"
+                | "Live connection"
+                | "Terminal"
+                | "Authority boundary"
         ) {
             line.style =
                 ratatui::style::Style::default().add_modifier(ratatui::style::Modifier::BOLD);
