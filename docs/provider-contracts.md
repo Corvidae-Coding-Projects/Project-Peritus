@@ -1,32 +1,59 @@
 # Hosted provider contracts
 
-Reviewed against official API documentation and upstream source on **2026-09-10**.
-These are HTTP adapters. Peritus does not execute an SDK package named in remote metadata.
+HTTP contracts reviewed against official documentation and upstream source on **2026-09-10**.
+Zen and Go now use the official OpenCode 1.19.0 executable contract, exercised on **2026-10-13**.
+Other hosted services continue through the reviewed HTTP adapters.
 
 ## Discovery and operation selection
 
 | Service | Live model discovery | Inference contract |
 | --- | --- | --- |
-| OpenCode Zen | `GET https://opencode.ai/zen/v1/models` | Per-model Responses, Chat Completions, Anthropic Messages, or Google Generate Content |
-| OpenCode Go | `GET https://opencode.ai/zen/go/v1/models` | Per-model protocol; exact Go gateway prefix |
+| OpenCode Zen | `opencode models opencode --verbose` | Official CLI chooses SDK, operation, authentication, and gateway headers |
+| OpenCode Go | `opencode models opencode-go --verbose` | Official CLI chooses SDK and Go gateway; Go subscription required |
 | OpenRouter | `GET https://openrouter.ai/api/v1/models` | `POST https://openrouter.ai/api/v1/chat/completions` |
 | Groq | `GET https://api.groq.com/openai/v1/models` | `POST https://api.groq.com/openai/v1/chat/completions` |
 | Together AI | `GET https://api.together.ai/v1/models` | `POST https://api.together.ai/v1/chat/completions` |
 | Fireworks AI | `GET https://api.fireworks.ai/v1/accounts/fireworks/models?pageSize=200` | `POST https://api.fireworks.ai/inference/v1/chat/completions` |
 | DeepSeek | `GET https://api.deepseek.com/models` | `POST https://api.deepseek.com/chat/completions` |
 
-Catalog requests use bearer authentication. OpenCode inference uses the selected protocol's
-documented authentication: bearer for Responses/Chat, `x-api-key` for Messages, and
-`x-goog-api-key` for Generate Content. There is no built-in model list or name-prefix routing.
+HTTP catalog requests use bearer authentication. There is no Peritus fallback model list.
+Zen and Go discovery delegates to the vendor CLI and reads its advertised model metadata;
+setup no longer asks users to choose the underlying API protocol. Existing saved Zen/Go
+protocol selections keep their model and opaque credential reference and migrate to
+`wire_protocol = "opencode-runtime"`.
 
-OpenCode's model listing contains IDs without protocol metadata. Its own client obtains model
-metadata from `https://models.opencode.ai/api.json`. Peritus fetches that source **without a
-credential**, joins only IDs returned by the selected service, and interprets a closed set of
-documented SDK protocol names. Remote package names never execute; remote URLs and headers never
-control requests or credential destinations. Missing/unrecognized metadata stays unknown, and
-setup offers explicit protocol selection. Switching to a different OpenCode model requires
-freshly discovered protocol metadata or explicit provider setup; the previous model's protocol
-is not silently reused.
+Each OpenCode inference uses `run --pure --agent peritus-router --format json` in a freshly
+created private vendor configuration directory, with PWD and XDG configuration/data/cache/state
+paths isolated. The vendor home override and external-skill flag isolate home integrations;
+child temporary paths are also private. Host HOME remains unchanged.
+Peritus supplies the OS-stored API key to a disposable 0600 auth file. Native permissions
+are denied globally and for the private primary agent; native tools, MCP, LSP, formatters,
+sharing, updates, automatic compaction and default plugins are disabled. The CLI receives an
+explicit title and a two-step ceiling, avoiding the native final-step prompt on the first
+inference. A successful turn still performs one inference and zero native tools. Peritus replays the complete transcript and inert
+tool catalog, validates returned tool names/counts/arguments, executes host tools itself,
+and replays their real results on the next invocation. The private result envelope accepts
+public text as a string or a task JSON report as an object, serialized once by Peritus. Explicit
+GPT commentary parts are separated from the final result. Native tool events, errors, nonzero
+exits and incomplete terminals never become successful turns. Cancellation owns the child
+process group and disposable state. Provider rejection bodies remain private; safe status
+and recognized diagnostics distinguish subscription, model-access, authentication, quota and
+context failures. Recognized authentication and permission errors abort the official client's
+incorrect retries immediately; other native retries remain bounded by the process deadline.
+
+The private global-config directory and ancestor guard are part of the isolation contract:
+in OpenCode 1.19.0 the flags
+alone did not suppress a deliberately planted local project plugin during independent replay.
+Peritus rejects temporary storage beneath project/config ancestors before writing a key or
+launching vendor code, and never reuses vendor session directories. The tested CLI version is
+required because this isolation depends on its actual configuration semantics. Supported-version
+discovery skips incompatible PATH candidates. Executable resolution is deferred until the
+OpenCode route is used, so an unavailable secondary Zen/Go route cannot block other providers.
+Text and host tool history are supported; image input, explicit reasoning controls and native
+session continuation are not advertised. Output-token limits are advisory. Native JSONL
+results are buffered, then emitted through the Peritus event stream. Initial reviewer context
+uses the selected model's advertised input allowance after native catalog discovery; that
+metadata is a projection hint, not a promise about live quotas or accepted request sizes.
 
 Fireworks discovery lists its public serverless chat inventory. Private dedicated deployment
 IDs can be entered explicitly. The management catalog exposes `supportsTools`, `contextLength`,

@@ -2,6 +2,7 @@
 
 mod evidence;
 mod exchanges;
+mod retrieval;
 mod transport;
 mod validation;
 mod working;
@@ -113,9 +114,16 @@ impl LocalMemory {
         }
         messages.push(self.scope_message()?);
         let working = working::append(self, &mut messages, &mut selected, tools, capacity)?;
+        let historical_position = messages.len();
         let (uncompacted, target) =
             self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
+        let current_end = messages.len();
         evidence::append(self, &mut messages, &mut selected, tools, target)?;
+        // Earlier assistant plans are historical observations, not a new user turn after
+        // current settled tool results. Keep every optional historical view before those
+        // current exchanges, including previews chosen from previous host invocations.
+        let historical = messages.split_off(current_end);
+        messages.splice(historical_position..historical_position, historical);
         if let Some(provider) = provider {
             transport::fit(self, &mut messages, tools, provider)?;
         }
@@ -206,12 +214,15 @@ impl LocalMemory {
                 .map(|body| text_message(Role::User, body))
                 .transpose()?;
         }
+        // Older optional references precede the current exchanges. Appending the notice
+        // afterward turns an archive inventory into an apparent new user turn and repeatedly
+        // draws the next response away from the most recent, already completed tool results.
+        if let Some(message) = notice {
+            messages.push(message);
+        }
         for group in chosen.iter().rev() {
             messages.extend(group.messages.iter().cloned());
             selected.extend_from_slice(&group.sources);
-        }
-        if let Some(message) = notice {
-            messages.push(message);
         }
         Ok((uncompacted, target))
     }
@@ -251,9 +262,10 @@ impl LocalMemory {
         text_message(
             Role::Developer,
             format!(
-                "Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.",
+                "Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.{}",
                 super::tools::hex(self.store.scope_digest().as_bytes()),
                 self.model_revision,
+                retrieval::coverage(self)?,
             ),
         )
     }

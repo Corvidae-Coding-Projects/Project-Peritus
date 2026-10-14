@@ -15,7 +15,7 @@ pub(super) mod account;
 mod compatibility;
 mod folder;
 pub(super) mod folder_catalog;
-mod hosted;
+pub(super) mod hosted;
 
 /// Imports the exact models from a pre-conversation immutable configuration. This migration
 /// never substitutes a newly chosen provider default or edits an old configuration generation.

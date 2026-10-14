@@ -404,6 +404,12 @@ owner = "C5"
 layer = "model"
 
 [[packages]]
+name = "peritus-provider-opencode"
+path = "crates/model/peritus-provider-opencode"
+owner = "C5"
+layer = "model"
+
+[[packages]]
 name = "peritus-provider-google"
 path = "crates/model/peritus-provider-google"
 owner = "C5"

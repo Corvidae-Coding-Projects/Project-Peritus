@@ -256,6 +256,9 @@ fn append_detail(detail: &mut Option<String>, error: &ProductRunnerError) {
     let diagnostic = format!("{}: {}", error.operation(), error.detail());
     match detail {
         Some(detail) => {
+            if detail.ends_with(&diagnostic) {
+                return;
+            }
             detail.push_str("; finalization fallback: ");
             detail.push_str(&diagnostic);
         }

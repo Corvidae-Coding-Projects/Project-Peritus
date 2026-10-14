@@ -73,6 +73,8 @@ pub enum ProviderAdapterKind {
     CodexRuntime,
     /// Official Claude executable adapter.
     ClaudeRuntime,
+    /// Official tool-disabled OpenCode executable for Zen/Go.
+    OpenCodeRuntime,
 }
 
 struct ProviderRegistration {
@@ -88,9 +90,10 @@ pub struct ProviderRegistry {
 impl ProviderRegistry {
     /// Constructs every explicitly declared provider exactly once.
     ///
-    /// Direct HTTP routes require a credential broker. The broker remains behind C5's
+    /// API-key routes require a credential broker. The broker remains behind C5's
     /// [`CredentialSource`] boundary and is invoked only immediately before request submission.
-    /// Executable routes never receive it and continue to own their login state externally.
+    /// Codex/Claude own login state externally. OpenCode receives only a short-lived key in
+    /// disposable private storage; the broker retains the persisted credential.
     ///
     /// # Errors
     ///
@@ -205,6 +208,20 @@ fn instantiate(
         })
     };
     match declaration {
+        ProviderDeclaration::OpenCodeRuntime { executable, service, credential, profile } => {
+            let provider =
+                peritus_provider_opencode::OpenCodeRuntimeProvider::with_executable_path(
+                    match executable {
+                        super::profiles::OfficialExecutableSelection::Discover => None,
+                        super::profiles::OfficialExecutableSelection::Pinned(path) => Some(path),
+                    },
+                    service,
+                    credential,
+                    direct_broker()?,
+                    profile,
+                )?;
+            Ok((ProviderAdapterKind::OpenCodeRuntime, Arc::new(provider)))
+        }
         ProviderDeclaration::Hosted { service, credential, profile } => {
             let provider =
                 super::hosted::HostedProvider::new(service, credential, profile, direct_broker()?)?;

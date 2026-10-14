@@ -185,6 +185,12 @@ impl DeveloperContextPort for LocalContextHandle {
                         .is_some_and(|identity| identity.id == call.id().expose_for_wire())
             })
             .ok_or_else(|| error("original tool source unavailable"))?;
+        // A retrieval result already names the original source fragments and their offsets.
+        // Advertising the receipt itself as another task source creates an unbounded chain
+        // of reads of JSON wrappers. Preserve it in the audit archive without that invitation.
+        if source.is_memory_receipt() {
+            return Ok(None);
+        }
         let value = Value::from_iter([
             ("handle", Value::from(super::tools::source_handle(&memory, source.sequence))),
             ("base_revision", Value::from(memory.model_revision)),

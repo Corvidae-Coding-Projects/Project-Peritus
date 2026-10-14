@@ -1,0 +1,27 @@
+[package]
+name = "peritus-provider-opencode"
+description = "Official OpenCode model transport for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-codec = { version = "=0.0.8", path = "../../foundation/peritus-codec" }
+peritus-model-protocol = { version = "=0.0.8", path = "../peritus-model-protocol" }
+peritus-provider-core = { version = "=0.0.8", path = "../peritus-provider-core" }
+peritus-types = { version = "=0.0.8", path = "../../foundation/peritus-types" }
+serde.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "C5"
+layer = "model"
+
+[lints]
+workspace = true

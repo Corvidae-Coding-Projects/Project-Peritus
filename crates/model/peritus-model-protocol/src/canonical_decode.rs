@@ -170,6 +170,7 @@ fn decode_dialect(tag: u8) -> Result<WireDialect, ProtocolError> {
         6 => Ok(WireDialect::CompatibleChatCompletions),
         7 => Ok(WireDialect::OpenAiCodexRuntime),
         8 => Ok(WireDialect::AnthropicClaudeRuntime),
+        9 => Ok(WireDialect::OpenCodeRuntime),
         _ => Err(unknown_tag("wire_dialect")),
     }
 }

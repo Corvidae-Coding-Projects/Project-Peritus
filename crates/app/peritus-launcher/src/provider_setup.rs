@@ -176,6 +176,8 @@ fn show_catalog(
         terminal.line(&format!("  {}. {:<38} {status}", index + 1, kind.label()))?;
     }
     terminal.line("  0. Offline browse mode")?;
+    terminal
+        .line("  Zen/Go use the official OpenCode CLI with your API key; no separate login.")?;
     terminal.line("")
 }
 

@@ -55,6 +55,7 @@ members = [
     "crates/model/peritus-provider-anthropic",
     "crates/model/peritus-provider-google",
     "crates/model/peritus-provider-compatible",
+    "crates/model/peritus-provider-opencode",
     "crates/orchestration/peritus-collaboration",
     "crates/orchestration/peritus-context",
     "crates/orchestration/peritus-agent",

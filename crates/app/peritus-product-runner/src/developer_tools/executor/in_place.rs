@@ -1,4 +1,4 @@
-//! Enroll exact paths before effects so the shared pipeline can qualify non-Git work.
+//! Enroll task files or bounded directory subtrees before effects in non-Git work.
 
 use super::{WorkspaceDeveloperTools, WorkspaceToolMode};
 use crate::developer_tools::{
@@ -33,7 +33,7 @@ impl WorkspaceDeveloperTools {
             && scope.paths().map_err(|error| tool(error.to_string()))?.is_empty()
         {
             return Err(tool(
-                "Declare exact task files with workspace_scope before commands in an in-place folder; no whole-folder inventory is taken",
+                "Declare task files or a scoped output directory with workspace_scope before commands in an in-place folder; unrelated folders are not inventoried",
             ));
         }
         Ok(())
@@ -51,7 +51,7 @@ impl WorkspaceDeveloperTools {
             .get("paths")
             .and_then(Value::as_array)
             .filter(|paths| !paths.is_empty() && paths.len() <= 256)
-            .ok_or_else(|| tool("workspace_scope requires 1..256 exact file paths"))?;
+            .ok_or_else(|| tool("workspace_scope requires 1..256 task file or directory paths"))?;
         for path in paths {
             let path = path.as_str().ok_or_else(|| tool("scope path must be text"))?;
             self.access_policy

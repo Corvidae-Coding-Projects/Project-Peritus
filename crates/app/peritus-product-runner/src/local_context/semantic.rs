@@ -94,7 +94,7 @@ impl LocalMemory {
             .sources
             .iter()
             .rev()
-            .filter(|source| source.kind == ArchiveKind::ToolOutput)
+            .filter(|source| source.kind == ArchiveKind::ToolOutput && !source.is_memory_receipt())
             .take(8)
         {
             let bytes = self.artifact(source.sequence)?;

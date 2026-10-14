@@ -40,6 +40,7 @@ peritus-projection = { version = "=0.0.8", path = "../../state/peritus-projectio
 peritus-protocol = { version = "=0.0.8", path = "../../foundation/peritus-protocol" }
 peritus-provider-anthropic = { version = "=0.0.8", path = "../../model/peritus-provider-anthropic" }
 peritus-provider-compatible = { version = "=0.0.8", path = "../../model/peritus-provider-compatible" }
+peritus-provider-opencode = { version = "=0.0.8", path = "../../model/peritus-provider-opencode" }
 peritus-provider-core = { version = "=0.0.8", path = "../../model/peritus-provider-core" }
 peritus-provider-google = { version = "=0.0.8", path = "../../model/peritus-provider-google" }
 peritus-provider-openai = { version = "=0.0.8", path = "../../model/peritus-provider-openai" }

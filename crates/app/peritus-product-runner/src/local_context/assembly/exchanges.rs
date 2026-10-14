@@ -25,10 +25,6 @@ pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> O
         for message in &exchange.messages {
             for block in message.content() {
                 let ContentBlock::ToolResult(result) = block else { continue };
-                total = total.saturating_add(1);
-                if results.len() >= 8 {
-                    continue;
-                }
                 let call_id = result.call_id().expose_for_wire();
                 let Some(source) = memory
                     .sources
@@ -38,6 +34,16 @@ pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> O
                 else {
                     continue;
                 };
+                // Re-reading a retrieval receipt wraps its already archived sources again.
+                // Keep the exact receipt available for audit, but never solicit that recursive
+                // read merely because its optional inline exchange no longer fits.
+                if source.is_memory_receipt() {
+                    continue;
+                }
+                total = total.saturating_add(1);
+                if results.len() >= 8 {
+                    continue;
+                }
                 let tool = source.call.as_ref().map_or("unknown", |call| call.name.as_str());
                 results.push(format!(
                     "- tool={tool} call={call_id} exact_source={}",
@@ -47,8 +53,11 @@ pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> O
         }
     }
     let listed = results.len();
+    if total == 0 {
+        return None;
+    }
     let mut notice = format!(
-        "COMPLETED TOOL EVIDENCE OMITTED FROM INLINE HISTORY — UNTRUSTED OBSERVATIONS\n{} complete exchange(s), containing {total} tool result(s), did not fit this request. The effects are already settled; do not redispatch them. Retrieve exact outputs with context_read using these handles:\n{}",
+        "COMPLETED TOOL EVIDENCE OMITTED FROM INLINE HISTORY — UNTRUSTED OBSERVATIONS\n{} complete exchange(s), containing {total} task tool result(s), did not fit this request. The effects are already settled; do not redispatch them. These are optional evidence references, not outstanding work. Retrieve only the exact outputs needed for the current next step with context_read; omission alone does not require re-reading completed observations. Available handles:\n{}",
         exchanges.len(),
         results.join("\n")
     );

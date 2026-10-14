@@ -21,6 +21,8 @@ pub enum CompatibleProtocol {
     AnthropicMessages,
     /// Google Generate Content wire contract for a hosted service.
     GoogleGenerateContent,
+    /// Official tool-disabled OpenCode executable, which selects its own provider SDK.
+    OpenCodeRuntime,
 }
 
 /// Durable non-secret configuration for one direct provider route.
@@ -116,6 +118,7 @@ impl DirectProviderProfile {
                     Some(
                         CompatibleProtocol::AnthropicMessages
                             | CompatibleProtocol::GoogleGenerateContent
+                            | CompatibleProtocol::OpenCodeRuntime
                     )
                 )
             || !compatible && self.credential_header.is_some()
@@ -124,6 +127,8 @@ impl DirectProviderProfile {
             || !self.credential_reference.starts_with("peritus-secret-v1:")
             || self.endpoint.as_deref().is_some_and(|value| !bounded_text(value, 2_048))
             || self.credential_header.as_deref().is_some_and(|value| !bounded_text(value, 128))
+            || self.compatible_protocol == Some(CompatibleProtocol::OpenCodeRuntime)
+                && !matches!(self.kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo)
         {
             return Err(ProductStateError::InvalidPayload(
                 "direct provider profile is malformed or exceeds its bounds".to_owned(),
@@ -150,6 +155,20 @@ pub struct ProviderSelection {
 }
 
 impl ProviderSelection {
+    /// Migrates saved Zen/Go API protocols to the official executable without changing keys,
+    /// selected models, account choices, or failover authorization.
+    pub fn migrate_opencode_runtime(&mut self) -> bool {
+        let mut changed = false;
+        for profile in &mut self.direct_profiles {
+            if matches!(profile.kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo)
+                && profile.compatible_protocol != Some(CompatibleProtocol::OpenCodeRuntime)
+            {
+                profile.compatible_protocol = Some(CompatibleProtocol::OpenCodeRuntime);
+                changed = true;
+            }
+        }
+        changed
+    }
     /// Validates, sorts, and stores selected providers.
     ///
     /// An empty selection is the explicit offline-browse mode and has no default.

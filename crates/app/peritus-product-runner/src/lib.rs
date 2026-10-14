@@ -53,6 +53,7 @@ pub(crate) mod trace;
 mod turn;
 
 mod workspace_delivery;
+pub use workspace_delivery::scope::ScopedBaseline;
 
 mod workspace_filter;
 mod workspace_kind;

@@ -215,12 +215,17 @@ peritus workspaces
 Use `peritus providers` to add a provider, change a provider, or repair a login.
 Use `peritus workspaces` to select a repository or repair its managed copy.
 
-Direct API choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
+API-key choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
 Groq, Together AI, Fireworks AI, DeepSeek, and an explicitly configured compatible endpoint.
 In provider settings, press `t` on an existing direct provider to test generation, tool calling,
 and a tool-result round trip. The optional test makes up to three small requests and may use
 paid tokens; saving a key or listing models does not run it. See [provider contracts](docs/provider-contracts.md)
 for API sources, discovery behavior, and test limits.
+
+Zen and Go run through the official OpenCode CLI with its native tools disabled. Setup offers
+to install the CLI and uses the key stored by Peritus; a separate OpenCode login is unnecessary.
+OpenCode selects the model's provider protocol. Peritus owns tools and conversation history.
+Your key's model permissions and billing still apply; Go also requires an active Go subscription.
 
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
 when discovery fails; `/model manual MODEL_ID` is an explicit manual fallback.

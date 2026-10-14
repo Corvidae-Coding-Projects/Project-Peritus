@@ -56,6 +56,24 @@ pub async fn complete(
     loop {
         check_cancelled(input)?;
         crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
+        if let Err(error) = providers.current().prepare_context(&input.provider_cancellation).await
+        {
+            let error = peritus_agent::DeveloperLoopError::Model(
+                peritus_agent::ModelDriveError::Provider(error),
+            );
+            if let Some(reason) = provider_recovery.retry(&error) {
+                accounting.record_role_retry()?;
+                correction = Some(crate::failover::RoleRecovery::correction(reason));
+                continue;
+            }
+            if let Some(switch) = providers.advance(&error) {
+                crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+                provider_recovery.reset();
+                correction = None;
+                continue;
+            }
+            return Err(turn::developer_error(&error));
+        }
         invocation = invocation.saturating_add(1);
         let request = prepare_request(
             input,

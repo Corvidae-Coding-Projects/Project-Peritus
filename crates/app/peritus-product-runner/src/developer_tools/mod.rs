@@ -39,6 +39,7 @@ mod inspection_search;
 mod ownership;
 
 mod path;
+pub(crate) use path::ignored;
 mod preview;
 
 mod receipt;
@@ -55,10 +56,10 @@ mod resources;
 
 mod wire;
 
+pub(crate) use catalog::evidence_definition;
 pub use catalog::{
     definitions_for_attachments, in_place_definition, read_only_definitions, reviewer_definitions,
 };
-pub(crate) use catalog::evidence_definition;
 
 pub use command_runtime::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan,
@@ -131,4 +132,17 @@ pub fn checked_protected_file_for_developer(
             path::tool("context file dependency is outside the current task's access policy")
         })?;
     path::checked(root, relative, true)
+}
+
+pub(crate) fn checked_protected_observation(
+    root: &std::path::Path,
+    relative: &str,
+    protected: &[std::path::PathBuf],
+) -> Result<Option<std::path::PathBuf>, peritus_agent::DeveloperLoopError> {
+    let mut policy = access_policy::WorkspaceAccessPolicy::default();
+    policy.protect(root, protected);
+    policy
+        .authorize("workspace_read", &Value::from_iter([("path", Value::from(relative))]))
+        .map_err(path::tool)?;
+    path::observed(root, relative)
 }

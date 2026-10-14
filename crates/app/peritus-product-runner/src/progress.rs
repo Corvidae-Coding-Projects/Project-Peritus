@@ -124,11 +124,6 @@ fn checkpoint_entry(root: &Path, path: PathBuf) -> Result<CheckpointEntry, Produ
             Some(file_metadata::permission_fingerprint(&metadata)),
             ContentKind::File,
         ),
-        Ok(metadata) if metadata.is_dir() && absolute.join(".git").exists() => (
-            Some(crate::candidate::managed::ManagedBaseline::repository_fingerprint(&absolute)?),
-            Some(file_metadata::permission_fingerprint(&metadata)),
-            ContentKind::Repository,
-        ),
         Ok(metadata) => (
             Some(Sha256::digest(b"non-file").into()),
             Some(file_metadata::permission_fingerprint(&metadata)),

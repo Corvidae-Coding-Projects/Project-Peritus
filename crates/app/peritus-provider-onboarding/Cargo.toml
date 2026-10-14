@@ -12,6 +12,7 @@ keywords = ["agents", "authentication", "onboarding"]
 categories = ["authentication", "command-line-utilities"]
 
 [dependencies]
+peritus-provider-opencode = { version = "=0.0.8", path = "../../model/peritus-provider-opencode" }
 peritus-provider-core = { version = "=0.0.8", path = "../../model/peritus-provider-core" }
 tokio.workspace = true
 getrandom.workspace = true

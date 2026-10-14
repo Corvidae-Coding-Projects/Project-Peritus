@@ -179,7 +179,7 @@ pub(crate) fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "workspace_scope",
-        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory, build-cache tree, or Git metadata such as .git/HEAD or .git/config; these are not task deliverables.",
+        "Declare workspace-relative task files or a narrow task/output directory BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. Directory declarations capture existing files and discover new descendants; protected paths, links, Git metadata and build caches are excluded. This records comparison evidence, not permission or automatic rollback; preserve unrelated/private files. Do not declare the workspace root or a whole home directory; use narrower paths for large trees.",
         r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
     )
 }
