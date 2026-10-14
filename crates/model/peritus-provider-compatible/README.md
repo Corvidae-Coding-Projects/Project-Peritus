@@ -1,5 +1,27 @@
 # peritus-provider-compatible
 
+## Folder guide
+
+Explicitly profiled compatible model endpoints for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-compatible`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-provider-compatible`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
+| [src/](src/AGENTS.md) | Explicitly profiled compatible model-provider adapters for Peritus. |
+
 Production adapter for endpoints that explicitly document one of two separately reviewed dialects:
 
 - Responses-v1-compatible typed events; or
@@ -81,25 +103,6 @@ and foreign adapter instances. It never calls a live service or requires credent
 Production dependencies are Peritus protocol/core/foundation crates, Base64, and private Serde JSON
 encoding. `peritus-conformance`, `peritus-test-support`, and Tokio are development-only.
 
-## Focused gates
+## Behavioral work
 
-From the repository root:
-
-```console
-CARGO_BUILD_JOBS=2 cargo test -p peritus-provider-compatible --all-targets --all-features --locked
-CARGO_BUILD_JOBS=2 cargo clippy -p peritus-provider-compatible --all-targets --all-features --locked -- -D warnings
-RUSTDOCFLAGS='-D warnings' CARGO_BUILD_JOBS=2 cargo doc -p peritus-provider-compatible --all-features --no-deps --locked
-just architecture
-just source-layout
-just ordinary-api
-CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-provider-compatible --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-compatible --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-```
-
-## Focused checks
-
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-compatible
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

@@ -1,0 +1,17 @@
+# crates/orchestration/peritus-orchestrator/src/command — navigation
+
+## Responsibility
+
+Implementation pieces for `command.rs`: Closed fenced E0 command vocabulary.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [records.rs](records.rs) | Checked compound records embedded in E0 commands. |
+
+Owning module: [command.rs](../command.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

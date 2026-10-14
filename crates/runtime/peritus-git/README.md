@@ -1,5 +1,26 @@
 # peritus-git
 
+## Folder guide
+
+Structured Git repository and detached-worktree operations for Project Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-git`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Structured Git repository and detached-worktree operations for Peritus. |
+
 `peritus-git` is Project Peritus's structured Git adapter. It discovers repositories, resolves
 immutable commit/tree baselines, creates and inspects detached worktrees, parses porcelain-v2
 status, creates candidate trees and retained snapshot commits, and restores snapshot trees.
@@ -42,10 +63,6 @@ reconstructs a handle only after the existing destination, repository ownership,
 baseline, name, and external-filter policy all revalidate exactly. It is distinct from
 manifest-based reopening and never adopts an arbitrary directory.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-git
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

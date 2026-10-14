@@ -1,5 +1,26 @@
 # peritus-launcher
 
+## Folder guide
+
+Single-command local bootstrap and product composition for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-launcher`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Single-command bootstrap: product state, workspace trust/selection, provider setup, packaged daemon resolution/startup, update handling, and UI handoff. |
+
 `peritus-launcher` is the C-class G4 host-composition boundary behind interactive `peritus` startup.
 It discovers and protects platform-local roots, atomically publishes immutable product-state
 generations and generated G0 inputs, resolves the matching packaged daemon, establishes bounded
@@ -25,10 +46,6 @@ provider traffic, workspace mutations, approvals, or TUI presentation state. All
 configuration is parsed through the production G0 validator before use, and existing identity-bound
 configuration is preserved only when its protected core matches the installation.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-launcher
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

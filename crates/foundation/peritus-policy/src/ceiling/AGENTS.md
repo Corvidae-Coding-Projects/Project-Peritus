@@ -1,0 +1,17 @@
+# crates/foundation/peritus-policy/src/ceiling — navigation
+
+## Responsibility
+
+Implementation pieces for `ceiling.rs`: Complete finite authority boundaries, default-deny grants, and immutable denials.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [construction.rs](construction.rs) | Exact ordered validation for protected authority ceilings. |
+
+Owning module: [ceiling.rs](../ceiling.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

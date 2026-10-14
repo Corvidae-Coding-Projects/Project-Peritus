@@ -1,5 +1,20 @@
 # Actual command-output replay
 
+## Folder guide
+
+Real-interface replay resources for command output; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [build-consumer.py](build-consumer.py) | Compile a normal public-API consumer against the already-built Peritus copy. |
+| [fixture_gen.py](fixture_gen.py) | Deterministic stdout fixture for an actual Peritus command, with bounded working memory. |
+| [replay.rs](replay.rs) | A normal executable consumer of Peritus's public command API; no test harness. |
+
 Build a disposable checkout of Peritus, then compile and run this ordinary executable consumer
 against its public `CommandRuntime` API. It uses actual native processes, C4/C2 authorization,
 artifact storage, and retained process spools. It contains no test harness or substitute runtime.

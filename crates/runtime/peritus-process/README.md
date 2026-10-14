@@ -1,5 +1,26 @@
 # peritus-process
 
+## Folder guide
+
+Authorized owned process, PTY, output, cancellation, and recovery backplane.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-process`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Owned native process backplane: authorization, dispatch, PTY/pipe I/O, cancellation, output retention, durable process state, recovery, and supervision. |
+
 `peritus-process` is Project Peritus's sole authorized operating-system execution boundary. It
 binds structured commands to committed B0/B1/B3/C0 authority, persists one-use execution intent,
 owns pipe or PTY process trees and every support thread, bounds input/output/events, and records a
@@ -34,10 +55,6 @@ the owned tree and support tasks without inventing an exit result; that record r
 absent-unobserved while no longer blocking daemon shutdown or lease-holder quiescence. Mismatched or
 unverifiable identities remain unsettled.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-process
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

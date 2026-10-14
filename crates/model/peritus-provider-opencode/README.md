@@ -1,5 +1,26 @@
 # OpenCode model transport
 
+## Folder guide
+
+Official OpenCode model transport for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-opencode`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Official OpenCode CLI transport for Zen/Go, executable/model discovery, isolated config/auth, request encoding, JSONL decoding, and normalized failures. |
+
 Runs the unmodified official OpenCode CLI as a model transport for OpenCode Zen and Go.
 Peritus supplies the OS-stored API key to a private, disposable auth file. No separate
 OpenCode login is required. Account billing, subscriptions, and model permissions still apply.

@@ -1,5 +1,26 @@
 # peritus-spec
 
+## Folder guide
+
+immutable acceptance contracts for Project Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-spec`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Immutable acceptance contracts for Peritus. |
+
 `peritus-spec` is the verified, effect-free acceptance-contract model for Peritus. It freezes
 stable requirements, exclusions, assumptions, deterministic gates, review policy, required
 evidence, bounded completion policy, and explicit human approval and waiver declarations.
@@ -23,10 +44,6 @@ persist contracts, or grant authority. Callers supply already-computed identifie
 
 The production dependency set is limited to `peritus-types` and the workspace-pinned `vstd`.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-spec
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

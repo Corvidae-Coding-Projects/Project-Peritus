@@ -1,5 +1,26 @@
 # peritus-tools-fs
 
+## Folder guide
+
+Authorized bounded filesystem tools for Peritus workspaces.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-tools-fs`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Bounded filesystem tools for immutable and authorized Peritus workspaces. |
+
 Production filesystem tools for Peritus's model-facing C4 boundary.
 
 The canonical catalog contains `fs.discover`, `fs.metadata`, `fs.read`, `fs.search`, `fs.create`,
@@ -19,10 +40,6 @@ can pass it to `WorkspaceGateway::apply_patch`, and its only effect entry consum
 the C1 authorization binding before effect. Successful `MutationOutcome` remains available for a
 separately authorized Git candidate operation.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tools-fs
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

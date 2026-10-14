@@ -1,5 +1,17 @@
 # General capability fixture matrix
 
+## Folder guide
+
+README-only historical capability matrix describing completion, recovery, provider, browser, repository, and adapter failure families.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
 These fixtures reproduce broad agent-harness failure classes without using an upstream benchmark
 task name, hidden verifier rule, or expected benchmark artifact. Every family has a successful
 case, an honestly incomplete case, and a failure case. Tests assert typed Peritus state or directly

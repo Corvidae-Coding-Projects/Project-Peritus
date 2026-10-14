@@ -1,5 +1,20 @@
 # Actual TUI heartbeat replay
 
+## Folder guide
+
+Real-interface replay resources for heartbeat; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [campaign.py](campaign.py) | Deterministic timing exploration of the same actual TUI workflow. |
+| [public-approval-registry.bin](public-approval-registry.bin) | Retained binary/archive data for public approval registry; not a source-code entrypoint. |
+| [replay.py](replay.py) | Real Peritus TUI/daemon heartbeat replay; no replacement protocol or application. |
+
 Operate built, real `peritusd` and `peritus-tui` binaries using a PTY and fresh per-case folders. The driver starts its own daemon, waits for its local socket, starts the TUI, handles terminal cursor-position queries, and captures the TUI's actual ANSI output. It never implements the Peritus application protocol or substitutes provider/application behavior.
 
 Expected results, established before execution:

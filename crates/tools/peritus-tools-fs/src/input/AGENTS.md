@@ -1,0 +1,17 @@
+# crates/tools/peritus-tools-fs/src/input — navigation
+
+## Responsibility
+
+Implementation pieces for `input.rs`: Checked bounded filesystem-tool input values.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [search.rs](search.rs) | Search inputs and resumable field cursors. |
+
+Owning module: [input.rs](../input.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

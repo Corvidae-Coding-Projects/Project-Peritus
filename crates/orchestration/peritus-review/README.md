@@ -1,5 +1,26 @@
 # peritus-review
 
+## Folder guide
+
+Durable deterministic review cycles, finding lifecycle, quorum, and reconciliation.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-review`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Durable deterministic review cycles and finding lifecycle for Peritus. |
+
 `peritus-review` is the D2 durable review-cycle and finding-lifecycle engine. It binds every
 review to an immutable acceptance contract and exact candidate revision, validates bounded
 structured submissions, enforces each quorum and independence dimension, conserves findings until
@@ -42,23 +63,12 @@ The codec and durability modules are narrow H-class boundaries. The domain reduc
 freshness, quorum, conservation, terminal, oscillation, and replay witnesses remain executable
 Verus Rust and ordinary safe Rust.
 
-## Verification
+## Historical background
 
-Run focused checks serially on a constrained host:
 
-```text
-CARGO_BUILD_JOBS=1 cargo test --locked --package peritus-review --all-targets --all-features
-CARGO_BUILD_JOBS=1 cargo clippy --locked --package peritus-review --all-targets --all-features -- -D warnings
-CARGO_BUILD_JOBS=1 RUSTDOCFLAGS="-D warnings" cargo doc --locked --package peritus-review --all-features --no-deps
-CARGO_BUILD_JOBS=1 cargo verus verify --locked --package peritus-review --all-features --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-```
 
 See [`docs/d2-review-engine.md`](../../../docs/d2-review-engine.md) for the operating contract.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-review
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

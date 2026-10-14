@@ -1,5 +1,26 @@
 # peritus-evidence
 
+## Folder guide
+
+Durable provenance, freshness, invalidation, and portable evidence bundles for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-evidence`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Durable evidence provenance and portable bundle assembly for Peritus. |
+
 `peritus-evidence` owns immutable evidence records and their durable causal, journal, artifact, and
 revision bindings.
 
@@ -67,16 +88,6 @@ causal parents, and exact artifact bytes. Successful repair retains the original
 and its digest-bound resolution; failed repair rolls back. The original quarantine schema migrates
 without changing its copied bytes or audit identities.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-evidence --package peritus-debugger
-cargo clippy --locked --package peritus-evidence --all-targets --all-features -- -D warnings
-```
-
-The public-interface integration cases exercise more than 4,096 causal parents, metadata over
-32 MiB, generated cancellation/short-I/O schedules, exact retries with missing dependencies,
-SQLite writer contention during artifact hashing, durable scan restart, v1 migration, and
-quarantine repair with rollback after dependency corruption.
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

@@ -1,5 +1,26 @@
 # peritus-provider-onboarding
 
+## Folder guide
+
+User-facing provider discovery and official account login for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-onboarding`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Provider discovery, selection, credential references, official runtime installation/login, model discovery, and real connection stages. |
+
 `peritus-provider-onboarding` is the C-class G4 adapter for user-visible provider availability,
 account status, and interactive login. It delegates subscription authentication to the official
 credential-owning `codex` and `claude` executables and retains no account tokens or command output.
@@ -22,10 +43,6 @@ and published through the operating-system credential store. This crate returns 
 references and non-secret provider settings; it never places API keys in product state or daemon
 configuration.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-onboarding
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

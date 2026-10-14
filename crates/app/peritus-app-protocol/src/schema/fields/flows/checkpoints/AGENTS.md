@@ -1,0 +1,17 @@
+# crates/app/peritus-app-protocol/src/schema/fields/flows/checkpoints — navigation
+
+## Responsibility
+
+Implementation pieces for `checkpoints.rs`: Covered-path checkpoints, exact rewind previews, and durable restore receipts.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [field_shapes.rs](field_shapes.rs) | Field shapes for checkpoint schema descriptors. |
+
+Owning module: [checkpoints.rs](../checkpoints.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../../AGENTS.md) · [Repository map](../../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

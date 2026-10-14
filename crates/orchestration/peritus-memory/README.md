@@ -1,5 +1,26 @@
 # peritus-memory
 
+## Folder guide
+
+scoped derived-memory lifecycle and retrieval for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-memory`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Scoped derived-memory lifecycle and retrieval for Peritus. |
+
 `peritus-memory` manages durable facts that agents may reuse in later turns. It records where each
 fact came from, which workspace and role may see it, and whether the fact is still a candidate,
 approved, quarantined, or deleted. Retrieval is deterministic, and its search indexes can be
@@ -13,10 +34,6 @@ and must not store secrets.
 Lifecycle and retrieval logic live in separate modules so new ranking or retention policies can be
 added without changing the durable record format.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-memory
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

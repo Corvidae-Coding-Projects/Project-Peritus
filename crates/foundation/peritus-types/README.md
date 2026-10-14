@@ -1,5 +1,26 @@
 # peritus-types
 
+## Folder guide
+
+peritus-types package.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-types`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Verified, time-independent primitive domain types for Peritus. |
+
 `peritus-types` owns Peritus's time-independent primitive domain values. It provides nominal
 nonzero identifiers, exact SHA-256 digest bytes, one-based counters, validated capability names,
 an exact cross-subsystem revision tuple, and checked resource quantities.
@@ -27,10 +48,6 @@ This verification-class `V` crate depends only on the workspace-pinned `vstd`. I
 does not provide serialization, random ID generation, UUID conversion, hashing, time, I/O, or
 authority decisions.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-types
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

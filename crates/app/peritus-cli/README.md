@@ -1,5 +1,26 @@
 # peritus-cli
 
+## Folder guide
+
+Scriptable command-line client for the Peritus daemon.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-cli`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Scriptable daemon client plus interactive launch dispatch: parse user arguments, route typed requests, render responses, and manage terminal/artifact/event streams. |
+
 G1 owns the scriptable `peritus` command-line client. The crate connects only to the protected
 local G0 endpoint and expresses every operation through the A3 application protocol. It provides
 strict argument parsing, stable JSON and human output, stable exit categories, resumable event and
@@ -19,10 +40,6 @@ The client never grants authority or infers durable success. G0 authenticates th
 checks current authority, commits commands, and reports typed outcomes. This crate depends only on
 the application protocol, canonical codec, foundational types, and its local async transport.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-cli
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

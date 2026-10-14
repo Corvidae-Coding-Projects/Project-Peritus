@@ -1,5 +1,27 @@
 # peritus-provider-openai
 
+## Folder guide
+
+First-party OpenAI Responses adapter for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-openai`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-provider-openai`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
+| [src/](src/AGENTS.md) | OpenAI HTTP Responses adapter and official Codex account runtime transport, with separate request/stream/runtime paths. |
+
 First-party adapters for the current OpenAI Responses API and the pre-authenticated OpenAI Codex
 account runtime. Both expose only Peritus protocol/core types; HTTP, JSONL, process, and provider
 wire shapes remain private implementation details.
@@ -136,10 +158,6 @@ CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-provider-openai --all-fe
 CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-openai --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 ```
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-openai
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

@@ -289,3 +289,7 @@ To remove Peritus, see [Uninstall](packaging/README.md#uninstall). Removal keeps
 Run `peritus --help` for command help.
 Use [GitHub Issues](https://github.com/Corvidae-Coding-Projects/Project-Peritus/issues) to report a problem.
 Include your operating system, Peritus version, and the steps that reproduce the problem.
+
+## Codebase navigation
+
+Start with the [repository agent map](AGENTS.md) to choose an implementation owner. Every repository-managed directory has an `AGENTS.md` waypoint describing local files, child responsibilities, and the route back to its parent/package. Layer and package READMEs provide human background and usage. See [navigation coverage and scope](docs/navigation-map.md) for the documented boundary.

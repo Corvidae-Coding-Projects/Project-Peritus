@@ -1,5 +1,26 @@
 # peritus-patch
 
+## Folder guide
+
+typed patches and recoverable filesystem transactions for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-patch`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Checked typed patches and recoverable filesystem transactions for Peritus. |
+
 `peritus-patch` owns Project Peritus's checked workspace-relative paths, typed create/replace/delete
 patches, deterministic patch plans, and recoverable multi-file filesystem transaction adapter.
 
@@ -24,10 +45,6 @@ result indeterminate rather than silently claiming restoration.
 This crate grants no workspace authority. `peritus-workspace` owns the B0/B1/C0 authorization
 gateway and is the product-facing mutation surface.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-patch
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

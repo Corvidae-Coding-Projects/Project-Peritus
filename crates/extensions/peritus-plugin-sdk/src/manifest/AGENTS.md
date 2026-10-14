@@ -1,0 +1,17 @@
+# crates/extensions/peritus-plugin-sdk/src/manifest — navigation
+
+## Responsibility
+
+Implementation pieces for `manifest.rs`: Canonical plugin manifest and declared authority/resource boundaries.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [wire.rs](wire.rs) | Private wire-format implementations for plugin manifests. |
+
+Owning module: [manifest.rs](../manifest.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -1,5 +1,26 @@
 # peritus-obligations
 
+## Folder guide
+
+public requirement obligations, evidence qualification, and failure ownership.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-obligations`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Public requirement obligations, qualification evidence, and failure ownership. |
+
 `peritus-obligations` is the pure S2 contract for turning public task clauses into checked
 requirements. A ledger retains each exact clause and its source span, distinguishes mandatory
 outputs from inputs and examples, and binds every evidence observation to the current ledger and
@@ -15,12 +36,6 @@ The crate also owns a closed failure taxonomy. Only `CandidateDefect` authorizes
 cycle; ambiguity gets at most one material question, provider and harness failures recover when a
 recovery route exists, and external-evaluator failures settle without changing candidate quality.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-obligations
-CARGO_BUILD_JOBS=2 cargo verus verify --package peritus-obligations --locked --check-toolchain \
-  --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

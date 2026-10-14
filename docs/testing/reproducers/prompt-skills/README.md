@@ -1,5 +1,19 @@
 # Prompt skill real-interface replay
 
+## Folder guide
+
+Real-interface replay resources for prompt skills; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [archive_consumer.rs](archive_consumer.rs) | Real public-API consumer decoding retained canonical model messages for prompt/skill delivery inspection. |
+| [readonly_tui_replay.py](readonly_tui_replay.py) | Operate the real read-only Peritus composer in an owned disposable fixture. |
+
 Use a disposable folder and independent XDG roots. Initialize the actual Peritus CLI with a real account provider, explicitly trust the disposable folder, and submit a small standalone Rust task through the real composer. Do not use the live user daemon, workspace, session or credentials as fixture data. Account authentication may be reused through the normal provider mechanism.
 
 The campaign's Rust task changes an existing `main.rs` CLI to prefix its output with `double=`. Expected fresh-process results are `6` -> `double=12\n`, `-7` -> `double=-14\n`, and `abc` -> exit 2 with usage on stderr. rustc compilation and resulting CLI execution are allowed; Cargo, unit tests, Clippy, format checks and the optional helper are excluded. Reading `main.rs` twice with identical arguments deliberately checks that a Rust reliability advisory permits a user-requested repeat and subsequent progress.

@@ -1,5 +1,26 @@
 # peritus-provider-core
 
+## Folder guide
+
+Owned HTTP transport, cancellation, retry, and model-provider interfaces for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-core`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Provider-independent owned transport primitives for Peritus. |
+
 C5's provider-independent effect shell. It owns bounded HTTP values, endpoint and credential
 validation, SSE/NDJSON framing, cancellation, deterministic retry execution, redacted diagnostics,
 and object-safe transport/byte-stream interfaces.
@@ -109,10 +130,6 @@ text can contain sensitive data. Body and framing failures are terminal for that
 The crate deliberately exposes no Reqwest, Tokio, `url`, `bytes`, `zeroize`, or provider SDK type.
 Those dependencies are implementation details and may change without altering adapter-facing APIs.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-core
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

@@ -1,5 +1,26 @@
 # peritus-sandbox-macos
 
+## Folder guide
+
+Deterministic macOS Seatbelt preparation and supervised native sandbox lifecycle.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-sandbox-macos`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | MacOS 15+ native sandbox preparation. |
+
 `peritus-sandbox-macos` is the C3 native enforcement adapter for macOS 15 and newer on Apple
 Silicon and x86-64. It compiles a complete checked C2 sandbox plan into deterministic Seatbelt
 profile text, a checksummed binary helper manifest, dimension-specific resource controls, and an
@@ -50,10 +71,6 @@ Platform-neutral compilation, manifest, lifecycle, and recovery tests run on eve
 host. Native Seatbelt and rlimit behavior is compiled and executed only on macOS; Linux test runs
 do not constitute macOS qualification.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox-macos
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

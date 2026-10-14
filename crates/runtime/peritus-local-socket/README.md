@@ -1,5 +1,26 @@
 # peritus-local-socket
 
+## Folder guide
+
+Bounded, owner-protected filesystem locations for local Peritus sockets.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-local-socket`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Bounded, owner-protected paths for ordinary Unix-domain sockets. |
+
 `peritus-local-socket` chooses a bounded filesystem location for a local daemon endpoint.
 An original path of at most 103 bytes on macOS or 107 bytes on Linux stays unchanged. A longer
 path maps to `/tmp/peritus-<32-hex>/daemon.sock`, where the digest binds the complete original
@@ -22,10 +43,6 @@ The crate is a class-H adapter. Verus verifies the executable path-length and di
 predicates; filesystem observations, SHA-256, and standard socket behavior remain host boundaries
 covered by native tests. It introduces no unsafe production code or proof assumptions.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-local-socket
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

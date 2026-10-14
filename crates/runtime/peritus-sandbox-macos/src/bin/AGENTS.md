@@ -1,0 +1,15 @@
+# crates/runtime/peritus-sandbox-macos/src/bin — navigation
+
+## Responsibility
+
+Executable entrypoints for `peritus-sandbox-macos`; follow each binary into its package implementation.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [peritus-macos-sandbox-helper.rs](peritus-macos-sandbox-helper.rs) | Composition root for the reviewed macOS sandbox helper. |
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

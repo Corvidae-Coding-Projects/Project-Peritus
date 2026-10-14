@@ -1,5 +1,20 @@
 # Actual persisted rollout recovery replay
 
+## Folder guide
+
+Real-interface replay resources for recovery; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [build_consumer.py](build_consumer.py) | Build the real public E3/F0 consumer against this checkout, with two jobs. |
+| [consumer.rs](consumer.rs) | Local implementation for docs / testing / reproducers / rsi-production / recovery. Entry names: `AnyResult`, `digest`, `eid`, `save`, `read`. |
+| [evaluator.py](evaluator.py) | Independent CLI requirements oracle, run only in evaluator stage. |
+
 This public consumer executes the actual seeded Peritus baseline and corrected candidate CLI with the independent Python oracle, writes each genuine terminal record to the artifact store and a retained binary file, reads it through the checked recovery API, closes/reopens storage, and checks the same actual records again. It adversarially supplies truncations, trailing bytes, incorrect advertised digest, and a different frozen rollout specification, expecting rejection. Unknown usage/cost/process measurements must remain unknown. No fabricated execution records or qualification suites are used.
 
 This consumer does not establish E1 materialization, native restricted execution, E3 publication,

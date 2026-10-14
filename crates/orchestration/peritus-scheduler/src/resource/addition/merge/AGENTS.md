@@ -1,0 +1,17 @@
+# crates/orchestration/peritus-scheduler/src/resource/addition/merge — navigation
+
+## Responsibility
+
+Implementation pieces for `merge.rs`: Executable merge state for exact canonical resource addition.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [advance_proofs.rs](advance_proofs.rs) | Solver-bounded proof step for appending one right-hand merge entry. |
+
+Owning module: [merge.rs](../merge.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../AGENTS.md) · [Repository map](../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -1,5 +1,26 @@
 # peritus-quality-policy
 
+## Folder guide
+
+exact-revision acceptance evaluator for Project Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-quality-policy`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Exact-revision acceptance policy for Peritus. |
+
 `peritus-quality-policy` is the pure, verified acceptance evaluator for Peritus. It consumes one
 checked `peritus-spec` contract, an exact `RevisionTuple`, and a canonical evidence set. It returns
 an acceptable decision only when every contract requirement is satisfied by current observations.
@@ -31,10 +52,6 @@ orchestration, persistence, authorization, and lifecycle transitions live in lat
 Production dependencies are limited to `peritus-spec`, `peritus-types`, and `vstd`. This crate may
 not depend on orchestration, persistence, process, workspace, provider, or application crates.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-quality-policy
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

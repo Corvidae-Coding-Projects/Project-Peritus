@@ -1,5 +1,26 @@
 # peritus-artifact-store
 
+## Folder guide
+
+Streaming content-addressed artifact storage for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-artifact-store`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Streaming content-addressed artifact storage for Peritus. |
+
 Content-addressed artifact storage for Project Peritus.
 
 ## Write and reference contract
@@ -35,10 +56,6 @@ actions are reconciled when the store is reopened.
 See [C0 durable state](../../../docs/c0-durable-state.md) for lifecycle details, operator recovery,
 and exact validation commands.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-artifact-store
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

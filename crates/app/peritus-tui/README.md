@@ -1,5 +1,26 @@
 # peritus-tui
 
+## Folder guide
+
+Interactive terminal client for the Peritus daemon.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-tui`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Native terminal application state, daemon event handling, interaction routing, rendering, connection lifecycle, and shared text editing. |
+
 G2 owns the interactive terminal client. Its deterministic reducer projects A3/G0 observations
 into bounded run, diff, review, trace, evolution, approval, and terminal views. Effects are emitted
 as typed requests; presentation state is never authoritative.
@@ -114,10 +135,6 @@ existing policy: high when reasoning controls are negotiated, otherwise no reaso
 Repeated model refreshes share the pending provider lookup. Closing the picker or moving to effort
 selection abandons discovery; an old reply cannot replace a reopened picker's current catalog.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tui
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

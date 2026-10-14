@@ -1,5 +1,21 @@
 # RSI E3/F0 real candidate replay
 
+## Folder guide
+
+Real-interface replay resources for rsi f0; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [build_consumer.py](build_consumer.py) | Build the real public E3/F0 consumer against this checkout, with two jobs. |
+| [consumer.rs](consumer.rs) | Local implementation for docs / testing / reproducers / rsi-f0. Entry names: `AnyResult`, `digest`, `eid`, `save`, `read`. |
+| [evaluator.py](evaluator.py) | Independent CLI requirements oracle, run only in evaluator stage. |
+| [replay.py](replay.py) | Replay the real E3-to-daemon candidate scheduling failure. |
+
 This consumer runs real baseline/candidate Peritus CLI executables and a separate Python evaluator, uses the real content-addressed artifact store and SQLite journal, then submits a genuine E3 schedule request to a disposable daemon.
 
 The baseline must contain the retained version regression (`peritus --version` prints `peritus 0.0.0` while its Cargo version is 0.0.7). The corrected candidate prints `peritus 0.0.7`. Both must preserve help and invalid-argument behavior. This seeded defect exists only in the disposable source clone; it was never introduced into the product checkout.

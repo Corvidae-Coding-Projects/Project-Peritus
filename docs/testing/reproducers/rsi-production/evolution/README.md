@@ -1,5 +1,27 @@
 # Real E1/E2/D2/F0 owner replay
 
+## Folder guide
+
+peritus-rsi-evolution-replay package.
+
+Standalone replay/consumer package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.lock](Cargo.lock) | Locked dependency resolution for the neighboring package manifest. |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-rsi-evolution-replay`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [activation.rs](activation.rs) | Real F0 host authority adapter for the disposable native fixture only. Fresh explicit CLI approval input is required separately for promotion and rollback. |
+| [e1.rs](e1.rs) | Real E1 materialization producer. No fabricated receipt, publication, or approval constructors. |
+| [f0.rs](f0.rs) | Actual owner composition over the disposable native E1/E2/E3 fixture. |
+| [observed-owner-results.json](observed-owner-results.json) | Structured observed owner results data with fields `schema`, `note`, `materialization`, `independent_review`, `selection`. |
+| [publication.rs](publication.rs) | Read back actual published F0 owner evidence; never claim or acknowledge an outbox row here. |
+| [review.rs](review.rs) | Imports an independently executed review into its actual D2 owner. This consumer accepts only the fresh delegated review's final scoped result. It never manufactures a review, provider identity, finding, or approval. |
+
 These standalone programs operate the real public owner APIs and ordinary SQLite, artifact,
 Git/worktree, C1, and approval services. They do not generate passing review receipts or invoke
 unit, qualification, or formal suites. Use a fresh disposable fixture and actual baseline/candidate

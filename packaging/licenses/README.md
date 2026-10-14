@@ -1,5 +1,21 @@
 # Supplemental upstream license notices
 
+## Folder guide
+
+Supplemental upstream license notices shipped with source bundles. Preserve the notices and their exact scope.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [anes-MIT.txt](anes-MIT.txt) | Upstream license/notice text for anes MIT. |
+| [convert-case-MIT.txt](convert-case-MIT.txt) | Upstream license/notice text for convert case MIT. |
+| [jni-MIT.txt](jni-MIT.txt) | Upstream license/notice text for jni MIT. |
+| [verus-MIT.txt](verus-MIT.txt) | Upstream license/notice text for verus MIT. |
+
 These notices accompany the locked source bundle because some published crates omit
 their upstream license files. They do not modify the vendored Cargo checksums.
 The generator also retains declared authors and licenses from every crate manifest.

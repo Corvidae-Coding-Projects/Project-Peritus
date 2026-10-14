@@ -1,5 +1,27 @@
 # peritus-provider-google
 
+## Folder guide
+
+First-party Google Gemini Interactions and Generate Content adapter for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-google`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-provider-google`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
+| [src/](src/AGENTS.md) | First-party stable-v1 Google Gemini adapter for Peritus. |
+
 First-party Google Gemini adapter with two explicit production dialects:
 
 - preferred stable-v1 Gemini Interactions at `POST /v1/interactions`;
@@ -67,23 +89,6 @@ credential is used.
 Runtime dependencies are limited to Peritus protocol/core/foundation crates, `serde`, `serde_json`,
 and `base64`. Conformance, loopback support, and Tokio are development-only.
 
-## Focused gates
+## Behavioral work
 
-```text
-CARGO_BUILD_JOBS=2 cargo test -p peritus-provider-google --all-targets --all-features --locked
-CARGO_BUILD_JOBS=2 cargo clippy -p peritus-provider-google --all-targets --all-features --locked -- -D warnings
-RUSTDOCFLAGS="-D warnings" CARGO_BUILD_JOBS=2 cargo doc -p peritus-provider-google --no-deps --all-features --locked
-just architecture
-just source-layout
-just ordinary-api
-CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-provider-google --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-google --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-```
-
-## Focused checks
-
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-google
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

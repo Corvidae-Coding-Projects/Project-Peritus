@@ -1,5 +1,26 @@
 # peritus-app-protocol
 
+## Folder guide
+
+Transport-neutral application protocol contract for Peritus clients and daemons.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-app-protocol`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Transport-neutral application protocol for Peritus. |
+
 `peritus-app-protocol` is the transport-neutral A3 contract shared by future Peritus daemon, CLI,
 TUI, and extension clients. It defines bounded version negotiation, typed application envelopes,
 exact B3 command and event frame bindings, resumable at-least-once subscriptions, artifact transfer,
@@ -36,12 +57,6 @@ processes, or grant domain authority. Those effects belong to G0 and its B0/B1/C
 The complete contract and verification plan is in
 [`../../../.design/a3-app-protocol.md`](../../../.design/a3-app-protocol.md).
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-app-protocol
-CARGO_BUILD_JOBS=1 cargo run --locked --package peritus-app-protocol \
-  --bin peritus-app-protocol-codegen -- --root . --check
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

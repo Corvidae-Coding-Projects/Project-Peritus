@@ -1,5 +1,27 @@
 # Prior audit source archive
 
+## Folder guide
+
+Historical evidence for prior audit source; recorded inputs, outputs and source identities belong to the earlier investigation.
+
+The original record below is preserved as historical evidence. Use current source and current product guides for present behavior.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [prior-root-SHA256SUMS.txt](prior-root-SHA256SUMS.txt) | Retained evidence/output for prior root SHA256SUMS. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [docs/](docs/AGENTS.md) | Historical evidence for docs; recorded inputs, outputs and source identities belong to the earlier investigation. |
+| [xtask/](xtask/AGENTS.md) | Historical evidence for xtask; recorded inputs, outputs and source identities belong to the earlier investigation. |
+
 These are byte-exact source files for the audit snapshot recorded by the existing
 `validation.json`, `reconciler-review.md`, `authorization-audit.md`, and
 `evidence-audit.md`. Their recorded source hashes describe this archived snapshot, not the

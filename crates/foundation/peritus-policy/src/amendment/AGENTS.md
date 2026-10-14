@@ -1,0 +1,18 @@
+# crates/foundation/peritus-policy/src/amendment — navigation
+
+## Responsibility
+
+Implementation pieces for `amendment.rs`: Explicit single-tier policy-amendment preview without activation authority.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [preview.rs](preview.rs) | Closed total amendment-preview result relation and executable refinement. |
+| [proposal.rs](proposal.rs) | Exact checked amendment-proposal construction and projections. |
+
+Owning module: [amendment.rs](../amendment.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

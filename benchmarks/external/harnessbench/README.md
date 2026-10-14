@@ -1,5 +1,22 @@
 # HarnessBench
 
+## Folder guide
+
+HarnessBench API/runner adapters and example configuration for invoking native Peritus against upstream tasks.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [app.example.json](app.example.json) | Structured app.example data with fields `data_dir`, `tasks_dir`, `results_dir`, `work_root`, `default_timeout_sec`. |
+| [harness.json](harness.json) | Structured harness data with fields `models`. |
+| [oracle-requirements.txt](oracle-requirements.txt) | Checked-in data/record for oracle requirements. |
+| [pin.toml](pin.toml) | Configuration/contract data for pin. Sections: `schema_version`, `repository`, `revision`, `revision_date`, `task_count`. |
+| [rubric_server.py](rubric_server.py) | Local HTTP boundary from HarnessBench rubrics to the native Peritus account router. |
+
 HarnessBench tests whether Peritus's orchestration, recovery, verification, state handling, and
 tool-use policies improve real agent work. Peritus runs the pinned, unchanged suite through its
 normal design, writer, reviewer, fixer, and deterministic-gate pipeline.

@@ -1,5 +1,19 @@
 # peritus-resilience
 
+## Folder guide
+
+Historical component record for `peritus-resilience`. No Cargo package/source entrypoint is present in this directory.
+
+This folder currently retains documentation only. The earlier component description below is historical, not an available package or executable.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
 > Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
 
 `peritus-resilience` is the runtime-neutral H1 release-qualification harness for an integrated

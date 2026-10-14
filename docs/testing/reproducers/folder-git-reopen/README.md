@@ -1,5 +1,19 @@
 # Folder-to-Git reopen regression
 
+## Folder guide
+
+Real-interface replay resources for folder git reopen; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [recover.rs](recover.rs) | Restore one previously registered direct folder through the public bootstrap API. |
+| [replay.py](replay.py) | Register real folders through the TUI, initialize Git, and reopen fresh clients. |
+
 A browser-building conversation started in a trusted plain folder. The agent later
 initialized Git there. On reopening, the launcher discovered a Git repository,
 replaced the remembered folder profile with a new restricted Git profile, and

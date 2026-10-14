@@ -1,5 +1,18 @@
 # Release metadata updater regression
 
+## Folder guide
+
+Real-interface replay resources for updater release metadata; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [replay.py](replay.py) | Exercise the real updater CLI through a local HTTPS metadata endpoint. |
+
 The published 0.0.7 GitHub release has 52 assets. Its 110,283-byte metadata response
 exceeded the launcher's 64 KiB bound, so the actual `peritus update` command failed
 before comparing versions. The published 0.0.7 binary independently reproduces this

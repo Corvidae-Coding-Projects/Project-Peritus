@@ -1,0 +1,17 @@
+# crates/model/peritus-provider-compatible/src/config — navigation
+
+## Responsibility
+
+Implementation pieces for `config.rs`: Exact endpoint, header authentication, fixed headers, limits, and retry configuration.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [mappings.rs](mappings.rs) | Explicit retry and response-header mappings; no provider convention is inferred. |
+
+Owning module: [config.rs](../config.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

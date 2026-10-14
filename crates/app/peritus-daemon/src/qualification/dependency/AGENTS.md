@@ -1,0 +1,18 @@
+# crates/app/peritus-daemon/src/qualification/dependency — navigation
+
+## Responsibility
+
+Implementation pieces for `dependency.rs`: Real provider, product-tool, and worker failure qualification over durable scheduler state.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [effect.rs](effect.rs) | Direct provider, product-tool, and worker failure observations. |
+| [scheduler.rs](scheduler.rs) | Deterministic C5 scheduler fixture and C0 durability for dependency qualification. |
+
+Owning module: [dependency.rs](../dependency.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../AGENTS.md) · [Repository map](../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
