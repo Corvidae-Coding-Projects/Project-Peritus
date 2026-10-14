@@ -34,6 +34,21 @@ impl ConversationTools {
 }
 
 impl DeveloperToolExecutor for ConversationTools {
+    fn system_guidance(&mut self) -> Option<String> {
+        self.workspace.system_guidance()
+    }
+
+    fn observe_model_context(
+        &mut self,
+        messages: &[peritus_model_protocol::Message],
+    ) -> Result<(), DeveloperLoopError> {
+        self.workspace.observe_model_context(messages)
+    }
+
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        self.workspace.take_progress_feedback()
+    }
+
     fn observation_images(
         &mut self,
         call: &CompletedToolCall,

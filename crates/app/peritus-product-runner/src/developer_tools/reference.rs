@@ -63,6 +63,7 @@ impl ExplicitReferences {
 impl WorkspaceDeveloperTools {
     #[must_use]
     pub(crate) fn with_reference_contract(mut self, task: &str) -> Self {
+        self.rust_reliability.task(task);
         self.references = ExplicitReferences::from_task(&self.root, task);
         self
     }

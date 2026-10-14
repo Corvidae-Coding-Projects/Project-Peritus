@@ -115,6 +115,9 @@ impl AppModel {
             KeyCode::Up | KeyCode::Down => {
                 self.move_chat_cursor_vertically(key);
             }
+            _ if crate::input::vertical_direction(key).is_some() => {
+                self.move_chat_cursor_vertically(key);
+            }
             KeyCode::PageUp => self.chat.scroll = self.chat.scroll.saturating_add(12),
             KeyCode::PageDown => self.chat.scroll = self.chat.scroll.saturating_sub(12),
             KeyCode::End if self.chat.buffer.is_empty() => self.chat.scroll = 0,
@@ -202,7 +205,7 @@ impl AppModel {
         self.chat.cursor = crate::input::composer::vertical_cursor(
             &self.chat.buffer,
             self.chat.cursor,
-            key.code == KeyCode::Down,
+            crate::input::vertical_direction(key).unwrap_or(false),
             usize::from(width),
         );
     }

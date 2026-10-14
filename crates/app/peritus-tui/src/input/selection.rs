@@ -26,7 +26,11 @@ pub fn edit(
             if let Some(selected) = selected
                 && matches!(motion, super::TextMotion::Left | super::TextMotion::Right)
             {
-                *cursor = if key.code == KeyCode::Left { selected.start } else { selected.end };
+                *cursor = if matches!(motion, super::TextMotion::Left) {
+                    selected.start
+                } else {
+                    selected.end
+                };
                 return true;
             }
         }
@@ -34,7 +38,7 @@ pub fn edit(
     }
     let typing = matches!(key.code, KeyCode::Char(_))
         && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER);
-    let deleting = matches!(key.code, KeyCode::Backspace | KeyCode::Delete);
+    let deleting = super::text_deletion(key).is_some();
     if typing || deleting {
         *anchor = None;
         if let Some(selected) = selected {

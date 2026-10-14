@@ -6,6 +6,12 @@ use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Supplies host-owned conditional guidance before context assembly and budget admission.
+    /// This replaces the current policy each turn; it never accumulates in optional history.
+    fn system_guidance(&mut self) -> Option<String> {
+        None
+    }
+
     /// Observes the exact model-visible messages after context assembly and protocol validation.
     ///
     /// This runs for each developer request, including retries, without changing its messages.

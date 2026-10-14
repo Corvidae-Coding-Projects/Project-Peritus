@@ -4,9 +4,11 @@ mod computer;
 mod developer;
 mod real_testing;
 mod reviewer;
+pub(crate) mod rust_reliability;
+pub(crate) mod vitamins;
 
-// These constants mirror the adjacent Markdown artifacts. They are literal strings because this
-// formal-boundary crate intentionally rejects source-inclusion macros.
+// Existing workflow constants mirror the adjacent Markdown artifacts. Imported skill packages
+// are embedded from their canonical files so references and runtime guidance cannot drift apart.
 const WORKFLOW: &str = r"# Production engineering workflow
 
 Tool execution contract: use exact paths from current workspace observations, including hyphens
@@ -364,15 +366,15 @@ integration points that require serialization.
 pub fn architect() -> String {
     format!(
         "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nArchitect skill:\n{ARCHITECT_SKILL}",
-        format!("{}\n\n{}", real_testing::SKILL, computer::SKILL)
+        format!("{}\n\n{}\n\n{}", real_testing::SKILL, computer::SKILL, vitamins::designer())
     )
 }
 
-pub fn developer() -> String {
+pub fn developer(role: &str) -> String {
     format!(
         "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nDeveloper skill:\n{}",
         format!("{}\n\n{}", real_testing::SKILL, computer::SKILL),
-        developer::SKILL
+        format!("{}\n\n{}", developer::SKILL, vitamins::developer(role))
     )
 }
 
@@ -380,6 +382,6 @@ pub fn reviewer() -> String {
     format!(
         "Production engineering workflow:\n{WORKFLOW}\n\nReal-testing skill:\n{}\n\nReviewer skill:\n{}",
         format!("{}\n\n{}", real_testing::SKILL, computer::SKILL),
-        reviewer::SKILL
+        format!("{}\n\n{}", reviewer::SKILL, vitamins::reviewer())
     )
 }

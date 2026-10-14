@@ -53,7 +53,14 @@ impl RetryContext<'_, '_> {
         trace: &mut dyn DeveloperTrace,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
         let (step, attempt, required_tool) = position;
-        let policy = super::invocation::retry_policy(request, step, attempt, required_tool)?;
+        let guidance = self.tools.system_guidance();
+        let policy = super::invocation::retry_policy(
+            request,
+            step,
+            attempt,
+            required_tool,
+            guidance.as_deref(),
+        )?;
         let mut messages = messages.to_vec();
         messages[0] = policy.clone();
         let count = if self.context.is_local() {

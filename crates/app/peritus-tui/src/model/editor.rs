@@ -70,20 +70,21 @@ impl AppModel {
         }
         if let KeyCode::Char(character) = key.code
             && crate::input::text_motion(key).is_none()
+            && crate::input::text_deletion(key).is_none()
             && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER)
         {
             self.paste_editor(&character.to_string());
             return Vec::new();
         }
         if let Some(editor) = &mut self.editor {
-            if matches!(key.code, KeyCode::Up | KeyCode::Down) {
+            if let Some(down) = crate::input::vertical_direction(key) {
                 let width = self.chat.viewport.map_or(80, |area| {
                     crate::input::composer::modal_area(area).width.saturating_sub(2)
                 });
                 editor.cursor = crate::input::composer::vertical_cursor(
                     &editor.buffer,
                     editor.cursor,
-                    key.code == KeyCode::Down,
+                    down,
                     usize::from(width),
                 );
                 return Vec::new();

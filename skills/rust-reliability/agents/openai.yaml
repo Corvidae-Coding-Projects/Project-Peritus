@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Reliability"
+  short_description: "Prevent Rust failure modes and verify real behavior"
+  default_prompt: "Use $rust-reliability to inspect this Rust change, enforce applicable safeguards, and verify it through real execution."

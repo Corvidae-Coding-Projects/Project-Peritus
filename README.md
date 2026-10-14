@@ -38,6 +38,8 @@ for how we preserve failures and distinguish product defects from evaluator prob
 
 Peritus uses the real-testing skill to build and run the actual application, exercise its human interfaces, and retain reproducible defects and replay evidence. We use this approach based on the findings in [Rethinking the Value of Agent-Generated Tests for LLM-Based Software Engineering Agents](https://arxiv.org/html/2602.07900v1). The paper reports limited task-outcome gains from agent-generated tests in the studied settings, with additional token and API costs; our choice of behavioral testing is a project policy informed by those findings.
 
+Designer, writer, reviewer, and fixer prompts include brief planning, careful execution, evidence, and root-cause repair cues. Rust work also activates the bundled [Rust reliability skill](skills/rust-reliability/SKILL.md); its guidance stays in the current system policy and is reinforced when unchanged inspection repeats. References are available to the model through read-only skill access. User restrictions on commands and tests still apply, and the optional check helper is never an automatic gate.
+
 Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
 
 Peritus can exercise browser pages and Linux desktop apps during coding runs. Install the optional

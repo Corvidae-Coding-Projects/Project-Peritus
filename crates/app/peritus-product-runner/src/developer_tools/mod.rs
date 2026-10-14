@@ -9,6 +9,7 @@ mod arguments;
 mod attachment_read;
 
 mod catalog;
+mod bundled_skill;
 
 mod command_budget;
 mod computer;

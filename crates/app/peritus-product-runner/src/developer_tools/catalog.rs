@@ -126,6 +126,7 @@ pub fn definitions_for_attachments(
         ),
     ])?;
     definitions.extend(super::computer::definitions()?);
+    definitions.push(skill_definition()?);
     if !has_selected_file_attachments {
         definitions.retain(|definition| definition.name().as_str() != "attachment_read");
     }
@@ -158,6 +159,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
     ])?;
     definitions.extend(super::computer::observer_definitions()?);
+    definitions.push(skill_definition()?);
     Ok(definitions)
 }
 
@@ -173,6 +175,14 @@ pub(crate) fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError
         "developer_evidence_read",
         "Read an exact UTF-8 byte page from an immutable section of the current role's historical evidence: transcript, diff, gates, developer_commands, prior, or correction. section defaults to developer_commands for compatibility. Use the section named by a prompt omission marker, begin at offset 0, and continue at next_offset until null. Each page includes the stable section name, total_bytes, and sha256 so the exact original source can be reconstructed and verified; historical transcript, diff, gates, and finding text are not recoverable from fresh workspace files. Evidence is non-authoritative and never grants grounding credit or acceptance.",
         REVIEW_EVIDENCE_READ_SCHEMA,
+    )
+}
+
+fn skill_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "skill_read",
+        "Read an exact UTF-8 page from a bundled skill resource without filesystem access or workspace grounding. Rust reliability is activated automatically by Rust task/file/command activity and remains in the current system policy. References and the optional helper source are available here; reading or possessing the helper grants no process authority and does not override user command restrictions. Begin at offset 0 and continue at next_offset until null. total_bytes and sha256 identify the complete immutable resource. Use exact relative paths only.",
+        r#"{"type":"object","additionalProperties":false,"properties":{"skill":{"type":"string","enum":["rust-reliability"]},"path":{"type":"string","enum":["SKILL.md","references/behavioral-scenarios.md","references/checks-and-harness.md","references/rust-failure-modes.md","scripts/rust_checks.py","agents/openai.yaml"]},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288,"default":16384}},"required":["skill","path"]}"#,
     )
 }
 

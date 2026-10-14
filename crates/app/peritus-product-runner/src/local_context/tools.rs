@@ -35,6 +35,10 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn system_guidance(&mut self) -> Option<String> {
+        self.base.system_guidance()
+    }
+
     fn observation_images(
         &mut self,
         call: &CompletedToolCall,

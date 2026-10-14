@@ -101,7 +101,9 @@ impl DeveloperLoop {
                 None
             };
             let required_tool = tools.required_tool_name().map(str::to_owned);
-            let invocation_policy = invocation::policy(&request, turn, required_tool.as_deref())?;
+            let guidance = tools.system_guidance();
+            let invocation_policy =
+                invocation::policy(&request, turn, required_tool.as_deref(), guidance.as_deref())?;
             if context.is_local() {
                 if context.prepare(
                     provider,
