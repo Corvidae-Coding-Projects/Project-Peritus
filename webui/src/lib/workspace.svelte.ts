@@ -10,7 +10,7 @@ import type { Attachment,Bootstrap, ConsoleSession, Conversation, Facts, FileTab
 export const defaults: Preferences = { theme:'nixie',density:'comfortable',motion:true,sound:false,font_size:14,font_family:'Barlow, sans-serif',mono_family:'ui-monospace, monospace',explorer_width:248,controls_visible:true,explorer_visible:true,word_wrap:true,markdown_preview:true,shortcuts:{commands:'Mod+k',files:'Mod+Shift+e',git:'Mod+Shift+g',new:'Mod+Alt+n',settings:'Mod+,'},tokens:{},aliases:{} };
 export const ui = $state({
   workspace: {projects:[],sessions:[]} as Workspace, preferences:{...defaults}, loading:true, fatal:'',
-  projectId:'',sessionId:'',files:[] as FileTab[],activeFile:'',drafts:{} as Record<string,string>,modes:{} as Record<string,Mode>,
+  projectId:'',sessionId:'',conversationFocus:false,files:[] as FileTab[],activeFile:'',drafts:{} as Record<string,string>,modes:{} as Record<string,Mode>,
   conversations:{} as Record<string,Conversation>,facts:null as Facts|null, factsError:'',
   connected:false,ready:false,readiness:'Checking',connectionMessage:'Checking daemon connection',
   attachments:{} as Record<string,Attachment[]>,attaching:{} as Record<string,number>,
@@ -46,6 +46,7 @@ export async function start() {
       const value=JSON.parse(saved);
       if(typeof value.projectId==='string')ui.projectId=value.projectId;
       if(typeof value.sessionId==='string')ui.sessionId=value.sessionId;
+      if(typeof value.conversationFocus==='boolean')ui.conversationFocus=value.conversationFocus;
       if(value.drafts&&typeof value.drafts==='object')ui.drafts=value.drafts;
       if(Array.isArray(value.files))ui.files=value.files.filter((f:FileTab)=>typeof f.path==='string'&&typeof f.session==='string');
       if(value.modes&&typeof value.modes==='object')ui.modes=value.modes;
@@ -57,7 +58,7 @@ export async function start() {
   finally{ui.loading=false;}
 }
 export function persist() {
-  try{localStorage.setItem('peritus:layout:v1',JSON.stringify({projectId:ui.projectId,sessionId:ui.sessionId,drafts:ui.drafts,files:ui.files,modes:ui.modes,attachments:ui.attachments}));}
+  try{localStorage.setItem('peritus:layout:v1',JSON.stringify({projectId:ui.projectId,sessionId:ui.sessionId,conversationFocus:ui.conversationFocus,drafts:ui.drafts,files:ui.files,modes:ui.modes,attachments:ui.attachments}));}
   catch{notify('Browser storage is full. Drafts remain available until this page closes.',true);}
 }
 export async function loadProject() {
@@ -102,6 +103,7 @@ export async function editSession(id:string,patch:Record<string,unknown>) {
   if(ui.sessionId!==selected)ui.activeFile='';
 }
 export function openFile(path:string) {
+  ui.conversationFocus=false;
   if(!ui.files.some(f=>f.path===path&&f.session===ui.sessionId))ui.files.push({path,session:ui.sessionId,project:ui.projectId});
   ui.activeFile=path;ui.panel='conversation';
 }
@@ -215,6 +217,16 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
   if(alias){const parsed=parseSlash(alias);if(parsed.kind==='command')return dispatch(parsed.name,[...parsed.args,...args],depth+1);}
   const command=commands.find(c=>c.id===id);if(!command)throw new Error(`Unknown command /${id}. Open the command directory with /help.`);
   ui.palette='';
+  if(id==='design'){
+    if(runActive(ui.conversations[ui.sessionId]?.run))throw new Error('Wait for the current reply or stop active work before using a design action. Your draft is retained.');
+    const text=args.join(' ');
+    ui.modes[ui.sessionId]=text==='build'?'chat':'design';ui.activeFile='';
+    ui.drafts[ui.sessionId]=text==='build'
+      ?'Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.'
+      :text==='show'?'Show the complete current saved design draft. If none exists, help me start one.'
+      :text||'Help me create or continue a design.';
+    await send();return;
+  }
   if(['chat','plan','review','build'].includes(id)){
     ui.modes[ui.sessionId]=id as Mode;ui.activeFile='';
     if(args.length){ui.drafts[ui.sessionId]=args.join(' ');await send();}return;
@@ -223,8 +235,9 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
     case 'new':return newSession();case 'nest':return newSession(true);
     case 'open':if(args.length)return openProject(args.join(' '));ui.overlay='open';return;
     case 'close-project':return closeProject();
-    case 'files':ui.preferences.explorer_visible=true;ui.drawer='files';ui.panel='files';return;
+    case 'files':ui.conversationFocus=false;ui.preferences.explorer_visible=true;ui.drawer='files';ui.panel='files';return;
     case 'git':
+      ui.conversationFocus=false;
       ui.preferences.explorer_visible=true;ui.drawer='git';ui.panel='files';
       if(args.length){const command=gitCommand(args);if(command.kind==='status'){await loadGit();return;}if(!command.confirmation||confirm(command.confirmation))await gitAction(command.kind,command.paths,command.message,command.options);return;}
       await loadGit();return;

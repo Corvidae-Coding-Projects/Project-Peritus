@@ -38,9 +38,16 @@ Active packages are identified by current root Cargo membership. README-only ret
 
 ## Maintaining the map
 
+Interactive Design mode is owned by `peritus-product-runner/src/guided_design.rs` and
+`execution/conversation/design.rs`, reached through A3 mode tag 5 and the existing daemon
+conversation entrypoint. The [guided design replay](testing/reproducers/guided-design/AGENTS.md)
+operates actual terminal conversations and their downstream CLI deliverable.
+
 When adding or moving code, update the local file table and the immediate parent child-area table. Give a responsibility and an entry point, rather than restating the filename. Keep product composition, pure contracts, concrete effects, presentation, compatibility input, replay tooling, and historical evidence visibly distinct. A folder map should let the next agent choose where to read without guessing which subsystem owns the behavior.
 
 ## Directory index
+
+- [docs/testing/reproducers/guided-design](testing/reproducers/guided-design/AGENTS.md)
 
 The links below cover the complete repository-managed directory set; each page links onward to local files and child waypoints.
 

@@ -28,6 +28,7 @@ enum Arguments {
 pub(super) enum Command {
     Chat,
     Plan,
+    Design,
     Review,
     Build,
     Model,
@@ -117,6 +118,7 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
     let Some((prefix, partial)) = text.rsplit_once(char::is_whitespace) else { return Vec::new() };
     let words: Vec<_> = prefix.split_whitespace().collect();
     let choices: &[&str] = match words.as_slice() {
+        ["/design"] => &["show", "build"],
         ["/brief"] => &["objective", "acceptance", "constraints", "assumptions"],
         ["/goal"] => &["confirm", "clear", "criterion"],
         ["/goal", "criterion"] => &["graphical", "remove-graphical"],

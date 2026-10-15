@@ -5,6 +5,8 @@ use ratatui::{layout::Rect, text::Line};
 
 const LINES: &[&str] = &[
     "Conversation modes",
+    "  /design · /design show · /design build",
+    crate::modes::description(peritus_app_protocol::ProductInteractionMode::Design),
     "  /chat",
     crate::modes::description(peritus_app_protocol::ProductInteractionMode::Chat),
     "  /plan",

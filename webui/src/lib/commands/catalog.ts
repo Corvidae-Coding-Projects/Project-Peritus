@@ -11,6 +11,7 @@ export const commands: Command[] = [
   {id:'settings',label:'Configure console',detail:'Theme, behavior, layout, shortcuts, and dotfile',group:'Workspace',slash:'/settings'},
   {id:'sessions',label:'Session library',detail:'Reopen and organize saved sessions',group:'Workspace',slash:'/sessions'},
   {id:'chat',label:'Chat mode',detail:modeDescriptions.chat,group:'Conversation',slash:'/chat'},
+  {id:'design',label:'Design together',detail:modeDescriptions.design,group:'Conversation',slash:'/design'},
   {id:'plan',label:'Plan mode',detail:modeDescriptions.plan,group:'Conversation',slash:'/plan'},
   {id:'review',label:'Review mode',detail:modeDescriptions.review,group:'Conversation',slash:'/review'},
   {id:'build',label:'Build mode',detail:modeDescriptions.build,group:'Conversation',slash:'/build'},

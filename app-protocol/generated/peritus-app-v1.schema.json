@@ -759,7 +759,7 @@
       "x-rust-type": "WorkbenchContinuation",
       "properties": {
         "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
-        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build", "design"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
         "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<ControlOperationId>", "x-bounds": ["nonzero"] }
       },
       "required": ["query", "mode"]
@@ -782,7 +782,7 @@
       "properties": {
         "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
         "providers": { "$ref": "#/$defs/ProductProviderSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductProviderSelection" },
-        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build", "design"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
         "hasEffort": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
         "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" }
       },
@@ -3089,7 +3089,7 @@
       "properties": {
         "settled": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
         "state": { "oneOf": [{ "$ref": "#/$defs/ProductRunSnapshot" }, { "$ref": "#/$defs/ProductRunSettlementSnapshot" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunSnapshot | ProductRunSettlementSnapshot" },
-        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build", "design"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
         "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" },
         "received": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
         "incorporated": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },

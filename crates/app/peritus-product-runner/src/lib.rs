@@ -36,6 +36,8 @@ mod file_metadata;
 
 pub(crate) mod gates;
 
+mod guided_design;
+
 mod local_context;
 
 mod model_output;

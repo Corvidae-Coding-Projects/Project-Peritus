@@ -26,7 +26,7 @@ export interface Conversation { models?:Record<string,ModelChoice>; mode?:Mode; 
 export interface Facts { providers: {id: string; kind: string; model: string}[]; workspace: { id: string; root: string; execution: string; trust: string } | null; endpoint: string; ready:boolean;reason:string }
 export interface Attachment {id:string;session:string;project:string;path:string;bytes:number;digest:string;media:string}
 export interface ModelChoice { id: string; manual: boolean; effort: string }
-export type Mode = 'chat' | 'plan' | 'review' | 'build';
+export type Mode = 'chat' | 'plan' | 'review' | 'build' | 'design';
 export interface FileTab { path: string; session: string; project: string }
 
 export interface ImprovementEvaluation {conversation:string;run:string;target:string}

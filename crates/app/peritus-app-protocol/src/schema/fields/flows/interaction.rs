@@ -119,8 +119,8 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
                 W::U16,
                 &[],
                 "ProductInteractionMode",
-                "\"chat\" | \"plan\" | \"review\" | \"build\"",
-                J::Enum(&["chat", "plan", "review", "build"]),
+                "\"chat\" | \"plan\" | \"review\" | \"build\" | \"design\"",
+                J::Enum(&["chat", "plan", "review", "build", "design"]),
                 true,
             ),
             field(

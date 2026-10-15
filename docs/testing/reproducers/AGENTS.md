@@ -23,6 +23,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [guided-design/](guided-design/AGENTS.md) | Real interview, durable Markdown, restart, corrected-choice handoff, and CLI behavior replay. |
 | [composer-modes/](composer-modes/AGENTS.md) | Real-interface replay resources for composer modes; start with the local README/driver and its documented disposable-state prerequisites. |
 | [computer-automation/](computer-automation/AGENTS.md) | Real-interface replay resources for computer automation; start with the local README/driver and its documented disposable-state prerequisites. |
 | [context-resume/](context-resume/AGENTS.md) | Real-interface replay resources for context resume; start with the local README/driver and its documented disposable-state prerequisites. |

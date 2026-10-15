@@ -37,6 +37,8 @@ pub enum ProductInteractionMode {
     Review,
     /// Explicitly commissioned writer/check/reviewer/fixer delivery pipeline.
     Build,
+    /// Guided conversational design; saves a draft without implementing workspace changes.
+    Design,
 }
 impl ProductInteractionMode {
     /// Append-only mode encoding.
@@ -47,6 +49,7 @@ impl ProductInteractionMode {
             Self::Plan => 2,
             Self::Review => 3,
             Self::Build => 4,
+            Self::Design => 5,
         }
     }
     /// Decodes a known mode without converting unknown values into execution.
@@ -57,6 +60,7 @@ impl ProductInteractionMode {
             2 => Some(Self::Plan),
             3 => Some(Self::Review),
             4 => Some(Self::Build),
+            5 => Some(Self::Design),
             _ => None,
         }
     }
@@ -68,6 +72,7 @@ impl ProductInteractionMode {
             Self::Plan => "Plan · read-only",
             Self::Review => "Review · read-only",
             Self::Build => "Build",
+            Self::Design => "Design",
         }
     }
 }

@@ -10,7 +10,7 @@ Browser workspace/session state, API bindings, commands, file drafts, operations
 | --- | --- |
 | [api.ts](api.ts) | Typed browser HTTP calls to the Rust gateway. |
 | [conversations.ts](conversations.ts) | Conversation selection/state helpers used by the workspace coordinator. |
-| [modes.ts](modes.ts) | Shared Chat/Plan/Review/Build labels and behavior descriptions. |
+| [modes.ts](modes.ts) | Shared Chat/Design/Plan/Review/Build labels and behavior descriptions. |
 | [operations.svelte.ts](operations.svelte.ts) | Reactive pending-operation/recovery tracking and replay controls. |
 | [types.ts](types.ts) | Browser workspace, session, run, provider, file, and operation data shapes. |
 | [workspace.svelte.ts](workspace.svelte.ts) | Reactive browser workspace/session coordinator, daemon/API polling, command dispatch, drafts, provider choices, and persistence. |

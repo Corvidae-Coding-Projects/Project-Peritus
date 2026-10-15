@@ -192,6 +192,7 @@ fn interaction_mode(value: &str) -> Result<ProductInteractionMode> {
     match value {
         "chat" => Ok(ProductInteractionMode::Chat),
         "plan" => Ok(ProductInteractionMode::Plan),
+        "design" => Ok(ProductInteractionMode::Design),
         "review" => Ok(ProductInteractionMode::Review),
         "build" => Ok(ProductInteractionMode::Build),
         _ => Err(problem("Unknown conversation mode")),

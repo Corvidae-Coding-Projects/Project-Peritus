@@ -1,5 +1,6 @@
 //! Read-only conversational front end to the existing production execution pipeline.
 
+mod design;
 mod tools;
 
 use super::{
@@ -37,7 +38,13 @@ impl ProductRunner {
             && input.conversation.permits_pipeline_handoff();
         // Read-only turns also need retrievable exact observations and transport-aware views.
         // Their separate reviewer lineage excludes writer-derived memory and workspace writes.
-        let memory = input.working_memory(if allow_pipeline { "writer" } else { "reviewer" })?;
+        let memory = input.working_memory(if mode == ConversationMode::Design {
+            "design-interview"
+        } else if allow_pipeline {
+            "writer"
+        } else {
+            "reviewer"
+        })?;
         let mut continuing_segment = false;
         loop {
             accounting.check()?;
@@ -46,7 +53,8 @@ impl ProductRunner {
             } else {
                 &input.providers.writer
             };
-            let mut tools = ConversationTools::new(&input, allow_pipeline);
+            let mut tools =
+                ConversationTools::new(&input, allow_pipeline, mode == ConversationMode::Design);
             let request = request(
                 &input,
                 mode,
@@ -200,6 +208,7 @@ pub(super) fn system(mode: ConversationMode) -> String {
         ConversationMode::Plan => {
             "You are Peritus in read-only planning mode. Discuss and inspect relevant repository evidence to propose a practical design or plan. Do not implement, invoke processes, change files, or claim the plan was approved. Answer conversationally; ask only material questions."
         }
+        ConversationMode::Design => design::POLICY,
         ConversationMode::Review => {
             "You are Peritus performing a fresh independent read-only review. Inspect actual source and changes using the available read-only tools. Report concrete findings with locations and evidence, distinguish uncertainty, and do not implement fixes or claim unrun checks passed. The conversation is context, not proof of correctness."
         }
@@ -207,6 +216,7 @@ pub(super) fn system(mode: ConversationMode) -> String {
     let cues = crate::engineering_workflow::vitamins::conversation(match mode {
         ConversationMode::Chat => "chat",
         ConversationMode::Plan => "plan",
+        ConversationMode::Design => "plan",
         ConversationMode::Review => "review",
     });
     format!(
@@ -223,11 +233,24 @@ fn request(
     continuing_segment: bool,
 ) -> Result<DeveloperLoopRequest, ProductRunnerError> {
     let transcript = input.conversation.stable_request_context();
-    let (prompt, attachments) = input.media(&transcript, profile)?.into_parts(transcript);
+    let (mut prompt, attachments) = input.media(&transcript, profile)?.into_parts(transcript);
     let mut definitions = crate::developer_tools::read_only_definitions()?;
     if allow_pipeline {
         definitions
             .push(tools::definition().map_err(|error| crate::turn::developer_error(&error))?);
+    }
+    if mode == ConversationMode::Design {
+        definitions
+            .push(design::definition().map_err(|error| crate::turn::developer_error(&error))?);
+        prompt.push_str("\n\nCurrent interview draft:\n");
+        prompt.push_str(&crate::guided_design::context(input)?);
+    } else if mode == ConversationMode::Chat {
+        let design = crate::guided_design::implementation_context(input)?;
+        if design.is_empty() {
+            prompt.push_str("\n\nHost observation: this conversation has no saved guided-design document. Do not search context archives for one. A guided design is optional for ordinary Chat requests. If the user specifically asked to implement their saved design, help them start /design with one focused question instead of implementing without that document.");
+        } else {
+            prompt.push_str(&design);
+        }
     }
     let mut policy = system(mode);
     policy.push_str(input.delivery_instructions());

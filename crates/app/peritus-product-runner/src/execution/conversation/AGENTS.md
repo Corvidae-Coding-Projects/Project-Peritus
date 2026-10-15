@@ -8,6 +8,7 @@ Implementation pieces for `conversation.rs`: Read-only conversational front end 
 
 | File | Role |
 | --- | --- |
+| [design.rs](design.rs) | Conversational interview policy and private design-draft tool; cannot mutate the workspace or launch implementation. |
 | [tools.rs](tools.rs) | A read-only conversation can hand authorized implementation to the production pipeline. |
 
 Owning module: [conversation.rs](../conversation.rs). Inspect that parent before changing the local pieces.

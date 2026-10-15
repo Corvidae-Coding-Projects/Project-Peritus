@@ -634,7 +634,7 @@ export interface WorkbenchDismissReviewIntent {
 
 export interface WorkbenchContinuation {
   readonly query: WorkbenchQuery;
-  readonly mode: "chat" | "plan" | "review" | "build";
+  readonly mode: "chat" | "plan" | "review" | "build" | "design";
   readonly operation?: ControlOperationId;
 }
 
@@ -647,7 +647,7 @@ export interface WorkbenchExecutionState {
 export interface WorkbenchExecutionSettings {
   readonly run: RunId;
   readonly providers: ProductProviderSelection;
-  readonly mode: "chat" | "plan" | "review" | "build";
+  readonly mode: "chat" | "plan" | "review" | "build" | "design";
   readonly hasEffort: boolean;
   readonly models: ProductRoleModels;
 }
@@ -1994,7 +1994,7 @@ export interface ProductActivity {
 export interface ProductInteractionSnapshot {
   readonly settled: boolean;
   readonly state: ProductRunSnapshot | ProductRunSettlementSnapshot;
-  readonly mode: "chat" | "plan" | "review" | "build";
+  readonly mode: "chat" | "plan" | "review" | "build" | "design";
   readonly models: ProductRoleModels;
   readonly received: UInt64;
   readonly incorporated: UInt64;

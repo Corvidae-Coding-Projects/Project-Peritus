@@ -10,6 +10,9 @@ pub(super) const fn starting(mode: ProductInteractionMode) -> &'static str {
         ProductInteractionMode::Plan => {
             "I'll work through the plan with you without changing files."
         }
+        ProductInteractionMode::Design => {
+            "I'm helping you shape the design. You can revise any decision before starting implementation."
+        }
         ProductInteractionMode::Review => {
             "I'll review the evidence and share what I find, without changing files."
         }

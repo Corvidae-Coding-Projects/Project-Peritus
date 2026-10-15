@@ -25,7 +25,8 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
     loop {
         check_cancelled(input)?;
         let revision = input.conversation.revision();
-        let transcript = input.conversation.stable_request_context();
+        let mut transcript = input.conversation.stable_request_context();
+        transcript.push_str(&crate::guided_design::implementation_context(input)?);
         let inventory = inventory(&input.workspace_root, || check_cancelled(input))?;
         if input.conversation.revision() != revision {
             continue;

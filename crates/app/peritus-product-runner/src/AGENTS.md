@@ -29,6 +29,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [failover.rs](failover.rs) | Explicit provider-chain selection after ordinary role recovery is exhausted. |
 | [file_metadata.rs](file_metadata.rs) | Portable workspace metadata used by grounding and progress evidence. |
 | [gates.rs](gates.rs) | Candidate-aware D1 gate execution adapter. |
+| [guided_design.rs](guided_design.rs) | Versioned, run-scoped interactive Markdown draft storage and explicit input to implementation designers. |
 | [lib.rs](lib.rs) | Daemon-side product coding-run execution. This crate coordinates concrete provider calls, managed-worktree edits, repository gates, and an independent review/fix cycle. It owns no UI and grants no authority; the daemon supplies… |
 | [model_output.rs](model_output.rs) | Shared strict extraction of typed JSON objects from model responses. |
 | [progress.rs](progress.rs) | Bounded candidate fingerprints used to replenish productive developer work segments. |

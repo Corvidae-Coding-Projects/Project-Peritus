@@ -698,7 +698,7 @@ Rust type: `WorkbenchContinuation`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
-| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
+| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build" | "design"` | — |
 | `operation` | no | `option+value` | `Option<ControlOperationId>` | `ControlOperationId` | `nonzero` |
 
 ### `WorkbenchExecutionState`
@@ -719,7 +719,7 @@ Rust type: `WorkbenchExecutionSettings`
 |---|:---:|---|---|---|---|
 | `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
 | `providers` | yes | `ordered-fields` | `ProductProviderSelection` | `ProductProviderSelection` | — |
-| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
+| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build" | "design"` | — |
 | `hasEffort` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `models` | yes | `ordered-fields` | `ProductRoleModels` | `ProductRoleModels` | — |
 
@@ -2834,7 +2834,7 @@ Rust type: `ProductInteractionSnapshot`
 |---|:---:|---|---|---|---|
 | `settled` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `state` | yes | `ordered-fields` | `ProductRunSnapshot | ProductRunSettlementSnapshot` | `ProductRunSnapshot | ProductRunSettlementSnapshot` | — |
-| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
+| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build" | "design"` | — |
 | `models` | yes | `ordered-fields` | `ProductRoleModels` | `ProductRoleModels` | — |
 | `received` | yes | `u64-be` | `u64` | `UInt64` | — |
 | `incorporated` | yes | `u64-be` | `u64` | `UInt64` | — |

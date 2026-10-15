@@ -87,9 +87,21 @@ Distribute the complete asset directory, including `licenses/`; see
    trust use Peritus's own interactive flows.
 3. Return to the browser and use **Reconnect** (`/reconnect`) to reload provider,
    workspace, and connection observations.
-4. Select Chat, Plan, Review, or Build, choose role models if needed, and send a
+4. Select Chat, Design, Plan, Review, or Build, choose role models if needed, and send a
    message. The status distinguishes daemon-received input from input observed
    as incorporated into a provider request.
+
+Choose **Design something** or enter `/design` for a conversational design interview.
+Answer in your own words, choose a suggested answer, or ask to change an earlier decision.
+**Show draft** displays the saved Markdown; **Revise draft** prepares a change message.
+Closing a tab or restarting the daemon preserves the saved draft and next question.
+**Start implementation** explicitly sends the design to the existing build pipeline.
+Drafting itself does not change project files or execute commands.
+
+Use **Focus conversation** beside the session title for a larger reading area. It hides
+workspace side panels and extra navigation, compacts the composer, and keeps the conversation
+and its controls available. **Show workspace panels** restores the full workspace. The choice
+survives a browser reload. Laptop-height windows also use a shorter header by default.
 
 Adding a browser project does not register or trust a daemon workspace. The
 setup banner remains until a matching canonical root or selected repository is

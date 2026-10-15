@@ -88,6 +88,9 @@ impl ProductRunService {
                     Some(peritus_app_protocol::ProductInteractionMode::Plan) => {
                         Some(peritus_product_runner::ConversationMode::Plan)
                     }
+                    Some(peritus_app_protocol::ProductInteractionMode::Design) => {
+                        Some(peritus_product_runner::ConversationMode::Design)
+                    }
                     Some(peritus_app_protocol::ProductInteractionMode::Review) => {
                         Some(peritus_product_runner::ConversationMode::Review)
                     }
