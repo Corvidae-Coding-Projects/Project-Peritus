@@ -11,6 +11,7 @@ Implementation pieces for `registry.rs`: Initial release schema marker and futur
 | [v1.rs](v1.rs) | Bootstrap migration source and reviewed digest. |
 | [v2.rs](v2.rs) | Independent logical artifact identities sharing content-addressed bytes. |
 | [v3.rs](v3.rs) | Preserve exact history nodes while removing synthetic logical state capacities. |
+| [v4.rs](v4.rs) | Preserve state bytes and receipts while moving large values out of the lookup key tree. |
 | [validation.rs](validation.rs) | Validation helpers for reviewed migration descriptors. |
 
 Owning module: [registry.rs](../registry.rs). Inspect that parent before changing the local pieces.

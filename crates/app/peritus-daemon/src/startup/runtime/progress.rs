@@ -13,14 +13,19 @@ pub(super) struct StartupProgress {
     store_id: StoreId,
     plan: StartupPlan,
     lifecycle: DaemonLifecycle,
+    started: std::time::Instant,
+    previous: std::time::Instant,
 }
 
 impl StartupProgress {
-    pub(super) const fn new(store_id: StoreId) -> Self {
+    pub(super) fn new(store_id: StoreId) -> Self {
+        let now = std::time::Instant::now();
         Self {
             store_id,
             plan: StartupPlan::new(StartupFailpoints::none()),
             lifecycle: DaemonLifecycle::starting(),
+            started: now,
+            previous: now,
         }
     }
 
@@ -39,6 +44,13 @@ impl StartupProgress {
             self.lifecycle.advance(phase)?;
         }
         let ordinal = self.plan.checkpoints().len();
+        let now = std::time::Instant::now();
+        crate::diagnostic::report(&format!(
+            "peritusd: startup {phase:?} completed in {:.3}s (total {:.3}s)",
+            now.duration_since(self.previous).as_secs_f64(),
+            now.duration_since(self.started).as_secs_f64()
+        ));
+        self.previous = now;
         self.plan
             .complete_active(
                 phase,

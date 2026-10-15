@@ -31,9 +31,13 @@ fn available(profile: &WorkspaceProfile) -> bool {
     let Ok(observed) = peritus_workspace::FolderIdentity::observe(root) else {
         return false;
     };
-    let digest = observed.digest().as_bytes().iter().fold(String::new(), |mut text, byte| {
-        write!(text, "{byte:02x}").expect("writing to String cannot fail");
-        text
-    });
-    observed.root() == root && digest == profile.repository_identity()
+    let render = |digest: peritus_types::Sha256Digest| {
+        digest.as_bytes().iter().fold(String::new(), |mut text, byte| {
+            write!(text, "{byte:02x}").expect("writing to String cannot fail");
+            text
+        })
+    };
+    observed.root() == root
+        && (render(observed.digest()) == profile.repository_identity()
+            || render(observed.legacy_digest()) == profile.repository_identity())
 }

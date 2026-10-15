@@ -47,6 +47,7 @@ When adding or moving code, update the local file table and the immediate parent
 
 ## Directory index
 
+- [docs/testing/reproducers/startup-recovery](testing/reproducers/startup-recovery/AGENTS.md)
 - [docs/testing/reproducers/guided-design](testing/reproducers/guided-design/AGENTS.md)
 
 The links below cover the complete repository-managed directory set; each page links onward to local files and child waypoints.

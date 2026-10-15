@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 pub struct FolderIdentity {
     root: PathBuf,
     digest: Sha256Digest,
+    legacy_digest: Sha256Digest,
 }
 
 impl FolderIdentity {
@@ -46,7 +47,23 @@ impl FolderIdentity {
                 .map_err(std::io::Error::other)?;
             identity.extend_from_slice(&created.as_nanos().to_le_bytes());
         }
-        Ok(Self { root, digest: peritus_codec::sha256(&identity) })
+        let legacy_digest = peritus_codec::sha256(&identity);
+        // Linux can assign a different anonymous device number to the same Btrfs
+        // filesystem after a reboot. Directory birth time and inode survive it,
+        // while replacing the directory changes its identity. Filesystems without
+        // birth times retain the original device/inode identity and repair path.
+        #[cfg(unix)]
+        if let Ok(created) = metadata.created() {
+            use std::os::unix::fs::MetadataExt as _;
+            let created =
+                created.duration_since(std::time::UNIX_EPOCH).map_err(std::io::Error::other)?;
+            let mut stable = b"peritus-direct-folder-v2\0".to_vec();
+            stable.extend_from_slice(text.as_bytes());
+            stable.extend_from_slice(&metadata.ino().to_le_bytes());
+            stable.extend_from_slice(&created.as_nanos().to_le_bytes());
+            return Ok(Self { root, digest: peritus_codec::sha256(&stable), legacy_digest });
+        }
+        Ok(Self { root, digest: legacy_digest, legacy_digest })
     }
 
     /// Borrows the canonical folder selected by the user.
@@ -59,5 +76,17 @@ impl FolderIdentity {
     #[must_use]
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
+    }
+
+    /// Accepts the current identity or a legacy device/inode identity on this mount.
+    #[must_use]
+    pub fn matches_digest(&self, digest: Sha256Digest) -> bool {
+        digest == self.digest || digest == self.legacy_digest
+    }
+
+    /// Original device/inode identity, for authenticated migration of existing trust.
+    #[must_use]
+    pub const fn legacy_digest(&self) -> Sha256Digest {
+        self.legacy_digest
     }
 }

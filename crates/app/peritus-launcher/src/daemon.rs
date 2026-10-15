@@ -194,6 +194,7 @@ impl DaemonSupervisor {
         let mut child = spawn_daemon(binaries, product, &log_path)?;
         let process_id = child.id();
         let started = Instant::now();
+        let mut next_notice = Duration::from_secs(5);
         loop {
             if endpoint_ready(&endpoint).await {
                 record_applied_configuration(product, &daemon_digest)?;
@@ -219,6 +220,14 @@ impl DaemonSupervisor {
                     seconds: self.readiness_timeout.as_secs(),
                     log: log_path,
                 });
+            }
+            if started.elapsed() >= next_notice {
+                eprintln!(
+                    "Peritus daemon is recovering saved state ({} seconds); diagnostics: {}",
+                    started.elapsed().as_secs(),
+                    log_path.display()
+                );
+                next_notice += Duration::from_secs(5);
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }

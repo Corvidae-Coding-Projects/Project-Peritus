@@ -24,7 +24,15 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 `peritus-launcher` is the C-class G4 host-composition boundary behind interactive `peritus` startup.
 It discovers and protects platform-local roots, atomically publishes immutable product-state
 generations and generated G0 inputs, resolves the matching packaged daemon, establishes bounded
-readiness, and hands the endpoint to `peritus-tui`.
+readiness, and hands the endpoint to `peritus-tui`. Interactive startup allows up to five
+minutes for cold recovery or a one-time state migration and prints a progress notice every five
+seconds. The daemon log records timings for each completed recovery phase.
+
+Remembered in-place folders retain their workspace/conversation identity after Git initialization
+or filesystem device renumbering. Folder identity uses directory birth time and inode where
+available; matching legacy trust upgrades automatically. If continuity cannot be established,
+Peritus asks to trust the current directory again and retains its conversation lineage. Declining
+keeps it restricted. `peritus workspaces` can restore trust later.
 
 Its setup composition presents the complete built-in provider catalog, persists choices before
 daemon startup, generates immutable C5 route configuration, and provides focused provider repair

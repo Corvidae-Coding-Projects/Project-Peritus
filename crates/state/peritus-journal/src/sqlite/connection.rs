@@ -293,7 +293,7 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
         ));
     }
     let mut version = version;
-    if matches!(version, 1 | 2) {
+    if version < super::schema::SCHEMA_VERSION {
         let migration_owned: bool = connection.query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'schema_migrations')",
             [], |row| row.get(0),
@@ -329,6 +329,12 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             .execute_batch(super::schema::GROW_STATE_HISTORY)
             .map_err(|error| JournalError::sqlite("migrate state history capacity", error))?;
         version = 3;
+    }
+    if version == 3 {
+        connection
+            .execute_batch(super::schema::SEPARATE_STATE_VALUES)
+            .map_err(|error| JournalError::sqlite("migrate state lookup layout", error))?;
+        version = 4;
     }
     if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(

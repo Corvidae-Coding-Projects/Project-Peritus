@@ -115,6 +115,18 @@ impl WorkspaceProfile {
         Ok(self)
     }
 
+    /// Refreshes a folder's observed identity while retaining its conversation lineage.
+    /// Effect authority is revoked; the caller must verify or reacquire trust separately.
+    pub fn refresh_folder_identity(mut self, identity: String) -> Result<Self, ProductStateError> {
+        if !self.direct_folder {
+            return Err(invalid("only a direct folder can refresh its directory identity"));
+        }
+        self = self.restrict();
+        self.repository_identity = identity;
+        self.validate()?;
+        Ok(self)
+    }
+
     /// Whether effects target the selected directory itself instead of a managed Git worktree.
     #[must_use]
     pub const fn is_direct_folder(&self) -> bool {

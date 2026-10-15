@@ -93,7 +93,7 @@ async fn launch_interactive_target(
     let prepared = workspace_setup::ensure_configured(prepared, repository.as_deref())?;
     let prepared = provider_setup::ensure_configured(prepared)?;
     let binaries = SiblingBinaries::discover()?;
-    let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
+    let supervisor = DaemonSupervisor::new(Duration::from_secs(300));
     if endpoint.as_deref().is_some_and(|endpoint| endpoint != prepared.endpoint_path()) {
         return Err(LauncherError::Interaction("The selected workspace uses a different daemon endpoint. Reconnect the browser to its configured daemon.".into()));
     }

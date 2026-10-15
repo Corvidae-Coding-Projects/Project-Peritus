@@ -23,6 +23,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [startup-recovery/](startup-recovery/AGENTS.md) | Actual slow-start, interrupted endpoint, folder replacement, trust repair and legacy-upgrade replay. |
 | [guided-design/](guided-design/AGENTS.md) | Real interview, durable Markdown, restart, corrected-choice handoff, and CLI behavior replay. |
 | [composer-modes/](composer-modes/AGENTS.md) | Real-interface replay resources for composer modes; start with the local README/driver and its documented disposable-state prerequisites. |
 | [computer-automation/](computer-automation/AGENTS.md) | Real-interface replay resources for computer automation; start with the local README/driver and its documented disposable-state prerequisites. |

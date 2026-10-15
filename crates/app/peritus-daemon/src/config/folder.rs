@@ -52,12 +52,17 @@ impl FolderDeclaration {
     pub(crate) fn verify(&self) -> Result<(), DaemonError> {
         let observed = peritus_workspace::FolderIdentity::observe(&self.root)
             .map_err(|_| invalid("direct folder is unavailable; select or trust it again"))?;
-        let actual = observed.digest().as_bytes().iter().fold(String::new(), |mut value, byte| {
-            use std::fmt::Write as _;
-            let _ = write!(value, "{byte:02x}");
-            value
-        });
-        if observed.root() != self.root || actual != self.identity {
+        let render = |digest: peritus_types::Sha256Digest| {
+            digest.as_bytes().iter().fold(String::new(), |mut value, byte| {
+                use std::fmt::Write as _;
+                let _ = write!(value, "{byte:02x}");
+                value
+            })
+        };
+        if observed.root() != self.root
+            || (render(observed.digest()) != self.identity
+                && render(observed.legacy_digest()) != self.identity)
+        {
             return Err(invalid("direct folder identity changed; select or trust it again"));
         }
         Ok(())
