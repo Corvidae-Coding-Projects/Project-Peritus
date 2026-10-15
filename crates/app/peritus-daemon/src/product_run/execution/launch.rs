@@ -51,7 +51,7 @@ impl ProductRunService {
             };
             tasks.retain(|(_, existing)| !existing.is_finished());
             let task = tokio::spawn(async move {
-                let folder = service.inner.folders.get(&request.workspace_id());
+                let folder = service.inner.workspaces.folder(&request.workspace_id());
                 let command_runtime = match runtime::open(&service, &request, &workspace_root) {
                     Ok(runtime) => runtime,
                     Err(error) => {

@@ -12,6 +12,11 @@ pub struct ProductRunPolicy {
 }
 
 impl ProductRunPolicy {
+    pub(super) const fn runtime_policy(mut self) -> Self {
+        self._legacy_provider_turn_timeout_seconds = None;
+        self
+    }
+
     /// Returns whether a role may try another configured provider after ordinary recovery ends.
     #[must_use]
     pub const fn automatic_provider_failover(self) -> bool {

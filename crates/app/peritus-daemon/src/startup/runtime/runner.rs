@@ -41,6 +41,13 @@ impl DaemonRuntime {
     ///
     /// Returns the exact failed startup boundary. No later worker is started after a failure.
     pub async fn start(config: DaemonConfig) -> Result<Self, DaemonError> {
+        Self::start_with_generation(config, None).await
+    }
+
+    pub(crate) async fn start_with_generation(
+        config: DaemonConfig,
+        generation: Option<u64>,
+    ) -> Result<Self, DaemonError> {
         let store_id = config.store_identity()?;
         let mut progress = StartupProgress::new(store_id);
         let identity = DaemonIdentity::new(store_id);
@@ -107,9 +114,8 @@ impl DaemonRuntime {
             config.store_identity()?,
             &components,
             &workspaces,
-            config.product(),
-            config.context().local().clone(),
             processes.clone(),
+            config.clone(),
         )?;
         progress.complete(StartupPhase::DomainRecovery)?;
         crate::rsi::recovery::recover_owned(&mut journal, &artifacts, &processes, &config)?;
@@ -125,6 +131,11 @@ impl DaemonRuntime {
             }
         };
         progress.complete(StartupPhase::Outbox)?;
+        // Establish the catalog generation before IPC becomes visible: early reconnects must
+        // never replay an older pending catalog over this configuration.
+        if let Some(generation) = generation {
+            product_runs.set_workspace_generation(generation)?;
+        }
         let endpoint = LocalEndpoint::bind(config.paths().state_root(), &identity).await?;
         install_local_principal(&mut journal, &config, &endpoint, store_id)?;
         progress.complete(StartupPhase::Ipc)?;
@@ -149,8 +160,16 @@ impl DaemonRuntime {
         } else {
             Some(OutboxRuntime::start(
                 authority.clone(),
-                DestinationRouter::production(&authority, std::sync::Arc::new(crate::rsi::runtime::NativeRsiPort::new(
-                    authority.clone(), config.clone(), processes.clone(), rsi_stopping.clone())), 64)?,
+                DestinationRouter::production(
+                    &authority,
+                    std::sync::Arc::new(crate::rsi::runtime::NativeRsiPort::new(
+                        authority.clone(),
+                        config.clone(),
+                        processes.clone(),
+                        rsi_stopping.clone(),
+                    )),
+                    64,
+                )?,
                 authority_epoch.get(),
             )?)
         };

@@ -12,6 +12,8 @@ use sha2::{Digest, Sha256};
 
 use crate::{LauncherError, PreparedProduct};
 
+mod catalog;
+
 /// Exact packaged executables used by product composition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SiblingBinaries {
@@ -174,12 +176,19 @@ impl DaemonSupervisor {
         product: &PreparedProduct,
         binaries: &SiblingBinaries,
     ) -> Result<DaemonLaunch, LauncherError> {
+        let _launch = catalog::launch_lock(product, self.readiness_timeout).await?;
+        let daemon_digest = hex_digest(file_digest(binaries.daemon())?);
         let endpoint = product.endpoint_path();
         if endpoint_ready(&endpoint).await {
-            if applied_configuration_matches(product, binaries)? {
+            if applied_configuration_matches(product, &daemon_digest)? {
                 return Ok(DaemonLaunch::Reused);
             }
-            let _stopped = self.shutdown(product, binaries).await?;
+            if catalog::update_running(product, binaries, &daemon_digest).await? {
+                return Ok(DaemonLaunch::Reused);
+            }
+            return Err(LauncherError::DaemonSpawn(
+                "The running daemon uses different provider or executable settings. It was kept running to preserve existing sessions. Gracefully shut it down with `peritus shutdown`, then launch again to apply those settings.".to_owned(),
+            ));
         }
         let log_path = product.layout().daemon_log();
         let mut child = spawn_daemon(binaries, product, &log_path)?;
@@ -187,14 +196,14 @@ impl DaemonSupervisor {
         let started = Instant::now();
         loop {
             if endpoint_ready(&endpoint).await {
-                record_applied_configuration(product, binaries)?;
+                record_applied_configuration(product, &daemon_digest)?;
                 return Ok(DaemonLaunch::Started { process_id });
             }
             if let Some(status) =
                 child.try_wait().map_err(|error| LauncherError::DaemonSpawn(error.to_string()))?
             {
                 if endpoint_ready(&endpoint).await {
-                    if !applied_configuration_matches(product, binaries)? {
+                    if !applied_configuration_matches(product, &daemon_digest)? {
                         return Err(LauncherError::DaemonSpawn(
                             "another daemon started with a different product configuration"
                                 .to_owned(),
@@ -303,10 +312,10 @@ fn spawn_daemon(
 
 fn applied_configuration_matches(
     product: &PreparedProduct,
-    binaries: &SiblingBinaries,
+    daemon_digest: &str,
 ) -> Result<bool, LauncherError> {
     let marker = product.layout().daemon_applied_configuration();
-    let expected = applied_identity(&product.daemon_config_path(), binaries.daemon())?;
+    let expected = applied_identity(&product.daemon_config_path(), daemon_digest);
     match fs::read_to_string(&marker) {
         Ok(actual) => Ok(actual == expected),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
@@ -320,10 +329,10 @@ fn applied_configuration_matches(
 
 fn record_applied_configuration(
     product: &PreparedProduct,
-    binaries: &SiblingBinaries,
+    daemon_digest: &str,
 ) -> Result<(), LauncherError> {
     let marker = product.layout().daemon_applied_configuration();
-    let identity = applied_identity(&product.daemon_config_path(), binaries.daemon())?;
+    let identity = applied_identity(&product.daemon_config_path(), daemon_digest);
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -338,13 +347,12 @@ fn record_applied_configuration(
     })
 }
 
-fn applied_identity(configuration: &Path, daemon: &Path) -> Result<String, LauncherError> {
-    let digest = file_digest(daemon)?;
-    Ok(format!(
+fn applied_identity(configuration: &Path, daemon_digest: &str) -> String {
+    format!(
         "peritus-applied-daemon-v2\nconfiguration={}\ndaemon-sha256={}\n",
         configuration.display(),
-        hex_digest(digest)
-    ))
+        daemon_digest
+    )
 }
 
 fn file_digest(path: &Path) -> Result<[u8; 32], LauncherError> {

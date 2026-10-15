@@ -144,7 +144,6 @@ impl ProductRunService {
             self.inner
                 .workspaces
                 .get(&active_launch_run(self, run, request.launch())?)
-                .cloned()
                 .ok_or_else(|| app_error(Code::InvalidIdentifier))?,
             CAPTURE_HELPER_TIMEOUT,
             false,

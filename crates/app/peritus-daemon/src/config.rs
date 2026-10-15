@@ -184,6 +184,50 @@ pub struct DaemonConfig {
 }
 
 impl DaemonConfig {
+    /// Whether only workspace/project declarations differ from this running configuration.
+    /// Host-injected watchdog paths are retained by the running process.
+    #[must_use]
+    pub fn accepts_workspace_update(&self, candidate: &Self) -> bool {
+        let mut candidate = candidate.clone();
+        candidate.product = candidate.product.runtime_policy();
+        let mut current = self.clone();
+        current.product = current.product.runtime_policy();
+        current.projects.clone_from(&candidate.projects);
+        current.workspaces.clone_from(&candidate.workspaces);
+        current.folders.clone_from(&candidate.folders);
+        current.process_crash_watchdog.clone_from(&candidate.process_crash_watchdog);
+        current == candidate
+    }
+
+    /// Retains already admitted bindings while applying changes to the launcher's recent list.
+    pub(crate) fn retain_workspace_bindings(&mut self, admitted: &Self) -> Result<(), DaemonError> {
+        for old in &admitted.folders {
+            let old_id = old.workspace_id()?;
+            if let Some(new) =
+                self.folders.iter().find(|new| new.workspace_id().is_ok_and(|id| id == old_id))
+            {
+                if !old.same_location(new) {
+                    return Err(invalid(
+                        "workspace update replaces an admitted folder binding; gracefully restart to apply it",
+                    ));
+                }
+            } else {
+                self.folders.push(old.clone());
+            }
+        }
+        for old in &admitted.projects {
+            if !self.projects.contains(old) {
+                self.projects.push(old.clone());
+            }
+        }
+        for old in &admitted.workspaces {
+            if !self.workspaces.contains(old) {
+                self.workspaces.push(old.clone());
+            }
+        }
+        self.validate()
+    }
+
     /// Returns explicitly configured native candidate isolation components.
     #[must_use]
     pub const fn rsi(&self) -> Option<&RsiExecutionConfiguration> {

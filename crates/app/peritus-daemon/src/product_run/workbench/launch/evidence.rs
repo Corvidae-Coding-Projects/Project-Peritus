@@ -181,9 +181,8 @@ impl ProductRunService {
             .inner
             .workspaces
             .get(&query.workspace())
-            .cloned()
             .ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-        let direct = self.inner.folders.contains_key(&query.workspace());
+        let direct = self.inner.workspaces.is_direct(&query.workspace());
         match (direct, profile.source().kind()) {
             (true, WorkbenchLaunchSourceKind::PlainFolderFile) => {
                 let source =

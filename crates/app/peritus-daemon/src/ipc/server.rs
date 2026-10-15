@@ -37,6 +37,15 @@ pub async fn serve(
 ) -> Result<(), DaemonError> {
     let permits = Arc::new(Semaphore::new(maximum_connections));
     let mut connections = JoinSet::new();
+    // One owned metadata coordinator serves all windows. Diagnostic requests stay read-only,
+    // and closing a client cannot cancel another workspace's publication or execution.
+    let catalog = product_runs.clone();
+    let catalog_authority = authority.clone();
+    let catalog_stop = stop.clone();
+    connections.spawn(async move {
+        catalog.watch_workspace_catalog(&catalog_authority, catalog_stop).await;
+        Ok(())
+    });
     let mut retry_at = None;
     loop {
         let action = {

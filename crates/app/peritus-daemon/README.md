@@ -101,6 +101,21 @@ shutdown, and the resource-aware verification commands. Operational procedures l
 [recovery](../../../docs/g0-recovery-runbook.md) and
 [shutdown](../../../docs/g0-shutdown-runbook.md) runbooks.
 
+## Multiple clients and live workspaces
+
+Additional terminal windows share the daemon. New direct folders and managed Git registrations
+are admitted through immutable workspace catalog generations, with roots, folder trust, and host
+permissions replaced together. Existing work continues; selecting a read-only window does not
+change installation-wide tool availability or grant it write authority.
+
+A daemon-owned coordinator admits workspace updates without making status requests mutate
+state. Removing a folder from recents retains its admitted binding until restart, so another
+window can keep using it. Temporarily unavailable inactive folders do not prevent opening a
+different folder. Provider/executable changes and replacement of existing workspace identities
+require a planned graceful restart. A new window preserves the running daemon and gives an
+actionable error when a live update is unsafe or the older daemon does not implement it.
+Normal workspace additions do not restart the service.
+
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

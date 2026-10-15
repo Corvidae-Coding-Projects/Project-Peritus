@@ -129,7 +129,7 @@ impl ProductRunService {
             record.remaining_work = outcome.remaining_work().to_vec();
             record.interruption_cause = outcome.detail().map_or_else(String::new, str::to_owned);
             record.candidate_actionable =
-                !self.inner.folders.contains_key(&record.request.workspace_id())
+                !self.inner.workspaces.is_direct(&record.request.workspace_id())
                     && outcome.candidate().is_some()
                     && outcome.settlement().checkpoint().is_some();
             if matches!(
@@ -169,7 +169,7 @@ impl ProductRunService {
                 let completion_message = format!("Completed: {}", output.summary);
                 let deliverable = self.project_deliverable(record, &outcome);
                 if deliverable.is_none()
-                    && !self.inner.folders.contains_key(&record.request.workspace_id())
+                    && !self.inner.workspaces.is_direct(&record.request.workspace_id())
                 {
                     fail_handoff(record);
                     let _ = persist_record(&self.inner.directory, record);
@@ -297,7 +297,7 @@ impl ProductRunService {
             RunDisposition::Accepted | RunDisposition::WaitingForUser => return String::new(),
         };
         let has_candidate = outcome.candidate().is_some();
-        let in_place = self.inner.folders.contains_key(&record.request.workspace_id());
+        let in_place = self.inner.workspaces.is_direct(&record.request.workspace_id());
         let status = match (outcome.settlement().disposition(), has_candidate) {
             (RunDisposition::CompletedWithoutCandidate, false) => "Evaluation complete — no patch",
             (RunDisposition::Cancelled, _) if in_place => {
@@ -385,7 +385,7 @@ impl ProductRunService {
         record: &super::RunRecord,
         outcome: &ProductRunOutcome,
     ) -> Option<ProductDeliverable> {
-        if self.inner.folders.contains_key(&record.request.workspace_id()) {
+        if self.inner.workspaces.is_direct(&record.request.workspace_id()) {
             return None;
         }
         let output = outcome.candidate()?;

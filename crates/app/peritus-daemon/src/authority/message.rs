@@ -271,6 +271,11 @@ pub(super) enum AuthorityMessage {
         producing_position: u64,
         respond: Response<ApplicationArtifact>,
     },
+    ReconcileWorkspaces {
+        config: Box<crate::DaemonConfig>,
+        admitted: Vec<crate::config::FolderDeclaration>,
+        respond: Response<crate::startup::workspace::WorkspaceCatalog>,
+    },
     RegisterWorkspace {
         workspace: NewApplicationWorkspace,
         respond: Response<ApplicationWorkspace>,

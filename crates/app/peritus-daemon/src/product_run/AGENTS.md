@@ -27,6 +27,7 @@ ProductRunService and the durable human workbench: request admission, interactio
 | [request.rs](request.rs) | Daemon-owned execution request, separate from the public application protocol. |
 | [snapshot.rs](snapshot.rs) | Product-run snapshot construction and state replacement. |
 | [workbench.rs](workbench.rs) | Authenticated A3/domain mapping and the single serialized control-journal owner. |
+| [workspace_catalog.rs](workspace_catalog.rs) | Atomically replaced workspace roots, direct-folder trust, and host permissions; validates monotonic immutable catalog updates without changing providers or interrupting runs. |
 
 ## Child areas
 

@@ -25,6 +25,7 @@ Single-command bootstrap: product state, workspace trust/selection, provider set
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [daemon/](daemon/AGENTS.md) | Shared-daemon launch serialization and live workspace catalog publication. |
 | [app/](app/AGENTS.md) | Implementation pieces for `app.rs`: End-to-end interactive product launch composition. |
 | [bootstrap/](bootstrap/AGENTS.md) | Implementation pieces for `bootstrap.rs`: Resumable protected local bootstrap. |
 | [provider_setup/](provider_setup/AGENTS.md) | Implementation pieces for `provider_setup.rs`: First-run provider selection and focused repeat-launch repair. |

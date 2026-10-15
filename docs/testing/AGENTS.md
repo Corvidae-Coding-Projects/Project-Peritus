@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [second-instance-real-2026-10-15.md](second-instance-real-2026-10-15.md) | Second-launch daemon replacement: root cause, real replay evidence, and limits. |
 | [composer-modes-real-2026-10-13.md](composer-modes-real-2026-10-13.md) | Document: Composer navigation and mode explanations — GitHub #121 / #122. |
 | [computer-automation-campaign-2026-10-11.md](computer-automation-campaign-2026-10-11.md) | Document: Browser and native GUI real-testing campaign. |
 | [computer-automation-defects-2026-10-11.md](computer-automation-defects-2026-10-11.md) | Document: Computer automation: confirmed real defects. |

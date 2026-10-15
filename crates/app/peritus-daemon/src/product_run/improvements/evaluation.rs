@@ -20,7 +20,7 @@ impl ProductRunService {
         let _launch = self.inner.improvement_launch.lock().await;
         let root =
             self.inner.workspaces.get(&request.target()).ok_or(Error::WorkspaceUnavailable)?;
-        if self.inner.folders.contains_key(&request.target()) {
+        if self.inner.workspaces.is_direct(&request.target()) {
             return Err(Error::invalid_data(
                 "evaluate improvement",
                 "Select a Git-backed Peritus source workspace so the patch can be generated in isolation",

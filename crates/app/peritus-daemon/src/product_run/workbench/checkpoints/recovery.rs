@@ -106,7 +106,8 @@ impl ProductRunService {
             && plan_exact
             && let Some(patch) = plan
         {
-            let root = self.workspace_root(command.query())?;
+            let workspace_root = self.workspace_root(command.query())?;
+            let root = workspace_root.as_path();
             if let Ok(identity) = self.checked_folder_identity(command.query(), root)
                 && let (Ok(resource), Ok(environment), Ok(action)) = (
                     super::super::folder_mutation::folder_resource_id(command.query().workspace()),

@@ -21,6 +21,13 @@ pub struct FolderDeclaration {
 }
 
 impl FolderDeclaration {
+    pub(crate) fn same_location(&self, other: &Self) -> bool {
+        self.workspace_id == other.workspace_id
+            && self.root == other.root
+            && self.identity == other.identity
+            && self.protected_paths == other.protected_paths
+    }
+
     /// Returns the validated workspace identity.
     pub fn workspace_id(&self) -> Result<WorkspaceId, DaemonError> {
         WorkspaceId::new(decode_identifier(&self.workspace_id, "folder workspace identity")?)

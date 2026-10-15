@@ -198,7 +198,7 @@ pub(super) fn current_snapshot(
         .workspaces
         .get(&record.request.workspace_id())
         .ok_or(ControlError::ScopeMismatch)?;
-    let live_candidate = ProductRunner::candidate_digest(workspace)
+    let live_candidate = ProductRunner::candidate_digest(&workspace)
         .map_err(|_| Error::Corrupt("candidate digest unavailable"))?;
     let candidate = record
         .checkpoint

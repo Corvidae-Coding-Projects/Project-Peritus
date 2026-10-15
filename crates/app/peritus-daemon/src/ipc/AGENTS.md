@@ -11,7 +11,7 @@ Implementation pieces for `ipc.rs`: Authenticated local IPC and bounded A3 frame
 | [endpoint.rs](endpoint.rs) | Cross-platform local endpoint facade. |
 | [frame.rs](frame.rs) | Allocation-bounded asynchronous PRTS frame transport. |
 | [peer.rs](peer.rs) | Canonical authenticated operating-system peer identity. |
-| [server.rs](server.rs) | Bounded authenticated local connection acceptor and owned task set. |
+| [server.rs](server.rs) | Bounded authenticated local connection acceptor and owned task set, including the shared workspace metadata coordinator. |
 | [unix.rs](unix.rs) | Protected Unix-domain endpoint and peer-credential admission. |
 | [windows.rs](windows.rs) | Same-user Windows named-pipe endpoint and peer-token admission. |
 

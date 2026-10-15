@@ -21,7 +21,8 @@ impl ProductRunService {
         record: &ConversationRecord,
         query: peritus_app_protocol::WorkbenchQuery,
     ) -> Result<CapturedCoverage, Error> {
-        let root = self.workspace_root(query)?;
+        let workspace_root = self.workspace_root(query)?;
+        let root = workspace_root.as_path();
         let identity = self.checked_folder_identity(query, root)?;
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
@@ -64,7 +65,8 @@ impl ProductRunService {
         query: peritus_app_protocol::WorkbenchQuery,
         checkpoint: &UserCheckpoint,
     ) -> Result<Vec<CapturedPath>, Error> {
-        let root = self.workspace_root(query)?;
+        let workspace_root = self.workspace_root(query)?;
+        let root = workspace_root.as_path();
         let identity = self.checked_folder_identity(query, root)?;
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
@@ -80,11 +82,10 @@ impl ProductRunService {
     pub(super) fn workspace_root(
         &self,
         query: peritus_app_protocol::WorkbenchQuery,
-    ) -> Result<&Path, Error> {
+    ) -> Result<std::path::PathBuf, Error> {
         self.inner
             .workspaces
             .get(&query.workspace())
-            .map(std::path::PathBuf::as_path)
             .ok_or_else(|| ControlError::ScopeMismatch.into())
     }
 
@@ -93,7 +94,7 @@ impl ProductRunService {
         query: peritus_app_protocol::WorkbenchQuery,
         root: &Path,
     ) -> Result<FolderIdentity, Error> {
-        if let Some(folder) = self.inner.folders.get(&query.workspace()) {
+        if let Some(folder) = self.inner.workspaces.folder(&query.workspace()) {
             folder.verify().map_err(|_| ControlError::ScopeMismatch)?;
         }
         FolderIdentity::observe(root).map_err(Error::from)
@@ -103,7 +104,8 @@ impl ProductRunService {
         &self,
         query: peritus_app_protocol::WorkbenchQuery,
     ) -> Result<Vec<std::path::PathBuf>, Error> {
-        let root = self.workspace_root(query)?;
+        let workspace_root = self.workspace_root(query)?;
+        let root = workspace_root.as_path();
         let state_root = self
             .inner
             .directory
@@ -113,7 +115,7 @@ impl ProductRunService {
         // capability boundary; protecting its ancestor would incorrectly protect every file.
         let mut protected =
             if state_root.starts_with(root) { vec![state_root.to_path_buf()] } else { Vec::new() };
-        if let Some(folder) = self.inner.folders.get(&query.workspace()) {
+        if let Some(folder) = self.inner.workspaces.folder(&query.workspace()) {
             protected.extend_from_slice(folder.protected_paths());
         }
         Ok(protected)

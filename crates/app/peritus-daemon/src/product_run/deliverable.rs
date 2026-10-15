@@ -64,9 +64,9 @@ impl ProductRunService {
         }
         if action == ProductRunControlAction::Commit {
             deliverable =
-                commit::validate_retry(&self.inner.directory, record, &deliverable, workspace)?;
+                commit::validate_retry(&self.inner.directory, record, &deliverable, &workspace)?;
         } else if pending.is_none() {
-            validate_exact_candidate(record, &deliverable, workspace)?;
+            validate_exact_candidate(record, &deliverable, &workspace)?;
         }
         let (deliverable, status) = match action {
             ProductRunControlAction::Accept => {
@@ -103,7 +103,7 @@ impl ProductRunService {
                     discard::Reservation::prepare(&self.inner.directory, record, &deliverable)?;
                 let pending = match pending {
                     Some(pending) => Some(pending),
-                    None => discard::Pending::prepare(&self.inner.directory, record, workspace)?,
+                    None => discard::Pending::prepare(&self.inner.directory, record, &workspace)?,
                 };
                 let recovered = if let Some(pending) = pending {
                     match pending.execute(&self.inner.directory, record) {
@@ -120,7 +120,7 @@ impl ProductRunService {
                         .as_deref()
                         .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
                     ProductRunner::discard_from_baseline(
-                        workspace,
+                        &workspace,
                         baseline,
                         deliverable.changed_paths(),
                     )

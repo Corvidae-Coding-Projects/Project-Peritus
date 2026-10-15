@@ -10,7 +10,7 @@ pub(super) fn open(
 ) -> Result<CommandRuntime, ProductRunnerError> {
     let run_id = request.run_id();
     let state = service.inner.directory.join("commands").join(run_hex(run_id));
-    let runtime = if service.inner.folders.contains_key(&request.workspace_id()) {
+    let runtime = if service.inner.workspaces.is_direct(&request.workspace_id()) {
         CommandRuntime::open_direct(state, root.to_owned(), run_id, service.inner.processes.clone())
     } else {
         CommandRuntime::open(state, root, run_id, service.inner.processes.clone())

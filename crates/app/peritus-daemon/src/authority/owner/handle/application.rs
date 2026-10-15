@@ -17,6 +17,19 @@ use crate::{
 };
 
 impl AuthorityHandle {
+    pub(crate) async fn reconcile_workspaces(
+        &self,
+        config: crate::DaemonConfig,
+        admitted: Vec<crate::config::FolderDeclaration>,
+    ) -> Result<crate::startup::workspace::WorkspaceCatalog, DaemonError> {
+        let (respond, receive) = oneshot::channel();
+        self.send(
+            AuthorityMessage::ReconcileWorkspaces { config: Box::new(config), admitted, respond },
+            receive,
+        )
+        .await
+    }
+
     /// Installs an immutable one-to-one local principal binding.
     pub async fn bind_principal(
         &self,

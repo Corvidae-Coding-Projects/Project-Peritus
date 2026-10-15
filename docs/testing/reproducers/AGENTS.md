@@ -39,6 +39,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [rsi-inbox/](rsi-inbox/AGENTS.md) | Real-interface replay resources for rsi inbox; start with the local README/driver and its documented disposable-state prerequisites. |
 | [rsi-production/](rsi-production/AGENTS.md) | Real-interface replay resources for rsi production; start with the local README/driver and its documented disposable-state prerequisites. |
 | [runtime-friction/](runtime-friction/AGENTS.md) | Real-interface replay resources for runtime friction; start with the local README/driver and its documented disposable-state prerequisites. |
+| [second-instance/](second-instance/AGENTS.md) | Actual concurrent terminal windows, live catalog publication, permission readback, reconnect, and rejected-update replay. |
 | [updater-release-metadata/](updater-release-metadata/AGENTS.md) | Real-interface replay resources for updater release metadata; start with the local README/driver and its documented disposable-state prerequisites. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).

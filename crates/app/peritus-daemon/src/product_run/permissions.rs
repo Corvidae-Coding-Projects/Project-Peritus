@@ -1,7 +1,7 @@
 //! Host-intersected permission inspection and admission checks.
 
 use super::ProductRunService;
-use crate::{DaemonComponents, product_control::ControlStoreError as Error};
+use crate::product_control::ControlStoreError as Error;
 use peritus_app_protocol::{
     AppProtocolError, AppRequestPayload, AppResponsePayload, WorkbenchIntent,
     WorkbenchPermissionCapability, WorkbenchPermissionEntry, WorkbenchPermissionProvenance,
@@ -20,17 +20,16 @@ pub(super) struct HostPermissionCatalog {
 }
 
 #[derive(Clone, Copy)]
-struct HostPermissionEntry {
-    permissions: HostPermissions,
-    trust: WorkbenchWorkspaceTrust,
+pub(super) struct HostPermissionEntry {
+    pub(super) permissions: HostPermissions,
+    pub(super) trust: WorkbenchWorkspaceTrust,
 }
 
 impl HostPermissionCatalog {
-    pub(super) fn new(
-        components: &DaemonComponents,
+    pub(super) fn for_network(
+        network: bool,
         workspaces: &crate::startup::workspace::WorkspaceCatalog,
     ) -> Self {
-        let network = !components.providers().keys().is_empty();
         let entries = workspaces
             .roots()
             .into_keys()
@@ -53,7 +52,7 @@ impl HostPermissionCatalog {
         Self { entries }
     }
 
-    fn get(&self, workspace: WorkspaceId) -> Result<HostPermissionEntry, Error> {
+    pub(super) fn get(&self, workspace: WorkspaceId) -> Result<HostPermissionEntry, Error> {
         self.entries.get(&workspace).copied().ok_or_else(|| ControlError::ScopeMismatch.into())
     }
 }
@@ -91,7 +90,7 @@ impl ProductRunService {
     ) -> AppResponsePayload {
         let result = self.control_workspace(query).and_then(|()| {
             let id = ConversationId::new(query.conversation().into_bytes())?;
-            let mut host = self.inner.host_permissions.get(query.workspace())?;
+            let mut host = self.inner.workspaces.permissions(query.workspace())?;
             self.with_controls(false, |store| {
                 let record = store.load(id)?.ok_or(ControlError::NotFound)?;
                 if record.owner_bytes() != actor.as_bytes()
@@ -109,7 +108,7 @@ impl ProductRunService {
     }
 
     pub(super) fn permission_host(&self, workspace: WorkspaceId) -> Result<HostPermissions, Error> {
-        Ok(self.inner.host_permissions.get(workspace)?.permissions)
+        Ok(self.inner.workspaces.permissions(workspace)?.permissions)
     }
 
     /// Authenticates a conversation/workspace pair and loads its current effective capabilities.
@@ -120,7 +119,7 @@ impl ProductRunService {
     ) -> Result<HostPermissions, Error> {
         self.control_workspace(query)?;
         let conversation = ConversationId::new(query.conversation().into_bytes())?;
-        let host = self.inner.host_permissions.get(query.workspace())?.permissions;
+        let host = self.inner.workspaces.permissions(query.workspace())?.permissions;
         self.with_controls(false, |store| {
             let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             if record.owner_bytes() != actor.as_bytes()
@@ -179,7 +178,7 @@ impl ProductRunService {
         let record = records.get(&run).ok_or(ControlError::NotFound)?;
         let workspace = record.request.workspace_id();
         let conversation = record.interaction.workbench.conversation();
-        let host = self.inner.host_permissions.get(workspace)?.permissions;
+        let host = self.inner.workspaces.permissions(workspace)?.permissions;
         drop(records);
         let owner = self
             .inner

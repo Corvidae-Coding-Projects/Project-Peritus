@@ -19,6 +19,7 @@ mod recovery;
 mod request;
 mod snapshot;
 mod workbench;
+mod workspace_catalog;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -68,8 +69,7 @@ struct Inner {
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
     automatic_provider_failover: bool,
     local_context: peritus_product_runner::LocalContextConfig,
-    workspaces: BTreeMap<WorkspaceId, PathBuf>,
-    folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
+    workspaces: workspace_catalog::LiveWorkspaces,
     processes: ProcessStore,
     tasks: Mutex<Vec<(RunId, JoinHandle<()>)>>,
     command_recoveries: std::sync::Mutex<BTreeSet<RunId>>,
@@ -79,7 +79,6 @@ struct Inner {
     file_previews: std::sync::Mutex<workbench::files::FilePreviewCache>,
     file_refreshes:
         std::sync::Mutex<BTreeMap<[u8; 16], workbench::files::refresh::RefreshSnapshot>>,
-    host_permissions: permissions::HostPermissionCatalog,
     preview_processes: std::sync::Mutex<BTreeMap<ControlOperationId, PreviewProcess>>,
     preview_capture: PreviewCaptureHost,
 }
@@ -149,7 +148,6 @@ impl ProductRunService {
             .inner
             .workspaces
             .get(&request.workspace_id())
-            .cloned()
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
         let snapshot = initial_snapshot(&request)?;
         let cancelled = Arc::new(AtomicBool::new(false));
@@ -198,8 +196,8 @@ impl ProductRunService {
                     candidate_actionable: false,
                     task_baseline_required: !self
                         .inner
-                        .folders
-                        .contains_key(&request.workspace_id()),
+                        .workspaces
+                        .is_direct(&request.workspace_id()),
                     task_baseline: None,
                     preview: PreviewAggregate::default(),
                 },
@@ -241,7 +239,7 @@ impl ProductRunService {
         workspace_id: WorkspaceId,
         mode: peritus_app_protocol::ProductInteractionMode,
     ) -> Result<(), ProductRunServiceError> {
-        if let Some(folder) = self.inner.folders.get(&workspace_id) {
+        if let Some(folder) = self.inner.workspaces.folder(&workspace_id) {
             folder.verify().map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
             if mode == peritus_app_protocol::ProductInteractionMode::Build {
                 return Err(ProductRunServiceError::GitRequired);

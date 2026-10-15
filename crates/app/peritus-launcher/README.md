@@ -46,6 +46,21 @@ provider traffic, workspace mutations, approvals, or TUI presentation state. All
 configuration is parsed through the production G0 validator before use, and existing identity-bound
 configuration is preserved only when its protected core matches the installation.
 
+## Multiple clients and live workspaces
+
+Additional terminal windows share the daemon. New direct folders and managed Git registrations
+are admitted through immutable workspace catalog generations, with roots, folder trust, and host
+permissions replaced together. Existing work continues; selecting a read-only window does not
+change installation-wide tool availability or grant it write authority.
+
+A launch lock serializes concurrent daemon startup/publication. Removing a folder from recents
+retains its admitted binding until restart, so another window can keep using it. Temporarily
+unavailable inactive folders do not prevent opening a different folder. Provider/executable
+changes and replacement of existing workspace identities require a planned graceful restart.
+A new window preserves the running daemon and gives an actionable error when a live update is
+unsafe or the older daemon does not implement it. Normal workspace additions do not restart
+the service.
+
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
