@@ -24,6 +24,7 @@ pub(super) fn setup(
 ) -> Result<DirectProviderProfile, LauncherError> {
     terminal.line("")?;
     terminal.line(kind.label())?;
+    ensure_runtime(terminal, kind)?;
     terminal.line("The key will be stored by your operating system, not in Peritus files.")?;
 
     let (endpoint, model, protocol, header) = settings(terminal, kind)?;
@@ -89,10 +90,28 @@ const fn compatible_endpoint_prompt(protocol: CompatibleProtocol) -> &'static st
         CompatibleProtocol::ChatCompletions => {
             "Exact endpoint URL (usually ending in /v1/chat/completions): "
         }
-        CompatibleProtocol::AnthropicMessages | CompatibleProtocol::GoogleGenerateContent => {
-            "Exact endpoint URL: "
+        CompatibleProtocol::AnthropicMessages
+        | CompatibleProtocol::GoogleGenerateContent
+        | CompatibleProtocol::OpenCodeRuntime => "Exact endpoint URL: ",
+    }
+}
+
+pub(super) fn ensure_runtime(
+    terminal: &mut Terminal<'_>,
+    kind: ProviderKind,
+) -> Result<(), LauncherError> {
+    if matches!(kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo) {
+        if !peritus_provider_onboarding::opencode_runtime_installed() {
+            terminal.line("Zen and Go use the official OpenCode CLI as a model transport. Peritus disables its native tools and supplies your saved key; a separate OpenCode login is unnecessary.")?;
+            if !terminal.confirm("Install the official OpenCode CLI now? [Y/n]: ", true)? {
+                return Err(LauncherError::Interaction(
+                    "Install the official OpenCode CLI, then retry provider setup.".to_owned(),
+                ));
+            }
+            peritus_provider_onboarding::install_opencode_runtime()?;
         }
     }
+    Ok(())
 }
 
 fn required(terminal: &mut Terminal<'_>, prompt: &str) -> Result<String, LauncherError> {

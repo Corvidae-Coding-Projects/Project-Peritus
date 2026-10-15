@@ -295,6 +295,7 @@ const fn dialect(value: WireDialect) -> u8 {
         WireDialect::CompatibleChatCompletions => 6,
         WireDialect::OpenAiCodexRuntime => 7,
         WireDialect::AnthropicClaudeRuntime => 8,
+        WireDialect::OpenCodeRuntime => 9,
     }
 }
 

@@ -23,6 +23,7 @@ impl AppModel {
             };
             if let KeyCode::Char(character) = key.code
                 && crate::input::text_motion(key).is_none()
+                && crate::input::text_deletion(key).is_none()
                 && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER)
                 && (character.is_control() || text.len() + character.len_utf8() > limit)
             {

@@ -96,6 +96,14 @@ impl Credential {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    /// Borrows a short-lived credential at an official executable's private auth-file boundary.
+    ///
+    /// The callback must not log, persist outside disposable private storage, or include these
+    /// bytes in arguments, environment variables, or returned diagnostics.
+    pub fn expose_for_runtime<T>(&self, use_bytes: impl FnOnce(&[u8]) -> T) -> T {
+        use_bytes(&self.0)
+    }
 }
 
 impl fmt::Debug for Credential {

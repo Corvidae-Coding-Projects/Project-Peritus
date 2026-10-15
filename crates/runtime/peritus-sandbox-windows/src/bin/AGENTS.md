@@ -1,0 +1,15 @@
+# crates/runtime/peritus-sandbox-windows/src/bin — navigation
+
+## Responsibility
+
+Executable entrypoints for `peritus-sandbox-windows`; follow each binary into its package implementation.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [peritus-windows-sandbox-helper.rs](peritus-windows-sandbox-helper.rs) | Direct-child Windows helper for the protected C2 native sandbox protocol. |
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -116,7 +116,7 @@ impl CommandRuntime {
                     active: BTreeMap::new(),
                     terminal: BTreeMap::new(),
                     recovered: recovered.values,
-                    recovered_owners: recovered.owners,
+                    native_owners: recovered.owners,
                 }),
             }),
         })

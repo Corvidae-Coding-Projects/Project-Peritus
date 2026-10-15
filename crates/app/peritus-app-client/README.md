@@ -1,5 +1,26 @@
 # peritus-app-client
 
+## Folder guide
+
+Shared local application-protocol client for Peritus interfaces.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-app-client`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Shared local transport contracts for Peritus user interfaces. |
+
 Shared local application-protocol transport for Peritus user interfaces. The daemon remains the authority for conversations, approvals, execution, and durable recovery.
 
 `Client` negotiates a local IPC connection, enforces bounded PRTS frames, and matches responses against the negotiated context and both request identifiers. Requests require exclusive mutable access. Event subscriptions use separate connections.
@@ -10,14 +31,6 @@ The request deadline includes writing and waiting for the response. Event reads 
 
 Modules separate negotiation (`connection`), frame transport (`frame`), request matching (`request`), subscription/control traffic (`events`), identities (`identity`), and typed failures (`error`).
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```text
-cargo fmt -p peritus-app-client -- --check
-cargo test --locked -p peritus-app-client --jobs 2
-cargo clippy --locked -p peritus-app-client --all-targets --jobs 2 -- -D warnings
-```
-
-These checks cover this package only; they do not establish WebUI completion or CLI integration.
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

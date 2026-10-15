@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.0.9
+
+### Added
+
+- Guide users through a conversational design interview with suggested answers, an editable Markdown draft, and an explicit implementation handoff. Open it with `/design` in the terminal or the Design controls in the browser.
+- Activate bundled Rust reliability guidance for Rust work and refresh it during longer runs.
+- Map repository folders and their responsibilities with recursive agent navigation guides.
+
+### Fixed
+
+- Automatically reconnect terminal clients after daemon interruptions while retaining drafts and run identity. Record bounded, private transport diagnostics for failures.
+- Keep daemon connections responsive during expensive context preparation. Replace repeated dependency-closure scans with dependency-directed selection, preserving the selected context and its ordering.
+- Reduce cold recovery reads, preserve ordinary-folder run identity, and keep a shared daemon available when opening another workspace or terminal window.
+- Route OpenCode Zen and Go through the official OpenCode client with Peritus-owned tools, clear provider settings, and bounded recovery for malformed model turns. Preserve the existing adapters for other providers.
+- Retain exact in-place file effects when tools create nonempty directories, avoiding bookkeeping failures that interrupted otherwise recoverable work.
+- Improve shared terminal word and line editing and give browser conversations more room to read and edit.
+
+### Changed
+
+- Retain real-interface evidence for reconnection, context selection, provider routing, design interviews, and multi-window use. No unit tests or formal verification suites were run for this release.
+
+### Known limitations
+
+- Interrupting daemon startup during recovery can leave a stale applied-configuration receipt that requires reconciliation before another launch. The retained startup investigation documents this remaining edge case.
+
 ## 0.0.8
 
 ### Fixed

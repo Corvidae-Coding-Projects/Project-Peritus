@@ -1,0 +1,17 @@
+# crates/app/peritus-cli/src/product_run — navigation
+
+## Responsibility
+
+Implementation pieces for `product_run.rs`: Scriptable inspection and control of daemon-owned product runs.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [presentation.rs](presentation.rs) | Human and JSON projections of authoritative product-run observations. |
+
+Owning module: [product_run.rs](../product_run.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

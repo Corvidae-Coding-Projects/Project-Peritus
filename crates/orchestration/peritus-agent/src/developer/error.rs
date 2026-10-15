@@ -102,6 +102,14 @@ fn failure_hint(
     if diagnostic_code == "openai.codex_runtime.input_limit" {
         return "Codex rejected the input size. Read smaller document pages or choose a provider that accepts larger requests.";
     }
+    if diagnostic_code == "opencode.runtime.go_global_regions_required" {
+        return "OpenCode Go rejected this model under the workspace's regional Privacy setting. Choose a model allowed by that setting, or explicitly select Global in the OpenCode workspace Privacy settings.";
+    }
+    if diagnostic_code.starts_with("opencode.runtime.invalid_turn_")
+        || diagnostic_code == "opencode.runtime.invalid_tool_arguments"
+    {
+        return "OpenCode returned an invalid Peritus turn after one automatic correction. No proposed tools from that reply were executed. Retry the run or choose another model; the diagnostic identifies the rejected part of the reply.";
+    }
     use peritus_model_protocol::FailureCategory as Category;
     match category {
         Category::Authentication => {

@@ -242,3 +242,41 @@ dialog[open]{animation:panel-engage 250ms var(--spring)}
 /* Keep conversation authority visible at narrow widths and available to assistive tech. */
 .composer-mode-hint{margin:0;padding:0 0 10px;font-size:.75rem;line-height:1.45;color:var(--muted);overflow-wrap:anywhere}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+/* The interview stays in the conversation; these actions keep the next step discoverable. */
+.design-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.65rem 1rem;border-top:1px solid var(--line);font-size:.85rem}
+.design-actions>span{flex:1 1 16rem;color:var(--muted)}
+
+/* Conversation space takes priority over decorative chrome on laptop-height windows. */
+.message-content .markdown{font-size:1.14rem;line-height:1.7}
+.design-actions{flex-shrink:0}
+@media(max-height:900px){
+ .console-shell{padding:6px 10px 0;min-height:480px}
+ .top-plate{min-height:58px;padding:6px 18px}
+ .brand strong{font-size:1.8rem}.brand small{display:none}.brand-mark{width:30px;height:34px}.brand-mark svg{height:24px}
+ .header-instruments{gap:14px}.header-instruments .tube{height:30px;width:21px}.header-instruments .cathodes span{font-size:26px}.instrument-label{font-size:.6rem}
+ .project-rail{min-height:38px;padding-top:3px}.project-tab{padding-block:7px}
+ .session-level{min-height:35px}.session-tabs{padding-block:3px}
+ .session-heading{padding:8px 16px}.session-heading h1{font-size:1.25rem}.session-target{margin-top:3px}
+ .content-tabs{min-height:31px}.content-tabs>button{padding-block:6px}
+ .composer{margin:5px 12px 8px;padding:6px 10px 0}.composer-controls{margin-bottom:5px}
+ .composer-well{padding:6px 9px}.composer-well textarea{min-height:40px;line-height:1.4}
+ .composer-foot{min-height:26px}.composer-mode-hint{padding-bottom:5px}
+ .composer .attachment-hint{margin:0;min-height:25px}.design-actions{padding:4px 12px}
+ .message{padding:16px 28px 8px}.message.user{padding-top:16px}
+}
+.conversation-focused .workspace,.conversation-focused .workspace.no-explorer,.conversation-focused .workspace.no-controls{grid-template-columns:minmax(0,1fr)}
+.conversation-focused .workspace .file-drawer,.conversation-focused .workspace .control-bank{display:none}
+.conversation-focused .workspace .session-chassis{display:flex}
+.conversation-focused .top-plate{min-height:46px;padding:5px 16px}
+.conversation-focused .header-instruments,.conversation-focused .brand small{display:none}
+.conversation-focused .brand strong{font-size:1.6rem}
+.conversation-focused .session-heading{padding:7px 16px}
+.conversation-focused .session-target{display:none}
+.conversation-focused .composer{margin:5px 12px 8px;padding:6px 10px 0}
+.conversation-focused .composer-well textarea{min-height:40px}
+.conversation-focused .message{max-width:1050px}
+.conversation-focused .project-rail,.conversation-focused .content-tabs,.conversation-focused .attachment-hint,.conversation-focused .composer-mode-hint{display:none}
+.conversation-focused .composer-well textarea{height:3rem;min-height:3rem}
+.conversation-focused .send-key{min-height:40px;padding:6px 10px}
+.conversation-focused .send-key>span{display:none}
+.conversation-focused .mobile-panel-nav{display:none}

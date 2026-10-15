@@ -1,0 +1,15 @@
+# crates/runtime/peritus-sandbox-linux/src/bin — navigation
+
+## Responsibility
+
+Executable entrypoints for `peritus-sandbox-linux`; follow each binary into its package implementation.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [peritus-linux-sandbox-helper.rs](peritus-linux-sandbox-helper.rs) | Installed direct-child helper for the Linux native sandbox backend. |
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

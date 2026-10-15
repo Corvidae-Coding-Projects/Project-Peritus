@@ -165,8 +165,13 @@ pub fn trust(
 #[must_use]
 pub fn health(profile: &WorkspaceProfile) -> WorkspaceHealth {
     if profile.is_direct_folder() {
-        return match DiscoveredRepository::folder(Path::new(profile.repository_root())) {
-            Ok(folder) if folder.identity_text() == profile.repository_identity() => {
+        return match peritus_workspace::FolderIdentity::observe(Path::new(
+            profile.repository_root(),
+        )) {
+            Ok(folder)
+                if hex(folder.digest().as_bytes()) == profile.repository_identity()
+                    || hex(folder.legacy_digest().as_bytes()) == profile.repository_identity() =>
+            {
                 if profile.trust_level() == WorkspaceTrust::Trusted {
                     WorkspaceHealth::Ready
                 } else {

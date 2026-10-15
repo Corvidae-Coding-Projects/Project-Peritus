@@ -1,0 +1,25 @@
+# crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation — navigation
+
+## Responsibility
+
+Implementation pieces for `cancellation.rs`: Exact finite parent closure for production cancellation commands.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [command.rs](command.rs) | Exact root admission and event construction for production cancellation. |
+| [ids.rs](ids.rs) | Canonical finite identity set used by cancellation traversal. |
+| [update.rs](update.rs) | Exact cancellation lifecycle updates for a preselected work sequence. |
+
+## Child areas
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [update/](update/AGENTS.md) | Implementation pieces for `update.rs`: Exact cancellation lifecycle updates for a preselected work sequence. |
+
+Owning module: [cancellation.rs](../cancellation.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../AGENTS.md) · [Repository map](../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -1,5 +1,27 @@
 # Peritus benchmarks
 
+## Folder guide
+
+Benchmark profiles, baseline records, and external-suite integration notes. These are separate from routine real-testing workflows.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [baselines/](baselines/AGENTS.md) | Baseline admission notes; this directory currently has no accepted baseline data. Benchmark results live outside the source tree. |
+| [external/](external/AGENTS.md) | External benchmark adapters, pinned upstream identities, retained failure notes, and protocol/report fixture inputs. |
+| [profiles/](profiles/AGENTS.md) | Retained performance/SLO workload profiles and platform resource selections. Read the consuming evaluation code for enforcement. |
+| [schemas/](schemas/AGENTS.md) | JSON contracts for benchmark reports, profile inputs, comparison baselines, and campaign identities. |
+| [workloads/](workloads/AGENTS.md) | Checked-in workload identities and parameters consumed by benchmark/evaluation tools. |
+
 This directory contains stable benchmark inputs and adapters. Generated workspaces, downloaded
 images, provider account state, traces, and results must stay in an external state directory.
 

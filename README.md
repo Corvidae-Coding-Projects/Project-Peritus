@@ -38,6 +38,8 @@ for how we preserve failures and distinguish product defects from evaluator prob
 
 Peritus uses the real-testing skill to build and run the actual application, exercise its human interfaces, and retain reproducible defects and replay evidence. We use this approach based on the findings in [Rethinking the Value of Agent-Generated Tests for LLM-Based Software Engineering Agents](https://arxiv.org/html/2602.07900v1). The paper reports limited task-outcome gains from agent-generated tests in the studied settings, with additional token and API costs; our choice of behavioral testing is a project policy informed by those findings.
 
+Designer, writer, reviewer, and fixer prompts include brief planning, careful execution, evidence, and root-cause repair cues. Rust work also activates the bundled [Rust reliability skill](skills/rust-reliability/SKILL.md); its guidance stays in the current system policy and is reinforced when unchanged inspection repeats. References are available to the model through read-only skill access. User restrictions on commands and tests still apply, and the optional check helper is never an automatic gate.
+
 Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
 
 Peritus can exercise browser pages and Linux desktop apps during coding runs. Install the optional
@@ -157,6 +159,9 @@ Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
 | --- | --- |
+| `/design [idea]` | Create a design together: one question at a time, suggested answers, and a saved Markdown draft. |
+| `/design show` | Show the current draft. Reply with changes or paste replacement Markdown to revise it. |
+| `/design build` | Explicitly start implementation using this conversation's saved design. |
 | `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools, including an exact absolute reference path named in your request. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
 | `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
@@ -165,6 +170,15 @@ Type `/` to discover commands; Tab completes them.
 | `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
 | `/stop` | Stop the current work and preserve effects already completed. |
 | `/runs` | Open the run and candidate dashboard. |
+
+Design mode helps you work out the goal, users, important journeys, scope, approach, and
+acceptance through real use. Say “not sure” to leave a decision open, or change an earlier
+answer at any time. The draft and next question are saved with the conversation, so you can
+return after closing the client or restarting the daemon. The Markdown artifact lives beside
+the run trace as `<run-id>.guided-design.md`; Peritus shows its path when the design is ready.
+Design mode can inspect the project but cannot edit its files or run commands. Approving a
+design keeps you in the interview; `/design build` is the separate implementation action.
+The browser's **Design** mode offers **Show draft**, **Revise draft**, and **Start implementation**.
 
 Use Shift+Enter for a new line. The mouse wheel or PageUp/PageDown scrolls the conversation.
 In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
@@ -215,12 +229,17 @@ peritus workspaces
 Use `peritus providers` to add a provider, change a provider, or repair a login.
 Use `peritus workspaces` to select a repository or repair its managed copy.
 
-Direct API choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
+API-key choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
 Groq, Together AI, Fireworks AI, DeepSeek, and an explicitly configured compatible endpoint.
 In provider settings, press `t` on an existing direct provider to test generation, tool calling,
 and a tool-result round trip. The optional test makes up to three small requests and may use
 paid tokens; saving a key or listing models does not run it. See [provider contracts](docs/provider-contracts.md)
 for API sources, discovery behavior, and test limits.
+
+Zen and Go run through the official OpenCode CLI with its native tools disabled. Setup offers
+to install the CLI and uses the key stored by Peritus; a separate OpenCode login is unnecessary.
+OpenCode selects the model's provider protocol. Peritus owns tools and conversation history.
+Your key's model permissions and billing still apply; Go also requires an active Go subscription.
 
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
 when discovery fails; `/model manual MODEL_ID` is an explicit manual fallback.
@@ -252,8 +271,9 @@ peritus update --enable-checks
 
 ## Recover from a problem
 
-- If the connection to the background process fails, use `/reconnect`; the current conversation,
-  selected models, and unsent chat text stay in the interface while daemon readiness is restored.
+- A terminal connection failure reconnects automatically with bounded backoff. The current
+  conversation, selected models, and unsent chat text stay in the interface. Use Ctrl-R or
+  `/reconnect` for immediate recovery, including restoring daemon readiness.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
 - Interrupted provider responses retry automatically within the task's limits. After a daemon
@@ -272,6 +292,8 @@ The default state directories are:
 
 Linux uses `$XDG_STATE_HOME/peritus` when `XDG_STATE_HOME` is set.
 The `logs/peritusd.log` file in the state directory contains background-process diagnostics.
+The private bounded `logs/peritus-tui.log` records terminal connection failures and reconnection
+generations without recording messages or drafts.
 Keep credentials and private repository content out of public bug reports.
 
 For context inspection and recovery, see [Local working memory](docs/local-working-memory.md).
@@ -282,3 +304,7 @@ To remove Peritus, see [Uninstall](packaging/README.md#uninstall). Removal keeps
 Run `peritus --help` for command help.
 Use [GitHub Issues](https://github.com/Corvidae-Coding-Projects/Project-Peritus/issues) to report a problem.
 Include your operating system, Peritus version, and the steps that reproduce the problem.
+
+## Codebase navigation
+
+Start with the [repository agent map](AGENTS.md) to choose an implementation owner. Every repository-managed directory has an `AGENTS.md` waypoint describing local files, child responsibilities, and the route back to its parent/package. Layer and package READMEs provide human background and usage. See [navigation coverage and scope](docs/navigation-map.md) for the documented boundary.

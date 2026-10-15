@@ -17,9 +17,9 @@ pub enum ProviderKind {
     GoogleGeminiApi,
     /// Explicit compatible HTTP endpoint with credential-store-backed authentication.
     CompatibleEndpoint,
-    /// `OpenCode` Zen hosted model API.
+    /// `OpenCode` Zen through the official CLI with OS-stored API credentials.
     OpenCodeZen,
-    /// `OpenCode` Go hosted model API.
+    /// `OpenCode` Go through the official CLI with OS-stored API credentials.
     OpenCodeGo,
     /// `OpenRouter` hosted model API.
     OpenRouter,
@@ -100,8 +100,8 @@ impl ProviderKind {
             Self::AnthropicApi => "Anthropic API",
             Self::GoogleGeminiApi => "Google Gemini API",
             Self::CompatibleEndpoint => "Compatible endpoint",
-            Self::OpenCodeZen => "OpenCode Zen",
-            Self::OpenCodeGo => "OpenCode Go",
+            Self::OpenCodeZen => "OpenCode Zen via OpenCode CLI",
+            Self::OpenCodeGo => "OpenCode Go via OpenCode CLI",
             Self::OpenRouter => "OpenRouter",
             Self::Groq => "Groq",
             Self::TogetherAi => "Together AI",

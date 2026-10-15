@@ -7,6 +7,8 @@ pub enum ConversationMode {
     Chat,
     /// Inspect and plan with read-only tools.
     Plan,
+    /// Interview the user and maintain a durable design, with read-only workspace inspection.
+    Design,
     /// Independently inspect and review with read-only tools.
     Review,
 }

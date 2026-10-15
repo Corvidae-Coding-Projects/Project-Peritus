@@ -1,5 +1,26 @@
 # peritus-gates
 
+## Folder guide
+
+Durable deterministic acceptance gate planning, execution, recovery, and evidence.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-gates`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Durable deterministic acceptance gate orchestration for Peritus. |
+
 `peritus-gates` is the D1 deterministic acceptance-gate engine. It binds immutable B2 contracts to
 exact revisions and clean C1 snapshots, invokes only authorized C4 quality checks, records every
 transition through C0, and publishes exact-revision evidence before a gate can pass.
@@ -27,10 +48,6 @@ all targets, and all features; unrelated root commands cannot cover a nested pro
 See [`docs/d1-gate-engine.md`](../../../docs/d1-gate-engine.md) for the lifecycle and integration
 contract.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-gates
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

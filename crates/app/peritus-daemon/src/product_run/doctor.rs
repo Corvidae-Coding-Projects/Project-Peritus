@@ -109,7 +109,7 @@ impl ProductRunService {
         &self,
         query: DoctorQuery,
     ) -> Result<DoctorFinding, ProductRunServiceError> {
-        if let Some(folder) = self.inner.folders.get(&query.workspace()) {
+        if let Some(folder) = self.inner.workspaces.folder(&query.workspace()) {
             // Identity was validated on registration. Live filesystem checks are deliberately
             // separate from this bounded, nonblocking inspection of admitted configuration.
             return finding(

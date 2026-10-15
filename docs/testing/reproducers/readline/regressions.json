@@ -1,0 +1,275 @@
+{
+  "issue": 126,
+  "seed": 12620261014,
+  "regressions": [
+    {
+      "case": "ghostty-cmd-left-bytes",
+      "input": "first\nsecond",
+      "keys_hex": [
+        "01",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "first\n|second",
+      "original_observed": "first\nsecond|",
+      "fixed_observed": "first\n|second"
+    },
+    {
+      "case": "ghostty-cmd-right-bytes",
+      "input": "first\nsecond",
+      "keys_hex": [
+        "1b5b313b3548",
+        "05",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "first|\nsecond",
+      "original_observed": "|first\nsecond",
+      "fixed_observed": "first|\nsecond"
+    },
+    {
+      "case": "home-line",
+      "input": "first\nsecond",
+      "keys_hex": [
+        "1b5b48",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "first\n|second",
+      "original_observed": "|first\nsecond",
+      "fixed_observed": "first\n|second"
+    },
+    {
+      "case": "end-line",
+      "input": "first\nsecond",
+      "keys_hex": [
+        "1b5b313b3548",
+        "1b5b46",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "first|\nsecond",
+      "original_observed": "first\nsecond|",
+      "fixed_observed": "first|\nsecond"
+    },
+    {
+      "case": "ctrl-b-unicode",
+      "input": "café",
+      "keys_hex": [
+        "02",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "caf|é",
+      "original_observed": "café|",
+      "fixed_observed": "caf|é"
+    },
+    {
+      "case": "ctrl-f-unicode",
+      "input": "漢字",
+      "keys_hex": [
+        "1b5b313b3548",
+        "06",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "漢|字",
+      "original_observed": "|漢字",
+      "fixed_observed": "漢|字"
+    },
+    {
+      "case": "ctrl-p",
+      "input": "alpha\nbravo",
+      "keys_hex": [
+        "10",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha|\nbravo",
+      "original_observed": "alpha\nbravo|",
+      "fixed_observed": "alpha|\nbravo"
+    },
+    {
+      "case": "ctrl-n",
+      "input": "alpha\nbravo",
+      "keys_hex": [
+        "1b5b313b3548",
+        "0e",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha\n|bravo",
+      "original_observed": "|alpha\nbravo",
+      "fixed_observed": "alpha\n|bravo"
+    },
+    {
+      "case": "ctrl-h",
+      "input": "café",
+      "keys_hex": [
+        "08",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "caf|",
+      "original_observed": "café|",
+      "fixed_observed": "caf|"
+    },
+    {
+      "case": "ctrl-d",
+      "input": "漢字",
+      "keys_hex": [
+        "1b5b313b3548",
+        "04",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "|字",
+      "original_observed": "|漢字",
+      "fixed_observed": "|字"
+    },
+    {
+      "case": "ctrl-w",
+      "input": "alpha beta",
+      "keys_hex": [
+        "17",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha |",
+      "original_observed": "alpha beta|",
+      "fixed_observed": "alpha |"
+    },
+    {
+      "case": "ctrl-u-line",
+      "input": "alpha\nbeta",
+      "keys_hex": [
+        "15",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha\n|",
+      "original_observed": "alpha\nbeta|",
+      "fixed_observed": "alpha\n|"
+    },
+    {
+      "case": "ctrl-k-line",
+      "input": "alpha\nbeta",
+      "keys_hex": [
+        "1b5b313b3548",
+        "06",
+        "0b",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "a|\nbeta",
+      "original_observed": "|alpha\nbeta",
+      "fixed_observed": "a|\nbeta"
+    },
+    {
+      "case": "ctrl-k-newline",
+      "input": "alpha\nbeta",
+      "keys_hex": [
+        "1b5b313b3548",
+        "05",
+        "0b",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha|beta",
+      "original_observed": "|alpha\nbeta",
+      "fixed_observed": "alpha|beta"
+    },
+    {
+      "case": "alt-d",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3548",
+        "1b64",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "|beta",
+      "original_observed": "d|alpha beta",
+      "fixed_observed": "|beta"
+    },
+    {
+      "case": "alt-delete",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3548",
+        "1b5b333b337e",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "|beta",
+      "original_observed": "|lpha beta",
+      "fixed_observed": "|beta"
+    },
+    {
+      "case": "ctrl-delete",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3548",
+        "1b5b333b357e",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "|beta",
+      "original_observed": "|lpha beta",
+      "fixed_observed": "|beta"
+    },
+    {
+      "case": "ctrl-shift-delete",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3548",
+        "1b5b333b367e",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "|beta",
+      "original_observed": "|lpha beta",
+      "fixed_observed": "|beta"
+    },
+    {
+      "case": "ctrl-alt-h",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b3130343b3775",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha |",
+      "original_observed": "alpha beta|",
+      "fixed_observed": "alpha |"
+    },
+    {
+      "case": "super-backspace",
+      "input": "alpha\nbeta",
+      "keys_hex": [
+        "1b5b3132373b3975",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha\n|",
+      "original_observed": "alpha\nbet|",
+      "fixed_observed": "alpha\n|"
+    },
+    {
+      "case": "selected-alt-d",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3244",
+        "1b64",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha bet|",
+      "original_observed": "alpha betd|",
+      "fixed_observed": "alpha bet|"
+    },
+    {
+      "case": "selected-ctrl-b",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3244",
+        "02",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha bet|a",
+      "original_observed": "alpha bet|",
+      "fixed_observed": "alpha bet|a"
+    },
+    {
+      "case": "selected-ctrl-f",
+      "input": "alpha beta",
+      "keys_hex": [
+        "1b5b313b3244",
+        "06",
+        "1b5b3230307e7c1b5b3230317e"
+      ],
+      "expected": "alpha beta|",
+      "original_observed": "alpha bet|",
+      "fixed_observed": "alpha beta|"
+    }
+  ]
+}

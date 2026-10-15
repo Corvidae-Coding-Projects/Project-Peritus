@@ -1,0 +1,18 @@
+# crates/app/peritus-daemon/src/product_run/workbench/review — navigation
+
+## Responsibility
+
+Implementation pieces for `review.rs`: Structured review projection and exact-anchor mutation admission.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [current.rs](current.rs) | Exact review-page and summary projections from retained run state. |
+| [projection.rs](projection.rs) | Typed review anchors, comment state, and independent qualification evidence. |
+
+Owning module: [review.rs](../review.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../AGENTS.md) · [Repository map](../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

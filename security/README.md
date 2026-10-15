@@ -1,5 +1,27 @@
 # Security qualification assets
 
+## Folder guide
+
+Security policy/assessment assets and retained dependency findings; distinguish documents from runtime security enforcement.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [control-catalog-v1.toml](control-catalog-v1.toml) | Configuration/contract data for control catalog v1. Sections: `schema`, `owner`, `status`, `requirements`, `acceptance_criteria`. |
+| [tcb-inventory-v1.toml](tcb-inventory-v1.toml) | Configuration/contract data for tcb inventory v1. Sections: `schema`, `owner`, `status`, `component`, `qualification`. |
+| [threat-model-v1.toml](threat-model-v1.toml) | Configuration/contract data for threat model v1. Sections: `schema`, `owner`, `status`, `asset`, `threat`. |
+| [unsafe-inventory-v1.toml](unsafe-inventory-v1.toml) | Configuration/contract data for unsafe inventory v1. Sections: `schema`, `owner`, `status`, `policy`, `category`. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [schemas/](schemas/AGENTS.md) | Versioned security-control, assessment, and campaign-report JSON contracts. |
+
 This directory contains the versioned inputs for H0 security qualification: the threat model,
 control-to-probe map, unsafe-code and trusted-computing-base inventory rules, and evidence schemas.
 They describe what the campaign must check. They do not prove that a release passed.

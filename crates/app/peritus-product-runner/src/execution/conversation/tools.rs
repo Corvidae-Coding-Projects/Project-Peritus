@@ -12,15 +12,21 @@ use peritus_model_protocol::{
 };
 use std::sync::Arc;
 
-pub(super) struct ConversationTools {
+pub(super) struct ConversationTools<'a> {
     pub(super) workspace: WorkspaceDeveloperTools,
     pub(super) requested_revision: Option<u64>,
     pub(super) allow_pipeline: bool,
     pub(super) conversation: Arc<dyn ConversationView>,
+    input: &'a crate::ProductRunInput,
+    allow_design: bool,
 }
 
-impl ConversationTools {
-    pub(super) fn new(input: &crate::ProductRunInput, allow_pipeline: bool) -> Self {
+impl<'a> ConversationTools<'a> {
+    pub(super) fn new(
+        input: &'a crate::ProductRunInput,
+        allow_pipeline: bool,
+        allow_design: bool,
+    ) -> Self {
         Self {
             workspace: input.configure_tools(
                 WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
@@ -29,11 +35,28 @@ impl ConversationTools {
             requested_revision: None,
             allow_pipeline,
             conversation: Arc::clone(&input.conversation),
+            input,
+            allow_design,
         }
     }
 }
 
-impl DeveloperToolExecutor for ConversationTools {
+impl DeveloperToolExecutor for ConversationTools<'_> {
+    fn system_guidance(&mut self) -> Option<String> {
+        self.workspace.system_guidance()
+    }
+
+    fn observe_model_context(
+        &mut self,
+        messages: &[peritus_model_protocol::Message],
+    ) -> Result<(), DeveloperLoopError> {
+        self.workspace.observe_model_context(messages)
+    }
+
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        self.workspace.take_progress_feedback()
+    }
+
     fn observation_images(
         &mut self,
         call: &CompletedToolCall,
@@ -42,7 +65,7 @@ impl DeveloperToolExecutor for ConversationTools {
         self.workspace.observation_images(call, observation)
     }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
-        if call.name().as_str() == "run_pipeline" {
+        if matches!(call.name().as_str(), "run_pipeline" | "design_draft") {
             DeveloperToolEffect::MutationCapable
         } else {
             self.workspace.effect(call)
@@ -53,6 +76,9 @@ impl DeveloperToolExecutor for ConversationTools {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        if call.name().as_str() == "design_draft" && self.allow_design {
+            return super::design::execute(self.input, call);
+        }
         if call.name().as_str() != "run_pipeline" {
             return self.workspace.execute(call);
         }

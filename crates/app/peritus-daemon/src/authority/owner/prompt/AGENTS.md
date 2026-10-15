@@ -1,0 +1,18 @@
+# crates/app/peritus-daemon/src/authority/owner/prompt — navigation
+
+## Responsibility
+
+Implementation pieces for `prompt.rs`: Lifecycle and ownership admission for prompt-broker operations.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [errors.rs](errors.rs) | Stable daemon error mapping for prompt ownership operations. |
+| [restoration.rs](restoration.rs) | Reconstruction of in-memory prompt state from the durable terminal record. |
+
+Owning module: [prompt.rs](../prompt.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../AGENTS.md) · [Repository map](../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

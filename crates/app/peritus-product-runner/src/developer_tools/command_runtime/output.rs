@@ -29,7 +29,7 @@ impl CommandRuntime {
             .state
             .lock()
             .map_err(|_| tool("command runtime is poisoned"))?
-            .recovered_owners
+            .native_owners
             .get(handle)
             .copied()
             .ok_or_else(|| tool("command_output requires a handle owned by this run"))?;

@@ -4,6 +4,14 @@ use super::{Arguments, Command, CommandSpec};
 
 pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
+        command: Command::Design,
+        name: "/design",
+        description: crate::modes::description(
+            peritus_app_protocol::ProductInteractionMode::Design,
+        ),
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
         command: Command::Chat,
         name: "/chat",
         description: crate::modes::description(peritus_app_protocol::ProductInteractionMode::Chat),

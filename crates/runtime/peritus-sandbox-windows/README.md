@@ -1,5 +1,26 @@
 # peritus-sandbox-windows
 
+## Folder guide
+
+Fail-closed Windows native sandbox preparation, helper, observation, and recovery.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-sandbox-windows`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Windows 11 24H2 and Server 2025 native sandbox preparation. |
+
 `peritus-sandbox-windows` is the Windows 11 24H2 and Windows Server 2025 native enforcement
 backend for Peritus C3. It projects an already checked C2 sandbox plan into a deterministic helper
 manifest, an AppContainer or restricted low-integrity token, a kill-on-close Job Object, exact
@@ -27,10 +48,6 @@ host. Windows-native enforcement tests are ordinary `cfg(windows)` tests and run
 runner; cross-compilation proves the GNU Windows build path locally but is not a substitute for H2
 packaged-host qualification.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox-windows
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

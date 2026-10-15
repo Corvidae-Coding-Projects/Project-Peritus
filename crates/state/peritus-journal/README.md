@@ -1,5 +1,26 @@
 # peritus-journal
 
+## Folder guide
+
+Transactional durable event journal and commit receipts for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-journal`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Transactional exact-byte event persistence for Peritus. |
+
 Transactional exact-byte event persistence, durable compare-and-append semantics, integrity
 checking, and opaque commit receipts for Project Peritus.
 
@@ -82,10 +103,6 @@ projection rebuild, or evidence admission; do not repair a broken chain by rewri
 See [C0 durable state](../../../docs/c0-durable-state.md) for composition, startup ordering,
 failure classes, and validation commands.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-journal
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

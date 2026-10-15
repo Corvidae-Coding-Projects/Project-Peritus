@@ -1,114 +1,55 @@
 # Peritus xtask
 
-> Historical record: the external test and proof entrypoints described below have been retired. Application and release tools that shared these directories are retained; use `cargo xtask help` for current packaging commands.
+## Folder guide
 
-`xtask` is the dependency-light engineering-policy executable for the Peritus workspace. It owns
-no product or authority decisions. It validates the Cargo dependency graph, package ownership and
-verification-class metadata, source layout and size budgets, trusted-Verus construct placement,
-ordinary-Rust formal API boundaries, toolchain pins, lockfile policy, and immutable GitHub
-Actions references. The reproducibility check also locks the reviewed GitHub Team repository-
-ruleset activation template; live GitHub enforcement is verified separately through the documented
-API runbook because an offline repository process cannot attest to external state.
+Repository packaging and release command owner. Read the current command dispatcher rather than old qualification instructions.
 
-The same check locks the default-branch `formal-authority.yml` workflow byte-for-byte and validates
-its exact `main`/`develop` trigger, permissions, separate checker/base/candidate SHA custody,
-pre-metadata execution guards, both checker-input equality edges, trusted checker build, offline
-candidate evaluation, and ordered `all` plus `verify-trust` calls. The proof-impact evaluator stays
-bound to the exact PR base. Checker or dependency transitions require a separately controlled
-exact-head bootstrap that establishes identical protected inputs on `main` and `develop`; candidate
-records cannot authorize them. This is a repository-code validation contract. Exclusive
-required-check authority still depends on the separately deployed and source-bound GitHub App
-described in `docs/github-governance.md`.
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
 
-`docs-check` inventories maintained Markdown, checks basic structure and local links, and requires
-each crate README to name its focused test command. This keeps documentation failures visible in
-the same local and CI gate as source-layout and architecture failures.
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
 
-`format-check` runs Rustfmt once per workspace package in deterministic package-name order. This
-preserves the complete workspace formatting gate without exceeding the Windows process command-line
-limit as the repository grows.
+### Local files
 
-The checks return stable error categories and actionable diagnostics. CI and `just check` invoke
-`cargo run --locked --package xtask -- all` directly so a repository-controlled Cargo alias cannot
-swallow bootstrap evidence. Once the root Cargo configuration has passed policy, `cargo xtask all`
-is the equivalent developer convenience interface.
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `xtask`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 
-An authorization-only commit preserves the comparison base's application, policy, and actor
-files. On that commit, `all` validates the immutable authorization and runs the complete local
-policy suite against its exact materialized implementation candidate. That nested candidate checks
-its actors, obligations, and trust boundaries without recursively selecting historical proof-impact
-authorization. Canonical workflow resources live under `xtask/src/reproducibility/canonical` so the
-reviewed checker builds on the unchanged base; candidate workflow bytes must still match them.
-`verify-trust` additionally enforces the externally selected review base and approved transitions.
+### Subfolders
 
-## Focused checks
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Packaging, installation, distribution, and release tools for Peritus. |
 
-`formal-inventory` renders the declared obligation, trust, and exclusion registers alongside
-all formal packages and their last available local compiler-scope observations. The JSON is an
-audit aid: missing observations and observed zero-query packages remain distinct, and it does
-not authorize proof discharge, assert report freshness, or establish production correspondence.
-See the [active coverage audit](../docs/formal-coverage-audit.md) for current limits and work.
+`xtask` owns repository packaging, installation, native compilation, and release staging.
+It is separate from the installed CLI, the daemon, and the product's developer/reviewer/fixer workflow.
+The root Cargo alias points to this package; command parsing lives in
+[src/cli.rs](src/cli.rs), and the canonical help inventory is [src/cli/help.rs](src/cli/help.rs).
 
-`proof-impact-inventory` emits raw-byte fingerprints and affected package sets using the trust
-gate's own compilation-source discovery and ownership policy. It can inspect a checkout whose
-approval inventory is stale without treating that stale manifest as authority. Its `audit-only`
-output does not approve transitions, run evidence commands, or discharge obligations. Discovery
-errors still fail the command. Compare it against the actual protected Git base and retained
-history before preparing an independently reviewed authorization.
+## Choose the owner
 
-The existing `model-orchestration` build, test, and Clippy shards also run a separate
-`peritus-agent --all-targets --no-default-features` check after their normal all-feature command.
-Separate Cargo invocations preserve the bridge-disabled feature graph even when other workspace
-packages depend on the default protocol bridge. Failure of either configuration fails the shard.
+| Operation | Commands | Implementation |
+| --- | --- | --- |
+| Build a complete native package or install it for the current user | `product-package`, `product-install` | [Package lifecycle](src/product_package/AGENTS.md), [assembly wrapper](src/product_package.rs), [native package builder](../crates/app/testing/peritus-platform-qualification/AGENTS.md) |
+| Create/stage a tag-bound GitHub release draft | `release-create`, `release-stage` | [Release owner](src/release/AGENTS.md), [release dispatch](src/release.rs) |
+| Archive/checksum a native build or assemble downloaded same-run binaries | `release-package-stage`, `release-package-assemble` | [Release dispatch](src/release.rs), [archive writer](../packaging/archive.py), [native packaging](../packaging/native_release.py) |
+| Build native daemon/CLI libraries and binaries | `release-daemon-library`, `release-daemon-binary`, `release-cli-library`, `release-cli-binary`, `release-windows-binary` | [Native compilation](../packaging/native_build.py), [Windows compilation](../packaging/windows_release.py), [compilation background](../packaging/native-build.md) |
+| Retain native assembly observations | `release-rebuild-record` | [Rebuild operations](src/release/rebuild.rs), [observation recorder](../packaging/rebuild.py) |
+| Build/retain package-builder images; compile, package, sign, inspect, and upload Debian/RPM artifacts | `distro-*` | [Distribution operations](src/distro.rs), [distribution assets](../packaging/distro/AGENTS.md) |
 
-Foundation and Gate A run `ci-shard test-daemon app-shell` separately from the
-ordinary `ci-shard test app-shell` job on Linux, macOS, and Windows. Together
-they select every application-shell package exactly once, with locked dependencies,
-all targets and features, serial tests, and the unchanged ten-minute job limit.
-Daemon build, Clippy, documentation, and Verus checks remain in the existing
-application-shell shards. Exact workflow checks reject missing, repeated, or
-misrouted daemon jobs.
+These commands are documented here, not executed by reading this guide. Installation changes the
+current user's installation; signing and upload require their respective operator inputs. Release
+staging leaves publication as a separate action. Inspect the dispatcher and the relevant script for
+current environment variables and prerequisites.
 
-Windows runner library tests are partitioned to stay within their fifteen-minute limit,
-including the cold build. `test-runner-candidate` executes candidate library tests in a separate
-Windows job; `test-runner-product` also executes local-context library tests. The ordinary
-runner test job covers the remaining namespaces and non-library targets. The integration targets
-remain assigned exactly once. Linux and macOS retain their full ordinary library test invocation.
+## Related guides
 
-Native product CI builds each of its seven native binaries in a separate bounded job on each
-platform, then assembles the downloaded binaries in a separate preparation job. Artifact names
-separate the platform and binary with a double hyphen so ARM and Intel macOS downloads cannot
-overlap. Assembly requires every binary and restores Unix executable permissions before use.
-The public installer lifecycle and all 18 H2 scenarios consume that platform's same-run prepared
-artifact without rebuilding the application. The small xtask entry point still uses the
-reviewed locked Cargo command; its prepared execution path never invokes Cargo. Missing artifacts
-fail rather than triggering a rebuild. The local build-and-qualify commands remain available, and
-these native product CI jobs retain their ten-minute limit.
+- [Source installation and packaging](../packaging/README.md).
+- [Release files and contracts](../release/AGENTS.md).
+- [Native release workflow declaration](../.github/workflows/release.yml).
+- [Repository navigation](../AGENTS.md).
 
-Hosted jobs default to a ten-minute ceiling. Only six named compilation jobs in
-`.github/workflows/release.yml` have a twenty-minute allowance: `build-daemon-library`,
-`build-cli-library`, `build-binary`, `check-native-staging`, `distro-compile`, and
-`distro-compile-checks`. This includes setup and artifact retention, not just Cargo
-execution. Policy rejects larger limits, other job names, and the same names in
-other workflows. Qualification, assembly, signing, and publication checks keep
-their existing ten-minute limits and requirements.
-
-Native release and bootstrap archives require Python 3.12+ on the build host
-(`python3` on Unix, `python` on Windows), not on the installed product host.
-The archive writer fixes entry order, owner/group, normalized permissions, and
-timestamps at the committed source epoch; it rejects links, special files, and
-existing output files. The focused test command below exercises both tar/gzip
-and ZIP bytes. This removes archive metadata variability; an independent native
-rebuild must still prove the complete candidate outputs byte-identical for H4.
-
-The [native release compilation boundary](../packaging/native-build.md) keeps
-Intel macOS daemon library, CLI, and daemon binary compilation in separate
-same-role jobs. Source/environment-bound library transport preserves each binary's
-own Cargo feature graph, and assembly verifies both archived binaries' evidence.
-
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package xtask
-cargo xtask docs-check
-```
+Older documentation describes `all`, `docs-check`, architecture/source-layout checkers, formal
+inventories, and CI qualification shards. Those external test/proof entrypoints have been retired;
+they are absent from the current dispatcher. They do not describe the packaging commands above.
+The product's own candidate checks and independent review remain separate application features.

@@ -514,6 +514,16 @@ pub(super) async fn run(
                         .map_err(journal_error),
                 );
             }
+            AuthorityMessage::ReconcileWorkspaces { config, admitted, respond } => {
+                let result = require_mutation(&lifecycle).and_then(|()| {
+                    crate::startup::workspace::install_with_admitted_folders(
+                        &mut journal,
+                        &config,
+                        &admitted,
+                    )
+                });
+                reply(respond, result);
+            }
             AuthorityMessage::RegisterWorkspace { workspace, respond } => {
                 let result = require_mutation(&lifecycle).and_then(|()| {
                     journal.register_application_workspace(workspace).map_err(journal_error)

@@ -1,0 +1,17 @@
+# crates/state/peritus-journal/src/append_plan — navigation
+
+## Responsibility
+
+Implementation pieces for `append_plan.rs`: Deterministic validation and hash-chain append planning.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [validation.rs](validation.rs) | Canonical append collection and hash-chain validation. |
+
+Owning module: [append_plan.rs](../append_plan.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -1,5 +1,26 @@
 # peritus-web
 
+## Folder guide
+
+Local browser workspace and gateway for the Peritus harness.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-web`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Loopback HTTP gateway, browser workspace/session service, CLI PTY console bridge, static assets, and daemon-facing routes. |
+
 Local-only Rust gateway for the [Peritus WebUI](../../../webui/README.md).
 Axum serves the prebuilt Svelte assets and same-origin HTTP API. The existing
 `peritus-app-client` connects to the daemon; a retained PTY exposes the installed
@@ -32,14 +53,6 @@ capability routing, recovery behavior, limits, and verification scope are
 documented in the [WebUI guide](../../../webui/README.md) and
 [command coverage](../../../webui/COMMANDS.md).
 
-## Focused checks
+## Behavioral work
 
-```sh
-cargo test --locked -p peritus-web -j 2
-cargo fmt -p peritus-web -- --check
-cargo clippy --locked -p peritus-web --all-targets --no-deps -j 2 -- -D warnings
-```
-
-The Unix socket fixture makes no provider calls. HTTP/browser and real Git/CLI
-integration tests live in `webui/tests/e2e` and run against isolated temporary
-projects on port 4174.
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

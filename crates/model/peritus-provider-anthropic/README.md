@@ -1,5 +1,27 @@
 # peritus-provider-anthropic
 
+## Folder guide
+
+First-party Anthropic Messages adapter for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-provider-anthropic`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-provider-anthropic`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
+| [src/](src/AGENTS.md) | Anthropic Messages HTTP adapter and official Claude account runtime transport, with separate native and HTTP encoding/decoding. |
+
 First-party Anthropic Messages and account-backed Claude executable adapters for Peritus. The public
 boundary consists of `AnthropicConfig`, `AnthropicBeta`, `AnthropicClient`, exact direct-profile
 validation, `ClaudeExecutable`, `ClaudeRuntimeConfig`, and `ClaudeRuntimeProvider`; provider wire,
@@ -130,25 +152,6 @@ types/codecs, Base64, Tempfile, and private Serde wire encoding. `peritus-confor
 `peritus-test-support`, and Tokio are development-only; neither the public API nor the production
 provider surface exposes their types.
 
-## Focused gates
+## Behavioral work
 
-From the repository root:
-
-```console
-CARGO_BUILD_JOBS=2 cargo test -p peritus-provider-anthropic --all-targets --all-features
-CARGO_BUILD_JOBS=2 cargo clippy -p peritus-provider-anthropic --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS='-D warnings' CARGO_BUILD_JOBS=2 cargo doc -p peritus-provider-anthropic --all-features --no-deps
-just architecture
-just source-layout
-just ordinary-api
-CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-provider-anthropic --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-anthropic --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
-```
-
-## Focused checks
-
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-anthropic
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

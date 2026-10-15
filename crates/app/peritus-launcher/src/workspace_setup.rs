@@ -44,11 +44,9 @@ fn discover_for_launch(
     let folder = DiscoveredRepository::folder(path)?;
     // Initializing Git must not replace a remembered folder's authority or conversation scope.
     let remembered_folder = |folder: &DiscoveredRepository| {
-        prepared
-            .state()
-            .workspaces()
-            .find_repository(folder.root_text(), folder.identity_text())
-            .is_some_and(WorkspaceProfile::is_direct_folder)
+        prepared.state().workspaces().recent().iter().any(|profile| {
+            profile.repository_root() == folder.root_text() && profile.is_direct_folder()
+        })
     };
     if remembered_folder(&folder) {
         return Ok(folder);
@@ -90,7 +88,16 @@ pub fn configure(mut prepared: PreparedProduct) -> Result<PreparedProduct, Launc
                 terminal.line("That workspace is already trusted and ready.")?;
                 continue;
             }
-            let repository = DiscoveredRepository::open(Path::new(profile.repository_root()))?;
+            let repository = if profile.is_direct_folder() {
+                DiscoveredRepository::folder(Path::new(profile.repository_root()))?
+            } else {
+                DiscoveredRepository::open(Path::new(profile.repository_root()))?
+            };
+            let profile = if profile.is_direct_folder() {
+                profile.refresh_folder_identity(repository.identity_text().to_owned())?
+            } else {
+                profile
+            };
             terminal.line(&format!("Trusting workspace: {}", repository.root_text()))?;
             let trusted = trust(prepared.layout(), &repository, profile)?;
             prepared = persist_profile(&prepared, trusted)?;
@@ -129,6 +136,44 @@ fn activate_repository(
     prepared: PreparedProduct,
     repository: DiscoveredRepository,
 ) -> Result<PreparedProduct, LauncherError> {
+    if repository.repository().is_none()
+        && let Some(existing) = prepared
+            .state()
+            .workspaces()
+            .recent()
+            .iter()
+            .find(|profile| {
+                profile.is_direct_folder()
+                    && profile.repository_root() == repository.root_text()
+                    && profile.repository_identity() != repository.identity_text()
+            })
+            .cloned()
+    {
+        let observed = peritus_workspace::FolderIdentity::observe(Path::new(
+            repository.root_text(),
+        ))
+        .map_err(|error| {
+            LauncherError::filesystem("revalidate folder identity", repository.root_text(), error)
+        })?;
+        let legacy_matches =
+            discovery::hex(observed.legacy_digest().as_bytes()) == existing.repository_identity();
+        let was_trusted = existing.trust_level() == WorkspaceTrust::Trusted;
+        let mut refreshed =
+            existing.refresh_folder_identity(repository.identity_text().to_owned())?;
+        if legacy_matches {
+            if was_trusted {
+                refreshed = refreshed.trust_folder()?;
+            }
+        } else {
+            let mut terminal = Terminal::stdio();
+            terminal.line("The remembered folder identity changed, possibly after a reboot or directory replacement. Its conversations will be retained.")?;
+            terminal.line(&format!("Folder: {}", repository.root_text()))?;
+            if terminal.confirm("Trust the current folder for this workspace? [y/N]: ", false)? {
+                refreshed = refreshed.trust_folder()?;
+            }
+        }
+        return persist_profile(&prepared, refreshed);
+    }
     if let Some(existing) = prepared
         .state()
         .workspaces()

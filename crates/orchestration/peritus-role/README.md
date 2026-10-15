@@ -1,5 +1,26 @@
 # peritus-role
 
+## Folder guide
+
+role-aware context and capability views for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-role`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Role-aware context policy for Peritus. |
+
 `peritus-role` projects the stable B1 security roles into deterministic C6 context policies and
 read-only capability views. It does not define security identities, issue capabilities, evaluate
 authority, or perform effects.
@@ -19,10 +40,6 @@ executable `is_narrow` result is proved equivalent to the formal B1 subset predi
 C6 fresh-context requirement. It requests evidence from the future review engine; it never claims
 that evidence already exists.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-role
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

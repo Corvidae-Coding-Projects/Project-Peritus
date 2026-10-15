@@ -1,5 +1,26 @@
 # peritus-policy
 
+## Folder guide
+
+policy, capability, and authority-time core for Project Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-policy`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Verified, effect-free policy, capability, and authority-time decisions for Peritus. Public constructors validate ordinary-Rust inputs; outputs are only logical transitions. |
+
 `peritus-policy` is the verified, effect-free authority core for Peritus. It evaluates immutable
 policy definitions, enforces compiled role separation, preserves exact resource/capability pairs,
 tracks monotonic authority time, and produces move-only logical capability transitions.
@@ -26,10 +47,6 @@ not authenticity claims. C0 and later target gateways own durable commit and eff
 
 The production dependency set is limited to `peritus-types` and the workspace-pinned `vstd`.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-policy
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

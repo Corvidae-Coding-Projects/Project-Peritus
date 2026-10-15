@@ -1,0 +1,17 @@
+# crates/foundation/peritus-policy/src/definition — navigation
+
+## Responsibility
+
+Implementation pieces for `definition.rs`: Complete immutable policy-definition validation.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [construction.rs](construction.rs) | Exact ordered policy-definition admission. |
+
+Owning module: [definition.rs](../definition.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

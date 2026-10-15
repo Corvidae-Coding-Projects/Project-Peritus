@@ -198,7 +198,6 @@ pub(super) async fn resume_feedback(
             .inner
             .workspaces
             .get(&workspace)
-            .cloned()
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
         options.mode = mode;
         options.append(

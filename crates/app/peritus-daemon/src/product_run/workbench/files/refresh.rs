@@ -62,7 +62,7 @@ impl ProductRunService {
         )?;
         let root =
             self.inner.workspaces.get(&query.workspace()).ok_or(Error::WorkspaceUnavailable)?;
-        let folder = peritus_workspace::FolderIdentity::observe(root)
+        let folder = peritus_workspace::FolderIdentity::observe(&root)
             .map_err(|error| Error::invalid_data("verify selected folder", error))?;
         if references.iter().any(|entry| entry.file().source().folder() != Some(folder.digest())) {
             return Err(Error::WorkspaceUnavailable);

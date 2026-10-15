@@ -1,5 +1,22 @@
 # Fixer context resume replay
 
+## Folder guide
+
+Real-interface replay resources for context resume; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [build_consumer.py](build_consumer.py) | Build the public context consumer against this checkout, without test suites. |
+| [consumer.rs](consumer.rs) | Local implementation for docs / testing / reproducers / context-resume. Entry names: `id`, `hex`, `artifact`, `main`, `message`. |
+| [host_consumer.rs](host_consumer.rs) | Local implementation for docs / testing / reproducers / context-resume. Entry names: `text`, `bytes`, `Conversation`, `revision`, `render`. |
+| [prepare_host.py](prepare_host.py) | Prepare an isolated host replay from the already copied context and non-secret profile. |
+| [prepare_snapshot.py](prepare_snapshot.py) | Export a copied context checkpoint and uncovered events for public-API replay. |
+
 This standalone public library consumer replays the actual context failure from run
 `81f9302c94ce667a2fff398d434f6192`. It requires an operator-created, consistent copy of that
 run's writer context. No user context, workspace contents, credentials, provider substitutions,

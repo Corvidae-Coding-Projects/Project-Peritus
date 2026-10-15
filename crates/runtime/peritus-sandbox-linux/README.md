@@ -1,5 +1,26 @@
 # peritus-sandbox-linux
 
+## Folder guide
+
+Fail-closed Linux native sandbox preparation, helper, observation, and recovery.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-sandbox-linux`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Fail-closed Linux native sandbox preparation and lifecycle support. |
+
 `peritus-sandbox-linux` is the Linux C3 native enforcement adapter. It converts an already checked
 C2 sandbox plan into a deterministic bubblewrap mount/namespace plan, a bounded helper manifest,
 dimension-specific resource controls, ordered observations, and a recoverable cgroup lifecycle.
@@ -31,10 +52,6 @@ root birth identity and a leaf member whose live process ancestry reaches that r
 inaccessible state remains fail-closed. The crate contains no unsafe Rust; Linux syscall wrappers
 are provided by reviewed safe dependencies.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox-linux
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

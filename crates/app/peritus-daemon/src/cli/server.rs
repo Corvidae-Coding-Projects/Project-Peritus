@@ -38,8 +38,12 @@ pub(super) fn run(configuration: OsString) -> ExitCode {
 }
 
 async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> {
+    let generation = std::path::Path::new(&configuration)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.strip_prefix("peritus-")?.strip_suffix(".toml")?.parse::<u64>().ok());
     let config = with_installed_process_watchdog(DaemonConfig::load(configuration)?)?;
-    let mut runtime = DaemonRuntime::start(config).await?;
+    let mut runtime = DaemonRuntime::start_with_generation(config, generation).await?;
     runtime.wait_for_shutdown_signal().await?;
     runtime.shutdown().await
 }

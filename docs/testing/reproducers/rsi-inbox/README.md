@@ -1,5 +1,22 @@
 # Native RSI inbox failure replay
 
+## Folder guide
+
+Real-interface replay resources for rsi inbox; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [build_observer.py](build_observer.py) | Build a public IPC consumer which reads the actual evaluation input queue. |
+| [check_directive.py](check_directive.py) | Read the daemon's real workbench queue; reject the old acceptance-policy mismatch. |
+| [check_no_patch.py](check_no_patch.py) | Inspect a real completed no-patch evaluation and replay its refused controls. |
+| [observer.rs](observer.rs) | Local implementation for docs / testing / reproducers / rsi-inbox. |
+| [plan.rs](plan.rs) | Actual consumer of the candidate plan discovered from a real checked-out workspace. |
+
 This observer connects through the real local daemon IPC protocol and reads the public revisioned input queue. It supplies no counterfeit workbench or provider result.
 
 Use a disposable daemon state and Git-backed copy of Peritus. Collect a suggestion against an actual terminal source run through `peritus improvements suggest`, then choose **Generate patch & evaluate** in the browser or invoke `peritus improvements evaluate`. Record the admitted run ID. The source workspace, target workspace, and provider must be configured in that disposable instance.

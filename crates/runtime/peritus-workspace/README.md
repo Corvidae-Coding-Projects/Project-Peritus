@@ -1,5 +1,26 @@
 # peritus-workspace
 
+## Folder guide
+
+Target-owned workspace authorization, snapshots, rollback, and restart reconciliation.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-workspace`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Target-owned authorization and lifecycle boundary for isolated Peritus workspaces. |
+
 Target-owned authorization, mutation orchestration, immutable snapshots, rollback, and restart
 reconciliation for isolated Peritus workspaces.
 
@@ -38,10 +59,6 @@ Restart reconciliation supplies the current workspace tuple to patch recovery th
 dirty, fenced, or indeterminate. The durable action ledger is target metadata, not a patch
 transaction, and is excluded from transaction recovery scans.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-workspace
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

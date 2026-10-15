@@ -10,6 +10,9 @@ pub(crate) const fn description(mode: Mode) -> &'static str {
         Mode::Plan => {
             "Read-only inspection and planning; cannot edit files or run commands. Switch explicitly to /chat or /build to request changes."
         }
+        Mode::Design => {
+            "Shape an idea through a guided conversation. Revise the saved draft in plain language; /design show displays it and /design build starts implementation."
+        }
         Mode::Review => {
             "Independent read-only findings; cannot edit files or run commands. Switch explicitly to /chat or /build to request fixes."
         }
@@ -39,6 +42,8 @@ pub(crate) fn composer_title(
             Mode::Plan | Mode::Review if width < 60 => "read-only · /build",
             Mode::Plan | Mode::Review => "read-only · /build to implement",
             Mode::Chat if active => "steer active work",
+            Mode::Design if active => "shaping your design",
+            Mode::Design => "answer or revise · /design show",
             Mode::Chat => "authorized work via pipeline",
             Mode::Build if active => "steer active work",
             Mode::Build => "delivery pipeline",
@@ -47,6 +52,7 @@ pub(crate) fn composer_title(
     let name = match mode {
         Mode::Chat => "Chat",
         Mode::Plan => "Plan",
+        Mode::Design => "Design",
         Mode::Review => "Review",
         Mode::Build => "Build",
     };

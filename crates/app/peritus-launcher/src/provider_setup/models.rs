@@ -28,6 +28,14 @@ pub(super) fn choose_direct(
     if kind.hosted_service().is_none() {
         return Ok((model, None));
     }
+    if matches!(
+        kind,
+        peritus_product_state::ProviderKind::OpenCodeZen
+            | peritus_product_state::ProviderKind::OpenCodeGo
+    ) {
+        terminal.line("The official OpenCode CLI selects the protocol for this model. Peritus owns all tools and conversation history.")?;
+        return Ok((model, Some(CompatibleProtocol::OpenCodeRuntime)));
+    }
     let protocol = match metadata.and_then(|entry| entry.dialect) {
         Some(WireDialect::CompatibleResponses | WireDialect::OpenAiResponses) => {
             CompatibleProtocol::Responses
@@ -35,29 +43,7 @@ pub(super) fn choose_direct(
         Some(WireDialect::CompatibleChatCompletions) => CompatibleProtocol::ChatCompletions,
         Some(WireDialect::AnthropicMessages) => CompatibleProtocol::AnthropicMessages,
         Some(WireDialect::GeminiGenerateContentV1) => CompatibleProtocol::GoogleGenerateContent,
-        _ if !matches!(
-            kind,
-            peritus_product_state::ProviderKind::OpenCodeZen
-                | peritus_product_state::ProviderKind::OpenCodeGo
-        ) =>
-        {
-            CompatibleProtocol::ChatCompletions
-        }
-        _ => {
-            terminal.line(
-                "Protocol metadata is unavailable for this model. Choose its documented API:",
-            )?;
-            terminal.line("1. Responses  2. Chat Completions  3. Anthropic Messages  4. Google Generate Content")?;
-            loop {
-                match terminal.prompt("Protocol: ")?.as_str() {
-                    "1" => break CompatibleProtocol::Responses,
-                    "2" => break CompatibleProtocol::ChatCompletions,
-                    "3" => break CompatibleProtocol::AnthropicMessages,
-                    "4" => break CompatibleProtocol::GoogleGenerateContent,
-                    _ => terminal.line("Choose 1, 2, 3, or 4.")?,
-                }
-            }
-        }
+        _ => CompatibleProtocol::ChatCompletions,
     };
     Ok((model, Some(protocol)))
 }

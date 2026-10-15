@@ -82,7 +82,7 @@ struct RuntimeState {
     active: BTreeMap<String, ActiveCommand>,
     terminal: BTreeMap<String, TerminalCommand>,
     recovered: BTreeMap<String, Value>,
-    recovered_owners: BTreeMap<String, NativeCommandOwner>,
+    native_owners: BTreeMap<String, NativeCommandOwner>,
 }
 
 struct ActiveCommand {
@@ -191,11 +191,11 @@ impl CommandRuntime {
             }
             return Ok(());
         }
-        if state.recovered_owners.get(&handle).is_some_and(|existing| *existing != owner) {
+        if state.native_owners.get(&handle).is_some_and(|existing| *existing != owner) {
             return Err(tool("native command receipt conflicts with the retained owner link"));
         }
         state.recovered.remove(&handle);
-        state.recovered_owners.insert(handle, owner);
+        state.native_owners.insert(handle, owner);
         drop(state);
         Ok(())
     }
@@ -307,7 +307,11 @@ impl CommandRuntime {
             )
             .map_err(tool);
         }
-        if let Some(owner) = state.recovered_owners.get(handle).copied() {
+        // Active commands retain their router/control attachment. The same exact owner
+        // table also serves output reads and commands recovered after a runtime restart.
+        if !state.active.contains_key(handle)
+            && let Some(owner) = state.native_owners.get(handle).copied()
+        {
             drop(state);
             return self.observe_recovered_owner(owner, operation);
         }

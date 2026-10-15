@@ -1,0 +1,19 @@
+# crates/app/peritus-product-runner/src/control/record/transition — navigation
+
+## Responsibility
+
+Implementation pieces for `transition.rs`: Pure expected-revision successor planning and receipt binding.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [checkpoint.rs](checkpoint.rs) | Checkpoint and restore aggregate transitions. |
+| [goal.rs](goal.rs) | Goal lifecycle, accounting, fork, and evidence transitions. |
+| [mutations.rs](mutations.rs) | Input, goal, attachment, review, and fork aggregate transitions. |
+
+Owning module: [transition.rs](../transition.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../AGENTS.md) · [Repository map](../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

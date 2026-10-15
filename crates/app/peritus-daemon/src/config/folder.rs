@@ -21,6 +21,13 @@ pub struct FolderDeclaration {
 }
 
 impl FolderDeclaration {
+    pub(crate) fn same_location(&self, other: &Self) -> bool {
+        self.workspace_id == other.workspace_id
+            && self.root == other.root
+            && self.identity == other.identity
+            && self.protected_paths == other.protected_paths
+    }
+
     /// Returns the validated workspace identity.
     pub fn workspace_id(&self) -> Result<WorkspaceId, DaemonError> {
         WorkspaceId::new(decode_identifier(&self.workspace_id, "folder workspace identity")?)
@@ -45,12 +52,17 @@ impl FolderDeclaration {
     pub(crate) fn verify(&self) -> Result<(), DaemonError> {
         let observed = peritus_workspace::FolderIdentity::observe(&self.root)
             .map_err(|_| invalid("direct folder is unavailable; select or trust it again"))?;
-        let actual = observed.digest().as_bytes().iter().fold(String::new(), |mut value, byte| {
-            use std::fmt::Write as _;
-            let _ = write!(value, "{byte:02x}");
-            value
-        });
-        if observed.root() != self.root || actual != self.identity {
+        let render = |digest: peritus_types::Sha256Digest| {
+            digest.as_bytes().iter().fold(String::new(), |mut value, byte| {
+                use std::fmt::Write as _;
+                let _ = write!(value, "{byte:02x}");
+                value
+            })
+        };
+        if observed.root() != self.root
+            || (render(observed.digest()) != self.identity
+                && render(observed.legacy_digest()) != self.identity)
+        {
             return Err(invalid("direct folder identity changed; select or trust it again"));
         }
         Ok(())

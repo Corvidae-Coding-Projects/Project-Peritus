@@ -22,11 +22,11 @@ pub(super) fn recover_stale(
     let root = inspect_state_root(state_root)?;
     let location = prepare_socket_path(state_root, identity, root.uid())?;
     match fs::symlink_metadata(location.path()) {
-        Ok(metadata)
-            if metadata.file_type().is_socket()
-                && metadata.uid() == root.uid()
-                && metadata.mode() & 0o777 == SOCKET_MODE =>
-        {
+        Ok(metadata) if metadata.file_type().is_socket() && metadata.uid() == root.uid() => {
+            // The instance lock is already held and the parent is owner-only. A
+            // crash after bind but before chmod leaves the original socket mode;
+            // that unfinished owned endpoint must be recoverable too. Never
+            // accept a symlink, regular file, or another user's socket.
             fs::remove_file(location.path()).map_err(|error| {
                 DaemonError::with_source(
                     DaemonErrorCode::Transport,
@@ -39,7 +39,7 @@ pub(super) fn recover_stale(
         }
         Ok(_) => Err(security_error(
             "recover stale Unix endpoint",
-            "endpoint path is not an owned mode-0600 Unix socket",
+            "endpoint path is not an owned Unix socket",
         )),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(DaemonError::with_source(

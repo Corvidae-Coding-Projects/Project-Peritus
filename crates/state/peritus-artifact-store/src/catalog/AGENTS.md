@@ -1,0 +1,18 @@
+# crates/state/peritus-artifact-store/src/catalog — navigation
+
+## Responsibility
+
+Implementation pieces for `catalog.rs`: SQLite-backed durable artifact metadata and references.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [schema.rs](schema.rs) | Initial durable artifact catalog schema. |
+| [value.rs](value.rs) | Validation and conversion of stored artifact values. |
+
+Owning module: [catalog.rs](../catalog.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

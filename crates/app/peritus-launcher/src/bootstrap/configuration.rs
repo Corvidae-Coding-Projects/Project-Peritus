@@ -7,7 +7,7 @@ use std::{
 
 use peritus_daemon::{DaemonConfig, DaemonIdentity, DaemonPaths, LocalEndpointAddress};
 use peritus_product_state::{
-    CompatibleProtocol, DirectProviderProfile, ProductState, ProviderKind, WorkspaceTrust,
+    CompatibleProtocol, DirectProviderProfile, ProductState, ProviderKind,
 };
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
@@ -15,7 +15,7 @@ pub(super) mod account;
 mod compatibility;
 mod folder;
 pub(super) mod folder_catalog;
-mod hosted;
+pub(super) mod hosted;
 
 /// Imports the exact models from a pre-conversation immutable configuration. This migration
 /// never substitutes a newly chosen provider default or edits an old configuration generation.
@@ -126,6 +126,8 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
     Ok(text)
 }
 
+pub(super) const WORKSPACE_TOOL_CATALOG: &str = "\"fs.create\", \"fs.discover\", \"fs.metadata\", \"fs.patch\", \"fs.read\", \"fs.remove\", \"fs.replace\", \"fs.search\", \"fs.write\", \"git.candidate\", \"git.diff\", \"git.history\", \"git.rollback\", \"git.snapshot\", \"git.status\", \"quality.discover\", \"quality.run\", \"shell.exec\", \"shell.script\"";
+
 fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), LauncherError> {
     for profile in state.workspaces().registered() {
         writeln!(
@@ -146,15 +148,9 @@ fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), Laun
         .expect("writing to String cannot fail");
     }
     text.push_str("\n[tools]\nallow = [");
-    if state
-        .workspaces()
-        .active()
-        .is_some_and(|profile| profile.trust_level() == WorkspaceTrust::Trusted)
-    {
-        text.push_str(
-            "\"fs.create\", \"fs.discover\", \"fs.metadata\", \"fs.patch\", \"fs.read\", \"fs.remove\", \"fs.replace\", \"fs.search\", \"fs.write\", \"git.candidate\", \"git.diff\", \"git.history\", \"git.rollback\", \"git.snapshot\", \"git.status\", \"quality.discover\", \"quality.run\", \"shell.exec\", \"shell.script\"",
-        );
-    }
+    // Tool availability is installation-wide; workspace trust is enforced by the host's
+    // per-workspace capabilities. Selecting a read-only window must not reconfigure other runs.
+    text.push_str(WORKSPACE_TOOL_CATALOG);
     text.push_str("]\n");
     Ok(())
 }

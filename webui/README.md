@@ -1,5 +1,35 @@
 # Peritus WebUI
 
+## Folder guide
+
+Svelte browser client and its build/static assets. The Rust gateway is peritus-web; the daemon owns agent execution.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [COMMANDS.md](COMMANDS.md) | Document: Command and capability routing. |
+| [DAEMON-INVESTIGATION.md](DAEMON-INVESTIGATION.md) | Document: Local daemon investigation — 2026-09-12. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [SECURITY.md](SECURITY.md) | Document: Experimental WebUI security boundaries. |
+| [THIRD-PARTY.md](THIRD-PARTY.md) | Document: Frontend third-party notices. |
+| [index.html](index.html) | Browser HTML mount document loaded by the frontend entrypoint. |
+| [package-lock.json](package-lock.json) | Locked dependency resolution for the neighboring package manifest. |
+| [package.json](package.json) | Node package metadata, dependencies and scripts for `peritus-webui`. |
+| [svelte.config.js](svelte.config.js) | Svelte compiler/preprocessor configuration for the browser client. |
+| [tsconfig.json](tsconfig.json) | TypeScript compiler and source-inclusion settings for the browser client. |
+| [vite.config.ts](vite.config.ts) | Vite build/dev-server configuration and API proxy routing to the Rust gateway. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [public/](public/AGENTS.md) | Static files copied into the browser build, including source-controlled notices and other public assets. |
+| [scripts/](scripts/AGENTS.md) | Frontend inspection utility for observing the real browser interface and retaining screenshots/interaction observations. |
+| [src/](src/AGENTS.md) | Browser UI entrypoint, application composition, and client-side modules. |
+
 A conversation-first, local browser workspace for Peritus. The Svelte client is
 served by the `peritus-web` Rust gateway; the existing Peritus daemon owns agent
 execution. Multiple projects and nested sessions stay in one browser tab.
@@ -57,9 +87,21 @@ Distribute the complete asset directory, including `licenses/`; see
    trust use Peritus's own interactive flows.
 3. Return to the browser and use **Reconnect** (`/reconnect`) to reload provider,
    workspace, and connection observations.
-4. Select Chat, Plan, Review, or Build, choose role models if needed, and send a
+4. Select Chat, Design, Plan, Review, or Build, choose role models if needed, and send a
    message. The status distinguishes daemon-received input from input observed
    as incorporated into a provider request.
+
+Choose **Design something** or enter `/design` for a conversational design interview.
+Answer in your own words, choose a suggested answer, or ask to change an earlier decision.
+**Show draft** displays the saved Markdown; **Revise draft** prepares a change message.
+Closing a tab or restarting the daemon preserves the saved draft and next question.
+**Start implementation** explicitly sends the design to the existing build pipeline.
+Drafting itself does not change project files or execute commands.
+
+Use **Focus conversation** beside the session title for a larger reading area. It hides
+workspace side panels and extra navigation, compacts the composer, and keeps the conversation
+and its controls available. **Show workspace panels** restores the full workspace. The choice
+survives a browser reload. Laptop-height windows also use a shorter header by default.
 
 Adding a browser project does not register or trust a daemon workspace. The
 setup banner remains until a matching canonical root or selected repository is
@@ -318,35 +360,23 @@ files over 2 MiB requires a visible performance confirmation, not a reduced
 preview limit. Full-file editing and the text-save endpoint accept up to 50 MiB separately from
 the normal 4 MiB action-body limit, and journals hashes rather than file bodies.
 
-## Focused validation
+## Real behavioral work
 
-From the repository root:
+Use the [project real-testing policy](../README.md#real-testing) with the built browser client
+and Rust gateway. Work against a disposable project/state directory, observe the interface before
+and after each action, and inspect actual files, Git state, daemon events, and recovery results.
+The [retained campaigns](../docs/testing/AGENTS.md) and
+[replay resources](../docs/testing/reproducers/AGENTS.md) identify earlier defects and their scope.
+The [browser map](AGENTS.md) links UI state, API calls, presentation, and the native gateway.
 
-```sh
-cargo test -p peritus-web -j 2
-cargo clippy --locked -p peritus-web --all-targets --no-deps -j 2 -- -D warnings
-npm --prefix webui run check
-npm --prefix webui run test:unit
-npm --prefix webui run build
-cargo build -p peritus-web -p peritus-cli -p peritus-daemon -j 2
-npm --prefix webui run test:e2e
-```
+The former frontend unit/e2e suites, `webui.yml` workflow, and xtask workflow checker have been
+retired. They are not current setup or acceptance instructions. Build/start instructions above
+still describe the actual interface.
 
-The browser tests need Playwright Chromium (`npx playwright install chromium`
-from `webui` if absent), Git, and the installed Peritus CLI. They own port 4174,
-use temporary fixtures under `/tmp/opencode`, and isolate daemon discovery.
-Their real Git remote is a temporary local bare repository.
-PDF tests use the full Chromium channel and generated two-page documents,
-checking actual native-renderer completion as well as HTTP delivery. Installing
-only the headless shell (`--only-shell`) is insufficient for these tests.
+## Historical implementation observations
 
-The [Browser workspace workflow](../.github/workflows/webui.yml) runs these
-frontend/gateway checks and builds the real CLI for browser integration on an
-Ubuntu runner. The existing workspace CI retains its broader Rust/platform
-coverage. Hosted CI has not been run from this local implementation session.
-The exact frontend npm scripts and runner commands are registered in
-`xtask/src/reproducibility/workflow_webui.rs`; intentional script changes need a
-matching policy update. The reproducibility test suite covers that boundary.
+The following observations describe the original Linux/Chromium implementation campaign, not
+fresh evidence for this checkout. Later campaign reports are retained separately under `docs/testing`.
 
 Verified locally on Linux/Chromium:
 
@@ -373,6 +403,8 @@ capabilities run in the embedded real CLI as documented in
 [`COMMANDS.md`](COMMANDS.md).
 
 ## Code map
+
+Start with the [recursive browser waypoint](AGENTS.md); the concise roles below connect its main areas.
 
 - `src/App.svelte`, `src/app.css`: console composition and responsive visual system.
 - `src/lib/components/`: viewers, explorer, Git, models, settings, terminal, and dialogs.

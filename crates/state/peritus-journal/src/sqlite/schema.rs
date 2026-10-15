@@ -1,6 +1,6 @@
 //! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 3;
+pub(super) const SCHEMA_VERSION: i64 = 4;
 
 pub(super) const GROW_STATE_HISTORY: &str = r"
 CREATE TABLE state_history_nodes_v3 (
@@ -13,6 +13,22 @@ INSERT INTO state_history_nodes_v3 SELECT * FROM state_history_nodes;
 DROP TABLE state_history_nodes;
 ALTER TABLE state_history_nodes_v3 RENAME TO state_history_nodes;
 UPDATE store_meta SET schema_version = 3 WHERE singleton = 1;
+";
+
+/// Keep large values out of the key B-tree used for exact state lookup.
+pub(super) const SEPARATE_STATE_VALUES: &str = r"CREATE TABLE state_records_v4 (
+    namespace INTEGER NOT NULL CHECK (namespace > 0),
+    record_key BLOB NOT NULL CHECK (length(record_key) BETWEEN 1 AND 1024),
+    revision INTEGER NOT NULL CHECK (revision > 0),
+    value_digest BLOB NOT NULL CHECK (length(value_digest) = 32),
+    value BLOB NOT NULL,
+    producing_position INTEGER NOT NULL REFERENCES events(global_position),
+    PRIMARY KEY (namespace, record_key)
+) STRICT;
+INSERT INTO state_records_v4 SELECT * FROM state_records;
+DROP TABLE state_records;
+ALTER TABLE state_records_v4 RENAME TO state_records;
+UPDATE store_meta SET schema_version = 4 WHERE singleton = 1;
 ";
 
 pub(super) const INSTALL_SCHEMA: &str = r"
@@ -64,7 +80,7 @@ CREATE TABLE IF NOT EXISTS state_records (
     value BLOB NOT NULL,
     producing_position INTEGER NOT NULL REFERENCES events(global_position),
     PRIMARY KEY (namespace, record_key)
-) STRICT, WITHOUT ROWID;
+) STRICT;
 CREATE TABLE IF NOT EXISTS state_record_history (
     namespace INTEGER NOT NULL CHECK (namespace > 0),
     record_key BLOB NOT NULL CHECK (length(record_key) BETWEEN 1 AND 1024),

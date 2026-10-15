@@ -1,5 +1,26 @@
 # peritus-scheduler
 
+## Folder guide
+
+Durable deterministic bounded resource scheduling and worker ownership.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-scheduler`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Durable deterministic bounded resource scheduling for Peritus. |
+
 `peritus-scheduler` is the D3 run-scoped scheduler aggregate. It owns bounded work admission,
 dependency readiness, deterministic fair selection, worker/resource reservations, retry and loss
 classification, pause/drain/cancellation, truthful finalization, replay, and inert runtime
@@ -29,10 +50,6 @@ after a guarded C0 commit receipt. A run switch, journal reopen, another append,
 or failed append requires checked cold replay. E0's historical pause/resume and exact retry readers
 continue to use the complete retained event history and preserve the predecessor's semantics.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-scheduler
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

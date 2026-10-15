@@ -3,7 +3,7 @@
 use super::{
     Arc, BTreeMap, BTreeSet, DaemonComponents, DaemonError, Inner, Mutex, Path, PreviewCaptureHost,
     ProcessStore, ProductRunService, RwLock, WorkspaceCatalog, filesystem, fs, invalid,
-    permissions, persistence, reconcile_restored_candidates,
+    persistence, reconcile_restored_candidates,
 };
 
 impl ProductRunService {
@@ -12,10 +12,11 @@ impl ProductRunService {
         control_store: peritus_journal::StoreId,
         components: &DaemonComponents,
         workspaces: &WorkspaceCatalog,
-        product_policy: crate::config::ProductRunPolicy,
-        local_context: peritus_product_runner::LocalContextConfig,
         processes: ProcessStore,
+        configuration: crate::DaemonConfig,
     ) -> Result<super::OpenedProductRunService, DaemonError> {
+        let product_policy = configuration.product();
+        let local_context = configuration.context().local().clone();
         let directory = state_root.join("product-runs");
         fs::create_dir_all(&directory).map_err(filesystem)?;
         let mut providers = BTreeMap::new();
@@ -73,8 +74,11 @@ impl ProductRunService {
                 providers,
                 automatic_provider_failover: product_policy.automatic_provider_failover(),
                 local_context,
-                workspaces: workspace_roots,
-                folders: workspaces.folders().clone(),
+                workspaces: super::workspace_catalog::LiveWorkspaces::new(
+                    workspaces,
+                    components,
+                    configuration,
+                ),
                 processes,
                 tasks: Mutex::new(Vec::new()),
                 command_recoveries: std::sync::Mutex::new(BTreeSet::new()),
@@ -85,7 +89,6 @@ impl ProductRunService {
                 file_refreshes: std::sync::Mutex::new(BTreeMap::new()),
                 preview_processes: std::sync::Mutex::new(BTreeMap::new()),
                 preview_capture: PreviewCaptureHost::discover(),
-                host_permissions: permissions::HostPermissionCatalog::new(components, workspaces),
             }),
         };
         let live_command_owners = service.reconcile_restored_command_receipts();

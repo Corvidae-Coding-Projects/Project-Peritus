@@ -119,7 +119,7 @@ impl super::ProductRunService {
         let Some(root) = self.inner.workspaces.get(&record.request.workspace_id()) else {
             return Ok(());
         };
-        let Ok(runtime) = super::execution::open_command_runtime(self, &record.request, root)
+        let Ok(runtime) = super::execution::open_command_runtime(self, &record.request, &root)
         else {
             return Ok(());
         };

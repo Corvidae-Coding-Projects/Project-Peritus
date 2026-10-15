@@ -1,5 +1,26 @@
 # peritus-daemon
 
+## Folder guide
+
+Production daemon and application composition owner for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-daemon`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Daemon entry/composition, local transport, authenticated command handlers, domain-service wiring, workspace admission, and product-run registry. |
+
 `peritus-daemon` is the single production composition owner for Peritus. It authenticates local
 IPC peers, negotiates the A3 application protocol, serializes authority-bearing state mutations,
 supervises bounded effect work, and coordinates deterministic startup, recovery, and shutdown.
@@ -14,6 +35,11 @@ The crate does not expose writable storage handles or reusable authority tokens.
 configuration, lifecycle status, and a bounded authority client. Product-run configuration carries
 default-off provider-failover consent into the runner. Provider switches are counted in durable run
 progress and shown in live status without changing the A3 role-selection protocol.
+
+Each coding run retains an owned blocking-worker join handle and its cancellation tokens.
+Synchronous prompt planning, local-history reads and host-tool work execute there; provider
+and process I/O still use the daemon's runtime. Those operations do not occupy the async
+workers responsible for accepting client connections and exchanging heartbeats.
 
 Model discovery runs as bounded, connection-owned read tasks so provider latency does not stop
 heartbeats, events, or other client requests. Each provider has its own discovery gate and readable
@@ -80,15 +106,21 @@ shutdown, and the resource-aware verification commands. Operational procedures l
 [recovery](../../../docs/g0-recovery-runbook.md) and
 [shutdown](../../../docs/g0-shutdown-runbook.md) runbooks.
 
-## Focused checks
+## Multiple clients and live workspaces
 
-The strict `[context.local]` configuration enables local working memory by default.
-`peritusd context-inspect` reads the exact last published view without opening a writable owner.
-The [local working-memory guide](../../../docs/local-working-memory.md) documents its arguments,
-offline route admission, artifact retention, and fail-closed recovery boundaries.
+Additional terminal windows share the daemon. New direct folders and managed Git registrations
+are admitted through immutable workspace catalog generations, with roots, folder trust, and host
+permissions replaced together. Existing work continues; selecting a read-only window does not
+change installation-wide tool availability or grant it write authority.
 
-From the repository root:
+A daemon-owned coordinator admits workspace updates without making status requests mutate
+state. Removing a folder from recents retains its admitted binding until restart, so another
+window can keep using it. Temporarily unavailable inactive folders do not prevent opening a
+different folder. Provider/executable changes and replacement of existing workspace identities
+require a planned graceful restart. A new window preserves the running daemon and gives an
+actionable error when a live update is unsafe or the older daemon does not implement it.
+Normal workspace additions do not restart the service.
 
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-daemon
-```
+## Behavioral work
+
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

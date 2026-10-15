@@ -35,6 +35,27 @@ pub fn direct(
     header: Option<&str>,
     credential: &peritus_secrets::SecretMaterial,
 ) -> Result<Vec<DiscoveredModel>, OnboardingError> {
+    if matches!(kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo) {
+        return run(async {
+            let service = if kind == ProviderKind::OpenCodeZen {
+                peritus_provider_core::hosted::HostedService::OpenCodeZen
+            } else {
+                peritus_provider_core::hosted::HostedService::OpenCodeGo
+            };
+            let executable = peritus_provider_opencode::OpenCodeExecutable::discover_supported(
+                &CancellationToken::new(),
+            )
+            .await?;
+            let credential = credential.expose(|bytes| Credential::new(bytes.to_vec()))?;
+            peritus_provider_opencode::discover_models(
+                &executable,
+                service,
+                &credential,
+                &CancellationToken::new(),
+            )
+            .await
+        });
+    }
     let (endpoint, dialect, name, prefix) = match kind {
         ProviderKind::OpenAiApi => (
             "https://api.openai.com/v1/models".to_owned(),
@@ -125,10 +146,9 @@ pub fn direct(
     })
 }
 
-fn run(
-    future: impl Future<Output = Result<Vec<DiscoveredModel>, peritus_provider_core::ProviderCoreError>>
-    + Send,
-) -> Result<Vec<DiscoveredModel>, OnboardingError> {
+pub(crate) fn run<T: Send>(
+    future: impl Future<Output = Result<T, peritus_provider_core::ProviderCoreError>> + Send,
+) -> Result<T, OnboardingError> {
     std::thread::scope(|scope| {
         scope
             .spawn(move || {

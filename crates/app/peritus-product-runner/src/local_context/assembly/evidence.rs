@@ -54,7 +54,9 @@ pub(super) fn append(
             continue;
         }
         let source = memory.archived(id)?;
-        if !matches!(source.kind, ArchiveKind::ToolOutput | ArchiveKind::Assistant) {
+        if !matches!(source.kind, ArchiveKind::ToolOutput | ArchiveKind::Assistant)
+            || source.is_memory_receipt()
+        {
             continue;
         }
         let bytes = memory.artifact(id)?;

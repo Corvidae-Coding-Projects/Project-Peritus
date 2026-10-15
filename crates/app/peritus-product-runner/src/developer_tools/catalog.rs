@@ -126,6 +126,7 @@ pub fn definitions_for_attachments(
         ),
     ])?;
     definitions.extend(super::computer::definitions()?);
+    definitions.push(skill_definition()?);
     if !has_selected_file_attachments {
         definitions.retain(|definition| definition.name().as_str() != "attachment_read");
     }
@@ -158,6 +159,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
     ])?;
     definitions.extend(super::computer::observer_definitions()?);
+    definitions.push(skill_definition()?);
     Ok(definitions)
 }
 
@@ -176,10 +178,18 @@ pub(crate) fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError
     )
 }
 
+fn skill_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "skill_read",
+        "Read an exact UTF-8 page from a bundled skill resource without filesystem access or workspace grounding. Rust reliability is activated automatically by Rust task/file/command activity and remains in the current system policy. References and the optional helper source are available here; reading or possessing the helper grants no process authority and does not override user command restrictions. Begin at offset 0 and continue at next_offset until null. total_bytes and sha256 identify the complete immutable resource. Use exact relative paths only.",
+        r#"{"type":"object","additionalProperties":false,"properties":{"skill":{"type":"string","enum":["rust-reliability"]},"path":{"type":"string","enum":["SKILL.md","references/behavioral-scenarios.md","references/checks-and-harness.md","references/rust-failure-modes.md","scripts/rust_checks.py","agents/openai.yaml"]},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288,"default":16384}},"required":["skill","path"]}"#,
+    )
+}
+
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "workspace_scope",
-        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory, build-cache tree, or Git metadata such as .git/HEAD or .git/config; these are not task deliverables.",
+        "Declare workspace-relative task files or a narrow task/output directory BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. Directory declarations capture existing files and discover new descendants; protected paths, links, Git metadata and build caches are excluded. This records comparison evidence, not permission or automatic rollback; preserve unrelated/private files. Do not declare the workspace root or a whole home directory; use narrower paths for large trees.",
         r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
     )
 }

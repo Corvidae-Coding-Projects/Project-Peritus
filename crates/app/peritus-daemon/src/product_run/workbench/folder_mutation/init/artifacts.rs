@@ -83,7 +83,7 @@ impl ProductRunService {
             .join("workbench-init-artifacts")
             .join(super::super::hex_id(request.query().workspace().as_bytes()))
             .join(super::super::hex_id(request.query().conversation().as_bytes()));
-        if let Some(folder) = self.inner.folders.get(&request.query().workspace()) {
+        if let Some(folder) = self.inner.workspaces.folder(&request.query().workspace()) {
             folder.verify().map_err(|_| ControlError::ScopeMismatch)?;
         }
         let protected = self.protected_paths(request.query())?;

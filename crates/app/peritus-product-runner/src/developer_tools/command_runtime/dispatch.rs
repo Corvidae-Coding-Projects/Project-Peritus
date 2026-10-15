@@ -25,6 +25,7 @@ impl CommandRuntime {
     ) -> Result<(), DeveloperLoopError> {
         match started.outcome {
             DispatchOutcome::Active(invocation) => {
+                state.native_owners.insert(handle.to_owned(), started.owner);
                 state.active.insert(
                     handle.to_owned(),
                     ActiveCommand {
@@ -45,6 +46,7 @@ impl CommandRuntime {
             DispatchOutcome::Completed(result) | DispatchOutcome::Replayed(result) => {
                 let projection =
                     result::terminal(handle, &result, &self.inner.artifacts, &[]).map_err(tool)?;
+                state.native_owners.insert(handle.to_owned(), started.owner);
                 state
                     .terminal
                     .insert(handle.to_owned(), TerminalCommand { result, progress: Vec::new() });

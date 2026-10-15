@@ -1,5 +1,20 @@
 # Long-history daemon/TUI replay
 
+## Folder guide
+
+Real-interface replay resources for daemon history; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [probe.rs](probe.rs) | Local implementation for docs / testing / reproducers / daemon-history. Entry names: `Error`, `connect`, `request`, `main`. |
+| [replay.py](replay.py) | Real terminal, daemon, and persisted history replay; no mocked application. |
+| [screen.rs](screen.rs) | Local implementation for docs / testing / reproducers / daemon-history. Entry names: `main`. |
+
 Use an isolated copy of a real Peritus state directory and the actual current binaries. The fixture must contain `bin/peritus`, `bin/peritusd`, `bin/peritus-tui`, and separate `config`, `state`, and `cache` directories. Mark only a disposable fixture with `real-test-fixture.json` containing `{"owned_disposable_fixture": true}`. Never mark the live installation.
 
 Copy product state, workspace registrations, public approval registry, workbench run records and continuations. Use SQLite's backup API for a coherent copy of `workbench-v1/control.sqlite3`. Copy effect ledgers if testing run-list projection, but never copy native process ownership or the core daemon database: the fixture must not own the user's real child processes. Recreate generated daemon configurations for the new XDG paths through `peritus open`; copied generated configurations contain their original absolute paths. No request in this replay starts, retries, or resumes inference. Workspace contents are only viewed.

@@ -52,7 +52,8 @@ impl ProductRunService {
                 checkpoint.external_effects().map(str::to_owned).collect())
                 .map_err(|_| ControlError::InvalidInput.into());
         }
-        let root = self.workspace_root(request.query())?;
+        let workspace_root = self.workspace_root(request.query())?;
+        let root = workspace_root.as_path();
         let identity = self.checked_folder_identity(request.query(), root)?;
         let protected = self.protected_paths(request.query())?;
         let contract = record.inputs().capture()?.conversation().to_owned();

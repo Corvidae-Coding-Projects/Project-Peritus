@@ -1,5 +1,25 @@
 # Release contract assets
 
+## Folder guide
+
+Release contract/configuration assets and candidate-specific publication records.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [assets/](assets/AGENTS.md) | README describing externally generated candidate release assets; this source directory contains no release binaries. |
+| [schemas/](schemas/AGENTS.md) | Versioned artifact, provenance, readiness, and release-evidence JSON contracts. |
+| [templates/](templates/AGENTS.md) | Inert release/evidence templates. Instantiating a template does not establish candidate readiness. |
+
 This directory contains the stable schemas and incomplete operator templates used to assemble H4
 release evidence. These source files describe what evidence must look like; they are not evidence
 that a release candidate was built, signed, audited, or approved.

@@ -1,5 +1,27 @@
 # Peritus external benchmarks
 
+## Folder guide
+
+Native HarnessBench and Terminal-Bench qualification boundary for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-external-benchmarks`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Native, noninteractive external-benchmark entry point for Peritus. |
+| [tests/](tests/AGENTS.md) | Historical fixture organization retained beneath the active benchmark package; this subtree currently contains documentation rather than runnable test targets. |
+
 This crate is the native boundary between Peritus and third-party agent benchmarks. It runs the
 real repository-grounded designer, writer, checks, reviewer, and fixer without starting the TUI or
 daemon.
@@ -67,12 +89,6 @@ accounting errors. `allow-legacy` accurately reports older campaigns that predat
 identity; `require-native` requires source revision and executable digest evidence for every task.
 Publication is atomic and never overwrites an existing result.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-external-benchmarks --all-features
-CARGO_BUILD_JOBS=2 cargo clippy --locked --package peritus-external-benchmarks \
-  --all-targets --all-features -- -D warnings
-```
+Use the [project real-testing policy](../../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

@@ -1,5 +1,26 @@
 # peritus-budget
 
+## Folder guide
+
+hierarchical resource-budget accounting for Project Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-budget`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Hierarchical resource-budget accounting for Peritus. |
+
 `peritus-budget` owns Peritus's pure, verified accounting decisions for model tokens, provider
 cost, accountable active-effect time, attempts, and retries. One ledger contains a root budget and
 its complete child tree so reservation changes and inclusive ancestor accounting are atomic.
@@ -41,10 +62,6 @@ external truth.
 This verification-class `V` crate depends only on `peritus-types` and the pinned `vstd`. A2 test
 support is a development dependency only.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-budget
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

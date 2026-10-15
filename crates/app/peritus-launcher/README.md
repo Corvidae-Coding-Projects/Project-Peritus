@@ -1,9 +1,38 @@
 # peritus-launcher
 
+## Folder guide
+
+Single-command local bootstrap and product composition for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-launcher`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Single-command bootstrap: product state, workspace trust/selection, provider setup, packaged daemon resolution/startup, update handling, and UI handoff. |
+
 `peritus-launcher` is the C-class G4 host-composition boundary behind interactive `peritus` startup.
 It discovers and protects platform-local roots, atomically publishes immutable product-state
 generations and generated G0 inputs, resolves the matching packaged daemon, establishes bounded
-readiness, and hands the endpoint to `peritus-tui`.
+readiness, and hands the endpoint to `peritus-tui`. Interactive startup allows up to five
+minutes for cold recovery or a one-time state migration and prints a progress notice every five
+seconds. The daemon log records timings for each completed recovery phase.
+
+Remembered in-place folders retain their workspace/conversation identity after Git initialization
+or filesystem device renumbering. Folder identity uses directory birth time and inode where
+available; matching legacy trust upgrades automatically. If continuity cannot be established,
+Peritus asks to trust the current directory again and retains its conversation lineage. Declining
+keeps it restricted. `peritus workspaces` can restore trust later.
 
 Its setup composition presents the complete built-in provider catalog, persists choices before
 daemon startup, generates immutable C5 route configuration, and provides focused provider repair
@@ -25,10 +54,21 @@ provider traffic, workspace mutations, approvals, or TUI presentation state. All
 configuration is parsed through the production G0 validator before use, and existing identity-bound
 configuration is preserved only when its protected core matches the installation.
 
-## Focused checks
+## Multiple clients and live workspaces
 
-From the repository root:
+Additional terminal windows share the daemon. New direct folders and managed Git registrations
+are admitted through immutable workspace catalog generations, with roots, folder trust, and host
+permissions replaced together. Existing work continues; selecting a read-only window does not
+change installation-wide tool availability or grant it write authority.
 
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-launcher
-```
+A launch lock serializes concurrent daemon startup/publication. Removing a folder from recents
+retains its admitted binding until restart, so another window can keep using it. Temporarily
+unavailable inactive folders do not prevent opening a different folder. Provider/executable
+changes and replacement of existing workspace identities require a planned graceful restart.
+A new window preserves the running daemon and gives an actionable error when a live update is
+unsafe or the older daemon does not implement it. Normal workspace additions do not restart
+the service.
+
+## Behavioral work
+
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

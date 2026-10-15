@@ -52,6 +52,16 @@ pub(super) struct ArchivedObservation {
 }
 
 impl ArchivedObservation {
+    /// Retrieval/working-state receipts remain audit sources, but are not new task evidence.
+    pub(super) fn is_memory_receipt(&self) -> bool {
+        self.call.as_ref().is_some_and(|call| {
+            matches!(
+                call.name.as_str(),
+                "context_read" | "context_update" | "developer_evidence_read" | "skill_read"
+            )
+        })
+    }
+
     pub(super) fn validate_locator(
         &self,
         locator: ObservationSource,

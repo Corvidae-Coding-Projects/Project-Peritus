@@ -48,13 +48,13 @@ impl ProductRunService {
         }
         let workspace = command.query().workspace();
         let root = self.inner.workspaces.get(&workspace).ok_or(ControlError::ScopeMismatch)?;
-        if let Some(folder) = self.inner.folders.get(&workspace) {
+        if let Some(folder) = self.inner.workspaces.folder(&workspace) {
             folder.verify().map_err(|_| ControlError::ScopeMismatch)?;
             if !folder.writable() {
                 return Err(Error::PermissionDenied);
             }
         }
-        let identity = FolderIdentity::observe(root)?;
+        let identity = FolderIdentity::observe(&root)?;
         let resource = folder_resource_id(workspace)?;
         let environment = folder_environment_id(&identity)?;
         let action = ActionId::new(command.operation().into_bytes())

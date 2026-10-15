@@ -116,6 +116,9 @@ impl CandidateRecorder {
                     .and_then(|()| {
                         recorder.record(CandidateStage::Changed, revision, CheckpointEvidence::None)
                     }),
+                ToolCheckpointBoundary::ScopedCommandChange => {
+                    recorder.record(CandidateStage::Changed, revision, CheckpointEvidence::None)
+                }
                 ToolCheckpointBoundary::Verification => {
                     recorder.record(CandidateStage::SelfChecked, revision, CheckpointEvidence::None)
                 }

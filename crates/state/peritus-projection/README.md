@@ -1,5 +1,26 @@
 # peritus-projection
 
+## Folder guide
+
+Pure deterministic journal projections and durable shadow rebuilds for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-projection`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Pure deterministic journal projections and durable shadow rebuilds for Peritus. |
+
 Pure deterministic journal folds, versioned checkpoints, and durable shadow rebuilds for Project
 Peritus.
 
@@ -34,10 +55,6 @@ collection; an embedding application must drive each configured projection.
 See [C0 durable state](../../../docs/c0-durable-state.md) for operator ordering, failure recovery,
 and exact validation commands.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-projection
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

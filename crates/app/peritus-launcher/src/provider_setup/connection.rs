@@ -7,6 +7,7 @@ pub(super) fn existing(
     terminal: &mut Terminal<'_>,
     profile: &DirectProviderProfile,
 ) -> Result<DirectProviderProfile, LauncherError> {
+    super::direct::ensure_runtime(terminal, profile.kind())?;
     loop {
         let answer = terminal.prompt(&format!("{} / {}: Enter to keep, r to replace key/model, t to test connection (up to 3 small requests; may use paid tokens): ", profile.kind().label(), profile.model()))?;
         match answer.to_ascii_lowercase().as_str() {
@@ -62,7 +63,11 @@ fn test(terminal: &mut Terminal<'_>, profile: &DirectProviderProfile) -> Result<
         }
         Err(error) => {
             terminal.line(&format!("Connection test failed: {error}"))?;
-            terminal.line("Check the API key, billing/model access, and selected protocol. You can replace settings or test again.")?;
+            terminal.line(if matches!(profile.kind(), peritus_product_state::ProviderKind::OpenCodeZen | peritus_product_state::ProviderKind::OpenCodeGo) {
+                "Check the saved API key, workspace billing/model access, and OpenCode CLI version. You can replace settings or test again; a separate OpenCode login is unnecessary."
+            } else {
+                "Check the API key, billing/model access, and selected protocol. You can replace settings or test again."
+            })?;
             if profile.kind() == peritus_product_state::ProviderKind::CompatibleEndpoint {
                 let route = match profile.compatible_protocol() {
                     Some(peritus_product_state::CompatibleProtocol::Responses) => "/v1/responses",

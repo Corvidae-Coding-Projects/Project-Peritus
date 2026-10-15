@@ -1,5 +1,24 @@
 # Terminal-Bench 2.0
 
+## Folder guide
+
+Harbor/Terminal-Bench bridge: native-agent invocation, deadline resolution, credential checkpointing, and process-family cleanup.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [credential_state.py](credential_state.py) | Safe host checkpointing for credential state rotated by official provider CLIs. |
+| [deadline.py](deadline.py) | Resolve Harbor's retained agent deadline into a Peritus work horizon. |
+| [peritus_agent.py](peritus_agent.py) | Harbor custom-agent boundary for the native Peritus product runner. |
+| [pin.toml](pin.toml) | Configuration/contract data for pin. Sections: `schema_version`, `harbor_repository`, `harbor_revision`, `harbor_revision_date`, `harbor_version`. |
+| [podman_compose_provider.py](podman_compose_provider.py) | Make podman-compose satisfy Harbor's Compose-V2 preflight probe. |
+| [process_supervisor.py](process_supervisor.py) | Cancellation-safe process supervision for the Harbor adapter. |
+| [registries.conf](registries.conf) | Checked-in registries asset/configuration (.conf). |
+
 Peritus runs the official 89-task Terminal-Bench 2.0 dataset through Harbor. The exact source,
 runner, dataset identity, adapter, attempt count, and resource policy are recorded in `pin.toml`.
 Upstream checkouts, downloaded task images, generated workspaces, credentials, and results stay

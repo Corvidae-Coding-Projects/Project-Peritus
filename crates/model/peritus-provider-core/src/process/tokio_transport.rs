@@ -38,7 +38,7 @@ async fn run(
     let mut child = spawn(&request)?;
     write_stdin(&mut child, request.stdin(), cancellation, deadline).await?;
     let (stdout, stderr) = take_output(&mut child).await?;
-    collect(child, stdout, stderr, limits, cancellation, deadline).await
+    collect(child, stdout, stderr, limits, cancellation, deadline, request.stderr_observer()).await
 }
 
 fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
@@ -56,6 +56,9 @@ fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
     }
     for name in request.environment_removals() {
         command.env_remove(name.as_str());
+    }
+    for (name, value) in request.environment_overrides() {
+        command.env(name.as_str(), value);
     }
     command.spawn().map_err(|_| {
         ProviderCoreError::connect("process_spawn", "owned subprocess could not be started")
@@ -122,8 +125,9 @@ async fn collect(
     limits: super::ProcessLimits,
     cancellation: &CancellationToken,
     deadline: Instant,
+    observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
 ) -> Result<ProcessOutput, ProviderCoreError> {
-    let operation = collect_output(&mut child, stdout, stderr, limits);
+    let operation = collect_output(&mut child, stdout, stderr, limits, observer);
     let timed = tokio::time::timeout_at(deadline, operation);
     let outcome = crate::cancellation::first(cancellation, timed).await;
     let result = match outcome {
@@ -148,10 +152,11 @@ async fn collect_output(
     stdout: ChildStdout,
     stderr: ChildStderr,
     limits: super::ProcessLimits,
+    observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
 ) -> Result<(ExitStatus, Vec<u8>, Vec<u8>), ProviderCoreError> {
     let mut wait = Box::pin(child.wait());
-    let mut stdout = Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout"));
-    let mut stderr = Box::pin(read_bounded(stderr, limits.max_stderr_bytes(), "stderr"));
+    let mut stdout = Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout", None));
+    let mut stderr = Box::pin(read_bounded(stderr, limits.max_stderr_bytes(), "stderr", observer));
     let mut status = None;
     let mut stdout_bytes = None;
     let mut stderr_bytes = None;
@@ -194,6 +199,7 @@ async fn read_bounded(
     mut input: impl AsyncRead + Unpin,
     limit: usize,
     operation: &'static str,
+    observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
 ) -> Result<Vec<u8>, ProviderCoreError> {
     let mut output = Vec::new();
     let mut buffer = [0_u8; 8 * 1024];
@@ -217,6 +223,9 @@ async fn read_bounded(
             ));
         }
         output.extend_from_slice(&buffer[..count]);
+        if let Some(error) = observer.and_then(|observe| observe(&output)) {
+            return Err(error);
+        }
     }
 }
 

@@ -1,0 +1,17 @@
+# crates/runtime/peritus-process/src/platform/pipe — navigation
+
+## Responsibility
+
+Implementation pieces for `pipe.rs`: Direct structured pipe process launch with process-tree containment.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [windows_reap.rs](windows_reap.rs) | Bounded Windows job-object completion ownership. |
+
+Owning module: [pipe.rs](../pipe.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../AGENTS.md) · [Repository map](../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

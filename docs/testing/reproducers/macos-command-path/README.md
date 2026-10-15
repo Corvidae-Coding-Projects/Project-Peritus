@@ -1,5 +1,20 @@
 # Real packaged-command symlink replay
 
+## Folder guide
+
+Real-interface replay resources for macos command path; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [consumer.rs](consumer.rs) | Real consumer of the production packaged-binary discovery API. |
+| [install_replay.py](install_replay.py) | Actual shell installers and repair command in a mount-isolated user home. |
+| [replay.py](replay.py) | Operate real packaged-binary discovery against symlinked command paths. |
+
 Build the CLI normally with at most two Cargo jobs:
 
 ```sh

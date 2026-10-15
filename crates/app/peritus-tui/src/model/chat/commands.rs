@@ -57,6 +57,7 @@ impl AppModel {
             return effects;
         }
         match command {
+            Command::Design => return self.design_command(rest),
             Command::Model => return self.model_command(rest),
             Command::Effort => return self.effort_command(rest),
             Command::Doctor => return self.doctor_command(),
@@ -199,6 +200,22 @@ impl AppModel {
         } else {
             self.send_chat_message(text.to_owned())
         }
+    }
+
+    fn design_command(&mut self, text: &str) -> Vec<Effect> {
+        let (mode, message) = match text {
+            "build" => (
+                Mode::Chat,
+                "Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.",
+            ),
+            "show" => (
+                Mode::Design,
+                "Show the complete current saved design draft. If none exists, help me start one.",
+            ),
+            "" => (Mode::Design, "Help me create or continue a design."),
+            message => (Mode::Design, message),
+        };
+        self.chat_mode_command(mode, message)
     }
     pub(in crate::model) fn clear_chat_command(&mut self) {
         self.chat.pasted_command = false;

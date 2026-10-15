@@ -194,7 +194,10 @@ async fn reader_loop<R>(
             }
             Err(error) => {
                 let _ = events
-                    .send(ClientEvent::Disconnected { context, error: error.to_string() })
+                    .send(ClientEvent::Disconnected {
+                        context,
+                        error: format!("read daemon stream: {error}"),
+                    })
                     .await;
                 return;
             }
@@ -216,7 +219,10 @@ async fn writer_loop<W>(
             WriterCommand::Message(message) => {
                 if let Err(error) = write_frame(&mut writer, &message, limits).await {
                     let _ = events
-                        .send(ClientEvent::Disconnected { context, error: error.to_string() })
+                        .send(ClientEvent::Disconnected {
+                            context,
+                            error: format!("write daemon stream: {error}"),
+                        })
                         .await;
                     return;
                 }

@@ -36,6 +36,9 @@ pub enum ToolCheckpointBoundary {
         /// Exact state produced by the admitted effect or completed command receipt.
         owned_postchange: CheckpointFileVersion,
     },
+    /// A command changed declared directory contents. Newly discovered outputs have comparison
+    /// baselines but no captured before-image; record delivery without inventing restore bodies.
+    ScopedCommandChange,
     /// A declared verification command completed successfully.
     Verification,
     /// A caller-authorized external effect completed successfully.
@@ -209,16 +212,18 @@ impl WorkspaceDeveloperTools {
             return Ok(());
         }
         let Some(scope) = &self.in_place_scope else { return Ok(()) };
-        let paths = scope.paths().map_err(|error| tool(error.to_string()))?;
+        let paths = scope.checkpoint_paths().map_err(|error| tool(error.to_string()))?;
         for path in &paths {
             let relative = path.to_str().ok_or_else(|| tool("scope path must be UTF-8"))?;
             let target = checked(&self.root, relative, true)?;
             if target.is_dir() {
-                return Err(tool("command scope paths must be regular files or absent"));
+                // Directory membership is comparison evidence, not a restorable file body.
+                // Its enrolled descendants have their own exact checkpoint preconditions.
+                continue;
             }
             self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File)?;
         }
-        if scope.paths().map_err(|error| tool(error.to_string()))? != paths {
+        if scope.checkpoint_paths().map_err(|error| tool(error.to_string()))? != paths {
             return Err(tool("in-place command scope changed during checkpoint capture"));
         }
         Ok(())
@@ -270,6 +275,12 @@ impl WorkspaceDeveloperTools {
                 .map_err(tool)?;
             }
         }
+        if completed_command
+            && let (Some(observer), Some(scope)) = (&observer, &self.in_place_scope)
+            && !scope.changed_paths(&self.root).map_err(|error| tool(error.to_string()))?.is_empty()
+        {
+            observer(ToolCheckpointBoundary::ScopedCommandChange).map_err(tool)?;
+        }
         let boundary = match name {
             "browser_control" | "desktop_control"
                 if result.get("success").and_then(Value::as_bool) == Some(true) =>
@@ -299,10 +310,12 @@ impl WorkspaceDeveloperTools {
 
     fn command_mutations(&self) -> Result<Vec<PreparedMutation>, DeveloperLoopError> {
         let Some(scope) = &self.in_place_scope else { return Ok(Vec::new()) };
+        let captured = scope.checkpoint_paths().map_err(|error| tool(error.to_string()))?;
         scope
             .changed_paths(&self.root)
             .map_err(|error| tool(error.to_string()))?
             .into_iter()
+            .filter(|path| captured.contains(path))
             .map(|path| {
                 let relative = path.to_str().ok_or_else(|| tool("scope path must be UTF-8"))?;
                 exact_file_receipt(&self.root, relative)
@@ -340,7 +353,12 @@ fn exact_file_receipt(
     let target = checked(root, path, true)?;
     let before = match fs::symlink_metadata(&target) {
         Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+            ) =>
+        {
             return Ok(PreparedMutation {
                 path: path.to_owned(),
                 kind: WorkspaceMutationKind::File,

@@ -85,6 +85,17 @@ pub enum ProviderDeclaration {
         /// Immutable selected model and protocol contract.
         profile: ProviderProfile,
     },
+    /// Official OpenCode executable with a Peritus-owned Zen/Go API credential.
+    OpenCodeRuntime {
+        /// Pinned vendor executable.
+        executable: OfficialExecutableSelection,
+        /// Explicit Zen or Go service identity.
+        service: peritus_provider_core::hosted::HostedService,
+        /// Opaque API credential reference, resolved into disposable private vendor storage.
+        credential: peritus_provider_core::CredentialReference,
+        /// Exact immutable runtime profile.
+        profile: ProviderProfile,
+    },
     /// First-party `OpenAI` Responses HTTP adapter.
     OpenAi {
         /// Checked endpoint, routing, limits, and opaque credential reference.
@@ -168,7 +179,9 @@ impl ProviderDeclaration {
     #[must_use]
     pub const fn profile(&self) -> &ProviderProfile {
         match self {
-            Self::OpenAi { profile, .. } | Self::Hosted { profile, .. } => profile,
+            Self::OpenAi { profile, .. }
+            | Self::Hosted { profile, .. }
+            | Self::OpenCodeRuntime { profile, .. } => profile,
             Self::Anthropic(config) => config.profile(),
             Self::Google(config) => config.profile(),
             Self::Compatible { profile, .. } => profile.provider_profile(),

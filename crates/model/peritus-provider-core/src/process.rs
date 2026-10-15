@@ -174,6 +174,8 @@ pub struct ProcessRequest {
     stdin: Zeroizing<Vec<u8>>,
     current_dir: Option<PathBuf>,
     environment_removals: Vec<EnvironmentName>,
+    environment_overrides: Vec<(EnvironmentName, std::ffi::OsString)>,
+    stderr_observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
     limits: ProcessLimits,
 }
 
@@ -225,8 +227,57 @@ impl ProcessRequest {
             stdin: Zeroizing::new(stdin),
             current_dir,
             environment_removals,
+            environment_overrides: Vec::new(),
+            stderr_observer: None,
             limits,
         })
+    }
+
+    /// Sets explicit child-only environment values after inherited names are removed.
+    ///
+    /// Values remain private in diagnostics. This supports isolated vendor configuration paths
+    /// without changing the host environment or passing credentials in process arguments.
+    ///
+    /// # Errors
+    /// Rejects duplicate names and native NUL delimiters.
+    pub fn with_environment_overrides(
+        mut self,
+        values: Vec<(EnvironmentName, std::ffi::OsString)>,
+    ) -> Result<Self, ProviderCoreError> {
+        let unique = values.iter().map(|(name, _)| name.identity()).collect::<BTreeSet<_>>();
+        if unique.len() != values.len()
+            || values.iter().any(|(_, value)| value.as_encoded_bytes().contains(&0))
+        {
+            return Err(ProviderCoreError::configuration(
+                "process_environment",
+                "environment overrides contain duplicate names or NUL",
+            ));
+        }
+        self.environment_overrides = values;
+        Ok(self)
+    }
+
+    /// Borrows private environment values for the process transport only.
+    #[must_use]
+    pub fn environment_overrides(&self) -> &[(EnvironmentName, std::ffi::OsString)] {
+        &self.environment_overrides
+    }
+
+    /// Observes bounded private stderr incrementally and may abort the owned process.
+    ///
+    /// Used by executable adapters to recognize terminal failures before a vendor's internal
+    /// retry loop. Observers must return fixed redaction-safe errors, never child text.
+    #[must_use]
+    pub fn with_stderr_observer(
+        mut self,
+        observer: fn(&[u8]) -> Option<ProviderCoreError>,
+    ) -> Self {
+        self.stderr_observer = Some(observer);
+        self
+    }
+
+    pub(crate) const fn stderr_observer(&self) -> Option<fn(&[u8]) -> Option<ProviderCoreError>> {
+        self.stderr_observer
     }
 
     /// Returns the pinned executable for a process transport implementation.
@@ -275,6 +326,8 @@ impl fmt::Debug for ProcessRequest {
             .field("stdin", &"[redacted]")
             .field("current_dir", &self.current_dir.as_ref().map(|_| "[configured]"))
             .field("environment_removals", &self.environment_removals)
+            .field("environment_overrides", &"[redacted]")
+            .field("stderr_observer", &self.stderr_observer.map(|_| "[private]"))
             .field("limits", &self.limits)
             .finish()
     }

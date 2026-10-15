@@ -44,6 +44,13 @@ impl ModelProvider for EffortSelection {
         self.provider.context_input_target()
     }
 
+    fn prepare_context<'a>(
+        &'a self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+        self.provider.prepare_context(cancellation)
+    }
+
     fn context_input_fits(
         &self,
         messages: &[peritus_model_protocol::Message],

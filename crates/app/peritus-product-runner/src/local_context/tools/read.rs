@@ -101,10 +101,7 @@ fn source_page(
         let id = if ids.is_empty() { memory.sources[index].sequence } else { ids[index] };
         let source = memory.archived(id)?;
         if search.is_some()
-            && (source.kind == ArchiveKind::ToolMessage
-                || source.call.as_ref().is_some_and(|call| {
-                    matches!(call.name.as_str(), "context_read" | "context_update")
-                }))
+            && (source.kind == ArchiveKind::ToolMessage || source.is_memory_receipt())
         {
             index += 1;
             offset = 0;

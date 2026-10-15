@@ -22,6 +22,7 @@ Peritus executable in a retained PTY**, not a mock terminal or a shell string.
 | `/git remote add NAME URL`, `/git remote set-url NAME URL`, `/git remote rename OLD NEW`, `/git remote remove NAME` | Native remote management; removal confirms |
 | `/git fetch [REMOTE]`, `/git pull [REMOTE] [BRANCH]`, `/git push [REMOTE] [BRANCH] [--set-upstream]` | Fetch/prune, fast-forward pull, and publish; no force push |
 | `/chat [MESSAGE]`, `/plan [MESSAGE]`, `/review [MESSAGE]`, `/build [MESSAGE]` | Select the explicit interaction mode; an optional message is sent in that mode |
+| `/design [IDEA]`, `/design show`, `/design build` | Start/resume the guided interview, display/revise its saved Markdown, or explicitly implement it. Native Design actions use this same dispatcher |
 | `/model`, `/effort` | Save per-session model/effort choices; existing conversations update the daemon immediately for subsequent model turns. Providers are fixed after the first message |
 | `/details` | Toggle public tool/status details in the conversation |
 | `/status`, `/diff` | Inspect the active session's observed run status/candidate diff |

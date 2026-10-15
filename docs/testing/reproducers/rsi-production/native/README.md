@@ -1,5 +1,30 @@
 # Native RSI real-operation consumer
 
+## Folder guide
+
+peritus-rsi-native-real-consumer package.
+
+Standalone replay/consumer package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.lock](Cargo.lock) | Locked dependency resolution for the neighboring package manifest. |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-rsi-native-real-consumer`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [RESULTS-2026-10-13.md](RESULTS-2026-10-13.md) | Document: Native RSI final real-operation evidence. |
+| [checkpoint_replay.py](checkpoint_replay.py) | Capture a genuine committed C0 boundary, then reopen only a disposable copied prefix. |
+| [crash_replay.py](crash_replay.py) | Abruptly kill only a process this driver started, then reopen its actual daemon state. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Real-interface replay resources for src; start with the local README/driver and its documented disposable-state prerequisites. |
+
 This is an ordinary consumer of the public daemon, E3 evaluation, E1 materialization, and artifact-store APIs. It runs actual immutable CLI executables in native restricted C2/C3 processes, then runs an independent frozen evaluator. It is not a unit suite. No executables, private state, credentials, or observed-success substitutes are bundled.
 
 Use a disposable copy of an E1 fixture produced by the sibling evolution consumer. Its `actual-materializations.json`, journal, and artifact store must contain real committed baseline/candidate materialization receipts and the actual executable artifacts. Stop every other writer before copying or opening it. The fixture root must be owned exclusively by this campaign.

@@ -1,5 +1,26 @@
 # peritus-agent
 
+## Folder guide
+
+Pure deterministic D0 agent-turn state machine.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-agent`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Two connected surfaces: DeveloperLoop drives product provider/tool turns; durable AgentDriver/state-machine modules own journal-backed domain-agent execution. |
+
 `peritus-agent` is the D0 durable inner coding loop. Its pure half validates immutable turn,
 role, revision, provider, and limit bindings; reduces one causally fenced command to one event and
 successor state; and reconstructs exactly the same state by replaying canonical events.
@@ -86,10 +107,6 @@ CARGO_BUILD_JOBS=2 RUSTDOCFLAGS='-D warnings' cargo doc -p peritus-agent --all-f
 See [`docs/d0-agent-loop.md`](../../../docs/d0-agent-loop.md) for lifecycle, recovery, operating,
 and verification details.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-agent
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

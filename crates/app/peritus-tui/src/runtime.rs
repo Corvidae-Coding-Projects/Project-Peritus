@@ -3,6 +3,7 @@
 mod candidate;
 mod clipboard;
 mod connection;
+mod diagnostics;
 mod files;
 mod images;
 mod interrupts;
@@ -49,13 +50,19 @@ pub struct TuiConfig {
     endpoint: PathBuf,
     requested_session: Option<SessionId>,
     product: Option<ProductLaunchContext>,
+    diagnostic_log: Option<PathBuf>,
 }
 
 impl TuiConfig {
     /// Creates a configuration for one exact local daemon endpoint.
     #[must_use]
     pub fn new(endpoint: impl Into<PathBuf>) -> Self {
-        Self { endpoint: endpoint.into(), requested_session: None, product: None }
+        Self {
+            endpoint: endpoint.into(),
+            requested_session: None,
+            product: None,
+            diagnostic_log: None,
+        }
     }
 
     /// Requests resumption of an existing durable application session.
@@ -69,6 +76,14 @@ impl TuiConfig {
     #[must_use]
     pub fn with_product(mut self, product: ProductLaunchContext) -> Self {
         self.product = Some(product);
+        self
+    }
+
+    /// Records transport failures in an application-owned private diagnostic file.
+    /// Message bodies, drafts and credentials are never included.
+    #[must_use]
+    pub fn with_diagnostic_log(mut self, path: PathBuf) -> Self {
+        self.diagnostic_log = Some(path);
         self
     }
 
@@ -135,7 +150,7 @@ pub async fn run_with_state(
     let mut input = InputPump::start(input_tx.clone())?;
     let (client_events_tx, mut client_events_rx) = mpsc::channel(512);
     let mut model = state.take_model(&config, seed);
-    let mut connection = Connection::new(client_events_tx);
+    let mut connection = Connection::new(client_events_tx, config.diagnostic_log.clone());
     connection.start(&config, &mut model);
 
     let mut tick = tokio::time::interval(UI_TICK);
@@ -149,6 +164,7 @@ pub async fn run_with_state(
             &mut tick,
             &mut reads,
             &mut connection,
+            &config,
         )
         .await
         {
@@ -292,6 +308,7 @@ async fn next_effects(
     tick: &mut tokio::time::Interval,
     reads: &mut LocalReads,
     connection: &mut Connection,
+    config: &TuiConfig,
 ) -> Result<Vec<Effect>, TuiError> {
     loop {
         let action = tokio::select! {
@@ -302,12 +319,13 @@ async fn next_effects(
             },
             event = events.recv() => match event {
                 Some(event) => match client_action(event, model.protocol_context()) {
+                    Some(Action::Disconnected(error)) => return Ok(connection.disconnected("read/write", error, model)),
                     Some(action) => action,
                     None => continue,
                 },
                 None => Action::Disconnected("all daemon client tasks stopped".to_owned()),
             },
-            effects = connection.next(model), if connection.active() || connection.sending() => return Ok(effects),
+            effects = connection.next(config, model), if connection.active() || connection.sending() => return Ok(effects),
             _ = tick.tick() => Action::Tick(std::time::Instant::now()),
             file = reads.files.next(), if reads.files.active() => file,
             image = reads.images.next(), if reads.images.active() => image,

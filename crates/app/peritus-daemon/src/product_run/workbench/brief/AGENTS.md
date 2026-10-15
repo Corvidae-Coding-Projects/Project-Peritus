@@ -1,0 +1,17 @@
+# crates/app/peritus-daemon/src/product_run/workbench/brief — navigation
+
+## Responsibility
+
+Implementation pieces for `brief.rs`: Authenticated, read-only task-brief projection from the authoritative input ledger.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [pages.rs](pages.rs) | Paged metadata never opens reply bodies; exact body reads verify the retained publication. |
+
+Owning module: [brief.rs](../brief.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../../AGENTS.md) · [Repository map](../../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

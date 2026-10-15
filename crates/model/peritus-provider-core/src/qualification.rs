@@ -14,7 +14,7 @@ pub enum ProviderRoute {
     FirstPartyApi,
     /// Reviewed OpenAI-compatible API using an explicitly configured credential source.
     CompatibleApi,
-    /// Official account-owning executable acting only as a model router.
+    /// Official executable acting only as a model router, with account or API credentials.
     AccountRuntime,
 }
 
@@ -26,9 +26,9 @@ impl ProviderRoute {
             WireDialect::CompatibleResponses | WireDialect::CompatibleChatCompletions => {
                 Self::CompatibleApi
             }
-            WireDialect::OpenAiCodexRuntime | WireDialect::AnthropicClaudeRuntime => {
-                Self::AccountRuntime
-            }
+            WireDialect::OpenAiCodexRuntime
+            | WireDialect::AnthropicClaudeRuntime
+            | WireDialect::OpenCodeRuntime => Self::AccountRuntime,
             WireDialect::OpenAiResponses
             | WireDialect::AnthropicMessages
             | WireDialect::GeminiInteractionsV1

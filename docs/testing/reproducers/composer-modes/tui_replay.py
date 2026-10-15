@@ -71,7 +71,7 @@ def capture(name):
     (a.output/f'{name}.screen.txt').write_text('\n'.join(screen.display)+'\n')
 
 def reset(text):
-    send(b'\x1b[H\x1b[1;2F\x7f', .06)
+    send(b'\x1b[1;5H\x1b[1;6F\x7f', .06)
     send(b'\x1b[200~'+text.encode()+b'\x1b[201~', .06)
 
 HOME = b'\x1b[H'
@@ -121,8 +121,8 @@ try:
         ('selected-then-legacy','alpha beta',[b'\x1b[1;2D',b'\x1bb',marker],'alpha |beta'),
         ('option-delete-word','alpha beta',[ALT_BACKSPACE,marker],'alpha |'),
         ('ctrl-delete-word','alpha beta',[CTRL_BACKSPACE,marker],'alpha |'),
-        ('home-whole-message','first line\nsecond line',[HOME,marker],'|first line\nsecond line'),
-        ('end-whole-message','first line\nsecond line',[HOME,END,marker],'first line\nsecond line|'),
+        ('home-current-line','first line\nsecond line',[HOME,marker],'first line\n|second line'),
+        ('end-current-line','first line\nsecond line',[HOME,END,marker],'first line\nsecond line|'),
         ('empty-line-start','a\n\nb',[CMD_LEFT,CMD_LEFT,marker],'a\n\n|b'),
         ('trailing-newline','a\n',[CMD_LEFT,marker],'a\n|'),
         ('unicode-word','café résumé',[ALT_LEFT,marker],'café |résumé'),

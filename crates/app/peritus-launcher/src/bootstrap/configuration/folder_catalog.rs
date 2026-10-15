@@ -19,18 +19,29 @@ pub(in crate::bootstrap) fn refresh(
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(error) => {
-            return Err(LauncherError::filesystem("read folder catalog configuration", path, error));
+            return Err(LauncherError::filesystem(
+                "read folder catalog configuration",
+                path,
+                error,
+            ));
         }
     };
     let expected = render_configuration(layout, state)?;
     if compatibility::matches_current_or_legacy_timeout_configuration(&actual, &expected) {
         return Ok(());
     }
-    // No semantic normalization is allowed for any non-folder configuration byte.
-    // Returning without migration retains ensure_configuration's strict rejection.
+    // Migrate the old active-window-only tool inventory to installation-wide availability.
+    // Workspace authority remains independently enforced. All other non-folder bytes retain
+    // the existing strict compatibility policy.
     let Ok(actual_text) = std::str::from_utf8(&actual) else { return Ok(()) };
     let (actual_prefix, catalog) = split_catalog(actual_text);
     let (expected_prefix, _) = split_catalog(&expected);
+    let upgraded = actual_prefix.replacen(
+        "\n[tools]\nallow = []\n",
+        &format!("\n[tools]\nallow = [{}]\n", super::WORKSPACE_TOOL_CATALOG),
+        1,
+    );
+    let actual_prefix = upgraded.as_str();
     if !compatibility::matches_current_or_legacy_timeout_configuration(
         actual_prefix.as_bytes(),
         expected_prefix,

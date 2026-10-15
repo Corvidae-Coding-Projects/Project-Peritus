@@ -22,35 +22,33 @@ pub(super) fn dependency_closure(
     if root >= graph_len {
         return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
     }
+    if graph_nodes[root].dependencies().is_empty() {
+        return Ok(vec![root]);
+    }
     let mut included = vec![false; graph_len];
     included[root] = true;
-    let mut pass = 0;
-    while pass < graph_len {
-        let mut node_index = 0;
-        while node_index < graph_len {
-            if included[node_index] {
-                let dependencies = graph_nodes[node_index].dependencies();
-                let mut dependency_index = 0;
-                while dependency_index < dependencies.len() {
-                    let Some(target) = graph.index_of(dependencies[dependency_index]) else {
-                        return Err(ContextError::nodes(
-                            ContextErrorKind::MissingDependency,
-                            graph_nodes[node_index].id(),
-                            dependencies[dependency_index],
-                        ));
-                    };
-                    if target >= graph_len || target >= included.len() {
-                        return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
-                    }
-                    included[target] = true;
-                    dependency_index += 1;
-                }
+    let mut pending = vec![root];
+    // The graph validates dependency existence and acyclicity at construction.
+    // Visit each reachable node once instead of rescanning every node N times
+    // for every root (cubic work even when the graph has no edges).
+    while let Some(node_index) = pending.pop() {
+        for dependency in graph_nodes[node_index].dependencies() {
+            let Some(target) = graph.index_of(*dependency) else {
+                return Err(ContextError::nodes(
+                    ContextErrorKind::MissingDependency,
+                    graph_nodes[node_index].id(),
+                    *dependency,
+                ));
+            };
+            if !included[target] {
+                included[target] = true;
+                pending.push(target);
             }
-            node_index += 1;
         }
-        pass += 1;
     }
     let mut closure = Vec::new();
+    // Keep canonical graph order: hidden-dependency diagnostics, accounting and
+    // first-admission reasons must not depend on traversal order.
     let mut index = 0;
     while index < included.len() {
         if included[index] {

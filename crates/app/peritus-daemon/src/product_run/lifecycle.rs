@@ -201,7 +201,6 @@ impl ProductRunService {
                 .inner
                 .workspaces
                 .get(&record.request.workspace_id())
-                .cloned()
                 .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
             let cancelled = Arc::new(AtomicBool::new(false));
             let token = CancellationToken::new();

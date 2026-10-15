@@ -1,0 +1,26 @@
+# crates/foundation/peritus-codec — navigation
+
+## Responsibility
+
+Canonical versioned framing and bounded binary decoding for Peritus.
+
+Package `peritus-codec` is a member of the root Cargo workspace; architectural owner `B3` in `foundation`.
+
+Local dependency waypoints: [peritus-types](../peritus-types/AGENTS.md).
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-codec`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+## Child areas
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Canonical versioned framing and bounded binary decoding for Peritus. |
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

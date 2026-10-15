@@ -33,7 +33,12 @@ pub fn checked(
                 return Err(tool("symbolic links are not developer tool targets"));
             }
             Ok(_) => {}
-            Err(error) if allow_missing && error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error)
+                if allow_missing
+                    && matches!(
+                        error.kind(),
+                        std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+                    ) => {}
             Err(error) => return Err(tool(error.to_string())),
         }
     }
@@ -48,6 +53,37 @@ pub fn canonical_command_cwd(root: &Path, cwd: &Path) -> Result<PathBuf, Develop
         return Err(tool("command working directory escaped the managed workspace"));
     }
     Ok(cwd)
+}
+
+/// Observe an enrolled path's metadata without following terminal or ancestor links.
+/// An opaque/missing parent means its former children are absent from this workspace.
+pub(super) fn observed(root: &Path, value: &str) -> Result<Option<PathBuf>, DeveloperLoopError> {
+    let relative = Path::new(value);
+    if relative.is_absolute()
+        || relative.components().any(|part| !matches!(part, Component::Normal(_)))
+        || relative.starts_with(".git")
+    {
+        return Err(tool("path must be a normal workspace-relative path"));
+    }
+    let mut components = relative.components().peekable();
+    let mut current = root.to_path_buf();
+    while let Some(Component::Normal(part)) = components.next() {
+        current.push(part);
+        match fs::symlink_metadata(&current) {
+            Ok(meta) if components.peek().is_some() && !meta.is_dir() => return Ok(None),
+            Ok(_) => {}
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+                ) =>
+            {
+                return Ok(Some(root.join(relative)));
+            }
+            Err(error) => return Err(tool(error.to_string())),
+        }
+    }
+    Ok(Some(current))
 }
 
 pub fn tool(detail: impl Into<String>) -> DeveloperLoopError {

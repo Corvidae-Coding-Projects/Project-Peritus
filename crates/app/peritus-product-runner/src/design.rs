@@ -86,7 +86,8 @@ pub async fn create(
             }
             Err(error) => return Err(error),
         };
-        let stable_context = input.conversation.stable_request_context();
+        let mut stable_context = input.conversation.stable_request_context();
+        stable_context.push_str(&crate::guided_design::implementation_context(input)?);
         let (prompt, attachments) =
             media.into_parts(user_prompt(&stable_context, correction.as_deref()));
         let mut tools = input.configure_tools(

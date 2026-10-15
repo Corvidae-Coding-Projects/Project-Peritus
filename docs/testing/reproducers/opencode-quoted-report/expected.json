@@ -1,0 +1,14 @@
+{
+  "findings": [
+    {
+      "category": "requested_behavior",
+      "description": "The observation contains literal `purpose\":\"external_effect\"`, quoted paths and café 雪.",
+      "location": "repros/scope-live/run_fixture.py:1",
+      "remediation": "Preserve the exact requested report values.",
+      "reproduction": "Observed the actual producer result.",
+      "severity": "advisory",
+      "title": "Recorded purpose"
+    }
+  ],
+  "summary": "Quoted report evidence retained."
+}

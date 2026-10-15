@@ -1,5 +1,29 @@
 # peritus-product-runner
 
+## Folder guide
+
+Daemon-owned writer-reviewer-fixer product run coordinator for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-product-runner`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [examples/](examples/AGENTS.md) | Direct native consumers of ProductRunner, including credentialed disposable-workspace examples; read each entrypoint before running it. |
+| [skills/](skills/AGENTS.md) | Compiled-in model instruction documents for computer automation and real testing. Runtime selection lives in engineering_workflow. |
+| [src/](src/AGENTS.md) | The product execution coordinator: design, writer/reviewer/fixer turns, authorized tools, candidate/gate handling, local context, and final settlement. |
+| [workflows/](workflows/AGENTS.md) | Compiled-in production engineering workflow guidance used by coding roles. |
+
 Daemon-owned production composition for interactive Peritus coding runs. Every run begins with a
 read-only, repository-grounded design pass that writes a durable detailed Markdown document and
 supplies it to all implementation turns. Source repositories use an architect model whose
@@ -182,7 +206,7 @@ Provider, filesystem, process, and Git effects remain ordinary Rust host adapter
 implementation that cannot fabricate completion; the D0, D1, D2, and E0 decision cores remain in
 their formally classified crates and the ordinary-API audit constrains the production adapter.
 
-Focused qualification:
+## Local working memory
 
 Product writer/fixer invocations now default to durable local working memory across retries and
 provider changes. Reviewers retain only their own exact observations under the existing
@@ -191,15 +215,6 @@ completion gates. Legacy provider compaction is explicitly selectable, never a f
 See the [local working-memory guide](../../../docs/local-working-memory.md) for configuration,
 storage, trace versions, read-only inspection, and optional native auxiliary inference.
 
-```text
-CARGO_BUILD_JOBS=2 cargo test -p peritus-product-runner --all-targets --all-features --locked
-CARGO_BUILD_JOBS=2 cargo clippy -p peritus-product-runner --all-targets --all-features --locked -- -D warnings
-```
+## Behavioral work
 
-## Focused checks
-
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-product-runner
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

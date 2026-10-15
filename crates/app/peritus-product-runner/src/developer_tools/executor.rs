@@ -69,6 +69,7 @@ pub struct WorkspaceDeveloperTools {
     progress_nudges: u8,
     progress_feedback_pending: bool,
     inspection_progress: inspection_progress::InspectionProgress,
+    pub(super) rust_reliability: crate::engineering_workflow::rust_reliability::Activation,
     checkpoint_observer: Option<ToolCheckpointObserver>,
     prepared_mutations: Vec<PreparedMutation>,
     pub(super) protection_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
@@ -176,6 +177,13 @@ impl WorkspaceDeveloperTools {
         }
         self.observe_delivery_progress(call.name().as_str(), arguments, value, accepted);
         self.inspection_progress.observe(call.name().as_str(), arguments, value, mutation_boundary);
+        self.rust_reliability.observe(
+            call.name().as_str(),
+            arguments,
+            value,
+            accepted && !is_error,
+            mutation_boundary,
+        );
         observation(value, is_error)
     }
 }
@@ -275,6 +283,7 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         | "workspace_read"
         | "attachment_read"
         | "developer_evidence_read"
+        | "skill_read"
         | "view_image"
         | "command_output" => Some(&[Read]),
         "computer_status" => Some(&[Read, Process]),
@@ -304,6 +313,15 @@ const fn permission_name(capability: PermissionCapability) -> &'static str {
 }
 
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
+    fn system_guidance(&mut self) -> Option<String> {
+        // Role prompts also contain design, findings and archived evidence. Language hints
+        // come only from the host's user-authored authority context, never those sources.
+        if let Some(view) = &self.protection_view {
+            self.rust_reliability.task(&view.reference_authority_context());
+        }
+        self.rust_reliability.guidance()
+    }
+
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if matches!(
             call.name().as_str(),
@@ -312,6 +330,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "workspace_read"
                 | "attachment_read"
                 | "developer_evidence_read"
+                | "skill_read"
                 | "view_image"
                 | "computer_snapshot"
                 | "computer_status"
@@ -349,6 +368,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     | "workspace_read"
                     | "attachment_read"
                     | "developer_evidence_read"
+                    | "skill_read"
                     | "view_image"
                     | "computer_snapshot"
                     | "computer_status"
@@ -458,7 +478,11 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
 
     fn take_progress_feedback(&mut self) -> Option<String> {
         if let Some(feedback) = self.inspection_progress.feedback() {
-            return Some(feedback);
+            return Some(
+                self.rust_reliability
+                    .refresh()
+                    .map_or(feedback.clone(), |refresh| format!("{feedback}\n{refresh}")),
+            );
         }
         if !std::mem::take(&mut self.progress_feedback_pending) {
             return None;

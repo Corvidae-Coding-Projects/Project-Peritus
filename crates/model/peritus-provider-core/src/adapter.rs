@@ -34,6 +34,19 @@ pub trait ModelProvider: Send + Sync {
         self.profile().limits().max_input_tokens()
     }
 
+    /// Loads required runtime metadata before an initial role context is projected.
+    /// The default performs no work. Executable routers may need their advertised model input
+    /// allowance before a reviewer chooses which immutable evidence to include inline.
+    ///
+    /// # Errors
+    /// Returns the same cancellation or metadata failure that request startup would report.
+    fn prepare_context<'a>(
+        &'a self,
+        _cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+        Box::pin(async { Ok(()) })
+    }
+
     /// Whether a prospective context fits this adapter's known transport envelope.
     /// The default leaves transport enforcement to adapters without a separate message cap.
     ///

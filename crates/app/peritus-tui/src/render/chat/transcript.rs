@@ -61,9 +61,9 @@ pub fn transcript_rows(model: &AppModel, area: Rect) -> Vec<OutputRow> {
                 Line::from(""),
                 Line::from("Ask a question, explore an idea, or request a change."),
                 Line::from(if model.direct_folder_chat().is_some() {
-                    "/plan and /review are read-only. Ask for in-place work in /chat."
+                    "/design guides a saved design. /plan and /review are read-only. Ask for in-place work in /chat."
                 } else {
-                    "/plan and /review are read-only. /build starts checked delivery."
+                    "/design guides a saved design. /plan and /review are read-only. /build starts checked delivery."
                 }),
                 Line::from("/model discovers models from your configured provider."),
                 Line::from("/runs opens the existing run and candidate dashboard."),

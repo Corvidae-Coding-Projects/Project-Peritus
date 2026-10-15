@@ -1,5 +1,26 @@
 # peritus-migrations
 
+## Folder guide
+
+Forward-only durable schema migrations and recovery for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-migrations`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [src/](src/AGENTS.md) | Forward-only ordered migrations, backups, and recovery for Peritus. |
+
 Forward-only migrations for the shared Peritus SQLite store.
 
 ## Contract
@@ -39,10 +60,6 @@ decision after preserving the failed database and recovery evidence.
 See [C0 durable state](../../../docs/c0-durable-state.md) for startup ordering, backup/restore
 details, and exact validation commands.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-migrations
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

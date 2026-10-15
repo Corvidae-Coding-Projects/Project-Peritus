@@ -1,5 +1,23 @@
 # Real composer and conversation-mode replay
 
+## Folder guide
+
+Real-interface replay resources for composer modes; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [REPORT-2026-10-13.md](REPORT-2026-10-13.md) | Document: Composer mode capability replay — GitHub #122. |
+| [SHARED-CALLERS-REPORT-2026-10-13.md](SHARED-CALLERS-REPORT-2026-10-13.md) | Document: Shared editor routing — actual UI replay. |
+| [keyboard-regressions.json](keyboard-regressions.json) | Structured keyboard regressions data with fields `interface`, `baseline_sha256`, `fixed_sha256`, `cases`. |
+| [replay-webui.mjs](replay-webui.mjs) | Browser client module for replay webui. |
+| [shared_callers_replay.py](shared_callers_replay.py) | Replay shared-editor routing through real Peritus/daemon/PTY interfaces. |
+| [tui_replay.py](tui_replay.py) | Operate actual Peritus via PTY, decode its screen, and replay human editing. |
+
 These drivers operate the actual program. They contain no unit tests or substituted application implementations.
 
 ## Build

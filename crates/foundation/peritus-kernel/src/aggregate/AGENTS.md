@@ -1,0 +1,18 @@
+# crates/foundation/peritus-kernel/src/aggregate — navigation
+
+## Responsibility
+
+Implementation pieces for `aggregate.rs`: Complete lifecycle aggregate and genesis transition.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [lookup.rs](lookup.rs) | Bounded aggregate lookup and liveness queries. |
+| [validation.rs](validation.rs) | Executable aggregate invariant checks. |
+
+Owning module: [aggregate.rs](../aggregate.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

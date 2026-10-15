@@ -1,5 +1,26 @@
 # Native RSI real-operation replays
 
+## Folder guide
+
+Real-interface replay resources for rsi production; start with the local README/driver and its documented disposable-state prerequisites.
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [legacy_replay.py](legacy_replay.py) | Reopen a copied historical failed E3 schedule with the actual daemon and CLI. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [evolution/](evolution/AGENTS.md) | peritus-rsi-evolution-replay package. |
+| [native/](native/AGENTS.md) | peritus-rsi-native-real-consumer package. |
+| [recovery/](recovery/AGENTS.md) | Real-interface replay resources for recovery; start with the local README/driver and its documented disposable-state prerequisites. |
+
 Use fresh disposable roots and actual baseline/candidate programs. Keep one native worker and at
 most two Cargo jobs across concurrent work. Never open a second writer against a user's live
 daemon. These are real public program consumers, not unit or qualification suites.

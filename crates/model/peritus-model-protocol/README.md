@@ -1,5 +1,27 @@
 # peritus-model-protocol
 
+## Folder guide
+
+Provider-neutral bounded model request and normalized stream protocol for Peritus.
+
+Active root-workspace package; declarations and targets are in [Cargo.toml](Cargo.toml).
+
+Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, parent context, and nearby implementation owners.
+
+### Local files
+
+| File | Role |
+| --- | --- |
+| [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-model-protocol`. |
+| [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+
+### Subfolders
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-model-protocol`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
+| [src/](src/AGENTS.md) | Provider-neutral, versioned, bounded model protocol for Peritus. |
+
 Provider-neutral C5 request, capability, normalized streaming, accounting, retry, and failure
 semantics. All accepted values are versioned and bounded; provider wire representations and effect
 handles are intentionally excluded.
@@ -30,10 +52,6 @@ The accepted corpus includes both account-runtime dialect tags. Those tags are p
 request identity even though credentials, executable paths, and provider lifecycle facts remain
 outside canonical bytes.
 
-## Focused checks
+## Behavioral work
 
-From the repository root:
-
-```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-model-protocol
-```
+Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

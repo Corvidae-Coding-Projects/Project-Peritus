@@ -115,6 +115,7 @@ impl WorkspaceDeveloperTools {
                 super::super::attachment_read::read(self.protection_view.as_deref(), arguments)
             }
             "developer_evidence_read" => self.read_reviewer_evidence(arguments),
+            "skill_read" => super::super::bundled_skill::read(arguments),
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),

@@ -64,7 +64,8 @@ impl ProductRunService {
         if expected_revision.is_some_and(|expected| expected != record.revision()) {
             return Err(ControlError::StaleRevision.into());
         }
-        let root = self.workspace_root(query)?;
+        let workspace_root = self.workspace_root(query)?;
+        let root = workspace_root.as_path();
         let identity = self.checked_folder_identity(query, root)?;
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();

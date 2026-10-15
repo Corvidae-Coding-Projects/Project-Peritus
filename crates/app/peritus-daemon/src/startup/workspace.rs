@@ -48,9 +48,17 @@ impl WorkspaceCatalog {
     }
 }
 
-pub(super) fn install_and_reconcile(
+pub(crate) fn install_and_reconcile(
     journal: &mut SqliteJournal,
     config: &DaemonConfig,
+) -> Result<WorkspaceCatalog, DaemonError> {
+    install_with_admitted_folders(journal, config, &[])
+}
+
+pub(crate) fn install_with_admitted_folders(
+    journal: &mut SqliteJournal,
+    config: &DaemonConfig,
+    admitted: &[crate::config::FolderDeclaration],
 ) -> Result<WorkspaceCatalog, DaemonError> {
     let mut registrations = BTreeMap::new();
     for declaration in config.workspaces() {
@@ -130,6 +138,19 @@ pub(super) fn install_and_reconcile(
         ));
     }
 
+    let mut folders = BTreeMap::new();
+    for folder in config.folders() {
+        let id = folder.workspace_id()?;
+        // An unchanged, already admitted folder may temporarily be unavailable. Retaining
+        // its metadata cannot grant new authority; execution still verifies its identity.
+        if !admitted.contains(folder) {
+            folder.verify()?;
+        }
+        if registrations.contains_key(&id) || folders.insert(id, folder.clone()).is_some() {
+            return Err(invalid("folder identity conflicts with another configured workspace"));
+        }
+    }
+
     for registration in registrations.values() {
         let durable = registration.durable_registration().map_err(journal_error)?;
         let previous =
@@ -183,14 +204,6 @@ pub(super) fn install_and_reconcile(
             break;
         };
         after = Some(next);
-    }
-    let mut folders = BTreeMap::new();
-    for folder in config.folders() {
-        let id = folder.workspace_id()?;
-        folder.verify()?;
-        if registrations.contains_key(&id) || folders.insert(id, folder.clone()).is_some() {
-            return Err(invalid("folder identity conflicts with another configured workspace"));
-        }
     }
     Ok(WorkspaceCatalog { registrations, folders })
 }

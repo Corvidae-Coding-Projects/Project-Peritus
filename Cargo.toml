@@ -55,6 +55,7 @@ members = [
     "crates/model/peritus-provider-anthropic",
     "crates/model/peritus-provider-google",
     "crates/model/peritus-provider-compatible",
+    "crates/model/peritus-provider-opencode",
     "crates/orchestration/peritus-collaboration",
     "crates/orchestration/peritus-context",
     "crates/orchestration/peritus-agent",
@@ -83,7 +84,7 @@ default-members = ["xtask"]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.8"
+version = "0.0.9"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"

@@ -1,0 +1,17 @@
+# crates/runtime/peritus-sandbox-linux/src/native/helper — navigation
+
+## Responsibility
+
+Implementation pieces for `helper.rs`: Version-one helper handshake, enforcement installation, and literal target exec.
+
+## Files in this folder
+
+| File | Role |
+| --- | --- |
+| [proxy.rs](proxy.rs) | Exact managed-proxy handle validation and target environment projection. |
+
+Owning module: [helper.rs](../helper.rs). Inspect that parent before changing the local pieces.
+
+Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../AGENTS.md) · [Repository map](../../../../../../AGENTS.md).
+
+Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

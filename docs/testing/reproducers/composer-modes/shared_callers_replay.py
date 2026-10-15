@@ -93,7 +93,7 @@ def editor_text(label,modal=False):
 
 def composer_clear():
     # Composer supports selection, unlike the shared modal/field editors.
-    send(HOME+b'\x1b[1;2F\x7f',.10)
+    send(b'\x1b[1;5H\x1b[1;6F\x7f',.10)
 
 def command(text):
     composer_clear()
@@ -120,6 +120,12 @@ def field_cases(kind,key,label,capacity):
         # The unique sentinel plus neighboring word verifies the cursor's effect.
         passed=expected in observed and observed.count('|')==1
         result(f'{kind}-alt-{direction}-at-capacity',passed,expected,observed,capacity=capacity,input=text,keys_hex=[*([] if direction=='back' else [HOME.hex()]),(ALT_B if direction=='back' else ALT_F).hex(),DELETE.hex(),'7c'])
+    # Readline deletion must reach the shared handler even for Alt-modified characters.
+    for chord,keys,expected in [('ctrl-a',[b'\x01'],'|alpha beta'),('ctrl-w',[b'\x17'],'alpha |'),('alt-d',[HOME,b'\x1bd'],'|beta')]:
+        clear();paste('alpha beta')
+        for sequence in keys:send(sequence)
+        send(b'|');observed=editor_text(label)
+        result(f'{kind}-readline-{chord}',observed==expected,expected,observed,input='alpha beta',keys_hex=[seq.hex() for seq in keys])
     send(ESC,.2)
 
 try:
@@ -128,7 +134,7 @@ try:
     wait_for('Ready')
     if not a.fields_only:
         command('/runs');send(b'6');send(b'a');wait_for('Attach to daemon-owned process')
-        for name,keys,expected in [('modal-alt-b',[ALT_B],'alpha |beta'),('modal-alt-f',[HOME,ALT_F],'alpha |beta'),('modal-super-char',[SUPER_B],'alpha beta|')]:
+        for name,keys,expected in [('modal-alt-b',[ALT_B],'alpha |beta'),('modal-alt-f',[HOME,ALT_F],'alpha |beta'),('modal-super-char',[SUPER_B],'alpha beta|'),('modal-ctrl-a',[b'\x01'],'|alpha beta'),('modal-ctrl-w',[b'\x17'],'alpha |'),('modal-alt-d',[HOME,b'\x1bd'],'|beta')]:
             clear();paste('alpha beta')
             for key in keys:send(key)
             paste('|')

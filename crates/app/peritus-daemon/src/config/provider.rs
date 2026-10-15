@@ -30,6 +30,7 @@ const PROVIDER_ROUTE_KINDS: &[&str] = &[
     "compatible-chat-completions",
     "codex-runtime",
     "claude-runtime",
+    "opencode-runtime",
 ];
 
 /// Closed provider adapter families configurable in G0.
@@ -53,6 +54,8 @@ pub enum ProviderRouteKind {
     CodexRuntime,
     /// Official credential-owning Claude executable route.
     ClaudeRuntime,
+    /// Tool-disabled official OpenCode executable for a hosted Zen or Go route.
+    OpenCodeRuntime,
 }
 
 impl<'de> Deserialize<'de> for ProviderRouteKind {
@@ -71,6 +74,7 @@ impl<'de> Deserialize<'de> for ProviderRouteKind {
             "compatible-chat-completions" => Ok(Self::CompatibleChatCompletions),
             "codex-runtime" => Ok(Self::CodexRuntime),
             "claude-runtime" => Ok(Self::ClaudeRuntime),
+            "opencode-runtime" => Ok(Self::OpenCodeRuntime),
             _ => Err(serde::de::Error::unknown_variant(&name, PROVIDER_ROUTE_KINDS)),
         }
     }
@@ -119,11 +123,22 @@ impl ProviderRoute {
     pub fn declaration(&self) -> Result<ProviderDeclaration, DaemonError> {
         let profile = self.profile.build(self.adapter_kind()?)?;
         let declaration = match self.kind {
-            ProviderRouteKind::Hosted => ProviderDeclaration::Hosted {
-                service: self.hosted()?,
-                credential: self.credential()?,
-                profile,
-            },
+            ProviderRouteKind::Hosted => {
+                if self.adapter_kind()? == ProviderRouteKind::OpenCodeRuntime {
+                    ProviderDeclaration::OpenCodeRuntime {
+                        executable: self.executable_selection(),
+                        service: self.hosted()?,
+                        credential: self.credential()?,
+                        profile,
+                    }
+                } else {
+                    ProviderDeclaration::Hosted {
+                        service: self.hosted()?,
+                        credential: self.credential()?,
+                        profile,
+                    }
+                }
+            }
             ProviderRouteKind::OpenAi => ProviderDeclaration::openai(
                 OpenAiConfig::new(self.credential()?).map_err(provider_error)?,
                 profile,
@@ -183,6 +198,11 @@ impl ProviderRoute {
                 ProcessLimits::PRODUCTION,
             )
             .map_err(provider_error)?,
+            ProviderRouteKind::OpenCodeRuntime => {
+                return Err(invalid(
+                    "opencode-runtime must be the wire_protocol of a hosted Zen or Go route",
+                ));
+            }
             ProviderRouteKind::ClaudeRuntime => ProviderDeclaration::claude_runtime(
                 profile,
                 self.executable_selection(),
@@ -207,6 +227,26 @@ impl ProviderRoute {
         let kind = self
             .wire_protocol
             .ok_or_else(|| invalid("hosted route requires a selected wire protocol"))?;
+        // Existing Zen/Go saved API protocols migrate to the official runtime. The selected
+        // model and opaque credential identity are retained; OpenCode owns SDK selection.
+        if matches!(
+            self.hosted()?,
+            peritus_provider_core::hosted::HostedService::OpenCodeZen
+                | peritus_provider_core::hosted::HostedService::OpenCodeGo
+        ) {
+            if !matches!(
+                kind,
+                ProviderRouteKind::OpenCodeRuntime
+                    | ProviderRouteKind::OpenAi
+                    | ProviderRouteKind::CompatibleResponses
+                    | ProviderRouteKind::CompatibleChatCompletions
+                    | ProviderRouteKind::Anthropic
+                    | ProviderRouteKind::GoogleGenerateContent
+            ) {
+                return Err(invalid("OpenCode hosted route has an invalid legacy protocol"));
+            }
+            return Ok(ProviderRouteKind::OpenCodeRuntime);
+        }
         if !matches!(
             kind,
             ProviderRouteKind::OpenAi
@@ -251,7 +291,14 @@ impl ProviderProfileDeclaration {
             "provider profile identity",
         )?)
         .map_err(|_| invalid("provider profile identity must be nonzero"))?;
-        let (provider, dialect, output_limit) = route_profile(kind, self.provider_name.as_deref())?;
+        let (provider, dialect, output_limit) = route_profile(
+            kind,
+            if kind == ProviderRouteKind::OpenCodeRuntime {
+                None
+            } else {
+                self.provider_name.as_deref()
+            },
+        )?;
         let mut capabilities =
             self.capabilities.iter().map(|name| capability(name)).collect::<Result<Vec<_>, _>>()?;
         capabilities.sort_unstable();
@@ -259,6 +306,11 @@ impl ProviderProfileDeclaration {
             || capabilities.windows(2).any(|pair| pair[0] == pair[1])
         {
             return Err(invalid("provider profile capabilities are duplicate or oversized"));
+        }
+        if kind == ProviderRouteKind::OpenCodeRuntime {
+            capabilities.retain(|capability| {
+                *capability != peritus_model_protocol::Capability::ReasoningReplay
+            });
         }
         let matrix = CapabilityMatrix::new(&capabilities, &[]).map_err(protocol_error)?;
         let limits = ModelLimits::new(
@@ -306,7 +358,9 @@ pub(super) fn validate(routes: &[ProviderRoute]) -> Result<(), DaemonError> {
             || route.kind == ProviderRouteKind::Hosted && route.endpoint.is_some()
             || direct != route.credential_reference.is_some()
             || !direct && (route.endpoint.is_some() || route.credential_header.is_some())
-            || direct && route.executable.is_some()
+            || direct
+                && route.executable.is_some()
+                && route.adapter_kind()? != ProviderRouteKind::OpenCodeRuntime
             || matches!(route.kind, ProviderRouteKind::OpenAi) && route.endpoint.is_some()
             || matches!(
                 route.kind,
@@ -365,6 +419,9 @@ fn route_profile(
         }
         ProviderRouteKind::ClaudeRuntime => {
             ("anthropic", WireDialect::AnthropicClaudeRuntime, OutputLimitEnforcement::Advisory)
+        }
+        ProviderRouteKind::OpenCodeRuntime => {
+            ("opencode", WireDialect::OpenCodeRuntime, OutputLimitEnforcement::Advisory)
         }
     };
     if configured.is_some_and(|value| value != default)

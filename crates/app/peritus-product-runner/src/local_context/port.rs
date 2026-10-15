@@ -100,13 +100,17 @@ impl LocalContextHandle {
         let harness_role = match role {
             "writer" => HarnessRole::Writer,
             "fixer" => HarnessRole::Fixer,
-            "reviewer" | "designer" => HarnessRole::Reviewer,
+            "reviewer" | "designer" | "design-interview" => HarnessRole::Reviewer,
             _ => return Err(crate::turn::developer_error(&error("unsupported local memory role"))),
         };
         // Design is a separate read-only subtask. Its handles must never resolve in the
         // independent review archive, even though both exclude writer-derived memory.
-        let task_bytes = if role == "designer" {
-            let mut key = b"peritus-read-only-design-context-v1".to_vec();
+        let task_bytes = if matches!(role, "designer" | "design-interview") {
+            let mut key = if role == "designer" {
+                b"peritus-read-only-design-context-v1".to_vec()
+            } else {
+                b"peritus-guided-design-context-v1".to_vec()
+            };
             key.extend_from_slice(input.run_id.as_bytes());
             let digest = peritus_codec::sha256(&key);
             let mut task = [0; 16];
@@ -185,6 +189,12 @@ impl DeveloperContextPort for LocalContextHandle {
                         .is_some_and(|identity| identity.id == call.id().expose_for_wire())
             })
             .ok_or_else(|| error("original tool source unavailable"))?;
+        // A retrieval result already names the original source fragments and their offsets.
+        // Advertising the receipt itself as another task source creates an unbounded chain
+        // of reads of JSON wrappers. Preserve it in the audit archive without that invitation.
+        if source.is_memory_receipt() {
+            return Ok(None);
+        }
         let value = Value::from_iter([
             ("handle", Value::from(super::tools::source_handle(&memory, source.sequence))),
             ("base_revision", Value::from(memory.model_revision)),
