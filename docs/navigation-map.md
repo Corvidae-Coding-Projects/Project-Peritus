@@ -24,7 +24,7 @@ Active packages are identified by current root Cargo membership. README-only ret
 | `benchmarks` | 9 | [benchmarks](../benchmarks/AGENTS.md) |
 | `compat` | 163 | [compat](../compat/AGENTS.md) |
 | `crates` | 844 | [crates](../crates/AGENTS.md) |
-| `docs` | 88 | [docs](../docs/AGENTS.md) |
+| `docs` | 89 | [docs](../docs/AGENTS.md) |
 | `fixtures` | 8 | [fixtures](../fixtures/AGENTS.md) |
 | `packaging` | 13 | [packaging](../packaging/AGENTS.md) |
 | `protocol` | 4 | [protocol](../protocol/AGENTS.md) |
@@ -1222,3 +1222,4 @@ The baseline above is historical. The current index also includes these subseque
 
 - [Launcher daemon coordination](../crates/app/peritus-launcher/src/daemon/AGENTS.md).
 - [Second-instance real replay](testing/reproducers/second-instance/AGENTS.md).
+- [OpenCode malformed-turn real replay](testing/reproducers/opencode-malformed-output/AGENTS.md).

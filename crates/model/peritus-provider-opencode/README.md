@@ -34,6 +34,14 @@ executes validated tool proposals; OpenCode does not operate on the user's works
 
 The adapter parses the official JSONL interface, rejects native tool events and incomplete
 or failed executions, reports usage, and retains provider failures as redacted diagnostics.
+After a complete successful vendor execution, a malformed model-authored envelope gets one
+fresh inference with a correction prompt. Rejected proposals never reach host tools; accepted
+corrections account for both inferences and retain a fixed diagnostic audit event. Persistent
+format failures identify the rejected part and allow ordinary safe-request recovery. Native
+framing errors, process failures, access denials, and cancellation do not enter that correction
+path. Tool-only turns may omit public commentary without inventing assistant text.
+Go regional-privacy rejections name the required account setting instead of suggesting an API
+protocol change; Peritus does not modify that setting.
 Public report objects are serialized once, and literal transcript text avoids an extra escaping
 layer. Discovery skips unsupported PATH candidates. Native executable resolution is deferred
 until this route is used, keeping unrelated provider startup independent.

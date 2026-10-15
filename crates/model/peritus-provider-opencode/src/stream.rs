@@ -36,17 +36,21 @@ impl OpenCodeRuntimeStream {
         for repair in turn.repairs {
             builder.push(repair)?;
         }
-        let message_id = item_id(&prefix, "message", 0)?;
-        builder.push(ModelEvent::ItemStarted {
-            item_id: message_id.clone(),
-            index: 0,
-            kind: ItemKind::Message,
-        })?;
-        builder.fragments(&message_id, turn.content.as_bytes())?;
-        builder.push(ModelEvent::ItemCompleted(message_id))?;
+        let has_content = !turn.content.is_empty();
+        if has_content {
+            let message_id = item_id(&prefix, "message", 0)?;
+            builder.push(ModelEvent::ItemStarted {
+                item_id: message_id.clone(),
+                index: 0,
+                kind: ItemKind::Message,
+            })?;
+            builder.fragments(&message_id, turn.content.as_bytes())?;
+            builder.push(ModelEvent::ItemCompleted(message_id))?;
+        }
 
         for (offset, call) in turn.tool_calls.into_iter().enumerate() {
-            let index = u32::try_from(offset + 1).map_err(|_| malformed())?;
+            let index =
+                u32::try_from(offset + usize::from(has_content)).map_err(|_| malformed())?;
             let item_id = item_id(&prefix, "tool", index)?;
             let call_id = call_id(&prefix, index)?;
             let name = ToolName::new(call.name).map_err(|_| malformed())?;
@@ -90,21 +94,31 @@ impl OpenCodeRuntimeStream {
         model: ModelName,
         failure: ModelFailure,
         digest_source: &'static [u8],
+        corrections: Vec<ModelEvent>,
     ) -> Result<Self, ProviderCoreError> {
-        Self::terminal(model, ModelEvent::ResponseFailed(failure), digest_source)
+        Self::terminal(model, ModelEvent::ResponseFailed(failure), digest_source, corrections)
     }
 
     pub(super) fn cancelled(model: ModelName) -> Result<Self, ProviderCoreError> {
-        Self::terminal(model, ModelEvent::ResponseCancelled, b"opencode-runtime-cancelled")
+        Self::terminal(
+            model,
+            ModelEvent::ResponseCancelled,
+            b"opencode-runtime-cancelled",
+            Vec::new(),
+        )
     }
 
     fn terminal(
         model: ModelName,
         terminal: ModelEvent,
         digest_source: &'static [u8],
+        corrections: Vec<ModelEvent>,
     ) -> Result<Self, ProviderCoreError> {
         let mut builder = Builder::new(peritus_codec::sha256(digest_source));
         builder.push(ModelEvent::ResponseStarted { response_id: None, model: Some(model) })?;
+        for correction in corrections {
+            builder.push(correction)?;
+        }
         builder.push(terminal)?;
         Ok(Self { pending: builder.pending })
     }

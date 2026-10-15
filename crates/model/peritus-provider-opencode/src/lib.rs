@@ -8,6 +8,7 @@ mod executable;
 mod isolation;
 mod output;
 mod provider;
+mod recovery;
 mod request;
 mod stream;
 

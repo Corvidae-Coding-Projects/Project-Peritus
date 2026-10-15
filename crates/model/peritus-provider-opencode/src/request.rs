@@ -254,10 +254,7 @@ fn result_schema(
     let content = object([(
         "oneOf",
         Value::Array(vec![
-            object([
-                ("type", Value::String("string".to_owned())),
-                ("minLength", Value::from(1_u64)),
-            ]),
+            object([("type", Value::String("string".to_owned()))]),
             object([("type", Value::String("object".to_owned()))]),
         ]),
     )]);

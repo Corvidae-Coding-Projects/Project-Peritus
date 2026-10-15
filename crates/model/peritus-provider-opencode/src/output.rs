@@ -1,5 +1,6 @@
 //! Fail-closed JSONL event and inert tool-envelope normalization.
 
+use super::recovery::TurnRejection;
 use peritus_model_protocol::{
     CanonicalJson, FailureCategory, JsonBounds, ModelEvent, ModelRequest, ProtocolLimits,
     ToolChoice, UsageCounters,
@@ -28,6 +29,7 @@ pub(super) struct NativeFailure {
 pub(super) enum Decoded {
     Turn(RuntimeTurn),
     Failure(NativeFailure),
+    Rejected { reason: TurnRejection, usage: UsageCounters },
 }
 
 pub(super) fn decode(
@@ -88,20 +90,33 @@ pub(super) fn decode(
             _ => return Err(super::malformed()),
         }
     }
-    if !finished || result.is_empty() {
+    if !finished {
         return Err(super::malformed());
     }
+    Ok(match decode_turn(&result, request, runtime, usage) {
+        Ok(turn) => Decoded::Turn(turn),
+        Err(reason) => Decoded::Rejected { reason, usage },
+    })
+}
+
+fn decode_turn(
+    result: &str,
+    request: &ModelRequest,
+    runtime: &super::request::RuntimeRequest,
+    usage: UsageCounters,
+) -> Result<RuntimeTurn, TurnRejection> {
     let (json, repairs) = peritus_provider_core::healing::private_envelope(
-        &result,
+        result,
         "opencode.turn",
         ProtocolLimits::PRODUCTION,
-    )?
+    )
+    .map_err(|_| TurnRejection::Json)?
     .into_parts();
     let value: Value =
-        serde_json::from_slice(json.canonical_bytes()).map_err(|_| super::malformed())?;
-    let object = value.as_object().ok_or_else(super::malformed)?;
+        serde_json::from_slice(json.canonical_bytes()).map_err(|_| TurnRejection::Json)?;
+    let object = value.as_object().ok_or(TurnRejection::Envelope)?;
     if object.len() != 2 {
-        return Err(super::malformed());
+        return Err(TurnRejection::Envelope);
     }
     let content = match object.get("content") {
         Some(Value::String(text)) => text.clone(),
@@ -109,36 +124,35 @@ pub(super) fn decode(
         // once here instead of requiring a model to escape nested JSON through two string
         // layers. Public report validation remains the caller's unchanged responsibility.
         Some(value @ Value::Object(_)) => {
-            serde_json::to_string(value).map_err(|_| super::malformed())?
+            serde_json::to_string(value).map_err(|_| TurnRejection::Content)?
         }
-        _ => return Err(super::malformed()),
+        _ => return Err(TurnRejection::Content),
     };
-    let calls = object.get("tool_calls").and_then(Value::as_array).ok_or_else(super::malformed)?;
-    if content.is_empty()
-        || content.contains('\0')
-        || calls.len() > runtime.max_calls
+    let calls = object.get("tool_calls").and_then(Value::as_array).ok_or(TurnRejection::Tools)?;
+    if content.contains('\0') || content.is_empty() && calls.is_empty() {
+        return Err(TurnRejection::Content);
+    }
+    if calls.len() > runtime.max_calls
         || calls.is_empty()
             && matches!(request.tool_choice(), ToolChoice::Required | ToolChoice::Specific(_))
     {
-        return Err(super::malformed());
+        return Err(TurnRejection::Tools);
     }
     let mut tool_calls = Vec::new();
     for call in calls {
-        let call = call.as_object().ok_or_else(super::malformed)?;
-        let name = call.get("name").and_then(Value::as_str).ok_or_else(super::malformed)?;
+        let call = call.as_object().ok_or(TurnRejection::Arguments)?;
+        let name = call.get("name").and_then(Value::as_str).ok_or(TurnRejection::Tools)?;
         if call.len() != 2 || !runtime.allowed_tools.contains(name) {
-            return Err(super::malformed());
+            return Err(TurnRejection::Tools);
         }
-        let arguments =
-            call.get("arguments").and_then(Value::as_object).ok_or_else(super::malformed)?.clone();
+        let arguments = call
+            .get("arguments")
+            .and_then(Value::as_object)
+            .ok_or(TurnRejection::Arguments)?
+            .clone();
         tool_calls.push(RuntimeToolCall { name: name.to_owned(), arguments });
     }
-    Ok(Decoded::Turn(RuntimeTurn {
-        content,
-        tool_calls,
-        usage,
-        repairs: repairs.into_iter().collect(),
-    }))
+    Ok(RuntimeTurn { content, tool_calls, usage, repairs: repairs.into_iter().collect() })
 }
 
 fn identity(
@@ -232,6 +246,9 @@ fn classify(event: &Value) -> NativeFailure {
             (FailureCategory::QuotaExhausted, "opencode.runtime.quota")
         }
         Some(429) => (FailureCategory::RateLimited, "opencode.runtime.rate_limit"),
+        Some(400) if message.contains("go model requires global regions") => {
+            (FailureCategory::InvalidRequest, "opencode.runtime.go_global_regions_required")
+        }
         Some(400 | 413) if message.contains("context") || message.contains("token") => {
             (FailureCategory::InvalidRequest, "opencode.runtime.input_limit")
         }
@@ -246,7 +263,11 @@ pub(super) fn observe_stderr(bytes: &[u8]) -> Option<ProviderCoreError> {
     // v1.19.0 incorrectly retries a 403 when its body says server_error. Observe only
     // recognized SDK error diagnostics; model text on stdout never enters this decision.
     let text = String::from_utf8_lossy(bytes);
-    let diagnostic = if text.contains(
+    let diagnostic = if text
+        .contains("AI_APICallError: Upstream request failed: This Go model requires Global regions")
+    {
+        "opencode.runtime.go_global_regions_required"
+    } else if text.contains(
         "AI_APICallError: Upstream request failed: An active OpenCode Go subscription is required",
     ) {
         "opencode.runtime.go_subscription_required"
@@ -268,10 +289,15 @@ pub(super) fn observed_failure(error: &ProviderCoreError) -> Option<NativeFailur
         "opencode.runtime.go_subscription_required" => "opencode.runtime.go_subscription_required",
         "opencode.runtime.model_access_disabled" => "opencode.runtime.model_access_disabled",
         "opencode.runtime.authentication" => "opencode.runtime.authentication",
+        "opencode.runtime.go_global_regions_required" => {
+            "opencode.runtime.go_global_regions_required"
+        }
         _ => return None,
     };
     Some(NativeFailure {
-        category: if code == "opencode.runtime.authentication" {
+        category: if code == "opencode.runtime.go_global_regions_required" {
+            FailureCategory::InvalidRequest
+        } else if code == "opencode.runtime.authentication" {
             FailureCategory::Authentication
         } else {
             FailureCategory::Permission

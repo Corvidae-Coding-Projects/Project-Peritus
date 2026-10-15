@@ -15,6 +15,7 @@ Official OpenCode CLI transport for Zen/Go, executable/model discovery, isolated
 | [output.rs](output.rs) | Fail-closed JSONL event and inert tool-envelope normalization. |
 | [provider.rs](provider.rs) | One owned vendor process per Peritus model turn, with no native agent authority. |
 | [request.rs](request.rs) | Deterministic transcript and inert structured-result projection for OpenCode. |
+| [recovery.rs](recovery.rs) | Fixed malformed-turn reasons, one inert correction prompt, private audit events, and declared usage accounting across correction. |
 | [stream.rs](stream.rs) | Buffered normalized events from one final OpenCode structured result. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).

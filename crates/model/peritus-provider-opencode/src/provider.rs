@@ -1,4 +1,4 @@
-//! One owned vendor process per Peritus model turn, with no native agent authority.
+//! Owned vendor inference and one bounded format correction, with no native agent authority.
 
 use peritus_model_protocol::{
     FailureCategory, ModelFailure, ModelName, ModelRequest, OutcomeCertainty,
@@ -151,80 +151,121 @@ impl OpenCodeRuntimeProvider {
             "--model".into(),
             format!("{service}/{model}"),
         ];
-        let process = private
-            .process(&executable, args, runtime.prompt.clone(), ProcessLimits::PRODUCTION)?
-            .with_stderr_observer(super::output::observe_stderr);
-        let output = match TokioProcessTransport.run(process, &cancellation).await {
-            Ok(output) => output,
-            Err(error) if error.kind() == ProviderCoreErrorKind::Cancelled => {
-                return Ok(OwnedModelStream::new(
-                    super::stream::OpenCodeRuntimeStream::cancelled(request.model().clone())?,
-                    cancellation,
-                ));
+        let mut corrections = Vec::new();
+        let mut rejected_usage = None;
+        let mut prompt = runtime.prompt.clone();
+        loop {
+            let process = private
+                .process(&executable, args.clone(), prompt, ProcessLimits::PRODUCTION)?
+                .with_stderr_observer(super::output::observe_stderr);
+            let output = match TokioProcessTransport.run(process, &cancellation).await {
+                Ok(output) => output,
+                Err(error) if error.kind() == ProviderCoreErrorKind::Cancelled => {
+                    return Ok(OwnedModelStream::new(
+                        super::stream::OpenCodeRuntimeStream::cancelled(request.model().clone())?,
+                        cancellation,
+                    ));
+                }
+                Err(error) if error.kind() == ProviderCoreErrorKind::Connect => return Err(error),
+                Err(error) if super::output::observed_failure(&error).is_some() => {
+                    let failure =
+                        super::output::observed_failure(&error).ok_or_else(super::malformed)?;
+                    return self.failed(
+                        &request,
+                        cancellation,
+                        failure,
+                        OutcomeCertainty::Terminal,
+                        corrections,
+                    );
+                }
+                Err(error) => {
+                    let (category, code) = if error.operation() == "process_timeout" {
+                        (FailureCategory::Timeout, "opencode.runtime.timeout")
+                    } else {
+                        (FailureCategory::AmbiguousAcceptance, "opencode.runtime.transport")
+                    };
+                    return self.failed(
+                        &request,
+                        cancellation,
+                        super::output::NativeFailure { category, status: None, code },
+                        OutcomeCertainty::MaybeAccepted,
+                        corrections,
+                    );
+                }
+            };
+            // Native framing and failures stay authoritative. Only a completed, successful,
+            // tool-disabled inference with a rejected model envelope can be regenerated.
+            match super::output::decode(output.stdout(), &request, &runtime) {
+                Ok(super::output::Decoded::Rejected { reason, usage })
+                    if output.exit().success() =>
+                {
+                    corrections.push(reason.audit(if rejected_usage.is_some() { 2 } else { 1 })?);
+                    if rejected_usage.is_none() {
+                        rejected_usage = Some(usage);
+                        prompt = reason.correction(&runtime.prompt);
+                        continue;
+                    }
+                    return self.failed(
+                        &request,
+                        cancellation,
+                        super::output::NativeFailure {
+                            category: FailureCategory::MalformedPayload,
+                            status: None,
+                            code: reason.code(),
+                        },
+                        OutcomeCertainty::Terminal,
+                        corrections,
+                    );
+                }
+                Ok(super::output::Decoded::Failure(error)) => {
+                    return self.failed(
+                        &request,
+                        cancellation,
+                        error,
+                        OutcomeCertainty::Terminal,
+                        corrections,
+                    );
+                }
+                Ok(super::output::Decoded::Turn(mut turn)) if output.exit().success() => {
+                    if let Some(previous) = rejected_usage {
+                        turn.usage = super::recovery::combined_usage(previous, turn.usage)?;
+                    }
+                    corrections.append(&mut turn.repairs);
+                    turn.repairs = corrections;
+                    let stream = super::stream::OpenCodeRuntimeStream::completed(
+                        &request,
+                        turn,
+                        output.stdout(),
+                    )?;
+                    return Ok(OwnedModelStream::new(stream, cancellation));
+                }
+                Ok(super::output::Decoded::Turn(_)) => {
+                    return self.failed(
+                        &request,
+                        cancellation,
+                        super::output::NativeFailure {
+                            category: FailureCategory::IncompleteStream,
+                            status: None,
+                            code: "opencode.runtime.incomplete_exit",
+                        },
+                        OutcomeCertainty::MaybeAccepted,
+                        corrections,
+                    );
+                }
+                Ok(super::output::Decoded::Rejected { .. }) | Err(_) => {
+                    return self.failed(
+                        &request,
+                        cancellation,
+                        super::output::NativeFailure {
+                            category: FailureCategory::MalformedPayload,
+                            status: None,
+                            code: "opencode.runtime.malformed_output",
+                        },
+                        OutcomeCertainty::MaybeAccepted,
+                        corrections,
+                    );
+                }
             }
-            Err(error) if error.kind() == ProviderCoreErrorKind::Connect => return Err(error),
-            Err(error) if super::output::observed_failure(&error).is_some() => {
-                let failure =
-                    super::output::observed_failure(&error).ok_or_else(super::malformed)?;
-                return self.failed(
-                    &request,
-                    cancellation,
-                    failure.category,
-                    failure.status,
-                    failure.code,
-                    OutcomeCertainty::Terminal,
-                );
-            }
-            Err(error) => {
-                let (category, code) = if error.operation() == "process_timeout" {
-                    (FailureCategory::Timeout, "opencode.runtime.timeout")
-                } else {
-                    (FailureCategory::AmbiguousAcceptance, "opencode.runtime.transport")
-                };
-                return self.failed(
-                    &request,
-                    cancellation,
-                    category,
-                    None,
-                    code,
-                    OutcomeCertainty::MaybeAccepted,
-                );
-            }
-        };
-        // The native error event is authoritative even when a CLI exits zero.
-        match super::output::decode(output.stdout(), &request, &runtime) {
-            Ok(super::output::Decoded::Failure(error)) => self.failed(
-                &request,
-                cancellation,
-                error.category,
-                error.status,
-                error.code,
-                OutcomeCertainty::Terminal,
-            ),
-            Ok(super::output::Decoded::Turn(turn)) if output.exit().success() => {
-                let stream = super::stream::OpenCodeRuntimeStream::completed(
-                    &request,
-                    turn,
-                    output.stdout(),
-                )?;
-                Ok(OwnedModelStream::new(stream, cancellation))
-            }
-            Ok(super::output::Decoded::Turn(_)) => self.failed(
-                &request,
-                cancellation,
-                FailureCategory::IncompleteStream,
-                None,
-                "opencode.runtime.incomplete_exit",
-                OutcomeCertainty::MaybeAccepted,
-            ),
-            Err(_) => self.failed(
-                &request,
-                cancellation,
-                FailureCategory::MalformedPayload,
-                None,
-                "opencode.runtime.malformed_output",
-                OutcomeCertainty::MaybeAccepted,
-            ),
         }
     }
 
@@ -232,16 +273,18 @@ impl OpenCodeRuntimeProvider {
         &self,
         request: &ModelRequest,
         cancellation: CancellationToken,
-        category: FailureCategory,
-        status: Option<u16>,
-        code: &'static str,
+        native: super::output::NativeFailure,
         certainty: OutcomeCertainty,
+        corrections: Vec<peritus_model_protocol::ModelEvent>,
     ) -> Result<OwnedModelStream, ProviderCoreError> {
+        let super::output::NativeFailure { category, status, code } = native;
         let retryability = if certainty == OutcomeCertainty::MaybeAccepted {
             Retryability::CallerDecision
         } else if matches!(
             category,
-            FailureCategory::RateLimited | FailureCategory::TransientProvider
+            FailureCategory::RateLimited
+                | FailureCategory::TransientProvider
+                | FailureCategory::MalformedPayload
         ) {
             Retryability::SafeNewRequest
         } else {
@@ -269,6 +312,7 @@ impl OpenCodeRuntimeProvider {
                 request.model().clone(),
                 failure,
                 b"opencode-runtime-failure",
+                corrections,
             )?,
             cancellation,
         ))
