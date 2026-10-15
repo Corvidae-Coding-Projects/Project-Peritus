@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Verified immutable acceptance contracts for Project Peritus"
 
 [dependencies]
-peritus-types = { version = "=0.0.8", path = "../peritus-types" }
+peritus-types = { version = "=0.0.9", path = "../peritus-types" }
 
 [package.metadata.peritus]
 owner = "B2"

@@ -16,8 +16,8 @@ owner = "C2"
 layer = "runtime"
 
 [dependencies]
-peritus-codec = { version = "=0.0.8", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.8", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.9", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.9", path = "../../foundation/peritus-types" }
 
 [lints]
 workspace = true
