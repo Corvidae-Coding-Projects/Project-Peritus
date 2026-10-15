@@ -14,9 +14,10 @@ workspace's timeout was not deliberately reproduced: restarting its live work wo
 disruptive. Recovery after an unnecessary restart is a plausible explanation for its
 longer delay, rather than a separately measured timing result.
 
-The installed binaries and live daemon were not replaced or restarted by this campaign.
-The source fix requires a planned update/restart before it affects that installation;
-existing terminal clients must also be closed and reopened to load the new launcher.
+The initial isolated campaign preserved the installed binaries and live daemon. After
+explicit user authorization, commit `e3f22be5f` was built in release mode, installed, and
+the browser run was resumed. See the deployment observations below. Existing terminal
+clients must be closed and reopened to load the new launcher.
 
 ## Confirmed defects and corrections
 
@@ -115,3 +116,34 @@ or the full coding/reviewer/fixer pipeline. The active requests were read-only p
 tasks through actual model and workspace interfaces. An earlier attempt to request an
 unavailable command tool in that mode correctly refused execution; it is not counted as
 successful command-execution coverage. No live user run was retried by this campaign.
+
+## Authorized local deployment
+
+After the isolated campaign, the user authorized installation, restart, and resumption.
+The optimized build completed with two Cargo jobs. A fresh release replay of bare launches,
+reconnection, permissions display, closing the other client, and four rejected updates
+passed (`release-e3f22be5f/`); second-window readiness was 0.487 seconds.
+
+The old daemon reported clean shutdown with no remaining work. All three installed
+executables were backed up and replaced atomically. The first cold start exceeded the
+launcher's existing 30-second readiness window, which stopped its owned startup child.
+A directly started matching packaged daemon subsequently reached read-write readiness;
+its actual executable and configuration identities were recorded for launcher reuse.
+The startup timeout remains a separate limitation for large accumulated state.
+
+The exact browser run was retried once through the CLI. During its initial reacquisition
+of checks, the first attempt to open the second folder hit the live-update readiness
+request's timeout; the daemon and run were preserved. Retrying after that busy boundary
+opened both actual terminal clients. This transient busy-state timeout is retained as
+an observed limitation, rather than counted as a passing attempt.
+
+The successful live replay retained PID 4155654 and its start token, confirmed both
+clients alive without a displayed disconnect in the first, and independently read back
+the browser run as Running in review with provider activity. The replay closed only its
+own terminal clients; the resumed daemon and job continued. The original old terminal
+client was exited gracefully so it could not reuse its old launcher implementation.
+
+Local deployment evidence is in `install-e3f22be5f/`: previous binaries, checksum manifest,
+clean shutdown response, retained run record, terminal screens, and `live-result.json`.
+Installed CLI SHA-256: `ca9de9d709011df1e11aeeb06533e32bc0d71d94dc6e93e2aeea6c4f34bde72c`;
+daemon: `b01ab56b16746087640cb7ee2aca000b2f41df500a9cd43ad30c84210ead6cb7`.
