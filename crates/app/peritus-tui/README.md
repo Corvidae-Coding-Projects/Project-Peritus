@@ -86,6 +86,14 @@ does not submit them again; inspect the current run before manually resending an
 Ctrl-R reconnects without replacing a chat or modal draft. With terminal keyboard capture enabled,
 Ctrl-R goes to the attached program; release capture with Ctrl-] before reconnecting.
 
+Transport failures discard the dead connection and automatically reconnect with bounded backoff
+(0.5, 1, 2, 4, then at most 8 seconds). Editing remains available while offline. Recovery retains
+the selected run and unsent drafts; it does not replay `/retry`. Previously submitted durable
+chat operations reconcile their original receipts before continuing. Normal launcher windows
+record connection generations, failure stages and full transport errors in the private bounded
+`logs/peritus-tui.log` file, without message bodies or drafts. Ctrl-R remains an immediate manual
+recovery option and can restore daemon readiness through the launcher.
+
 Interactive previews backed by pipes negotiate `app.terminal-pipes`. Their terminal view shows
 a local line editor: type or paste, edit the visible draft, then press Enter to send it. The draft
 clears only when the daemon acknowledges that exact input; rejection or timeout preserves it.

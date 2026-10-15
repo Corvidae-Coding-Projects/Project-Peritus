@@ -17,7 +17,7 @@ Implementation pieces for `graph.rs`: Canonically ordered, bounded context depen
 | [cycle_model.rs](cycle_model.rs) | Finite Kahn elimination model and semantic acyclicity certificate. |
 | [cycle_proofs.rs](cycle_proofs.rs) | Completeness lemmas relating semantic DAG certificates to production Kahn traversal. |
 | [model.rs](model.rs) | Finite specification of canonical graph identity and dependency admission. |
-| [validation.rs](validation.rs) | Production validation and exact lookup for canonical context graphs. |
+| [validation.rs](validation.rs) | Validates canonical order/dependency existence and uses binary search for exact node identity lookup. |
 
 Owning module: [graph.rs](../graph.rs). Inspect that parent before changing the local pieces.
 

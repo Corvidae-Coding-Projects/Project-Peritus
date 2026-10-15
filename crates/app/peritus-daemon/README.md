@@ -36,6 +36,11 @@ configuration, lifecycle status, and a bounded authority client. Product-run con
 default-off provider-failover consent into the runner. Provider switches are counted in durable run
 progress and shown in live status without changing the A3 role-selection protocol.
 
+Each coding run retains an owned blocking-worker join handle and its cancellation tokens.
+Synchronous prompt planning, local-history reads and host-tool work execute there; provider
+and process I/O still use the daemon's runtime. Those operations do not occupy the async
+workers responsible for accepting client connections and exchanging heartbeats.
+
 Model discovery runs as bounded, connection-owned read tasks so provider latency does not stop
 heartbeats, events, or other client requests. Each provider has its own discovery gate and readable
 cache; repeated refreshes report an in-progress lookup instead of queuing more provider work.

@@ -113,7 +113,9 @@ async fn launch_interactive_target(
     loop {
         supervisor.ensure_ready(&prepared, &binaries).await?;
         let outcome = peritus_tui::run_with_state(
-            TuiConfig::new(prepared.endpoint_path()).with_product(product.clone()),
+            TuiConfig::new(prepared.endpoint_path())
+                .with_product(product.clone())
+                .with_diagnostic_log(prepared.layout().logs_root().join("peritus-tui.log")),
             &mut tui_state,
         )
         .await

@@ -26,14 +26,9 @@ pub(super) fn validate_node_order(nodes: &[ContextNode]) -> Result<(), ContextEr
     Ok(())
 }
 pub(super) fn find_node_index(nodes: &[ContextNode], id: ContextNodeId) -> Option<usize> {
-    let mut index = 0;
-    while index < nodes.len() {
-        if nodes[index].id().matches(&id) {
-            return Some(index);
-        }
-        index += 1;
-    }
-    None
+    // Graph construction requires strictly increasing canonical IDs. Ord uses
+    // the same lexicographic byte order, so lookups need no whole-graph scan.
+    nodes.binary_search_by_key(&id, ContextNode::id).ok()
 }
 fn validate_node_dependencies(
     nodes: &[ContextNode],

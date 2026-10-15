@@ -9,7 +9,7 @@ Implementation pieces for `selection.rs`: Deterministic required-first selection
 | File | Role |
 | --- | --- |
 | [certificate.rs](certificate.rs) | Independent deterministic replay certificate for a complete selection result. |
-| [closure.rs](closure.rs) | Complete dependency-closure formation, validation, and admission. |
+| [closure.rs](closure.rs) | Visits actual reachable dependencies once and retains canonical closure order for atomic selection and diagnostics. |
 | [ordering.rs](ordering.rs) | Deterministic optional-root ranking and final render ordering. |
 | [outcome.rs](outcome.rs) | Independent logical success relation and executable required-node check. |
 | [plan.rs](plan.rs) | Transactional required-first and optional context planning. |

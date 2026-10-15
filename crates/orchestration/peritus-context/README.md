@@ -24,9 +24,13 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 Production C6 provenance graph, selection, compaction, token-budget, and render-plan contracts.
 
 This H-class crate uses the canonical `peritus-codec` SHA-256 boundary to bind caller-supplied
-context bytes. Its deterministic graph, selection, accounting, compaction-validation,
-render-planning, and run-knowledge selection logic remains inside Verus modules and performs no
-ambient I/O.
+context bytes. Its deterministic graph, selection, accounting, compaction validation,
+render planning, and run-knowledge selection logic performs no ambient I/O.
+
+Graphs validate strictly increasing IDs before binary-search lookup. Dependency closure visits
+reachable nodes once and returns canonical graph order, preserving required-first admission,
+atomic optional closures, hidden-dependency diagnostics and exact accounting without repeated
+whole-graph passes. Coding-run hosts execute synchronous planning away from their IPC executor.
 
 Role delta packets are bound back to exact context-node digests before rendering. The resulting
 `ReusableContextSelection` retains the full run-knowledge provenance and distinguishes changed

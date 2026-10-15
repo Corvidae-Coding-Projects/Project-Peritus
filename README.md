@@ -271,8 +271,9 @@ peritus update --enable-checks
 
 ## Recover from a problem
 
-- If the connection to the background process fails, use `/reconnect`; the current conversation,
-  selected models, and unsent chat text stay in the interface while daemon readiness is restored.
+- A terminal connection failure reconnects automatically with bounded backoff. The current
+  conversation, selected models, and unsent chat text stay in the interface. Use Ctrl-R or
+  `/reconnect` for immediate recovery, including restoring daemon readiness.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
 - Interrupted provider responses retry automatically within the task's limits. After a daemon
@@ -291,6 +292,8 @@ The default state directories are:
 
 Linux uses `$XDG_STATE_HOME/peritus` when `XDG_STATE_HOME` is set.
 The `logs/peritusd.log` file in the state directory contains background-process diagnostics.
+The private bounded `logs/peritus-tui.log` records terminal connection failures and reconnection
+generations without recording messages or drafts.
 Keep credentials and private repository content out of public bug reports.
 
 For context inspection and recovery, see [Local working memory](docs/local-working-memory.md).

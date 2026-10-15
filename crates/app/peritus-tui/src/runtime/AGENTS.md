@@ -10,7 +10,8 @@ Implementation pieces for `runtime.rs`: Orderly terminal ownership and asynchron
 | --- | --- |
 | [candidate.rs](candidate.rs) | Foreground execution of a selected candidate's documented run command. |
 | [clipboard.rs](clipboard.rs) | One owned clipboard write at a time, using desktop helpers or terminal OSC 52. |
-| [connection.rs](connection.rs) | An owned connection attempt is polled beside input, never in front of the UI loop. |
+| [connection.rs](connection.rs) | Owns transport handles, ordered sends, and automatic reconnection with bounded backoff while input stays responsive. |
+| [diagnostics.rs](diagnostics.rs) | Private bounded connection-stage/error log that excludes messages and drafts. |
 | [files.rs](files.rs) | One owned bounded external-text read at a time; the event loop stays interactive. |
 | [images.rs](images.rs) | One owned bounded file read at a time; the event loop stays interactive. |
 | [interrupts.rs](interrupts.rs) | Keep process interrupts owned by the UI while a foreground child shares its terminal. |

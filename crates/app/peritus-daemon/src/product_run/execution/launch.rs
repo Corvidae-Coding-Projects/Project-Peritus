@@ -50,7 +50,7 @@ impl ProductRunService {
                 break tasks;
             };
             tasks.retain(|(_, existing)| !existing.is_finished());
-            let task = tokio::spawn(async move {
+            let execution = async move {
                 let folder = service.inner.workspaces.folder(&request.workspace_id());
                 let command_runtime = match runtime::open(&service, &request, &workspace_root) {
                     Ok(runtime) => runtime,
@@ -125,7 +125,13 @@ impl ProductRunService {
                 if service.pending_interactive_input(run_id) {
                     let _ = service.retry(run_id).await;
                 }
-            });
+            };
+            // Prompt planning, local history and host tools include synchronous CPU/file
+            // work. Keep that work off the async workers that accept connections and
+            // answer heartbeats. The same runtime still owns provider/process I/O, and
+            // this retained join handle plus the run's cancellation tokens own its life.
+            let runtime = tokio::runtime::Handle::current();
+            let task = tokio::task::spawn_blocking(move || runtime.block_on(execution));
             tasks.push((run_id, task));
         })
     }

@@ -25,6 +25,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [tui-reconnect/](tui-reconnect/AGENTS.md) | Actual terminal/daemon loss, automatic reconnection, draft retention and optional real-provider Retry replay. |
 | [composer-modes/](composer-modes/AGENTS.md) | Real-interface replay resources for composer modes; start with the local README/driver and its documented disposable-state prerequisites. |
 | [computer-automation/](computer-automation/AGENTS.md) | Real-interface replay resources for computer automation; start with the local README/driver and its documented disposable-state prerequisites. |
 | [context-resume/](context-resume/AGENTS.md) | Real-interface replay resources for context resume; start with the local README/driver and its documented disposable-state prerequisites. |
