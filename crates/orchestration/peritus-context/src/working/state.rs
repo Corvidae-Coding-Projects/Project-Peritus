@@ -12,7 +12,7 @@ use super::{
 pub struct WorkingState {
     pub(super) environment: WorkingEnvironment,
     pub(super) revision: u64,
-    pub(super) observations: Vec<ObservationSource>,
+    pub(super) observations: super::observation_prefix::ObservationPrefix,
     pub(super) entries: Vec<WorkingEntry>,
     pub(super) limits: WorkingLimits,
     pub(super) protocol: super::WorkingProtocol,
@@ -44,7 +44,7 @@ impl WorkingState {
         let state = Self {
             environment,
             revision: 0,
-            observations: Vec::new(),
+            observations: super::observation_prefix::ObservationPrefix::default(),
             entries: Vec::new(),
             limits,
             protocol: super::WorkingProtocol::empty(),
@@ -101,6 +101,25 @@ impl WorkingState {
         };
         result
     }
+    /// Widens host allocation policy without changing content, bindings, or semantic revision.
+    /// Old saved policy is not a lifetime limit when a host adopts a wider current policy.
+    ///
+    /// # Errors
+    /// Rejects narrowing any existing allocation policy.
+    pub fn with_limits(&self, limits: WorkingLimits) -> Result<Self, WorkingError> {
+        if limits.observations() < self.limits.observations()
+            || limits.entries() < self.limits.entries()
+            || limits.entry_bytes() < self.limits.entry_bytes()
+            || limits.links() < self.limits.links()
+            || limits.operations() < self.limits.operations()
+        {
+            return Err(WorkingError::InvalidLimit);
+        }
+        let mut next = self.clone();
+        next.limits = limits;
+        Ok(next)
+    }
+
     pub(super) fn check_binding(&self, binding: WorkingBinding) -> Result<(), WorkingError> {
         if self.binding() == binding { Ok(()) } else { Err(WorkingError::BindingMismatch) }
     }
@@ -133,7 +152,7 @@ pub fn ingest_working_observation(
     }
     let revision = next_revision(state.revision)?;
     let mut next = state.clone();
-    next.observations.push(source);
+    next.observations.push(source)?;
     next.revision = revision;
     Ok(next)
 }

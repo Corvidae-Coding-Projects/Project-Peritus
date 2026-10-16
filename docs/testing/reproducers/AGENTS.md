@@ -51,3 +51,5 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
+
+- [retained-state-growth/](retained-state-growth/AGENTS.md): real retained-state, protocol, scope, trace and native memory growth replays.

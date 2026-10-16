@@ -61,8 +61,10 @@ seeded writer creates/removes files and their parent directory. A separate sourc
 remain visible throughout, and the final inspection must return exactly that source change.
 
 The operator saves concrete inputs, expected outcomes, raw operations and results under
-`--output/runs/`. Before-effect admission bounds may reject an overly broad new declaration;
-they are not reapplied to invalidate already admitted work after population.
+`--output/runs/`. Scope inventories use an indexed transactional store and preserve earlier before-images.
+Directory count, nesting depth, and journal size do not impose lifetime admission quotas.
+The replay seeds concrete legacy v1 inputs before opening the new index; private/build/link
+exclusions remain required.
 
 The socket/FIFO scenarios require Unix filesystem support (AF_UNIX and mkfifo); this retained
 replay was exercised on Linux. Each consumer/file operation has a five-second bound.

@@ -79,7 +79,7 @@ pub(super) fn validate_checkpoint(
         || !selected_exist
         || match schema_version {
             LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),
-            CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
+            2 | CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
             _ => true,
         }
     {

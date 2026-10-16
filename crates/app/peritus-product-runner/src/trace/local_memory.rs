@@ -13,6 +13,38 @@ use std::{
     path::Path,
 };
 
+/// Verified prefix cursor. A changed/truncated trace falls back to ordered streaming recovery.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct TraceCursor {
+    offset: u64,
+    anchor: [u8; 32],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    identity: Option<[u64; 2]>,
+}
+
+fn identity(file: &File) -> Result<Option<[u64; 2]>, DeveloperLoopError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        let metadata = file.metadata().map_err(|_| failure("inspect trace identity"))?;
+        Ok(Some([metadata.dev(), metadata.ino()]))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = file;
+        Ok(None)
+    }
+}
+
+fn anchor(file: &mut File, offset: u64) -> Result<[u8; 32], DeveloperLoopError> {
+    let start = offset.saturating_sub(4096);
+    file.seek(std::io::SeekFrom::Start(start)).map_err(|_| failure("seek trace cursor"))?;
+    let mut bytes = vec![0; (offset - start) as usize];
+    file.read_exact(&mut bytes).map_err(|_| failure("read trace cursor anchor"))?;
+    Ok(peritus_codec::sha256(&bytes).into_bytes())
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct Scope {
     pub(super) digest: [u8; 32],
@@ -66,26 +98,34 @@ pub fn checkpoint(path: &Path, payload: &[u8]) -> Result<(), DeveloperLoopError>
 pub fn observations(
     path: &Path,
     scope: Sha256Digest,
+    cursor: Option<&TraceCursor>,
     mut ingest: impl FnMut(
         u64,
         u64,
         CompletedToolCall,
         DeveloperToolObservation,
     ) -> Result<(), DeveloperLoopError>,
-) -> Result<bool, DeveloperLoopError> {
+) -> Result<(bool, Option<TraceCursor>), DeveloperLoopError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok((false, None)),
         Err(_) => return Err(failure("open scoped observation trace")),
     };
     let length = file.metadata().map_err(|_| failure("inspect trace length"))?.len();
-    if length > 1024 * 1024 * 1024 {
-        return Err(failure("observation trace exceeds recovery bound"));
-    }
     let mut position = 0_u64;
+    if let Some(cursor) = cursor {
+        if cursor.offset <= length
+            && cursor.identity == identity(&file)?
+            && anchor(&mut file, cursor.offset)? == cursor.anchor
+        {
+            position = cursor.offset;
+        }
+    }
+    file.seek(std::io::SeekFrom::Start(position))
+        .map_err(|_| failure("seek observation suffix"))?;
     while position < length {
         if length - position < 9 {
-            return Ok(true);
+            return Ok((true, None));
         }
         let mut header = [0; 9];
         file.read_exact(&mut header).map_err(|_| failure("read trace header"))?;
@@ -94,19 +134,14 @@ pub fn observations(
         let size = u64::from_le_bytes(size);
         position += 9;
         if size > length - position {
-            return Ok(true);
+            return Ok((true, None));
         }
         if super::DeveloperTraceFrameKind::from_tag(header[0])
             == Some(super::DeveloperTraceFrameKind::LocalMemoryObservation)
         {
-            if size > 64 * 1024 * 1024 {
-                return Err(failure("scoped tool trace exceeds frame bound"));
-            }
-            let mut bytes =
-                vec![0; usize::try_from(size).map_err(|_| failure("trace frame size overflow"))?];
-            file.read_exact(&mut bytes).map_err(|_| failure("read scoped trace frame"))?;
-            let record: ToolRecord =
-                serde_json::from_slice(&bytes).map_err(|_| failure("invalid scoped tool trace"))?;
+            // The frame length bounds the stream; no allocation is based on its untrusted prefix.
+            let record: ToolRecord = serde_json::from_reader((&mut file).take(size))
+                .map_err(|_| failure("invalid scoped tool trace"))?;
             if record.schema_version != 1 || record.invocation == 0 || record.tool_sequence == 0 {
                 return Err(failure("unsupported scoped trace version or invocation"));
             }
@@ -129,7 +164,8 @@ pub fn observations(
         }
         position += size;
     }
-    Ok(false)
+    let anchor = anchor(&mut file, position)?;
+    Ok((false, Some(TraceCursor { offset: position, anchor, identity: identity(&file)? })))
 }
 
 fn failure(detail: &str) -> DeveloperLoopError {

@@ -81,6 +81,27 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("complete aggregate replay", error))?;
         Ok(records)
     }
+
+    /// Verifies the entire exact hash chain while retaining only events after a checkpoint.
+    /// Prefix records are checked and released one at a time, independent of history length.
+    /// # Errors
+    /// Rejects gaps, corrupt rows, a cursor beyond the head, or storage failures.
+    pub fn records_for_aggregate_after(
+        &self,
+        key: AggregateKey,
+        after: u64,
+    ) -> Result<Vec<CommittedRecord>, JournalError> {
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin streaming aggregate replay", error))?;
+        let head = load_head(&transaction, key)?;
+        let records = super::records::load_aggregate_suffix(&transaction, key, head, after)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("complete streaming aggregate replay", error))?;
+        Ok(records)
+    }
 }
 
 fn load_snapshot(

@@ -8,6 +8,7 @@ Task-local, non-authoritative working state and deterministic reducers.
 
 | File | Role |
 | --- | --- |
+| [observation_prefix.rs](observation_prefix.rs) | Shared immutable observation pages and constant-time exact source lookup. |
 | [binding.rs](binding.rs) | Provider-independent identity and conversation binding. |
 | [delta.rs](delta.rs) | Revision-checked, all-or-nothing working-model updates. |
 | [delta_model.rs](delta_model.rs) | Logical exact-result model for ordered working-state deltas. |

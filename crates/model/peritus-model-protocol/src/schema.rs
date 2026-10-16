@@ -26,7 +26,7 @@ impl JsonBounds {
         Self {
             max_bytes: limits.max_schema_bytes(),
             max_depth: 64,
-            max_members: 65_536,
+            max_members: u32::MAX as usize,
             max_string_bytes: limits.max_text_bytes(),
         }
     }
@@ -37,7 +37,7 @@ impl JsonBounds {
         Self {
             max_bytes: limits.max_tool_argument_bytes(),
             max_depth: 64,
-            max_members: 65_536,
+            max_members: u32::MAX as usize,
             max_string_bytes: limits.max_text_bytes(),
         }
     }

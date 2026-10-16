@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [retained-state-growth-real-2026-10-16.md](retained-state-growth-real-2026-10-16.md) | Removed retained-state quotas, paged migration, indexed scope inventory, reproduced failures, and real native/provider evidence. |
 | [token-budgets-real-2026-10-16.md](token-budgets-real-2026-10-16.md) | Local token-budget stop, complete working-state rendering, configuration compatibility, copied archive recovery, and live deployment evidence. |
 | [binary-evidence-real-2026-10-16.md](binary-evidence-real-2026-10-16.md) | NUL-bearing PostgreSQL diff failure, binary-aware rendering, exact historical evidence recovery, and real replay evidence. |
 | [in-place-runtime-churn-real-2026-10-15.md](in-place-runtime-churn-real-2026-10-15.md) | Live PostgreSQL candidate/checkpoint failures, independent original/fixed terminal replays, and builder installation recovery. |

@@ -123,9 +123,9 @@ impl LocalStore {
         self.head.map_or(0, |head| head.sequence().get())
     }
 
-    pub(super) fn records(&self) -> Result<Vec<Vec<u8>>, DeveloperLoopError> {
+    pub(super) fn records(&self, after: u64) -> Result<Vec<Vec<u8>>, DeveloperLoopError> {
         self.journal
-            .records_for_aggregate(self.identity.aggregate)
+            .records_for_aggregate_after(self.identity.aggregate, after)
             .map_err(|_| error("verify journal chain"))?
             .into_iter()
             .map(|record| {

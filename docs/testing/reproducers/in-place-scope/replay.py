@@ -1,6 +1,7 @@
 """Replay actual Peritus directory tracking on archived copies, without unit tests.
 Requires Cargo, Python 3, git, and GNU patch. Outputs stay in the supplied disposable directory.
 """
+import sqlite3
 import argparse,contextlib,hashlib,json,os,pathlib,random,select,shutil,stat,subprocess,sys,time,tarfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',type=pathlib.Path,required=True)
@@ -79,11 +80,13 @@ scenario('brownfield-nonempty-directory',{'expected':'Existing nonempty director
 def growth(case,root,descriptor,journal,absent=False,legacy=False):
  folder='output'
  if not absent:mutate(case,'Path(sys.argv[1]).mkdir()',root/folder)
- enroll(case,descriptor,folder)
  if legacy:
-  values=[json.loads(line) for line in journal.read_text().splitlines()]
-  for entry in values:entry['version']=1;entry.pop('descendants',None)
+  # Concrete legacy v1 input is installed BEFORE the current consumer first opens its index.
+  # Only an empty/absent directory is seeded; the production legacy reader owns migration.
+  before={'kind':'absent' if absent else 'directory','digest':None,'permissions':None if absent else stat.S_IMODE((root/folder).stat().st_mode),'bytes':0,'preview':''}
+  values=[{'version':1,'scope':json.loads(descriptor.read_text()),'path':folder,'before':before}]
   journal.write_text(''.join(json.dumps(entry)+'\n' for entry in values));note(case,{'legacy_v1_journal_input':values})
+ enroll(case,descriptor,folder)
  mutate(case,'p=Path(sys.argv[1]);p.parent.mkdir(parents=True,exist_ok=True);p.write_text("CREATED-A\\n");p=Path(sys.argv[2]);p.parent.mkdir(parents=True,exist_ok=True);p.write_text("CREATED-B\\n")',root/folder/'a.txt',root/folder/'nested/deep/b.txt')
  # Re-enrolling the now populated path must preserve the initial absent/empty baseline.
  enroll(case,descriptor,folder)
@@ -167,7 +170,12 @@ def ignored(case,root,descriptor,journal):
  cache_atime=cache_file.stat().st_atime_ns
  enroll(case,descriptor,cache_path)
  if cache_file.stat().st_atime_ns==cache_atime:raise RuntimeError('explicit cache-file enrollment did not capture the requested file')
- if 'EXCLUDED MARKER target' not in journal.read_text():raise RuntimeError('explicit cache-file baseline content missing')
+ database=pathlib.Path(str(journal)+'.sqlite3')
+ if database.exists():
+  with sqlite3.connect(f'file:{database}?mode=ro',uri=True) as connection:
+   retained=connection.execute('SELECT stamp FROM baselines WHERE path=?',(cache_path,)).fetchone()[0]
+ else:retained=journal.read_text()
+ if 'EXCLUDED MARKER target' not in retained:raise RuntimeError('explicit cache-file baseline content missing')
  mutate(case,'Path(sys.argv[1]).write_text("EXPLICITLY REQUESTED CACHE FILE MODIFIED\\n")',cache_file)
  require_changes(inspect(case,descriptor),['task/normal.txt',cache_path])
  for secret,original_atime in canaries:

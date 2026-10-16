@@ -3,8 +3,8 @@
 use super::super::{
     checkpoint_validation, error,
     record::{
-        ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
+        CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        TranscriptManifest, ViewValidation, decode,
     },
     tools::hex,
     view_binding,
@@ -15,7 +15,7 @@ use super::{
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore, StoreConfig};
-use peritus_context::working::{WorkingBinding, WorkingLimits, decode_working_state};
+use peritus_context::working::{WorkingBinding, WorkingLimits};
 use peritus_journal::JournalReader;
 use peritus_model_protocol::{ContentBlock, Message, ProtocolLimits, decode_messages};
 use peritus_types::Sha256Digest;
@@ -37,7 +37,7 @@ pub(in crate::local_context) fn inspect(
     let manifest: CheckpointManifest = decode(row.bytes())?;
     if !matches!(
         manifest.schema_version,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+        LEGACY_CHECKPOINT_SCHEMA_VERSION | 2 | CHECKPOINT_SCHEMA_VERSION
     ) || manifest.scope != identity.scope.into_bytes()
         || manifest.generation != row.revision()
     {
@@ -71,10 +71,8 @@ pub(in crate::local_context) fn inspect(
     }
     let validation_bytes = read(manifest.validation)?;
     let validation: ViewValidation = decode(&validation_bytes)?;
-    let sources: Vec<ArchivedObservation> = decode(&read(manifest.source_index)?)?;
     let limits = WorkingLimits::standard();
-    let state = decode_working_state(&read(manifest.working_state)?, binding, limits)
-        .map_err(|_| error("invalid inspection working state"))?;
+    let (state, sources) = super::super::pages::restore(&manifest, binding, limits, &read)?;
     let transcript: TranscriptManifest = decode(&read(manifest.transcript_manifest)?)?;
     checkpoint_validation::validate_checkpoint(
         manifest.schema_version,

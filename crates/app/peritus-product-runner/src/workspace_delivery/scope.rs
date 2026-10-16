@@ -1,4 +1,7 @@
-//! In-place comparison evidence for explicit files and bounded declared subtrees. No Git.
+//! In-place comparison evidence for explicit files and declared subtrees. No Git.
+
+#[path = "scope_store.rs"]
+mod store;
 
 use crate::progress::{CheckpointEntry, ContentKind, WorkspaceCheckpoint};
 use crate::{ProductRunnerError, ProductRunnerErrorKind, file_metadata};
@@ -8,14 +11,11 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write as _,
     fs,
-    io::{BufRead as _, Read as _, Write as _},
+    io::Read as _,
     path::{Path, PathBuf},
 };
 
-const MAX_JOURNAL_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_PREVIEW_BYTES: usize = 16 * 1024;
-const MAX_SUBTREE_ENTRIES: usize = 4096;
-const MAX_SUBTREE_DEPTH: usize = 64;
 
 /// Durable scope descriptor, with a journal location supplied by the daemon-owned trace.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -178,55 +178,7 @@ impl ScopedBaseline {
     /// # Errors
     /// Rejects invalid/protected paths, oversized evidence or filesystem failures before effects.
     pub fn enroll(&self, path: &str) -> Result<(), ProductRunnerError> {
-        if self.load()?.declarations.contains(path) {
-            return Ok(());
-        }
-        self.checked_path(path)?;
-        // A later exact-file declaration must retain its earlier directory baseline rather
-        // than treating the current postimage as the original file. It also records the exact
-        // intent separately, so commands can checkpoint source without capturing every runtime
-        // descendant of an enrolled directory.
-        let before = match self.comparison()?.remove(path) {
-            // An already covered directory needs no exact-file checkpoint. Re-enrolling its
-            // current descendants would hide creations and reapply admission bounds after
-            // effects. Keep the parent's original evidence and discover later children there.
-            Some(before) if before.kind == "directory" => return Ok(()),
-            Some(before) => before,
-            None => self.stamp(path)?,
-        };
-        let descendants = if before.kind == "directory" {
-            self.subtree_paths(path, true)?
-                .into_iter()
-                .map(|path| self.stamp(&path).map(|stamp| (path, stamp)))
-                .collect::<Result<BTreeMap<_, _>, _>>()?
-        } else {
-            BTreeMap::new()
-        };
-        let entry =
-            Entry { version: 2, scope: self.clone(), path: path.to_owned(), before, descendants };
-        let mut bytes = serde_json::to_vec(&entry).map_err(|error| failure(error.to_string()))?;
-        bytes.push(b'\n');
-        let size = self.journal_size()?;
-        if size.unwrap_or(0).saturating_add(bytes.len() as u64) > MAX_JOURNAL_BYTES {
-            return Err(failure("in-place evidence journal exceeds its bound"));
-        }
-        let mut options = fs::OpenOptions::new();
-        options.append(true);
-        if size.is_none() {
-            options.create_new(true);
-        }
-        let mut file = options.open(&self.journal).map_err(|error| failure(error.to_string()))?;
-        file.write_all(&bytes)
-            .and_then(|()| file.sync_all())
-            .map_err(|error| failure(error.to_string()))?;
-        #[cfg(unix)]
-        if size.is_none() {
-            let parent = self.journal.parent().ok_or_else(|| failure("journal has no parent"))?;
-            fs::File::open(parent)
-                .and_then(|file| file.sync_all())
-                .map_err(|error| failure(error.to_string()))?;
-        }
-        Ok(())
+        self.enroll_index(path)
     }
 
     /// Renders a bounded comparison preview; exact full-file digests determine changes.
@@ -278,73 +230,32 @@ impl ScopedBaseline {
 
     fn journal_size(&self) -> Result<Option<u64>, ProductRunnerError> {
         match fs::symlink_metadata(&self.journal) {
-            Ok(meta)
-                if meta.is_file()
-                    && !meta.file_type().is_symlink()
-                    && meta.len() <= MAX_JOURNAL_BYTES =>
-            {
-                Ok(Some(meta.len()))
-            }
-            Ok(_) => Err(failure("in-place evidence is not a bounded regular journal")),
+            Ok(meta) if meta.is_file() && !meta.file_type().is_symlink() => Ok(Some(meta.len())),
+            Ok(_) => Err(failure("in-place evidence is not a regular journal")),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(error) => Err(failure(error.to_string())),
         }
     }
 
     fn load(&self) -> Result<EnrolledPaths, ProductRunnerError> {
-        let mut entries = BTreeMap::new();
-        let mut declarations = BTreeSet::new();
-        if self.journal_size()?.is_none() {
-            return Ok(EnrolledPaths { entries, declarations });
-        }
-        let file = fs::File::open(&self.journal).map_err(|error| failure(error.to_string()))?;
-        let mut reader = std::io::BufReader::new(file);
-        loop {
-            let mut bytes = Vec::new();
-            let count = reader
-                .by_ref()
-                .take(MAX_JOURNAL_BYTES + 1)
-                .read_until(b'\n', &mut bytes)
-                .map_err(|error| failure(error.to_string()))?;
-            if count == 0 {
-                break;
-            }
-            if count as u64 > MAX_JOURNAL_BYTES || bytes.last() != Some(&b'\n') {
-                return Err(failure(
-                    "in-place evidence has a torn or oversized record; effects remain unverified",
-                ));
-            }
-            let entry: Entry =
-                serde_json::from_slice(&bytes).map_err(|error| failure(error.to_string()))?;
-            self.observed_path(&entry.path)?;
-            if !matches!(entry.version, 1 | 2)
-                || entry.scope != *self
-                || !declarations.insert(entry.path.clone())
-                || (entry.version == 1 && !entry.descendants.is_empty())
-            {
-                return Err(failure(
-                    "in-place evidence has an invalid scope, version or duplicate path",
-                ));
-            }
-            for (path, before) in entry.descendants {
-                if path == entry.path || !Path::new(&path).starts_with(&entry.path) {
-                    return Err(failure("directory evidence escaped its declared subtree"));
-                }
-                self.observed_path(&path)?;
-                // Earlier exact-file enrollment always wins over a later parent declaration.
-                entries.entry(path).or_insert(before);
-            }
-            entries.entry(entry.path).or_insert(entry.before);
-        }
-        Ok(EnrolledPaths { entries, declarations })
+        self.load_index()
     }
 
     fn checked_path(&self, relative: &str) -> Result<PathBuf, ProductRunnerError> {
         if relative.is_empty() || relative == "." {
             return Err(failure("in-place evidence requires a file or a scoped directory path"));
         }
-        crate::developer_tools::checked_protected_file(&self.root, relative, "", &self.protected)
-            .map_err(|error| failure(error.to_string()))
+        let path = crate::developer_tools::checked_protected_file(
+            &self.root,
+            relative,
+            "",
+            &self.protected,
+        )
+        .map_err(|error| failure(error.to_string()))?;
+        if self.private_evidence(&path) {
+            return Err(failure("scope evidence is outside task authority"));
+        }
+        Ok(path)
     }
 
     fn stamp(&self, relative: &str) -> Result<FileStamp, ProductRunnerError> {
@@ -477,11 +388,21 @@ impl ScopedBaseline {
         admission: bool,
     ) -> Result<Vec<String>, ProductRunnerError> {
         let mut entries = Vec::new();
-        let mut pending = vec![(relative.to_owned(), 0_usize)];
-        while let Some((directory, depth)) = pending.pop() {
-            if admission && depth >= MAX_SUBTREE_DEPTH {
-                return Err(failure("declared directory is too deep; declare narrower task paths"));
-            }
+        self.visit_subtree(relative, admission, |path| {
+            entries.push(path.to_owned());
+            Ok(())
+        })?;
+        Ok(entries)
+    }
+
+    fn visit_subtree(
+        &self,
+        relative: &str,
+        admission: bool,
+        mut visit: impl FnMut(&str) -> Result<(), ProductRunnerError>,
+    ) -> Result<(), ProductRunnerError> {
+        let mut pending = vec![relative.to_owned()];
+        while let Some(directory) = pending.pop() {
             let path = if admission {
                 self.checked_path(&directory)?
             } else {
@@ -520,26 +441,26 @@ impl ScopedBaseline {
                 if !metadata.is_file() && !metadata.is_dir() {
                     continue;
                 }
-                if admission && entries.len() >= MAX_SUBTREE_ENTRIES {
-                    return Err(failure(
-                        "declared directory is too broad; declare narrower task paths",
-                    ));
-                }
-                entries.push(relative.to_owned());
+                visit(relative)?;
                 if metadata.is_dir() {
-                    pending.push((relative.to_owned(), depth + 1));
+                    pending.push(relative.to_owned());
                 }
             }
         }
-        Ok(entries)
+        Ok(())
     }
 
     fn observed_path(&self, relative: &str) -> Result<Option<PathBuf>, ProductRunnerError> {
         if relative.is_empty() || relative == "." {
             return Err(failure("in-place evidence requires a scoped path"));
         }
-        crate::developer_tools::checked_protected_observation(&self.root, relative, &self.protected)
-            .map_err(|error| failure(error.to_string()))
+        let path = crate::developer_tools::checked_protected_observation(
+            &self.root,
+            relative,
+            &self.protected,
+        )
+        .map_err(|error| failure(error.to_string()))?;
+        Ok(path.filter(|path| !self.private_evidence(path)))
     }
 }
 

@@ -111,7 +111,7 @@ impl LocalMemory {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
         messages.push(self.scope_message()?);
-        let working = working::append(self, &mut messages, &mut selected)?;
+        let mut working = working::append(self, &mut messages, &mut selected)?;
         let historical_position = messages.len();
         let (uncompacted, target) =
             self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
@@ -123,18 +123,19 @@ impl LocalMemory {
         let historical = messages.split_off(current_end);
         messages.splice(historical_position..historical_position, historical);
         if let Some(provider) = provider {
-            transport::fit(self, &mut messages, tools, provider)?;
+            if transport::fit(self, &mut messages, tools, provider)? {
+                working = self
+                    .state
+                    .entries(self.state.binding())
+                    .map_err(|_| error("working view accounting scope"))?
+                    .len();
+            }
         }
         let estimated = estimate_developer_request_tokens(&messages, tools);
         selected.sort_unstable();
         selected.dedup();
-        let validation = self.view_validation(
-            profile,
-            estimated,
-            uncompacted,
-            selected,
-            working.omitted().len(),
-        )?;
+        let validation =
+            self.view_validation(profile, estimated, uncompacted, selected, working)?;
         let policy = sha256(&encode(&self.config)?);
         self.prepared = Some(PreparedView {
             messages: messages.clone(),

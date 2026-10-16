@@ -3,17 +3,26 @@
 mod entry;
 mod event;
 mod fields;
+mod pages;
 mod protocol;
 mod state;
 
 pub use event::{decode_working_event, encode_working_event};
+pub use pages::{WorkingStatePageDecoder, WorkingStatePages};
 pub use state::{decode_working_state, encode_working_state};
 
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecLimits};
 use super::WorkingError;
+use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecLimits};
 
-const LIMITS: CodecLimits = CodecLimits::new(8 * 1024 * 1024, 8 * 1024 * 1024, 65_535, 2_048, 2_048, 8);
-const VERSION: u16 = 1;
+const LIMITS: CodecLimits = CodecLimits::new(
+    usize::MAX,
+    usize::MAX,
+    u32::MAX as usize,
+    u32::MAX as usize,
+    u32::MAX as usize,
+    8,
+);
+const VERSION: u16 = 2;
 
 /// Structural decode/encode rejection, containing no archived text.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -27,10 +36,14 @@ pub enum WorkingCodecError {
 }
 
 impl From<CodecError> for WorkingCodecError {
-    fn from(error: CodecError) -> Self { Self::Codec(error) }
+    fn from(error: CodecError) -> Self {
+        Self::Codec(error)
+    }
 }
 impl From<WorkingError> for WorkingCodecError {
-    fn from(error: WorkingError) -> Self { Self::State(error) }
+    fn from(error: WorkingError) -> Self {
+        Self::State(error)
+    }
 }
 impl core::fmt::Display for WorkingCodecError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -46,16 +59,47 @@ fn writer(magic: [u8; 4]) -> Result<CanonicalWriter, WorkingCodecError> {
     Ok(writer)
 }
 
-fn reader(bytes: &[u8], magic: [u8; 4]) -> Result<CanonicalReader<'_>, WorkingCodecError> {
-    if bytes.len() > LIMITS.max_payload_bytes { return Err(WorkingError::Capacity.into()); }
+fn reader_version(
+    bytes: &[u8],
+    magic: [u8; 4],
+) -> Result<(CanonicalReader<'_>, u16), WorkingCodecError> {
     let mut reader = CanonicalReader::new(bytes, LIMITS);
-    if reader.read_fixed::<4>()? != magic || reader.read_u16()? != VERSION {
+    if reader.read_fixed::<4>()? != magic {
         return Err(WorkingCodecError::InvalidValue);
     }
-    Ok(reader)
+    let version = reader.read_u16()?;
+    if !matches!(version, 1 | VERSION) {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    Ok((reader, version))
+}
+
+fn reader(bytes: &[u8], magic: [u8; 4]) -> Result<CanonicalReader<'_>, WorkingCodecError> {
+    Ok(reader_version(bytes, magic)?.0)
 }
 
 fn count(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, WorkingCodecError> {
     let count = reader.read_collection_len()?;
-    if count > maximum { Err(WorkingError::Capacity.into()) } else { Ok(count) }
+    checked_count(reader, count, maximum)
+}
+
+fn wide_count(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+) -> Result<usize, WorkingCodecError> {
+    let count = usize::try_from(reader.read_u64()?).map_err(|_| WorkingCodecError::InvalidValue)?;
+    checked_count(reader, count, maximum)
+}
+
+fn checked_count(
+    reader: &CanonicalReader<'_>,
+    count: usize,
+    maximum: usize,
+) -> Result<usize, WorkingCodecError> {
+    // Every collection element consumes at least one byte. Never allocate from an unchecked prefix.
+    if count > maximum || count > reader.remaining() {
+        Err(WorkingError::Capacity.into())
+    } else {
+        Ok(count)
+    }
 }

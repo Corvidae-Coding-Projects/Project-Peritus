@@ -44,13 +44,13 @@ impl ResponseReducer {
                 }
             }
             ModelEvent::RateLimit(observation) => {
-                if self.rate_limits.len() >= 64 {
+                if self.rate_limits.len() >= self.limits.max_events() {
                     return self.reject("rate-limit observation count exceeds its bound");
                 }
                 self.rate_limits.push(observation);
             }
             ModelEvent::Cache(observation) => {
-                if self.cache.len() >= 64 {
+                if self.cache.len() >= self.limits.max_events() {
                     return self.reject("cache observation count exceeds its bound");
                 }
                 self.cache.push(observation);
@@ -61,7 +61,7 @@ impl ResponseReducer {
                 }
             }
             ModelEvent::ProviderEvent(extension) => {
-                if self.extensions.len() >= 128 {
+                if self.extensions.len() >= self.limits.max_events() {
                     return self.reject("provider event count exceeds its bound");
                 }
                 self.extensions.push(extension);

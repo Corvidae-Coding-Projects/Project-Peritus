@@ -118,7 +118,7 @@ impl ContextLimits {
 #[doc = " Immutable nonempty bytes whose supplied digest has been checked."]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ContextContent {
-    bytes: Vec<u8>,
+    bytes: std::sync::Arc<[u8]>,
     digest: Sha256Digest,
 }
 impl ContextContent {
@@ -137,12 +137,12 @@ impl ContextContent {
                 bytes.len() as u64,
             ));
         }
-        Ok(Self { bytes, digest })
+        Ok(Self { bytes: bytes.into(), digest })
     }
     #[doc = " Borrows the exact immutable content bytes."]
     #[must_use]
-    pub const fn bytes(&self) -> &[u8] {
-        self.bytes.as_slice()
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
     }
     #[doc = " Returns the verified digest."]
     #[must_use]
@@ -151,7 +151,7 @@ impl ContextContent {
     }
     #[doc = " Returns the byte length."]
     #[must_use]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.bytes.len()
     }
     #[doc = " Returns false because checked content is always nonempty."]

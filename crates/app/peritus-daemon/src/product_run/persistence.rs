@@ -67,28 +67,22 @@ pub(super) fn write_record(
     if let Some(bytes) = persisted.resume_state.take() {
         persisted.resume_artifact = Some(continuation::store(directory, &bytes)?);
     }
-    let bytes = serde_json::to_vec(&persisted).map_err(|error| {
-        ProductRunServiceError::persistence("serialize the product-run record", error)
-    })?;
-    if bytes.len() as u64 > workbench::MAX_RUN_RECORD_BYTES {
-        return Err(ProductRunServiceError::persistence_capacity(
-            "serialize the workbench run record",
-            format!(
-                "record is {} bytes; the durable limit is {} bytes",
-                bytes.len(),
-                workbench::MAX_RUN_RECORD_BYTES
-            ),
-        ));
-    }
     let path = directory.join(format!("{}.json", persisted.run_id));
     let temporary = path.with_extension("json.new");
     let mut file = fs::File::create(&temporary).map_err(|error| {
         ProductRunServiceError::persistence("create the product-run temporary record", error)
     })?;
 
-    file.write_all(&bytes).map_err(|error| {
-        ProductRunServiceError::persistence("write the product-run temporary record", error)
-    })?;
+    {
+        // The buffer bounds an I/O operation, not the lifetime of the retained run.
+        let mut writer = std::io::BufWriter::new(&mut file);
+        serde_json::to_writer(&mut writer, &persisted).map_err(|error| {
+            ProductRunServiceError::persistence("serialize the product-run record", error)
+        })?;
+        writer.flush().map_err(|error| {
+            ProductRunServiceError::persistence("write the product-run temporary record", error)
+        })?;
+    }
 
     file.sync_all().map_err(|error| {
         ProductRunServiceError::persistence("sync the product-run temporary record", error)

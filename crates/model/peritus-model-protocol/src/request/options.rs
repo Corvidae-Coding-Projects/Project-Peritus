@@ -128,7 +128,7 @@ impl GenerationConfig {
         top_p_millionths: Option<u32>,
     ) -> Result<Self, ProtocolError> {
         if max_output_tokens == 0
-            || stop_sequences.len() > 64
+            || stop_sequences.len() > u32::MAX as usize
             || temperature_millionths.is_some_and(|value| value > 2_000_000)
             || top_p_millionths.is_some_and(|value| value > 1_000_000)
         {

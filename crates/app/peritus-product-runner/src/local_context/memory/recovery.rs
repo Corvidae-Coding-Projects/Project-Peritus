@@ -18,7 +18,6 @@ use peritus_model_protocol::{ProtocolLimits, decode_messages};
 
 impl LocalMemory {
     pub(in crate::local_context) fn recover(&mut self) -> Result<(), DeveloperLoopError> {
-        let records = self.store.records()?;
         let through = if let Some(bytes) = self.store.checkpoint_root()? {
             let manifest: CheckpointManifest = decode(&bytes)?;
             self.restore_checkpoint(&manifest)?;
@@ -28,7 +27,8 @@ impl LocalMemory {
         } else {
             0
         };
-        if records.is_empty() {
+        let records = self.store.records(through)?;
+        if records.is_empty() && through == 0 {
             let state = self.store.store(
                 &encode_working_state(&self.state)
                     .map_err(|_| error("encode initial working state"))?,
@@ -37,10 +37,7 @@ impl LocalMemory {
             return Ok(());
         }
         for (index, bytes) in records.iter().enumerate() {
-            if (index as u64) < through {
-                continue;
-            }
-            self.replay_record(decode(bytes)?, index == 0)?;
+            self.replay_record(decode(bytes)?, through == 0 && index == 0)?;
         }
         checkpoint_validation::validate_index(
             &self.state,
@@ -60,7 +57,7 @@ impl LocalMemory {
     ) -> Result<(), DeveloperLoopError> {
         if !matches!(
             manifest.schema_version,
-            LEGACY_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+            LEGACY_CHECKPOINT_SCHEMA_VERSION | 2 | CHECKPOINT_SCHEMA_VERSION
         ) || manifest.scope != self.store.scope_digest().into_bytes()
             || manifest.generation != self.store.generation()
             || manifest.through_event >= self.store.sequence()
@@ -70,13 +67,11 @@ impl LocalMemory {
         checkpoint_validation::validate_schema_lineage(manifest, |digest| {
             self.store.read_digest(digest)
         })?;
-        self.state = decode_working_state(
-            &self.store.read(manifest.working_state)?,
-            self.binding,
-            self.limits,
-        )
-        .map_err(|_| error("invalid working checkpoint"))?;
-        self.sources = decode(&self.store.read(manifest.source_index)?)?;
+        (self.state, self.sources) =
+            super::super::pages::restore(manifest, self.binding, self.limits, |artifact| {
+                self.store.read(artifact)
+            })?;
+        self.trace_cursor = manifest.trace_cursor.clone();
         self.transcript = decode(&self.store.read(manifest.transcript_manifest)?)?;
         let view_bytes = self.store.read(manifest.view)?;
         self.last_view = decode_messages(&view_bytes, ProtocolLimits::PRODUCTION)?;
@@ -94,6 +89,10 @@ impl LocalMemory {
         self.local_compactor_failures = validation.local_compactor_failures;
         self.retrieval_calls = validation.retrieval_calls;
         self.model_revision = validation.model_revision;
+        self.state = self
+            .state
+            .with_limits(self.limits)
+            .map_err(|_| error("widen retained working policy"))?;
         Ok(())
     }
 
@@ -113,7 +112,9 @@ impl LocalMemory {
                 if state.revision() != 0 || state.through_observation() != 0 {
                     return Err(error("genesis is not empty"));
                 }
-                self.state = state;
+                self.state = state
+                    .with_limits(self.limits)
+                    .map_err(|_| error("widen genesis working policy"))?;
             }
             MemoryRecord::Invocation { sequence, request_prefix } => {
                 if self.transcript.invocation.checked_add(1) != Some(sequence)

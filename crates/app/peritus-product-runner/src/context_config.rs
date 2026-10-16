@@ -88,9 +88,11 @@ pub struct LocalContextConfig {
     /// Legacy configuration key, accepted for compatibility and ignored. No local token cap.
     #[serde(skip_serializing)]
     pub retrieved_evidence_max_tokens: u64,
-    /// Maximum operations in an agent-authored atomic update.
+    /// Legacy configuration key, accepted and ignored. Updates have no host quota.
+    #[serde(skip_serializing)]
     pub max_update_operations: usize,
-    /// Maximum UTF-8 bytes in an agent-authored entry.
+    /// Legacy configuration key, accepted and ignored. Entry text has no host quota.
+    #[serde(skip_serializing)]
     pub max_entry_bytes: usize,
     /// Maximum bytes in one evidence read response.
     pub max_read_bytes: usize,
@@ -109,8 +111,8 @@ impl Default for LocalContextConfig {
             retain_recent_messages: 8,
             working_state_max_tokens: 0,
             retrieved_evidence_max_tokens: 0,
-            max_update_operations: 32,
-            max_entry_bytes: 2048,
+            max_update_operations: 0,
+            max_entry_bytes: 0,
             max_read_bytes: 16_384,
             checkpoint_every_completed_batch: true,
         }
@@ -138,8 +140,7 @@ impl LocalContextConfig {
     }
 
     pub(crate) fn working_limits(&self) -> Result<WorkingLimits, ProductRunnerError> {
-        WorkingLimits::new(65_535, 512, self.max_entry_bytes, 32, self.max_update_operations)
-            .map_err(|_| error("invalid working-state bounds"))
+        Ok(WorkingLimits::standard())
     }
 }
 

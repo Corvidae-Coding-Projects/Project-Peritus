@@ -135,6 +135,17 @@ pub(super) fn load_aggregate_records(
 
 fn load_rows(rows: &mut Rows<'_>) -> Result<Vec<CommittedRecord>, JournalError> {
     let mut records = Vec::new();
+    visit_rows(rows, |record| {
+        records.push(record);
+        Ok(())
+    })?;
+    Ok(records)
+}
+
+fn visit_rows(
+    rows: &mut Rows<'_>,
+    mut visit: impl FnMut(CommittedRecord) -> Result<(), JournalError>,
+) -> Result<(), JournalError> {
     while let Some(row) =
         rows.next().map_err(|error| JournalError::sqlite("read immutable events", error))?
     {
@@ -183,9 +194,9 @@ fn load_rows(rows: &mut Rows<'_>) -> Result<Vec<CommittedRecord>, JournalError> 
                 .map_err(|error| JournalError::sqlite("read causal identities", error))?,
             frame: row.get(14).map_err(|error| JournalError::sqlite("read exact frame", error))?,
         };
-        records.push(parse_record(raw)?);
+        visit(parse_record(raw)?)?;
     }
-    Ok(records)
+    Ok(())
 }
 
 struct RawRecord {
@@ -260,4 +271,33 @@ fn parse_record(raw: RawRecord) -> Result<CommittedRecord, JournalError> {
         revision_digest,
         causal_parents,
     })
+}
+
+pub(super) fn load_aggregate_suffix(
+    connection: &Connection,
+    key: AggregateKey,
+    head: Option<crate::AggregateHead>,
+    after: u64,
+) -> Result<Vec<CommittedRecord>, JournalError> {
+    let mut query = connection.prepare("SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame FROM events WHERE aggregate_kind=?1 AND aggregate_id=?2 ORDER BY sequence")
+        .map_err(|error| JournalError::sqlite("prepare streaming aggregate", error))?;
+    let mut rows = query
+        .query(params![key.kind().tag(), key.id().as_bytes().as_slice()])
+        .map_err(|error| JournalError::sqlite("query streaming aggregate", error))?;
+    let mut previous = None;
+    let mut suffix = Vec::new();
+    visit_rows(&mut rows, |record| {
+        if record.aggregate() != key {
+            return Err(corrupt("foreign aggregate in suffix replay"));
+        }
+        previous = Some(crate::AggregateHead::checked_successor(previous, &record)?);
+        if record.sequence().get() > after {
+            suffix.push(record);
+        }
+        Ok(())
+    })?;
+    if previous != head || after > head.map_or(0, |head| head.sequence().get()) {
+        return Err(corrupt("aggregate suffix does not reach exact head"));
+    }
+    Ok(suffix)
 }

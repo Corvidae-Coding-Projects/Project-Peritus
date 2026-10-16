@@ -30,6 +30,7 @@ pub(super) struct LocalMemory {
     pub(super) config: LocalContextConfig,
     pub(super) workspace: PathBuf,
     pub(super) trace_path: PathBuf,
+    pub(super) trace_cursor: Option<crate::trace::local_memory::TraceCursor>,
     pub(super) binding: WorkingBinding,
     pub(super) limits: WorkingLimits,
     pub(super) last_checkpoint: Option<CheckpointManifest>,
@@ -97,6 +98,7 @@ impl LocalMemory {
             config,
             workspace: workspace.to_path_buf(),
             trace_path: trace_path.to_path_buf(),
+            trace_cursor: None,
             binding,
             limits,
             last_checkpoint: None,
@@ -113,13 +115,16 @@ impl LocalMemory {
         };
         memory.recover()?;
         let trace_path = memory.trace_path.clone();
-        let torn = crate::trace::local_memory::observations(
+        let cursor = memory.trace_cursor.clone();
+        let (torn, recovered_cursor) = crate::trace::local_memory::observations(
             &trace_path,
             memory.store.scope_digest(),
+            cursor.as_ref(),
             |invocation, tool_sequence, call, observation| {
                 memory.observe_tool_in(invocation, tool_sequence, &call, &observation).map(|_| ())
             },
         )?;
+        memory.trace_cursor = recovered_cursor;
         if torn {
             return Err(error(
                 "torn trace tail: valid observations recovered; trace repair required before new work",

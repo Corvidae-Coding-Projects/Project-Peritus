@@ -11,6 +11,10 @@ pub(super) fn search_cursor(memory: &LocalMemory, query: &str, index: usize, off
     Value::from(format!("{}:{index}:{offset}", cursor_prefix(memory, "search", Some(query))))
 }
 
+pub(super) fn json_entry_cursor(memory: &LocalMemory, index: usize, offset: u64) -> String {
+    format!("{}:{index}:{offset}:json", cursor_prefix(memory, "entry", None))
+}
+
 fn cursor_prefix(memory: &LocalMemory, kind: &str, query: Option<&str>) -> String {
     let scope = hex(memory.store.scope_digest().as_bytes());
     match (kind, query) {
@@ -48,6 +52,11 @@ pub(super) fn cursor(
     let offset = parts
         .next()
         .map_or(Ok(0), |part| part.parse::<u64>().map_err(|_| error("invalid cursor")))?;
+    let json = match parts.next() {
+        None => false,
+        Some("json") if kind == "entry" => true,
+        _ => return Err(error("invalid cursor mode")),
+    };
     if parts.next().is_some() {
         return Err(error("invalid cursor"));
     }
@@ -64,9 +73,11 @@ pub(super) fn cursor(
             .state
             .entries(memory.state.binding())
             .map_err(|_| error("entry cursor scope"))?;
-        if offset > u64::try_from(entries[index].content().bytes().len()).unwrap_or(u64::MAX) {
+        if !json
+            && offset > u64::try_from(entries[index].content().bytes().len()).unwrap_or(u64::MAX)
+        {
             return Err(error("entry cursor out of range"));
         }
     }
-    Ok(CursorPosition { index, offset })
+    Ok(CursorPosition { index, offset, json })
 }

@@ -94,8 +94,9 @@ fn render_projection(
             omitted: entries.iter().map(WorkingEntry::id).collect(),
         });
     }
-    let limits = ContextLimits::new(state.limits().entries(), 32_768, state.limits().links(), 5)
-        .map_err(WorkingError::Projection)?;
+    let limits =
+        ContextLimits::new(state.limits().entries(), usize::MAX, state.limits().links(), 5)
+            .map_err(WorkingError::Projection)?;
     let mut nodes = Vec::with_capacity(entries.len());
     for entry in entries {
         nodes.push(node(entry, binding, limits)?);

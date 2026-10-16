@@ -3,13 +3,12 @@ use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use crate::{ProtocolError, ProtocolErrorKind, ProtocolLimits};
 
 pub(super) const MAGIC: [u8; 4] = *b"P5EV";
-pub(super) const MAX_CANONICAL_EVENT_BYTES: usize = 64 * 1024 * 1024;
 
 pub(super) const fn codec_limits(limits: ProtocolLimits) -> CodecLimits {
     CodecLimits::new(
-        MAX_CANONICAL_EVENT_BYTES,
-        MAX_CANONICAL_EVENT_BYTES,
-        1_024,
+        usize::MAX,
+        usize::MAX,
+        u32::MAX as usize,
         max_usize(limits.max_text_bytes(), 8 * 1024),
         max_usize(
             limits.max_event_bytes(),
