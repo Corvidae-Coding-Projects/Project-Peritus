@@ -142,7 +142,12 @@ impl CandidateRecorder {
         conversation_revision: u64,
         acquired: CheckpointEvidence,
     ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
-        let has_workspace_candidate = !self.baseline.changed_paths(&self.root)?.is_empty();
+        let scoped =
+            self.baseline.scope().map(|scope| scope.observe_candidate(&self.root)).transpose()?;
+        let has_workspace_candidate = match &scoped {
+            Some(observed) => observed.has_changes,
+            None => !self.baseline.changed_paths(&self.root)?.is_empty(),
+        };
         let mut recorder_state = self.lock()?;
         if !has_workspace_candidate && !recorder_state.external_effect_observed {
             // A fresh repository observation is authoritative: a reverted workspace must not
@@ -152,7 +157,10 @@ impl CandidateRecorder {
             return Ok(None);
         }
         drop(recorder_state);
-        let (content, repository) = self.capture_candidate_axes()?;
+        let (content, repository) = match scoped {
+            Some(observed) => (observed.content, observed.repository),
+            None => self.capture_candidate_axes()?,
+        };
         let mut recorder_state = self.lock()?;
         recorder_state.next_sequence =
             recorder_state.next_sequence.checked_add(1).ok_or_else(sequence_overflow)?;

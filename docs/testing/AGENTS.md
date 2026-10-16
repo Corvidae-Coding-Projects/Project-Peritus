@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [in-place-runtime-churn-real-2026-10-15.md](in-place-runtime-churn-real-2026-10-15.md) | Live PostgreSQL candidate/checkpoint failures, independent original/fixed terminal replays, and builder installation recovery. |
 | [tui-reconnect-real-2026-10-15.md](tui-reconnect-real-2026-10-15.md) | Terminal transport recovery, exact Unicode draft retention, old-binary reproduction, and independent real replay. |
 | [handshake-stall-real-2026-10-15.md](handshake-stall-real-2026-10-15.md) | Long-history prompt-planning stall: live profiling, exact brownfield snapshot replay, worker isolation and first-attempt attachment. |
 | [startup-recovery-real-2026-10-15.md](startup-recovery-real-2026-10-15.md) | Cold-start timeout, large-archive storage migration, folder identity and interrupted-socket recovery evidence. |

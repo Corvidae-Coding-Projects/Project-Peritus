@@ -1,5 +1,6 @@
 //! In-place comparison evidence for explicit files and bounded declared subtrees. No Git.
 
+use crate::progress::{CheckpointEntry, ContentKind, WorkspaceCheckpoint};
 use crate::{ProductRunnerError, ProductRunnerErrorKind, file_metadata};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
@@ -47,6 +48,34 @@ struct FileStamp {
     preview: String,
 }
 
+struct FileObservation {
+    stamp: FileStamp,
+    checkpoint: CheckpointEntry,
+}
+
+impl FileObservation {
+    fn new(relative: &str, stamp: FileStamp, kind: ContentKind, digest: Option<[u8; 32]>) -> Self {
+        let checkpoint =
+            CheckpointEntry::observed(PathBuf::from(relative), digest, stamp.permissions, kind);
+        Self { stamp, checkpoint }
+    }
+
+    fn absent(relative: &str) -> Self {
+        Self::new(relative, absent(), ContentKind::Other, None)
+    }
+}
+
+pub(crate) struct ScopedCandidateObservation {
+    pub(crate) has_changes: bool,
+    pub(crate) content: peritus_types::Sha256Digest,
+    pub(crate) repository: peritus_types::Sha256Digest,
+}
+
+struct EnrolledPaths {
+    entries: BTreeMap<String, FileStamp>,
+    declarations: BTreeSet<String>,
+}
+
 impl ScopedBaseline {
     /// Binds task evidence to a workspace, durable journal, protected paths and revision.
     /// The journal must live outside the declared task subtrees.
@@ -72,10 +101,13 @@ impl ScopedBaseline {
     }
 
     /// Exact predeclared file targets eligible for automatic before-image checkpoints.
-    /// New descendants discovered after a command are comparison evidence, not before-images.
+    /// Directory descendants are comparison evidence, not an implicit request to capture live
+    /// service data for rewind. Reading or editing a descendant explicitly enrolls that file.
     pub(crate) fn checkpoint_paths(&self) -> Result<Vec<PathBuf>, ProductRunnerError> {
-        self.load()?
+        let EnrolledPaths { entries, declarations } = self.load()?;
+        entries
             .into_iter()
+            .filter(|(path, _)| declarations.contains(path))
             .filter_map(|(path, before)| match self.stamp(&path) {
                 Ok(current)
                     if matches!(before.kind.as_str(), "file" | "absent")
@@ -96,8 +128,32 @@ impl ScopedBaseline {
     pub(crate) fn progress_checkpoint(
         &self,
         root: &Path,
-    ) -> Result<crate::progress::WorkspaceCheckpoint, ProductRunnerError> {
-        crate::progress::WorkspaceCheckpoint::scoped(root, self.changed_paths(root)?)
+    ) -> Result<WorkspaceCheckpoint, ProductRunnerError> {
+        WorkspaceCheckpoint::scoped(root, self.changed_paths(root)?)
+    }
+
+    /// Derives both identity axes from the same observations of the enrolled path set.
+    /// Running services may change their files between observations; their next observation
+    /// invalidates old evidence without requiring the entire directory to stop changing.
+    pub(crate) fn observe_candidate(
+        &self,
+        root: &Path,
+    ) -> Result<ScopedCandidateObservation, ProductRunnerError> {
+        self.check_root(root)?;
+        let mut content = Vec::new();
+        let mut repository = Vec::new();
+        for (path, before) in self.comparison()? {
+            let current = self.observe(&path)?;
+            if current.stamp != before {
+                content.push(current.checkpoint.clone());
+            }
+            repository.push(current.checkpoint);
+        }
+        Ok(ScopedCandidateObservation {
+            has_changes: !content.is_empty(),
+            content: WorkspaceCheckpoint::scoped_entries(content).digest(),
+            repository: WorkspaceCheckpoint::scoped_entries(repository).digest(),
+        })
     }
 
     /// Compares exact file content, permissions and path kinds against durable baselines.
@@ -122,12 +178,22 @@ impl ScopedBaseline {
     /// # Errors
     /// Rejects invalid/protected paths, oversized evidence or filesystem failures before effects.
     pub fn enroll(&self, path: &str) -> Result<(), ProductRunnerError> {
-        let entries = self.comparison()?;
-        if entries.contains_key(path) {
+        if self.load()?.declarations.contains(path) {
             return Ok(());
         }
         self.checked_path(path)?;
-        let before = self.stamp(path)?;
+        // A later exact-file declaration must retain its earlier directory baseline rather
+        // than treating the current postimage as the original file. It also records the exact
+        // intent separately, so commands can checkpoint source without capturing every runtime
+        // descendant of an enrolled directory.
+        let before = match self.comparison()?.remove(path) {
+            // An already covered directory needs no exact-file checkpoint. Re-enrolling its
+            // current descendants would hide creations and reapply admission bounds after
+            // effects. Keep the parent's original evidence and discover later children there.
+            Some(before) if before.kind == "directory" => return Ok(()),
+            Some(before) => before,
+            None => self.stamp(path)?,
+        };
         let descendants = if before.kind == "directory" {
             self.subtree_paths(path, true)?
                 .into_iter()
@@ -225,11 +291,11 @@ impl ScopedBaseline {
         }
     }
 
-    fn load(&self) -> Result<BTreeMap<String, FileStamp>, ProductRunnerError> {
+    fn load(&self) -> Result<EnrolledPaths, ProductRunnerError> {
         let mut entries = BTreeMap::new();
         let mut declarations = BTreeSet::new();
         if self.journal_size()?.is_none() {
-            return Ok(entries);
+            return Ok(EnrolledPaths { entries, declarations });
         }
         let file = fs::File::open(&self.journal).map_err(|error| failure(error.to_string()))?;
         let mut reader = std::io::BufReader::new(file);
@@ -270,7 +336,7 @@ impl ScopedBaseline {
             }
             entries.entry(entry.path).or_insert(entry.before);
         }
-        Ok(entries)
+        Ok(EnrolledPaths { entries, declarations })
     }
 
     fn checked_path(&self, relative: &str) -> Result<PathBuf, ProductRunnerError> {
@@ -282,7 +348,13 @@ impl ScopedBaseline {
     }
 
     fn stamp(&self, relative: &str) -> Result<FileStamp, ProductRunnerError> {
-        let Some(path) = self.observed_path(relative)? else { return Ok(absent()) };
+        self.observe(relative).map(|observed| observed.stamp)
+    }
+
+    fn observe(&self, relative: &str) -> Result<FileObservation, ProductRunnerError> {
+        let Some(path) = self.observed_path(relative)? else {
+            return Ok(FileObservation::absent(relative));
+        };
         let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
             Err(error)
@@ -291,13 +363,7 @@ impl ScopedBaseline {
                     std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
                 ) =>
             {
-                return Ok(FileStamp {
-                    kind: "absent".to_owned(),
-                    digest: None,
-                    permissions: None,
-                    bytes: 0,
-                    preview: String::new(),
-                });
+                return Ok(FileObservation::absent(relative));
             }
             Err(error) => return Err(failure(error.to_string())),
         };
@@ -305,26 +371,32 @@ impl ScopedBaseline {
         if metadata.is_dir() {
             // Directory contents belong to individual descendant stamps. Population is a
             // normal lifecycle transition, including journals written by older releases.
-            return Ok(FileStamp {
+            let stamp = FileStamp {
                 kind: "directory".to_owned(),
                 digest: None,
                 permissions,
                 bytes: 0,
                 preview: String::new(),
-            });
+            };
+            return Ok(FileObservation::new(
+                relative,
+                stamp,
+                ContentKind::Other,
+                Some(Sha256::digest(b"non-file").into()),
+            ));
         }
         if !metadata.is_file() {
             // Runtime endpoints (sockets/pipes) and later link replacement are observable
             // effects, not file bodies. Do not open, read through, or restore them as files.
             let mut digest = Sha256::new();
-            if metadata.file_type().is_symlink() {
-                digest.update(
-                    fs::read_link(&path)
-                        .map_err(|error| failure(error.to_string()))?
-                        .as_os_str()
-                        .as_encoded_bytes(),
-                );
-            }
+            let (kind, checkpoint_digest) = if metadata.file_type().is_symlink() {
+                let target = fs::read_link(&path).map_err(|error| failure(error.to_string()))?;
+                let target = target.as_os_str().as_encoded_bytes();
+                digest.update(target);
+                (ContentKind::Symlink, Sha256::digest(target).into())
+            } else {
+                (ContentKind::Other, Sha256::digest(b"non-file").into())
+            };
             #[cfg(unix)]
             {
                 use std::os::unix::fs::MetadataExt as _;
@@ -340,15 +412,20 @@ impl ScopedBaseline {
                     digest.update(value.to_le_bytes());
                 }
             }
-            return Ok(FileStamp {
+            let stamp = FileStamp {
                 kind: opaque_kind(&metadata).to_owned(),
                 digest: Some(digest.finalize().into()),
                 permissions,
                 bytes: 0,
                 preview: "[metadata only; target contents not read]".to_owned(),
-            });
+            };
+            return Ok(FileObservation::new(relative, stamp, kind, Some(checkpoint_digest)));
         }
-        let mut file = fs::File::open(path).map_err(|error| failure(error.to_string()))?;
+        let mut file = match fs::File::open(path) {
+            Ok(file) => file,
+            Err(error) if missing(&error) => return Ok(FileObservation::absent(relative)),
+            Err(error) => return Err(failure(error.to_string())),
+        };
         let mut hasher = Sha256::new();
         let mut preview = Vec::new();
         let mut buffer = [0; 8192];
@@ -361,17 +438,19 @@ impl ScopedBaseline {
             let remaining = MAX_PREVIEW_BYTES.saturating_sub(preview.len());
             preview.extend_from_slice(&buffer[..count.min(remaining)]);
         }
-        Ok(FileStamp {
+        let digest = hasher.finalize().into();
+        let stamp = FileStamp {
             kind: "file".to_owned(),
-            digest: Some(hasher.finalize().into()),
+            digest: Some(digest),
             permissions,
             bytes: metadata.len(),
             preview: String::from_utf8(preview).unwrap_or_else(|_| "[binary content]".to_owned()),
-        })
+        };
+        Ok(FileObservation::new(relative, stamp, ContentKind::File, Some(digest)))
     }
 
     fn comparison(&self) -> Result<BTreeMap<String, FileStamp>, ProductRunnerError> {
-        let mut before = self.load()?;
+        let mut before = self.load()?.entries;
         let mut roots = Vec::<String>::new();
         for path in before.keys() {
             if self
@@ -403,8 +482,22 @@ impl ScopedBaseline {
             if admission && depth >= MAX_SUBTREE_DEPTH {
                 return Err(failure("declared directory is too deep; declare narrower task paths"));
             }
-            let children = fs::read_dir(self.checked_path(&directory)?)
-                .map_err(|error| failure(error.to_string()))?;
+            let path = if admission {
+                self.checked_path(&directory)?
+            } else {
+                let Some(path) = self.observed_path(&directory)? else { continue };
+                match fs::symlink_metadata(&path) {
+                    Ok(metadata) if metadata.is_dir() => path,
+                    Ok(_) => continue,
+                    Err(error) if missing(&error) => continue,
+                    Err(error) => return Err(failure(error.to_string())),
+                }
+            };
+            let children = match fs::read_dir(path) {
+                Ok(children) => children,
+                Err(error) if !admission && missing(&error) => continue,
+                Err(error) => return Err(failure(error.to_string())),
+            };
             for child in children {
                 let child = child.map_err(|error| failure(error.to_string()))?;
                 let path = child.path();
@@ -419,8 +512,11 @@ impl ScopedBaseline {
                 if self.checked_path(relative).is_err() {
                     continue;
                 }
-                let metadata =
-                    fs::symlink_metadata(&path).map_err(|error| failure(error.to_string()))?;
+                let metadata = match fs::symlink_metadata(&path) {
+                    Ok(metadata) => metadata,
+                    Err(error) if !admission && missing(&error) => continue,
+                    Err(error) => return Err(failure(error.to_string())),
+                };
                 if !metadata.is_file() && !metadata.is_dir() {
                     continue;
                 }
@@ -445,6 +541,10 @@ impl ScopedBaseline {
         crate::developer_tools::checked_protected_observation(&self.root, relative, &self.protected)
             .map_err(|error| failure(error.to_string()))
     }
+}
+
+fn missing(error: &std::io::Error) -> bool {
+    matches!(error.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory)
 }
 
 fn opaque_kind(metadata: &fs::Metadata) -> &'static str {

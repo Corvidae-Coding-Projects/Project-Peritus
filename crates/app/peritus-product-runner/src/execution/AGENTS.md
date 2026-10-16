@@ -11,7 +11,7 @@ Product-run and conversation entrypoints, live input contracts, phase orchestrat
 | [acceptance.rs](acceptance.rs) | Delivery-scope-specific acceptance evidence and decisions. |
 | [cancellation.rs](cancellation.rs) | Shared cancellation observation for every product-run phase. |
 | [candidate_digest.rs](candidate_digest.rs) | Exact candidate identity inspection for external handoff controls. |
-| [checkpoint.rs](checkpoint.rs) | Exact candidate observation at every material product-run boundary. |
+| [checkpoint.rs](checkpoint.rs) | Candidate observations at material tool/run boundaries; in-place axes share captured file observations, while managed Git candidates retain repository-context fences. |
 | [conversation.rs](conversation.rs) | Read-only conversational front end to the existing production execution pipeline. |
 | [cycle.rs](cycle.rs) | One inspect-review-fix cycle of a product run. |
 | [deadline.rs](deadline.rs) | Phase-aware run admission with time reserved for honest finalization. |
