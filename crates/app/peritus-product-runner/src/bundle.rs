@@ -198,6 +198,15 @@ fn append_nested_untracked_files(
 }
 
 fn append_new_file(diff: &mut String, display: &str, metadata: &fs::Metadata, content: &str) {
+    if content.contains('\0') {
+        let _ = writeln!(
+            diff,
+            "\nBinary file b/{display}: bytes={}, permissions={}; NUL-bearing preview omitted",
+            metadata.len(),
+            file_metadata::permissions(metadata),
+        );
+        return;
+    }
     let line_count = content.lines().count().max(1);
     let git_mode = file_metadata::git_file_mode(metadata);
     let _ = write!(

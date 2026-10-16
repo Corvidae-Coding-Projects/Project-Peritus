@@ -253,10 +253,10 @@ impl ScopedBaseline {
                 before.bytes,
                 after.bytes
             );
-            for line in before.preview.lines() {
+            for line in text_preview(&before.preview).lines() {
                 let _ = writeln!(diff, "-{line}");
             }
-            for line in after.preview.lines() {
+            for line in text_preview(&after.preview).lines() {
                 let _ = writeln!(diff, "+{line}");
             }
             if before.bytes > MAX_PREVIEW_BYTES as u64 || after.bytes > MAX_PREVIEW_BYTES as u64 {
@@ -541,6 +541,12 @@ impl ScopedBaseline {
         crate::developer_tools::checked_protected_observation(&self.root, relative, &self.protected)
             .map_err(|error| failure(error.to_string()))
     }
+}
+
+fn text_preview(value: &str) -> &str {
+    // A zero-filled database page is valid UTF-8, but not model text. Keep durable stamps
+    // and full-file digests unchanged, including previews captured by older versions.
+    if value.contains('\0') { "[binary content; NUL-bearing preview omitted]" } else { value }
 }
 
 fn missing(error: &std::io::Error) -> bool {

@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Keep binary database pages and retained NUL-bearing evidence out of model text blocks while preserving file fingerprints, exact evidence identities, and paged retrieval, so ordinary coding runs can continue into their next role.
 - Keep in-place coding runs operating while scoped database/runtime files change: derive candidate identity axes from one captured observation, tolerate vanished runtime inventory entries, and restrict automatic command before-images to exact file declarations while retaining directory descendants as comparison evidence.
 
 ## 0.0.9

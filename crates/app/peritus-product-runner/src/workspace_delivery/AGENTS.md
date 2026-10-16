@@ -8,7 +8,7 @@ Implementation pieces for `workspace_delivery.rs`: Delivery-specific adapters ar
 
 | File | Role |
 | --- | --- |
-| [scope.rs](scope.rs) | In-place comparison evidence and captured candidate axes; distinguish exact file declarations for automatic checkpoints from directory-descendant comparison evidence. No Git. |
+| [scope.rs](scope.rs) | In-place comparison evidence and captured candidate axes; exact-file automatic checkpoints, directory-descendant tracking, and binary-aware display of durable previews. No Git. |
 
 Owning module: [workspace_delivery.rs](../workspace_delivery.rs). Inspect that parent before changing the local pieces.
 
