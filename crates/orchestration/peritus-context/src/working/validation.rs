@@ -6,15 +6,7 @@ use super::{WorkingEntry, WorkingEntryStatus, WorkingError, WorkingState};
 use crate::ContextNodeId;
 
 pub(super) fn find_entry(entries: &[WorkingEntry], id: ContextNodeId) -> Option<usize> {
-    let mut index = 0;
-    while index < entries.len() {
-        let candidate = entries[index].id();
-        if candidate.matches(&id) {
-            return Some(index);
-        }
-        index += 1;
-    }
-    None
+    entries.binary_search_by_key(&id, WorkingEntry::id).ok()
 }
 pub(super) fn validate_references(
     state: &WorkingState,
@@ -54,38 +46,26 @@ pub(super) fn validate_graph(entries: &[WorkingEntry]) -> Result<(), WorkingErro
         }
         index += 1;
     }
-    let mut removed = vec![false; entries.len()];
+    let mut ready = std::collections::VecDeque::new();
+    for (index, count) in incoming.iter().enumerate() {
+        if *count == 0 {
+            ready.push_back(index);
+        }
+    }
     let mut count = 0;
-    while count < entries.len() {
-        let mut candidate = None;
-        index = 0;
-        while index < entries.len() {
-            if !removed[index] && incoming[index] == 0 {
-                candidate = Some(index);
-                break;
-            }
-            index += 1;
-        }
-        let Some(selected) = candidate else {
-            return Err(WorkingError::DependencyCycle);
-        };
-        if selected >= entries.len() {
-            return Err(WorkingError::DependencyCycle);
-        }
-        removed[selected] = true;
+    while let Some(selected) = ready.pop_front() {
         count += 1;
-        let edges = edges(&entries[selected]);
-        let mut edge = 0;
-        while edge < edges.len() {
-            let Some(target) = find_entry(entries, edges[edge]) else {
-                return Err(WorkingError::MissingEntry);
-            };
-            let Some(next) = incoming[target].checked_sub(1) else {
-                return Err(WorkingError::DependencyCycle);
-            };
-            incoming[target] = next;
-            edge += 1;
+        for edge in edges(&entries[selected]) {
+            let target = find_entry(entries, edge).ok_or(WorkingError::MissingEntry)?;
+            incoming[target] =
+                incoming[target].checked_sub(1).ok_or(WorkingError::DependencyCycle)?;
+            if incoming[target] == 0 {
+                ready.push_back(target);
+            }
         }
+    }
+    if count != entries.len() {
+        return Err(WorkingError::DependencyCycle);
     }
     Ok(())
 }

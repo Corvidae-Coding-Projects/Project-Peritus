@@ -94,7 +94,7 @@ impl RateLimitObservation {
     ///
     /// Rejects empty or oversized window sets.
     pub fn new(windows: Vec<RateLimitWindow>) -> Result<Self, ProtocolError> {
-        if windows.is_empty() || windows.len() > 64 {
+        if windows.is_empty() || windows.len() > u32::MAX as usize {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidUsage,
                 "rate_limit",

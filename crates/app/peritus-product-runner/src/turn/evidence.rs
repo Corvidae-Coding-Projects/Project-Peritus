@@ -37,10 +37,31 @@ pub(super) fn project(
     framing_tokens: u64,
     values: [&str; 6],
 ) -> ReviewerEvidence {
-    let allocations = allocations(&values, evidence_budget(max_input_tokens, framing_tokens));
-    let [transcript, diff, gates, developer, prior, correction] = std::array::from_fn(|index| {
-        bounded(SOURCE_NAMES[index], values[index], allocations[index])
+    // Retained evidence from earlier versions or command output can contain NUL even when
+    // it is valid UTF-8. Preserve its exact source identity and paged retrieval, but never
+    // embed binary bytes in a model text block. Charge the marker's actual size to the view.
+    let binary_markers: [Option<String>; 6] = std::array::from_fn(|index| {
+        values[index].contains('\0').then(|| {
+            format!(
+                "[NUL-bearing evidence; inline preview omitted.]{}",
+                omission_marker(
+                    SOURCE_NAMES[index],
+                    values[index].len(),
+                    &digest_hex(values[index]),
+                    0,
+                    values[index].len(),
+                )
+            )
+        })
     });
+    let displayed: [&str; 6] =
+        std::array::from_fn(|index| binary_markers[index].as_deref().unwrap_or(values[index]));
+    let allocations = allocations(&displayed, evidence_budget(max_input_tokens, framing_tokens));
+    let [transcript, diff, gates, developer, prior, correction] =
+        std::array::from_fn(|index| match &binary_markers[index] {
+            Some(marker) => marker[..marker.len().min(allocations[index])].to_owned(),
+            None => bounded(SOURCE_NAMES[index], values[index], allocations[index]),
+        });
     ReviewerEvidence { transcript, diff, gates, developer, prior, correction }
 }
 

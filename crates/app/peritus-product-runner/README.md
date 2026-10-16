@@ -218,3 +218,15 @@ storage, trace versions, read-only inspection, and optional native auxiliary inf
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
+
+Retained local context has no default observation, entry, text, link, or update-count quota.
+Old saved policies are widened without changing semantic revisions or source identity.
+Checkpoints store content-addressed working/source pages; current provider views select
+retrievable records within the negotiated envelope. `context_read` returns cursor pages,
+including `entry_json_fragment` pages when reference metadata itself exceeds a response.
+Scope baselines use a transactional SQLite path index, import original JSON before-images,
+and do not reject trees by descendant count, depth, or accumulated evidence bytes.
+Trace recovery streams the suffix after a checked cursor; run metadata uses streaming atomic
+JSON publication. Provider envelopes, positive caller-selected policies, native wire/storage
+representation, filesystem authority, corruption checks and available machine resources remain
+applicable. See [growth evidence](../../../docs/testing/retained-state-growth-real-2026-10-16.md).

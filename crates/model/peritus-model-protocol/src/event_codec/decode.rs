@@ -1,10 +1,7 @@
 use peritus_codec::CanonicalReader;
 use peritus_types::Sha256Digest;
 
-use super::primitive::{
-    MAGIC, MAX_CANONICAL_EVENT_BYTES, codec_limits, invalid, option_u16, option_u64, read_codec,
-    unknown,
-};
+use super::primitive::{MAGIC, codec_limits, invalid, option_u16, option_u64, read_codec, unknown};
 use crate::{
     BoundedText, CacheKey, CacheObservation, CacheStatus, CanonicalJson, EventEnvelope, EventId,
     ExtensionName, FailureCategory, FinishReason, ItemId, ItemKind, JsonBounds, ModelEvent,
@@ -27,9 +24,6 @@ pub fn decode_event_envelope(
     bytes: &[u8],
     limits: ProtocolLimits,
 ) -> Result<EventEnvelope, ProtocolError> {
-    if bytes.len() > MAX_CANONICAL_EVENT_BYTES {
-        return Err(invalid("canonical_event", "canonical event exceeds its maximum byte bound"));
-    }
     let mut reader = CanonicalReader::new(bytes, codec_limits(limits));
     if reader.read_fixed::<4>().map_err(read_codec)? != MAGIC {
         return Err(invalid("canonical_event.magic", "canonical event magic is invalid"));
@@ -219,13 +213,13 @@ fn canonical_json(
 
 fn rate_limits(reader: &mut CanonicalReader<'_>) -> Result<RateLimitObservation, ProtocolError> {
     let count = reader.read_collection_len().map_err(read_codec)?;
-    if count == 0 || count > 64 {
+    if count == 0 || count > reader.remaining() {
         return Err(invalid(
             "canonical_event.rate_limits",
             "rate-limit window count is outside its bound",
         ));
     }
-    let mut windows = Vec::with_capacity(count);
+    let mut windows = Vec::new();
     for _ in 0..count {
         let dimension = match reader.read_u8().map_err(read_codec)? {
             1 => RateLimitDimension::Requests,

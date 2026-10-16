@@ -8,6 +8,7 @@ Versioned C0-canonical runtime encoding; deterministic semantics remain in the r
 
 | File | Role |
 | --- | --- |
+| [pages.rs](pages.rs) | Ordered streaming snapshot pages with exact cross-page state validation. |
 | [entry.rs](entry.rs) | Canonical source-backed entry fields; model deltas cannot set host-derived status. |
 | [event.rs](event.rs) | Standalone canonical working-event frames with exact scope checks. |
 | [fields.rs](fields.rs) | Canonical checked identity, source, and environment fields. |

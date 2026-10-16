@@ -13,7 +13,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [attachment.rs](attachment.rs) | Validation of explicitly selected immutable image bytes, without filesystem authority. |
 | [attachment_read.rs](attachment_read.rs) | Exact immutable attachment range request and bounded response. |
 | [budget.rs](budget.rs) | Cumulative accounting and caller-selected elapsed horizon for one complete product run. |
-| [bundle.rs](bundle.rs) | Bounded deterministic repository context construction. |
+| [bundle.rs](bundle.rs) | Bounded deterministic repository context construction, including binary-aware previews for untracked files. |
 | [candidate.rs](candidate.rs) | Exact current candidate paths relative to the managed worktree HEAD. |
 | [context_config.rs](context_config.rs) | Explicit local-only context policy and optional bounded subprocess configuration. |
 | [context_projection.rs](context_projection.rs) | Public deterministic evidence projection and exact retrieval used by production role turns. |

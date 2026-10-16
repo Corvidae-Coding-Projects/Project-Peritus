@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Product provider/tool loop: request construction, current host invocation policy, context budgeting, retries, interaction admission, observations, and completion.
+Product provider/tool loop: request construction, current host invocation policy, context compaction, retries, interaction admission, observations, and completion.
 
 ## Files in this folder
 
@@ -18,7 +18,7 @@ Product provider/tool loop: request construction, current host invocation policy
 | [interaction.rs](interaction.rs) | Optional live user-input and public activity boundary for developer execution. |
 | [mod.rs](mod.rs) | Production developer-loop composition around D0's provider runtime. |
 | [model_request.rs](model_request.rs) | Provider request construction for developer and semantic-checkpoint turns. |
-| [observation.rs](observation.rs) | Model-visible bounds for exact tool observations retained in the durable trace. |
+| [observation.rs](observation.rs) | Preserve tool content while projecting duplicate command receipts and obsolete progress events. |
 | [retry.rs](retry.rs) | Checked retry planning and cancellation-aware backoff for developer model turns. |
 | [semantic.rs](semantic.rs) | Model-authored semantic checkpoints for long developer transcripts. |
 | [tool_executor.rs](tool_executor.rs) | Host-owned tool execution, prerequisite, and liveness boundaries. |

@@ -8,7 +8,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 pub(super) const LEGACY_CHECKPOINT_SCHEMA_VERSION: u16 = 1;
-pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 2;
+pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 3;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -134,6 +134,8 @@ pub(super) enum PendingState {
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct CheckpointManifest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) trace_cursor: Option<crate::trace::local_memory::TraceCursor>,
     pub(super) schema_version: u16,
     pub(super) scope: [u8; 32],
     pub(super) generation: u64,

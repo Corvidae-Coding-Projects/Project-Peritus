@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.1.0
+
+### Changed
+
+- Remove host-imposed coding token budgets and retained working-memory quotas. Keep growing runs usable through paged checkpoints, exact evidence retrieval, streaming recovery, and indexed file baselines.
+- Automatically widen older saved working-state policies while preserving entry identities, source references, semantic revisions, and pending-operation recovery. Existing checkpoint formats remain readable.
+- Fit the current model view to the selected provider and expose exact cursor pages for retained entry text and large reference lists. Provider capacity and available machine resources remain applicable.
+
+### Fixed
+
+- Keep binary database pages and retained NUL-bearing evidence out of model text blocks while preserving file fingerprints, exact evidence identities, and paged retrieval, so ordinary coding runs can continue into their next role.
+- Keep in-place coding runs operating while scoped database/runtime files change: derive candidate identity axes from one captured observation, tolerate vanished runtime inventory entries, and restrict automatic command before-images to exact file declarations while retaining directory descendants as comparison evidence.
+- Recover valid traces larger than 1 GiB and run metadata larger than 128 MiB. Remove the former observation, entry, text, link, update, snapshot, and scope-inventory cutoffs.
+- Preserve the original contents of separately requested cache files when directory inventories exclude those files. Retain earlier before-images through overlapping declarations and legacy journal migration.
+- Accept large model-protocol archives, event frames, JSON values, and provider metadata without the former local quotas.
+
+### Real testing
+
+- Retain reproducible large-state, binary-evidence, live-runtime, and provider-driven terminal journeys. These include 130,000 observations, 5,000-file inventories, exact persistence/reopening, and a real 33-operation memory update with forty observed source references.
+- Reuse the completed develop campaigns for this release. Native package builds additionally exercise installation and real offline terminal startup on Unix. No unit tests or formal verification suites are part of this release workflow.
+
+### Compatibility
+
+- New checkpoints use schema 3; older checkpoint schemas 1 and 2 are migrated automatically. Downgrading to an older binary requires restoring its pre-upgrade state backup.
+
 ## 0.0.9
 
 ### Added

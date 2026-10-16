@@ -1,6 +1,7 @@
 """Replay actual Peritus directory tracking on archived copies, without unit tests.
 Requires Cargo, Python 3, git, and GNU patch. Outputs stay in the supplied disposable directory.
 """
+import sqlite3
 import argparse,contextlib,hashlib,json,os,pathlib,random,select,shutil,stat,subprocess,sys,time,tarfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',type=pathlib.Path,required=True)
@@ -79,11 +80,13 @@ scenario('brownfield-nonempty-directory',{'expected':'Existing nonempty director
 def growth(case,root,descriptor,journal,absent=False,legacy=False):
  folder='output'
  if not absent:mutate(case,'Path(sys.argv[1]).mkdir()',root/folder)
- enroll(case,descriptor,folder)
  if legacy:
-  values=[json.loads(line) for line in journal.read_text().splitlines()]
-  for entry in values:entry['version']=1;entry.pop('descendants',None)
+  # Concrete legacy v1 input is installed BEFORE the current consumer first opens its index.
+  # Only an empty/absent directory is seeded; the production legacy reader owns migration.
+  before={'kind':'absent' if absent else 'directory','digest':None,'permissions':None if absent else stat.S_IMODE((root/folder).stat().st_mode),'bytes':0,'preview':''}
+  values=[{'version':1,'scope':json.loads(descriptor.read_text()),'path':folder,'before':before}]
   journal.write_text(''.join(json.dumps(entry)+'\n' for entry in values));note(case,{'legacy_v1_journal_input':values})
+ enroll(case,descriptor,folder)
  mutate(case,'p=Path(sys.argv[1]);p.parent.mkdir(parents=True,exist_ok=True);p.write_text("CREATED-A\\n");p=Path(sys.argv[2]);p.parent.mkdir(parents=True,exist_ok=True);p.write_text("CREATED-B\\n")',root/folder/'a.txt',root/folder/'nested/deep/b.txt')
  # Re-enrolling the now populated path must preserve the initial absent/empty baseline.
  enroll(case,descriptor,folder)
@@ -109,6 +112,29 @@ def overlap(case,root,descriptor,journal,file_first=False):
  if 'ORIGINAL BASELINE' not in result['diff']:raise RuntimeError('diff lost earliest original baseline preview')
 for file_first in [False,True]:
  scenario('overlap-'+('file-then-directory' if file_first else 'directory-then-file'),{'expected':'Overlapping enrollment preserves earliest original file baseline despite intermediate edits; restoring original is unchanged.'},lambda c,r,d,j,f=file_first:overlap(c,r,d,j,f))
+def late_child_directory(case,root,descriptor,journal,growth):
+ mutate(case,'p=Path(sys.argv[1]);p.parent.mkdir(parents=True);p.write_text("EARLIEST CHILD BASELINE\\n")',root/'task/sub/existing.txt')
+ enroll(case,descriptor,'task')
+ mutate(case,'Path(sys.argv[1]).write_text("MODIFIED CHILD\\n")',root/'task/sub/existing.txt')
+ if growth=='wide':
+  mutate(case,'p=Path(sys.argv[1]);[(p/("new-"+str(i)+".txt")).write_text("CREATED CHILD\\n") for i in range(4105)]',root/'task/sub')
+  created=['task/sub/new-'+str(i)+'.txt' for i in range(4105)];extra=[]
+ elif growth=='deep':
+  mutate(case,'p=Path(sys.argv[1]);[(p:=p/("level-"+str(i))).mkdir() for i in range(70)];(p/"new.txt").write_text("CREATED CHILD\\n")',root/'task/sub')
+  levels=['level-'+str(i) for i in range(70)];created=['task/sub/'+('/'.join(levels))+'/new.txt'];extra=['task/sub/'+('/'.join(levels[:i])) for i in range(1,71)]
+ else:
+  mutate(case,'Path(sys.argv[1]).write_text("CREATED CHILD\\n")',root/'task/sub/new.txt')
+  created=['task/sub/new.txt'];extra=[]
+ # A later child-directory request must retain every creation and the earlier file baseline,
+ # including growth beyond the bounds that applied before the original parent admission.
+ enroll(case,descriptor,'task/sub')
+ reopened=descriptor.with_name('child-directory-reopened.json');invoke(case,'serialize',descriptor,reopened)
+ result=inspect(case,reopened);require_changes(result,['task/sub/existing.txt',*created],extra)
+ if 'EARLIEST CHILD BASELINE' not in result['diff']:raise RuntimeError('child-directory request lost original file baseline')
+ mutate(case,'p=Path(sys.argv[1]);shutil.rmtree(p);p.mkdir();(p/"existing.txt").write_text("EARLIEST CHILD BASELINE\\n")',root/'task/sub')
+ require_changes(inspect(case,reopened),[])
+for growth in ['one','wide','deep']:
+ scenario('late-child-directory-'+growth,{'expected':'Parent enrollment, child modification/creation, later child-directory declaration and reopen retain the earliest baseline and every new child; already admitted growth is not rejected. Restoring original subtree returns unchanged.','growth':growth},lambda c,r,d,j,g=growth:late_child_directory(c,r,d,j,g))
 def transition(case,root,descriptor,journal,kind):
  if kind=='file-to-directory':
   mutate(case,'Path(sys.argv[1]).write_text("ORIGINAL FILE\\n")',root/'task')
@@ -144,7 +170,12 @@ def ignored(case,root,descriptor,journal):
  cache_atime=cache_file.stat().st_atime_ns
  enroll(case,descriptor,cache_path)
  if cache_file.stat().st_atime_ns==cache_atime:raise RuntimeError('explicit cache-file enrollment did not capture the requested file')
- if 'EXCLUDED MARKER target' not in journal.read_text():raise RuntimeError('explicit cache-file baseline content missing')
+ database=pathlib.Path(str(journal)+'.sqlite3')
+ if database.exists():
+  with sqlite3.connect(f'file:{database}?mode=ro',uri=True) as connection:
+   retained=connection.execute('SELECT stamp FROM baselines WHERE path=?',(cache_path,)).fetchone()[0]
+ else:retained=journal.read_text()
+ if 'EXCLUDED MARKER target' not in retained:raise RuntimeError('explicit cache-file baseline content missing')
  mutate(case,'Path(sys.argv[1]).write_text("EXPLICITLY REQUESTED CACHE FILE MODIFIED\\n")',cache_file)
  require_changes(inspect(case,descriptor),['task/normal.txt',cache_path])
  for secret,original_atime in canaries:
@@ -291,6 +322,38 @@ def opaque_parent_inventory(case,root,descriptor,journal):
   if 'INVENTORY EXTERNAL TARGET MUST NOT READ' in result['diff']:raise RuntimeError('directory diff read opaque target contents')
  mutate(case,'Path(sys.argv[1]).unlink()',root/folder/'browser.sock')
 scenario('parent-inventory-mixed-opaque-nodes',{'expected':'Parent declaration containing actual socket/FIFO/symlink remains usable, inspects only opaque metadata or skips opaque entries, never opens FIFOs or traverses external links; ordinary file modification remains observable.'},opaque_parent_inventory)
+
+def runtime_lifecycle(case,root,descriptor,journal):
+ mutate(case,'p=Path(sys.argv[1]);p.mkdir();Path(sys.argv[2]).write_text("SOURCE BEFORE\\n")',root/'runtime',root/'owned.txt')
+ enroll(case,descriptor,'runtime');enroll(case,descriptor,'owned.txt')
+ mutate(case,'Path(sys.argv[1]).write_text("SOURCE AFTER\\n")',root/'owned.txt')
+ stop=case/'stop-writer'
+ code='''from pathlib import Path
+import random,sys,time
+root=Path(sys.argv[1]);stop=Path(sys.argv[2]);rng=random.Random(260215)
+while not stop.exists():
+ folder=root/'live space Ω';folder.mkdir(exist_ok=True)
+ path=folder/('wal-'+str(rng.randrange(3))+'.dat')
+ path.write_bytes(bytes([rng.randrange(256)])*rng.choice([128,1024,16384]))
+ time.sleep(.0005)
+ path.unlink()
+ folder.rmdir()
+'''
+ writer=subprocess.Popen(['python3','-c',code,str(root/'runtime'),str(stop)],stderr=(case/'writer.stderr').open('w'))
+ note(case,{'fixture_writer_pid':writer.pid,'seed':260215,'fresh_consumer_observations':40,'payload_bytes':[128,1024,16384]})
+ try:
+  for index in range(40):
+   result=inspect(case,descriptor)
+   changed=paths(result,'changed_paths')
+   if 'owned.txt' not in changed or any(path!='owned.txt' and not path.startswith('runtime/') for path in changed):
+    raise RuntimeError('runtime churn hid source change or escaped enrolled paths: '+repr(sorted(changed)))
+   if writer.poll() is not None:raise RuntimeError('fixture writer ended before observation '+str(index))
+ finally:
+  stop.write_text('stop\n');writer.wait(timeout=5)
+ if writer.returncode:raise RuntimeError('fixture writer failed: '+(case/'writer.stderr').read_text())
+ require_changes(inspect(case,descriptor),['owned.txt'])
+ if (root/'owned.txt').read_text()!='SOURCE AFTER\n':raise RuntimeError('inspection altered source')
+scenario('runtime-create-remove-during-observation',{'expected':'Forty fresh public-API inspections succeed while a bounded writer creates/removes runtime files and their parent; an independent source change remains visible throughout; after churn only that source change remains.','seed':260215,'fresh_observations':40,'allowed_copy_mutations':[]},runtime_lifecycle)
 
 (RUN/'results.json').write_text(json.dumps(ROWS,indent=2));print('RESULTS',RUN/'results.json',flush=True)
 raise SystemExit(1 if any(row['status']=='FAIL' for row in ROWS) else 0)

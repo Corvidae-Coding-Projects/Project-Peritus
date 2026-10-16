@@ -62,10 +62,30 @@ pub(super) fn checkpoint(
     view: &[u8],
     validation: &ViewValidation,
 ) -> Result<[u8; 32], DeveloperLoopError> {
+    checkpoint_version(
+        CHECKPOINT_SCHEMA_VERSION,
+        scope,
+        generation,
+        through_event,
+        render_policy,
+        view,
+        validation,
+    )
+}
+
+fn checkpoint_version(
+    version: u16,
+    scope: [u8; 32],
+    generation: u64,
+    through_event: u64,
+    render_policy: [u8; 32],
+    view: &[u8],
+    validation: &ViewValidation,
+) -> Result<[u8; 32], DeveloperLoopError> {
     let validation = encode(validation)?;
     let mut encoded = writer();
     encoded.write_fixed(VIEW_BINDING_MAGIC).map_err(binding_error)?;
-    encoded.write_u16(CHECKPOINT_SCHEMA_VERSION).map_err(binding_error)?;
+    encoded.write_u16(version).map_err(binding_error)?;
     encoded.write_fixed(&scope).map_err(binding_error)?;
     encoded.write_u64(generation).map_err(binding_error)?;
     encoded.write_u64(through_event).map_err(binding_error)?;
@@ -87,8 +107,9 @@ pub(super) fn verify(
         {
             Ok(())
         }
-        CHECKPOINT_SCHEMA_VERSION if validation.tool_policy.is_some() => {
-            let expected = checkpoint(
+        2 | CHECKPOINT_SCHEMA_VERSION if validation.tool_policy.is_some() => {
+            let expected = checkpoint_version(
+                manifest.schema_version,
                 manifest.scope,
                 manifest.generation,
                 manifest.through_event,

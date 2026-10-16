@@ -260,7 +260,6 @@ fn correction_prompt(error: &ProductRunnerError) -> String {
 
 fn reviewer_limits() -> Result<DeveloperLoopLimits, ProductRunnerError> {
     DeveloperLoopLimits::new(MAX_REVIEWER_TURNS, MAX_REVIEWER_TOOL_CALLS)
-        .and_then(|limits| limits.with_max_output_tokens(4_096))
         .map_err(|error| turn::developer_error(&error))
 }
 

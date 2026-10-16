@@ -15,6 +15,7 @@ mod invalidation;
 mod invalidation_environment;
 mod invalidation_model;
 mod limits;
+mod observation_prefix;
 mod protocol;
 mod staleness;
 mod state;
@@ -40,10 +41,13 @@ pub use validity::{WorkingEnvironment, WorkingFileDigest, WorkingValidity};
 mod wire;
 
 pub use wire::{
-    WorkingCodecError, decode_working_event, decode_working_state, encode_working_event,
-    encode_working_state,
+    WorkingCodecError, WorkingStatePageDecoder, WorkingStatePages, decode_working_event,
+    decode_working_state, encode_working_event, encode_working_state,
 };
 
 mod selection;
 
-pub use selection::{WorkingRenderView, render_working_state, render_working_state_with_headroom};
+pub use selection::{
+    WorkingRenderView, render_working_state, render_working_state_complete,
+    render_working_state_with_headroom,
+};

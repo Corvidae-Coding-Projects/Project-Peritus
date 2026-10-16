@@ -2,7 +2,6 @@
 
 use core::fmt::Write as _;
 
-use peritus_context::TokenBudget;
 use peritus_model_protocol::{
     ContentBlock, Message, ProtocolLimits, ProviderProfile, Role, ToolDefinition,
 };
@@ -98,21 +97,11 @@ fn compact_once(
 
 pub(super) fn context_thresholds(
     profile: &ProviderProfile,
-    reserved_output_tokens: u64,
+    _reserved_output_tokens: u64,
 ) -> Result<(u64, u64), DeveloperLoopError> {
-    let input = profile.limits().max_input_tokens();
-    let protocol = input.div_ceil(20).clamp(512, 4_096);
-    let context_window = input
-        .checked_add(reserved_output_tokens)
-        .and_then(|value| value.checked_add(protocol))
-        .ok_or_else(|| {
-            DeveloperLoopError::Context("context token capacity overflowed".to_owned())
-        })?;
-    let budget =
-        TokenBudget::new(context_window, reserved_output_tokens, protocol).map_err(|error| {
-            DeveloperLoopError::Context(format!("C6 token budget rejected: {:?}", error.kind()))
-        })?;
-    let usable = budget.usable_input();
+    // Input capacity is already separate from the provider's output limit. Compaction is
+    // advisory and must not manufacture a context-window overflow from an uncapped output.
+    let usable = profile.limits().max_input_tokens();
     let trigger = (usable.saturating_mul(COMPACTION_TRIGGER_PERCENT) / 100).max(1);
     Ok((usable, trigger))
 }

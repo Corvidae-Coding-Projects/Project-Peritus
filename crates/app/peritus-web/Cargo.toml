@@ -15,12 +15,12 @@ categories = ["development-tools"]
 axum = "=0.8.8"
 tower = { version = "=0.5.3", features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["fs"] }
-peritus-app-client = { version = "=0.0.9", path = "../peritus-app-client" }
-peritus-app-protocol = { version = "=0.0.9", path = "../peritus-app-protocol" }
-peritus-process = { version = "=0.0.9", path = "../../runtime/peritus-process" }
-peritus-product-runner = { version = "=0.0.9", path = "../peritus-product-runner" }
-peritus-types = { version = "=0.0.9", path = "../../foundation/peritus-types" }
-peritus-local-socket = { version = "=0.0.9", path = "../../runtime/peritus-local-socket" }
+peritus-app-client = { version = "=0.1.0", path = "../peritus-app-client" }
+peritus-app-protocol = { version = "=0.1.0", path = "../peritus-app-protocol" }
+peritus-process = { version = "=0.1.0", path = "../../runtime/peritus-process" }
+peritus-product-runner = { version = "=0.1.0", path = "../peritus-product-runner" }
+peritus-types = { version = "=0.1.0", path = "../../foundation/peritus-types" }
+peritus-local-socket = { version = "=0.1.0", path = "../../runtime/peritus-local-socket" }
 base64.workspace = true
 getrandom.workspace = true
 serde.workspace = true

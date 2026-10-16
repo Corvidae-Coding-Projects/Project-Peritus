@@ -21,7 +21,7 @@ pub struct WorkspaceCheckpoint {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct CheckpointEntry {
+pub(crate) struct CheckpointEntry {
     path: PathBuf,
     digest: Option<[u8; 32]>,
     permissions: Option<u32>,
@@ -29,11 +29,22 @@ struct CheckpointEntry {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ContentKind {
+pub(crate) enum ContentKind {
     File = 1,
     Symlink = 2,
     Repository = 3,
     Other = 4,
+}
+
+impl CheckpointEntry {
+    pub(crate) const fn observed(
+        path: PathBuf,
+        digest: Option<[u8; 32]>,
+        permissions: Option<u32>,
+        kind: ContentKind,
+    ) -> Self {
+        Self { path, digest, permissions, kind }
+    }
 }
 
 impl WorkspaceCheckpoint {
@@ -42,7 +53,11 @@ impl WorkspaceCheckpoint {
             .into_iter()
             .map(|path| checkpoint_entry(root, path))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { head: "in-place-task-files-v1".to_owned(), entries })
+        Ok(Self::scoped_entries(entries))
+    }
+
+    pub(crate) fn scoped_entries(entries: Vec<CheckpointEntry>) -> Self {
+        Self { head: "in-place-task-files-v1".to_owned(), entries }
     }
 
     /// Captures HEAD and the complete source snapshot, including nested repositories and modes.

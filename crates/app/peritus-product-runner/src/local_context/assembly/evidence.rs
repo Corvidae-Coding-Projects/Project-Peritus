@@ -45,10 +45,7 @@ pub(super) fn append(
     );
     candidates.sort_unstable_by(|left, right| right.cmp(left));
     candidates.dedup();
-    let mut bytes_left =
-        usize::try_from(memory.config.retrieved_evidence_max_tokens.saturating_mul(3))
-            .unwrap_or(usize::MAX)
-            .min(memory.config.max_read_bytes);
+    let mut bytes_left = memory.config.max_read_bytes;
     for id in candidates {
         if bytes_left < 256 || selected.contains(&id) {
             continue;

@@ -13,7 +13,7 @@ Model-view construction: keep current host policy and governing input, select wo
 | [retrieval.rs](retrieval.rs) | Host-observed immutable evidence ranges survive omission of their retrieval receipts. |
 | [transport.rs](transport.rs) | Fit a known adapter envelope using retrievable prefixes of already durable observations. |
 | [validation.rs](validation.rs) | Exact-view accounting; savings compare with this invocation's unreduced complete exchanges. |
-| [working.rs](working.rs) | Reserve request framing before allocating required working closure and optional detail. |
+| [working.rs](working.rs) | Render complete role-visible working state without a local token ceiling. |
 
 Owning module: [assembly.rs](../assembly.rs). Inspect that parent before changing the local pieces.
 

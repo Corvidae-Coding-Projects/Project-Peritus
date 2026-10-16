@@ -12,15 +12,21 @@ pub struct WorkingLimits {
     operations: usize,
 }
 impl WorkingLimits {
-    #[doc = " Initial working-state envelope. Exhaustion is an explicit error, never silent forgetting."]
+    #[doc = " Default retained-state policy: logical history has no allocation quota."]
     #[must_use]
     pub const fn standard() -> Self {
-        Self { observations: 65_535, entries: 512, entry_bytes: 2_048, links: 32, operations: 32 }
+        Self {
+            observations: usize::MAX,
+            entries: usize::MAX,
+            entry_bytes: usize::MAX,
+            links: usize::MAX,
+            operations: usize::MAX,
+        }
     }
-    #[doc = " Creates limits no wider than the hard implementation envelope."]
+    #[doc = " Creates an explicit caller-selected allocation policy."]
     #[doc = ""]
     #[doc = " # Errors"]
-    #[doc = " Rejects zero bounds and allocations wider than the default envelope."]
+    #[doc = " Rejects zero bounds. Positive explicit policies remain available to callers."]
     pub const fn new(
         observations: usize,
         entries: usize,
@@ -28,17 +34,7 @@ impl WorkingLimits {
         links: usize,
         operations: usize,
     ) -> Result<Self, WorkingError> {
-        if observations == 0
-            || observations > 65_535
-            || entries == 0
-            || entries > 512
-            || entry_bytes == 0
-            || entry_bytes > 2_048
-            || links == 0
-            || links > 32
-            || operations == 0
-            || operations > 32
-        {
+        if observations == 0 || entries == 0 || entry_bytes == 0 || links == 0 || operations == 0 {
             return Err(WorkingError::InvalidLimit);
         }
         Ok(Self { observations, entries, entry_bytes, links, operations })

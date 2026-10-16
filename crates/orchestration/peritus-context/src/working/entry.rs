@@ -71,16 +71,14 @@ impl WorkingLinks {
             }
             index += 1;
         }
-        index = 0;
-        while index < supports.len() {
-            let mut other = 0;
-            while other < contradicts.len() {
-                if supports[index] == contradicts[other] {
-                    return Err(WorkingError::ConflictingEvidence);
-                }
-                other += 1;
+        let mut support = 0;
+        let mut contradiction = 0;
+        while support < supports.len() && contradiction < contradicts.len() {
+            match supports[support].cmp(&contradicts[contradiction]) {
+                core::cmp::Ordering::Equal => return Err(WorkingError::ConflictingEvidence),
+                core::cmp::Ordering::Less => support += 1,
+                core::cmp::Ordering::Greater => contradiction += 1,
             }
-            index += 1;
         }
         Ok(Self { supports, contradicts, depends_on })
     }

@@ -69,9 +69,6 @@ pub(in crate::local_context) fn execute(
     if !memory.derived_memory_allowed() {
         return Ok(rejected(memory, "role policy excludes derived memory"));
     }
-    if bytes.len() > 262_144 {
-        return Ok(rejected(memory, "update exceeds input bound"));
-    }
     let Ok(update) = serde_json::from_slice::<Update>(bytes) else {
         return Ok(rejected(memory, "invalid update schema"));
     };

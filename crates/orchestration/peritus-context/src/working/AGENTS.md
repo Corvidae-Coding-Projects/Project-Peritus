@@ -8,6 +8,7 @@ Task-local, non-authoritative working state and deterministic reducers.
 
 | File | Role |
 | --- | --- |
+| [observation_prefix.rs](observation_prefix.rs) | Shared immutable observation pages and constant-time exact source lookup. |
 | [binding.rs](binding.rs) | Provider-independent identity and conversation binding. |
 | [delta.rs](delta.rs) | Revision-checked, all-or-nothing working-model updates. |
 | [delta_model.rs](delta_model.rs) | Logical exact-result model for ordered working-state deltas. |
@@ -22,7 +23,7 @@ Task-local, non-authoritative working state and deterministic reducers.
 | [limits.rs](limits.rs) | Explicit local working-state allocation limits. |
 | [mod.rs](mod.rs) | Task-local, non-authoritative working state and deterministic reducers. |
 | [protocol.rs](protocol.rs) | Host-owned semantic pins; model-authored entries never become policy or effect receipts. |
-| [selection.rs](selection.rs) | Working-entry projection through the existing C6 closure selector and typed renderer. |
+| [selection.rs](selection.rs) | Working-entry projection with complete unallocated rendering or explicit caller selection, dependency closure, and role isolation. |
 | [staleness.rs](staleness.rs) | Exact dependency-staleness scan. |
 | [state.rs](state.rs) | Immutable observation prefix and bounded investigation model. |
 | [state_access.rs](state_access.rs) | Bound reads from immutable working state. |

@@ -4,6 +4,7 @@ mod assembly;
 mod checkpoint_validation;
 mod driver;
 mod memory;
+mod pages;
 mod port;
 mod record;
 mod semantic;

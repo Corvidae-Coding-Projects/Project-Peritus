@@ -27,6 +27,7 @@ struct Read {
 struct CursorPosition {
     index: usize,
     offset: u64,
+    json: bool,
 }
 
 pub(in crate::local_context) fn execute(

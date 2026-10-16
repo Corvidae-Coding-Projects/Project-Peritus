@@ -12,12 +12,30 @@ pub(super) fn fit(
     messages: &mut [Message],
     tools: &[ToolDefinition],
     provider: &dyn ModelProvider,
-) -> Result<(), DeveloperLoopError> {
+) -> Result<bool, DeveloperLoopError> {
+    let mut collapsed = false;
     if provider
         .context_input_fits(messages, tools)
         .map_err(|_| error("encode selected provider context projection"))?
     {
-        return Ok(());
+        return Ok(collapsed);
+    }
+    // Derived records are retrievable data, not governing instructions. A large working
+    // model must not become an unshrinkable required closure at the adapter boundary.
+    for message in messages.iter_mut() {
+        if super::working::is_view(message) {
+            collapsed = true;
+            *message = super::text_message(
+                peritus_model_protocol::Role::User,
+                super::working::notice(memory, &memory.state)?,
+            )?;
+        }
+    }
+    if provider
+        .context_input_fits(messages, tools)
+        .map_err(|_| error("encode paged working view"))?
+    {
+        return Ok(collapsed);
     }
     for index in 0..messages.len() {
         for block in 0..messages[index].content().len() {
@@ -93,7 +111,7 @@ pub(super) fn fit(
                 }
             }
             install(low, messages)?;
-            return Ok(());
+            return Ok(collapsed);
         }
     }
     Err(error(

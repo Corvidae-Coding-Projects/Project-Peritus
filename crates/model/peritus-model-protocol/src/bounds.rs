@@ -33,22 +33,9 @@ impl ProtocolLimits {
     /// provider-bound request against its negotiated capabilities and selected limits.
     pub const ARCHIVE: Self = Self::from_array([u32::MAX as usize; 13]);
 
-    /// Production-wide upper bounds. Provider profiles may only narrow them.
-    pub const PRODUCTION: Self = Self {
-        max_messages: 4_096,
-        max_content_blocks: 16_384,
-        max_text_bytes: 16 * 1024 * 1024,
-        max_inline_media_bytes: 32 * 1024 * 1024,
-        max_total_media_bytes: 128 * 1024 * 1024,
-        max_tools: 1_024,
-        max_schema_bytes: 2 * 1024 * 1024,
-        max_events: 1_000_000,
-        max_items: 65_536,
-        max_event_bytes: 8 * 1024 * 1024,
-        max_output_bytes: 256 * 1024 * 1024,
-        max_tool_argument_bytes: 16 * 1024 * 1024,
-        max_extension_bytes: 2 * 1024 * 1024,
-    };
+    /// Local protocol representation bounds. Provider profiles select the actual request envelope.
+    /// Durable history is paged independently of any provider request.
+    pub const PRODUCTION: Self = Self::ARCHIVE;
 
     /// Creates limits that are nonzero and no wider than production ceilings.
     ///

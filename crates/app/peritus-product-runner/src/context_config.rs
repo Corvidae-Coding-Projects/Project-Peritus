@@ -82,13 +82,17 @@ pub struct LocalContextConfig {
     pub trigger_percent: u8,
     /// Recent message preference; complete exchanges and semantic pins take precedence.
     pub retain_recent_messages: usize,
-    /// Preferred token ceiling for working entries; required closure may borrow input headroom.
+    /// Legacy configuration key, accepted for compatibility and ignored. No local token cap.
+    #[serde(skip_serializing)]
     pub working_state_max_tokens: u64,
-    /// Maximum tokens allocated to automatically retrieved older observations.
+    /// Legacy configuration key, accepted for compatibility and ignored. No local token cap.
+    #[serde(skip_serializing)]
     pub retrieved_evidence_max_tokens: u64,
-    /// Maximum operations in an agent-authored atomic update.
+    /// Legacy configuration key, accepted and ignored. Updates have no host quota.
+    #[serde(skip_serializing)]
     pub max_update_operations: usize,
-    /// Maximum UTF-8 bytes in an agent-authored entry.
+    /// Legacy configuration key, accepted and ignored. Entry text has no host quota.
+    #[serde(skip_serializing)]
     pub max_entry_bytes: usize,
     /// Maximum bytes in one evidence read response.
     pub max_read_bytes: usize,
@@ -105,10 +109,10 @@ impl Default for LocalContextConfig {
             local_process: None,
             trigger_percent: 85,
             retain_recent_messages: 8,
-            working_state_max_tokens: 4096,
-            retrieved_evidence_max_tokens: 4096,
-            max_update_operations: 32,
-            max_entry_bytes: 2048,
+            working_state_max_tokens: 0,
+            retrieved_evidence_max_tokens: 0,
+            max_update_operations: 0,
+            max_entry_bytes: 0,
             max_read_bytes: 16_384,
             checkpoint_every_completed_batch: true,
         }
@@ -124,8 +128,6 @@ impl LocalContextConfig {
         self.working_limits()?;
         if !(1..=100).contains(&self.trigger_percent)
             || !(1..=128).contains(&self.retain_recent_messages)
-            || !(1..=16_384).contains(&self.working_state_max_tokens)
-            || self.retrieved_evidence_max_tokens > 16_384
             || !(256..=65_536).contains(&self.max_read_bytes)
         {
             return Err(error("invalid context policy bounds"));
@@ -138,8 +140,7 @@ impl LocalContextConfig {
     }
 
     pub(crate) fn working_limits(&self) -> Result<WorkingLimits, ProductRunnerError> {
-        WorkingLimits::new(65_535, 512, self.max_entry_bytes, 32, self.max_update_operations)
-            .map_err(|_| error("invalid working-state bounds"))
+        Ok(WorkingLimits::standard())
     }
 }
 

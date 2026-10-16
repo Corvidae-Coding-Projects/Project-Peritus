@@ -1,0 +1,14 @@
+{
+  "original-65535.pwms": {
+    "bytes": 4259918,
+    "sha256": "badf705bbbcc62e56591fa1b9ed26557b255f4e3050a93cc649218d022e2cea9"
+  },
+  "original-over-8mib.pwms": {
+    "bytes": 8450143,
+    "sha256": "a85cc13275347fff5c3a767852739700985509632b434631e1295c6bc0d9d6cc"
+  },
+  "original-512-entries.pwms": {
+    "bytes": 40548,
+    "sha256": "272588e3d94ee08ae26ff580ceb4bd2b30743dc47ae17406bccb2091d886b4b0"
+  }
+}

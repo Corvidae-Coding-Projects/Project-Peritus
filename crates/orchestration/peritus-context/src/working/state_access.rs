@@ -36,14 +36,16 @@ impl WorkingState {
         id: ObservationId,
     ) -> Result<ObservationSource, WorkingError> {
         self.check_binding(binding)?;
-        let mut index = 0;
-        while index < self.observations.len() {
-            if self.observations[index].id() == id {
-                return Ok(self.observations[index]);
-            }
-            index += 1;
-        }
-        Err(WorkingError::MissingSource)
+        let index = id
+            .get()
+            .checked_sub(1)
+            .and_then(|value| usize::try_from(value).ok())
+            .ok_or(WorkingError::MissingSource)?;
+        self.observations
+            .get(index)
+            .copied()
+            .filter(|source| source.id() == id)
+            .ok_or(WorkingError::MissingSource)
     }
     #[doc = " Resolves an entry without dropping its stale/superseded status or counterevidence."]
     #[doc = ""]

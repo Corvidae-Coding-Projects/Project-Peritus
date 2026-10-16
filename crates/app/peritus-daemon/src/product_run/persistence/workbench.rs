@@ -10,10 +10,6 @@ use std::{
     time::SystemTime,
 };
 
-// This bounds a metadata/activity projection, not accumulated continuation evidence.
-// Large continuation payloads are separate verified artifacts, without byte-array expansion.
-pub(super) const MAX_RUN_RECORD_BYTES: u64 = 128 * 1024 * 1024;
-
 pub(in crate::product_run) fn load_workbench_records(
     root: &Path,
     controls: Option<&ControlStore>,
@@ -49,12 +45,12 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
-        if !metadata.file_type().is_file() || metadata.len() > MAX_RUN_RECORD_BYTES {
-            quarantine_record(&path, "workbench run projection exceeds its file bounds", None);
+        if !metadata.file_type().is_file() {
+            quarantine_record(&path, "workbench run projection is not a regular file", None);
             continue;
         }
-        let bytes = match fs::read(&path) {
-            Ok(bytes) => bytes,
+        let file = match fs::File::open(&path) {
+            Ok(file) => file,
             Err(error) => {
                 quarantine_record(
                     &path,
@@ -64,17 +60,18 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
-        let mut persisted: PersistedRecord = match serde_json::from_slice(&bytes) {
-            Ok(persisted) => persisted,
-            Err(error) => {
-                quarantine_record(
-                    &path,
-                    "workbench execution projection is malformed",
-                    Some(&error),
-                );
-                continue;
-            }
-        };
+        let mut persisted: PersistedRecord =
+            match serde_json::from_reader(std::io::BufReader::new(file)) {
+                Ok(persisted) => persisted,
+                Err(error) => {
+                    quarantine_record(
+                        &path,
+                        "workbench execution projection is malformed",
+                        Some(&error),
+                    );
+                    continue;
+                }
+            };
         if let Some(artifact) = persisted.resume_artifact.take() {
             if persisted.format_version != 7 || persisted.resume_state.is_some() {
                 quarantine_record(

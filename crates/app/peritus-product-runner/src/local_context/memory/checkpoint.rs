@@ -8,7 +8,6 @@ use super::super::{
 use super::LocalMemory;
 use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
 use peritus_codec::sha256;
-use peritus_context::working::encode_working_state;
 use peritus_model_protocol::{Message, ProtocolLimits, encode_messages};
 use serde_json::Value;
 
@@ -46,11 +45,9 @@ impl LocalMemory {
             &prepared.validation,
             self.limits,
         )?;
-        let working_state = self.store.store(
-            &encode_working_state(&self.state).map_err(|_| error("encode working checkpoint"))?,
-        )?;
+        let (working_state, source_index, mut roots) =
+            super::super::pages::store(&mut self.store, &self.state, &self.sources)?;
         let transcript_manifest = self.store.store(&encode(&self.transcript)?)?;
-        let source_index = self.store.store(&encode(&self.sources)?)?;
         let view_bytes = encode_messages(messages, ProtocolLimits::PRODUCTION)?;
         let view = self.store.store(&view_bytes)?;
         let validation = self.store.store(&encode(&prepared.validation)?)?;
@@ -72,6 +69,7 @@ impl LocalMemory {
         )?;
         let manifest = CheckpointManifest {
             schema_version: CHECKPOINT_SCHEMA_VERSION,
+            trace_cursor: self.trace_cursor.clone(),
             scope,
             generation,
             previous,
@@ -87,14 +85,14 @@ impl LocalMemory {
         let bytes = encode(&manifest)?;
         let artifact = self.store.store(&bytes)?;
         let event = encode(&MemoryRecord::Checkpoint { manifest: artifact })?;
-        let roots = [
+        roots.extend([
             working_state.digest,
             transcript_manifest.digest,
             source_index.digest,
             view.digest,
             validation.digest,
             artifact.digest,
-        ];
+        ]);
         self.store.append(&event, &roots, Some((self.store.generation(), bytes)))?;
         let trace_payload = serde_json::to_vec(&Value::from_iter([
             ("schema_version", Value::from(manifest.schema_version)),
