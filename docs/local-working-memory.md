@@ -21,8 +21,6 @@ engine = "deterministic"
 semantic_backend = "disabled"
 trigger_percent = 85
 retain_recent_messages = 8
-working_state_max_tokens = 4096
-retrieved_evidence_max_tokens = 4096
 max_update_operations = 32
 max_entry_bytes = 2048
 max_read_bytes = 16384
@@ -31,13 +29,21 @@ checkpoint_every_completed_batch = true
 
 Set `enabled = false` to select the previous developer-loop compaction path explicitly.
 Local storage/validation failures stop progress; they never silently enable legacy or remote
-compaction. Bounds are validated before opening the store. Working-state allocations adapt to
-the selected provider's input capacity, including tool schemas and framing.
-`working_state_max_tokens` caps optional working detail and is the preferred allocation for the
-whole working view. Required roots and their complete dependencies may exceed it using only the
-additional headroom they need. This also applies when reopening existing memory after a restart.
-If protected instructions or required evidence closure cannot fit the provider's actual input
-capacity, assembly reports a capacity error; it never drops those entries to continue.
+compaction. Storage, schema, and process bounds are validated before opening the store.
+
+Coding runs have no Peritus token budget. All role-visible working entries and their complete
+source dependencies are rendered without a token allocation, including after reopening saved
+memory. The legacy `working_state_max_tokens` and `retrieved_evidence_max_tokens` keys are
+accepted and ignored so existing configuration files continue to load. Automatically retrieved
+archive previews retain their explicit byte/read bounds and use available provider request space.
+
+Provider input estimates guide optional transcript compaction; exceeding an estimate does not
+reject required working memory. Actual provider context windows and transport sizes still apply.
+Current host instructions, literal requirements, and complete current tool exchanges remain
+protected, with exact archived observations available through the memory tools. Coding, review,
+and semantic-compaction responses request the negotiated provider output capacity, without
+Peritus's former 32,768-, 4,096-, or 8,192-token ceilings. Token usage is still recorded for
+observability; it does not exhaust a run allowance.
 
 Fixer requests keep the complete literal conversation, approved design, and conserved review
 ledger. Generated candidate diffs and check history use non-authoritative bounded previews after

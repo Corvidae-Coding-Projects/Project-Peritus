@@ -37,7 +37,7 @@ impl DeveloperLoopLimits {
             model_turns: max_model_turns,
             tool_calls: max_tool_calls,
             attempts_per_turn: 3,
-            max_output_tokens: 32_768,
+            max_output_tokens: u64::MAX,
         })
     }
 
@@ -56,15 +56,15 @@ impl DeveloperLoopLimits {
         Ok(self)
     }
 
-    /// Applies a smaller generation ceiling to each provider turn in this loop.
+    /// Applies an explicitly requested generation ceiling to each provider turn in this loop.
     ///
     /// # Errors
-    /// Rejects zero or a value wider than the production developer-loop ceiling.
+    /// Rejects zero. By default only the negotiated provider output limit applies.
     pub const fn with_max_output_tokens(
         mut self,
         max_output_tokens: u64,
     ) -> Result<Self, DeveloperLoopError> {
-        if max_output_tokens == 0 || max_output_tokens > 32_768 {
+        if max_output_tokens == 0 {
             return Err(DeveloperLoopError::LimitExceeded);
         }
         self.max_output_tokens = max_output_tokens;

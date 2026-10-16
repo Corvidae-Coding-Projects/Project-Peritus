@@ -22,7 +22,7 @@ Task-local, non-authoritative working state and deterministic reducers.
 | [limits.rs](limits.rs) | Explicit local working-state allocation limits. |
 | [mod.rs](mod.rs) | Task-local, non-authoritative working state and deterministic reducers. |
 | [protocol.rs](protocol.rs) | Host-owned semantic pins; model-authored entries never become policy or effect receipts. |
-| [selection.rs](selection.rs) | Working-entry projection through the existing C6 closure selector and typed renderer. |
+| [selection.rs](selection.rs) | Working-entry projection with complete unallocated rendering or explicit caller selection, dependency closure, and role isolation. |
 | [staleness.rs](staleness.rs) | Exact dependency-staleness scan. |
 | [state.rs](state.rs) | Immutable observation prefix and bounded investigation model. |
 | [state_access.rs](state_access.rs) | Bound reads from immutable working state. |

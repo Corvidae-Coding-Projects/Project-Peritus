@@ -46,4 +46,7 @@ pub use wire::{
 
 mod selection;
 
-pub use selection::{WorkingRenderView, render_working_state, render_working_state_with_headroom};
+pub use selection::{
+    WorkingRenderView, render_working_state, render_working_state_complete,
+    render_working_state_with_headroom,
+};

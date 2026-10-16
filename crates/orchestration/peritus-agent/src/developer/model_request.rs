@@ -79,7 +79,7 @@ pub(super) fn build_model_request(
             format!("{}-semantic-compaction-{turn}-attempt-{attempt}", request.request_prefix),
             Vec::new(),
             ToolChoice::None,
-            request.limits.max_output_tokens().min(8_192),
+            request.limits.max_output_tokens(),
         ),
     };
     Ok(ModelRequest::new(
@@ -94,7 +94,7 @@ pub(super) fn build_model_request(
             StructuredOutput::Text,
             reasoning,
             GenerationConfig::new(
-                profile.limits().max_output_tokens().min(output_tokens),
+                negotiated.limits().max_output_tokens().min(output_tokens),
                 Vec::new(),
                 None,
                 None,

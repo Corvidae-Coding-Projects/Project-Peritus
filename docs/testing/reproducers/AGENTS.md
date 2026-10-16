@@ -23,6 +23,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [token-budgets/](token-budgets/AGENTS.md) | Actual public context/host consumers for token-budget removal, persistence, role isolation, and copied long-run assembly. |
 | [binary-evidence/](binary-evidence/AGENTS.md) | Real public-API and full TUI/daemon replay of binary previews, exact historical evidence paging, and post-writer model inputs. |
 | [startup-recovery/](startup-recovery/AGENTS.md) | Actual slow-start, interrupted endpoint, folder replacement, trust repair and legacy-upgrade replay. |
 | [tui-reconnect/](tui-reconnect/AGENTS.md) | Actual terminal/daemon loss, automatic reconnection, draft retention and optional real-provider Retry replay. |

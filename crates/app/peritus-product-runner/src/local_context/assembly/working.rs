@@ -1,20 +1,16 @@
-//! Reserve request framing before allocating required working closure and optional detail.
+//! Complete role-visible working state without a local token ceiling.
 
 use super::{LocalMemory, error, text_message};
-use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
-use peritus_context::working::{
-    WorkingRenderView, WorkingState, render_working_state, render_working_state_with_headroom,
-};
-use peritus_model_protocol::{Message, Role, ToolDefinition};
+use peritus_agent::DeveloperLoopError;
+use peritus_context::working::{WorkingRenderView, WorkingState, render_working_state_complete};
+use peritus_model_protocol::{Message, Role};
 
 pub(super) fn append(
     memory: &LocalMemory,
     messages: &mut Vec<Message>,
     selected: &mut Vec<u64>,
-    tools: &[ToolDefinition],
-    capacity: u64,
 ) -> Result<WorkingRenderView, DeveloperLoopError> {
-    append_state(memory, &memory.state, messages, selected, tools, capacity)
+    append_state(memory, &memory.state, messages, selected)
 }
 
 pub(super) fn append_state(
@@ -22,13 +18,11 @@ pub(super) fn append_state(
     state: &WorkingState,
     messages: &mut Vec<Message>,
     selected: &mut Vec<u64>,
-    tools: &[ToolDefinition],
-    capacity: u64,
 ) -> Result<WorkingRenderView, DeveloperLoopError> {
     if !memory.derived_memory_allowed()
         || state.entries(state.binding()).map_err(|_| error("working scope mismatch"))?.is_empty()
     {
-        return render_working_state(state, state.binding(), 1)
+        return render_working_state_complete(state, state.binding())
             .map_err(|_| error("invalid working-state projection"));
     }
     let mut body = format!(
@@ -36,20 +30,7 @@ pub(super) fn append_state(
         state.revision(),
         state.through_observation()
     );
-    messages.push(text_message(Role::User, body.clone())?);
-    let framed_tokens = estimate_developer_request_tokens(messages, tools);
-    messages.pop();
-    // Input-token profiles are compaction targets. Keep the separately configured
-    // working-state budget available even when required framing exceeds that target.
-    let available =
-        capacity.saturating_sub(framed_tokens).max(memory.config.working_state_max_tokens);
-    let working = render_working_state_with_headroom(
-        state,
-        state.binding(),
-        memory.config.working_state_max_tokens,
-        available,
-    )
-    .map_err(|cause| {
+    let working = render_working_state_complete(state, state.binding()).map_err(|cause| {
         DeveloperLoopError::Context(format!(
             "local working memory: working-state projection failed: {cause}"
         ))

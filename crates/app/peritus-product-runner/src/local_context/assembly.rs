@@ -45,7 +45,7 @@ impl LocalMemory {
         messages.push(self.scope_message()?);
         // Initial role evidence must leave room for the already retained working closure.
         // This is an estimate-only projection: no journal, pins, entries or sources change.
-        working::append_state(self, &self.state, &mut messages, &mut selected, &[], u64::MAX)?;
+        working::append_state(self, &self.state, &mut messages, &mut selected)?;
         let with_memory = estimate_developer_request_tokens(&messages, &[]);
         let estimator_overhead = estimate_developer_request_tokens(&[], &[]);
         Ok(with_memory.saturating_sub(estimator_overhead))
@@ -55,14 +55,12 @@ impl LocalMemory {
         &self,
         state: &WorkingState,
     ) -> Result<(), DeveloperLoopError> {
-        let Some(profile) = &self.profile else { return Ok(()) };
-        let capacity = profile.limits().max_input_tokens();
         let (mut messages, mut selected) = self.pinned_messages()?;
         if !self.derived_memory_allowed() {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
         messages.push(self.scope_message()?);
-        working::append_state(self, state, &mut messages, &mut selected, &self.tools, capacity)?;
+        working::append_state(self, state, &mut messages, &mut selected)?;
         Ok(())
     }
 
@@ -113,7 +111,7 @@ impl LocalMemory {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
         messages.push(self.scope_message()?);
-        let working = working::append(self, &mut messages, &mut selected, tools, capacity)?;
+        let working = working::append(self, &mut messages, &mut selected)?;
         let historical_position = messages.len();
         let (uncompacted, target) =
             self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;

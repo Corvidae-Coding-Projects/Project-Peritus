@@ -61,6 +61,28 @@ pub fn render_working_state_with_headroom(
     preferred_tokens: u64,
     available_tokens: u64,
 ) -> Result<WorkingRenderView, WorkingError> {
+    render_projection(state, binding, Some((preferred_tokens, available_tokens)))
+}
+
+/// Renders all role-visible working records without a host-imposed token allocation.
+///
+/// Token estimates remain accounting metadata. Scope, dependency, provenance, role visibility,
+/// and storage bounds still apply. The caller fits the resulting request to its provider.
+///
+/// # Errors
+/// Rejects invalid scope, graph/role projections, or unrepresentable accounting.
+pub fn render_working_state_complete(
+    state: &WorkingState,
+    binding: WorkingBinding,
+) -> Result<WorkingRenderView, WorkingError> {
+    render_projection(state, binding, None)
+}
+
+fn render_projection(
+    state: &WorkingState,
+    binding: WorkingBinding,
+    allocation: Option<(u64, u64)>,
+) -> Result<WorkingRenderView, WorkingError> {
     let entries = state.entries(binding)?;
     if entries.is_empty() {
         return Ok(WorkingRenderView { plan: None, omitted: Vec::new() });
@@ -78,6 +100,11 @@ pub fn render_working_state_with_headroom(
     for entry in entries {
         nodes.push(node(entry, binding, limits)?);
     }
+    // Size accounting to the actual stored records, rather than an arbitrary token ceiling.
+    // Selection still owns dependency and role-policy enforcement.
+    let complete_tokens = nodes.iter().try_fold(0_u64, |total, node| {
+        total.checked_add(node.token_estimate()).ok_or(WorkingError::Capacity)
+    })?;
     let graph = ContextGraph::new(nodes, limits).map_err(WorkingError::Projection)?;
     let mut identity = b"peritus-working-render-v1".to_vec();
     identity.extend_from_slice(binding.run().as_bytes());
@@ -86,6 +113,8 @@ pub fn render_working_state_with_headroom(
     identity.extend_from_slice(format!("{:?}", binding.role()).as_bytes());
     identity.extend_from_slice(&binding.conversation_revision().to_be_bytes());
     identity.extend_from_slice(&state.revision().to_be_bytes());
+    let (preferred_tokens, available_tokens) =
+        allocation.unwrap_or((complete_tokens, complete_tokens));
     let mut allocation = preferred_tokens.min(available_tokens);
     let plan = loop {
         let budget = TokenBudget::new(allocation, 0, 0).map_err(WorkingError::Projection)?;
