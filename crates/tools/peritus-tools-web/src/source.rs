@@ -175,13 +175,13 @@ impl Store {
         )
     }
 
-    /// Searches a configured SearXNG service; search failures do not affect page reads.
+    /// Searches with built-in Rust engines or an optional external endpoint; page reads stay independent.
     pub fn search(&self, arguments: &Value, cancelled: &dyn Fn() -> bool) -> Result<Value, Error> {
         if cancelled() {
             return Err(invalid("web request cancelled"));
         }
         let endpoint = setup::endpoint()?;
-        let key = format!("search:{endpoint}:{arguments}");
+        let key = format!("search:v2:{endpoint:?}:{arguments}");
         let file = self.root.join(format!("query-{}.json", digest(key.as_bytes())));
         if let Ok(bytes) = fs::read(&file) {
             let value: Value = serde_json::from_slice(&bytes)?;
@@ -194,7 +194,10 @@ impl Store {
                 return Ok(result);
             }
         }
-        let mut result = http::search(&endpoint, arguments, cancelled)?;
+        let mut result = match endpoint {
+            Some(endpoint) => http::search(&endpoint, arguments, cancelled)?,
+            None => crate::search::search(arguments, cancelled)?,
+        };
         result["cached"] = json!(false);
         result["fetched_at_unix"] = json!(now()?);
         let _ = self

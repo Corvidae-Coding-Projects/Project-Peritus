@@ -50,7 +50,8 @@ X11 desktops, or attach to an explicitly selected local Chrome DevTools endpoint
 See [computer automation](docs/computer-automation.md) for setup, capabilities, and platform limits.
 
 Peritus also has native web page reading and keyless search in Chat, Design, Review and coding runs.
-Run `peritus web setup` to start local SearXNG using Docker/Podman, or configure an existing server.
+Search is built into Peritus in Rust and works without setup, API keys, Python or containers.
+An existing SearXNG server can optionally be selected with `peritus web setup URL`.
 Known URLs can be read without a search backend. The model can page/search retained sources and use
 its isolated browser for JavaScript content. See [web tools](docs/web-tools.md).
 

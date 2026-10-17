@@ -1,6 +1,6 @@
 # Native web tools navigation
 
-This C4 package owns native HTTP reading, retained source references and SearXNG search/setup. No model-provider or workspace-write authority lives here.
+This C4 package owns native HTTP reading, retained source references and built-in Rust search and optional external SearXNG configuration. No model-provider or workspace-write authority lives here.
 
 | File/folder | Responsibility |
 | --- | --- |

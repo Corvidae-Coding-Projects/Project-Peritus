@@ -4,7 +4,10 @@ pub(crate) const SKILL: &str = r"
 Web research tools:
 - Use web_search for discovery, web_open for primary source reads, web_find to locate terms and
   web_read to continue exact retained pages at next_offset. These tools also work in Design,
-  conversation and review. Search needs keyless SearXNG (peritus web setup); known URLs do not.
+  conversation and review. Search is built into Peritus in Rust: no setup, key, Python or container
+  required. Native search supports page=1 and optional engines yahoo,duckduckgo,brave,startpage;
+  omit language/time_range and include those constraints in the query. Refine queries for more
+  sources. An explicitly configured external SearXNG endpoint can support extra filters/pages.
 - Ordinary HTTP is the default. If scripts supply missing content, repeat web_open with render=true
   using the isolated browser runtime. This additionally needs Process permission and installed
   automation dependencies. Do not switch provider adapters or attach a user's browser to read a page.

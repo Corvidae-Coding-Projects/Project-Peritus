@@ -11,6 +11,9 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | File | Role |
 | --- | --- |
 | [web-reader-recovery.py](web-reader-recovery.py) | Real terminal/daemon/provider replay of a wedged page followed by fresh-reader recovery. |
+| [web-search-native.py](web-search-native.py) | Live built-in search with empty PATH, official source reads, fresh-process cache and migration/recovery. |
+| [web-search-consumer.rs](web-search-consumer.rs) | Actual public metasearch requests, invalid inputs, active/waiting cancellation and recovery. |
+| [web-search-daemon.py](web-search-daemon.py) | Actual terminal/daemon/provider built-in search followed by primary source reading. |
 | [web-tools.py](web-tools.py) | Native web CLI and HTTP document campaign; see docs/web-tools.md for feature use. |
 | [web-browser.py](web-browser.py) | Real installed Chrome/Playwright Chromium and controller replay. |
 | [web-native-consumer.rs](web-native-consumer.rs) | Public web API cancellation and recovery consumer. |

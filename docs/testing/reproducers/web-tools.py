@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Operate the built Peritus web CLI against real HTTP documents with independent byte oracles.
 
-No SearXNG implementation is substituted: live search is a separate real-service journey.
+Live search is a separate real-engine journey; document fixtures supply known source bytes.
 """
 import argparse
 import concurrent.futures
@@ -83,9 +83,8 @@ def main():
 
     try:
         status = run('status')
-        assert not status['search_ready']
-        assert 'not configured' in run('search', 'Rust ownership', success=False)
-        cases.append('unconfigured search leaves native reading available')
+        assert status['search_ready'] and status['search_backend'] == 'built-in-rust'
+        cases.append('fresh-profile built-in search availability needs no setup')
         alphabet = ['a', 'Z', ' ', '\n', 'é', '水', '🦜', '\t']
         for index, length in enumerate([0, 1, 4, 7, 31, 80, 257, 4096, 65539, 1800000]):
             text = ''.join(rng.choice(alphabet) for _ in range(length)) + f'\nBEACON-{index}-END'

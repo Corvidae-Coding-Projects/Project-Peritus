@@ -3,6 +3,17 @@
 import re
 
 SUPPLEMENTS = {
+    "fxhash-0.2.1": ["packaging/licenses/declared-MIT.txt"],
+    "mac-0.1.1": ["packaging/licenses/declared-MIT.txt"],
+    "metadata-search-engine-rs-0.3.1": ["packaging/licenses/declared-MIT.txt"],
+    "phf-0.10.1": ["packaging/licenses/rust-phf-MIT.txt"],
+    "phf_codegen-0.10.0": ["packaging/licenses/rust-phf-MIT.txt"],
+    "phf_generator-0.10.0": ["packaging/licenses/rust-phf-MIT.txt"],
+    "phf_shared-0.10.0": ["packaging/licenses/rust-phf-MIT.txt"],
+    "r-efi-5.3.0": ["vendor/r-efi-5.3.0/AUTHORS"],
+    "selectors-0.25.0": ["packaging/licenses/servo-selectors-MPL.txt"],
+    "servo_arc-0.3.0": ["packaging/licenses/declared-MIT.txt"],
+    "valuable-0.1.1": ["packaging/licenses/valuable-MIT.txt"],
     "anes-0.1.6": ["packaging/licenses/anes-MIT.txt", "vendor/anes-0.1.6/README.md"],
     "convert_case-0.4.0": ["packaging/licenses/convert-case-MIT.txt"],
     "jni-0.22.4": ["packaging/licenses/jni-MIT.txt"],

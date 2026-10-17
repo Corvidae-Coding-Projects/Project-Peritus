@@ -2,6 +2,7 @@
 
 mod extract;
 mod http;
+mod search;
 mod setup;
 mod source;
 

@@ -20,7 +20,7 @@ pub(super) fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     let entries = [
         (
             "web_search",
-            "Search the web through configured keyless SearXNG. Returns source URLs/snippets and partial engine failures; snippets are discovery evidence, not complete source reads. Use web_open on primary sources before citing claims. If unconfigured, tell the user to run peritus web setup, or use known URLs. Search can fail independently of page reading.",
+            "Search the web with built-in keyless Rust metasearch, ready without setup or extra software. Returns URLs/snippets, engine failures and empty engines. Use web_open on primary sources before citing claims. Native engines: yahoo, duckduckgo, brave, startpage (comma-separated subset). Native search supports page=1 only; omit language/time_range and put dates/language in the query. Optional external SearXNG supports those extra filters/pages. Engine blocking can fail independently of page reading; retry/refine or open known URLs.",
             json!({"query":{"type":"string","minLength":1},"page":{"type":"integer","minimum":1,"default":1},"max_results":{"type":"integer","minimum":1,"maximum":30,"default":10},"language":{"type":"string"},"time_range":{"type":"string","enum":["day","month","year"]},"engines":{"type":"string"}}),
             vec!["query"],
         ),
