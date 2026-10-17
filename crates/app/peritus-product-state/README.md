@@ -30,6 +30,8 @@ predicate is mirrored by a Verus refinement.
 
 Selected account models and resolved executable paths are retained as non-secret provider facts.
 Legacy state may omit executable pins; launcher reconciliation publishes them in a new generation.
+An optional reviewer choice retains its enabled provider, exact model, and manual-selection
+provenance. Older state without that field continues to follow the ordinary default.
 
 The crate performs no filesystem, process, terminal, network, credential, workspace, or daemon
 effect. Effectful composition belongs to `peritus-launcher`; durable runtime authority remains in

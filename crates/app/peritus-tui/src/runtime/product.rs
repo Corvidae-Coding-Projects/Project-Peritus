@@ -41,6 +41,7 @@ pub struct ProductLaunchContext {
     workspace_label: String,
     providers: Vec<ProductProviderOption>,
     default_provider: Option<usize>,
+    reviewer: Option<(usize, peritus_app_protocol::ProductModelChoice)>,
     direct_folder_writable: Option<bool>,
     launcher_report: Option<peritus_app_protocol::DoctorReport>,
 }
@@ -72,9 +73,38 @@ impl ProductLaunchContext {
             workspace_label,
             providers,
             default_provider,
+            reviewer: None,
             direct_folder_writable: None,
             launcher_report: None,
         })
+    }
+
+    /// Sets the saved reviewer override for new conversations without changing other roles.
+    ///
+    /// # Errors
+    /// Rejects a reviewer index outside the displayed provider list.
+    pub fn with_reviewer(
+        mut self,
+        provider: usize,
+        model: peritus_app_protocol::ProductModelChoice,
+    ) -> Result<Self, TuiError> {
+        if provider >= self.providers.len() {
+            return Err(TuiError::InvalidValue("reviewer provider is not configured".to_owned()));
+        }
+        self.reviewer = Some((provider, model));
+        Ok(self)
+    }
+
+    /// Reviewer provider override, or the ordinary provider default.
+    #[must_use]
+    pub fn reviewer_provider(&self) -> Option<usize> {
+        self.reviewer.as_ref().map(|(provider, _)| *provider).or(self.default_provider)
+    }
+
+    /// Saved explicit reviewer model, if setup selected one.
+    #[must_use]
+    pub fn reviewer_model(&self) -> Option<&peritus_app_protocol::ProductModelChoice> {
+        self.reviewer.as_ref().map(|(_, model)| model)
     }
 
     /// Selects the exact initial conversation, including a not-yet-started browser session.

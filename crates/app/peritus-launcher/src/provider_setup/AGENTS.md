@@ -12,6 +12,7 @@ Implementation pieces for `provider_setup.rs`: First-run provider selection and 
 | [direct.rs](direct.rs) | Hidden credential entry and direct-provider settings prompts. |
 | [install.rs](install.rs) | Human-approved installation at the selected account-provider boundary. |
 | [models.rs](models.rs) | Provider-owned model menus shared by account and direct setup. |
+| [reviewer.rs](reviewer.rs) | Select and retain the optional reviewer provider/model override during setup and repair. |
 | [selection.rs](selection.rs) | Provider-set and default selection parsing with recoverable prompts. |
 
 Owning module: [provider_setup.rs](../provider_setup.rs). Inspect that parent before changing the local pieces.

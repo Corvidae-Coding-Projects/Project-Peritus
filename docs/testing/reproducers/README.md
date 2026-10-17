@@ -11,6 +11,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | File | Role |
 | --- | --- |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [reviewer-startup.py](reviewer-startup.py) | Real provider-settings PTY replay for reviewer selection, retention, reset, invalid input, and cancellation. |
 | [cancellation-process-death.json](cancellation-process-death.json) | Structured cancellation process death data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |
 | [cancellation-race.json](cancellation-race.json) | Structured cancellation race data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |
 | [command-ordinal-contention.json](command-ordinal-contention.json) | Structured command ordinal contention data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |

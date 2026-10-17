@@ -194,22 +194,36 @@ fn workspace_context(
     let default = prepared.state().providers().default().and_then(|selected| {
         prepared.state().providers().enabled().iter().position(|kind| *kind == selected)
     });
-    ProductLaunchContext::new(
+    let mut context = ProductLaunchContext::new(
         workspace_id,
         workspace.managed_root().unwrap_or_else(|| workspace.repository_root()).to_owned(),
         providers,
         default,
     )
-    .map(|context| {
-        if workspace.is_direct_folder() {
-            context.with_direct_folder(
-                workspace.trust_level() == peritus_product_state::WorkspaceTrust::Trusted,
-            )
-        } else {
-            context
-        }
-    })
-    .map_err(LauncherError::Tui)
+    .map_err(LauncherError::Tui)?;
+    if let Some(reviewer) = prepared.state().providers().reviewer() {
+        let index = prepared
+            .state()
+            .providers()
+            .enabled()
+            .iter()
+            .position(|kind| *kind == reviewer.provider())
+            .ok_or_else(|| {
+                LauncherError::Interaction("saved reviewer provider is not enabled".to_owned())
+            })?;
+        let model = peritus_app_protocol::ProductModelChoice::new(
+            reviewer.model().to_owned(),
+            reviewer.manual(),
+        )
+        .map_err(|error| LauncherError::Interaction(error.to_string()))?;
+        context = context.with_reviewer(index, model).map_err(LauncherError::Tui)?;
+    }
+    if workspace.is_direct_folder() {
+        context = context.with_direct_folder(
+            workspace.trust_level() == peritus_product_state::WorkspaceTrust::Trusted,
+        );
+    }
+    Ok(context)
 }
 
 const fn provider_id(kind: ProviderKind) -> [u8; 16] {

@@ -8,7 +8,9 @@ mod models;
 mod status;
 
 pub use account::{AccountLogin, AccountProvider, ProviderCatalog};
-pub use direct::{DirectCredential, DirectProviderDraft, remove_direct_credential};
+pub use direct::{
+    DirectCredential, DirectProviderDraft, discover_direct_models, remove_direct_credential,
+};
 pub use error::OnboardingError;
 pub use install::install_account_provider;
 pub use install::{install_opencode_runtime, opencode_runtime_installed};

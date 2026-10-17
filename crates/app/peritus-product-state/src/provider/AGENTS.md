@@ -10,6 +10,7 @@ Implementation pieces for `provider.rs`: Durable provider choices without creden
 | --- | --- |
 | [account.rs](account.rs) | Durable account model selections and resolved executable pins. |
 | [kind.rs](kind.rs) | Stable provider identities, menu order, and service names. |
+| [reviewer.rs](reviewer.rs) | Optional validated reviewer provider/model preference for new conversations. |
 
 Owning module: [provider.rs](../provider.rs). Inspect that parent before changing the local pieces.
 

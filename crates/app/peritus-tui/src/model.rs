@@ -365,9 +365,17 @@ pub struct AppModel {
 
 impl AppModel {
     pub(crate) fn with_product(seed: [u8; 32], product: Option<ProductLaunchContext>) -> Self {
+        let mut chat = chat::ChatUi::default();
+        if let Some(reviewer) = product.as_ref().and_then(ProductLaunchContext::reviewer_model) {
+            chat.models = peritus_app_protocol::ProductRoleModels::new(
+                peritus_app_protocol::ProductModelChoice::default(),
+                reviewer.clone(),
+                peritus_app_protocol::ProductModelChoice::default(),
+            );
+        }
         Self {
             view: if product.is_some() { View::Conversation } else { View::Runs },
-            chat: chat::ChatUi::default(),
+            chat,
             connection: ConnectionStatus::Connecting,
             daemon_status: None,
             features: Vec::new(),
