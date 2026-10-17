@@ -16,6 +16,29 @@ pub const MAX_RESPONSE_BYTES: u64 = 256 * 1024;
 /// Maximum accepted request size.
 pub const MAX_REQUEST_BYTES: usize = 128 * 1024;
 
+/// Resolves Playwright's user installation cache before the command sandbox changes HOME.
+/// This contains browser executables, never personal browsing profiles or credentials.
+pub fn browser_cache() -> Result<PathBuf, String> {
+    if let Some(path) = env::var_os("PLAYWRIGHT_BROWSERS_PATH") {
+        let path = PathBuf::from(path);
+        if path == Path::new("0") || path.is_absolute() {
+            return Ok(path);
+        }
+        return Err("PLAYWRIGHT_BROWSERS_PATH must be absolute or 0".into());
+    }
+    let root = if cfg!(windows) {
+        env::var_os("LOCALAPPDATA").map(PathBuf::from)
+    } else if cfg!(target_os = "macos") {
+        env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Caches"))
+    } else {
+        env::var_os("XDG_CACHE_HOME")
+            .map(PathBuf::from)
+            .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".cache")))
+    };
+    root.map(|p| p.join("ms-playwright"))
+        .ok_or_else(|| "browser installation cache is unavailable".into())
+}
+
 /// Optional per-user automation installation root.
 pub fn installation_root() -> Result<PathBuf, String> {
     let root = if cfg!(windows) {

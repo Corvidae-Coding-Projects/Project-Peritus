@@ -8,6 +8,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [native-web-tools.md](native-web-tools.md) | Native web feature ownership and independent real-testing scenarios. |
 | [keep-working-retained-state.md](keep-working-retained-state.md) | Retained-state growth, compatibility, paging, and real-operation contract. |
 | [interactive-design-mode.md](interactive-design-mode.md) | Design mode's conversational experience, durable Markdown contract, client routing, and implementation handoff. |
 | [a3-app-protocol.md](a3-app-protocol.md) | Document: Feature: A3 Application Protocol Foundation. |

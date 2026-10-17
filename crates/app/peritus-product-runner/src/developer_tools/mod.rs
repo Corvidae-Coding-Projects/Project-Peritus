@@ -8,11 +8,12 @@ mod arguments;
 
 mod attachment_read;
 
-mod catalog;
 mod bundled_skill;
+mod catalog;
 
 mod command_budget;
 mod computer;
+mod web;
 
 mod command_runtime;
 

@@ -8,6 +8,7 @@ Human architecture, contracts, operations, and recorded evidence. Current interf
 
 | File | Role |
 | --- | --- |
+| [web-tools.md](web-tools.md) | Search setup, native source reading, rendering, permissions and limits. |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 | [a3-app-protocol.md](a3-app-protocol.md) | Document: A3 application protocol guide. |
 | [b3-protocol-refinements.md](b3-protocol-refinements.md) | Document: B3 protocol refinement discharge. |

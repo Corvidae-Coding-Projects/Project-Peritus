@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [web-tools-real-2026-10-17.md](web-tools-real-2026-10-17.md) | Keyless search, exact native source reads, real browser rendering, role/permission routing and retained defect replays. |
 | [reviewer-startup-real-2026-10-17.md](reviewer-startup-real-2026-10-17.md) | Startup/settings review-model selection, saved role routing, repair/offline behavior, and actual terminal/provider evidence. |
 | [retained-state-growth-real-2026-10-16.md](retained-state-growth-real-2026-10-16.md) | Removed retained-state quotas, paged migration, indexed scope inventory, reproduced failures, and real native/provider evidence. |
 | [token-budgets-real-2026-10-16.md](token-budgets-real-2026-10-16.md) | Local token-budget stop, complete working-state rendering, configuration compatibility, copied archive recovery, and live deployment evidence. |

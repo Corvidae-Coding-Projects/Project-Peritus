@@ -8,6 +8,7 @@ Scriptable daemon client plus interactive launch dispatch: parse user arguments,
 
 | File | Role |
 | --- | --- |
+| [web.rs](web.rs) | Native web CLI operations and search setup/diagnostics. |
 | [args.rs](args.rs) | Parses command families, global options, open/update/shutdown arguments, and exact input values. |
 | [artifact.rs](artifact.rs) | Resumable artifact upload/download/cancellation and digest handling through the daemon client. |
 | [client.rs](client.rs) | CLI error adaptation for the shared application client. |

@@ -15,6 +15,7 @@ class Browsers:
         self.screenshot = screenshot
         self.playwright = None
         self.sessions = {}
+        self.reader = None
 
     def engine(self):
         if self.playwright is None:
@@ -36,6 +37,57 @@ class Browsers:
         if not path.is_relative_to(self.workspace) or not path.is_file():
             raise ValueError('Upload/file URLs must name a regular file inside the selected workspace')
         return path
+
+    def read_web(self, args):
+        """Read a public page in a temporary context, without user profiles or file access."""
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+        value = args['url']
+        parsed = urlparse(value)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError('Web reading supports HTTP(S) without embedded credentials only')
+        if self.reader is None or not self.reader.is_connected():
+            executable = shutil.which('google-chrome') or shutil.which('chromium') or shutil.which('chromium-browser')
+            self.reader = self.engine().chromium.launch(
+                headless=True, executable_path=executable, chromium_sandbox=True)
+        context = None
+        try:
+            context = self.reader.new_context(accept_downloads=False, service_workers='block')
+            def route(request_route):
+                url = urlparse(request_route.request.url)
+                if url.scheme in ('http', 'https') and not url.username and not url.password:
+                    request_route.continue_()
+                else:
+                    request_route.abort()
+            context.route('**/*', route)
+            page = context.new_page()
+            context.on('page', lambda extra: extra.close())
+            page.on('dialog', lambda dialog: dialog.dismiss())
+            response = page.goto(value, wait_until='domcontentloaded', timeout=20000)
+            try:
+                page.wait_for_load_state('networkidle', timeout=3000)
+            except PlaywrightTimeout:
+                pass  # Polling pages need not become network-idle to be readable.
+            page.wait_for_timeout(min(5000, max(0, args.get('wait_ms', 500))))
+            final = urlparse(page.url)
+            if final.scheme not in ('http', 'https') or final.username or final.password:
+                raise ValueError('Unsafe web navigation was rejected')
+            html = page.content().encode('utf-8')
+            if len(html) > 64 * 1024 * 1024:
+                raise ValueError('Rendered source exceeds the 64 MiB resource bound')
+            directory = self.root / 'web-readings'
+            directory.mkdir(mode=0o700, exist_ok=True)
+            path = directory / (uuid.uuid4().hex + '.html')
+            path.write_bytes(html)
+            return {'success': True, 'path': str(path), 'bytes': len(html),
+                    'sha256': hashlib.sha256(html).hexdigest(), 'url': page.url,
+                    'status': response.status if response else 0}
+        finally:
+            try:
+                if context is not None:
+                    context.close()
+            finally:
+                self.reader.close()
+                self.reader = None
 
     def control(self, args):
         action = args['action']
@@ -245,5 +297,7 @@ class Browsers:
                 self.close(identifier)
             except Exception:
                 pass
+        if self.reader:
+            self.reader.close()
         if self.playwright:
             self.playwright.stop()

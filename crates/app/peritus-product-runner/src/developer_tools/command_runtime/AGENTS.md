@@ -10,7 +10,7 @@ Shared C4/C2 command ownership for product developer tools.
 | --- | --- |
 | [authority.rs](authority.rs) | Exact C4 and C2 committed authority for one product command. |
 | [compactor.rs](compactor.rs) | Optional auxiliary inference through the existing C2 authority and native C3 gateway. |
-| [computer.rs](computer.rs) | Run-owned persistent computer control through the existing C4/C2 process runtime. |
+| [computer.rs](computer.rs) | Run-owned C4/C2 computer control and a separate replaceable web reader; deadline cancellation preserves interactive GUI sessions. |
 | [construction.rs](construction.rs) | Construction of managed-workspace and explicitly trusted direct-folder command runtimes. |
 | [contract.rs](contract.rs) | Minimal checked acceptance contract for one internally authorized product command. |
 | [control.rs](control.rs) | Non-destructive validation and dispatch for active command controls. |

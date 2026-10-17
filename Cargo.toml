@@ -74,6 +74,7 @@ members = [
     "crates/tools/peritus-tool-protocol",
     "crates/tools/peritus-tool-router",
     "crates/tools/peritus-tools-computer",
+    "crates/tools/peritus-tools-web",
     "crates/tools/peritus-tools-fs",
     "crates/tools/peritus-tools-git",
     "crates/tools/peritus-tools-quality",

@@ -8,6 +8,10 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [web-reader-recovery.py](web-reader-recovery.py) | Real terminal/daemon/provider replay of a wedged page followed by fresh-reader recovery. |
+| [web-tools.py](web-tools.py) | Generated real HTTP/CLI source reads, paging, refresh, encoding and rejection journeys. |
+| [web-browser.py](web-browser.py) | Actual browser/controller rendering, file rejection and independent session preservation. |
+| [web-native-consumer.rs](web-native-consumer.rs) | Public-library consumer exercising real transfer cancellation and recovery. |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 | [reviewer-startup.py](reviewer-startup.py) | Actual provider-settings PTY replay for reviewer selection, retention, invalid input, reset, and cancellation. |
 | [cancellation-process-death.json](cancellation-process-death.json) | Structured cancellation process death data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |

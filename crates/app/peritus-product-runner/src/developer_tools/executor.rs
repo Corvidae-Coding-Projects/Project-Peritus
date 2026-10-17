@@ -62,7 +62,7 @@ pub struct WorkspaceDeveloperTools {
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
     resources: CommandResources,
-    inspection_cancellation: InspectionCancellation,
+    pub(super) inspection_cancellation: InspectionCancellation,
     pub(super) command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
     tools_without_delivery_progress: u16,
@@ -286,6 +286,8 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         | "skill_read"
         | "view_image"
         | "command_output" => Some(&[Read]),
+        "web_search" | "web_open" => Some(&[Read, Network]),
+        "web_read" | "web_find" => Some(&[Read]),
         "computer_status" => Some(&[Read, Process]),
         "computer_snapshot" => Some(&[Read]),
         "browser_control" => Some(&[Read, Write, Process, Network]),
@@ -319,7 +321,11 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if let Some(view) = &self.protection_view {
             self.rust_reliability.task(&view.reference_authority_context());
         }
-        self.rust_reliability.guidance()
+        Some(format!(
+            "{}\n{}",
+            crate::engineering_workflow::web::SKILL,
+            self.rust_reliability.guidance().unwrap_or_default()
+        ))
     }
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
@@ -334,6 +340,10 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "view_image"
                 | "computer_snapshot"
                 | "computer_status"
+                | "web_search"
+                | "web_open"
+                | "web_read"
+                | "web_find"
         ) {
             DeveloperToolEffect::ReadOnly
         } else {
@@ -372,6 +382,10 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     | "view_image"
                     | "computer_snapshot"
                     | "computer_status"
+                    | "web_search"
+                    | "web_open"
+                    | "web_read"
+                    | "web_find"
             )
         {
             return observation(

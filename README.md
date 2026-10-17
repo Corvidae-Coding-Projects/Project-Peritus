@@ -49,6 +49,11 @@ controls, and keeps sessions alive between actions. It can launch fresh browser 
 X11 desktops, or attach to an explicitly selected local Chrome DevTools endpoint or native app PID.
 See [computer automation](docs/computer-automation.md) for setup, capabilities, and platform limits.
 
+Peritus also has native web page reading and keyless search in Chat, Design, Review and coding runs.
+Run `peritus web setup` to start local SearXNG using Docker/Podman, or configure an existing server.
+Known URLs can be read without a search backend. The model can page/search retained sources and use
+its isolated browser for JavaScript content. See [web tools](docs/web-tools.md).
+
 Input-token profiles guide automatic compaction. Peritus imposes no fixed local 200,000-token
 input ceiling; the selected provider enforces its actual context capacity. Document reads
 default to 1 MiB and can request multi-megabyte pages up to protocol capacity. Pages that

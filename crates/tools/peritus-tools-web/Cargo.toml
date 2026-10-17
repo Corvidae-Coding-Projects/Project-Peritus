@@ -1,0 +1,28 @@
+[package]
+name = "peritus-tools-web"
+description = "Native page reading, retained sources and keyless SearXNG search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+encoding_rs = "=0.8.35"
+html5ever.workspace = true
+markup5ever_rcdom.workspace = true
+reqwest = { workspace = true, features = ["blocking", "charset", "gzip", "brotli"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+url.workspace = true
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
+
+[lints]
+workspace = true

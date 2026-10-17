@@ -116,6 +116,7 @@ impl WorkspaceDeveloperTools {
             }
             "developer_evidence_read" => self.read_reviewer_evidence(arguments),
             "skill_read" => super::super::bundled_skill::read(arguments),
+            "web_search" | "web_open" | "web_read" | "web_find" => self.web_tool(call, arguments),
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),

@@ -10,6 +10,10 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | File | Role |
 | --- | --- |
+| [web-reader-recovery.py](web-reader-recovery.py) | Real terminal/daemon/provider replay of a wedged page followed by fresh-reader recovery. |
+| [web-tools.py](web-tools.py) | Native web CLI and HTTP document campaign; see docs/web-tools.md for feature use. |
+| [web-browser.py](web-browser.py) | Real installed Chrome/Playwright Chromium and controller replay. |
+| [web-native-consumer.rs](web-native-consumer.rs) | Public web API cancellation and recovery consumer. |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 | [reviewer-startup.py](reviewer-startup.py) | Real provider-settings PTY replay for reviewer selection, retention, reset, invalid input, and cancellation. |
 | [cancellation-process-death.json](cancellation-process-death.json) | Structured cancellation process death data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |

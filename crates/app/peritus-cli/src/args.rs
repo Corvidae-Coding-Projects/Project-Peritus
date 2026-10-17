@@ -86,6 +86,17 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
     let command = parser.command("command")?;
     match command.as_str() {
         "update" => parse_update(parser),
+        "web" => {
+            let mut arguments = Vec::new();
+            while let Some(argument) = parser.pop() {
+                arguments.push(
+                    argument
+                        .into_string()
+                        .map_err(|_| CliError::usage("web arguments must be UTF-8"))?,
+                );
+            }
+            Ok(Command::Web { arguments })
+        }
         "automation" => {
             let operation = parser.command("automation operation")?;
             let setup = match operation.as_str() {

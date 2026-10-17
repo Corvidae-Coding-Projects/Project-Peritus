@@ -108,7 +108,7 @@ def serve(root, workspace, owner_pid=None):
                     method = request['method']
                     params = request['params']
                     digest = hashlib.sha256(json.dumps([method, params], sort_keys=True).encode()).hexdigest()
-                    if receipt.exists():
+                    if receipt.exists() and method != 'web':
                         retained = json.loads(receipt.read_text())
                         if retained['digest'] != digest:
                             raise ValueError('Operation identity was reused with different arguments')
@@ -118,6 +118,8 @@ def serve(root, workspace, owner_pid=None):
                         try:
                             if method == 'browser':
                                 result = browser.control(params)
+                            elif method == 'web':
+                                result = browser.read_web(params)
                             elif method == 'desktop':
                                 result = desktop.control(params)
                             elif method == 'status':

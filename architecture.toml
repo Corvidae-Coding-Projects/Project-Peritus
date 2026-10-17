@@ -613,3 +613,9 @@ path = "xtask"
 owner = "A0"
 layer = "engineering"
 
+
+[[packages]]
+name = "peritus-tools-web"
+path = "crates/tools/peritus-tools-web"
+owner = "C4"
+layer = "tools"

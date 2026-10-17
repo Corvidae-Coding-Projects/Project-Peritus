@@ -126,6 +126,7 @@ pub fn definitions_for_attachments(
         ),
     ])?;
     definitions.extend(super::computer::definitions()?);
+    definitions.extend(super::web::definitions()?);
     definitions.push(skill_definition()?);
     if !has_selected_file_attachments {
         definitions.retain(|definition| definition.name().as_str() != "attachment_read");
@@ -159,6 +160,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
     ])?;
     definitions.extend(super::computer::observer_definitions()?);
+    definitions.extend(super::web::definitions()?);
     definitions.push(skill_definition()?);
     Ok(definitions)
 }
