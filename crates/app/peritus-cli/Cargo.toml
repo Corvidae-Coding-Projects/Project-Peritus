@@ -14,6 +14,7 @@ categories = ["command-line-utilities", "development-tools"]
 system-package = ["peritus-launcher/system-package"]
 
 [dependencies]
+peritus-modules = { version = "=0.1.0", path = "../../orchestration/peritus-modules" }
 peritus-tools-web = { version = "=0.1.0", path = "../../tools/peritus-tools-web" }
 base64.workspace = true
 peritus-app-client = { version = "=0.1.0", path = "../peritus-app-client" }

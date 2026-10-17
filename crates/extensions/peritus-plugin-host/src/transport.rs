@@ -1,16 +1,13 @@
 //! Owned process/Wasm subprocess and bounded framed exchange.
 
-use std::{
-    future::Future as _, path::PathBuf, process::Stdio, sync::Arc, task::Poll, time::Duration,
-};
+use std::{path::PathBuf, process::Stdio, sync::Arc, time::Duration};
 
 use peritus_plugin_sdk::{
-    HostRequest, PluginRequestEnvelope, PluginResponseEnvelope, RequestId, decode_frame,
-    encode_frame,
+    PluginRequestEnvelope, PluginResponseEnvelope, RequestId, decode_frame, encode_frame,
 };
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
-    process::{Child, ChildStdin, ChildStdout, Command},
+    process::{ChildStdin, ChildStdout, Command},
     sync::Mutex,
 };
 
@@ -23,17 +20,11 @@ pub enum LaunchPlan {
 }
 
 pub struct PluginConnection {
-    child: Mutex<Child>,
+    child: Mutex<Box<dyn process_wrap::tokio::ChildWrapper>>,
     stdin: Mutex<ChildStdin>,
     stdout: Mutex<ChildStdout>,
     transaction: Mutex<()>,
     frame_bytes: u32,
-}
-
-enum ResponseWait {
-    Cancelled,
-    TimedOut,
-    Completed(Result<PluginResponseEnvelope, HostError>),
 }
 
 impl PluginConnection {
@@ -62,6 +53,12 @@ impl PluginConnection {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .kill_on_drop(true);
+        let mut command = process_wrap::tokio::CommandWrap::from(command);
+        #[cfg(unix)]
+        command.wrap(process_wrap::tokio::ProcessSession);
+        #[cfg(windows)]
+        command.wrap(process_wrap::tokio::JobObject);
+        command.wrap(process_wrap::tokio::KillOnDrop);
         let mut child = command.spawn().map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Infrastructure,
@@ -72,11 +69,11 @@ impl PluginConnection {
             )
         })?;
         let stdin = child
-            .stdin
+            .stdin()
             .take()
             .ok_or_else(|| transport_error("launched plugin stdin is unavailable"))?;
         let stdout = child
-            .stdout
+            .stdout()
             .take()
             .ok_or_else(|| transport_error("launched plugin stdout is unavailable"))?;
         Ok(Arc::new(Self {
@@ -93,84 +90,10 @@ impl PluginConnection {
         request: PluginRequestEnvelope,
         timeout: Duration,
         cancellation: &HostCancellation,
+        stopped: &HostCancellation,
     ) -> Result<PluginResponseEnvelope, HostError> {
-        let _transaction = self.transaction.lock().await;
-        if cancellation.is_cancelled() {
-            return Err(cancelled());
-        }
-        self.write(&request).await?;
-        let response = match self.wait_for_response(timeout, cancellation).await {
-            ResponseWait::Cancelled => {
-                let cancel = PluginRequestEnvelope {
-                    protocol_version: request.protocol_version,
-                    request_id: request.request_id.clone(),
-                    request: HostRequest::Cancel {
-                        request_id: request.request_id.clone(),
-                        reason: "host cancellation".to_owned(),
-                    },
-                };
-                let _ = self.write(&cancel).await;
-                self.terminate().await;
-                return Err(cancelled());
-            }
-            ResponseWait::TimedOut => {
-                let cancel = PluginRequestEnvelope {
-                    protocol_version: request.protocol_version,
-                    request_id: request.request_id.clone(),
-                    request: HostRequest::Cancel {
-                        request_id: request.request_id.clone(),
-                        reason: "host deadline".to_owned(),
-                    },
-                };
-                let _ = self.write(&cancel).await;
-                self.terminate().await;
-                return Err(timeout_error());
-            }
-            ResponseWait::Completed(result) => result?,
-        };
-        if response.request_id != request.request_id
-            || response.protocol_version != request.protocol_version
-        {
-            self.terminate().await;
-            return Err(HostError::new(
-                HostFailureClass::Protocol,
-                RecoveryDisposition::RestartPlugin,
-                "correlate plugin response",
-                "plugin response identity or protocol version differs from its request",
-            ));
-        }
-        Ok(response)
-    }
-
-    async fn wait_for_response(
-        &self,
-        timeout: Duration,
-        cancellation: &HostCancellation,
-    ) -> ResponseWait {
-        let mut cancelled = Box::pin(cancellation.cancelled());
-        let mut response = Box::pin(tokio::time::timeout(timeout, self.read()));
-        std::future::poll_fn(|context| {
-            if cancelled.as_mut().poll(context).is_ready() {
-                return Poll::Ready(ResponseWait::Cancelled);
-            }
-            match response.as_mut().poll(context) {
-                Poll::Ready(Ok(result)) => Poll::Ready(ResponseWait::Completed(result)),
-                Poll::Ready(Err(_)) => Poll::Ready(ResponseWait::TimedOut),
-                Poll::Pending => Poll::Pending,
-            }
-        })
-        .await
-    }
-
-    pub(crate) async fn terminate(&self) {
-        let mut child = self.child.lock().await;
-        let _ = child.kill().await;
-        let _ = child.wait().await;
-        drop(child);
-    }
-
-    async fn write(&self, request: &PluginRequestEnvelope) -> Result<(), HostError> {
-        let frame = encode_frame(request, self.frame_bytes).map_err(|error| {
+        // Validate before admission: malformed, unsent requests cannot poison a healthy process.
+        let frame = encode_frame(&request, self.frame_bytes).map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Protocol,
                 RecoveryDisposition::CorrectRequest,
@@ -179,9 +102,76 @@ impl PluginConnection {
                 error,
             )
         })?;
-        let mut stdin = self.stdin.lock().await;
-        stdin.write_all(&frame).await.map_err(|error| io_error("write plugin request", error))?;
-        stdin.flush().await.map_err(|error| io_error("flush plugin request", error))
+        let mut possibly_sent = false;
+        let result = {
+            let exchange = async {
+                let _transaction = self.transaction.lock().await;
+                possibly_sent = true;
+                let mut stdin = self.stdin.lock().await;
+                stdin.write_all(&frame).await.map_err(|e| io_error("write plugin request", e))?;
+                stdin.flush().await.map_err(|e| io_error("flush plugin request", e))?;
+                drop(stdin);
+                let response = self.read().await?;
+                if response.request_id != request.request_id
+                    || response.protocol_version != request.protocol_version
+                {
+                    return Err(HostError::new(
+                        HostFailureClass::Protocol,
+                        RecoveryDisposition::RestartPlugin,
+                        "correlate plugin response",
+                        "plugin response identity or protocol version differs from its request",
+                    ));
+                }
+                Ok(response)
+            };
+            tokio::select! {
+                biased;
+                () = cancellation.cancelled() => Err(cancelled()),
+                () = stopped.cancelled() => Err(cancelled()),
+                result = tokio::time::timeout(timeout, exchange) => result.unwrap_or_else(|_| Err(timeout_error())),
+            }
+        };
+        if possibly_sent && result.is_err() {
+            // A full pipe cannot accept a cancellation frame. Close the owned process tree
+            // instead; never replay an invocation whose effects might already have happened.
+            self.terminate().await?;
+            return result.map_err(|error| {
+                HostError::new(
+                    error.class(),
+                    RecoveryDisposition::RestartPlugin,
+                    error.operation(),
+                    format!(
+                        "{}; process terminated; reconcile any external effects before retry",
+                        error.detail()
+                    ),
+                )
+            });
+        }
+        result
+    }
+
+    pub(crate) async fn terminate(&self) -> Result<(), HostError> {
+        let mut child = self.child.lock().await;
+        if let Err(error) = child.start_kill() {
+            // ESRCH means the owned process group already exited.
+            let exited = error.kind() == std::io::ErrorKind::NotFound
+                || (cfg!(unix) && error.raw_os_error() == Some(3));
+            if !exited {
+                return Err(io_error("terminate plugin tree", error));
+            }
+        }
+        tokio::time::timeout(Duration::from_secs(5), child.wait())
+            .await
+            .map_err(|_| {
+                HostError::new(
+                    HostFailureClass::Indeterminate,
+                    RecoveryDisposition::Reconcile,
+                    "reap plugin tree",
+                    "owned process tree did not terminate within cleanup deadline",
+                )
+            })?
+            .map_err(|e| io_error("reap plugin tree", e))?;
+        Ok(())
     }
 
     async fn read(&self) -> Result<PluginResponseEnvelope, HostError> {

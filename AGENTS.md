@@ -11,6 +11,7 @@ Peritus is a local coding-agent application: clients request work, the daemon ow
 | Launch, install, provider setup, daemon availability | [Launcher](crates/app/peritus-launcher/AGENTS.md), [CLI](crates/app/peritus-cli/AGENTS.md), [onboarding](crates/app/peritus-provider-onboarding/AGENTS.md), [packaging](packaging/AGENTS.md) |
 | Active coding run, steering, retries, candidates | [Daemon product runs](crates/app/peritus-daemon/src/product_run/AGENTS.md), [product runner](crates/app/peritus-product-runner/AGENTS.md), [developer loop](crates/orchestration/peritus-agent/src/developer/AGENTS.md) |
 | Guided design interview, saved Markdown, implementation handoff | [Conversation tools](crates/app/peritus-product-runner/src/execution/conversation/AGENTS.md), [runner source](crates/app/peritus-product-runner/src/AGENTS.md), [feature design](.design/interactive-design-mode.md) |
+| Bundled/installable workflows and module role stages | [Module domain](crates/orchestration/peritus-modules/AGENTS.md), [execution](crates/app/peritus-product-runner/src/execution/modules.rs) |
 | Terminal/browser interaction | [TUI](crates/app/peritus-tui/AGENTS.md), [browser client](webui/AGENTS.md), [gateway](crates/app/peritus-web/AGENTS.md) |
 | Model routing and provider failures | [Model layer](crates/model/AGENTS.md) |
 | Commands, files, browser/desktop operations | [Tool layer](crates/tools/AGENTS.md), [native runtime](crates/runtime/AGENTS.md), [product tool executor](crates/app/peritus-product-runner/src/developer_tools/AGENTS.md) |

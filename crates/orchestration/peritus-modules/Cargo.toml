@@ -1,0 +1,26 @@
+[package]
+name = "peritus-modules"
+description = "Host-owned bundled and installable agent workflow modules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+fs4.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[package.metadata.peritus]
+owner = "E1"
+layer = "orchestration"
+
+[lints]
+workspace = true

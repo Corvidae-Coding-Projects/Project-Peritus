@@ -34,6 +34,15 @@ impl AppModel {
         run_id: RunId,
         message: String,
     ) -> Vec<Effect> {
+        self.submit_bound_message(run_id, message, None)
+    }
+
+    pub(in crate::model) fn submit_bound_message(
+        &mut self,
+        run_id: RunId,
+        message: String,
+        mode: Option<peritus_app_protocol::ProductInteractionMode>,
+    ) -> Vec<Effect> {
         if let Err(error) = WorkbenchInputText::new(message.clone()) {
             self.notice(NoticeLevel::Error, error.to_string());
             return Vec::new();
@@ -55,7 +64,7 @@ impl AppModel {
         self.chat.snapshot = None;
         self.request(
             AppRequestPayload::QueryInteractionBinding(ProductInteractionQuery::new(run_id)),
-            PendingRequest::ProductMessageBinding { run_id, message },
+            PendingRequest::ProductMessageBinding { run_id, message, mode },
         )
         .into_iter()
         .collect()

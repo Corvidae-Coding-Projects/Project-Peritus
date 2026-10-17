@@ -12,6 +12,7 @@ keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]
+peritus-modules = { version = "=0.1.0", path = "../../orchestration/peritus-modules" }
 peritus-tools-web = { version = "=0.1.0", path = "../../tools/peritus-tools-web" }
 peritus-harness = { version = "=0.1.0", path = "../../orchestration/peritus-harness" }
 peritus-tools-computer = { version = "=0.1.0", path = "../../tools/peritus-tools-computer" }

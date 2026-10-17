@@ -8,6 +8,13 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [module-foundation.md](module-foundation.md) | Module campaign setup, real consumers and evidence boundaries. |
+| [module-registry.py](module-registry.py) | Actual CLI installation, update, repair, corruption, parallel updates and invalid package replays. |
+| [module-foundation-consumer.rs](module-foundation-consumer.rs) | Public module job consumer plus real framed executable plugin and process cleanup observations. |
+| [module-daemon.py](module-daemon.py) | TUI/provider four-stage workflow, separate ordinary/Git-managed fixtures, stop and daemon restart. |
+| [module-resume-existing.py](module-resume-existing.py) | Reattach a retained disposable job and check first-submit resume, mode and tool permission boundaries. |
+| [module-steering.py](module-steering.py) | Actual in-flight steering, uncommitted superseded stage, explicit resume and ordinary Chat. |
+| [module-browser.mjs](module-browser.mjs) | Actual browser composer, registry replies and installed resource reader workflow. |
 | [web-reader-recovery.py](web-reader-recovery.py) | Real terminal/daemon/provider replay of a wedged page followed by fresh-reader recovery. |
 | [web-search-native.py](web-search-native.py) | Live built-in search with empty PATH, official source reads, fresh-process cache and migration/recovery. |
 | [web-search-consumer.rs](web-search-consumer.rs) | Actual public metasearch requests, invalid inputs, active/waiting cancellation and recovery. |

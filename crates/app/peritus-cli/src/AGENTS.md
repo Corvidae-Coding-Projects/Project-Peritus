@@ -17,6 +17,7 @@ Scriptable daemon client plus interactive launch dispatch: parse user arguments,
 | [events.rs](events.rs) | Event subscription/delivery, acknowledgement, cancellation, and rendering. |
 | [id.rs](id.rs) | Validates and renders canonical IDs/digests; generates request identifiers. |
 | [improvements.rs](improvements.rs) | Scriptable candidate collection and explicit evaluation over authenticated daemon IPC. |
+| [modules.rs](modules.rs) | Local module installation, listing, inspection and enablement; no code execution. |
 | [lib.rs](lib.rs) | Scriptable command-line client for the local Peritus application protocol. |
 | [main.rs](main.rs) | Process entry point for the `peritus` command-line client. Entry names: `main`. |
 | [operation.rs](operation.rs) | Status, shutdown, command submission, and correlated daemon response handling. |

@@ -206,7 +206,7 @@ fn definitions_from(
         .collect()
 }
 
-pub(super) fn definition(
+pub(crate) fn definition(
     name: &str,
     description: &str,
     schema: &str,

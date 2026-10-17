@@ -86,7 +86,7 @@ impl HostError {
         mut detail: String,
         source: Option<Box<dyn Error + Send + Sync>>,
     ) -> Self {
-        detail.truncate(1024);
+        detail.truncate(detail.floor_char_boundary(1024));
         Self { class, recovery, operation, detail, source }
     }
 

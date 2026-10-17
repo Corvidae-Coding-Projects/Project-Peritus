@@ -49,6 +49,15 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             |()| ExitCode::SUCCESS,
         );
     }
+    if let Command::Modules { arguments } = &cli.command {
+        return match crate::modules::execute(arguments) {
+            Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
+                |error| report_error(&CliError::output(error), cli.json),
+                |()| ExitCode::SUCCESS,
+            ),
+            Err(error) => report_error(&error, cli.json),
+        };
+    }
     if let Command::Web { arguments } = &cli.command {
         return match crate::web::execute(arguments) {
             Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
@@ -305,6 +314,7 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         | Command::Completions(_)
         | Command::Update(_)
         | Command::Providers
+        | Command::Modules { .. }
         | Command::Web { .. }
         | Command::Automation { .. }
         | Command::Workspaces

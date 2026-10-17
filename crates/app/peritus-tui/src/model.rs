@@ -170,6 +170,7 @@ enum PendingRequest {
     ProductMessageBinding {
         run_id: RunId,
         message: String,
+        mode: Option<peritus_app_protocol::ProductInteractionMode>,
     },
     WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),

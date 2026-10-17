@@ -142,7 +142,12 @@ impl AppModel {
         self.send_chat_message(self.chat.buffer.clone())
     }
     pub(super) fn send_chat_message(&mut self, text: String) -> Vec<Effect> {
-        if self.chat_submission_pending() {
+        if self.chat_mutation_pending()
+            || self
+                .pending
+                .values()
+                .any(|pending| matches!(pending, PendingRequest::ProductMessageBinding { .. }))
+        {
             self.notice(
                 NoticeLevel::Info,
                 "Waiting for the previous input receipt; this draft is retained.",
@@ -156,17 +161,18 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if self.needs_chat_binding() {
-            self.notice(
-                NoticeLevel::Info,
-                "Loading this run's conversation; draft retained. Send again after it opens.",
-            );
-            return self
-                .chat
-                .run_id
-                .and_then(|run| self.query_chat_binding(run, true))
-                .into_iter()
-                .collect();
+        if self.needs_chat_binding()
+            || (self.chat.run_id.is_some()
+                && self
+                    .pending
+                    .values()
+                    .any(|pending| matches!(pending, PendingRequest::ChatBinding { .. })))
+        {
+            if let Some(run) = self.chat.run_id {
+                // Bind the submitted message to this exact run, then send it once when the
+                // read-only binding arrives. Do not require a second Enter or replay a mutation.
+                return self.submit_bound_message(run, text, Some(self.chat.mode));
+            }
         }
         if self.chat.run_id.is_some() && self.chat.workbench.selected.is_none() {
             self.chat.run_id = None;
@@ -261,6 +267,18 @@ impl AppModel {
     }
     pub(super) fn chat_control(&mut self, action: ProductRunControlAction) -> Vec<Effect> {
         if action == ProductRunControlAction::Cancel {
+            if self
+                .pending
+                .values()
+                .any(|pending| matches!(pending, PendingRequest::ProductMessageBinding { .. }))
+            {
+                self.abandon_chat_observations();
+                self.notice(
+                    NoticeLevel::Info,
+                    "Pending message cancelled before submission; draft retained.",
+                );
+                return Vec::new();
+            }
             if let Some(effects) = self.stop_workbench_submission() {
                 return effects;
             }

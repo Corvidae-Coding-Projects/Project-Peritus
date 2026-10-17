@@ -4,6 +4,18 @@ use super::{Arguments, Command, CommandSpec};
 
 pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
+        command: Command::Modules,
+        name: "/modules",
+        description: "List bundled and installed workflow modules",
+        arguments: Arguments::None,
+    },
+    CommandSpec {
+        command: Command::Module,
+        name: "/module",
+        description: "Run a selected workflow: ID TASK; or status, show, resume",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
         command: Command::Design,
         name: "/design",
         description: crate::modes::description(

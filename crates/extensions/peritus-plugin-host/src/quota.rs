@@ -19,15 +19,16 @@ impl QuotaLedger {
     }
 
     pub(crate) fn reserve(&self) -> Result<QuotaPermit<'_>, HostError> {
-        let count = self.lifecycle_requests.fetch_add(1, Ordering::SeqCst);
-        if count >= self.limits.lifecycle_requests {
-            self.lifecycle_requests.fetch_sub(1, Ordering::SeqCst);
-            return Err(quota("plugin lifecycle request quota is exhausted"));
-        }
         let active = self.active.fetch_add(1, Ordering::SeqCst);
         if active >= usize::from(self.limits.concurrent_requests) {
             self.active.fetch_sub(1, Ordering::SeqCst);
             return Err(quota("plugin concurrent request quota is exhausted"));
+        }
+        let count = self.lifecycle_requests.fetch_add(1, Ordering::SeqCst);
+        if count >= self.limits.lifecycle_requests {
+            self.lifecycle_requests.fetch_sub(1, Ordering::SeqCst);
+            self.active.fetch_sub(1, Ordering::SeqCst);
+            return Err(quota("plugin lifecycle request quota is exhausted"));
         }
         Ok(QuotaPermit { ledger: self })
     }

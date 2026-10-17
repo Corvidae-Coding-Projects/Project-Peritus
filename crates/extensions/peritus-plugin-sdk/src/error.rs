@@ -36,7 +36,7 @@ impl SdkError {
     #[must_use]
     pub fn new(kind: SdkErrorKind, operation: &'static str, detail: impl Into<String>) -> Self {
         let mut detail = detail.into();
-        detail.truncate(512);
+        detail.truncate(detail.floor_char_boundary(512));
         Self { kind, operation, detail }
     }
 

@@ -29,3 +29,10 @@ is supplied by a G0/B1 mediator; the host cannot mint or widen it.
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
+
+Process ownership is not an OS sandbox: process plugins can use their OS account's
+ambient filesystem/network authority. This API is separate from the declarative
+product module registry. It uses owned process groups/jobs for cleanup, cancellation
+and deadlines across both writes and reads, fresh authorization after queued
+admission, and explicit stop/start recovery. A possibly sent request is never
+automatically replayed; reconcile its external effects before retrying.

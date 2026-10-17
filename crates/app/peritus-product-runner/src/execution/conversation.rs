@@ -31,6 +31,9 @@ impl ProductRunner {
         writable: bool,
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
+        if let Some(command) = input.conversation.take_module_command().map_err(|e| invalid(&e))? {
+            return super::modules::execute(&input, &command, observe).await;
+        }
         let mut accounting = input.accounting()?;
         crate::trace::prepare(&input.trace_path)?;
         let allow_pipeline = writable
@@ -151,7 +154,7 @@ fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {
     }
 }
 
-fn settle(
+pub(super) fn settle(
     input: &ProductRunInput,
     cause: SettlementCause,
     reply: Option<String>,

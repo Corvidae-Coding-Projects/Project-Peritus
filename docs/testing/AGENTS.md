@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [module-foundation-evidence.json](module-foundation-evidence.json) | Compact native hashes, CLI counts, real browser actions, provider/job output identities and recovery receipts. |
+| [module-foundation-real-2026-10-17.md](module-foundation-real-2026-10-17.md) | Bundled/installed module lifecycle, real role isolation, terminal/browser/provider journeys, recovery defects and plugin process cleanup. |
 | [web-search-rust-real-2026-10-17.md](web-search-rust-real-2026-10-17.md) | Zero-setup built-in Rust search, actual public queries, cancellation, migration and terminal/model evidence. |
 | [web-tools-real-2026-10-17.md](web-tools-real-2026-10-17.md) | Keyless search, exact native source reads, real browser rendering, role/permission routing and retained defect replays. |
 | [reviewer-startup-real-2026-10-17.md](reviewer-startup-real-2026-10-17.md) | Startup/settings review-model selection, saved role routing, repair/offline behavior, and actual terminal/provider evidence. |

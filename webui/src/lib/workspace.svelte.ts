@@ -132,8 +132,11 @@ export async function poll() {
   }));
 }
 export async function send() {
+  return sendMessage(false);
+}
+async function sendMessage(hostCommand:boolean) {
   const id=ui.sessionId,original=ui.drafts[id]??'';const text=original.trim();if(!text||ui.pending[id]||ui.attaching[id])return;
-  const parsed=parseSlash(text);
+  const parsed=hostCommand?{kind:'text' as const}:parseSlash(text);
   if(parsed.kind==='error'){notify(parsed.message,true);return;}
   if(parsed.kind==='command'){
     await dispatch(parsed.name,[...parsed.args]);
@@ -217,6 +220,12 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
   if(alias){const parsed=parseSlash(alias);if(parsed.kind==='command')return dispatch(parsed.name,[...parsed.args,...args],depth+1);}
   const command=commands.find(c=>c.id===id);if(!command)throw new Error(`Unknown command /${id}. Open the command directory with /help.`);
   ui.palette='';
+  if(id==='module'||id==='modules'){
+    if(runActive(ui.conversations[ui.sessionId]?.run))throw new Error('Wait for the current workflow or stop it before issuing a module action. Your draft is retained.');
+    ui.modes[ui.sessionId]='chat';ui.activeFile='';
+    ui.drafts[ui.sessionId]=id==='modules'?'/modules':`/module ${args.join(' ')}`;
+    await sendMessage(true);return;
+  }
   if(id==='design'){
     if(runActive(ui.conversations[ui.sessionId]?.run))throw new Error('Wait for the current reply or stop active work before using a design action. Your draft is retained.');
     const text=args.join(' ');

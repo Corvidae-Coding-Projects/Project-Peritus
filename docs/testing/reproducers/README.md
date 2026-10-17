@@ -63,3 +63,7 @@ Schema version 1 requires `id`, `classification`, `invariant`, `original`, `repr
 source revision and observed failure; `reproducer` records the exact test and reachability; and
 `fixed_replay` records the expected post-fix result. These manifests summarize checked-in tests and
 evidence documents; they do not replace the owning regressions.
+
+See [module-foundation.md](module-foundation.md) for the module registry, public API,
+terminal/browser/provider, cancellation, role-isolation and restart replays. All
+execution uses disposable state and real program interfaces.

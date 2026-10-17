@@ -88,6 +88,48 @@ impl LocalContextHandle {
         Self::open_scoped(input, role, Some(protected))
     }
 
+    /// Module stages have their own task identity even in an ordinary in-place folder.
+    /// Never route a dynamic stage label through the coding writer's default lineage.
+    pub(crate) fn open_module(
+        input: &ProductRunInput,
+        job_key: &str,
+        stage: &str,
+        role: peritus_agent::DeveloperModelRole,
+    ) -> Result<Option<Self>, ProductRunnerError> {
+        let config = input.command_runtime.local_context_config().clone();
+        if !config.enabled {
+            return Ok(None);
+        }
+        let mut identity = b"peritus-module-stage-context-v1\0".to_vec();
+        identity.extend_from_slice(input.run_id.as_bytes());
+        identity.extend_from_slice(job_key.as_bytes());
+        identity.push(0);
+        identity.extend_from_slice(stage.as_bytes());
+        let hash = peritus_codec::sha256(&identity);
+        let mut task = [0; 16];
+        task.copy_from_slice(&hash.as_bytes()[..16]);
+        task[0] |= 1;
+        let task = ContextNodeId::new(task)
+            .map_err(|_| crate::turn::developer_error(&error("invalid module task identity")))?;
+        let role = match role {
+            peritus_agent::DeveloperModelRole::Reviewer => HarnessRole::Reviewer,
+            peritus_agent::DeveloperModelRole::Writer => HarnessRole::Writer,
+            peritus_agent::DeveloperModelRole::Fixer => HarnessRole::Fixer,
+        };
+        let binding = WorkingBinding::new(
+            input.run_id,
+            input.workspace_id,
+            task,
+            role,
+            input.conversation.revision(),
+        );
+        let namespace = hash.as_bytes().iter().map(|b| format!("{b:02x}")).collect::<String>();
+        let root = input.trace_path.with_extension("context").join("modules").join(namespace);
+        let protected =
+            input.workspace_kind.is_in_place().then(|| input.workspace_kind.protected_paths());
+        Self::open_bound(input, &root, binding, config, protected)
+    }
+
     fn open_scoped(
         input: &ProductRunInput,
         role: &str,
@@ -130,9 +172,19 @@ impl LocalContextHandle {
             input.conversation.revision(),
         );
         let root = input.trace_path.with_extension("context").join(role);
+        Self::open_bound(input, &root, binding, config, protected)
+    }
+
+    fn open_bound(
+        input: &ProductRunInput,
+        root: &std::path::Path,
+        binding: WorkingBinding,
+        config: crate::LocalContextConfig,
+        protected: Option<&[std::path::PathBuf]>,
+    ) -> Result<Option<Self>, ProductRunnerError> {
         let mut memory = if let Some(protected) = protected {
             LocalMemory::load_scoped(
-                &root,
+                root,
                 &input.workspace_root,
                 &input.trace_path,
                 binding,
@@ -144,7 +196,7 @@ impl LocalContextHandle {
             )
             .map_err(|error| crate::turn::developer_error(&error))?
         } else {
-            LocalMemory::load(&root, &input.workspace_root, &input.trace_path, binding, config)
+            LocalMemory::load(root, &input.workspace_root, &input.trace_path, binding, config)
                 .map_err(|error| crate::turn::developer_error(&error))?
         };
         memory.compactor_runtime = Some(input.command_runtime.clone());

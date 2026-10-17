@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- Bundled and installable declarative workflow modules with explicit enablement, read-only tool permissions, separate role memories, immutable package identities, and checkpointed stop/resume. Discover them with `/modules` or `peritus modules list`.
+- A bundled Source brief workflow: gatherer, skeptic, synthesis, then final fact checking. Record the broader Deep Research plan and source-admission policy separately.
+
+### Fixed
+
+- Preserve a terminal message submitted while an exact run's conversation binding loads; send it once after binding, retaining explicit mode and newer drafts.
+- Cancel plugin exchanges even when stdin is blocked, terminate owned process groups/jobs, serialize stop completion, and retain UTF-8 diagnostic boundaries.
+
+
 ## 0.1.0
 
 ### Changed

@@ -58,10 +58,11 @@ mod resources;
 
 mod wire;
 
-pub(crate) use catalog::evidence_definition;
+pub(crate) use catalog::{definition as tool_definition, evidence_definition};
 pub use catalog::{
     definitions_for_attachments, in_place_definition, read_only_definitions, reviewer_definitions,
 };
+pub(crate) use wire::observation as module_observation;
 
 pub use command_runtime::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan,

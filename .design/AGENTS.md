@@ -8,6 +8,8 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [module-foundation.md](module-foundation.md) | Bundled/installable workflow registry, owned execution, private state and real-interface acceptance. |
+| [deep-research.md](deep-research.md) | Proposed durable Research mode: plan/Start, source-backed reports, recovery and versioned Design handoff. |
 | [native-web-tools.md](native-web-tools.md) | Native web feature ownership and independent real-testing scenarios. |
 | [keep-working-retained-state.md](keep-working-retained-state.md) | Retained-state growth, compatibility, paging, and real-operation contract. |
 | [interactive-design-mode.md](interactive-design-mode.md) | Design mode's conversational experience, durable Markdown contract, client routing, and implementation handoff. |

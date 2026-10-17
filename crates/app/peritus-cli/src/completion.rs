@@ -33,7 +33,8 @@ const BASH: &str = r#"_peritus() {
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   case "$prev" in
-    peritus) COMPREPLY=( $(compgen -W "open resume update providers automation web workspaces improvements runs status shutdown command events artifact prompt terminal completions help" -- "$cur") ) ;;
+    peritus) COMPREPLY=( $(compgen -W "open resume update providers automation web modules workspaces improvements runs status shutdown command events artifact prompt terminal completions help" -- "$cur") ) ;;
+    modules) COMPREPLY=( $(compgen -W "list show install enable disable remove" -- "$cur") ) ;;
     web) COMPREPLY=( $(compgen -W "setup status stop search open read find" -- "$cur") ) ;;
     command) COMPREPLY=( $(compgen -W "submit" -- "$cur") ) ;;
     events) COMPREPLY=( $(compgen -W "watch" -- "$cur") ) ;;
@@ -50,7 +51,7 @@ complete -F _peritus peritus
 const ZSH: &str = r#"#compdef peritus
 _peritus() {
   local -a commands
-  commands=(open resume update providers automation web workspaces improvements runs status shutdown command events artifact prompt terminal completions help)
+  commands=(open resume update providers automation web modules workspaces improvements runs status shutdown command events artifact prompt terminal completions help)
   _arguments '*::arg:->args'
   if (( CURRENT == 2 )); then _describe 'command' commands; fi
 }
@@ -58,7 +59,7 @@ _peritus "$@"
 "#;
 
 const FISH: &str = r"complete -c peritus -f
-complete -c peritus -n '__fish_use_subcommand' -a 'open resume update providers automation web workspaces improvements runs status shutdown command events artifact prompt terminal completions help'
+complete -c peritus -n '__fish_use_subcommand' -a 'open resume update providers automation web modules workspaces improvements runs status shutdown command events artifact prompt terminal completions help'
 complete -c peritus -l endpoint -r
 complete -c peritus -l session -r
 complete -c peritus -l timeout-seconds -r
@@ -71,7 +72,7 @@ complete -c peritus -l disable-checks
 
 const POWERSHELL: &str = r#"Register-ArgumentCompleter -Native -CommandName peritus -ScriptBlock {
   param($wordToComplete, $commandAst, $cursorPosition)
-  'open','resume','update','providers','automation','web','workspaces','improvements','runs','status','shutdown','command','events','artifact','prompt','terminal','completions','help' |
+  'open','resume','update','providers','automation','web','modules','workspaces','improvements','runs','status','shutdown','command','events','artifact','prompt','terminal','completions','help' |
     Where-Object { $_ -like "$wordToComplete*" } |
     ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
 }

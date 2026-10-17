@@ -314,3 +314,14 @@ Include your operating system, Peritus version, and the steps that reproduce the
 ## Codebase navigation
 
 Start with the [repository agent map](AGENTS.md) to choose an implementation owner. Every repository-managed directory has an `AGENTS.md` waypoint describing local files, child responsibilities, and the route back to its parent/package. Layer and package READMEs provide human background and usage. See [navigation coverage and scope](docs/navigation-map.md) for the documented boundary.
+
+### Workflow modules
+
+Use `/modules` in the terminal or browser to discover workflows, then `/module ID
+YOUR QUESTION` to run one. The bundled Source brief separates gathering, skeptical
+assessment, writing and final fact checking. Install local declarative packages with
+`peritus modules install DIRECTORY`, inspect them with `peritus modules show ID`,
+and explicitly enable them with `peritus modules enable ID`. Installed updates start
+disabled. Modules share existing read/network permissions and cannot add executable
+tools. Stop, `/module status`, `/module show` and `/module resume` preserve completed
+stages. See the [module guide](crates/orchestration/peritus-modules/README.md).

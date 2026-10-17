@@ -14,7 +14,7 @@ Durable working-context host: journal/artifact storage, current-policy assembly,
 | [driver.rs](driver.rs) | Shared production invocation switch; legacy mode is explicit and never an error fallback. |
 | [memory.rs](memory.rs) | Durable state owner shared by the loop port and its bounded memory-tool decorator. |
 | [mod.rs](mod.rs) | Local working-memory host: C0 effects around C6 deterministic state. |
-| [port.rs](port.rs) | Shared context port; locks do not cross task-provider requests or base-tool execution. |
+| [port.rs](port.rs) | Shared context port, including separate per-job/per-stage module lineages; locks do not cross task-provider requests or base-tool execution. |
 | [record.rs](record.rs) | Version-one host journal payloads and rebuildable transcript/source projections. |
 | [semantic.rs](semantic.rs) | Optional local inference proposes ordinary validated deltas; every failure stays local. |
 | [storage.rs](storage.rs) | Single-owner C0 journal/artifact storage and atomic checkpoint-root publication. |
