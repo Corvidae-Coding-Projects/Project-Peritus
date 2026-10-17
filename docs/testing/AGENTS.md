@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [module-market-real-2026-10-17.md](module-market-real-2026-10-17.md) | Native Rust plugin market campaign, observed defect, bounded evidence and replay paths. |
 | [module-foundation-evidence.json](module-foundation-evidence.json) | Compact native hashes, CLI counts, real browser actions, provider/job output identities and recovery receipts. |
 | [module-foundation-real-2026-10-17.md](module-foundation-real-2026-10-17.md) | Bundled/installed module lifecycle, real role isolation, terminal/browser/provider journeys, recovery defects and plugin process cleanup. |
 | [web-search-rust-real-2026-10-17.md](web-search-rust-real-2026-10-17.md) | Zero-setup built-in Rust search, actual public queries, cancellation, migration and terminal/model evidence. |

@@ -8,6 +8,7 @@ Implementation pieces for `chat.rs`: Conversation-first terminal layout with a p
 
 | File | Role |
 | --- | --- |
+| [modules.rs](modules.rs) | Scrollable market rows, exact selected versions and keyboard actions. |
 | [brief.rs](brief.rs) | Exact confirmed fields, source revisions and eligibility; observed execution is separate. |
 | [checkpoints.rs](checkpoints.rs) | Exact covered-path checkpoint and rewind preview without workspace mutation on inspection. |
 | [compaction.rs](compaction.rs) | Content-free local compaction preview; exact reply text remains in immutable archives. |

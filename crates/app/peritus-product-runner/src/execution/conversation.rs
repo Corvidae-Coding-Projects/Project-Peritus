@@ -255,6 +255,8 @@ fn request(
             prompt.push_str(&design);
         }
     }
+    prompt.push_str(&super::modules::artifacts::context(input)?);
+    definitions.push(tools::attachment_definition().map_err(|e| crate::turn::developer_error(&e))?);
     let mut policy = system(mode);
     policy.push_str(input.delivery_instructions());
     if !allow_pipeline {

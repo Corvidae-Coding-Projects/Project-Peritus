@@ -1,10 +1,13 @@
-//! Declarative agent modules. Packages cannot execute code or grant host authority.
+//! Validated native Rust plugin and declarative workflow packages, discovery and durable state.
+//! Native execution is owned by the product bridge; host-service permissions remain live.
 mod definition;
 mod jobs;
+mod market;
 mod registry;
 
-pub use definition::{Definition, Manifest, Role, Stage};
+pub use definition::{Code, Definition, Manifest, Role, Stage};
 pub use jobs::{Job, JobState, StageOutput};
+pub use market::{Catalog, MARKET_REPOSITORY, MarketEntry, ModuleOperation};
 pub use registry::{Registry, data_root};
 use sha2::{Digest, Sha256};
 use std::{fs, io::Write, path::Path};
@@ -24,6 +27,9 @@ pub enum Error {
     /// Invalid manifest.
     #[error("module manifest: {0}")]
     Toml(#[from] toml::de::Error),
+    /// Catalog or pinned package download failed.
+    #[error("module market: {0}")]
+    Http(#[from] reqwest::Error),
 }
 fn invalid(message: impl Into<String>) -> Error {
     Error::Invalid(message.into())

@@ -24,12 +24,28 @@ pub struct Manifest {
     /// Purpose shown before selection.
     pub description: String,
     /// Host roles; instructions are subordinate to the user and host policy.
+    #[serde(default)]
     pub roles: Vec<Role>,
     /// Stages in execution order. Dependencies must precede the consumer.
+    #[serde(default)]
     pub stages: Vec<Stage>,
     /// Optional package-relative, immutable read resources.
     #[serde(default)]
     pub resources: Vec<String>,
+    /// Optional executable code plugin. Absent for older declarative workflows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<Code>,
+}
+/// Native Rust plugin artifacts and maximum borrowed host tool capabilities.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Code {
+    /// Stable JSON command ABI version, currently one.
+    pub abi: u32,
+    /// Target triple to package-relative native executable, all declared as resources.
+    pub artifacts: std::collections::BTreeMap<String, String>,
+    /// Maximum native read-only host tools that this plugin may request for its agents.
+    pub tools: Vec<String>,
 }
 /// One separately scoped provider invocation policy.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -56,7 +72,7 @@ pub struct Stage {
     #[serde(default)]
     pub inputs: Vec<String>,
 }
-/// Validated exact package, with no executable entrypoint.
+/// Validated exact native code or declarative workflow package.
 #[derive(Clone, Debug)]
 pub struct Definition {
     /// Validated public module metadata.
@@ -88,8 +104,7 @@ impl Manifest {
             || !version(&self.version)
             || self.name.trim().is_empty()
             || self.description.trim().is_empty()
-            || self.roles.is_empty()
-            || self.stages.is_empty()
+            || (self.code.is_none() && (self.roles.is_empty() || self.stages.is_empty()))
             || self.roles.len() > 128
             || self.stages.len() > 128
             || self.resources.len() > 1024
@@ -131,6 +146,29 @@ impl Manifest {
             safe_relative(resource)?;
             if !resources.insert(resource) {
                 return Err(invalid("repeated module resource"));
+            }
+        }
+        if let Some(code) = &self.code {
+            for artifact in code.artifacts.values() {
+                safe_relative(artifact)?;
+            }
+            if code.abi != 1
+                || self.version.split('.').any(|p| p.parse::<u16>().is_err())
+                || code.artifacts.is_empty()
+                || code.artifacts.keys().any(|t| {
+                    t.is_empty()
+                        || t.len() > 128
+                        || !t.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+                })
+                || !self.roles.is_empty()
+                || !self.stages.is_empty()
+                || code.artifacts.values().any(|a| !self.resources.contains(a))
+                || code.tools.iter().any(|t| !tool_name(t))
+                || code.tools.iter().collect::<BTreeSet<_>>().len() != code.tools.len()
+            {
+                return Err(invalid(
+                    "native code modules require ABI 1, declared native executable resources, unique host tools, and no host-interpreted roles/stages",
+                ));
             }
         }
         Ok(())
@@ -208,7 +246,7 @@ fn tool_name(value: &str) -> bool {
         && value.len() <= 128
         && value.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
-fn version(value: &str) -> bool {
+pub(crate) fn version(value: &str) -> bool {
     let parts: Vec<_> = value.split('.').collect();
     parts.len() == 3
         && parts.iter().all(|p| {

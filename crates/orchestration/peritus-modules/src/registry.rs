@@ -94,7 +94,7 @@ impl Registry {
             }
             let entry = match self.load(id, false) {
                 Ok(d) => {
-                    json!({"id":id,"name":d.manifest.name,"version":d.manifest.version,"description":d.manifest.description,"digest":d.digest,"bundled":false,"enabled":selection.enabled})
+                    json!({"id":id,"name":d.manifest.name,"version":d.manifest.version,"description":d.manifest.description,"digest":d.digest,"bundled":false,"enabled":selection.enabled,"kind":if d.manifest.code.is_some(){"native-rust"}else{"workflow"}})
                 }
                 Err(e) => {
                     json!({"id":id,"digest":selection.digest,"enabled":selection.enabled,"error":e.to_string()})
@@ -103,7 +103,7 @@ impl Registry {
             entries.insert(id.clone(), entry);
         }
         Ok(
-            json!({"modules":entries.into_values().collect::<Vec<_>>(),"directory":self.root,"format":"declarative-workflow-v1"}),
+            json!({"modules":entries.into_values().collect::<Vec<_>>(),"directory":self.root,"format":"native-rust-and-workflow-v1"}),
         )
     }
     /// Loads a selected exact package and verifies its complete declared resource identity.
@@ -238,7 +238,7 @@ impl Registry {
         );
         self.save(&settings)?;
         Ok(
-            json!({"id":id,"enabled":enabled,"digest":d.digest,"permissions":"intersected with the live host; enablement grants no authority"}),
+            json!({"id":id,"enabled":enabled,"digest":d.digest,"permissions":"agent host tools follow live permissions; native code runs as the current OS account"}),
         )
     }
     /// Removes an installed selection. Immutable bytes remain for pinned historical jobs.

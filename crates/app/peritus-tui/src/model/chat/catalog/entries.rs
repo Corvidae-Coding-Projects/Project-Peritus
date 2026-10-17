@@ -6,13 +6,13 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         command: Command::Modules,
         name: "/modules",
-        description: "List bundled and installed workflow modules",
+        description: "Discover, install and select native Rust plugins and workflows",
         arguments: Arguments::None,
     },
     CommandSpec {
         command: Command::Module,
         name: "/module",
-        description: "Run a selected workflow: ID TASK; or status, show, resume",
+        description: "Run an installed module: ID COMMAND or TASK; selected module resume",
         arguments: Arguments::Message,
     },
     CommandSpec {

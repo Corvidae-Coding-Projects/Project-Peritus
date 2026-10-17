@@ -26,7 +26,7 @@ COMMANDS:
   update [--enable-checks | --disable-checks]
                                Update now, or configure automatic startup checks
   providers                    Open provider settings
-  modules <list|show|install|enable|disable|remove>  Manage workflow modules
+  modules <list|market|refresh|show|install|install-market|enable|disable|remove>  Manage workflow modules
   web <setup|status|stop|search|open|read|find>  Keyless search and native page reading
   automation <setup|status>     Install or inspect browser/native automation dependencies
   workspaces                   Switch, add, trust, repair, or forget workspaces

@@ -29,3 +29,14 @@ must bind every invocation to current daemon policy.
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
+
+## Native code module service
+
+`module.rs` defines generic `ModuleAction`, agent/function requests, user menu actions,
+and explicit artifact attachments. Independently compiled Rust executables use the
+existing framed protocol with `module.workflow` invocation payloads: `{method,
+params_json}` requests and `{json}` responses. Inner JSON strings preserve arbitrary
+source metadata without weakening outer canonical rules. Command/tool/observation/
+model-result services let the plugin own feature logic while Peritus supplies current
+models and permitted host services. See the market's `CATALOG.md` and native Rust template:
+https://github.com/Corvidae-Coding-Projects/Peritus-Module-Market.

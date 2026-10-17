@@ -6,20 +6,22 @@
   import Icon from './Icon.svelte';
   import Settings from './Settings.svelte';
   import Models from './Models.svelte';
+  import Modules from './Modules.svelte';
   import Improvements from './Improvements.svelte';
   import Console from './Console.svelte';
   let dialog:HTMLDialogElement,root=$state(''),sessionFilter=$state(''),cli=$state('status'),sessionTitle=$state(''),parent=$state('');
   const titles:Record<string,string>={improvements:'Harness improvement inbox',open:'Open a project',settings:'Console configuration',model:'Models & reasoning',sessions:'Session library',report:'Inspection',runs:'Run history',console:'Harness console',cli:'Scriptable CLI',discard:'Discard candidate changes',session:'Organize session'};
-  let title=$derived(ui.overlay==='report'?ui.reportTitle:titles[ui.overlay]??'Control');
+  let title=$derived(ui.overlay==='modules'?'Module market':ui.overlay==='report'?ui.reportTitle:titles[ui.overlay]??'Control');
   $effect(()=>{if(ui.overlay){dialog.showModal();if(ui.overlay==='session'){sessionTitle=session()?.title??'';parent=session()?.parent??'';}void tick().then(()=>dialog.querySelector<HTMLInputElement>('input:not([type=checkbox])')?.focus());}else dialog?.close();});
   async function runCli(){const parsed=parseSlash('/cli '+cli);if(parsed.kind!=='command')throw new Error('Check your command’s quoted arguments.');await dispatch('cli',[...parsed.args]);}
   const cliPresets=[['Status','status'],['Get artifact','artifact get --artifact ID --output PATH'],['Upload artifact','artifact put --artifact ID --input PATH --media-type text/plain'],['Cancel artifact transfer','artifact cancel --transfer ID --artifact ID'],['Watch events','events watch --topic TOPIC --snapshot-acceptable'],['Answer prompt','prompt answer --binding PATH --text "Your answer"'],['Cancel prompt','prompt cancel --binding PATH'],['Attach terminal','terminal attach --process ID'],['Terminal input','terminal input --attachment ID --process ID --originating-request ID --input PATH'],['Resize terminal','terminal resize --attachment ID --process ID --originating-request ID --columns 100 --rows 30'],['Detach terminal','terminal detach --attachment ID --process ID --originating-request ID'],['Cancel terminal','terminal cancel --attachment ID --process ID --originating-request ID'],['Submit command','command submit --actor ID --envelope PATH --payload PATH --idempotency-key KEY'],['Shutdown daemon','shutdown --wait'],['Shell completions','completions bash'],['Update checks','update --enable-checks']];
 </script>
-<dialog bind:this={dialog} class="control-dialog" class:wide={['settings','console','report','improvements'].includes(ui.overlay)} aria-label={title} onclose={()=>ui.overlay=''} onclick={(event)=>{if(event.target===dialog)ui.overlay='';}}>
+<dialog bind:this={dialog} class="control-dialog" class:wide={['settings','console','report','improvements','modules'].includes(ui.overlay)} aria-label={title} onclose={()=>ui.overlay=''} onclick={(event)=>{if(event.target===dialog)ui.overlay='';}}>
   <div class="dialog-heading"><h2>{title}</h2><button class="key icon-button" aria-label="Close panel" onclick={()=>ui.overlay=''}><Icon name="close"/></button></div>
   <div class="dialog-body">
     {#if ui.overlay==='open'}
       <form class="open-project-form" onsubmit={(event)=>{event.preventDefault();void attempt(()=>openProject(root));}}><p>Keep multiple projects running in one browser tab. Each project retains its own sessions, files, and repository settings.</p><label for="project-root">Project root directory</label><input id="project-root" bind:value={root} placeholder="/home/you/projects/my-project" required/><p class="setting-note">Use a directory on the machine running Peritus. Nested sessions must share this exact canonical root.</p><div class="dialog-actions"><button class="key primary">Open project<Icon name="arrow"/></button></div></form>
+    {:else if ui.overlay==='modules'}<Modules/>
     {:else if ui.overlay==='settings'}<Settings/>
     {:else if ui.overlay==='model'}{#key ui.sessionId}<Models/>{/key}
     {:else if ui.overlay==='report'}

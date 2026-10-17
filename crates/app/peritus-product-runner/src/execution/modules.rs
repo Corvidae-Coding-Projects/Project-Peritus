@@ -1,5 +1,7 @@
 //! Explicit human module commands and host-owned, separately scoped role execution.
+pub(crate) mod artifacts;
 mod interaction;
+mod native;
 mod tools;
 use super::{
     ProductRunInput, ProductRunOutcome, ProductRunPhase, ProductRunUpdate, RunObserver,
@@ -77,11 +79,26 @@ async fn run(
     if command == "/modules" {
         let list = registry.list().map_err(error)?;
         return Ok(format!(
-            "Available workflow modules:\n{}\n\nRun /module ID YOUR QUESTION. /module status, /module show and /module resume inspect or resume this conversation's latest module job. Install and enable local packages with peritus modules install DIRECTORY and peritus modules enable ID. Modules remain within the current read/network permissions.",
+            "Available modules:\n{}\n\nRun /module ID COMMAND_OR_QUESTION. Native Rust plugins supply their own controls and feature code; their processes run under your OS account. Agent host tools follow live permissions. /module status, /module show and /module resume target this conversation's selected module. Discover and install in the Modules menu or with peritus modules.",
             serde_json::to_string_pretty(&list).map_err(error)?
         ));
     }
     let arguments = command.strip_prefix("/module").unwrap_or_default().trim();
+    if arguments == "resume"
+        || arguments == "status"
+        || arguments == "show"
+        || arguments.starts_with("show ")
+    {
+        if let Ok(selection) = selected(input) {
+            if selection.manifest.code.is_some() {
+                let definition = registry.load(&selection.manifest.id, true).map_err(error)?;
+                if definition.digest != selection.digest {
+                    return Ok("The selected native plugin version changed. Restore that exact version to resume its state, or explicitly select the new version with /module ID COMMAND.".into());
+                }
+                return native::execute(input, &definition, arguments, observe).await;
+            }
+        }
+    }
     if arguments == "status" || arguments == "show" || arguments.starts_with("show ") {
         let selection=match selected(input){Ok(s)=>s,Err(_)=>return Ok("This conversation has no readable module job yet. Use /modules to see available modules.".into())};
         let offset = if let Some(value) = arguments.strip_prefix("show ") {
@@ -103,16 +120,14 @@ async fn run(
     let selection = if arguments == "resume" {
         selected(input)?
     } else {
-        let Some((id, task)) = arguments.split_once(char::is_whitespace) else {
-            return Ok("Use /module ID YOUR QUESTION, /module resume, /module status or /module show [BYTE_OFFSET]. Discover IDs with /modules.".into());
-        };
-        if task.trim().is_empty() {
-            return Ok("Include a question or task after the module ID.".into());
-        }
+        let (id, task) = arguments.split_once(char::is_whitespace).unwrap_or((arguments, ""));
         let definition = match registry.load(id, true) {
             Ok(d) => d,
             Err(e) => return Ok(format!("Module was not started: {e}")),
         };
+        if task.trim().is_empty() && definition.manifest.code.is_none() {
+            return Ok("Include a question or task after the module ID.".into());
+        }
         Selection {
             manifest: definition.manifest,
             digest: definition.digest,
@@ -130,6 +145,10 @@ async fn run(
     };
     if definition.digest != selection.digest {
         return Ok("The selected module version changed. Reinstall/enable the original version to resume it, or start a new module job. Prior outputs remain available with /module show.".into());
+    }
+    if definition.manifest.code.is_some() {
+        save_selection(input, &selection)?;
+        return native::execute(input, &definition, &selection.task, observe).await;
     }
     // Validate every requested tool before any model request; packages cannot widen the catalog.
     tools::validate(&definition)?;
@@ -292,7 +311,7 @@ async fn run(
 fn error(detail: impl std::fmt::Display) -> ProductRunnerError {
     ProductRunnerError::new(
         ProductRunnerErrorKind::InvalidPrecondition,
-        "execute workflow module",
+        "execute module",
         detail.to_string(),
     )
 }

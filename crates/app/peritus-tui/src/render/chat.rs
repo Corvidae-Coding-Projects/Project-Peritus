@@ -13,6 +13,7 @@ mod init;
 pub(super) mod inspector;
 pub(super) mod library;
 mod memory;
+mod modules;
 mod permissions;
 mod queue;
 mod status;
@@ -74,7 +75,9 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
             regions[2],
         );
     }
-    if model.chat.doctor.is_some() {
+    if model.chat.module_menu.is_some() {
+        modules::draw(frame, regions[1], model);
+    } else if model.chat.doctor.is_some() {
         doctor::draw(frame, regions[1], model);
     } else if model.chat.workbench.open {
         workbench::draw(frame, regions[1], model);
@@ -163,6 +166,7 @@ fn draw_composer(
     if !model.chat.model_picker()
         && !model.chat.effort_picker()
         && model.chat.doctor.is_none()
+        && model.chat.module_menu.is_none()
         && !model.chat.workbench.open
     {
         frame.set_cursor_position((

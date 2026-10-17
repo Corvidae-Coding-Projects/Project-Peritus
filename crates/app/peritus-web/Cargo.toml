@@ -12,6 +12,7 @@ keywords = ["agents", "web", "workspace"]
 categories = ["development-tools"]
 
 [dependencies]
+peritus-modules = { version = "=0.1.0", path = "../../orchestration/peritus-modules" }
 axum = "=0.8.8"
 tower = { version = "=0.5.3", features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["fs"] }

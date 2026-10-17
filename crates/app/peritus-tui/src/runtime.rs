@@ -7,6 +7,7 @@ mod diagnostics;
 mod files;
 mod images;
 mod interrupts;
+mod modules;
 mod product;
 mod state;
 mod terminal;
@@ -38,6 +39,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[derive(Default)]
 struct LocalReads {
+    modules: modules::ModuleOperations,
     clipboard: clipboard::ClipboardWrites,
     files: files::FileReads,
     images: images::ImageReads,
@@ -251,6 +253,11 @@ fn apply_effects(
 ) -> ControlFlow {
     for effect in effects {
         match effect {
+            Effect::ModuleOperation { generation, operation } => {
+                if !reads.modules.start(generation, operation) {
+                    let _ = model.update(Action::ModuleResult { generation, result: Err("A module operation is still finishing. Reopen the menu after it completes.".into()) });
+                }
+            }
             Effect::CopyText { operation, text } => {
                 if !reads.clipboard.start(operation, text) {
                     let _ = model.update(Action::ClipboardWritten {
@@ -328,6 +335,7 @@ async fn next_effects(
             effects = connection.next(config, model), if connection.active() || connection.sending() => return Ok(effects),
             _ = tick.tick() => Action::Tick(std::time::Instant::now()),
             file = reads.files.next(), if reads.files.active() => file,
+            modules = reads.modules.next(), if reads.modules.active() => modules,
             image = reads.images.next(), if reads.images.active() => image,
             clipboard = reads.clipboard.next(), if reads.clipboard.active() => match clipboard {
                 Some(action) => action,

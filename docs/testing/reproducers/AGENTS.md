@@ -8,6 +8,12 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [module-market-menu.py](module-market-menu.py) | Fresh TUI client invoking plugin-supplied numeric plan/report actions on a retained checked job. |
+| [module-market-browser.mjs](module-market-browser.mjs) | Actual GUI market selection and plugin-supplied plan/Start/report control replay. |
+| [native-research-rpc.py](native-research-rpc.py) | Actual native Rust executable IPC, stage correction, source checking and fresh-process report readback. |
+| [market-research-consumer.md](market-research-consumer.md) | Consumer build/replay instructions and domain-only evidence boundary. |
+| [market-research-consumer.rs](market-research-consumer.rs) | Independent public API/generated ledger and catalog replay. |
+| [module-market-live.py](module-market-live.py) | Actual terminal market/research/provider/restart journey. |
 | [module-foundation.md](module-foundation.md) | Module campaign setup, real consumers and evidence boundaries. |
 | [module-registry.py](module-registry.py) | Actual CLI installation, update, repair, corruption, parallel updates and invalid package replays. |
 | [module-foundation-consumer.rs](module-foundation-consumer.rs) | Public module job consumer plus real framed executable plugin and process cleanup observations. |

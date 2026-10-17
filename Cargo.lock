@@ -3045,6 +3045,7 @@ name = "peritus-modules"
 version = "0.1.0"
 dependencies = [
  "fs4",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -3181,6 +3182,7 @@ dependencies = [
 name = "peritus-product-runner"
 version = "0.1.0"
 dependencies = [
+ "fs4",
  "getrandom 0.4.3",
  "image",
  "peritus-agent",
@@ -3198,6 +3200,8 @@ dependencies = [
  "peritus-obligations",
  "peritus-orchestrator",
  "peritus-patch",
+ "peritus-plugin-host",
+ "peritus-plugin-sdk",
  "peritus-policy",
  "peritus-process",
  "peritus-protocol",
@@ -3690,12 +3694,14 @@ dependencies = [
  "nix 0.31.3",
  "peritus-app-protocol",
  "peritus-codec",
+ "peritus-modules",
  "peritus-product-runner",
  "peritus-protocol",
  "peritus-run-settlement",
  "peritus-tools-shell",
  "peritus-types",
  "ratatui",
+ "serde_json",
  "sha2 0.11.0",
  "signal-hook",
  "thiserror 2.0.20",
@@ -3718,6 +3724,7 @@ dependencies = [
  "peritus-app-client",
  "peritus-app-protocol",
  "peritus-local-socket",
+ "peritus-modules",
  "peritus-process",
  "peritus-product-runner",
  "peritus-types",

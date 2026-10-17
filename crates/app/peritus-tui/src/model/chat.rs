@@ -6,6 +6,7 @@ mod commands;
 mod doctor;
 mod keys;
 mod models;
+mod modules;
 mod navigation;
 mod picker;
 
@@ -45,6 +46,8 @@ pub struct ChatUi {
     pub(crate) model_selection: usize,
     pub(crate) model_role: models::ModelRole,
     pub(crate) doctor: Option<doctor::DoctorPanel>,
+    pub(crate) module_menu: Option<modules::ModuleMenu>,
+    module_generation: u64,
     pub(crate) workbench: workbench::WorkbenchUi,
     interrupt_requested: bool,
     pasted_command: bool,
@@ -74,6 +77,8 @@ impl Default for ChatUi {
             model_selection: 0,
             model_role: models::ModelRole::Writer,
             doctor: None,
+            module_menu: None,
+            module_generation: 0,
             workbench: workbench::WorkbenchUi::default(),
             interrupt_requested: false,
             pasted_command: false,

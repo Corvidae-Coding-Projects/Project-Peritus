@@ -315,13 +315,21 @@ Include your operating system, Peritus version, and the steps that reproduce the
 
 Start with the [repository agent map](AGENTS.md) to choose an implementation owner. Every repository-managed directory has an `AGENTS.md` waypoint describing local files, child responsibilities, and the route back to its parent/package. Layer and package READMEs provide human background and usage. See [navigation coverage and scope](docs/navigation-map.md) for the documented boundary.
 
-### Workflow modules
+### Native Rust plugins and modules
 
-Use `/modules` in the terminal or browser to discover workflows, then `/module ID
-YOUR QUESTION` to run one. The bundled Source brief separates gathering, skeptical
-assessment, writing and final fact checking. Install local declarative packages with
-`peritus modules install DIRECTORY`, inspect them with `peritus modules show ID`,
-and explicitly enable them with `peritus modules enable ID`. Installed updates start
-disabled. Modules share existing read/network permissions and cannot add executable
-tools. Stop, `/module status`, `/module show` and `/module resume` preserve completed
-stages. See the [module guide](crates/orchestration/peritus-modules/README.md).
+Open **Modules** in the browser or `/modules` in the terminal to discover, install,
+enable, and select native Rust plugins from the official market:
+https://github.com/Corvidae-Coding-Projects/Peritus-Module-Market
+
+Plugins contain independently compiled Rust code and can add their own commands,
+agent tools, persistent state, and menu actions without rebuilding Peritus. Deep
+Research's Rust plugin prepares an approved plan, gathers primary sources, applies
+skeptical admission, synthesizes a report, and fact-checks that exact report. Its
+feature code lives in the market repository; Peritus supplies shared host services.
+
+Use `/module ID COMMAND_OR_TOPIC`. Updates install disabled. Native code runs under
+your OS account; agent access to host tools follows current permissions. Local
+packages remain installable with `peritus modules install DIRECTORY`. Existing
+bundled Source brief and declarative workflows remain available. See the
+[module guide](crates/orchestration/peritus-modules/README.md) for controls and the
+initial platform boundary.

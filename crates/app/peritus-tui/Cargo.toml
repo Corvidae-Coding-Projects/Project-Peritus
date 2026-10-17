@@ -11,6 +11,8 @@ keywords = ["agents", "terminal", "tui", "client"]
 categories = ["command-line-utilities"]
 
 [dependencies]
+peritus-modules = { version = "=0.1.0", path = "../../orchestration/peritus-modules" }
+serde_json.workspace = true
 base64.workspace = true
 crossterm = { workspace = true, features = ["osc52"] }
 peritus-app-protocol = { version = "=0.1.0", path = "../peritus-app-protocol" }

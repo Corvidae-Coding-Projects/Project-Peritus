@@ -8,6 +8,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [module-market.md](module-market.md) | Market/research ownership, delivery boundaries and real-interface acceptance. |
 | [module-foundation.md](module-foundation.md) | Bundled/installable workflow registry, owned execution, private state and real-interface acceptance. |
 | [deep-research.md](deep-research.md) | Proposed durable Research mode: plan/Start, source-backed reports, recovery and versioned Design handoff. |
 | [native-web-tools.md](native-web-tools.md) | Native web feature ownership and independent real-testing scenarios. |

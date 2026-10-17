@@ -18,6 +18,10 @@ pub enum ClipboardDestination {
 )]
 #[derive(Debug)]
 pub enum Action {
+    ModuleResult {
+        generation: u64,
+        result: Result<serde_json::Value, String>,
+    },
     ClipboardWritten {
         operation: peritus_app_protocol::ControlOperationId,
         result: Result<ClipboardDestination, String>,
@@ -57,6 +61,10 @@ pub enum Action {
 )]
 #[derive(Clone, Debug)]
 pub enum Effect {
+    ModuleOperation {
+        generation: u64,
+        operation: peritus_modules::ModuleOperation,
+    },
     CopyText {
         operation: peritus_app_protocol::ControlOperationId,
         text: String,

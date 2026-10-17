@@ -8,6 +8,7 @@ Implementation pieces for `chat.rs`: Persistent conversational composer, explici
 
 | File | Role |
 | --- | --- |
+| [modules.rs](modules.rs) | Local market panel, installed/available selection and generic plugin-supplied actions. |
 | [binding.rs](binding.rs) | Reopen exact run destinations without retaining another conversation's input routing. |
 | [catalog.rs](catalog.rs) | Typed local command metadata. Only directly entered commands are executable intents. |
 | [commands.rs](commands.rs) | Small discoverable command vocabulary; unknown commands never reach the model. |

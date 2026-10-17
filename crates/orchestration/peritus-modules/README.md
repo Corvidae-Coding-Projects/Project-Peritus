@@ -1,16 +1,52 @@
-# Workflow modules
+# Native Rust plugins and workflow modules
 
-`peritus-modules` owns declarative module definitions, immutable installed packages,
-per-user enablement, and durable stage checkpoints. The product runner executes roles
-through Peritus's existing provider, permission, trace, and cancellation boundaries.
+`peritus-modules` owns validated definitions, immutable packages, per-user enablement,
+market discovery/installation, and existing declarative stage checkpoints. Native
+Rust feature code runs through the product runner's generic adapter to
+`peritus-plugin-host`; this crate contains no Deep Research implementation.
 
-Both bundled and separately installed modules use this contract. Installed modules
-start disabled, and updating a package disables it again. Reinstalling the exact
-original package repairs damaged installed bytes, preserves the damaged copy in a
-quarantine directory, and requires explicit enablement again. Enablement grants no tool
-permissions. A module cannot install executables, add tools, run shell commands, or
-widen the host's read/network permissions. Process/Wasm plugins in `crates/extensions`
-are a separate API and are not automatically loaded by these commands.
+The official market is https://github.com/Corvidae-Coding-Projects/Peritus-Module-Market.
+Open `/modules` in the TUI or **Modules** in the GUI. Refresh, install, explicitly enable,
+and select Use module. The executable supplies its own action menus. Native packages
+include a `[code]` ABI/target artifact/tool declaration instead of roles/stages. The
+market contains the Rust SDK, full Deep Research source, and a native code template.
+The initial prebuilt research artifact is Linux x86-64 GNU; other platforms need native
+artifacts and are not established by Linux testing.
+
+Installation runs no code, binds all declared resources by digest, and starts disabled.
+Updates also start disabled. Native code executes as the current OS account; agent
+requests borrow only declared host services under live permissions. This mediation
+is not an OS sandbox. Reinstalling an exact package can repair corrupt installed bytes
+while retaining them for diagnosis. Removing a selection keeps immutable history.
+
+```sh
+peritus modules refresh
+peritus modules market
+peritus modules install-market peritus.deep-research EXACT_DIGEST
+peritus modules enable peritus.deep-research
+peritus modules show peritus.deep-research
+```
+
+```text
+/modules
+/module peritus.deep-research YOUR QUESTION
+/module peritus.deep-research plan
+/module peritus.deep-research start EXACT_PLAN_DIGEST
+/module peritus.deep-research status
+/module peritus.deep-research show
+/module peritus.deep-research resume
+```
+
+Stop uses normal run controls. Native plugins own their checkpoints and resume rules.
+Deep Research waits for explicit Start, preserves completed stages, rejects stale plan
+approval, and supplies source/report paging and an explicit Use in Design attachment.
+Peritus supplies exact versioned attachment reads without inflating durable records.
+
+## Existing declarative workflow format
+
+Source brief and local data-only packages retain their prior contract and identity.
+These use host-interpreted roles/stages with read-only tools. They do not implement
+new native functions. Their earlier usage and minimal manifest follow.
 
 ```sh
 peritus modules list
@@ -74,10 +110,12 @@ exclusively owned job. It publishes complete artifact bytes before advancing the
 small checkpoint, and checks integrity on reopening and reading.
 
 The bundled **Source brief** exercises gathering → skeptical assessment → synthesis
-→ final fact checking. It is a working baseline workflow. The broader [Deep Research
-design](../../../.design/deep-research.md), including clarification, explicit Start,
-a structured evidence ledger, revision-bound final approval, and report integration,
-is a separate feature. Prompted skepticism does not establish factual truth.
+→ final fact checking as a declarative baseline. The installed native **Deep Research**
+plugin implements clarification, explicit Start, a structured source/admission ledger,
+exact-report checking and Design reuse in its own Rust crate. The broader
+[research roadmap](../../../.design/deep-research.md) retains richer source browsing,
+PDF extraction and sustained-duration campaigns. AI source assessment does not establish
+infallible factual truth.
 
 See [AGENTS.md](AGENTS.md), [foundation design](../../../.design/module-foundation.md),
 and [real-interface evidence](../../../docs/testing/module-foundation-real-2026-10-17.md).

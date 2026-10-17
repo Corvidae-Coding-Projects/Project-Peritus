@@ -85,6 +85,8 @@ struct QueryArgs {
     #[serde(default)]
     kind: String,
     #[serde(default)]
+    run: String,
+    #[serde(default)]
     project: String,
     #[serde(default)]
     session: String,
@@ -144,6 +146,14 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
         "facts" => daemon::ready_facts(&app, &app.project(&args.project)?).await?,
         "conversation" => daemon::conversation(&app, &args.session).await?,
         "models" => daemon::models(&app, &args.profile).await?,
+        "modules" => tokio::task::spawn_blocking(move || {
+            peritus_modules::Registry::for_user().and_then(|r| {
+                r.market_for_session((!args.run.is_empty()).then_some(args.run.as_str()))
+            })
+        })
+        .await
+        .map_err(problem)?
+        .map_err(problem)?,
         "runs" => daemon::runs(&app, u64::try_from(args.offset).map_err(problem)?).await?,
         "improvements" => daemon::improvements::list(&app, &args.project).await?,
         "consoles" => crate::consoles::list(&app)?,
@@ -249,6 +259,25 @@ async fn mutation_guard(app: &Arc<App>, input: &Value) -> Result<tokio::sync::Ow
 async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
     let string = |key: &str| input[key].as_str().unwrap_or("");
     match string("command") {
+        "modules" => {
+            let operation = string("action").to_owned();
+            let module = string("module").to_owned();
+            let digest = string("digest").to_owned();
+            tokio::task::spawn_blocking(move || {
+                let registry = peritus_modules::Registry::for_user()?;
+                match operation.as_str() {
+                    "refresh" => registry.refresh_market(),
+                    "install" => registry.install_market(&module, &digest),
+                    "enable" => registry.enable(&module, true),
+                    "disable" => registry.enable(&module, false),
+                    "remove" => registry.remove(&module),
+                    _ => Err(peritus_modules::Error::Invalid("Unknown module action".into())),
+                }
+            })
+            .await
+            .map_err(problem)?
+            .map_err(problem)
+        }
         "improvements" => daemon::improvements::action(app, input).await,
         "open-project" => Ok(json!(app.open_project(std::path::Path::new(string("root")))?)),
         "close-project" => {

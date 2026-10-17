@@ -412,6 +412,7 @@ impl AppModel {
         let output_target = (self.chat.run_id, self.chat.workbench.selected);
         let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
         let mut effects = match action {
+            Action::ModuleResult { generation, result } => self.module_result(generation, result),
             Action::ClipboardWritten { operation, result } => {
                 self.clipboard_written(operation, result)
             }

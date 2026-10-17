@@ -220,10 +220,11 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
   if(alias){const parsed=parseSlash(alias);if(parsed.kind==='command')return dispatch(parsed.name,[...parsed.args,...args],depth+1);}
   const command=commands.find(c=>c.id===id);if(!command)throw new Error(`Unknown command /${id}. Open the command directory with /help.`);
   ui.palette='';
-  if(id==='module'||id==='modules'){
+  if(id==='modules'){ui.overlay='modules';return;}
+  if(id==='module'){
     if(runActive(ui.conversations[ui.sessionId]?.run))throw new Error('Wait for the current workflow or stop it before issuing a module action. Your draft is retained.');
     ui.modes[ui.sessionId]='chat';ui.activeFile='';
-    ui.drafts[ui.sessionId]=id==='modules'?'/modules':`/module ${args.join(' ')}`;
+    ui.drafts[ui.sessionId]=`/${id} ${args.join(' ')}`;
     await sendMessage(true);return;
   }
   if(id==='design'){
