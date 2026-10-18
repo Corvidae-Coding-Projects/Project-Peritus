@@ -17,7 +17,6 @@ use super::{
 
 const BASE_DELAY_MILLIS: u64 = 250;
 const MAX_DELAY_MILLIS: u64 = 30_000;
-const MAX_ELAPSED_MILLIS: u64 = 120_000;
 const MAX_JITTER_MILLIONTHS: u32 = 250_000;
 
 /// One logical turn's retry horizon and stable jitter identity.
@@ -139,7 +138,10 @@ impl<'a> DeveloperRetryPlanner<'a> {
             attempt: u32::from(attempt.saturating_sub(1)),
             max_attempts: u32::from(self.maximum),
             elapsed_millis,
-            max_elapsed_millis: MAX_ELAPSED_MILLIS,
+            // Provider execution is not retry backoff. A long initial request must
+            // not consume its recovery attempts before its first failure. Attempts,
+            // cancellation, per-request deadlines and individual delays stay bounded.
+            max_elapsed_millis: u64::MAX,
             base_delay_millis: BASE_DELAY_MILLIS,
             max_delay_millis: MAX_DELAY_MILLIS,
             jitter_millionths: deterministic_jitter(self.request_prefix, self.turn, attempt),

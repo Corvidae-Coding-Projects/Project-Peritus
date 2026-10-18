@@ -1,0 +1,372 @@
+{
+  "status": "PASS_WITH_SCOPE_LIMITS",
+  "native_version": "1.4.0",
+  "native_sha256": "9d2451b98677026de880b9efc16f8bbb8d4651adb41506e9fc70c6fe042ee4d2",
+  "package_digest": "bc47f1367b75158c1817b78d2aec7026da9a891e8673da82c5c0afb16092ed1a",
+  "host_cli_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+  "host_daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+  "behavioral_receipts": {
+    "/tmp/peritus-research-inquiry-live-20261017/readback-audit.json": {
+      "sha256": "72804b62e05ae1b9cc9d5b28603723c1e1c5038c304480b92ae5e005b35ba76a",
+      "receipt": {
+        "status": "PASS",
+        "exact_host_origins": [
+          {
+            "client_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+            "daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+            "daemon_pid": "3789779"
+          },
+          {
+            "client_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+            "daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+            "daemon_pid": "3790231"
+          }
+        ],
+        "host_upgrade_explicitly_allowed": false,
+        "scope": "Committed workflow and actual terminal readbacks; semantic audit separate",
+        "report_digest": "2ad6de72b65a1308f067c1acbd5d3f70f16add1d79eca1dbbe3762b971970d86",
+        "review_digest": "ddec2c79508606cec7992827e8f9859472fa543ea6feab311fab6f3c8e4758ef",
+        "citations": 77,
+        "approved_exact_digest_checks": 77,
+        "synthesis_words": 2777,
+        "rendered_words": 8268,
+        "rendered_bytes": 68279,
+        "report_page_exact": true,
+        "all_report_pages_exact": true,
+        "evidence_quote_exact": true,
+        "inquiry_state_readback": true,
+        "checked_report_survived_fresh_daemon": true,
+        "ordinary_chat_exact_marker": true,
+        "workspace_canary_unchanged": true,
+        "origins": [
+          {
+            "client_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+            "daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+            "daemon_pid": "3789779"
+          },
+          {
+            "client_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+            "daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+            "daemon_pid": "3790231"
+          }
+        ]
+      }
+    },
+    "/tmp/peritus-research-inquiry-live-20261017/continuous-live-receipt.json": {
+      "sha256": "93629e72ab8fc12ca7bb4d5c91db8cf32b70a254da5f93cbae9bc8302da2d38e",
+      "receipt": {
+        "status": "PASS",
+        "run": "bf65f3d8cd62cef14bf469d2966e4bcb",
+        "package": "bc47f1367b75158c1817b78d2aec7026da9a891e8673da82c5c0afb16092ed1a",
+        "observations": [
+          {
+            "command": "/module peritus.deep-research sicko",
+            "phase": 2,
+            "episode": {
+              "schema": 1,
+              "workflow_version": 2,
+              "direction": "Remake this overview with a substantive Controversies and criticism section. Reuse the saved corpus and report, especially full original FTX warning and sexual-misconduct investigations; preserve actual alleged conduct and actors rather than reporting-method metadata. Give the FTX collapse and prior warnings appropriate substance. Search live for material missing cases and relevant adjacent networks: LessWrong and Eliezer Yudkowsky; Aella and Lighthaven allegations; AI-policy lobbying and regulatory-capture criticism. These are user-provided leads, not established facts. Establish relevant connections and distinguish communities, do not infer guilt by association or treat consensual unconventional behavior as abuse. Report what accusations and criticisms ARE, who made them, responses and documented outcomes, not decide whether underlying accusations are true. The subject is a source for its response, not the authority on its own exoneration. Retain the useful existing overview, adding and correcting case evidence; avoid redoing unrelated intervention research. Do not spend time exhaustively processing optional candidates. Produce a readable report with exact source support and honest gaps, then check it.",
+              "continuous": true,
+              "paused": false,
+              "last_published_report": "2ad6de72b65a1308f067c1acbd5d3f70f16add1d79eca1dbbe3762b971970d86",
+              "pending_inspection": null,
+              "task": "Research effective altruism and give me a source-backed overview.",
+              "phase": 1,
+              "round": 8,
+              "feedback": "The report checkpoint has been presented. Continue useful research under current steering: inspect the retained inquiry frontier, select consequential unresolved questions or deeper competing explanations, and update the report when warranted. Do not redo settled provenance. Optional depth can continue, but publish coherent checkpoints rather than withholding all output until exhaustion. User pause/stop takes priority.",
+              "last_incomplete": null,
+              "followup_handled": "e0364c15561c37d2e977e990c205ae65b843aeee766c38a8b8781cde2d4fc332",
+              "delivery_requested": false
+            },
+            "summary": ""
+          },
+          {
+            "command": "/module peritus.deep-research steer Investigate the saved policy controversy and named responses; preserve attribution uncertainty. This is a disposable control replay, retain the existing report.",
+            "phase": 1,
+            "episode": {
+              "schema": 1,
+              "workflow_version": 2,
+              "direction": "Investigate the saved policy controversy and named responses; preserve attribution uncertainty. This is a disposable control replay, retain the existing report.",
+              "continuous": true,
+              "paused": false,
+              "last_published_report": "2ad6de72b65a1308f067c1acbd5d3f70f16add1d79eca1dbbe3762b971970d86",
+              "pending_inspection": null,
+              "task": "Research effective altruism and give me a source-backed overview.",
+              "phase": 1,
+              "round": 10,
+              "feedback": "Continue from saved work under the current user direction. Preserve the approved scope, investigate consequential unfinished questions and publish useful report checkpoints rather than exhausting optional leads.",
+              "last_incomplete": null,
+              "followup_handled": "e0364c15561c37d2e977e990c205ae65b843aeee766c38a8b8781cde2d4fc332",
+              "delivery_requested": false
+            },
+            "summary": ""
+          }
+        ],
+        "origins": [
+          {
+            "client_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+            "daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+            "daemon_pid": "3793219"
+          },
+          {
+            "client_sha256": "05707565431c545f29da25a71cb766170da7dde2893e261810592d72dfa79460",
+            "daemon_sha256": "daaf17b21ed0dedcc783cfcaddde71fe7b4d2b9097b958fd98605e59cdefd023",
+            "daemon_pid": "3794961"
+          }
+        ],
+        "steps": [
+          {
+            "command": "/module peritus.deep-research normal",
+            "phase": 11,
+            "summary": "Research paused; mode: normal. Evidence, direction and report checkpoints are saved. Resume continues the retained work."
+          },
+          {
+            "command": "/module peritus.deep-research resume",
+            "phase": 11,
+            "summary": "# Effective altruism: ideas, institutions, evidence and accountability\n\nSource-checked report (AI assessment; limitation"
+          },
+          {
+            "command": "/module peritus.deep-research status",
+            "phase": 11,
+            "summary": "Research status\nMode: normal\nPaused: false\nEpisode: 4ab028f380a8bd837b4c316aaa148901f2fc88ca8c181cf3eae7e2b209b4cb9e\nCom"
+          },
+          {
+            "command": "/module peritus.deep-research pause",
+            "phase": 11,
+            "summary": "Research paused; mode: Sicko (continuous). Evidence, direction and report checkpoints are saved. Resume continues the re"
+          },
+          {
+            "command": "/module peritus.deep-research pause",
+            "phase": 11,
+            "summary": "Research paused; mode: Sicko (continuous). Evidence, direction and report checkpoints are saved. Resume continues the re"
+          },
+          {
+            "command": "/module peritus.deep-research status",
+            "phase": 11,
+            "summary": "Research status\nMode: Sicko (continuous)\nPaused: true\nEpisode: 4ab028f380a8bd837b4c316aaa148901f2fc88ca8c181cf3eae7e2b20"
+          },
+          {
+            "command": "/module peritus.deep-research checkpoint",
+            "phase": 11,
+            "summary": "# Effective altruism: ideas, institutions, evidence and accountability\n\nSource-checked report (AI assessment; limitation"
+          }
+        ],
+        "latest_checkpoint_retained": true,
+        "actual_continuation_web_search": true,
+        "steering_retained": true,
+        "paused_across_daemon_restart": true,
+        "approved_plan_digest_unchanged": true,
+        "scope": "Actual TUI, daemon, official live provider and real web search; bounded owned control campaign, not proof of indefinite uptime."
+      }
+    },
+    "/tmp/peritus-research-inquiry-live-20261017/gui-continuous-receipt.json": {
+      "sha256": "75da9ad9a066993b49dd1c617bb3e5293874763c20272e1d965f9e2daf92a078",
+      "receipt": {
+        "status": "PASS",
+        "observed_unix": 1792294296.2725997,
+        "package": "bc47f1367b75158c1817b78d2aec7026da9a891e8673da82c5c0afb16092ed1a",
+        "native_sha256": "9d2451b98677026de880b9efc16f8bbb8d4651adb41506e9fc70c6fe042ee4d2",
+        "checks": {
+          "gui-steer-observation": {
+            "phase": 2,
+            "inputs": 29,
+            "mode": true,
+            "paused": false,
+            "round": 12,
+            "direction": "For this disposable GUI control test, investigate the retained FTX response and preserve attribution uncertainty. Keep the existing report and approved plan.",
+            "latest": [
+              "Module command accepted",
+              "I'm moving on to the implementation.",
+              "Requesting model gpt-6.1-sol \u00b7 effort high"
+            ],
+            "observed_unix": 1792294179.1696517
+          },
+          "gui-active-status-observation": {
+            "phase": 2,
+            "inputs": 30,
+            "incorporated": 30,
+            "paused": false,
+            "round": 13,
+            "pending_inspection": null,
+            "latest": [
+              [
+                2,
+                "Native module paused for new user input; saved work was retained."
+              ],
+              [
+                4,
+                "Idle \u2014 ready for your next message"
+              ],
+              [
+                4,
+                "Module command accepted"
+              ],
+              [
+                2,
+                "Research status\nMode: Sicko (continuous)\nPaused: false\nEpisode: 4ab028f380a8bd837b4c316aaa148901f2fc88ca8c181cf3eae7e2b209b4cb9e\nCommitted stages: 1 of 6\nApproved: true\nSource-chec"
+              ],
+              [
+                4,
+                "Requesting model gpt-6.1-sol \u00b7 effort high"
+              ]
+            ],
+            "observed_unix": 1792294198.562534
+          },
+          "gui-pause-observation": {
+            "phase": 11,
+            "inputs": 31,
+            "incorporated": 31,
+            "continuous": true,
+            "paused": true,
+            "round": 14,
+            "summary": "Research paused; mode: Sicko (continuous). Evidence, direction and report checkpoints are saved. Resume continues the retained work.",
+            "last_status": "Idle \u2014 ready for your next message",
+            "observed_unix": 1792294237.3198798
+          },
+          "gui-attachment-observation": {
+            "observed_unix": 1792294259.6958532,
+            "phase": 11,
+            "paused": true,
+            "attachment": {
+              "bytes": 68582,
+              "name": "Deep Research report checkpoint",
+              "schema": 1,
+              "sha256": "069d1cb9d9ec19f5aa4503a70a17209850480f875224556cc42eb3c1bf30a9c6"
+            },
+            "exact_final_report_bytes": true,
+            "summary": "The latest source-checked report checkpoint (2ad6de72b65a1308f067c1acbd5d3f70f16add1d79eca1dbbe3762b971970d86) is ready for Design. It is an immutable checkpoint; any newer research remains in progress. Attaching it does not start implementation. Research is paused for this Design handoff; Resume research continues it."
+          }
+        },
+        "editable_steer_prefix_observed_in_real_composer": true,
+        "read_only_status_published_and_continued": true,
+        "active_pause_menu_command_applied": true,
+        "exact_checked_design_attachment_and_persisted_pause": true,
+        "menu_loaded_after_reconnect_without_reopening": true,
+        "frontend_manifest_sha256": "dceaa0aa02758fe13fe2b410afd4c215f174f9384b5e2e32f61d6fb43b7e7f12",
+        "screenshots": [
+          "gui-continuous-menu.jpg",
+          "gui-report-handoff.jpg"
+        ],
+        "scope": "Actual user-opened Chrome page via extension automation, own gateway/daemon, copied campaign state. No production daemon or user project modified."
+      }
+    },
+    "/tmp/peritus-research-inquiry-live-20261017/continuous-cleanup.json": {
+      "sha256": "90363db82010caa90da59779b93bc01e9c9be5aa66f32cafb832abf9bf56047b",
+      "receipt": {
+        "owned_pid": "3794961",
+        "shutdown_exit": 0,
+        "diagnostic": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0\n",
+        "protected_pid": "2328452",
+        "protected_process_still_present": true
+      }
+    },
+    "/tmp/peritus-research-1.4.0-replays/installed-final-continuous/receipt.json": {
+      "sha256": "3893ba50403c9427ddf59338b81460d5edc11e074f1a54f9fb4327e0aa279a26",
+      "receipt": {
+        "status": "PASS",
+        "native_sha256": "9d2451b98677026de880b9efc16f8bbb8d4651adb41506e9fc70c6fe042ee4d2",
+        "normal_default_and_termination": true,
+        "read_only_inspection_publishes_then_continues": true,
+        "publish_before_continue_and_exact_ack": true,
+        "fresh_process_pending_checkpoint_replayed": true,
+        "steering_survives_restart": true,
+        "pause_rejects_old_role_operations": true,
+        "three_actual_coordinator_cycles": [
+          "research-4ab028f380a8bd83-checkpoint-10-2ad6de72b65a1308",
+          "research-4ab028f380a8bd83-checkpoint-11-2ad6de72b65a1308",
+          "research-4ab028f380a8bd83-checkpoint-12-2ad6de72b65a1308"
+        ],
+        "latest_checked_artifact_and_explicit_design_reuse": true,
+        "active_design_handoff_explicitly_pauses": true,
+        "two_actual_checked_versions_keep_pagination_and_evidence_bound": {
+          "first": "2ad6de72b65a1308f067c1acbd5d3f70f16add1d79eca1dbbe3762b971970d86",
+          "second": "747c4450cdf180c0684d29ff539e8ca4bc0882c50e3c179b11813a109a2a750b"
+        },
+        "single_section_heading_and_nonempty_source_labels": true,
+        "original_canonical_candidates_admissions_reviews_reports_unchanged": 182,
+        "live_provider_calls": 0,
+        "new_http_calls": 0,
+        "scope": "Actual native coordinator on a completed real report copy. Repeated stages reuse valid saved outputs; no fresh research, provider inference or HTTP behavior claimed."
+      }
+    },
+    "/tmp/peritus-attribution-friction-replay-20261017/installed-final/receipt.json": {
+      "sha256": "ed22c339867a80efc269d99305c1f53cefdc969e944e91b2808c7405fe786df8",
+      "receipt": {
+        "observed_unix": 1792294062.8436403,
+        "status": "PASS",
+        "expect_fixed": true,
+        "initialized_plugin_version": "1.4.0",
+        "binary": "/home/doll/Peritus-Module-Market/target/release/peritus-deep-research",
+        "binary_sha256": "9d2451b98677026de880b9efc16f8bbb8d4651adb41506e9fc70c6fe042ee4d2",
+        "copied_state": "/tmp/peritus-attribution-friction-replay-20261017/installed-final/state",
+        "source_state_never_invoked": "/tmp/peritus-research-inquiry-live-20261017/instance/state/peritus/daemon/product-runs/bf65f3d8cd62cef14bf469d2966e4bcb.modules/native-peritus.deep-research-85f169e1ce75b39a1795560382c1140570e5d2fbc79548b4e193ca4788da516d/state",
+        "checks": [
+          {
+            "label": "native initialize ready",
+            "pass": true
+          },
+          {
+            "label": "actual public reassess requests assessor",
+            "pass": true
+          },
+          {
+            "label": "actual byte39 title mismatch remains rejected",
+            "pass": true
+          },
+          {
+            "label": "bad offset diagnosis names already observed byte38 without new read",
+            "pass": true
+          },
+          {
+            "label": "unqualified attributed statement remains rejected",
+            "pass": true
+          },
+          {
+            "label": "correct exact unclear attribution accepted",
+            "pass": true
+          },
+          {
+            "label": "unclear relationship preserved without false reclassification",
+            "pass": true
+          },
+          {
+            "label": "attribution-only scope and qualified decision preserved",
+            "pass": true
+          },
+          {
+            "label": "fresh native process initializes",
+            "pass": true
+          },
+          {
+            "label": "actual public reassess requests assessor",
+            "pass": true
+          },
+          {
+            "label": "fresh native process reads exact preserved attribution",
+            "pass": true
+          }
+        ],
+        "helper_checks": 4,
+        "helper_failures": [],
+        "provider_inference_calls": 0,
+        "web_calls": 0,
+        "scope": "Actual native executable framed IPC; genuine retained arguments/read/candidate records. No model/provider output or HTTP observations fabricated. Reassessment only in disposable copied state."
+      }
+    }
+  },
+  "research_quality": {
+    "report_digest": "2ad6de72b65a1308f067c1acbd5d3f70f16add1d79eca1dbbe3762b971970d86",
+    "focused_user_steered_remake": "PASS",
+    "broader_frozen_v2": "PARTIAL",
+    "prior_neutral_campaigns": "FAIL retained",
+    "new_neutral_discovery_pass_claimed": false
+  },
+  "scope_limits": [
+    "Native coordinator replays reuse genuine retained observations and explicit controlled report variants; no fresh inference/HTTP is claimed by those consumers.",
+    "Live mode tests use the actual TUI/daemon/provider/web plus user-opened GUI in isolated copied state. They are bounded control campaigns, not multi-hour or indefinite-uptime evidence.",
+    "Current platform exercised: Linux x86-64. No all-provider, all-platform or whole-application coverage claim."
+  ],
+  "unit_or_formal_suites_run": false,
+  "outside_archive": "/home/doll/Research/Peritus/effective-altruism-2026-10-17",
+  "publication": "Local working changes; not committed/pushed or globally deployed by this campaign."
+}

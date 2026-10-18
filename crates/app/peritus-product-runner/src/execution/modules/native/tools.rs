@@ -13,6 +13,7 @@ pub(super) struct NativeTools<'a> {
     input: &'a ProductRunInput,
     request: &'a ModuleAgentRequest,
     workspace: WorkspaceDeveloperTools,
+    completed: bool,
 }
 impl<'a> NativeTools<'a> {
     pub(super) fn new(
@@ -28,6 +29,7 @@ impl<'a> NativeTools<'a> {
                 WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
                     .with_task_contract(&request.prompt),
             ),
+            completed: false,
         }
     }
     pub(super) fn definitions(
@@ -69,6 +71,9 @@ impl<'a> NativeTools<'a> {
     }
 }
 impl DeveloperToolExecutor for NativeTools<'_> {
+    fn yields_to_host(&self) -> bool {
+        self.completed
+    }
     fn system_guidance(&mut self) -> Option<String> {
         self.workspace.system_guidance()
     }
@@ -125,6 +130,10 @@ impl DeveloperToolExecutor for NativeTools<'_> {
         if self.request.functions.iter().any(|f| f.name == name) {
             let result=self.runtime.call_sync(self.input,"tool",json!({"key":self.request.key,"name":name,"arguments_json":std::str::from_utf8(call.arguments().canonical_bytes()).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?})).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?;
             let is_error = result.get("error").is_some();
+            // Only a successful plugin-defined operation may commit its own stage.
+            // Host web results cannot request this handoff. The coordinator still
+            // validates its durable output before advancing to another stage.
+            self.completed = !is_error && result["request_complete"] == true;
             return crate::developer_tools::module_observation(&result, is_error);
         }
         if !self.request.tools.iter().any(|t| t == name) {

@@ -11,6 +11,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 | [module-market.md](module-market.md) | Market/research ownership, delivery boundaries and real-interface acceptance. |
 | [module-foundation.md](module-foundation.md) | Bundled/installable workflow registry, owned execution, private state and real-interface acceptance. |
 | [deep-research.md](deep-research.md) | Proposed durable Research mode: plan/Start, source-backed reports, recovery and versioned Design handoff. |
+| [deep-research-inquiry-loop.md](deep-research-inquiry-loop.md) | Research-quality repair: adaptive evidence models, interested-source provenance, substantive answer criteria and independent real-output acceptance. |
 | [native-web-tools.md](native-web-tools.md) | Native web feature ownership and independent real-testing scenarios. |
 | [keep-working-retained-state.md](keep-working-retained-state.md) | Retained-state growth, compatibility, paging, and real-operation contract. |
 | [interactive-design-mode.md](interactive-design-mode.md) | Design mode's conversational experience, durable Markdown contract, client routing, and implementation handoff. |

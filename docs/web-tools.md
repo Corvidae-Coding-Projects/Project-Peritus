@@ -24,6 +24,10 @@ The endpoint must support SearXNG JSON (`search.formats: [html, json]`). Externa
 
 The model receives four tools:
 
+`web_read` returns text without repeating the outgoing link catalog by default. Set
+`include_links=true` at offset zero to retrieve those retained links. `web_open` still includes
+links by default; either tool accepts `include_links=false` for focused text reading.
+
 | Tool | Behavior |
 | --- | --- |
 | `web_search` | Discover URLs/snippets immediately, with optional native engine selection; external SearXNG additionally supports pages/date/language filters. |
@@ -33,7 +37,7 @@ The model receives four tools:
 
 Native opens reuse snapshots for 15 minutes and report cache reuse. `refresh=true` fetches new content; previous source references retain their exact original extracted text. Search query caching lasts two minutes with at most 128 entries. Durable source evidence is not silently evicted or limited by a total-size quota. It lives under `web/sources` in the Peritus data directory; archive it before removing old files if historical references matter.
 
-`web_open render=true` uses the existing isolated Playwright runtime for JavaScript content. Install it with `peritus automation setup`. Rendering uses a temporary clean context, blocks non-HTTP(S) requests, closes unsolicited popups, dismisses dialogs and closes its browser afterward. A dedicated run-owned reader keeps web timeouts separate from interactive GUI sessions; a stalled reader is canceled at the controller RPC deadline and a later read opens a fresh one. It never attaches to personal profiles. The model can set `wait_ms` up to five seconds for delayed content. Prefer native reads for ordinary documents.
+`web_open render=true` uses the isolated Playwright runtime for JavaScript content. Native installation provisions it automatically on Linux, macOS, and Windows; portable and system-package installs prepare it on first interactive launch. `peritus automation setup` repairs the runtime. Rendering uses a temporary clean context, blocks non-HTTP(S) requests, closes unsolicited popups, dismisses dialogs and closes its browser afterward. A dedicated run-owned reader keeps web timeouts separate from interactive GUI sessions; a stalled reader is canceled at the controller RPC deadline and a later read opens a fresh one. It never attaches to personal profiles. The model can set `wait_ms` up to five seconds for delayed content. Prefer native reads for ordinary documents.
 
 Network opens/search need Read and Network permissions. Retained reads/find need Read only. Rendering additionally needs Process. Revocation cannot be bypassed by a cached result. These read tools do not grant workspace writes, browser interactions, file uploads or profile access. Page text and search snippets are untrusted evidence, and the role instructions require actual source reads and citations.
 

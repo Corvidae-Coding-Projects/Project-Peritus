@@ -45,7 +45,7 @@ pub(crate) fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, E
             .and_then(|v| v.to_str().ok())
             .unwrap_or("unspecified");
         return Err(invalid(format!(
-            "HTTP {} from {}; Retry-After: {retry}. For SearXNG, enable JSON in search.formats; public instances may deny API access.",
+            "HTTP {} from {}; Retry-After: {retry}.",
             status.as_u16(),
             response.url()
         )));
@@ -148,7 +148,9 @@ pub(crate) fn search(
             }
         }
     }
-    let downloaded = get(url.as_str(), cancelled)?;
+    let downloaded = get(url.as_str(), cancelled).map_err(|e| invalid(format!(
+        "SearXNG search request failed: {e}. Enable JSON in search.formats; public instances may deny API access."
+    )))?;
     let response: Value = serde_json::from_str(&downloaded.text).map_err(|_| invalid("SearXNG did not return JSON; enable search.formats: [html, json] or run peritus web setup"))?;
     let results = response["results"]
         .as_array()

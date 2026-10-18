@@ -17,6 +17,17 @@ pub enum ModuleAction {
         #[serde(default)]
         attachment: Option<ModuleAttachment>,
     },
+    /// Publish durable progress without ending a user-selected long-running module.
+    /// Requires a host supporting `checkpoint` and the `checkpoint_ack` service.
+    Checkpoint {
+        /// Stable publication identity; acknowledgement must echo it exactly.
+        key: String,
+        /// Human-readable Markdown retained in the conversation before acknowledgement.
+        text: String,
+        /// Actions available while the coordinator continues working.
+        #[serde(default)]
+        actions: Vec<ModuleMenuAction>,
+    },
     /// Ask the host to execute one selected agent with borrowed host tools.
     Model {
         /// Durable module-owned request identity and instructions.

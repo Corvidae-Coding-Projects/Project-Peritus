@@ -1,0 +1,271 @@
+{
+  "delivery": {
+    "status": "PASS",
+    "scope": "Actual native workflow using real archived observations; no live inference/HTTP/semantic deep-research pass claimed.",
+    "native_sha256": "4c8513a908f8d919db29cf2fc139b87b427877de7f4439961d287ff0db6d0e04",
+    "declared_position_accepts_qualified_first_party": true,
+    "independent_truth_not_claimed": true,
+    "full_native_stage_handoffs": true,
+    "current_digest_review": true,
+    "fresh_process_report_exact": true,
+    "source_role_visible": true,
+    "checked_design_attachment_preserved": true,
+    "cross_question_evidence_reused_in_inquiry_and_report": true,
+    "unused_candidate_need_not_be_assessed": true,
+    "deferred_optional_detail_keeps_partial_status": true,
+    "finish_restricts_discovery_and_persists_across_process": true,
+    "final_exact_citation_checks_still_required": true
+  },
+  "native": {
+    "status": "PASS",
+    "scope": "Actual framed native IPC on copies of real research. Structural integrity/recovery only; no live inference, HTTP or semantic quality pass claimed.",
+    "native_sha256": "4c8513a908f8d919db29cf2fc139b87b427877de7f4439961d287ff0db6d0e04",
+    "results": [
+      {
+        "legacy_quality_approval_not_inherited": true,
+        "prior_report_readable": true,
+        "approved_plan_digest_preserved": true,
+        "legacy_assessments_pending": 21
+      },
+      {
+        "self_report_cannot_close_independent_inquiry": true,
+        "self_report_cannot_close_coverage": true,
+        "external_host_cannot_launder_first_party": true,
+        "evolving_open_inquiry_saved_without_stage_completion": true
+      },
+      {
+        "fresh_native_process_recovers_open_inquiry": true,
+        "followup_routes_material_question_to_gather": true,
+        "uninvestigated_gap_rejected": true,
+        "fabricated_search_attempt_rejected": true,
+        "original_candidates_unchanged": true
+      },
+      {
+        "early_overall_rejection_needs_no_fake_completed_citations": true,
+        "concrete_correction_routes_to_synthesis": true
+      }
+    ]
+  },
+  "semantic_quality": "PENDING actual report and independent unchanged v2 rubric audit",
+  "delivery_v1.2": "FAIL: 73 minutes, 764 tools, zero reports",
+  "current_native_1.3.1": {
+    "native-v131": {
+      "status": "PASS",
+      "scope": "Actual framed native IPC on copies of real research. Structural integrity/recovery only; no live inference, HTTP or semantic quality pass claimed.",
+      "native_sha256": "33065ddc23577637dc68201823cec7ba367b8d8d1157bc5c1bb968520d806c18",
+      "results": [
+        {
+          "legacy_quality_approval_not_inherited": true,
+          "prior_report_readable": true,
+          "approved_plan_digest_preserved": true,
+          "legacy_assessments_pending": 21
+        },
+        {
+          "compact_index_preserves_all_current_ids_and_selected_exact_detail": true,
+          "inspection_measurement": {
+            "admissions": {
+              "pages": 9,
+              "bytes": 87579,
+              "ids": [
+                "0a5ab0a2e0614c236837ac47567b57e50534b304c3ea020c4cc2107f8c47bb4e",
+                "3451ebdd6e98a8d3cd96b9119ffd3465a5421eb3db4bfbc32d0a317469617247",
+                "47570262e6b6c9c5a9df29e1eb8430a3ec7cd9c72a52d7e8fe06ffd1b133ede6",
+                "48f8082bcb4275e031894c088b3f0ba12cbc4019ff7e57a2da4a2daf4d2816ec",
+                "cd9504bf7bb811b6a7bff2ea0ccd13baddb354cd1baabafc2a04fcc44ac7ebf1",
+                "e1e284bb6f1168c8ebae84e81c10d1c1b317241dcdae19038998345eabcc055c",
+                "37d61fa153c3aee6d788cd731746470522fbc0ba578ef9d4fd059614e4a93850",
+                "81fa00b32100d4784a3ae21431f277e59c82229baecd55a4005d7895537f41d3",
+                "8374af5ad177254995b3c01243d9ac71401adee90227a0e87903a64e39e4ace5",
+                "7bceb47ab293ea18fffa12c7d98abdae3ae8ed75602465d000b83814be9fdb1b",
+                "cec1818dcf0d7cba4d328ee4d6483df75e750b8f92db3f59cc021c66b2a0fabe",
+                "55c5df5ea99a5674b73bdb2d325505e90360b63806a11a932caba1c387918a3f",
+                "cb8b8e70713d33e06d0d16eca944c52484264089b657597b7f273a3091f5921d",
+                "793b705110240dcae7190ef976252fde396dec79f3518405799fe2b77bddf772",
+                "d589e25d74a1df7047b9dc0cbac1f15a16eb7b0f7032db9acb0d6377e2fc1f83",
+                "757ef4c4964d61ad0f846695b85d6e4deba4ae1560187faef1d51a5f3b5cca74",
+                "321e896baf8a1d2592acdf9082bb56588a328789919dc7aa88737732565c1cbd",
+                "787f94f41cd5bd1e0227f1f599abfb8db3ebce52bb70bc3e5d209bbe6343abd4",
+                "5586325cb9a2a7952653ddac2dd6d6373fa7e22300e9d8795066ee70adfb651e",
+                "eb527dc1885ec94433bf3f7c41e066e232bdb5c718153bd1a1491571ac553d70",
+                "24138ab4a192a950f654dece33b7709ec4c0f216a8ea526bf7d6af7a4cb804db"
+              ]
+            },
+            "admission_index": {
+              "pages": 2,
+              "bytes": 13708,
+              "ids": [
+                "0a5ab0a2e0614c236837ac47567b57e50534b304c3ea020c4cc2107f8c47bb4e",
+                "3451ebdd6e98a8d3cd96b9119ffd3465a5421eb3db4bfbc32d0a317469617247",
+                "47570262e6b6c9c5a9df29e1eb8430a3ec7cd9c72a52d7e8fe06ffd1b133ede6",
+                "48f8082bcb4275e031894c088b3f0ba12cbc4019ff7e57a2da4a2daf4d2816ec",
+                "cd9504bf7bb811b6a7bff2ea0ccd13baddb354cd1baabafc2a04fcc44ac7ebf1",
+                "e1e284bb6f1168c8ebae84e81c10d1c1b317241dcdae19038998345eabcc055c",
+                "37d61fa153c3aee6d788cd731746470522fbc0ba578ef9d4fd059614e4a93850",
+                "81fa00b32100d4784a3ae21431f277e59c82229baecd55a4005d7895537f41d3",
+                "8374af5ad177254995b3c01243d9ac71401adee90227a0e87903a64e39e4ace5",
+                "7bceb47ab293ea18fffa12c7d98abdae3ae8ed75602465d000b83814be9fdb1b",
+                "cec1818dcf0d7cba4d328ee4d6483df75e750b8f92db3f59cc021c66b2a0fabe",
+                "55c5df5ea99a5674b73bdb2d325505e90360b63806a11a932caba1c387918a3f",
+                "cb8b8e70713d33e06d0d16eca944c52484264089b657597b7f273a3091f5921d",
+                "793b705110240dcae7190ef976252fde396dec79f3518405799fe2b77bddf772",
+                "d589e25d74a1df7047b9dc0cbac1f15a16eb7b0f7032db9acb0d6377e2fc1f83",
+                "757ef4c4964d61ad0f846695b85d6e4deba4ae1560187faef1d51a5f3b5cca74",
+                "321e896baf8a1d2592acdf9082bb56588a328789919dc7aa88737732565c1cbd",
+                "787f94f41cd5bd1e0227f1f599abfb8db3ebce52bb70bc3e5d209bbe6343abd4",
+                "5586325cb9a2a7952653ddac2dd6d6373fa7e22300e9d8795066ee70adfb651e",
+                "eb527dc1885ec94433bf3f7c41e066e232bdb5c718153bd1a1491571ac553d70",
+                "24138ab4a192a950f654dece33b7709ec4c0f216a8ea526bf7d6af7a4cb804db"
+              ]
+            }
+          }
+        },
+        {
+          "self_report_cannot_close_independent_inquiry": true,
+          "self_report_cannot_close_coverage": true,
+          "external_host_cannot_launder_first_party": true,
+          "evolving_open_inquiry_saved_without_stage_completion": true
+        },
+        {
+          "fresh_native_process_recovers_open_inquiry": true,
+          "followup_routes_material_question_to_gather": true,
+          "uninvestigated_gap_rejected": true,
+          "fabricated_search_attempt_rejected": true,
+          "original_candidates_unchanged": true
+        },
+        {
+          "early_overall_rejection_needs_no_fake_completed_citations": true,
+          "concrete_correction_routes_to_synthesis": true
+        }
+      ]
+    },
+    "delivery-v131": {
+      "status": "PASS",
+      "scope": "Actual native workflow using real archived observations; no live inference/HTTP/semantic deep-research pass claimed.",
+      "native_sha256": "33065ddc23577637dc68201823cec7ba367b8d8d1157bc5c1bb968520d806c18",
+      "declared_position_accepts_qualified_first_party": true,
+      "independent_truth_not_claimed": true,
+      "full_native_stage_handoffs": true,
+      "current_digest_review": true,
+      "fresh_process_report_exact": true,
+      "source_role_visible": true,
+      "checked_design_attachment_preserved": true,
+      "cross_question_evidence_reused_in_inquiry_and_report": true,
+      "unused_candidate_need_not_be_assessed": true,
+      "deferred_optional_detail_keeps_partial_status": true,
+      "finish_restricts_discovery_and_persists_across_process": true,
+      "final_exact_citation_checks_still_required": true
+    }
+  },
+  "current_native_1.3.2": {
+    "native-v132": {
+      "status": "PASS",
+      "scope": "Actual framed native IPC on copies of real research. Structural integrity/recovery only; no live inference, HTTP or semantic quality pass claimed.",
+      "native_sha256": "386c454f213ac6db91e6a072c2473fe501a4160573670ff20198f0d36030f878",
+      "results": [
+        {
+          "legacy_quality_approval_not_inherited": true,
+          "prior_report_readable": true,
+          "approved_plan_digest_preserved": true,
+          "legacy_assessments_pending": 21
+        },
+        {
+          "compact_index_preserves_all_current_ids_and_selected_exact_detail": true,
+          "inspection_measurement": {
+            "admissions": {
+              "pages": 9,
+              "bytes": 87579,
+              "ids": [
+                "0a5ab0a2e0614c236837ac47567b57e50534b304c3ea020c4cc2107f8c47bb4e",
+                "3451ebdd6e98a8d3cd96b9119ffd3465a5421eb3db4bfbc32d0a317469617247",
+                "47570262e6b6c9c5a9df29e1eb8430a3ec7cd9c72a52d7e8fe06ffd1b133ede6",
+                "48f8082bcb4275e031894c088b3f0ba12cbc4019ff7e57a2da4a2daf4d2816ec",
+                "cd9504bf7bb811b6a7bff2ea0ccd13baddb354cd1baabafc2a04fcc44ac7ebf1",
+                "e1e284bb6f1168c8ebae84e81c10d1c1b317241dcdae19038998345eabcc055c",
+                "37d61fa153c3aee6d788cd731746470522fbc0ba578ef9d4fd059614e4a93850",
+                "81fa00b32100d4784a3ae21431f277e59c82229baecd55a4005d7895537f41d3",
+                "8374af5ad177254995b3c01243d9ac71401adee90227a0e87903a64e39e4ace5",
+                "7bceb47ab293ea18fffa12c7d98abdae3ae8ed75602465d000b83814be9fdb1b",
+                "cec1818dcf0d7cba4d328ee4d6483df75e750b8f92db3f59cc021c66b2a0fabe",
+                "55c5df5ea99a5674b73bdb2d325505e90360b63806a11a932caba1c387918a3f",
+                "cb8b8e70713d33e06d0d16eca944c52484264089b657597b7f273a3091f5921d",
+                "793b705110240dcae7190ef976252fde396dec79f3518405799fe2b77bddf772",
+                "d589e25d74a1df7047b9dc0cbac1f15a16eb7b0f7032db9acb0d6377e2fc1f83",
+                "757ef4c4964d61ad0f846695b85d6e4deba4ae1560187faef1d51a5f3b5cca74",
+                "321e896baf8a1d2592acdf9082bb56588a328789919dc7aa88737732565c1cbd",
+                "787f94f41cd5bd1e0227f1f599abfb8db3ebce52bb70bc3e5d209bbe6343abd4",
+                "5586325cb9a2a7952653ddac2dd6d6373fa7e22300e9d8795066ee70adfb651e",
+                "eb527dc1885ec94433bf3f7c41e066e232bdb5c718153bd1a1491571ac553d70",
+                "24138ab4a192a950f654dece33b7709ec4c0f216a8ea526bf7d6af7a4cb804db"
+              ]
+            },
+            "admission_index": {
+              "pages": 2,
+              "bytes": 13708,
+              "ids": [
+                "0a5ab0a2e0614c236837ac47567b57e50534b304c3ea020c4cc2107f8c47bb4e",
+                "3451ebdd6e98a8d3cd96b9119ffd3465a5421eb3db4bfbc32d0a317469617247",
+                "47570262e6b6c9c5a9df29e1eb8430a3ec7cd9c72a52d7e8fe06ffd1b133ede6",
+                "48f8082bcb4275e031894c088b3f0ba12cbc4019ff7e57a2da4a2daf4d2816ec",
+                "cd9504bf7bb811b6a7bff2ea0ccd13baddb354cd1baabafc2a04fcc44ac7ebf1",
+                "e1e284bb6f1168c8ebae84e81c10d1c1b317241dcdae19038998345eabcc055c",
+                "37d61fa153c3aee6d788cd731746470522fbc0ba578ef9d4fd059614e4a93850",
+                "81fa00b32100d4784a3ae21431f277e59c82229baecd55a4005d7895537f41d3",
+                "8374af5ad177254995b3c01243d9ac71401adee90227a0e87903a64e39e4ace5",
+                "7bceb47ab293ea18fffa12c7d98abdae3ae8ed75602465d000b83814be9fdb1b",
+                "cec1818dcf0d7cba4d328ee4d6483df75e750b8f92db3f59cc021c66b2a0fabe",
+                "55c5df5ea99a5674b73bdb2d325505e90360b63806a11a932caba1c387918a3f",
+                "cb8b8e70713d33e06d0d16eca944c52484264089b657597b7f273a3091f5921d",
+                "793b705110240dcae7190ef976252fde396dec79f3518405799fe2b77bddf772",
+                "d589e25d74a1df7047b9dc0cbac1f15a16eb7b0f7032db9acb0d6377e2fc1f83",
+                "757ef4c4964d61ad0f846695b85d6e4deba4ae1560187faef1d51a5f3b5cca74",
+                "321e896baf8a1d2592acdf9082bb56588a328789919dc7aa88737732565c1cbd",
+                "787f94f41cd5bd1e0227f1f599abfb8db3ebce52bb70bc3e5d209bbe6343abd4",
+                "5586325cb9a2a7952653ddac2dd6d6373fa7e22300e9d8795066ee70adfb651e",
+                "eb527dc1885ec94433bf3f7c41e066e232bdb5c718153bd1a1491571ac553d70",
+                "24138ab4a192a950f654dece33b7709ec4c0f216a8ea526bf7d6af7a4cb804db"
+              ]
+            }
+          }
+        },
+        {
+          "self_report_cannot_close_independent_inquiry": true,
+          "self_report_cannot_close_coverage": true,
+          "external_host_cannot_launder_first_party": true,
+          "evolving_open_inquiry_saved_without_stage_completion": true
+        },
+        {
+          "fresh_native_process_recovers_open_inquiry": true,
+          "followup_routes_material_question_to_gather": true,
+          "uninvestigated_gap_rejected": true,
+          "fabricated_search_attempt_rejected": true,
+          "original_candidates_unchanged": true
+        },
+        {
+          "early_overall_rejection_needs_no_fake_completed_citations": true,
+          "concrete_correction_routes_to_synthesis": true
+        }
+      ]
+    },
+    "delivery-v132": {
+      "status": "PASS",
+      "scope": "Actual native workflow using real archived observations; no live inference/HTTP/semantic deep-research pass claimed.",
+      "native_sha256": "386c454f213ac6db91e6a072c2473fe501a4160573670ff20198f0d36030f878",
+      "declared_position_accepts_qualified_first_party": true,
+      "independent_truth_not_claimed": true,
+      "full_native_stage_handoffs": true,
+      "current_digest_review": true,
+      "fresh_process_report_exact": true,
+      "source_role_visible": true,
+      "checked_design_attachment_preserved": true,
+      "cross_question_evidence_reused_in_inquiry_and_report": true,
+      "unused_candidate_need_not_be_assessed": true,
+      "deferred_optional_detail_keeps_partial_status": true,
+      "finish_restricts_discovery_and_persists_across_process": true,
+      "final_exact_citation_checks_still_required": true,
+      "finish_immediately_skips_assessment_backlog": true,
+      "unfinished_criteria_not_falsely_called_exhausted": true
+    }
+  },
+  "delivery_v1.3.0": "FAIL:7.16minutes explicit finish,14additionalassessments,zero draft",
+  "archive": "/home/doll/Research/Peritus/effective-altruism-2026-10-17/"
+}

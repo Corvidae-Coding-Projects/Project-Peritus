@@ -9,7 +9,7 @@ use peritus_model_protocol::{CompletedToolCall, ToolDefinition};
 use serde_json::{Value, json};
 
 pub(super) fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-    let page = json!({"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":4,"maximum":1048576,"default":32768}});
+    let page = json!({"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":4,"maximum":1048576,"default":32768},"include_links":{"type":"boolean"}});
     let mut open = page.clone();
     open["url"] = json!({"type":"string","minLength":1});
     open["refresh"] = json!({"type":"boolean","default":false});
@@ -32,7 +32,7 @@ pub(super) fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "web_read",
-            "Read an exact UTF-8 byte page from the immutable source returned by web_open. No network or process needed. Use next_offset until null; source identity and original URL are preserved across fresh processes. Offsets must be UTF-8 boundaries; long lines can span pages. Cite the source URL and relevant lines or byte ranges.",
+            "Read an exact UTF-8 byte page from the immutable source returned by web_open. No network or process needed. Link catalogs are omitted by default; include_links=true at offset 0 retrieves them. Use next_offset until null; source identity and original URL are preserved across fresh processes. Offsets must be UTF-8 boundaries; long lines can span pages. Cite the source URL and relevant lines or byte ranges.",
             read,
             vec!["source"],
         ),

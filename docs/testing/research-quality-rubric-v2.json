@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "version": "research-quality-v2",
+  "frozen_at_utc": "2026-10-18T00:43:33.971222+00:00",
+  "basis": "User rejected the prior final report as shallow and overreliant on the subject of inquiry as authority. This is a prospective clarification of required research quality, not a retroactive alteration of historical records.",
+  "scope": "Independent acceptance for a new neutral research run. Generic criteria may guide implementation; topic-specific old-report analysis stays private to the oracle and must not be supplied as facts, sources or hints to the job.",
+  "conceptual_design": {
+    "user_share": "https://chatgpt.com/share/6ad41533-1fd4-832f-9aed-3c9b6d629837",
+    "local_text": "/tmp/peritus-deep-research-shared-clean-20261017.md",
+    "local_text_sha256": "23d20f758f9a37e7f000ab09b9011c71e8e7c9e4533da7f39775557280e2edbb",
+    "use": "Conceptual inspiration only: model-directed inquiry, evolving claims/evidence/contradictions/questions, traceable inference, uncertainty-reducing actions, and separate provenance versus semantic adequacy. No assertion about private OpenAI production internals is accepted from this shared answer."
+  },
+  "criteria": [
+    {
+      "id": "Q1",
+      "name": "Investigate actual conduct and implementation",
+      "applies": "Central empirical questions about what the subject does.",
+      "pass": "Explain salient actions, decisions, actors/roles, mechanisms and observed implementation through concrete, evidence-grounded examples. Distinguish announcements, intentions, commitments, delivery and effects. Select examples for relevance to the question, not just ease of finding a source.",
+      "fail": "Replace investigation with a portfolio list or a sequence of what organizations say they do, followed by caveats. A genuine source-backed activity description is useful background but is not the whole investigation.",
+      "observable": "The reader can explain how a consequential activity actually worked, what evidence establishes it, and what remains uncertain. The retained evidence supports the mechanism, not just a mission statement."
+    },
+    {
+      "id": "Q2",
+      "name": "Trace material funding, authority and influence",
+      "applies": "Where money, institutions or decision-making power materially shape the answer.",
+      "pass": "Follow salient resource and decision paths far enough to explain who supplies resources, who controls allocation, what intermediaries or restrictions matter, and how influence is exercised. Use appropriately scoped records and corroboration. Distinguish assets, pledges, commitments, recommendations and disbursements and avoid double counting. A bounded verified path can suffice; no complete movement-wide audit is required.",
+      "fail": "Give a headline amount and a named funder but leave the actors, control arrangements, allocation mechanism and consequential relationships substantially unexplored. Treat a donor/organization account as the final authority on its own influence.",
+      "observable": "The report contains an intelligible evidence-based account of a salient funding/authority relationship and its implications, rather than only a statement that exact totals or control are unknown."
+    },
+    {
+      "id": "Q3",
+      "name": "Analyze interested framing and source dependencies",
+      "applies": "All consequential evidence, whether favorable, critical or apparently neutral.",
+      "pass": "Identify whose perspective a source represents and its claim-specific authority, relevant interests, observation method and evidence chain. An affiliated organization, quoted response, funded study, repeated announcement or recycled dataset does not become independent merely through another URL. Test subject-defined categories and evaluative language instead of adopting them as the investigation's organizing truth.",
+      "fail": "Use the subject's definition, priorities, labels, results and defense to frame the central account, relying on attribution alone to cure the dependency. Treat source counts, genre labels, publication prestige or a government-hosted subject filing as proof of independence.",
+      "observable": "The auditor can distinguish stated positions, subject-supplied records, externally observed facts and dependent interpretations, and see how those distinctions change the report's conclusions. A filing can be strong evidence within its accounting/legal remit while remaining subject-supplied. Funding ties are examined, not treated as automatic disqualification."
+    },
+    {
+      "id": "Q4",
+      "name": "Test consequential claims and competing accounts",
+      "applies": "Claims whose truth or interpretation materially changes the answer, including performance, money, influence, harm and exoneration.",
+      "pass": "Seek claim-relevant corroboration or a direct authoritative observation/record; inspect material contrary evidence and genuinely competing explanations. Explain what the evidence corroborates, narrows or fails to establish. One sufficiently authoritative observation can be stronger than many dependent accounts; two sources are not mechanically required.",
+      "fail": "Stop at \u201cX reports Y; not independently verified\u201d for a central, practicably investigable claim, or regard an organization's response as verification of its conduct. Use broad philosophical disagreement as a substitute for testing answerable empirical claims.",
+      "observable": "For important assertions, the evidence account states why the claim is accepted, narrowed or unresolved and what independent observation or record bears on it. Consequential uncertainty produces an investigative action or a justified, evidenced limitation."
+    },
+    {
+      "id": "Q5",
+      "name": "Investigate outcomes and causal contribution",
+      "applies": "Claims about achievements, effectiveness, failures or consequences.",
+      "pass": "Separate generic intervention efficacy, actual program implementation, organizational contribution and wider effects, then investigate the task-relevant connections where feasible. Examine relevant outcome measures, applicability, selection, counterfactuals, modeling assumptions and tradeoffs. If ultimate outcomes are not observable, investigate intermediate outputs, uptake, decisions and constraints without calling them proven ultimate impact.",
+      "fail": "Use generic efficacy evidence as a stand-in for investigating the subject's programs, or merely state that movement-wide attribution cannot be established and stop. Describe a pledge or spending figure as sufficient understanding of achievements.",
+      "observable": "The reader learns something grounded about actual consequences or the evidentiary reasons they remain uncertain. An impossible aggregate net-impact estimate is not required; answerable narrower contribution questions are not abandoned because the aggregate is hard."
+    },
+    {
+      "id": "Q6",
+      "name": "Explain controversies, mechanisms and accountability",
+      "applies": "Material contested conduct, failures, harms, governance or ethical disputes.",
+      "pass": "Explain the substantive issue, relevant actors and responsibilities, chronology/decisions, evidence for competing accounts, responses and what followed. Distinguish allegations, corroborated reporting, formal findings, normative objections and causal conclusions. Investigate institutional mechanisms and outcomes where they bear on the question; no court judgment is required to discuss well-supported allegations.",
+      "fail": "Treat naming a controversy, mentioning interview counts and adding a subject response as adequate investigative depth. Let discussion of a person substitute for institutional inquiry, or generalize wrongdoing to an entire movement.",
+      "observable": "A reader understands what the case reveals and does not reveal about conduct, incentives, power or accountability. Responses and reforms are compared with observed evidence rather than serving as the automatic endpoint."
+    },
+    {
+      "id": "Q7",
+      "name": "Deliver a coherent, earned explanation",
+      "applies": "The actual report, not just internal records.",
+      "pass": "Integrate evidence into an intelligible explanation of how the subject operates and why important findings follow. Connect claims, observations, relevant relationships, assumptions and consequences. Present the strongest earned judgments and consequential uncertainties clearly; distinguish the author's inference from source assertions.",
+      "fail": "Produce an annotated source catalog or a stack of caveats and author opinions that leaves the reader to perform the central research. Accurate citations and topic mentions do not compensate for absent explanation.",
+      "observable": "The final artifact answers the core reader questions with evidence-grounded reasoning and useful specificity. An appendix can carry detail, but the main explanation must communicate the important results. Extra length is acceptable when genuinely needed; neither verbosity nor a target word count proves depth."
+    },
+    {
+      "id": "Q8",
+      "name": "Use an adaptive inquiry model and sufficient stopping rule",
+      "applies": "The investigation trajectory and completion decision.",
+      "pass": "Maintain a revisable understanding of core questions, claims, relevant actors/relationships, supporting and contrary evidence, assumptions, consequential uncertainties and what could change conclusions. Let the model choose useful next actions to discriminate accounts or reduce material uncertainty. Update the understanding when evidence warrants it. Stop when the promised answer is supported at the requested scope and remaining uncertainty is genuinely bounded; defer optional enrichment.",
+      "fail": "Run a flat search/summarize/admit/cite conveyor, or declare completion because all source items were processed. Classify central independent checks as optional merely because the self-report can be attributed. Conversely, endlessly reopen because another reachable source exists. A node/edge count, new schema or public chain-of-thought transcript is not a requirement or proof of reasoning.",
+      "observable": "A public rationale and retained evidence trajectory show why material actions were selected, what changed or remained unresolved, and why the resulting explanation is adequate. This is implementation-neutral: no mandated agent topology, ontology schema, tool ritual, citation quota or arbitrary round limit."
+    },
+    {
+      "id": "Q9",
+      "name": "Preserve epistemic fairness and accurate claim boundaries",
+      "applies": "Every source choice, inference and conclusion.",
+      "pass": "Apply the same scrutiny to praise, criticism and defenses; report favorable and unfavorable evidence according to its strength. Preserve time, population, denominator, authority, method, uncertainty and allegation boundaries. Allow mixed or positive conclusions where earned and do not manufacture equal-weight disagreement.",
+      "fail": "Force a negative verdict, assume motive from association, dismiss interested sources wholesale, convert allegations into adjudicated guilt, or substitute balanced tone for critically examining whose account has authority.",
+      "observable": "The report could survive a change in the direction of evidence: the method and standards remain the same. No predetermined conclusion or arbitrary citation/source/case ratio is used."
+    }
+  ],
+  "decision_rule": {
+    "quality_pass": "Core reader questions are answered by genuine, critically sourced investigation and an earned explanation; every applicable essential criterion is satisfied. Material uncertainties have been investigated and their remaining limits justified.",
+    "quality_partial": "Substantive useful investigation exists but a central dimension remains inadequately established or communicated; label the limitation and do not claim full quality acceptance.",
+    "quality_fail": "A material central dimension is replaced by interested self-description, untested consequential assertions, generic efficacy, a controversy catalog or caveat-only closure; or a serious evidentiary/framing error remains.",
+    "not_required": [
+      "An exhaustive literature review or complete institutional census",
+      "A proven aggregate counterfactual net-impact total",
+      "A predetermined positive, neutral or negative conclusion",
+      "A fixed number or ratio of independent sources, citations, case studies, nodes, edges or searches",
+      "A separate model for every role, a rigid workflow topology, or disclosure of private chain of thought",
+      "Independent empirical corroboration of the mere fact that an author expresses a stated normative position"
+    ],
+    "stopping": "Prioritize unresolved issues by their importance to the promised explanation and by how an obtainable observation could change it. A central answerable gap is not optional just because a caveat is possible; a merely additional useful source is not a blocker. Genuine access/data limits are reported without invented certainty."
+  },
+  "separate_results": {
+    "mechanical": "Exact digest binding, retained quotes, reproducible calculations, persistence and final-review completion are necessary integrity checks. Report their result separately.",
+    "semantic": "A semantically shallow investigation can pass every mechanical check and still FAIL research quality. An approved AI review is evidence of workflow completion, not proof of correctness or adequacy.",
+    "audit_method": "Read the actual final report, material original passages, interested-source and dependency relationships, and the real investigation trace. Test whether evidence supports the report's explanation and core inferences; do not grade keyword presence or counts."
+  },
+  "freeze_policy": "Save this rubric and its hash before implementation/rerun. Change only for explicit further user requirements or a documented independent error in the oracle, not to make a new output pass."
+}

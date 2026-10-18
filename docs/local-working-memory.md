@@ -20,9 +20,6 @@ enabled = true
 engine = "deterministic"
 semantic_backend = "disabled"
 trigger_percent = 85
-retain_recent_messages = 8
-max_update_operations = 32
-max_entry_bytes = 2048
 max_read_bytes = 16384
 checkpoint_every_completed_batch = true
 ```
@@ -36,6 +33,9 @@ source dependencies are rendered without a token allocation, including after reo
 memory. The legacy `working_state_max_tokens` and `retrieved_evidence_max_tokens` keys are
 accepted and ignored so existing configuration files continue to load. Automatically retrieved
 archive previews retain their explicit byte/read bounds and use available provider request space.
+The legacy `retain_recent_messages` count is also accepted and ignored. A large raw archive
+does not impose an eight-message ceiling: complete recent exchanges are packed against the
+provider's actual input and transport capacity so successive retrieved pages can coexist.
 
 Provider input estimates guide optional transcript compaction; exceeding an estimate does not
 reject required working memory. Actual provider context windows and transport sizes still apply.

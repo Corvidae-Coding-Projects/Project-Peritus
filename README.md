@@ -42,8 +42,10 @@ Designer, writer, reviewer, and fixer prompts include brief planning, careful ex
 
 Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
 
-Peritus can exercise browser pages and Linux desktop apps during coding runs. Install the optional
-browser runtime with `peritus automation setup`, then inspect availability with
+Peritus can exercise browser pages and Linux desktop apps during coding runs. Native installers
+automatically provision Python, Playwright, and Chromium on Linux, macOS, and Windows; portable
+and system-package installations prepare the per-user runtime on first interactive launch.
+Use `peritus automation setup` to repair it, and inspect availability with
 `peritus automation status`. The model receives real screenshots alongside DOM or native accessible
 controls, and keeps sessions alive between actions. It can launch fresh browser profiles and isolated
 X11 desktops, or attach to an explicitly selected local Chrome DevTools endpoint or native app PID.
@@ -326,6 +328,12 @@ agent tools, persistent state, and menu actions without rebuilding Peritus. Deep
 Research's Rust plugin prepares an approved plan, gathers primary sources, applies
 skeptical admission, synthesizes a report, and fact-checks that exact report. Its
 feature code lives in the market repository; Peritus supplies shared host services.
+
+Deep Research also has a dedicated live controversy researcher and a report section for
+specific accusations, criticism, responses, and documented outcomes. Optional **Sicko mode**
+continues research with visible checked-report checkpoints and explicit steer, pause, resume,
+and normal-mode controls. It has no cumulative token/time/round budget. The v1.4 plugin
+requires the host's continuing-checkpoint service; ordinary research remains the default.
 
 Use `/module ID COMMAND_OR_TOPIC`. Updates install disabled. Native code runs under
 your OS account; agent access to host tools follows current permissions. Local

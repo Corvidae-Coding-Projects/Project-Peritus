@@ -222,7 +222,8 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
   ui.palette='';
   if(id==='modules'){ui.overlay='modules';return;}
   if(id==='module'){
-    if(runActive(ui.conversations[ui.sessionId]?.run))throw new Error('Wait for the current workflow or stop it before issuing a module action. Your draft is retained.');
+    // Module controls are explicit steering. The daemon supersedes the pinned
+    // native stage safely; blocking here also blocked Pause and Steer research.
     ui.modes[ui.sessionId]='chat';ui.activeFile='';
     ui.drafts[ui.sessionId]=`/${id} ${args.join(' ')}`;
     await sendMessage(true);return;

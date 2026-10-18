@@ -1,4 +1,5 @@
 //! Generic integration for separately compiled native Rust modules.
+mod publication;
 mod runtime;
 mod tools;
 use super::{
@@ -7,9 +8,13 @@ use super::{
 use peritus_agent::{
     DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopRequest, DeveloperModelRole,
 };
-use peritus_modules::{Definition, Registry};
+use peritus_modules::Definition;
 use peritus_plugin_sdk::{ModuleAction, ModuleAgentRequest};
 use serde_json::json;
+
+// Product snapshot detail fields use a 1 MiB transport bound. Larger results use
+// the conversation's chunked publication API instead of truncating module pages.
+const MAX_REPLY_SNAPSHOT_BYTES: usize = 1024 * 1024;
 
 pub(super) async fn execute(
     input: &ProductRunInput,
@@ -54,46 +59,29 @@ async fn drive(
         let parsed: ModuleAction = serde_json::from_value(action).map_err(error)?;
         match parsed {
             ModuleAction::Reply { text, actions, attachment } => {
-                for action in &actions {
-                    if action.label.trim().is_empty()
-                        || action.label.chars().any(char::is_control)
-                        || action.label.len() > 256
-                        || action.arguments.contains('\0')
-                    {
-                        return Err(error("native plugin returned an invalid menu action"));
-                    }
-                }
-                let registry = Registry::for_user().map_err(error)?;
-                let current = registry.load(&definition.manifest.id, true).map_err(error)?;
-                if current.digest != definition.digest {
-                    return Err(error("native plugin selection changed before result publication"));
-                }
-                let run =
-                    input.run_id.as_bytes().iter().map(|b| format!("{b:02x}")).collect::<String>();
-                registry
-                    .publish_session_view(
-                        &run,
-                        &definition.manifest.id,
-                        &definition.digest,
-                        &json!({"actions":actions}),
-                    )
-                    .map_err(error)?;
+                publication::menu(input, definition, &actions)?;
                 if let Some(attachment) = attachment {
                     super::artifacts::attach(input, &runtime.state, &attachment)?;
                 }
-                let mut end = text.len().min(32768);
-                while !text.is_char_boundary(end) {
-                    end -= 1;
+                // Preserve module-owned page boundaries and their continuation controls.
+                // A second 32 KiB truncation used to cut off the paging footer itself.
+                if text.len() > MAX_REPLY_SNAPSHOT_BYTES {
+                    input.conversation.present_host_reply(&text).map_err(error)?;
+                    return Ok("Native module output was published to the conversation.".into());
                 }
-                return Ok(format!(
-                    "{}{}",
-                    &text[..end],
-                    if end < text.len() {
-                        "\n\nMore output is retained by this native module; use its report/inspection actions in /modules."
-                    } else {
-                        ""
-                    }
-                ));
+                return Ok(text);
+            }
+            ModuleAction::Checkpoint { key, text, actions } => {
+                if !valid_key(&key) || text.trim().is_empty() || text.contains('\0') {
+                    return Err(error("native plugin returned an invalid publication checkpoint"));
+                }
+                publication::menu(input, definition, &actions)?;
+                input.conversation.present_host_reply(&text).map_err(error)?;
+                super::super::check_cancelled(input)?;
+                if input.conversation.revision() != revision {
+                    return Ok("Native module paused for new user input after retaining its report checkpoint.".into());
+                }
+                action = runtime.call(input, "checkpoint_ack", json!({"key":key})).await?;
             }
             ModuleAction::Model { request } => {
                 validate_request(&request)?;
@@ -212,11 +200,14 @@ async fn drive(
         }
     }
 }
+fn valid_key(key: &str) -> bool {
+    !key.is_empty()
+        && key.len() <= 96
+        && key.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
 fn validate_request(request: &ModuleAgentRequest) -> Result<(), ProductRunnerError> {
     if !matches!(request.role.as_str(), "writer" | "reviewer")
-        || request.key.is_empty()
-        || request.key.len() > 96
-        || !request.key.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        || !valid_key(&request.key)
         || request.status.trim().is_empty()
         || request.status.chars().any(char::is_control)
         || request.status.len() > 1024

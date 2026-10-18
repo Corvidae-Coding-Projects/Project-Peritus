@@ -6,13 +6,23 @@
   type MenuAction={label:string;arguments:string;submit:boolean};
   type Market={session?:{module:string;digest:string;view:{actions:MenuAction[]}};repository:string;commit:string|null;notice?:string;installed:Entry[];modules:Entry[]};
   let market=$state<Market|null>(null),busy=$state(false),error=$state(''),filter=$state('');
+  let loadedRun=$state<string|null>(null);
   const rows=$derived.by(()=>{
     const all=new Map<string,{entry:Entry;installed?:Entry}>();
     for(const entry of market?.installed??[])all.set(entry.id,{entry,installed:entry});
     for(const entry of market?.modules??[])all.set(entry.id,{entry,installed:all.get(entry.id)?.installed});
     const q=filter.toLowerCase();return [...all.values()].filter(({entry})=>[entry.id,entry.name,entry.description,...entry.tags??[]].join(' ').toLowerCase().includes(q));
   });
-  async function load(){market=await query<Market>('modules',{run:ui.conversations[ui.sessionId]?.run?.id??''});}
+  async function load(){
+    const run=ui.conversations[ui.sessionId]?.run?.id??'';
+    loadedRun=run;
+    const result=await query<Market>('modules',{run});
+    if((ui.conversations[ui.sessionId]?.run?.id??'')===run)market=result;
+  }
+  $effect(()=>{
+    const run=ui.conversations[ui.sessionId]?.run?.id??'';
+    if(loadedRun!==null&&loadedRun!==run)void load().catch(e=>error=String(e));
+  });
   async function change(operation:string,entry?:Entry){
     if(busy)return;busy=true;error='';
     try{await action('modules',{action:operation,module:entry?.id,digest:entry?.digest});await load();}

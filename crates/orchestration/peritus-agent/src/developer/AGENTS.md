@@ -19,7 +19,7 @@ Product provider/tool loop: request construction, current host invocation policy
 | [mod.rs](mod.rs) | Production developer-loop composition around D0's provider runtime. |
 | [model_request.rs](model_request.rs) | Provider request construction for developer and semantic-checkpoint turns. |
 | [observation.rs](observation.rs) | Preserve tool content while projecting duplicate command receipts and obsolete progress events. |
-| [retry.rs](retry.rs) | Checked retry planning and cancellation-aware backoff for developer model turns. |
+| [retry.rs](retry.rs) | Attempt-bounded, cancellation-aware provider retries; inference duration does not consume recovery eligibility. |
 | [semantic.rs](semantic.rs) | Model-authored semantic checkpoints for long developer transcripts. |
 | [tool_executor.rs](tool_executor.rs) | Host-owned tool execution, prerequisite, and liveness boundaries. |
 | [types.rs](types.rs) | Checked inputs, outputs, and effect ports for the production developer loop. |
