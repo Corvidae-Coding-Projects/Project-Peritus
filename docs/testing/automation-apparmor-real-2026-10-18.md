@@ -56,8 +56,26 @@ actual tagged package installation and offline TUI startup on all four Unix targ
 
 ## Results
 
-Local Linux compilation passed with two build workers. Focused Ubuntu execution and final
-release replay are pending; no passing execution is inferred from compilation or review.
+Local Linux compilation and a disposable Fedora public setup/JavaScript launch passed with
+two build workers. The actual Ubuntu x86-64 and ARM64 replays **passed** at runtime source
+`e3ede3c920dba7a10bb617cdca2e4c84e611df05`:
+https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/39096915368
+
+The [compact evidence](automation-apparmor-evidence.json) retains both native consumer
+hashes, root-owned profile contents, unchanged global restrictions, and the CDP-bound
+renderer observations. All prospective cases above passed on both architectures, including
+three cache configurations, both browser executables, and blocked neighboring executables.
+
+The first focused attempt exposed two preparation defects: ARM64 consumer linking needed
+ThinLTO to match the release libraries; discovery used a source-tree registry module path
+absent from the packaged Python wheel. The replay linker flags and actual `coreBundle.js`
+registry lookup were corrected before the successful run. Failure stdout/stderr remains
+locally retained; the oversized disposable cache artifact from that first attempt was
+removed after extracting its small diagnostic files. Final artifacts contain logs/receipts
+instead of downloaded Python/browser trees.
+
+Final tagged package/TUI replay is recorded by the release workflow, separately from this
+focused public consumer campaign; it was not inferred from these results.
 No unit tests, mocks, formal verification, or repository verification suites were run.
 
 The selective policy follows [Chromium's upstream guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
