@@ -42,9 +42,9 @@ def main():
     evidence.mkdir()
     workspace = evidence / "workspace"
     workspace.mkdir()
-    # Fresh Linux runners lack the sandbox and credential-store packages. Exercise
-    # the installer's supported dependency setup there; Macs already provide Git.
-    environment = dict(os.environ, PERITUS_INSTALL_DEPS="1" if system == "Linux" else "0")
+    # Exercise normal dependency setup on both platforms: Macs also need the
+    # private Python/Playwright/Chromium runtime, even when Git is preinstalled.
+    environment = dict(os.environ, PERITUS_INSTALL_DEPS="1")
     installed = subprocess.run(["sh", str(bundle / "Install-Peritus.sh"), str(bundle)],
                                env=environment, capture_output=True, text=True, timeout=300)
     (evidence / "install.log").write_text(installed.stdout + installed.stderr)
