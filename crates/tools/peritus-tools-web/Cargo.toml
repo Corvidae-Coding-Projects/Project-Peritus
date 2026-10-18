@@ -1,0 +1,36 @@
+[package]
+name = "peritus-tools-web"
+description = "Native page reading, retained sources and built-in keyless Rust metasearch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+encoding_rs = "=0.8.35"
+html5ever.workspace = true
+markup5ever_rcdom.workspace = true
+metadata-search-engine-rs = "=0.3.1"
+search-http = { package = "reqwest", version = "=0.12.28", default-features = false, features = ["rustls-tls"] }
+reqwest = { workspace = true, features = ["blocking", "charset", "gzip", "brotli"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+url.workspace = true
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
+
+[lints]
+workspace = true
+
+# The upstream reqwest 0.12 dependency enables native TLS even though our client selects rustls.
+# Statically include its Linux TLS dependency so portable packages gain no libssl prerequisite.
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "=0.10.81", features = ["vendored"] }

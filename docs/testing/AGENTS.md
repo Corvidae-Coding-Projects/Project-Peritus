@@ -8,6 +8,22 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [research-quality-rubric-v2.md](research-quality-rubric-v2.md) | Prospective, frozen semantic acceptance criteria for independent research; distinct from source matching and UI operation. |
+| [research-quality-rubric-v2.json](research-quality-rubric-v2.json) | Exact structured version of the frozen research-quality criteria and evidence boundaries. |
+| [deep-research-provider-retry-evidence.json](deep-research-provider-retry-evidence.json) | Actual 125-second official-client timeout, automatic live-provider retry, exact marker and owned-process cleanup. |
+| [deep-research-ea-real-2026-10-17.md](deep-research-ea-real-2026-10-17.md) | Neutral-topic research baseline defects, context/ledger/coverage repairs and real replay evidence. |
+| [deep-research-inquiry-real-2026-10-17.md](deep-research-inquiry-real-2026-10-17.md) | User-rejected shallow report, frozen substantive research rubric, adaptive-inquiry repairs and real native/live-provider replay evidence. |
+| [deep-research-continuous-evidence.json](deep-research-continuous-evidence.json) | Exact package/host identities, focused report verdict and bounded native/TUI/GUI evidence for continuous research, steering, pause/recovery and immutable report reuse. |
+| [effective-altruism-research-report-2026-10-17.md](effective-altruism-research-report-2026-10-17.md) | Earlier checked neutral-topic output later rejected as shallow; retained baseline, not the accepted controversy remake or product guidance. |
+| [deep-research-repair-evidence.json](deep-research-repair-evidence.json) | Compact receipts for real host context retention, native follow-up recovery, CLI/HTTP behavior and the repaired live research campaign. |
+| [automation-setup-evidence.json](automation-setup-evidence.json) | Compact native runtime, installer, launch and actual rendered-source receipts. |
+| [automation-setup-real-2026-10-17.md](automation-setup-real-2026-10-17.md) | Automatic browser/Python provisioning, native installation, repair, concurrency and live rendered-page evidence. |
+| [module-market-real-2026-10-17.md](module-market-real-2026-10-17.md) | Native Rust plugin market campaign, observed defect, bounded evidence and replay paths. |
+| [module-foundation-evidence.json](module-foundation-evidence.json) | Compact native hashes, CLI counts, real browser actions, provider/job output identities and recovery receipts. |
+| [module-foundation-real-2026-10-17.md](module-foundation-real-2026-10-17.md) | Bundled/installed module lifecycle, real role isolation, terminal/browser/provider journeys, recovery defects and plugin process cleanup. |
+| [web-search-rust-real-2026-10-17.md](web-search-rust-real-2026-10-17.md) | Zero-setup built-in Rust search, actual public queries, cancellation, migration and terminal/model evidence. |
+| [web-tools-real-2026-10-17.md](web-tools-real-2026-10-17.md) | Keyless search, exact native source reads, real browser rendering, role/permission routing and retained defect replays. |
+| [reviewer-startup-real-2026-10-17.md](reviewer-startup-real-2026-10-17.md) | Startup/settings review-model selection, saved role routing, repair/offline behavior, and actual terminal/provider evidence. |
 | [retained-state-growth-real-2026-10-16.md](retained-state-growth-real-2026-10-16.md) | Removed retained-state quotas, paged migration, indexed scope inventory, reproduced failures, and real native/provider evidence. |
 | [token-budgets-real-2026-10-16.md](token-budgets-real-2026-10-16.md) | Local token-budget stop, complete working-state rendering, configuration compatibility, copied archive recovery, and live deployment evidence. |
 | [binary-evidence-real-2026-10-16.md](binary-evidence-real-2026-10-16.md) | NUL-bearing PostgreSQL diff failure, binary-aware rendering, exact historical evidence recovery, and real replay evidence. |
@@ -50,3 +66,5 @@ Real-interface campaign reports and reproducible defects. These document observe
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
+
+[Deep Research delivery evidence](deep-research-delivery-evidence.json) records focused native replay and separates the v1.2 delivery failure from pending report quality.

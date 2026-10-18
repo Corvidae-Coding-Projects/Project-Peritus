@@ -21,6 +21,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | [peritus-context/](peritus-context/AGENTS.md) | provenance-aware context planning for Peritus. |
 | [peritus-gates/](peritus-gates/AGENTS.md) | Durable deterministic acceptance gate planning, execution, recovery, and evidence. |
 | [peritus-harness/](peritus-harness/AGENTS.md) | Durable checked harness definitions and exact workspace materialization. |
+| [peritus-modules/](peritus-modules/AGENTS.md) | Bundled and installable agent workflow modules. |
 | [peritus-memory/](peritus-memory/AGENTS.md) | scoped derived-memory lifecycle and retrieval for Peritus. |
 | [peritus-obligations/](peritus-obligations/AGENTS.md) | public requirement obligations, evidence qualification, and failure ownership. |
 | [peritus-orchestrator/](peritus-orchestrator/AGENTS.md) | Durable deterministic writer, gate, reviewer, fixer, and acceptance orchestration. |

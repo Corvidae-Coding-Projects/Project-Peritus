@@ -1,0 +1,27 @@
+{
+  "marker": "RETRY-RECOVERED",
+  "retries": [
+    {
+      "attempt": 1,
+      "delay_millis": 280,
+      "elapsed_millis": 125030,
+      "maximum": 3,
+      "reason": "retryable_provider_response"
+    }
+  ],
+  "scope": "Actual stopped official Codex process and real runtime deadline, then live provider inference through DeveloperLoop; no mock provider or application effects",
+  "status": "PASS",
+  "tool_calls": 0,
+  "fault": {
+    "consumer_pid": 3598695,
+    "stopped_official_exec_pid": 3598757,
+    "start_ticks": 19184916,
+    "at_monotonic": 191849.273319186,
+    "fault": "SIGSTOP of first owned official Codex exec; real runtime deadline 125 seconds. No auth probe, other request, or user process selected."
+  },
+  "stopped_process_cleaned": true,
+  "evidence_root": "/tmp/peritus-provider-retry-real-20261017",
+  "source_sha256": "1bdd976305ec9d5cb80f0d0d0de59cdfcd908e4667efcb761878195adcba56d4",
+  "consumer_sha256": "f21fa716a944630c57090dc3d0c43e2426a6eb335a219c7bbd422435705557b2",
+  "lock_sha256": "044b93b7a2b51afbed8f402164f5450b2fc3ed1c48675e782007e528771d547a"
+}

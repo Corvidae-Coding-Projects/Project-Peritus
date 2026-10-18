@@ -8,6 +8,7 @@ Host-owned model tools: schemas, argument admission, workspace grounding, permis
 
 | File | Role |
 | --- | --- |
+| [web.rs](web.rs) | Provider-neutral web schemas, permission-aware dispatch and isolated rendering. |
 | [access_policy.rs](access_policy.rs) | Request-derived restrictions for inputs exposed only through a named public interface. |
 | [arguments.rs](arguments.rs) | Admission for the closed JSON Schema subset used by the host's workspace tool catalog. This is not a general JSON Schema implementation. Unsupported catalog keywords fail closed; permissions, grounding, filesystem checks and… |
 | [attachment_read.rs](attachment_read.rs) | Read-only pages from an exact, daemon-authenticated immutable attachment selection. |

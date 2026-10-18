@@ -8,6 +8,7 @@ Stable contracts for isolated Peritus plugins.
 
 | File | Role |
 | --- | --- |
+| [module.rs](module.rs) | Generic native Rust module actions, agent/function requests, menus and text artifact references. |
 | [canonical.rs](canonical.rs) | Deterministic JSON rendering for manifest trust material. |
 | [error.rs](error.rs) | Stable SDK error categories. |
 | [framing.rs](framing.rs) | Four-byte big-endian length-delimited JSON framing. |

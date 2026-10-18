@@ -135,9 +135,15 @@ impl AppModel {
             self.view = crate::model::View::Conversation;
         }
         self.accept_chat(binding.interaction().clone());
-        if let Some(PendingRequest::ProductMessageBinding { message, .. }) = pending {
+        if let Some(PendingRequest::ProductMessageBinding { message, mode, .. }) = pending {
             self.view = crate::model::View::Conversation;
-            self.chat.buffer.clone_from(message);
+            if self.chat.buffer != *message {
+                self.notice(NoticeLevel::Info,"The conversation is ready. Your draft changed while it opened, so the original message was not sent; submit the retained draft when ready.");
+                return Vec::new();
+            }
+            if let Some(mode) = mode {
+                self.chat.mode = *mode;
+            }
             return self.send_chat_message(message.clone());
         }
         Vec::new()

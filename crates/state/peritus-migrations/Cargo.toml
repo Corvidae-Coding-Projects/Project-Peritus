@@ -13,7 +13,7 @@ categories = ["database", "development-tools"]
 
 [dependencies]
 fs4.workspace = true
-peritus-types = { version = "=0.1.0", path = "../../foundation/peritus-types" }
+peritus-types = { version = "=0.1.1", path = "../../foundation/peritus-types" }
 rusqlite.workspace = true
 sha2.workspace = true
 

@@ -71,6 +71,7 @@ struct RuntimeInner {
     process_store: ProcessStore,
     gateway: ExecutionGateway,
     computer: Mutex<Option<computer::ComputerDriver>>,
+    web_reader: Mutex<Option<computer::ComputerDriver>>,
     // Fields drop in declaration order: close GUI sessions before dropping the C2 router.
     state: Mutex<RuntimeState>,
 }

@@ -12,7 +12,7 @@ pub(super) fn object(entries: Vec<(&str, Value)>) -> Value {
     )
 }
 
-pub(super) fn observation(
+pub(crate) fn observation(
     value: &Value,
     is_error: bool,
 ) -> Result<DeveloperToolObservation, DeveloperLoopError> {

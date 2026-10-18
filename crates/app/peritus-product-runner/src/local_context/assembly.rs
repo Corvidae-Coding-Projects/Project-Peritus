@@ -168,12 +168,7 @@ impl LocalMemory {
         };
         let mut chosen = Vec::new();
         let mut omitted = Vec::new();
-        let mut recent = 0_usize;
         for group in groups.iter().rev() {
-            if compact && recent >= self.config.retain_recent_messages {
-                omitted.push(group.clone());
-                continue;
-            }
             let mut candidate = messages.clone();
             candidate.extend(group.messages.iter().cloned());
             for previous in chosen.iter().rev() {
@@ -187,7 +182,9 @@ impl LocalMemory {
                 omitted.push(group.clone());
                 continue;
             }
-            recent = recent.saturating_add(group.messages.len());
+            // A large archived history is not a reason to discard recent pages which
+            // still fit. Fixed message counts evict a multi-page read before its
+            // beginning and end can coexist, causing repeated retrieval loops.
             chosen.push(group.clone());
         }
         let mut notice = exchanges::omission_notice(self, &omitted)

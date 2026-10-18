@@ -52,6 +52,14 @@ pub(super) fn choose(
     terminal: &mut Terminal<'_>,
     result: Result<Vec<String>, OnboardingError>,
 ) -> Result<String, LauncherError> {
+    choose_with_default(terminal, result, None).map(|(model, _)| model)
+}
+
+pub(super) fn choose_with_default(
+    terminal: &mut Terminal<'_>,
+    result: Result<Vec<String>, OnboardingError>,
+    default: Option<(&str, bool)>,
+) -> Result<(String, bool), LauncherError> {
     let models = match result {
         Ok(models) => models,
         Err(error) => {
@@ -63,13 +71,21 @@ pub(super) fn choose(
         terminal.line(&format!("  {}. {model}", index + 1))?;
     }
     terminal.line("These are provider-advertised models, not capability verification. No inference was requested.")?;
+    if let Some((model, _)) = default {
+        terminal.line(&format!("Press Enter to keep {model}."))?;
+    }
     loop {
         let answer =
             terminal.prompt("Choose a model number, or explicitly enter `manual MODEL_ID`: ")?;
+        if answer.is_empty()
+            && let Some((model, manual)) = default
+        {
+            return Ok((model.to_owned(), manual));
+        }
         if let Ok(index) = answer.parse::<usize>()
             && let Some(model) = index.checked_sub(1).and_then(|index| models.get(index))
         {
-            return Ok(model.clone());
+            return Ok((model.clone(), false));
         }
         if let Some(id) = answer.strip_prefix("manual ").map(str::trim)
             && !id.is_empty()
@@ -78,7 +94,7 @@ pub(super) fn choose(
             && !id.contains(char::is_whitespace)
         {
             terminal.line("Using your explicit manual model ID; availability is unverified.")?;
-            return Ok(id.to_owned());
+            return Ok((id.to_owned(), true));
         }
         terminal.line(
             "Choose an advertised number or use manual MODEL_ID. No model is selected by default.",

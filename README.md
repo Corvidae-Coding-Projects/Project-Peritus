@@ -42,12 +42,20 @@ Designer, writer, reviewer, and fixer prompts include brief planning, careful ex
 
 Repository unit suites, external qualification gates, and formal proof tooling have been retired. Peritus's design, check, reviewer, and fixer phases remain part of the application. Earlier technical records are retained as history.
 
-Peritus can exercise browser pages and Linux desktop apps during coding runs. Install the optional
-browser runtime with `peritus automation setup`, then inspect availability with
+Peritus can exercise browser pages and Linux desktop apps during coding runs. Native installers
+automatically provision Python, Playwright, and Chromium on Linux, macOS, and Windows; portable
+and system-package installations prepare the per-user runtime on first interactive launch.
+Use `peritus automation setup` to repair it, and inspect availability with
 `peritus automation status`. The model receives real screenshots alongside DOM or native accessible
 controls, and keeps sessions alive between actions. It can launch fresh browser profiles and isolated
 X11 desktops, or attach to an explicitly selected local Chrome DevTools endpoint or native app PID.
 See [computer automation](docs/computer-automation.md) for setup, capabilities, and platform limits.
+
+Peritus also has native web page reading and keyless search in Chat, Design, Review and coding runs.
+Search is built into Peritus in Rust and works without setup, API keys, Python or containers.
+An existing SearXNG server can optionally be selected with `peritus web setup URL`.
+Known URLs can be read without a search backend. The model can page/search retained sources and use
+its isolated browser for JavaScript content. See [web tools](docs/web-tools.md).
 
 Input-token profiles guide automatic compaction. Peritus imposes no fixed local 200,000-token
 input ceiling; the selected provider enforces its actual context capacity. Document reads
@@ -308,3 +316,28 @@ Include your operating system, Peritus version, and the steps that reproduce the
 ## Codebase navigation
 
 Start with the [repository agent map](AGENTS.md) to choose an implementation owner. Every repository-managed directory has an `AGENTS.md` waypoint describing local files, child responsibilities, and the route back to its parent/package. Layer and package READMEs provide human background and usage. See [navigation coverage and scope](docs/navigation-map.md) for the documented boundary.
+
+### Native Rust plugins and modules
+
+Open **Modules** in the browser or `/modules` in the terminal to discover, install,
+enable, and select native Rust plugins from the official market:
+https://github.com/Corvidae-Coding-Projects/Peritus-Module-Market
+
+Plugins contain independently compiled Rust code and can add their own commands,
+agent tools, persistent state, and menu actions without rebuilding Peritus. Deep
+Research's Rust plugin prepares an approved plan, gathers primary sources, applies
+skeptical admission, synthesizes a report, and fact-checks that exact report. Its
+feature code lives in the market repository; Peritus supplies shared host services.
+
+Deep Research also has a dedicated live controversy researcher and a report section for
+specific accusations, criticism, responses, and documented outcomes. Optional **Sicko mode**
+continues research with visible checked-report checkpoints and explicit steer, pause, resume,
+and normal-mode controls. It has no cumulative token/time/round budget. The v1.4 plugin
+requires the host's continuing-checkpoint service; ordinary research remains the default.
+
+Use `/module ID COMMAND_OR_TOPIC`. Updates install disabled. Native code runs under
+your OS account; agent access to host tools follows current permissions. Local
+packages remain installable with `peritus modules install DIRECTORY`. Existing
+bundled Source brief and declarative workflows remain available. See the
+[module guide](crates/orchestration/peritus-modules/README.md) for controls and the
+initial platform boundary.

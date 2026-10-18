@@ -19,7 +19,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | Folder | Role / next waypoint |
 | --- | --- |
-| [src/](src/AGENTS.md) | Optional browser/desktop control host adapters, persistent session RPC, installation/setup, screenshots, observations, and controller driver sources. |
+| [src/](src/AGENTS.md) | Browser/desktop control host adapters, persistent session RPC, installation/setup, screenshots, observations, and controller driver sources. |
 
 Ordinary host adapters for real browser and native application automation. The bundled Python
 driver keeps Playwright pages and app identities alive between requests. Peritus starts the
@@ -32,6 +32,7 @@ test applications can use isolated Xvfb displays. Existing applications are deta
 cleanup. Unsupported interfaces produce explicit errors; X11 input is not advertised as control
 of arbitrary Wayland windows.
 
-`peritus automation setup` installs the optional Python browser runtime into Peritus's user data
-directory. `peritus automation status` reports dependency availability. No project test framework
+Native installers and portable first launches automatically provision the browser runtime in
+Peritus's user data directory. `peritus automation setup` repairs Python, Playwright, Pillow and
+Chromium; `peritus automation status` reports dependency availability. No project test framework
 is installed or invoked.

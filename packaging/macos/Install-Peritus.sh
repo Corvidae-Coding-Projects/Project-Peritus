@@ -33,6 +33,8 @@ if ! git --version >/dev/null 2>&1; then
 fi
 git --version >/dev/null 2>&1 || fail "Git installation did not provide a working git command"
 "$bundle/bin/peritus" --version >/dev/null || fail "the package cannot run on this macOS version"
+"$bundle/bin/peritus" automation setup </dev/null ||
+    fail "automatic browser runtime setup did not complete; retry this installer to resume"
 umask 077
 install -d -m 700 "$bin_root" "$helper_root" "$share_root" "$command_root"
 publish() { source_file=$1; target_file=$2; target_mode=$3; temporary="$target_file.new.$$"; install -m "$target_mode" "$source_file" "$temporary"; mv -f "$temporary" "$target_file"; }

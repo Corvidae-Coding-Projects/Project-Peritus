@@ -8,6 +8,7 @@ mod error;
 mod framing;
 mod identity;
 mod manifest;
+mod module;
 mod payload;
 mod protocol;
 
@@ -17,6 +18,9 @@ pub use identity::{ManifestDigest, PluginId, PluginVersion, RequestId};
 pub use manifest::{
     CapabilityDeclaration, MANIFEST_VERSION, PluginEntrypoint, PluginKind, PluginManifest,
     PluginOperation, PluginQuotas, ProtocolRange, SignatureDeclaration, TrustMaterial,
+};
+pub use module::{
+    ModuleAction, ModuleAgentRequest, ModuleAttachment, ModuleFunction, ModuleMenuAction,
 };
 pub use payload::{JsonBounds, JsonPayload};
 pub use protocol::{

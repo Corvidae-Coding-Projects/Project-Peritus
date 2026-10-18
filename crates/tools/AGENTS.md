@@ -8,6 +8,7 @@ Authorized model-facing operations and dispatch contracts, including filesystem,
 
 | File | Role |
 | --- | --- |
+| [peritus-tools-web/](peritus-tools-web/AGENTS.md) | Native web reads, immutable sources and built-in keyless Rust search. |
 | [README.md](README.md) | Human overview and linked directory map for this architectural area. |
 
 ## Child areas

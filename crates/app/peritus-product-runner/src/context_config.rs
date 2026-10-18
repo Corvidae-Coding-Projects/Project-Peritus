@@ -80,7 +80,8 @@ pub struct LocalContextConfig {
     pub local_process: Option<LocalProcessConfig>,
     /// Input-capacity percentage at which optional transcript detail is reduced.
     pub trigger_percent: u8,
-    /// Recent message preference; complete exchanges and semantic pins take precedence.
+    /// Legacy key accepted for compatibility; complete exchanges use available provider space.
+    #[serde(skip_serializing)]
     pub retain_recent_messages: usize,
     /// Legacy configuration key, accepted for compatibility and ignored. No local token cap.
     #[serde(skip_serializing)]
@@ -127,7 +128,6 @@ impl LocalContextConfig {
     pub fn validate(&self) -> Result<(), ProductRunnerError> {
         self.working_limits()?;
         if !(1..=100).contains(&self.trigger_percent)
-            || !(1..=128).contains(&self.retain_recent_messages)
             || !(256..=65_536).contains(&self.max_read_bytes)
         {
             return Err(error("invalid context policy bounds"));

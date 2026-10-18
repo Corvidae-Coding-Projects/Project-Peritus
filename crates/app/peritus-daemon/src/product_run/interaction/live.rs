@@ -95,6 +95,26 @@ impl ConversationView for LiveConversation {
         })();
         result.unwrap_or_default()
     }
+    fn take_module_command(&self) -> Result<Option<String>, String> {
+        self.admit_module_command().map_err(|e| e.to_string())
+    }
+    fn present_host_reply(&self, text: &str) -> Result<(), String> {
+        self.update(|options, _| {
+            let mut remaining = text;
+            while !remaining.is_empty() {
+                let end =
+                    remaining.floor_char_boundary(peritus_app_protocol::MAX_PRODUCT_ACTIVITY_BYTES);
+                options.append(
+                    ProductActivityKind::Assistant,
+                    &remaining[..end],
+                    "Local module result",
+                )?;
+                remaining = &remaining[end..];
+            }
+            Ok(())
+        })
+        .map_err(|e| e.to_string())
+    }
     fn incorporated_revision(&self) -> u64 {
         self.service
             .inner
@@ -434,6 +454,7 @@ impl DeveloperInteraction for LiveConversation {
     }
 }
 
+mod modules;
 mod request;
 mod review;
 

@@ -22,6 +22,8 @@ Product-run and conversation entrypoints, live input contracts, phase orchestrat
 | [resume.rs](resume.rs) | Digest-valid phase resume planning over retained product-run state. |
 | [review_phase.rs](review_phase.rs) | Independent review and obligation qualification for a checked candidate. |
 | [settlement.rs](settlement.rs) | Final candidate refresh and honest terminal settlement construction. |
+| [modules.rs](modules.rs) | Explicit module commands and durable, separately scoped stage execution. |
+| [modules/](modules/AGENTS.md) | Role tool intersection and private artifact readers. |
 | [state.rs](state.rs) | Restorable product-run state and initial design/writer phase preparation. |
 | [summary.rs](summary.rs) | Task-level completion summary conservation. |
 | [terminal_exit.rs](terminal_exit.rs) | Active-loop exit facts consumed by the protected finalization boundary. |

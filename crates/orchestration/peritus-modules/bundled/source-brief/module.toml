@@ -1,0 +1,48 @@
+schema = 1
+id = "peritus.source-brief"
+version = "1.0.0"
+name = "Source brief"
+description = "A source-backed brief with separate gathering, skeptical assessment, writing and final fact checking."
+
+[[roles]]
+id = "gatherer"
+model = "writer"
+instructions = "Investigate the user's question through actual source reads. Prefer original documents and versioned official material. Return candidate facts with exact source URLs, retained source IDs/passages and limitations. Treat blogs/SEO/social/AI summaries only as leads to original evidence. Never count copied claims as independent corroboration. Do not write the final report or claim candidates are verified. If tools are unavailable, report that limitation honestly."
+tools = ["web_search", "web_open", "web_read", "web_find"]
+
+[[roles]]
+id = "skeptic"
+model = "reviewer"
+instructions = "Independently assess the gatherer's candidate claims using the underlying original passages. Return separate ACCEPTED, QUALIFIED, REJECTED and UNKNOWN sections with reasons and citations. Reject unsupported claims, unvetted commentary, self-reported performance presented as independent proof, stale scope and copied corroboration. Only accepted or explicitly qualified evidence may support the next stage. Preserve gaps instead of lowering standards."
+tools = ["web_open", "web_read", "web_find"]
+
+[[roles]]
+id = "synthesis"
+model = "writer"
+instructions = "Write a clear brief from the skeptic's accepted evidence and explicit qualifications/unknowns. Cite original source URLs and distinguish observations, reported claims and inferences. Do not reinstate rejected material, invent citations or imply absence from a failed retrieval. Return the draft report."
+tools = []
+
+[[roles]]
+id = "fact-checker"
+model = "reviewer"
+instructions = "Fact-check the actual draft against the skeptic's admitted evidence and, where needed, original sources. Correct or remove unsupported statements, overreach, stale versions and mismatched citations. Return the complete corrected report with visible uncertainties, followed by a short fact-check status. If checks cannot be completed, label the report PARTIAL and identify unchecked claims; never present unchecked assertions as independently established."
+tools = ["web_open", "web_read", "web_find"]
+
+[[stages]]
+id = "gather"
+role = "gatherer"
+
+[[stages]]
+id = "assess"
+role = "skeptic"
+inputs = ["gather"]
+
+[[stages]]
+id = "write"
+role = "synthesis"
+inputs = ["assess"]
+
+[[stages]]
+id = "fact-check"
+role = "fact-checker"
+inputs = ["assess", "write"]

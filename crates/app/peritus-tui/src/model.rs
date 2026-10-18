@@ -170,6 +170,7 @@ enum PendingRequest {
     ProductMessageBinding {
         run_id: RunId,
         message: String,
+        mode: Option<peritus_app_protocol::ProductInteractionMode>,
     },
     WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),
@@ -365,9 +366,17 @@ pub struct AppModel {
 
 impl AppModel {
     pub(crate) fn with_product(seed: [u8; 32], product: Option<ProductLaunchContext>) -> Self {
+        let mut chat = chat::ChatUi::default();
+        if let Some(reviewer) = product.as_ref().and_then(ProductLaunchContext::reviewer_model) {
+            chat.models = peritus_app_protocol::ProductRoleModels::new(
+                peritus_app_protocol::ProductModelChoice::default(),
+                reviewer.clone(),
+                peritus_app_protocol::ProductModelChoice::default(),
+            );
+        }
         Self {
             view: if product.is_some() { View::Conversation } else { View::Runs },
-            chat: chat::ChatUi::default(),
+            chat,
             connection: ConnectionStatus::Connecting,
             daemon_status: None,
             features: Vec::new(),
@@ -403,6 +412,7 @@ impl AppModel {
         let output_target = (self.chat.run_id, self.chat.workbench.selected);
         let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
         let mut effects = match action {
+            Action::ModuleResult { generation, result } => self.module_result(generation, result),
             Action::ClipboardWritten { operation, result } => {
                 self.clipboard_written(operation, result)
             }

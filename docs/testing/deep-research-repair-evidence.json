@@ -1,0 +1,862 @@
+{
+  "schema": 1,
+  "date": "2026-10-17",
+  "scope": "Actual public host APIs and native IPC, actual CLI/HTTP, plus live neutral-topic TUI campaign. Distinguish execution completion from independent semantic audit.",
+  "baseline": {
+    "root": "/tmp/peritus-deep-research-ea-20261017",
+    "checked_report": false,
+    "report_digest": "1b3dc3ac7229db5a59ea64c57f6633e1202d7dd03cd8799c552a69510942bb22"
+  },
+  "roots": {
+    "context": "/tmp/peritus-context-retention-real-20261017-sp9z4uyr",
+    "native": "/tmp/peritus-research-ledger-completion-20261017",
+    "web": "/tmp/peritus-web-repair-20261017",
+    "first_repair": "/tmp/peritus-ea-fixed-20261017",
+    "brownfield": "/tmp/peritus-ea-completion-20261017",
+    "fresh": "/tmp/peritus-ea-final-20261017"
+  },
+  "context_seed": {
+    "actual_codex_adapter_encoding_fits": true,
+    "all_expected_pages_coexist": true,
+    "case": "recorded-checker-public-host-seed",
+    "complete_batches": 13,
+    "effects_dispatched": 0,
+    "expected_original_page_calls": 8,
+    "expected_original_page_payloads_exact": 8,
+    "ingested_events": 107,
+    "ingested_tools": 47,
+    "input_records": 110,
+    "ordinary_and_memory_tools": 29,
+    "original_failed_snapshot_missing_expected_calls": [
+      "codex-28e9d45776cfe7f36c3c1a0d-call-1",
+      "codex-28e9d45776cfe7f36c3c1a0d-call-2",
+      "codex-d78ac5c5107cf9078e94772c-call-1",
+      "codex-d78ac5c5107cf9078e94772c-call-2"
+    ],
+    "profile_input_tokens": 200000,
+    "provider_requests_sent": 0,
+    "result": "PASS",
+    "role": "reviewer",
+    "selected_estimated_tokens": 183770,
+    "uncompacted_input_tokens": 285952,
+    "view_bytes": 523369,
+    "view_messages": 53,
+    "view_sha256": "8a4debf27fa74d2c8000d70b3cc20857979b56aaa0ed8e97a5da939fb02ebcbb"
+  },
+  "context_reopen": {
+    "actual_codex_adapter_encoding_fits": true,
+    "all_expected_pages_coexist": true,
+    "case": "recorded-checker-fresh-process-readback",
+    "effects_dispatched": 0,
+    "pid": 3372142,
+    "provider_requests_sent": 0,
+    "reopened_view_exactly_equal": true,
+    "result": "PASS",
+    "view_messages": 53,
+    "view_sha256": "8a4debf27fa74d2c8000d70b3cc20857979b56aaa0ed8e97a5da939fb02ebcbb"
+  },
+  "native_ipc": {
+    "status": "PASS",
+    "scope": "Actual native framed IPC, fresh and copied real EA ledger; no model or HTTP behavior claimed",
+    "native_sha256": "e71b48c8fdab2b9325b187b32e730c3918beffc406493ae58305ed29e250d987",
+    "results": [
+      {
+        "kind": "plan",
+        "available": false,
+        "error": false
+      },
+      {
+        "kind": "report",
+        "available": false,
+        "error": false
+      },
+      {
+        "kind": "review",
+        "available": false,
+        "error": false
+      },
+      {
+        "kind": "admissions",
+        "available": null,
+        "error": false
+      },
+      {
+        "kind": "progress",
+        "available": null,
+        "error": false
+      },
+      {
+        "partial_ledger_records": 21,
+        "page_sizes": [
+          11547,
+          9392,
+          9664,
+          10974,
+          10014,
+          11249,
+          10589,
+          3722
+        ],
+        "pending_judgments": 22,
+        "unguarded_approval_refused": true,
+        "stale_check_refused": true
+      },
+      {
+        "followup_routes_to_gatherer": true,
+        "prior_evidence_and_approval_preserved": true,
+        "stale_coverage_cannot_finish_followup": true,
+        "followup_context_and_pending_questions_visible": true
+      }
+    ]
+  },
+  "web": {
+    "status": "PASS",
+    "cli_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+    "results": [
+      {
+        "case": "small",
+        "text_bytes": 128,
+        "json_bytes": 952,
+        "links": 0
+      },
+      {
+        "case": "explicit-links",
+        "text_bytes": 128,
+        "json_bytes": 30731,
+        "links": 500
+      },
+      {
+        "case": "second-process",
+        "text_bytes": 128,
+        "json_bytes": 952,
+        "links": 0
+      },
+      {
+        "case": "page-error",
+        "status": 400,
+        "exit": 70
+      },
+      {
+        "case": "page-error",
+        "status": 403,
+        "exit": 70
+      },
+      {
+        "case": "page-error",
+        "status": 404,
+        "exit": 70
+      },
+      {
+        "case": "page-error",
+        "status": 429,
+        "exit": 70
+      },
+      {
+        "case": "page-error",
+        "status": 500,
+        "exit": 70
+      }
+    ],
+    "open_links": 500,
+    "invalid_input_rejected_without_panic": true,
+    "search_specific_advice": true
+  },
+  "live_completion": "PASS: controlled continuation and fresh final-code campaign both COMPLETED",
+  "semantic_audit": "FAIL: user review identified shallow research and excessive reliance on subject/affiliate accounts; prior AI rubric passes preserved as historical observations",
+  "no_unit_or_mock_suites": true,
+  "native_ipc_first_repair": {
+    "status": "PASS",
+    "scope": "Actual native framed IPC, fresh and copied real EA ledger; no model or HTTP behavior claimed",
+    "native_sha256": "5f6018a159f634d7f90c3c989e32da817ffe8cf1fb53124c91871f8d23d9ea8f",
+    "results": [
+      {
+        "kind": "plan",
+        "available": false,
+        "error": false
+      },
+      {
+        "kind": "report",
+        "available": false,
+        "error": false
+      },
+      {
+        "kind": "review",
+        "available": false,
+        "error": false
+      },
+      {
+        "kind": "admissions",
+        "available": null,
+        "error": false
+      },
+      {
+        "kind": "progress",
+        "available": null,
+        "error": false
+      },
+      {
+        "partial_ledger_records": 21,
+        "page_sizes": [
+          11547,
+          9392,
+          9664,
+          10974,
+          10014,
+          11249,
+          10589,
+          3722
+        ],
+        "pending_judgments": 22,
+        "unguarded_approval_refused": true,
+        "stale_check_refused": true
+      },
+      {
+        "followup_routes_to_gatherer": true,
+        "prior_evidence_and_approval_preserved": true,
+        "stale_coverage_cannot_finish_followup": true
+      }
+    ]
+  },
+  "first_repair_installation": {
+    "installed": {
+      "digest": "2165372d423d5befae1a143cb4dc4304e1084039fe86424df60d35e0fa2ea0ac",
+      "directory": "/tmp/peritus-ea-fixed-20261017/instance/data/peritus/modules/packages/peritus.deep-research/2165372d423d5befae1a143cb4dc4304e1084039fe86424df60d35e0fa2ea0ac",
+      "enabled": false,
+      "installed": "peritus.deep-research",
+      "quarantine": null,
+      "version": "1.1.0"
+    },
+    "origins": [
+      {
+        "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+        "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+        "daemon_pid": "3368177"
+      }
+    ],
+    "origin": "Locally built native1.1 package, not an older remote catalog package"
+  },
+  "native_package": {
+    "version": "1.1.0",
+    "digest": "7a7373dbf3d76175eb0b711044334220962b71b2a15e1c8b9d3d2c4fbac6846f",
+    "executable_sha256": "e71b48c8fdab2b9325b187b32e730c3918beffc406493ae58305ed29e250d987"
+  },
+  "first_repair_outcome": {
+    "completed": false,
+    "reason": "Repeated optional coverage expansion and false source-reliance premise; deliberately canceled for root-cause repair",
+    "root": "/tmp/peritus-ea-fixed-20261017"
+  },
+  "brownfield": {
+    "workflow_status": "COMPLETED",
+    "run": "27a2ea47b4f1018f1af2f042f30cf29f",
+    "controlled_copied_state_not_automatic_package_migration": true,
+    "unchanged_seed_verified": true,
+    "readback": {
+      "status": "PASS",
+      "scope": "Committed workflow and actual terminal readbacks; semantic audit separate",
+      "report_digest": "208e51c7b48d95922996ceeaa342e271a357841c9a14f9664ddb691f2e134c79",
+      "review_digest": "370ca181eada05007a5b49509fa583b107a4ed7978ef968fcd66829050803cca",
+      "citations": 42,
+      "approved_exact_digest_checks": 42,
+      "synthesis_words": 1683,
+      "rendered_words": 3490,
+      "rendered_bytes": 30019,
+      "report_page_exact": true,
+      "evidence_quote_exact": true,
+      "checked_report_survived_fresh_daemon": true,
+      "ordinary_chat_exact_marker": true,
+      "workspace_canary_unchanged": true,
+      "origins": [
+        {
+          "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+          "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+          "daemon_pid": "3446622"
+        },
+        {
+          "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+          "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+          "daemon_pid": "3492814"
+        }
+      ]
+    },
+    "semantic_status": "PASS",
+    "independent_audit": {
+      "case": "controlled brownfield continuation; not a fresh neutral-run verdict",
+      "result": "PASS",
+      "report_digest": "208e51c7b48d95922996ceeaa342e271a357841c9a14f9664ddb691f2e134c79",
+      "review_digest": "370ca181eada05007a5b49509fa583b107a4ed7978ef968fcd66829050803cca",
+      "oracle": {
+        "path": "/tmp/peritus-deep-research-ea-20261017/independent-oracle.md",
+        "sha256": "eba79002ef07700b60ba0f83792557d68846faa4ffdfd5d8487db29092180b77",
+        "unchanged": true
+      },
+      "mechanical": {
+        "phase": 5,
+        "native_report_bytes_sha256_equals_digest": true,
+        "pretty_export_json_equals_reviewed_native_report": true,
+        "final_review_export_equals_native_review": true,
+        "approved": true,
+        "corrections": [],
+        "reviewed_exact_cited_id_set": true,
+        "current_digest_approved_checks": 42,
+        "all42_source_quotes_exact": true
+      },
+      "requirements": [
+        {
+          "id": "R1",
+          "status": "PASS",
+          "requirement": "Definition, diversity and actual practice",
+          "references": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "reason": "Separates advocated ideals, intellectual background, organizational history and actual example activities. Does not equate all EA with strong longtermism.",
+          "source_urls": [
+            "https://www.effectivealtruism.org/articles/introduction-to-effective-altruism",
+            "https://coefficientgiving.org/research/our-progress-in-2024-and-plans-for-2025/"
+          ]
+        },
+        {
+          "id": "R2",
+          "status": "PASS",
+          "requirement": "Independent benefits and attribution limits",
+          "references": [
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28
+          ],
+          "reason": "Original net evidence supplies concrete benefits; deworming disagreement, implementation boundaries and modeled benefits retain their limits. Intervention results are not credited wholesale to EA.",
+          "source_urls": [
+            "https://www.cochrane.org/evidence/CD000363_insecticide-treated-nets-preventing-malaria",
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC8971961/",
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC8040658/"
+          ]
+        },
+        {
+          "id": "R3",
+          "status": "PASS",
+          "requirement": "FTX, donor dependence and governance",
+          "references": [
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            36,
+            37,
+            38,
+            39
+          ],
+          "reason": "Dated sentencing, attributed scrutiny failures and repayment, external governance criticism and favorable post-collapse findings are present. Financial flows are not summed, and individual guilt is not generalized.",
+          "source_urls": [
+            "https://www.justice.gov/usao-sdny/pr/samuel-bankman-fried-sentenced-25-years-prison",
+            "https://www.gov.uk/government/publications/charity-inquiry-effective-ventures-foundation-uk/charity-inquiry-effective-ventures-foundation-uk"
+          ]
+        },
+        {
+          "id": "R4",
+          "status": "PASS",
+          "requirement": "Longtermism and near-term prioritization dispute",
+          "references": [
+            10,
+            12,
+            17,
+            33,
+            34
+          ],
+          "reason": "Explains the conditional case for prioritizing a vast future over near-term benefits and substantive uncertainty objections and responses. Does not validate forecasts or imply every participant endorses the strong view.",
+          "source_urls": [
+            "https://80000hours.org/podcast/episodes/hilary-greaves-comparing-existence-and-non-existence/",
+            "https://journals.publishing.umich.edu/ergo/article/id/7428/",
+            "https://80000hours.org/podcast/episodes/hilary-greaves-comparing-existence-and-non-existence/"
+          ]
+        },
+        {
+          "id": "R5",
+          "status": "PASS",
+          "requirement": "Measurement, systemic change, recipient authority and power",
+          "references": [
+            19,
+            25,
+            29,
+            30,
+            31,
+            32
+          ],
+          "reason": "Specific attributed critiques and reasoned responses address uncertain calculation, structural causes, institutional reform and recipient participation. Positions are not reported as established movement-wide empirical effects.",
+          "source_urls": [
+            "https://www.lrb.co.uk/the-paper/v37/n18/amia-srinivasan/stop-the-robot-apocalypse",
+            "https://www.cambridge.org/core/journals/utilitas/article/abs/institutional-critique-of-effective-altruism/91A0449E2F030BAE417A09E52599E605",
+            "https://www.bostonreview.net/forum/peter-singer-logic-effective-altruism/response-angus-deaton/"
+          ]
+        },
+        {
+          "id": "R6",
+          "status": "PASS",
+          "requirement": "Misconduct and accountability",
+          "references": [
+            40,
+            41,
+            42
+          ],
+          "reason": "Reports serious investigated allegations, corroboration methods, retaliation concerns, denials and CEA response. Policies and promises do not become proven reform success, prevalence estimates or adjudicated guilt.",
+          "source_urls": [
+            "https://time.com/6252617/effective-altruism-sexual-harassment/",
+            "https://www.centreforeffectivealtruism.org/community-health/faq"
+          ]
+        },
+        {
+          "id": "R7",
+          "status": "PASS",
+          "requirement": "Accuracy, source qualification and temporal scope",
+          "references": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42
+          ],
+          "reason": "All42 retained quotations and active admissions support bounded narrative claims. The per-capita metric is corrected; financial and study periods remain explicit; the2024 inquiry archive is dated rather than treated as a retraction; current appeal status is not asserted.",
+          "source_urls": [
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC8040658/",
+            "https://www.gov.uk/government/publications/charity-inquiry-effective-ventures-foundation-uk/charity-inquiry-effective-ventures-foundation-uk"
+          ]
+        },
+        {
+          "id": "R8",
+          "status": "PASS",
+          "requirement": "Proportional neutral overview and usability",
+          "references": [],
+          "reason": "1683word synthesis provides affirmative evidence and substantive criticism without promotional framing or a predetermined negative verdict.3490word export includes concise sources, coverage and limits. No material omission against the unchanged proportional oracle remains.",
+          "source_urls": []
+        }
+      ],
+      "remaining_factual_or_scope_problems": [],
+      "material_omissions": [],
+      "resolved_problem": {
+        "severity": "minor precision",
+        "initial_report": "2c275917c78765d825c7c21946d274ce975a1125b2d50ce276ae130f6784b490",
+        "rejection": "67ee0f0edbd1fb18f230b06c7ee85ec28463dcade45e1134c871af979cb6c7af",
+        "issue": "14%endpoint omitted per-capita unit",
+        "correction": "per capita household consumption",
+        "status": "Resolved by real reviewer rejection, substantive revision and fresh exact-digest check; no factual hint was sent to the job"
+      },
+      "process_assessment": {
+        "pre_repair": "Three coverage returns accumulated55candidates before any draft; stopping defect independently documented at oldroot, intentionally canceled for repair. Not external-watch expiry.",
+        "repaired_brownfield": "All saved55candidates/51decisions and plan copied byte-identically. Four pending decisions completed; scope-anchored coverage closed without new gathering. Exact correction loop then completed.",
+        "current_checker_tools": {
+          "research_inspect": 3,
+          "module_resource_read": 1,
+          "research_item": 42,
+          "web_read": 52,
+          "research_check": 42,
+          "web_find": 2,
+          "web_open": 1,
+          "research_review": 1
+        },
+        "current_checker_successful_unique_checks": 42,
+        "repeated_successful_check_admissions": {},
+        "current_checker_tool_errors": []
+      },
+      "length": {
+        "synthesis_words": 1683,
+        "export_words": 3490
+      },
+      "limits": [
+        "Source-backed representative overview, not an exhaustive literature review, donor audit or movement-wide causal evaluation.",
+        "Direct present-day safeguarding outcomes, fuller beneficiary/non-English perspectives and further AI-harms discussion could enrich a longer account; their absence does not defeat this bounded overview.",
+        "Optional racism/eugenics intellectual-culture coverage was not required by the original oracle and is not treated as a failure.",
+        "This independent audit read native artifacts and source passages; parent separately owns the actual TUI/daemon-restart readback evidence.",
+        "Fresh neutral final-code campaign at /tmp/peritus-ea-final-20261017 requires its own independent report audit."
+      ]
+    }
+  },
+  "fresh": {
+    "workflow_status": "COMPLETED",
+    "run": "01db9301f04e92dd2571952ead9f1c34",
+    "context_isolation": "Fresh XDG state and ordinary folder; only provider configuration copied. Unchanged neutral prompt; oracle and source hints never sent to research job.",
+    "round": 0,
+    "followups": 0,
+    "readback": {
+      "status": "PASS",
+      "scope": "Committed workflow and actual terminal readbacks; semantic audit separate",
+      "report_digest": "8a59298742c686f79669822adda189ee326b356311a48ffd9f2b514a1e65df93",
+      "review_digest": "03d492fe34b25f57632c4716d4ddf5bc705ad1c80f5d3c2f9dd069ce78ff5452",
+      "citations": 21,
+      "approved_exact_digest_checks": 21,
+      "synthesis_words": 1733,
+      "rendered_words": 3037,
+      "rendered_bytes": 24388,
+      "report_page_exact": true,
+      "evidence_quote_exact": true,
+      "checked_report_survived_fresh_daemon": true,
+      "ordinary_chat_exact_marker": true,
+      "workspace_canary_unchanged": true,
+      "origins": [
+        {
+          "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+          "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+          "daemon_pid": "3460034"
+        },
+        {
+          "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+          "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+          "daemon_pid": "3501034"
+        }
+      ]
+    },
+    "semantic_status": "PASS",
+    "independent_audit": {
+      "schema": 1,
+      "audit": "independent exact-version fresh neutral-topic audit",
+      "case": "fresh final-code campaign; no brownfield verdict inherited",
+      "result": "PASS",
+      "report_digest": "8a59298742c686f79669822adda189ee326b356311a48ffd9f2b514a1e65df93",
+      "review_digest": "03d492fe34b25f57632c4716d4ddf5bc705ad1c80f5d3c2f9dd069ce78ff5452",
+      "oracle": {
+        "path": "/tmp/peritus-deep-research-ea-20261017/independent-oracle.md",
+        "sha256": "eba79002ef07700b60ba0f83792557d68846faa4ffdfd5d8487db29092180b77",
+        "unchanged": true,
+        "prepared_before_module_reports": true
+      },
+      "prompt": "Research effective altruism and give me a source-backed overview.",
+      "provenance": {
+        "root": "/tmp/peritus-ea-final-20261017",
+        "installed_package_digest": "7a7373dbf3d76175eb0b711044334220962b71b2a15e1c8b9d3d2c4fbac6846f",
+        "native_plugin_path": "/tmp/peritus-ea-final-20261017/instance/data/peritus/modules/packages/peritus.deep-research/7a7373dbf3d76175eb0b711044334220962b71b2a15e1c8b9d3d2c4fbac6846f/bin/x86_64-unknown-linux-gnu/peritus-deep-research",
+        "native_plugin_sha256": "e71b48c8fdab2b9325b187b32e730c3918beffc406493ae58305ed29e250d987",
+        "application_origins": [
+          {
+            "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+            "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+            "daemon_pid": "3460034"
+          },
+          {
+            "client_sha256": "25e662790fea2e9d0ff1f1c3421490b65a076115aa54aed5efbc0f0b7bd16a51",
+            "daemon_sha256": "c321baecb7d511e26b44fca9f34c88465bdbebd63bab13d9b27c71353b063cfe",
+            "daemon_pid": "3501034"
+          }
+        ],
+        "contract": "/tmp/peritus-ea-final-20261017/test-contract.json",
+        "scope": "Fresh XDG config/state/data/workspace; original oracle was not sent to plugin. No live-job hints or edits by auditor."
+      },
+      "mechanical": {
+        "phase": 5,
+        "round": 0,
+        "native_report_sha256_equals_digest": true,
+        "pretty_export_object_equals_native_report": true,
+        "json_export_sha256": "240fa4f8b411199745758c9b2a51eef6028668395c5e9081e749ad549f12cea1",
+        "approved_review_bound_to_digest": true,
+        "reviewed_exact_cited_id_set": true,
+        "current_digest_approved_checks": 21,
+        "all21_source_quotes_exact": true,
+        "report_review_mismatch": false
+      },
+      "requirements": [
+        {
+          "id": "R1",
+          "name": "Method, diversity, history and actual practice",
+          "status": "PASS",
+          "references": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "source_urls": [
+            "https://www.effectivealtruism.org/articles/introduction-to-effective-altruism",
+            "https://www.givingwhatwecan.org/about-us/history",
+            "https://coefficientgiving.org/research/our-progress-in-2024-and-plans-for-2025/"
+          ],
+          "assessment": "Explains comparative prioritization, impartiality, revisability and opportunity costs; gives a bounded organizational history and concrete health, animal, policy, giving/career and AI activities. Separates declared principles from conduct and distinguishes weaker future concern from strong longtermism. This assessment uses only the fresh report and its own admissions."
+        },
+        {
+          "id": "R2",
+          "name": "Independently supported benefits with attribution limits",
+          "status": "PASS",
+          "references": [
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "source_urls": [
+            "https://www.cochrane.org/evidence/CD000363_insecticide-treated-nets-preventing-malaria",
+            "https://www.cochrane.org/evidence/CD000371_deworming-school-children-low-and-middle-income-countries",
+            "https://www.givewell.org/international/technical/programs/deworming",
+            "https://www.nature.com/articles/s41598-021-81868-3?error=cookies_not_supported&code=d02a5e41-cd9b-4a7b-bc75-7ee89fe4b671"
+          ],
+          "assessment": "The original Cochrane net review supports concrete benefits. The evaluator estimate, historical applicability, deworming outcome differences and observational hen study retain uncertainty and source limits. No intervention effect or modeled return is promoted to movement-attributable impact."
+        },
+        {
+          "id": "R3",
+          "name": "Funding, FTX and donor/governance risk",
+          "status": "PASS",
+          "references": [
+            13,
+            17,
+            18,
+            19
+          ],
+          "source_urls": [
+            "https://coefficientgiving.org/research/2025-letter-from-the-ceo/",
+            "https://www.justice.gov/archives/opa/pr/samuel-bankman-fried-sentenced-25-years-his-orchestration-multiple-fraudulent-schemes",
+            "https://www.gov.uk/government/publications/charity-inquiry-effective-ventures-foundation-uk/charity-inquiry-effective-ventures-foundation-uk",
+            "https://www.centreforeffectivealtruism.org/effective-altruism-sam-bankman-fried"
+          ],
+          "assessment": "Names a major funding partner and reported scale with dates and no inferred donor shares; covers individual criminal findings, donor dependence and scrutiny failures, external control criticisms, favorable remediation findings and qualified organizational responses."
+        },
+        {
+          "id": "R4",
+          "name": "Longtermism, AI and present-versus-future dispute",
+          "status": "PASS",
+          "references": [
+            6,
+            7,
+            16
+          ],
+          "source_urls": [
+            "https://coefficientgiving.org/research/our-progress-in-2024-and-plans-for-2025/",
+            "https://www.williammacaskill.com/longtermism",
+            "https://www.sciencedirect.com/science/article/pii/S001632872400154X"
+          ],
+          "assessment": "Explains affirmative future-generation reasoning and the stronger prioritization thesis, then substantial objections about duties to present people, forecastability, future values and implementation. The critique is explicitly abstract-level; arguments do not establish actual harms or validated forecasts."
+        },
+        {
+          "id": "R5",
+          "name": "Measurement, structural change, agenda-setting and power",
+          "status": "PASS",
+          "references": [
+            4,
+            14,
+            15
+          ],
+          "source_urls": [
+            "https://coefficientgiving.org/research/our-progress-in-2024-and-plans-for-2025/",
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC11912955/",
+            "https://www.thephilosopher1923.org/post/a-mirror-for-tech-bros"
+          ],
+          "assessment": "Original qualitative scholarly analysis addresses the construction of priorities and expertise, while a reasoned autonomy argument addresses constraints on philanthropic power. Policy activity supplies a bounded response to blanket exclusion claims without claiming that structural change is adequate."
+        },
+        {
+          "id": "R6",
+          "name": "Misconduct, retaliation and accountability",
+          "status": "PASS",
+          "references": [
+            18,
+            19,
+            20,
+            21
+          ],
+          "source_urls": [
+            "https://www.gov.uk/government/publications/charity-inquiry-effective-ventures-foundation-uk/charity-inquiry-effective-ventures-foundation-uk",
+            "https://time.com/6252617/effective-altruism-sexual-harassment/",
+            "https://time.com/6252617/effective-altruism-sexual-harassment/"
+          ],
+          "assessment": "Serious original investigation, corroboration methods, retaliation concerns, denials and CEA response are present. Allegations, legal findings, organizational summaries and unverified reform success remain distinct; no prevalence claim or guilt by association appears."
+        },
+        {
+          "id": "R7",
+          "name": "Accuracy, temporal scope and evidence qualification",
+          "status": "PASS",
+          "references": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21
+          ],
+          "source_urls": [
+            "https://www.cochrane.org/evidence/CD000363_insecticide-treated-nets-preventing-malaria",
+            "https://www.nature.com/articles/s41598-021-81868-3?error=cookies_not_supported&code=d02a5e41-cd9b-4a7b-bc75-7ee89fe4b671",
+            "https://www.sciencedirect.com/science/article/pii/S001632872400154X",
+            "https://www.justice.gov/archives/opa/pr/samuel-bankman-fried-sentenced-25-years-his-orchestration-multiple-fraudulent-schemes",
+            "https://www.gov.uk/government/publications/charity-inquiry-effective-ventures-foundation-uk/charity-inquiry-effective-ventures-foundation-uk"
+          ],
+          "assessment": "All 21 retained quotations and current admissions support the scoped narrative. Historical study and financial periods, funder ties, source-access limits and routine inquiry archival status are explicit. Current appeal status and unseen investigation details are not invented."
+        },
+        {
+          "id": "R8",
+          "name": "Proportional neutral overview and usability",
+          "status": "PASS",
+          "references": [],
+          "source_urls": [],
+          "assessment": "The 1,733-word synthesis explains substantive evidence and disagreements without promotional framing or a forced negative conclusion. The 3,037-word export adds concise sources, coverage and limits. Core topics in the unchanged oracle are present; optional depth is not misclassified as a blocker."
+        }
+      ],
+      "remaining_factual_or_scope_problems": [],
+      "material_omissions": [],
+      "optional_enrichment": [
+        {
+          "topic": "Pandemic/biosecurity examples",
+          "why_nonblocking": "The original oracle requires representative actual activities across broad areas, not every catastrophic-risk subfield. The report supplies concrete AI work and explicitly limits its representativeness. It neither claims AI is the only risk field nor offers a complete cause map.",
+          "reachable_source": "https://coefficientgiving.org/research/our-progress-in-2024-and-plans-for-2025/"
+        },
+        {
+          "topic": "Further contemporary financial commitments, fuller donor map, additional intervention studies and direct beneficiary perspectives",
+          "why_nonblocking": "These can deepen a longer report. Existing financial claims are expressly dated and narrowly scoped; the report avoids comprehensive funding, causation and representation claims."
+        },
+        {
+          "topic": "Racism/eugenics intellectual-culture disputes",
+          "why_nonblocking": "Original oracle explicitly treated this as optional secondary coverage, not a required scandal list."
+        }
+      ],
+      "process": {
+        "candidates": 21,
+        "decisions": 21,
+        "followups": 0,
+        "reports": 1,
+        "reviews": 1,
+        "current_checker_tools": {
+          "research_inspect": 3,
+          "module_resource_read": 1,
+          "research_item": 21,
+          "web_read": 24,
+          "research_check": 21,
+          "web_search": 2,
+          "web_find": 1,
+          "web_open": 1,
+          "research_review": 1
+        },
+        "unique_successful_checks": 21,
+        "duplicate_successful_checks": {},
+        "current_checker_tool_errors": [],
+        "assessment": "Initial independent omission search and scope-anchored coverage closed in round 0. The checker saved all citation judgments and one exact-version approval; no no-progress reading or repeated-discovery loop is evident."
+      },
+      "interface_evidence": {
+        "path": "/tmp/peritus-ea-final-20261017/readback-audit.json",
+        "status": "PASS",
+        "auditor_role": "Read the separate parent-owned real TUI/restart/evidence/ordinary-chat/canary receipt; did not operate those surfaces or claim its actions as my own."
+      },
+      "artifacts": {
+        "report": "/tmp/peritus-ea-final-20261017/checked-report.json",
+        "native_report": "/tmp/peritus-ea-final-20261017/instance/state/peritus/daemon/product-runs/01db9301f04e92dd2571952ead9f1c34.modules/native-peritus.deep-research-7a7373dbf3d76175eb0b711044334220962b71b2a15e1c8b9d3d2c4fbac6846f/state/jobs/4ab028f380a8bd837b4c316aaa148901f2fc88ca8c181cf3eae7e2b209b4cb9e/research/reports/8a59298742c686f79669822adda189ee326b356311a48ffd9f2b514a1e65df93.json",
+        "markdown": "/tmp/peritus-ea-final-20261017/checked-report.md",
+        "markdown_sha256": "a9aa53af9e9868df031b66253afd5b82e27e2c480f8dfb682e6d2bd3ac5d129c",
+        "review": "/tmp/peritus-ea-final-20261017/final-review.json",
+        "native_review": "/tmp/peritus-ea-final-20261017/instance/state/peritus/daemon/product-runs/01db9301f04e92dd2571952ead9f1c34.modules/native-peritus.deep-research-7a7373dbf3d76175eb0b711044334220962b71b2a15e1c8b9d3d2c4fbac6846f/state/jobs/4ab028f380a8bd837b4c316aaa148901f2fc88ca8c181cf3eae7e2b209b4cb9e/research/reviews/03d492fe34b25f57632c4716d4ddf5bc705ad1c80f5d3c2f9dd069ce78ff5452.json",
+        "citation_passages": "/tmp/peritus-ea-final-20261017/independent-draft-citation-passages.json",
+        "citation_audit": "/tmp/peritus-ea-final-20261017/independent-final-citation-audit.json",
+        "process": "/tmp/peritus-ea-final-20261017/independent-process-receipt.json",
+        "coverage": "/tmp/peritus-ea-final-20261017/instance/state/peritus/daemon/product-runs/01db9301f04e92dd2571952ead9f1c34.modules/native-peritus.deep-research-7a7373dbf3d76175eb0b711044334220962b71b2a15e1c8b9d3d2c4fbac6846f/state/jobs/4ab028f380a8bd837b4c316aaa148901f2fc88ca8c181cf3eae7e2b209b4cb9e/research/coverage.json"
+      },
+      "limits": [
+        "One live neutral-topic campaign, not a statistical evaluation of all topics or providers.",
+        "This is a representative source-backed overview, not an exhaustive literature review, current legal-status audit or movement-wide causal estimate.",
+        "First-party positions and author arguments are assessed within their stated authority, not treated as independent validation of effectiveness."
+      ],
+      "snapshot_unix": 1792283388.9264228
+    }
+  },
+  "shared_report": {
+    "path": "docs/testing/effective-altruism-research-report-2026-10-17.md",
+    "report_digest": "8a59298742c686f79669822adda189ee326b356311a48ffd9f2b514a1e65df93",
+    "markdown_sha256": "a9aa53af9e9868df031b66253afd5b82e27e2c480f8dfb682e6d2bd3ac5d129c",
+    "byte_identical_to_actual_checked_export": true
+  },
+  "cleanup": {
+    "owned_campaign_daemons_stopped": true,
+    "user_daemon_preserved_pid": 2328452,
+    "scope": "Both actual driver shutdowns returned clean, and ps showed only original user daemon among all recorded daemon PIDs."
+  },
+  "publication": {
+    "source_state": "Local working-tree changes; no commit, push, release or user-daemon replacement performed in this repair",
+    "host_branch": "develop",
+    "market_branch": "main"
+  },
+  "limits": [
+    "Linux x86-64 and one live Codex provider; native macOS/Windows/ARM execution not claimed.",
+    "One neutral topic in fresh and controlled copied-state contexts, not exhaustive topic coverage.",
+    "Controlled copied-state continuation is not automatic package-state migration.",
+    "Original Supreme Court docket choice was not forced in the new runs; context, compact payload and durable progress paths have direct real replays."
+  ],
+  "prior_semantic_audit": "PASS: separate exact-version audits against unchanged oracle for both reports",
+  "research_quality_review": {
+    "result": "FAIL",
+    "source": "User review of actual final report",
+    "numbered_cited_findings": 21,
+    "distinct_source_urls": 17,
+    "ledger_first_party_findings": 12,
+    "findings": [
+      "Subject/affiliate accounts dominate the framing despite qualification.",
+      "Attribution and caveats were accepted in place of independent investigation.",
+      "Self-selected short overview and adequacy rubric accepted unresolved investigative questions too readily."
+    ],
+    "repair_status": "OUTSTANDING; current turn diagnosed the research-quality failure and corrected the test record, without changing program code",
+    "execution_readback_results_preserved": true
+  }
+}

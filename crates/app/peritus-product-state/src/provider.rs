@@ -7,7 +7,9 @@ use crate::ProductStateError;
 
 mod account;
 mod kind;
+mod reviewer;
 pub use kind::ProviderKind;
+pub use reviewer::ReviewerSelection;
 
 /// Wire family selected for an explicitly compatible endpoint.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -142,6 +144,8 @@ impl DirectProviderProfile {
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProviderSelection {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reviewer: Option<ReviewerSelection>,
     #[serde(default)]
     account_models: std::collections::BTreeMap<ProviderKind, String>,
     #[serde(default)]
@@ -238,6 +242,7 @@ impl ProviderSelection {
             ));
         }
         Ok(Self {
+            reviewer: None,
             enabled,
             default,
             automatic_failover,
@@ -292,7 +297,8 @@ impl ProviderSelection {
             self.automatic_failover,
         )?
         .with_account_models(self.account_models.clone())?
-        .with_account_executables(self.account_executables.clone())?;
+        .with_account_executables(self.account_executables.clone())?
+        .with_reviewer(self.reviewer.clone())?;
         if &canonical != self {
             return Err(ProductStateError::InvalidPayload(
                 "enabled providers are not canonical".to_owned(),

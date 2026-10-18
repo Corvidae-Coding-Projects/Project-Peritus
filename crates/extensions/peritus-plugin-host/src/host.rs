@@ -86,6 +86,18 @@ struct PluginInstance {
     quotas: QuotaLedger,
     lifecycle: Mutex<PluginLifecycle>,
     trust_anchor: String,
+    admission: Mutex<()>,
+    stop_gate: Mutex<()>,
+    stopped: HostCancellation,
+}
+
+impl PluginInstance {
+    async fn fail_if_ready(&self) {
+        let mut state = self.lifecycle.lock().await;
+        if *state == PluginLifecycle::Ready {
+            *state = PluginLifecycle::Failed;
+        }
+    }
 }
 
 /// Bounded registry and lifecycle owner for isolated plugins.
@@ -159,6 +171,9 @@ impl PluginHost {
             quotas: QuotaLedger::new(quotas),
             lifecycle: Mutex::new(PluginLifecycle::Starting),
             trust_anchor,
+            admission: Mutex::new(()),
+            stop_gate: Mutex::new(()),
+            stopped: HostCancellation::new(),
         });
         let initialize = PluginRequestEnvelope {
             protocol_version: PROTOCOL_VERSION,
@@ -172,7 +187,12 @@ impl PluginHost {
         };
         let response = instance
             .connection
-            .exchange(initialize, self.config.startup_timeout, &HostCancellation::new())
+            .exchange(
+                initialize,
+                self.config.startup_timeout,
+                &HostCancellation::new(),
+                &instance.stopped,
+            )
             .await;
         match response {
             Ok(response)
@@ -186,7 +206,7 @@ impl PluginHost {
                 Ok(())
             }
             Ok(_) => {
-                instance.connection.terminate().await;
+                instance.connection.terminate().await?;
                 Err(HostError::new(
                     HostFailureClass::Protocol,
                     RecoveryDisposition::CorrectRequest,
@@ -195,7 +215,7 @@ impl PluginHost {
                 ))
             }
             Err(error) => {
-                instance.connection.terminate().await;
+                instance.connection.terminate().await?;
                 Err(error)
             }
         }
@@ -217,6 +237,12 @@ impl PluginHost {
         cancellation: &HostCancellation,
     ) -> Result<PluginInvocationResult, HostError> {
         let instance = self.instance(plugin_id).await?;
+        let _admission = tokio::select! {
+            biased;
+            () = cancellation.cancelled() => return Err(cancelled_admission()),
+            () = instance.stopped.cancelled() => return Err(cancelled_admission()),
+            guard = instance.admission.lock() => guard,
+        };
         if *instance.lifecycle.lock().await != PluginLifecycle::Ready {
             return Err(unavailable("plugin is not in the ready lifecycle state"));
         }
@@ -227,8 +253,12 @@ impl PluginHost {
             .iter()
             .find(|candidate| candidate.name() == capability_name)
             .ok_or_else(|| authorization_error("plugin capability was not declared"))?;
-        let decision =
-            self.authority.authorize(AuthorityRequest::new(plugin_id, capability, subject)).await?;
+        let decision = tokio::select! {
+            biased;
+            () = cancellation.cancelled() => return Err(cancelled_admission()),
+            () = instance.stopped.cancelled() => return Err(cancelled_admission()),
+            decision = self.authority.authorize(AuthorityRequest::new(plugin_id, capability, subject)) => decision?,
+        };
         let grant = match decision {
             AuthorityDecision::Authorized(grant) => grant,
             AuthorityDecision::Denied { code, detail } => {
@@ -263,11 +293,16 @@ impl PluginHost {
                 .narrow(self.config.quota_ceiling)
                 .invocation_millis,
         );
-        let response = instance.connection.exchange(request, timeout, cancellation).await;
+        let response =
+            instance.connection.exchange(request, timeout, cancellation, &instance.stopped).await;
         let response = match response {
             Ok(response) => response,
             Err(error) => {
-                *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+                if error.recovery() == RecoveryDisposition::RestartPlugin
+                    || error.recovery() == RecoveryDisposition::Reconcile
+                {
+                    instance.fail_if_ready().await;
+                }
                 return Err(error);
             }
         };
@@ -276,8 +311,8 @@ impl PluginHost {
                 let output_size = output.canonical_bytes().len() as u64
                     + rendering.as_ref().map_or(0, |text| text.len() as u64);
                 if output_size > instance.quotas.limits().output_bytes {
-                    *instance.lifecycle.lock().await = PluginLifecycle::Failed;
-                    instance.connection.terminate().await;
+                    instance.fail_if_ready().await;
+                    instance.connection.terminate().await?;
                     return Err(HostError::new(
                         HostFailureClass::Quota,
                         RecoveryDisposition::RestartPlugin,
@@ -297,12 +332,16 @@ impl PluginHost {
             PluginResponse::Status { status: PluginStatus::Cancelled } => {
                 Ok(PluginInvocationResult::Cancelled)
             }
-            PluginResponse::Status { .. } => Err(HostError::new(
-                HostFailureClass::Protocol,
-                RecoveryDisposition::RestartPlugin,
-                "accept plugin result",
-                "plugin returned a lifecycle status for an invocation",
-            )),
+            PluginResponse::Status { .. } => {
+                instance.fail_if_ready().await;
+                instance.connection.terminate().await?;
+                Err(HostError::new(
+                    HostFailureClass::Protocol,
+                    RecoveryDisposition::RestartPlugin,
+                    "accept plugin result",
+                    "plugin returned a lifecycle status for an invocation",
+                ))
+            }
         }
     }
 
@@ -313,12 +352,24 @@ impl PluginHost {
     /// Returns a typed error when no instance exists or the shutdown acknowledgement is invalid.
     pub async fn stop(&self, id: &PluginId) -> Result<(), HostError> {
         let instance = self.instance(id).await?;
+        let _stop = instance.stop_gate.lock().await;
+        let was_stopping;
         {
             let mut lifecycle = instance.lifecycle.lock().await;
-            if matches!(*lifecycle, PluginLifecycle::Stopping | PluginLifecycle::Stopped) {
+            if *lifecycle == PluginLifecycle::Stopped {
                 return Ok(());
             }
+            was_stopping = *lifecycle == PluginLifecycle::Stopping;
             *lifecycle = PluginLifecycle::Stopping;
+        }
+        // Close admission first. Active/queued requests observe this even while stdin is full.
+        let _ = instance.stopped.cancel();
+        let active = was_stopping || instance.admission.try_lock().is_err();
+        if active {
+            instance.connection.terminate().await?;
+            *instance.lifecycle.lock().await = PluginLifecycle::Stopped;
+            self.instances.lock().await.remove(id);
+            return Ok(());
         }
         let request = PluginRequestEnvelope {
             protocol_version: PROTOCOL_VERSION,
@@ -327,9 +378,17 @@ impl PluginHost {
         };
         let result = instance
             .connection
-            .exchange(request, self.config.shutdown_timeout, &HostCancellation::new())
+            .exchange(
+                request,
+                self.config.shutdown_timeout,
+                &HostCancellation::new(),
+                &HostCancellation::new(),
+            )
             .await;
-        instance.connection.terminate().await;
+        instance.connection.terminate().await?;
+        // Reaping establishes Stopped even if the graceful acknowledgement was invalid.
+        // A queued stop holding this old instance must not remove a later replacement.
+        *instance.lifecycle.lock().await = PluginLifecycle::Stopped;
         self.instances.lock().await.remove(id);
         match result {
             Ok(response)
@@ -341,19 +400,13 @@ impl PluginHost {
                 *instance.lifecycle.lock().await = PluginLifecycle::Stopped;
                 Ok(())
             }
-            Ok(_) => {
-                *instance.lifecycle.lock().await = PluginLifecycle::Failed;
-                Err(HostError::new(
-                    HostFailureClass::Protocol,
-                    RecoveryDisposition::None,
-                    "stop plugin",
-                    "plugin did not acknowledge the stopped state",
-                ))
-            }
-            Err(error) => {
-                *instance.lifecycle.lock().await = PluginLifecycle::Failed;
-                Err(error)
-            }
+            Ok(_) => Err(HostError::new(
+                HostFailureClass::Protocol,
+                RecoveryDisposition::None,
+                "stop plugin",
+                "plugin did not acknowledge the stopped state",
+            )),
+            Err(error) => Err(error),
         }
     }
 
@@ -445,5 +498,14 @@ fn unavailable(detail: &'static str) -> HostError {
         RecoveryDisposition::RestartPlugin,
         "access plugin instance",
         detail,
+    )
+}
+
+fn cancelled_admission() -> HostError {
+    HostError::new(
+        HostFailureClass::Cancelled,
+        RecoveryDisposition::None,
+        "admit plugin invocation",
+        "request cancelled before admission; no invocation was sent",
     )
 }

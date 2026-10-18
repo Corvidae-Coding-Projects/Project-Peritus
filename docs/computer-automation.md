@@ -6,15 +6,29 @@ Codex-native tool execution or separately installed Codex browser extension is r
 
 ## Setup
 
+Native installers prepare the browser runtime automatically on Linux, macOS, and Windows
+(x86-64 and ARM64). Portable/source and system-package users receive the same automatic
+per-user setup on their first interactive launch. Setup downloads a checksum-pinned private
+uv bootstrap, uses a compatible existing Python or downloads managed Python, installs pinned
+Playwright and Pillow, and downloads Chromium. No global Python, pip, uv, or PATH changes
+are required. It launches Chromium and executes JavaScript before publishing readiness.
+Missing Chromium libraries on supported Linux package managers are installed automatically;
+OS administrator authorization may be required for system libraries. The existing
+`PERITUS_INSTALL_DEPS=0` opt-out requires an already prepared runtime during installation.
+
 ```sh
-peritus automation setup
-peritus automation status
+peritus automation status  # inspect installed capabilities
+peritus automation setup   # resume or repair setup
 ```
 
-Setup creates a per-user Python virtual environment with Playwright and Pillow, then downloads
-Chromium. System Chrome is preferred when available. `PERITUS_AUTOMATION_PYTHON` can select an
-absolute Python executable with these dependencies. Browser attachment requires Playwright 1.63
-or newer so that connecting preserves the existing browser's defaults.
+The managed runtime uses Peritus's user data directory; concurrent setup commands serialize.
+Interrupted downloads can be retried. Existing legacy automation environments remain intact.
+An unavailable network or dependency does not disable ordinary coding for portable launches;
+the error is shown and a later launch retries. Native installers fail explicitly if browser
+setup cannot finish. System Chrome is preferred during normal browser operations when available.
+`PERITUS_AUTOMATION_PYTHON` selects an explicit absolute interpreter owned by the operator;
+automatic setup checks that override rather than mutating it. Its dependencies must already
+be prepared. Browser attachment requires Playwright 1.63 or newer.
 
 Linux native control additionally needs Python GI with the AT-SPI typelib. X11 keyboard/mouse
 control requires `xdotool`; X11 screenshots require ImageMagick's `import`; isolated displays

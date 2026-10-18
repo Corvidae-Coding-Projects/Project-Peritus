@@ -11,6 +11,10 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | File | Role |
 | --- | --- |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [declared-MIT.txt](declared-MIT.txt) | Standard MIT text for exact-version manifest declarations whose crates omit license files; provenance is explicit. |
+| [rust-phf-MIT.txt](rust-phf-MIT.txt) | Exact-revision rust-phf family upstream MIT notice. |
+| [servo-selectors-MPL.txt](servo-selectors-MPL.txt) | Standard MPL 2.0 text for the selectors parser's declared license. |
+| [valuable-MIT.txt](valuable-MIT.txt) | Exact-revision valuable upstream MIT notice. |
 | [anes-MIT.txt](anes-MIT.txt) | Upstream license/notice text for anes MIT. |
 | [convert-case-MIT.txt](convert-case-MIT.txt) | Upstream license/notice text for convert case MIT. |
 | [jni-MIT.txt](jni-MIT.txt) | Upstream license/notice text for jni MIT. |
@@ -34,3 +38,13 @@ parent project's vendored crate. `r-efi` embeds its full MIT grant and copyright
 
 Adding or upgrading a dependency requires checking this inventory again. An
 unrecognized missing license notice fails source preparation instead of being omitted.
+
+The built-in Rust search dependency closure adds rust-phf's exact revision
+`bed01538ae576876f11189d541875d228acef9e8` and valuable's exact revision
+`9efc29b6e58cef28f6566a47aa7e142a55fead77`. Selectors declares MPL-2.0 in
+its manifest and source headers; its supplemental file supplies the standard MPL
+text from a later upstream copy. `declared-MIT.txt` explicitly supplies standard
+MIT terms for the listed exact-version crates' MIT declarations; it is not
+represented as a recovered upstream license file. Original manifests, authors
+and source headers remain in the complete source bundle. The version-specific
+mapping also retains r-efi 5.3.0's embedded license from AUTHORS.

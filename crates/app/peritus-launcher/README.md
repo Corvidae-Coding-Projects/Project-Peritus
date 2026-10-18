@@ -41,6 +41,13 @@ configuration. With two or more selected routes it offers a plain-language autom
 choice, preserves that choice during ordinary repair, and writes it into the immutable daemon
 configuration; older and single-provider state remain failover-disabled.
 
+First-run setup and `peritus providers` also offer a review provider/model choice.
+Choose `0` to follow the ordinary default, or select an enabled provider and a
+discovered or explicitly entered model for independent review. The saved choice
+initializes new terminal conversations without changing the writer or fixer.
+Existing conversations retain their own durable model choices. Provider repair
+keeps the reviewer preference unless its provider is removed; offline mode clears it.
+
 When a selected account provider is missing, setup offers its official installer with consent
 defaulting to no. A declined or failed installation never enables that provider. Successful
 installation returns to the ordinary login flow, and generated daemon configuration pins the

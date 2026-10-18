@@ -12,19 +12,19 @@ keywords = ["debugging", "diagnostics", "agents", "formal-verification"]
 categories = ["development-tools::debugging"]
 
 [dependencies]
-peritus-eval = { version = "=0.1.0", path = "../peritus-eval" }
-peritus-agent = { version = "=0.1.0", path = "../../orchestration/peritus-agent" }
-peritus-artifact-store = { version = "=0.1.0", path = "../../state/peritus-artifact-store" }
-peritus-codec = { version = "=0.1.0", path = "../../foundation/peritus-codec" }
-peritus-context = { version = "=0.1.0", path = "../../orchestration/peritus-context" }
-peritus-evidence = { version = "=0.1.0", path = "../../state/peritus-evidence" }
-peritus-harness = { version = "=0.1.0", path = "../../orchestration/peritus-harness" }
-peritus-journal = { version = "=0.1.0", path = "../../state/peritus-journal" }
-peritus-model-protocol = { version = "=0.1.0", path = "../../model/peritus-model-protocol" }
-peritus-orchestrator = { version = "=0.1.0", path = "../../orchestration/peritus-orchestrator" }
-peritus-provider-core = { version = "=0.1.0", path = "../../model/peritus-provider-core" }
-peritus-trace = { version = "=0.1.0", path = "../../observe/peritus-trace" }
-peritus-types = { version = "=0.1.0", path = "../../foundation/peritus-types" }
+peritus-eval = { version = "=0.1.1", path = "../peritus-eval" }
+peritus-agent = { version = "=0.1.1", path = "../../orchestration/peritus-agent" }
+peritus-artifact-store = { version = "=0.1.1", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.1.1", path = "../../foundation/peritus-codec" }
+peritus-context = { version = "=0.1.1", path = "../../orchestration/peritus-context" }
+peritus-evidence = { version = "=0.1.1", path = "../../state/peritus-evidence" }
+peritus-harness = { version = "=0.1.1", path = "../../orchestration/peritus-harness" }
+peritus-journal = { version = "=0.1.1", path = "../../state/peritus-journal" }
+peritus-model-protocol = { version = "=0.1.1", path = "../../model/peritus-model-protocol" }
+peritus-orchestrator = { version = "=0.1.1", path = "../../orchestration/peritus-orchestrator" }
+peritus-provider-core = { version = "=0.1.1", path = "../../model/peritus-provider-core" }
+peritus-trace = { version = "=0.1.1", path = "../../observe/peritus-trace" }
+peritus-types = { version = "=0.1.1", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

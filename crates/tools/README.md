@@ -10,6 +10,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | File | Role |
 | --- | --- |
+| [peritus-tools-web/](peritus-tools-web/AGENTS.md) | Native web reads, immutable sources and keyless SearXNG search. |
 | [README.md](README.md) | Human overview and linked directory map for this architectural area. |
 
 ### Subfolders

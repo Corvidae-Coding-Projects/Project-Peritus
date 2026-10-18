@@ -12,6 +12,7 @@ mod connection;
 mod direct;
 mod install;
 mod models;
+mod reviewer;
 mod selection;
 
 use crate::terminal::Terminal;
@@ -55,7 +56,7 @@ fn first_run(
         activated.direct_profiles,
         automatic_failover,
     )?;
-    persist(prepared, selection)
+    persist(prepared, selection, true)
 }
 
 /// Opens provider settings without replaying unrelated first-run setup.
@@ -80,7 +81,7 @@ pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, Launcher
         activated.direct_profiles.clone(),
         automatic_failover,
     )?;
-    let configured = persist(prepared, selection)?;
+    let configured = persist(prepared, selection, true)?;
     remove_replaced_credentials(&mut terminal, &current, &activated.direct_profiles)?;
     terminal.line("Provider settings saved.")?;
     Ok(configured)
@@ -147,7 +148,7 @@ fn repair_if_needed(
         direct_profiles,
         automatic_failover,
     )?;
-    persist(&prepared, selection)
+    persist(&prepared, selection, false)
 }
 
 fn show_catalog(
@@ -277,11 +278,16 @@ fn login(terminal: &mut Terminal<'_>, kind: ProviderKind) -> Result<bool, Launch
 fn persist(
     prepared: &PreparedProduct,
     selection: ProviderSelection,
+    configure_reviewer: bool,
 ) -> Result<PreparedProduct, LauncherError> {
-    let selection = models::account_selections(
-        &mut Terminal::stdio(),
+    let mut terminal = Terminal::stdio();
+    let selection =
+        models::account_selections(&mut terminal, selection, prepared.state().providers())?;
+    let selection = reviewer::select(
+        &mut terminal,
         selection,
         prepared.state().providers(),
+        configure_reviewer,
     )?;
     let layout = prepared.layout().clone();
     ProductBootstrap::new(layout).configure_providers(selection)

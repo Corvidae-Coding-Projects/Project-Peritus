@@ -86,6 +86,8 @@ if (-not (Get-Command git.exe -CommandType Application -ErrorAction SilentlyCont
 if ($LASTEXITCODE -ne 0) { throw 'Git does not run.' }
 & (Join-Path $bundle 'bin\peritus.exe') --version | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'The package cannot run. Check the Visual C++ runtime and Windows version.' }
+& (Join-Path $bundle 'bin\peritus.exe') automation setup
+if ($LASTEXITCODE -ne 0) { throw 'Automatic browser runtime setup did not complete. Retry this installer to resume.' }
 
 & (Join-Path $bundle 'Uninstall-Peritus.ps1') -InstallRoot $programRoot -StopOnly
 

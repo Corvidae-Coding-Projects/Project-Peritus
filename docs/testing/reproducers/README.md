@@ -10,7 +10,15 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | File | Role |
 | --- | --- |
+| [web-reader-recovery.py](web-reader-recovery.py) | Real terminal/daemon/provider replay of a wedged page followed by fresh-reader recovery. |
+| [web-search-native.py](web-search-native.py) | Live built-in search with empty PATH, official source reads, fresh-process cache and migration/recovery. |
+| [web-search-consumer.rs](web-search-consumer.rs) | Actual public metasearch requests, invalid inputs, active/waiting cancellation and recovery. |
+| [web-search-daemon.py](web-search-daemon.py) | Actual terminal/daemon/provider built-in search followed by primary source reading. |
+| [web-tools.py](web-tools.py) | Native web CLI and HTTP document campaign; see docs/web-tools.md for feature use. |
+| [web-browser.py](web-browser.py) | Real installed Chrome/Playwright Chromium and controller replay. |
+| [web-native-consumer.rs](web-native-consumer.rs) | Public web API cancellation and recovery consumer. |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
+| [reviewer-startup.py](reviewer-startup.py) | Real provider-settings PTY replay for reviewer selection, retention, reset, invalid input, and cancellation. |
 | [cancellation-process-death.json](cancellation-process-death.json) | Structured cancellation process death data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |
 | [cancellation-race.json](cancellation-race.json) | Structured cancellation race data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |
 | [command-ordinal-contention.json](command-ordinal-contention.json) | Structured command ordinal contention data with fields `schema_version`, `id`, `classification`, `invariant`, `original`. |
@@ -55,3 +63,7 @@ Schema version 1 requires `id`, `classification`, `invariant`, `original`, `repr
 source revision and observed failure; `reproducer` records the exact test and reachability; and
 `fixed_replay` records the expected post-fix result. These manifests summarize checked-in tests and
 evidence documents; they do not replace the owning regressions.
+
+See [module-foundation.md](module-foundation.md) for the module registry, public API,
+terminal/browser/provider, cancellation, role-isolation and restart replays. All
+execution uses disposable state and real program interfaces.

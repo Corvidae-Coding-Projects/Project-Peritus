@@ -8,6 +8,7 @@ Implementation pieces for `runtime.rs`: Orderly terminal ownership and asynchron
 
 | File | Role |
 | --- | --- |
+| [modules.rs](modules.rs) | One owned asynchronous local catalog/installation operation at a time. |
 | [candidate.rs](candidate.rs) | Foreground execution of a selected candidate's documented run command. |
 | [clipboard.rs](clipboard.rs) | One owned clipboard write at a time, using desktop helpers or terminal OSC 52. |
 | [connection.rs](connection.rs) | Owns transport handles, ordered sends, and automatic reconnection with bounded backoff while input stays responsive. |

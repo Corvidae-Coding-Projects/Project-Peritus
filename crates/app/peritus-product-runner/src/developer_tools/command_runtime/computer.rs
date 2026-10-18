@@ -30,6 +30,35 @@ impl Drop for ComputerDriver {
 }
 
 impl CommandRuntime {
+    pub(in crate::developer_tools) fn computer_document(
+        &self,
+        result: &Value,
+    ) -> Result<String, DeveloperLoopError> {
+        let driver =
+            self.inner.web_reader.lock().map_err(|_| tool("web reader state is poisoned"))?;
+        let owned = driver.as_ref().ok_or_else(|| tool("web document has no controller"))?;
+        let path = PathBuf::from(
+            result["path"].as_str().ok_or_else(|| tool("web document path is missing"))?,
+        );
+        let expected = owned.directory.join("web-readings");
+        if path.is_symlink() || path.parent() != Some(expected.as_path()) {
+            return Err(tool("web document is outside its owning controller"));
+        }
+        if fs::metadata(&path).map_err(|e| tool(e.to_string()))?.len() > 64 * 1024 * 1024 {
+            return Err(tool("web document exceeds its resource bound"));
+        }
+        let bytes = fs::read(&path).map_err(|e| tool(e.to_string()))?;
+        let digest = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect::<String>();
+        if result["sha256"].as_str() != Some(digest.as_str())
+            || result["bytes"].as_u64() != Some(bytes.len() as u64)
+        {
+            return Err(tool("web document differs from its actual browser observation"));
+        }
+        let html = String::from_utf8(bytes).map_err(|e| tool(e.to_string()))?;
+        fs::remove_file(path).map_err(|e| tool(e.to_string()))?;
+        Ok(html)
+    }
+
     pub(in crate::developer_tools) fn computer_request(
         &self,
         id: &str,
@@ -54,11 +83,15 @@ impl CommandRuntime {
         params: &Value,
         create: bool,
     ) -> Result<Value, DeveloperLoopError> {
-        let mut driver = self
-            .inner
-            .computer
-            .lock()
-            .map_err(|_| tool("computer controller state is poisoned"))?;
+        let slot = if method == "web" { &self.inner.web_reader } else { &self.inner.computer };
+        let mut driver = slot.lock().map_err(|_| tool("computer controller state is poisoned"))?;
+        if method == "web"
+            && let Some(owned) = driver.as_ref()
+            && self.poll(&owned.handle)?["state"].as_str() != Some("running")
+        {
+            // A completed cancellation or crashed reader is replaceable within the same run.
+            *driver = None;
+        }
         if driver.is_none() {
             if !create {
                 return Err(tool(
@@ -68,7 +101,11 @@ impl CommandRuntime {
             let mut nonce = [0_u8; 16];
             getrandom::fill(&mut nonce).map_err(|error| tool(error.to_string()))?;
             let name = nonce.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
-            let directory = self.inner.state_root.join("computer").join(name);
+            let directory = self
+                .inner
+                .state_root
+                .join(if method == "web" { "web-reader" } else { "computer" })
+                .join(name);
             let script = peritus_tools_computer::prepare_driver(&directory).map_err(tool)?;
             let python = peritus_tools_computer::python().map_err(tool)?;
             let python =
@@ -84,7 +121,7 @@ impl CommandRuntime {
                 "--owner-pid".into(),
                 std::process::id().to_string(),
             ];
-            let environment = [
+            let mut environment: Vec<(String, String)> = [
                 "DISPLAY",
                 "WAYLAND_DISPLAY",
                 "XDG_RUNTIME_DIR",
@@ -98,6 +135,13 @@ impl CommandRuntime {
             .into_iter()
             .filter_map(|key| std::env::var(key).ok().map(|value| (key.to_owned(), value)))
             .collect();
+            environment.push((
+                "PLAYWRIGHT_BROWSERS_PATH".into(),
+                peritus_tools_computer::browser_cache()
+                    .map_err(tool)?
+                    .to_string_lossy()
+                    .into_owned(),
+            ));
             let started = self.start(StartCommand {
                 program: python,
                 arguments: &arguments,
@@ -135,7 +179,27 @@ impl CommandRuntime {
                 "Computer controller stopped; its GUI sessions were lost. Start a new run and observe fresh state.",
             ));
         }
-        peritus_tools_computer::request(&owned.directory, id, method, params).map_err(tool)
+        match peritus_tools_computer::request(&owned.directory, id, method, params) {
+            Err(error) if method == "web" => {
+                // End a wedged read's owned process tree without affecting interactive GUI sessions.
+                let mut cancelled = self.cancel(&owned.handle)?;
+                let deadline = Instant::now() + Duration::from_secs(5);
+                while cancelled["state"].as_str() == Some("running") && Instant::now() < deadline {
+                    thread::sleep(Duration::from_millis(50));
+                    cancelled = self.poll(&owned.handle)?;
+                }
+                if cancelled["state"].as_str() == Some("running") {
+                    return Err(tool(format!(
+                        "web reader cancellation is pending after {error}; retained its process owner for recovery"
+                    )));
+                }
+                *driver = None;
+                Err(tool(format!(
+                    "web reader stopped after {error}; retry opens a fresh isolated reader; existing GUI sessions are preserved"
+                )))
+            }
+            result => result.map_err(tool),
+        }
     }
 
     pub(in crate::developer_tools) fn computer_image(

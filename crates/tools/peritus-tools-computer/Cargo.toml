@@ -10,7 +10,11 @@ publish = false
 readme = "README.md"
 
 [dependencies]
+reqwest.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
 
 [package.metadata.peritus]
 owner = "C4"

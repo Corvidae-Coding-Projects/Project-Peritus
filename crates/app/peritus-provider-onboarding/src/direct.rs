@@ -4,7 +4,7 @@ use core::fmt;
 
 use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderKind};
 use peritus_secrets::{
-    PlatformCredentialStore, SecretMaterial, format_credential_reference,
+    CredentialStore as _, PlatformCredentialStore, SecretMaterial, format_credential_reference,
     parse_credential_reference,
 };
 use peritus_types::ResourceId;
@@ -123,6 +123,23 @@ pub fn remove_direct_credential(profile: &DirectProviderProfile) -> Result<(), O
     let reference = parse_credential_reference(profile.credential_reference())?;
     PlatformCredentialStore::providers().remove(reference.resource_id())?;
     Ok(())
+}
+
+/// Discovers models for a saved direct route using its existing OS credential reference.
+///
+/// # Errors
+/// Returns an exact credential lookup or metadata discovery failure without requesting inference.
+pub fn discover_direct_models(
+    profile: &DirectProviderProfile,
+) -> Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError> {
+    let reference = parse_credential_reference(profile.credential_reference())?;
+    let credential = PlatformCredentialStore::providers().lookup(reference)?;
+    crate::models::direct(
+        profile.kind(),
+        profile.endpoint(),
+        profile.credential_header(),
+        &credential,
+    )
 }
 
 fn random_resource_id() -> Result<ResourceId, OnboardingError> {

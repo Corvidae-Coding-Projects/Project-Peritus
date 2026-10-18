@@ -49,6 +49,24 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             |()| ExitCode::SUCCESS,
         );
     }
+    if let Command::Modules { arguments } = &cli.command {
+        return match crate::modules::execute(arguments) {
+            Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
+                |error| report_error(&CliError::output(error), cli.json),
+                |()| ExitCode::SUCCESS,
+            ),
+            Err(error) => report_error(&error, cli.json),
+        };
+    }
+    if let Command::Web { arguments } = &cli.command {
+        return match crate::web::execute(arguments) {
+            Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
+                |error| report_error(&CliError::output(error), cli.json),
+                |()| ExitCode::SUCCESS,
+            ),
+            Err(error) => report_error(&error, cli.json),
+        };
+    }
     if let Command::Automation { setup } = &cli.command {
         let result = if *setup {
             peritus_product_runner::computer_setup()
@@ -205,6 +223,11 @@ fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>)
             false,
         );
     }
+    // Portable/source and system-package installs have no per-user installer hook.
+    // Provision once here; a transient download failure must not disable offline coding.
+    if let Err(error) = peritus_product_runner::computer_ensure_setup() {
+        eprintln!("Peritus browser automation setup is incomplete: {error}");
+    }
     let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
         Ok(runtime) => runtime,
         Err(error) => {
@@ -296,6 +319,8 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         | Command::Completions(_)
         | Command::Update(_)
         | Command::Providers
+        | Command::Modules { .. }
+        | Command::Web { .. }
         | Command::Automation { .. }
         | Command::Workspaces
         | Command::Open { .. }

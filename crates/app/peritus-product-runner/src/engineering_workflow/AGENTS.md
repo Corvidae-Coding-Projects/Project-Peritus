@@ -8,6 +8,7 @@ Compiled role guidance: production skills, real testing, computer control, role-
 
 | File | Role |
 | --- | --- |
+| [web.rs](web.rs) | Source reading, citations and untrusted web evidence guidance for every role. |
 | [computer.rs](computer.rs) | Bundled instructions for real interface automation. |
 | [developer.rs](developer.rs) | Maintainable implementation instructions shared by writer and fixer roles. |
 | [real_testing.rs](real_testing.rs) | Real-testing guidance shared by all coding-run roles. |

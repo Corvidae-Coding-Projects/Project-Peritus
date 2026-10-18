@@ -29,6 +29,8 @@ pub(super) enum Command {
     Chat,
     Plan,
     Design,
+    Modules,
+    Module,
     Review,
     Build,
     Model,

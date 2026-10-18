@@ -1,0 +1,171 @@
+{
+  "date": "2026-10-17",
+  "native_platform": "Linux x86-64",
+  "setup": {
+    "status": "PASS",
+    "final_binary_sha256": "de1056dbe6aaee544551cdd3fccff9ff7e4f80032a3c9a7b56c25f33642f7718",
+    "no_python_in_path": true,
+    "managed_python_config": "home = /tmp/peritus-automation-auto-20261017/data/peritus/automation/python/cpython-3.13-linux-x86_64-gnu/bin\nimplementation = CPython\nuv = 0.12.22\nversion_info = 3.13\ninclude-system-site-packages = true\n",
+    "final_download_repair": {
+      "browser_executable": "/tmp/peritus-automation-auto-20261017/cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+      "browser_installed": true,
+      "browser_ready": true,
+      "browser_version": "156.0.8078.4",
+      "isolated_desktop": false,
+      "native_accessibility": false,
+      "pillow": true,
+      "playwright": true,
+      "python": "/tmp/peritus-automation-auto-20261017/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/bin/python",
+      "setup": "peritus automation setup",
+      "success": true,
+      "wayland_screenshot": false,
+      "x11_input": false
+    },
+    "concurrent_setups": 2,
+    "unchanged_ready_receipt": true,
+    "fresh_process_status": {
+      "browser_executable": "/tmp/peritus-automation-auto-20261017/cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+      "browser_installed": true,
+      "isolated_desktop": false,
+      "native_accessibility": false,
+      "pillow": true,
+      "playwright": true,
+      "python": "/tmp/peritus-automation-auto-20261017/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/bin/python",
+      "setup": "peritus automation setup",
+      "success": true,
+      "wayland_screenshot": false,
+      "x11_input": false
+    },
+    "first_cold_install_log": "fresh-no-python.stdout: completed Python/package/Chromium provisioning and real JavaScript launch; exposed stdout progress contamination, replayed and resolved on final binary"
+  },
+  "launch": {
+    "status": "PASS",
+    "first_launch_repaired_missing_readiness_without_manual_setup": true,
+    "origins": [
+      {
+        "client_sha256": "de1056dbe6aaee544551cdd3fccff9ff7e4f80032a3c9a7b56c25f33642f7718",
+        "daemon_sha256": "8cc1cbb7836f03efac577b5d14f55a4868a1947a1fd5c53003920834a24d3ec4",
+        "daemon_pid": "3341450"
+      }
+    ],
+    "human_input": "Read-only: use web_open with render=true to read http://127.0.0.1:40181/ and report the visible heading after JavaScript runs. Do not change files or run shell commands.",
+    "observed_render": [
+      {
+        "method": "browser",
+        "text": "AUTOMATIC-RUNTIME-7429-水",
+        "source": "6b6cc739016e393435f9f1961757549ced5d2371a7c50cad2c708d5c0b2eeb70",
+        "raw_sha256": "38db8dc5b8eb440d5294e9938dea4c14d1b8640b2a749cfb5d3570f1fd1d2abb",
+        "text_sha256": "6a8fc44854976cffde22221ae6790297d70008bf27a9ff717fe079f95386ad10"
+      }
+    ]
+  },
+  "browser_controller": {
+    "rendered": [
+      {
+        "url": "http://127.0.0.1:42279/",
+        "status": 200,
+        "bytes": 222,
+        "sha256": "b409f770a15f1296ef6d6ef7fbafd6861f7409701ee01e2a433b03134c1e6d3f"
+      },
+      {
+        "url": "http://127.0.0.1:42279/",
+        "status": 200,
+        "bytes": 222,
+        "sha256": "b409f770a15f1296ef6d6ef7fbafd6861f7409701ee01e2a433b03134c1e6d3f"
+      },
+      {
+        "url": "http://127.0.0.1:42279/",
+        "status": 200,
+        "bytes": 222,
+        "sha256": "b409f770a15f1296ef6d6ef7fbafd6861f7409701ee01e2a433b03134c1e6d3f"
+      }
+    ],
+    "file_url_rejected": true,
+    "existing_session_preserved": true,
+    "chromium_only": true
+  },
+  "installer": {
+    "status": "PASS",
+    "native_platform": "Linux x86-64",
+    "actual_install": true,
+    "actual_upgrade": true,
+    "scope": "Development bundle assembled from actual executables and canonical manifest template, not a published release",
+    "driver_correction": "Set canonical executable modes before invoking upgrader; source checkout scripts are not executable; initial illegal fixture failure preserved",
+    "installed_cli_sha256": "de1056dbe6aaee544551cdd3fccff9ff7e4f80032a3c9a7b56c25f33642f7718",
+    "receipt": "/tmp/peritus-auto-installer-final-20261017/receipt.json"
+  },
+  "unexecuted": [
+    "Native macOS",
+    "Native Windows",
+    "Native ARM64",
+    "Installing actually missing Linux system libraries"
+  ],
+  "legacy_compatibility": {
+    "status": "PASS",
+    "legacy_runtime_preserved": true,
+    "base_python_gi_preserved": true,
+    "atspi_import": "gi.repository.Atspi",
+    "managed_status": {
+      "browser_executable": "/tmp/peritus-automation-auto-20261017/cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+      "browser_installed": true,
+      "browser_ready": true,
+      "browser_version": "156.0.8078.4",
+      "isolated_desktop": true,
+      "native_accessibility": true,
+      "pillow": true,
+      "playwright": true,
+      "python": "/tmp/peritus-auto-legacy-final-20261017/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/bin/python",
+      "setup": "peritus automation setup",
+      "success": true,
+      "wayland_screenshot": true,
+      "x11_input": true
+    },
+    "binary_sha256": "de1056dbe6aaee544551cdd3fccff9ff7e4f80032a3c9a7b56c25f33642f7718"
+  },
+  "incompatible_interpreter": {
+    "before": {
+      "label": "before",
+      "returncode": 70,
+      "binary_sha256": "cc105f7699f3bac756e30783dd0f08994b2d9dfb8c4b92524bc19c1fef841bf3",
+      "selected_old_base": "/tmp/peritus-auto-python310-20261017/base/cpython-3.10-linux-x86_64-gnu/bin/python3.10",
+      "ready": false,
+      "pyvenv": "home = /tmp/peritus-auto-python310-20261017/base/cpython-3.10-linux-x86_64-gnu/bin\nimplementation = CPython\nuv = 0.12.22\nversion_info = 3.10.22\ninclude-system-site-packages = true\n"
+    },
+    "after": {
+      "label": "after",
+      "returncode": 0,
+      "binary_sha256": "de1056dbe6aaee544551cdd3fccff9ff7e4f80032a3c9a7b56c25f33642f7718",
+      "selected_old_base": "/tmp/peritus-auto-python310-20261017/base/cpython-3.10-linux-x86_64-gnu/bin/python3.10",
+      "ready": true,
+      "pyvenv": "home = /tmp/peritus-auto-python310-20261017/data/peritus/automation/python/cpython-3.13-linux-x86_64-gnu/bin\nimplementation = CPython\nuv = 0.12.22\nversion_info = 3.13\ninclude-system-site-packages = true\n",
+      "setup": {
+        "browser_executable": "/tmp/peritus-automation-auto-20261017/cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+        "browser_installed": true,
+        "browser_ready": true,
+        "browser_version": "156.0.8078.4",
+        "isolated_desktop": true,
+        "native_accessibility": false,
+        "pillow": true,
+        "playwright": true,
+        "python": "/tmp/peritus-auto-python310-20261017/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/bin/python",
+        "setup": "peritus automation setup",
+        "success": true,
+        "wayland_screenshot": true,
+        "x11_input": true
+      },
+      "fresh_status": {
+        "browser_executable": "/tmp/peritus-automation-auto-20261017/cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+        "browser_installed": true,
+        "isolated_desktop": true,
+        "native_accessibility": false,
+        "pillow": true,
+        "playwright": true,
+        "python": "/tmp/peritus-auto-python310-20261017/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/bin/python",
+        "setup": "peritus automation setup",
+        "success": true,
+        "wayland_screenshot": true,
+        "x11_input": true
+      }
+    }
+  }
+}

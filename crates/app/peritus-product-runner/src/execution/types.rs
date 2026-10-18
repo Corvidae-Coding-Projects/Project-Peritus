@@ -110,6 +110,15 @@ pub trait ConversationView: Send + Sync {
     ) -> Result<AttachmentReadResponse, String> {
         Err("immutable attachment reads are unavailable".to_owned())
     }
+    /// Durably admits an eligible explicit module command without sending an inference request.
+    /// Returns none for ordinary input. Held, withdrawn and blocked input cannot be selected.
+    fn take_module_command(&self) -> Result<Option<String>, String> {
+        Ok(None)
+    }
+    /// Publishes a local command result through the same human conversation activity stream.
+    fn present_host_reply(&self, _text: &str) -> Result<(), String> {
+        Ok(())
+    }
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;
     /// Latest revision actually incorporated by a model, not merely received.

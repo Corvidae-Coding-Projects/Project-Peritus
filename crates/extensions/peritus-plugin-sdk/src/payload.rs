@@ -21,10 +21,10 @@ pub struct JsonBounds {
 impl JsonBounds {
     /// Production plugin payload bounds.
     pub const PRODUCTION: Self = Self {
-        max_bytes: 1024 * 1024,
+        max_bytes: 24 * 1024 * 1024,
         max_depth: 32,
         max_members: 16_384,
-        max_string_bytes: 256 * 1024,
+        max_string_bytes: 16 * 1024 * 1024,
     };
 }
 

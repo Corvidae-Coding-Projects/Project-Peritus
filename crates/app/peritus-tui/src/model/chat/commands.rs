@@ -57,6 +57,10 @@ impl AppModel {
             return effects;
         }
         match command {
+            Command::Modules => return self.module_menu_command(),
+            Command::Module => {
+                return self.chat_mode_command(Mode::Chat, &format!("/module {rest}"));
+            }
             Command::Design => return self.design_command(rest),
             Command::Model => return self.model_command(rest),
             Command::Effort => return self.effort_command(rest),

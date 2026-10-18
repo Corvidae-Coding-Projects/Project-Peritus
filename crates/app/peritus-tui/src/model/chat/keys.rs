@@ -78,6 +78,9 @@ impl AppModel {
         if let Some(effects) = self.chat_control_key(key) {
             return effects;
         }
+        if self.chat.module_menu.is_some() {
+            return self.module_menu_key(key);
+        }
         if self.chat.doctor.is_some() {
             return self.doctor_key(key);
         }

@@ -79,6 +79,8 @@ if ! sandbox_ready; then
 fi
 "$bundle/bin/peritus" --version >/dev/null ||
     fail "the package cannot run on this system; Linux release binaries require glibc 2.39 or later"
+"$bundle/bin/peritus" automation setup </dev/null ||
+    fail "automatic browser runtime setup did not complete; retry this installer to resume"
 
 umask 077
 install -d -m 700 "$bin_root" "$helper_root" "$share_root"

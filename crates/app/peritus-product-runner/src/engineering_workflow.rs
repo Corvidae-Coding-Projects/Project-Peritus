@@ -6,6 +6,7 @@ mod real_testing;
 mod reviewer;
 pub(crate) mod rust_reliability;
 pub(crate) mod vitamins;
+pub(crate) mod web;
 
 // Existing workflow constants mirror the adjacent Markdown artifacts. Imported skill packages
 // are embedded from their canonical files so references and runtime guidance cannot drift apart.

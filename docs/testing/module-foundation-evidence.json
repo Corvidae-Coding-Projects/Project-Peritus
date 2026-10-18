@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "date": "2026-10-17",
+  "base_commit": "fab0201dd983ae9ca5416f2036c9dfe5eefe3e4f",
+  "binaries": {
+    "peritus": "4a591a0f4820a41e6b8f5c393a5eda410dd986d7a4d91669eb3855d239c604a4",
+    "peritusd": "462692ed6eefa3a1d87435e46684471180806227971a17b947f785c3e03989dd",
+    "peritus-web": "be28522c41fb8c10d6e0af2c4ae8a0ad5009129e07d667e49e515ea26b70e26b"
+  },
+  "registry_operations": 61,
+  "public_api_log": [
+    "24 varied durable module journeys passed (paging, dependency denial, lock, inspect, close/reopen, corruption)",
+    "actual framed process, queued cancellation, authority timing, stop/start passed",
+    "malformed shutdown acknowledgement, concurrent stop completion and fresh-instance recovery passed",
+    "blocked-pipe cancellation/deadline, malformed frame, active stop, descendant cleanup, explicit restart, UTF-8 diagnostics passed"
+  ],
+  "browser": {
+    "steps": [
+      "/modules",
+      "/module missing cannot execute",
+      "/module local.resource Read the one declared notes.txt resource and quote it exactly.",
+      "/module status"
+    ],
+    "errors": [],
+    "actions": [
+      {
+        "command": "send",
+        "text": "/modules"
+      },
+      {
+        "command": "session"
+      },
+      {
+        "command": "send",
+        "text": "/module missing cannot execute"
+      },
+      {
+        "command": "send",
+        "text": "/module local.resource Read the one declared notes.txt resource and quote it exactly."
+      },
+      {
+        "command": "send",
+        "text": "/module status"
+      }
+    ]
+  },
+  "managed_recovery_log": [
+    "TUI connected",
+    "registry shown through TUI",
+    "four role workflow, status, completed-job resume passed; awaiting browser",
+    "shutdown progress 1/6; remaining=0",
+    "shutdown progress 2/6; remaining=0",
+    "shutdown progress 3/6; remaining=0",
+    "shutdown progress 4/6; remaining=0",
+    "shutdown progress 5/6; remaining=0",
+    "shutdown progress 6/6; remaining=0",
+    "shutdown clean; remaining=0",
+    "stop, daemon shutdown/restart, exact-run reattach, unfinished-stage resume and committed-stage reuse passed",
+    "TUI closed 0 None",
+    "shutdown progress 1/6; remaining=0",
+    "shutdown progress 2/6; remaining=0",
+    "shutdown progress 3/6; remaining=0",
+    "shutdown progress 4/6; remaining=0",
+    "shutdown progress 5/6; remaining=0",
+    "shutdown progress 6/6; remaining=0",
+    "shutdown clean; remaining=0"
+  ],
+  "ordinary_folder_recovery_log": [
+    "first-submit reattach, actual restart/resume, retained first stage, isolated stage memories, and no inference on completed resume passed",
+    "shutdown progress 1/6; remaining=0",
+    "shutdown progress 2/6; remaining=0",
+    "shutdown progress 3/6; remaining=0",
+    "shutdown progress 4/6; remaining=0",
+    "shutdown progress 5/6; remaining=0",
+    "shutdown progress 6/6; remaining=0",
+    "shutdown clean; remaining=0"
+  ],
+  "steering_log": [
+    "TUI connected",
+    "steering stayed pending until normal chat handled it, superseded stage uncommitted, explicit resume and ordinary chat passed",
+    "TUI closed 0 None",
+    "shutdown progress 1/6; remaining=0",
+    "shutdown progress 2/6; remaining=0",
+    "shutdown progress 3/6; remaining=0",
+    "shutdown progress 4/6; remaining=0",
+    "shutdown progress 5/6; remaining=0",
+    "shutdown progress 6/6; remaining=0",
+    "shutdown clean; remaining=0"
+  ],
+  "job_outputs": [
+    {
+      "fixture": "final-inplace",
+      "module": "local.resume",
+      "digest": "9b6ed709920ade62513132f26bf52f24cbe4036edaa1727900c8bf176358c4b4",
+      "completed": [
+        {
+          "stage": "first",
+          "sha256": "ab4ba4bf516a59b35748b143748401806c27136f29d245352ade1d735c848be2",
+          "bytes": 14
+        },
+        {
+          "stage": "second",
+          "sha256": "88bfebe02492237e62d2c5709ed7529e7e9e4e1ddb1a7141a42d9fa73592ff7f",
+          "bytes": 28
+        }
+      ]
+    },
+    {
+      "fixture": "final-inplace",
+      "module": "peritus.source-brief",
+      "digest": "3be1d426978d4f54cad5f7ae55386c1bb8862168ccc5fb60215520699f10a913",
+      "completed": [
+        {
+          "stage": "gather",
+          "sha256": "78e773734b1c805b050ee46d0da96ef0c25297576cc021f5dabf17b4d1e867d4",
+          "bytes": 879
+        },
+        {
+          "stage": "assess",
+          "sha256": "1a3557df03d721eb8b0ea5c9aa71c37188752b6824fab61096f41cc9870b1a97",
+          "bytes": 979
+        },
+        {
+          "stage": "write",
+          "sha256": "2a704a5af046f10fdc44f922b73963e43ca20c69f34d32dbf56d6bccd1a6643d",
+          "bytes": 775
+        },
+        {
+          "stage": "fact-check",
+          "sha256": "3365db3b983404b032a8f7b843ad6011bbf10529693f7e1a08f69cc39ba6fb32",
+          "bytes": 944
+        }
+      ]
+    },
+    {
+      "fixture": "final-inplace",
+      "module": "local.resource",
+      "digest": "eaac57f49a03e0efa1b21ed6f7ac0eab66df555b0596709782c478d0d47aae7a",
+      "completed": [
+        {
+          "stage": "read",
+          "sha256": "1fdf980c1621de1bfd5b3bc79ce9c505b27d8c662cf60c0725465daa08a9f5be",
+          "bytes": 36
+        }
+      ]
+    },
+    {
+      "fixture": "delivery",
+      "module": "local.resume",
+      "digest": "9b6ed709920ade62513132f26bf52f24cbe4036edaa1727900c8bf176358c4b4",
+      "completed": [
+        {
+          "stage": "first",
+          "sha256": "ab4ba4bf516a59b35748b143748401806c27136f29d245352ade1d735c848be2",
+          "bytes": 14
+        },
+        {
+          "stage": "second",
+          "sha256": "93c010ae32490f843ebc141c8bf6c337a0575ceb4bc5247ed90501da497d34c5",
+          "bytes": 28
+        }
+      ]
+    },
+    {
+      "fixture": "delivery",
+      "module": "peritus.source-brief",
+      "digest": "3be1d426978d4f54cad5f7ae55386c1bb8862168ccc5fb60215520699f10a913",
+      "completed": [
+        {
+          "stage": "gather",
+          "sha256": "27addf3c1fbdca2f2138f4292a066db92a5b97e3665aafa53483b84136ba841e",
+          "bytes": 967
+        },
+        {
+          "stage": "assess",
+          "sha256": "c729ad4390d5203a0b3d08c778a5b4782a0a5b59e2bf7cc68c9dfdd7394ced3f",
+          "bytes": 995
+        },
+        {
+          "stage": "write",
+          "sha256": "3cdc28be711774d41d65f144ba863f4d8d0aeb69c162e7fc03e90bc3c30e21ed",
+          "bytes": 787
+        },
+        {
+          "stage": "fact-check",
+          "sha256": "600da37153691381d397143b7da0c919ace8f19617e1ab031d68c89335037c0e",
+          "bytes": 925
+        }
+      ]
+    }
+  ],
+  "mode_permission_log": [
+    "first-submit reattach, actual restart/resume, retained stage, isolated memories, no inference on completed resume, explicit mode across reattach, and effectful-tool rejection passed",
+    "shutdown progress 1/6; remaining=0",
+    "shutdown progress 2/6; remaining=0",
+    "shutdown progress 3/6; remaining=0",
+    "shutdown progress 4/6; remaining=0",
+    "shutdown progress 5/6; remaining=0",
+    "shutdown progress 6/6; remaining=0",
+    "shutdown clean; remaining=0"
+  ]
+}
