@@ -2,15 +2,39 @@
 
 ## Unreleased
 
+## 0.1.1
+
 ### Added
 
+- Discover, install, and explicitly enable self-contained native Rust plugins through the module market in the terminal and browser. The daemon retains permission, provider, tool, and lifecycle authority.
+- Add built-in Rust web search and retained page reading without an API key, containers, or search-service setup. Read JavaScript pages through the browser runtime and retrieve exact saved source pages.
+- Select a separate reviewer provider and model during startup or provider settings while preserving the ordinary coding model.
 - Bundled and installable declarative workflow modules with explicit enablement, read-only tool permissions, separate role memories, immutable package identities, and checkpointed stop/resume. Discover them with `/modules` or `peritus modules list`.
 - A bundled Source brief workflow: gatherer, skeptic, synthesis, then final fact checking. Record the broader Deep Research plan and source-admission policy separately.
+
+### Changed
+
+- Support Deep Research v1.4.0 from the separate module market: live controversy research, attributed accusations and responses, durable report revisions, and exact checked-report handoff to Design.
+- Support optional, steerable Sicko mode with durable checked-report checkpoints, pause/resume, and continued research without a cumulative token, time, source, or round budget. Ordinary research remains the default; provider capacity and machine resources still apply.
+- Automatically prepare the private Python, Playwright, and Chromium runtime during native installation, with first-launch preparation and repair for portable or system-package installations.
+- Preserve complete recent exchanges that fit the provider context and keep recoverable provider retries from consuming a cumulative local timeout.
 
 ### Fixed
 
 - Preserve a terminal message submitted while an exact run's conversation binding loads; send it once after binding, retaining explicit mode and newer drafts.
 - Cancel plugin exchanges even when stdin is blocked, terminate owned process groups/jobs, serialize stop completion, and retain UTF-8 diagnostic boundaries.
+- Refresh native module controls after reconnect and accept steering or pause commands while module work is active.
+- Keep long report pages and their continuation instructions intact; bind historical report and evidence readback to the exact checked report.
+
+### Real testing
+
+- Reuse the completed real-interface campaigns for reviewer setup, native search/page reading, module installation and recovery, automatic browser-runtime setup, and provider-driven terminal/browser research controls. Release builds additionally exercise actual Unix installation and offline terminal startup.
+- Research workflow and focused controversy-remake evidence passed; the broader research-quality rubric remains partial, and earlier neutral-topic discovery and delivery failures are retained. This release does not claim exhaustive research quality or native plugin coverage on every operating system.
+- No unit tests, formal verification, or repository verification suites are part of this release workflow.
+
+### Compatibility
+
+- Deep Research is installed separately from the module market. Sicko mode requires this host's continuing-checkpoint service. The market currently supplies its native Linux x86-64 plugin; the six Peritus host packages do not imply six plugin binaries.
 
 
 ## 0.1.0
