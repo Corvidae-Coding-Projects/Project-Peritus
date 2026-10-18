@@ -11,6 +11,8 @@ use serde_json::{Value, json};
 use super::{browser_cache, installation_root, require_success};
 
 mod bootstrap;
+#[cfg(target_os = "linux")]
+mod linux;
 
 const RUNTIME: &str = "runtimes/playwright-1.64.0-pillow-13.0.0";
 const PYTHON: &str = if cfg!(windows) { "Scripts/python.exe" } else { "bin/python" };
@@ -40,6 +42,12 @@ pub fn ensure_setup() -> Result<(), String> {
         && root.join(RUNTIME).join(PYTHON).is_file()
         && value["browser_executable"].as_str().is_some_and(|p| Path::new(p).is_file())
     {
+        #[cfg(target_os = "linux")]
+        if linux::restricted()
+            && check_browser(&root.join(RUNTIME).join(PYTHON), &browser_cache()?).is_err()
+        {
+            return setup().map(|_| ());
+        }
         return Ok(());
     }
     setup().map(|_| ())
@@ -119,14 +127,7 @@ fn setup_inner() -> Result<Value, String> {
         ]),
         "install automation Chromium",
     )?;
-    let checked = match check_browser(&python, &cache) {
-        Ok(checked) => checked,
-        Err(error) if cfg!(target_os = "linux") && missing_libraries(&error) => {
-            install_linux_libraries(&python)?;
-            check_browser(&python, &cache)?
-        }
-        Err(error) => return Err(error),
-    };
+    let checked = prepare_browser(&python, &cache, &root)?;
     let receipt = json!({"schema":1,"runtime":RUNTIME,"browser_executable":checked["browser_executable"],"browser_version":checked["browser_version"]});
     let mut temporary = tempfile::NamedTempFile::new_in(&root).map_err(|e| e.to_string())?;
     use std::io::Write;
@@ -185,6 +186,32 @@ with sync_playwright() as p:
     }
     serde_json::from_slice(&output.stdout)
         .map_err(|e| format!("read automation browser readiness: {e}"))
+}
+
+fn prepare_browser(python: &Path, cache: &Path, root: &Path) -> Result<Value, String> {
+    let mut installed_libraries = false;
+    #[cfg(target_os = "linux")]
+    let mut installed_policy = false;
+    loop {
+        let error = match check_browser(python, cache) {
+            Ok(checked) => return Ok(checked),
+            Err(error) => error,
+        };
+        if cfg!(target_os = "linux") && !installed_libraries && missing_libraries(&error) {
+            install_linux_libraries(python)?;
+            installed_libraries = true;
+            continue;
+        }
+        #[cfg(target_os = "linux")]
+        if !installed_policy && linux::namespace_denied(&error) {
+            linux::install_browser_policy(python, cache, root)?;
+            installed_policy = true;
+            continue;
+        }
+        #[cfg(not(target_os = "linux"))]
+        let _ = root;
+        return Err(error);
+    }
 }
 
 fn missing_libraries(error: &str) -> bool {

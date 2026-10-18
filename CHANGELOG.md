@@ -25,6 +25,7 @@
 - Cancel plugin exchanges even when stdin is blocked, terminate owned process groups/jobs, serialize stop completion, and retain UTF-8 diagnostic boundaries.
 - Refresh native module controls after reconnect and accept steering or pause commands while module work is active.
 - Keep long report pages and their continuation instructions intact; bind historical report and evidence readback to the exact checked report.
+- Repair managed Chromium sandbox startup on Ubuntu's AppArmor-restricted hosts with exact executable-path profiles, preserving global restrictions and browser sandboxing.
 
 ### Real testing
 
