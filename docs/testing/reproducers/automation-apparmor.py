@@ -52,7 +52,8 @@ def main():
 }''')
     library = ROOT / 'target/release/libperitus_tools_computer.rlib'
     consumer = OUT / 'setup-consumer'
-    subprocess.run(['rustc', '--edition=2024', '-C', 'panic=abort', str(source),
+    subprocess.run(['rustc', '--edition=2024', '-O', '-C', 'panic=abort',
+                    '-C', 'lto=thin', str(source),
                     '-L', 'dependency=' + str(ROOT / 'target/release/deps'),
                     '--extern', 'peritus_tools_computer=' + str(library),
                     '-o', str(consumer)], cwd=ROOT, check=True)

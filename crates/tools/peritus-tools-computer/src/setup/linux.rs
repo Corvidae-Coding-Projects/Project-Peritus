@@ -41,8 +41,8 @@ pub(super) fn install_browser_policy(
 from pathlib import Path
 from playwright._impl._driver import compute_driver_executable
 node, cli = compute_driver_executable()
-registry = Path(cli).parent / 'lib/server/registry/index.js'
-script = "const {registry,registryDirectory}=require(process.argv[1]); console.log(JSON.stringify({root:registryDirectory,paths:['chromium','chromium-headless-shell'].map(name=>registry.findExecutable(name).executablePath())}))"
+registry = Path(cli).parent / 'lib/coreBundle.js'
+script = "const {registry,registryDirectory}=require(process.argv[1]).registry; console.log(JSON.stringify({root:registryDirectory,paths:['chromium','chromium-headless-shell'].map(name=>registry.findExecutable(name).executablePath())}))"
 selected = json.loads(subprocess.check_output([node, '-e', script, str(registry)], text=True))
 root = Path(selected['root']).resolve(strict=True)
 executables = []
