@@ -22,8 +22,15 @@ MAX_RESPONSE = 256 * 1024
 
 
 def status():
+    browser = None
+    if importlib.util.find_spec('playwright') is not None:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as engine:
+            browser = engine.chromium.executable_path
     return {'success': True, 'python': sys.executable,
             'playwright': importlib.util.find_spec('playwright') is not None,
+            'browser_executable': browser,
+            'browser_installed': browser is not None and Path(browser).is_file(),
             'pillow': importlib.util.find_spec('PIL') is not None,
             'native_accessibility': importlib.util.find_spec('gi') is not None and sys.platform == 'linux',
             'x11_input': shutil.which('xdotool') is not None,

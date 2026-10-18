@@ -223,6 +223,11 @@ fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>)
             false,
         );
     }
+    // Portable/source and system-package installs have no per-user installer hook.
+    // Provision once here; a transient download failure must not disable offline coding.
+    if let Err(error) = peritus_product_runner::computer_ensure_setup() {
+        eprintln!("Peritus browser automation setup is incomplete: {error}");
+    }
     let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
         Ok(runtime) => runtime,
         Err(error) => {

@@ -17,7 +17,7 @@ Package `peritus-tools-computer` is a member of the root Cargo workspace.
 
 | Folder | Role / next waypoint |
 | --- | --- |
-| [src/](src/AGENTS.md) | Optional browser/desktop control host adapters, persistent session RPC, installation/setup, screenshots, observations, and controller driver sources. |
+| [src/](src/AGENTS.md) | Browser/desktop control host adapters, persistent session RPC, installation/setup, screenshots, observations, and controller driver sources. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 

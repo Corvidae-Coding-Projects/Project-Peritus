@@ -11,6 +11,9 @@ use std::{
 
 use serde_json::{Value, json};
 
+mod setup;
+pub use setup::{ensure_setup, setup};
+
 /// Maximum controller observation size, excluding separately retained image bytes.
 pub const MAX_RESPONSE_BYTES: u64 = 256 * 1024;
 /// Maximum accepted request size.
@@ -65,11 +68,12 @@ pub fn python() -> Result<PathBuf, String> {
         }
         return Ok(path);
     }
-    let installed = installation_root()?.join(if cfg!(windows) {
-        "runtime/Scripts/python.exe"
-    } else {
-        "runtime/bin/python"
-    });
+    let root = installation_root()?;
+    if let Some(python) = setup::selected_python(&root)? {
+        return Ok(python);
+    }
+    let installed =
+        root.join(if cfg!(windows) { "runtime/Scripts/python.exe" } else { "runtime/bin/python" });
     if installed.is_file() {
         return Ok(installed);
     }
@@ -122,34 +126,12 @@ pub fn status() -> Result<Value, String> {
     serde_json::from_slice(&output.stdout).map_err(|error| error.to_string())
 }
 
-/// Installs optional browser dependencies into a dedicated user virtual environment.
-pub fn setup() -> Result<Value, String> {
-    let root = installation_root()?;
-    fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-    let runtime = root.join("runtime");
-    if !runtime.exists() {
-        require_success(
-            Command::new(python()?).args(["-m", "venv", "--system-site-packages"]).arg(&runtime),
-            "create automation runtime",
-        )?;
-    }
-    let python =
-        root.join(if cfg!(windows) { "runtime/Scripts/python.exe" } else { "runtime/bin/python" });
-    require_success(
-        Command::new(&python).args(["-m", "pip", "install", "playwright>=1.63,<2", "Pillow"]),
-        "install automation libraries",
-    )?;
-    // Browser binaries can be supplied by the ordinary Chrome installation. The bundled
-    // Chromium is an independent fallback, not a replacement for the user's browser profile.
-    require_success(
-        Command::new(&python).args(["-m", "playwright", "install", "chromium"]),
-        "install automation Chromium",
-    )?;
-    status()
-}
-
 fn require_success(command: &mut Command, operation: &str) -> Result<(), String> {
-    let status = command.status().map_err(|error| format!("{operation}: {error}"))?;
+    // CLI stdout carries the result JSON; dependency progress belongs on stderr.
+    let status = command
+        .stdout(std::io::stderr())
+        .status()
+        .map_err(|error| format!("{operation}: {error}"))?;
     if status.success() { Ok(()) } else { Err(format!("{operation}: {status}")) }
 }
 
