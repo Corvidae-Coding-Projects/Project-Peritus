@@ -16,6 +16,12 @@ Missing Chromium libraries on supported Linux package managers are installed aut
 OS administrator authorization may be required for system libraries. The existing
 `PERITUS_INSTALL_DEPS=0` opt-out requires an already prepared runtime during installation.
 
+On Ubuntu systems restricting unprivileged user namespaces with AppArmor, setup can also
+request administrator authorization to install a profile for the exact managed Chromium
+and headless-shell executable paths. Chromium sandboxing and global user-namespace
+restrictions stay enabled. Like Chromium's documented path-based allowance, this permission
+also applies if the same user replaces an executable at one of those exact paths.
+
 ```sh
 peritus automation status  # inspect installed capabilities
 peritus automation setup   # resume or repair setup

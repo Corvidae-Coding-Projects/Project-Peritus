@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [automation-apparmor-real-2026-10-18.md](automation-apparmor-real-2026-10-18.md) | Actual Ubuntu release-installer failure, managed-browser namespace policy repair, and real sandbox replay evidence. |
+| [automation-apparmor-evidence.json](automation-apparmor-evidence.json) | Native Ubuntu consumer hashes, exact AppArmor policies, unchanged restrictions and owned renderer observations. |
 | [research-quality-rubric-v2.md](research-quality-rubric-v2.md) | Prospective, frozen semantic acceptance criteria for independent research; distinct from source matching and UI operation. |
 | [research-quality-rubric-v2.json](research-quality-rubric-v2.json) | Exact structured version of the frozen research-quality criteria and evidence boundaries. |
 | [deep-research-provider-retry-evidence.json](deep-research-provider-retry-evidence.json) | Actual 125-second official-client timeout, automatic live-provider retry, exact marker and owned-process cleanup. |

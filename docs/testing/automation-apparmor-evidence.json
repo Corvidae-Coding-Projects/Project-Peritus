@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "workflow_run": 39096915368,
+  "url": "https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/39096915368",
+  "boundary": "Real public setup consumer and sandboxed Chromium on disposable Ubuntu24 runners; final tagged package/TUI replay is separate.",
+  "platforms": {
+    "x86": {
+      "result": "PASS",
+      "commit": "e3ede3c920dba7a10bb617cdca2e4c84e611df05",
+      "consumer_sha256": "19fca3658cda4e9eb688ef3f98536cfce690a6ebf1997fd25484400940b3455a",
+      "security_before": "1\n",
+      "security_after": "1\n",
+      "profiles": [
+        {
+          "path": "/etc/apparmor.d/peritus-chromium-6e73621ac7aeed02db6f305d81246038bdccf6b6d2e92faa4702f518834a8d17",
+          "text": "# Managed by Peritus: exact Chromium user-namespace permissions.\nabi <abi/4.0>,\ninclude <tunables/global>\n\nprofile peritus-chromium-6e73621ac7aeed02db6f305d81246038bdccf6b6d2e92faa4702f518834a8d17-0 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache/ms-playwright/chromium-1248/chrome-linux64/chrome\" flags=(unconfined) {\n  userns,\n}\n\nprofile peritus-chromium-6e73621ac7aeed02db6f305d81246038bdccf6b6d2e92faa4702f518834a8d17-1 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell\" flags=(unconfined) {\n  userns,\n}\n\n"
+        },
+        {
+          "path": "/etc/apparmor.d/peritus-chromium-f7ac628646538a3bded4f359e4f3b3e3aaa59e307fa65bdfd9297ae8d33914d8",
+          "text": "# Managed by Peritus: exact Chromium user-namespace permissions.\nabi <abi/4.0>,\ninclude <tunables/global>\n\nprofile peritus-chromium-f7ac628646538a3bded4f359e4f3b3e3aaa59e307fa65bdfd9297ae8d33914d8-0 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache literal \\[x\\] \\{q\\} @\\{HOME\\} 水 \\\\ \\\" \\* \\? \\^ \\,/chromium-1248/chrome-linux64/chrome\" flags=(unconfined) {\n  userns,\n}\n\nprofile peritus-chromium-f7ac628646538a3bded4f359e4f3b3e3aaa59e307fa65bdfd9297ae8d33914d8-1 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache literal \\[x\\] \\{q\\} @\\{HOME\\} 水 \\\\ \\\" \\* \\? \\^ \\,/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell\" flags=(unconfined) {\n  userns,\n}\n\n"
+        },
+        {
+          "path": "/etc/apparmor.d/peritus-chromium-b0fc83a6f77bcb4e29b88f5b9f288a03f561708ee3b6f5d0ec3da659c3b0b5ff",
+          "text": "# Managed by Peritus: exact Chromium user-namespace permissions.\nabi <abi/4.0>,\ninclude <tunables/global>\n\nprofile peritus-chromium-b0fc83a6f77bcb4e29b88f5b9f288a03f561708ee3b6f5d0ec3da659c3b0b5ff-0 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/lib/python3.12/site-packages/playwright/driver/package/.local-browsers/chromium-1248/chrome-linux64/chrome\" flags=(unconfined) {\n  userns,\n}\n\nprofile peritus-chromium-b0fc83a6f77bcb4e29b88f5b9f288a03f561708ee3b6f5d0ec3da659c3b0b5ff-1 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/lib/python3.12/site-packages/playwright/driver/package/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell\" flags=(unconfined) {\n  userns,\n}\n\n"
+        }
+      ],
+      "browser_observations": {
+        "real-browser": [
+          {
+            "executable": "managed headless shell",
+            "renderers": [
+              "/proc/5726"
+            ]
+          },
+          {
+            "executable": "/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+            "renderers": [
+              "/proc/5840",
+              "/proc/5841",
+              "/proc/5829"
+            ]
+          }
+        ],
+        "literal-path-browser": [
+          {
+            "executable": "managed headless shell",
+            "renderers": [
+              "/proc/6138"
+            ]
+          },
+          {
+            "executable": "/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache literal [x] {q} @{HOME} 水 \\ \" * ? ^ ,/chromium-1248/chrome-linux64/chrome",
+            "renderers": [
+              "/proc/6249",
+              "/proc/6250",
+              "/proc/6238"
+            ]
+          }
+        ],
+        "package-local-browser": [
+          {
+            "executable": "managed headless shell",
+            "renderers": [
+              "/proc/6783"
+            ]
+          },
+          {
+            "executable": "/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/lib/python3.12/site-packages/playwright/driver/package/.local-browsers/chromium-1248/chrome-linux64/chrome",
+            "renderers": [
+              "/proc/6892",
+              "/proc/6893",
+              "/proc/6881"
+            ]
+          }
+        ]
+      }
+    },
+    "arm": {
+      "result": "PASS",
+      "commit": "e3ede3c920dba7a10bb617cdca2e4c84e611df05",
+      "consumer_sha256": "68c81e0eedd2573e95727bbd100ea01a45551274c920f1010260fbd99aea260b",
+      "security_before": "1\n",
+      "security_after": "1\n",
+      "profiles": [
+        {
+          "path": "/etc/apparmor.d/peritus-chromium-f7ac628646538a3bded4f359e4f3b3e3aaa59e307fa65bdfd9297ae8d33914d8",
+          "text": "# Managed by Peritus: exact Chromium user-namespace permissions.\nabi <abi/4.0>,\ninclude <tunables/global>\n\nprofile peritus-chromium-f7ac628646538a3bded4f359e4f3b3e3aaa59e307fa65bdfd9297ae8d33914d8-0 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache literal \\[x\\] \\{q\\} @\\{HOME\\} 水 \\\\ \\\" \\* \\? \\^ \\,/chromium-1248/chrome-linux-arm64/chrome\" flags=(unconfined) {\n  userns,\n}\n\nprofile peritus-chromium-f7ac628646538a3bded4f359e4f3b3e3aaa59e307fa65bdfd9297ae8d33914d8-1 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache literal \\[x\\] \\{q\\} @\\{HOME\\} 水 \\\\ \\\" \\* \\? \\^ \\,/chromium_headless_shell-1248/chrome-headless-shell-linux-arm64/chrome-headless-shell\" flags=(unconfined) {\n  userns,\n}\n\n"
+        },
+        {
+          "path": "/etc/apparmor.d/peritus-chromium-b0fc83a6f77bcb4e29b88f5b9f288a03f561708ee3b6f5d0ec3da659c3b0b5ff",
+          "text": "# Managed by Peritus: exact Chromium user-namespace permissions.\nabi <abi/4.0>,\ninclude <tunables/global>\n\nprofile peritus-chromium-b0fc83a6f77bcb4e29b88f5b9f288a03f561708ee3b6f5d0ec3da659c3b0b5ff-0 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/lib/python3.12/site-packages/playwright/driver/package/.local-browsers/chromium-1248/chrome-linux-arm64/chrome\" flags=(unconfined) {\n  userns,\n}\n\nprofile peritus-chromium-b0fc83a6f77bcb4e29b88f5b9f288a03f561708ee3b6f5d0ec3da659c3b0b5ff-1 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/lib/python3.12/site-packages/playwright/driver/package/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux-arm64/chrome-headless-shell\" flags=(unconfined) {\n  userns,\n}\n\n"
+        },
+        {
+          "path": "/etc/apparmor.d/peritus-chromium-6e73621ac7aeed02db6f305d81246038bdccf6b6d2e92faa4702f518834a8d17",
+          "text": "# Managed by Peritus: exact Chromium user-namespace permissions.\nabi <abi/4.0>,\ninclude <tunables/global>\n\nprofile peritus-chromium-6e73621ac7aeed02db6f305d81246038bdccf6b6d2e92faa4702f518834a8d17-0 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache/ms-playwright/chromium-1248/chrome-linux-arm64/chrome\" flags=(unconfined) {\n  userns,\n}\n\nprofile peritus-chromium-6e73621ac7aeed02db6f305d81246038bdccf6b6d2e92faa4702f518834a8d17-1 \"/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux-arm64/chrome-headless-shell\" flags=(unconfined) {\n  userns,\n}\n\n"
+        }
+      ],
+      "browser_observations": {
+        "real-browser": [
+          {
+            "executable": "managed headless shell",
+            "renderers": [
+              "/proc/5753"
+            ]
+          },
+          {
+            "executable": "/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache/ms-playwright/chromium-1248/chrome-linux-arm64/chrome",
+            "renderers": [
+              "/proc/5866",
+              "/proc/5867",
+              "/proc/5855"
+            ]
+          }
+        ],
+        "literal-path-browser": [
+          {
+            "executable": "managed headless shell",
+            "renderers": [
+              "/proc/6153"
+            ]
+          },
+          {
+            "executable": "/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/cache literal [x] {q} @{HOME} 水 \\ \" * ? ^ ,/chromium-1248/chrome-linux-arm64/chrome",
+            "renderers": [
+              "/proc/6317",
+              "/proc/6319",
+              "/proc/6301"
+            ]
+          }
+        ],
+        "package-local-browser": [
+          {
+            "executable": "managed headless shell",
+            "renderers": [
+              "/proc/6815"
+            ]
+          },
+          {
+            "executable": "/home/runner/work/Project-Peritus/Project-Peritus/dist/runtime-replay-evidence/data/peritus/automation/runtimes/playwright-1.64.0-pillow-13.0.0/lib/python3.12/site-packages/playwright/driver/package/.local-browsers/chromium-1248/chrome-linux-arm64/chrome",
+            "renderers": [
+              "/proc/6923",
+              "/proc/6924",
+              "/proc/6912"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

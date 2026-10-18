@@ -8,6 +8,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [automation-apparmor.py](automation-apparmor.py) | Disposable Ubuntu public setup consumer and real Chromium sandbox/HTTP/JavaScript replay, including literal paths, opt-out and policy recovery. |
 | [module-market-menu.py](module-market-menu.py) | Fresh TUI client invoking plugin-supplied numeric plan/report actions on a retained checked job. |
 | [module-market-browser.mjs](module-market-browser.mjs) | Actual GUI market selection and plugin-supplied plan/Start/report control replay. |
 | [native-research-rpc.py](native-research-rpc.py) | Actual native Rust executable IPC, stage correction, source checking and fresh-process report readback. |
