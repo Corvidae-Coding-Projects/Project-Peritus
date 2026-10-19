@@ -25,6 +25,7 @@ pub enum DecodeFailure {
     RateLimited,
     Capacity,
     QuotaExhausted,
+    ModelUnavailable,
     ContextLimit,
     InputLimit,
     Reported,
@@ -258,6 +259,17 @@ fn decode_item(event: &Value, event_type: &str, state: &mut State) -> Result<(),
     }
     match item_type {
         "reasoning" => Ok(()),
+        "error" if event_type == "item.completed" => {
+            // Codex ErrorItem is a nonfatal notification (for example missing model
+            // metadata). Keep reading for its authoritative error/turn terminal.
+            let message =
+                item.get("message").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?;
+            if message.len() > ProtocolLimits::PRODUCTION.max_text_bytes() || message.contains('\0')
+            {
+                return Err(DecodeFailure::OutputLimit);
+            }
+            Ok(())
+        }
         "agent_message" if event_type != "item.completed" => Ok(()),
         "agent_message" => {
             let text = item.get("text").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?;

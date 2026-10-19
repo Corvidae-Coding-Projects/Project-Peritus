@@ -8,6 +8,11 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [codex-notifications.md](codex-notifications.md) | Captured Codex nonfatal-notification/model-rejection defect, independent expectations, and actual-provider replay commands. |
+| [codex-model-unavailable.jsonl](codex-model-unavailable.jsonl) | Actual credential-free Codex output that reproduced the hidden account/model rejection. |
+| [codex-notification-replay.rs](codex-notification-replay.rs) | Ordinary production-decoder replay and authenticated public Codex-provider/developer-loop consumer. |
+| [build-codex-notification-consumer.py](build-codex-notification-consumer.py) | Builds current or original decoder consumer outside workspace membership without a test target. |
+| [codex-notification-sequences.py](codex-notification-sequences.py) | Varied captured-wire placements, duplicate notices, terminal failures, malformed items, and native-tool rejection through the actual decoder. |
 | [automation-apparmor.py](automation-apparmor.py) | Disposable Ubuntu public setup consumer and real Chromium sandbox/HTTP/JavaScript replay, including literal paths, opt-out and policy recovery. |
 | [module-market-menu.py](module-market-menu.py) | Fresh TUI client invoking plugin-supplied numeric plan/report actions on a retained checked job. |
 | [module-market-browser.mjs](module-market-browser.mjs) | Actual GUI market selection and plugin-supplied plan/Start/report control replay. |

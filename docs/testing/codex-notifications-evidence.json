@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-18",
+  "base_commit": "87dedeaa80b3e286970ac38e12a22ebc35446266",
+  "source_sha256": {
+    "crates/model/peritus-provider-openai/src/runtime/output.rs": "a33fce3761069f90220cadb3607c72ef0c56110128e0d80ecf798d2b02514f45",
+    "crates/model/peritus-provider-openai/src/runtime/output/failure.rs": "b466b4456ab139a3cd8037997e4021b3e393630c4ec3612b987e25695ebb3755",
+    "crates/model/peritus-provider-openai/src/runtime/provider/failure.rs": "b19e7b5929bfbd3b218c7d03e930becd44b93b7adcf98572cacb612990d7a2ae",
+    "crates/orchestration/peritus-agent/src/developer/error.rs": "bc427b444a1a13788cb1ab5c4431f24d87e915e99c99dfa6b56a08ed0fae0e37"
+  },
+  "baseline": {
+    "source_commit": "87dedeaa80b3e286970ac38e12a22ebc35446266",
+    "input": "docs/testing/reproducers/codex-model-unavailable.jsonl",
+    "input_sha256": "bcd32f1baed745d483d2fd7d3a7b4334b5dfa4f24489eca37a07a615d54eb47b",
+    "original_observed": "UnsupportedEvent",
+    "fixed_observed": "ModelUnavailable"
+  },
+  "generated_cases": [
+    {
+      "case": "actual-success",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "actual-rejection",
+      "expected": "ModelUnavailable",
+      "exit": 0
+    },
+    {
+      "case": "notice-position-1-copies-1",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "notice-position-1-copies-2",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "notice-position-1-copies-4",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "notice-position-2-copies-1",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "notice-position-2-copies-2",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "notice-position-2-copies-4",
+      "expected": "complete",
+      "exit": 0
+    },
+    {
+      "case": "notice-without-terminal",
+      "expected": "Incomplete",
+      "exit": 0
+    },
+    {
+      "case": "notice-then-native-command",
+      "expected": "NativeTool",
+      "exit": 0
+    },
+    {
+      "case": "notice-then-unknown-item",
+      "expected": "UnsupportedEvent",
+      "exit": 0
+    },
+    {
+      "case": "notice-missing-message",
+      "expected": "Malformed",
+      "exit": 0
+    },
+    {
+      "case": "notice-invalid-control",
+      "expected": "OutputLimit",
+      "exit": 0
+    },
+    {
+      "case": "notice-then-safety-failure",
+      "expected": "Safety",
+      "exit": 0
+    },
+    {
+      "case": "nested-model-code",
+      "expected": "ModelUnavailable",
+      "exit": 0
+    }
+  ],
+  "live_provider": {
+    "success": {
+      "detail": "PERITUS-PROVIDER-READY",
+      "expected": "complete",
+      "model": "gpt-6-luna",
+      "observed": "complete",
+      "official_executable": "/home/builder/.codex/packages/standalone/releases/0.163.0-x86_64-unknown-linux-musl/bin/codex",
+      "retries": 0,
+      "scope": "Actual authenticated official Codex through the public provider and DeveloperLoop; no native or host tools authorized"
+    },
+    "rejection": {
+      "detail": "provider openai ended the request (invalid_request; openai.codex_runtime.model_unavailable). Codex rejected the selected model for this account. Refresh the model list with /model and choose an available model, or restore this account's access before retrying. Saved work is retained.",
+      "expected": "model_unavailable",
+      "model": "gpt-6.1-sol",
+      "observed": "model_unavailable",
+      "official_executable": "/home/builder/.codex/packages/standalone/releases/0.163.0-x86_64-unknown-linux-musl/bin/codex",
+      "retries": 0,
+      "scope": "Actual authenticated official Codex through the public provider and DeveloperLoop; no native or host tools authorized"
+    }
+  },
+  "tui": {
+    "success": {
+      "model": "gpt-6-luna",
+      "expected": "complete",
+      "cli_sha256": "e2609eddd71346abf29a04d779a68ae23aa6ae68ed55012e1280479972a2b155",
+      "observed": "complete",
+      "phase": 11,
+      "progress": {
+        "started_unix_millis": 1792372292880,
+        "last_effect_unix_millis": 1792372296185,
+        "model_requests": 1,
+        "tool_calls": 0,
+        "retries": 0,
+        "provider_failovers": 0,
+        "compactions": 0,
+        "input_tokens": 13713,
+        "cached_input_tokens": 0,
+        "output_tokens": 55,
+        "total_tokens": 13768,
+        "provider_cost_microunits": 0,
+        "usage_observations": 1,
+        "workspace_bytes": 0,
+        "workspace_growth_bytes": 0,
+        "peak_rss_bytes": 28553216,
+        "last_event": "runner progress checkpoint",
+        "provider_started_unix_millis": null
+      },
+      "client_exit": 0,
+      "daemon_sha256": "0935eedbca7f8ab5c9c78c031f6aefdf17bb70671dd57d59f70f9038eda69d0f",
+      "clean_shutdown": true
+    },
+    "rejection": {
+      "model": "gpt-6.1-sol",
+      "expected": "model_unavailable",
+      "cli_sha256": "e2609eddd71346abf29a04d779a68ae23aa6ae68ed55012e1280479972a2b155",
+      "observed": "model_unavailable",
+      "phase": 8,
+      "detail": "execute D0 developer loop: provider openai ended the request (invalid_request; openai.codex_runtime.model_unavailable). Codex rejected the selected model for this account. Refresh the model list with /model and choose an available model, or restore this account's access before retrying. Saved work is retained.",
+      "progress": {
+        "started_unix_millis": 1792372292880,
+        "last_effect_unix_millis": 1792372295061,
+        "model_requests": 1,
+        "tool_calls": 0,
+        "retries": 0,
+        "provider_failovers": 0,
+        "compactions": 0,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "provider_cost_microunits": 0,
+        "usage_observations": 0,
+        "workspace_bytes": 0,
+        "workspace_growth_bytes": 0,
+        "peak_rss_bytes": 25874432,
+        "last_event": "runner progress checkpoint",
+        "provider_started_unix_millis": null
+      },
+      "client_exit": 0,
+      "daemon_sha256": "0935eedbca7f8ab5c9c78c031f6aefdf17bb70671dd57d59f70f9038eda69d0f",
+      "clean_shutdown": true
+    }
+  },
+  "installed_files": [
+    {
+      "path": "/home/builder/.local/bin/peritus",
+      "sha256": "e2609eddd71346abf29a04d779a68ae23aa6ae68ed55012e1280479972a2b155",
+      "owner_uid": 1001
+    },
+    {
+      "path": "/home/builder/.local/bin/peritusd",
+      "sha256": "0935eedbca7f8ab5c9c78c031f6aefdf17bb70671dd57d59f70f9038eda69d0f",
+      "owner_uid": 1001
+    },
+    {
+      "path": "/home/builder/.local/bin/peritus-tui",
+      "sha256": "addbc614886624ede7a891e072b1b36996a2eaaadf0d32b7f371b7a2751152f7",
+      "owner_uid": 1001
+    },
+    {
+      "path": "/home/builder/.local/libexec/peritus/peritus-linux-sandbox-helper",
+      "sha256": "82b18ea3f8b3169c9c0efc431f72dd7ee461ad09309f93edc8b2bd4f774fe269",
+      "owner_uid": 1001
+    }
+  ],
+  "deployment": {
+    "run": "59ed85009de6c149d98e99b65e888b72",
+    "cli_sha256": "e2609eddd71346abf29a04d779a68ae23aa6ae68ed55012e1280479972a2b155",
+    "connected": true,
+    "daemon_pid": 1298477,
+    "daemon_sha256": "0935eedbca7f8ab5c9c78c031f6aefdf17bb70671dd57d59f70f9038eda69d0f",
+    "retained_phase": 8,
+    "retained_tool_calls": 8532,
+    "resume_artifact_bytes": 115527433,
+    "client_exit": 0
+  },
+  "scope": {
+    "unit_tests": "not run",
+    "mock_provider": "not used",
+    "formal_or_repository_verification": "not run",
+    "production_run_resumed": false,
+    "production_model_choice": "pending; retained selected model unchanged",
+    "program_version": "0.1.1 with develop fix"
+  }
+}

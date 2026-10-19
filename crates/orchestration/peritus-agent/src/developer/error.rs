@@ -102,6 +102,9 @@ fn failure_hint(
     if diagnostic_code == "openai.codex_runtime.input_limit" {
         return "Codex rejected the input size. Read smaller document pages or choose a provider that accepts larger requests.";
     }
+    if diagnostic_code == "openai.codex_runtime.model_unavailable" {
+        return "Codex rejected the selected model for this account. Refresh the model list with /model and choose an available model, or restore this account's access before retrying. Saved work is retained.";
+    }
     if diagnostic_code == "opencode.runtime.go_global_regions_required" {
         return "OpenCode Go rejected this model under the workspace's regional Privacy setting. Choose a model allowed by that setting, or explicitly select Global in the OpenCode workspace Privacy settings.";
     }

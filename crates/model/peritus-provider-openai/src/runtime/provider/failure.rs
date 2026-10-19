@@ -51,6 +51,11 @@ pub(super) fn decode_failure(
             Retryability::Never,
             "openai.codex_runtime.quota_exhausted",
         ),
+        DecodeFailure::ModelUnavailable => (
+            FailureCategory::InvalidRequest,
+            Retryability::Never,
+            "openai.codex_runtime.model_unavailable",
+        ),
         DecodeFailure::ContextLimit => (
             FailureCategory::InvalidRequest,
             Retryability::Never,

@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [codex-notifications-real-2026-10-18.md](codex-notifications-real-2026-10-18.md) | Actual Codex advisory/model-access failure, decoder repair, live provider/TUI replays, and builder installation recovery. |
+| [codex-notifications-evidence.json](codex-notifications-evidence.json) | Exact source/binary identities, original/fixed decoding, live provider/TUI receipts, and retained-run reattachment. |
 | [automation-apparmor-real-2026-10-18.md](automation-apparmor-real-2026-10-18.md) | Actual Ubuntu release-installer failure, managed-browser namespace policy repair, and real sandbox replay evidence. |
 | [automation-apparmor-evidence.json](automation-apparmor-evidence.json) | Native Ubuntu consumer hashes, exact AppArmor policies, unchanged restrictions and owned renderer observations. |
 | [research-quality-rubric-v2.md](research-quality-rubric-v2.md) | Prospective, frozen semantic acceptance criteria for independent research; distinct from source matching and UI operation. |
