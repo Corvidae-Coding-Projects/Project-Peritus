@@ -1,6 +1,7 @@
 //! Durable state owner shared by the loop port and its bounded memory-tool decorator.
 
 mod checkpoint;
+mod decoded;
 pub(super) mod environment;
 mod ingestion;
 mod recovery;
@@ -38,6 +39,9 @@ pub(super) struct LocalMemory {
     pub(super) last_checkpoint: Option<CheckpointManifest>,
     pub(super) last_view: Vec<Message>,
     pub(super) inline_epoch_start: Option<u64>,
+    pub(super) exchange_index: super::assembly::exchanges::ExchangeIndex,
+    pub(super) decoded_hits: std::cell::Cell<u64>,
+    pub(super) decoded_misses: std::cell::Cell<u64>,
     pub(super) prepared: Option<PreparedView>,
     pub(super) profile: Option<ProviderProfile>,
     pub(super) tools: Vec<ToolDefinition>,
@@ -111,6 +115,9 @@ impl LocalMemory {
             last_checkpoint: None,
             last_view: Vec::new(),
             inline_epoch_start: None,
+            exchange_index: Default::default(),
+            decoded_hits: Default::default(),
+            decoded_misses: Default::default(),
             prepared: None,
             profile: None,
             tools: Vec::new(),

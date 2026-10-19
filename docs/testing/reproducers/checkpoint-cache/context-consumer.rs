@@ -1,4 +1,4 @@
-//! Ordinary consumer of actual product tools, local context, providers and ProductRunner.
+// Ordinary consumer of actual product tools, local context, providers and ProductRunner.
 use peritus_agent::{
     DeveloperContextAssembly, DeveloperContextEvent, DeveloperContextPort, DeveloperLoopLimits,
     DeveloperLoopRequest, DeveloperToolExecutor,

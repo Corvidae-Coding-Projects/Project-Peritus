@@ -29,6 +29,7 @@ mod grounding;
 mod inspection;
 
 mod inspection_cancellation;
+mod inspection_document;
 
 pub mod inspection_cursor;
 

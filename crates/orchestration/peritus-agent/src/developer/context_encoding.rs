@@ -13,6 +13,14 @@ const MAX_IMAGE_ESTIMATE_TOKENS: u64 = 10_000;
 const MAX_IMAGE_ESTIMATE_BYTES: u64 = MAX_IMAGE_ESTIMATE_TOKENS * TOKEN_ESTIMATE_BYTES;
 
 pub(super) fn estimated_request_tokens(messages: &[Message], tools: &[ToolDefinition]) -> u64 {
+    estimate_u64(estimated_request_bytes(messages, tools))
+}
+
+pub(super) fn estimated_message_bytes(messages: &[Message]) -> u64 {
+    messages.iter().map(encoded_message_size).fold(0_u64, u64::saturating_add)
+}
+
+pub(super) fn estimated_request_bytes(messages: &[Message], tools: &[ToolDefinition]) -> u64 {
     let message_bytes = messages.iter().map(encoded_message_size).fold(0_u64, u64::saturating_add);
     let tool_bytes = tools.iter().fold(0_u64, |total, tool| {
         total
@@ -23,7 +31,7 @@ pub(super) fn estimated_request_tokens(messages: &[Message], tools: &[ToolDefini
             .saturating_add(tool.parameters().canonical_bytes().len() as u64)
             .saturating_add(32)
     });
-    estimate_u64(message_bytes.saturating_add(tool_bytes).saturating_add(512))
+    message_bytes.saturating_add(tool_bytes).saturating_add(512)
 }
 
 fn encoded_message_size(message: &Message) -> u64 {
@@ -125,7 +133,7 @@ pub(super) const fn estimate_bytes(bytes: usize) -> u64 {
     estimate_u64(bytes as u64)
 }
 
-const fn estimate_u64(bytes: u64) -> u64 {
+pub(super) const fn estimate_u64(bytes: u64) -> u64 {
     let estimate = bytes.div_ceil(TOKEN_ESTIMATE_BYTES);
     if estimate == 0 { 1 } else { estimate }
 }

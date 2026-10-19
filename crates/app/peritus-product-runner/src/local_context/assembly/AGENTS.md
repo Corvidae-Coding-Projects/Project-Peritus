@@ -9,7 +9,7 @@ Model-view construction: keep current host policy and governing input, select wo
 | File | Role |
 | --- | --- |
 | [evidence.rs](evidence.rs) | Current-permission and content-validated reusable evidence; exact source pages remain local and retrievable. |
-| [exchanges.rs](exchanges.rs) | Complete exchange grouping with stale-read receipts that preserve unrelated settled results. |
+| [exchanges.rs](exchanges.rs) | Append-only exchange topology and estimates; select before loading archived bodies, with current permissions and stale-read receipts. |
 | [retrieval.rs](retrieval.rs) | Host-observed immutable evidence ranges survive omission of their retrieval receipts. |
 | [transport.rs](transport.rs) | Fit a known adapter envelope using retrievable prefixes of already durable observations. |
 | [validation.rs](validation.rs) | Exact-view accounting; savings compare with this invocation's unreduced complete exchanges. |

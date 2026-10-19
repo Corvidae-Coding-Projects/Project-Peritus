@@ -1,0 +1,342 @@
+{
+  "behavior": {
+    "seed": 731944,
+    "cases": [
+      {
+        "case": "96 seeded ordinary/overlapping/EOF Unicode and CRLF pages",
+        "status": "PASS"
+      },
+      {
+        "case": "empty/CRLF/final-line/long-line byte continuation and UTF-8 errors",
+        "status": "PASS"
+      },
+      {
+        "case": "same-size restored-mtime/inode/delete/recreate/mode/symlink invalidation",
+        "status": "PASS"
+      },
+      {
+        "case": "current authority/protected paths/cancellation override warm data",
+        "status": "PASS"
+      },
+      {
+        "case": "retention eviction and oversized-document streaming preserve content",
+        "status": "PASS"
+      },
+      {
+        "case": "unchanged context reuses decoded messages and exact current host state",
+        "status": "PASS"
+      },
+      {
+        "case": "warm context invalidates stale read while preserving unrelated settled batch",
+        "status": "PASS"
+      },
+      {
+        "case": "warm context permissions and pending-to-settled exchange ordering",
+        "status": "PASS"
+      },
+      {
+        "case": "host policy/governing steering/new invocation reset cache topology",
+        "status": "PASS"
+      }
+    ],
+    "actions": 240,
+    "document_bytes": 822385,
+    "cold_read_rchar": 1644880,
+    "maximum_warm_read_rchar": 113,
+    "context_views": [
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 6,
+        "newly_indexed_messages": 6,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 6,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 5,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 9,
+        "decoded_message_cache_misses": 2,
+        "newly_indexed_messages": 2,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 7,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 3,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 7,
+        "decoded_message_cache_misses": 1,
+        "newly_indexed_messages": 1,
+        "assembly_elapsed_ms": 2
+      },
+      {
+        "decoded_message_cache_hits": 11,
+        "decoded_message_cache_misses": 1,
+        "newly_indexed_messages": 1,
+        "assembly_elapsed_ms": 0
+      },
+      {
+        "decoded_message_cache_hits": 9,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 9,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 1,
+        "decoded_message_cache_misses": 2,
+        "newly_indexed_messages": 3,
+        "assembly_elapsed_ms": 2
+      },
+      {
+        "decoded_message_cache_hits": 7,
+        "decoded_message_cache_misses": 2,
+        "newly_indexed_messages": 2,
+        "assembly_elapsed_ms": 1
+      },
+      {
+        "decoded_message_cache_hits": 5,
+        "decoded_message_cache_misses": 0,
+        "newly_indexed_messages": 0,
+        "assembly_elapsed_ms": 1
+      }
+    ]
+  },
+  "pressure": {
+    "passed": true,
+    "distinct_large_sources": 48,
+    "source_bytes": 19201344,
+    "context_views": 97,
+    "decoded_cache_misses": 101,
+    "peak_view_cache_misses": 5,
+    "revisited_evicted_source_correct": true,
+    "changed_source_warm_decode_misses": [
+      0,
+      0,
+      0
+    ],
+    "call_result_order_preserved": true
+  },
+  "comparison": {
+    "document_bytes": 6200000,
+    "page_calls": 96,
+    "context_calls": 24,
+    "exact_page_outputs_identical": true,
+    "exact_context_messages_identical": true,
+    "pages": {
+      "before": {
+        "rchar": 578561474,
+        "elapsed_s": 3.8850207239738666,
+        "binary_sha256": "431a31805fd061e0d25d44bd4b3d5a9e5adb5180b69e214677e934f39554c97d"
+      },
+      "after": {
+        "rchar": 12419272,
+        "elapsed_s": 0.2132180249900557,
+        "binary_sha256": "c8344680fe3460b2eff99e8dbb7dace785944a39c599c396dcaf0c8db307d4af"
+      }
+    },
+    "context": {
+      "before": {
+        "rchar": 43120717,
+        "elapsed_s": 4.14664334297413,
+        "binary_sha256": "431a31805fd061e0d25d44bd4b3d5a9e5adb5180b69e214677e934f39554c97d"
+      },
+      "after": {
+        "rchar": 33876587,
+        "elapsed_s": 3.315611092024483,
+        "binary_sha256": "c8344680fe3460b2eff99e8dbb7dace785944a39c599c396dcaf0c8db307d4af"
+      }
+    }
+  },
+  "recovery": {
+    "cases": 6,
+    "common_prefix_characters_between_views": [
+      1426,
+      3273,
+      1426,
+      2502,
+      2502,
+      2501,
+      2502,
+      2502,
+      2502,
+      2501,
+      2502,
+      2502,
+      1898,
+      20072
+    ],
+    "roomy_epoch_common_prefix_characters": [
+      1426,
+      3273,
+      4018,
+      21353,
+      38688,
+      56023
+    ],
+    "results": [
+      {
+        "case": "pressure-repeat-source",
+        "ok": true
+      },
+      {
+        "case": "fresh-process-source-reuse",
+        "ok": true
+      },
+      {
+        "case": "external-same-size-mtime-refresh",
+        "ok": true
+      },
+      {
+        "case": "current-permission-revokes-cached-source",
+        "ok": true
+      },
+      {
+        "case": "distinct-run-workspace-isolation",
+        "ok": true
+      },
+      {
+        "case": "stable-prefix-between-epoch-rolls",
+        "ok": true
+      }
+    ]
+  },
+  "mixed": [
+    {
+      "case": "mixed-batch-one-stale-read",
+      "passed": true,
+      "failures": [],
+      "exit": 0
+    },
+    {
+      "case": "assistant-header-keeps-call-order",
+      "passed": true,
+      "failures": [],
+      "exit": 0
+    }
+  ],
+  "native_tui": {
+    "passed": true,
+    "elapsed_seconds": 62.537649780046195,
+    "distinct_source_entries_preserved": true,
+    "terminal_entries_omitted_from_active_view": true,
+    "terminal_entries_remain_exactly_retrievable": true,
+    "context_updates": 2,
+    "source_files_unchanged": true,
+    "daemon_sha256": "ff71441cf3f14397b86b7c4d1279088f099ee6f072b99d3a6c9aa0d8bf84f2cc"
+  },
+  "independent": {
+    "artifact": {
+      "path": "/home/doll/.cache/peritus-incremental-real-20261019/reuse-consumer-final",
+      "sha256": "961668c9717ea20c3152ef1d206d7c95546167a3624e611d7683d583c35a5c3a",
+      "bytes": 73850264
+    },
+    "command": "python3 /home/doll/.cache/peritus-incremental-independent-20261019/run-final.py",
+    "checks": {
+      "pass": 68,
+      "fail": 0
+    },
+    "logs": {
+      "replay-1792435849746655602-continuation.jsonl": {
+        "requests": 10,
+        "actions": {
+          "read": 10
+        },
+        "stderr_bytes": 0,
+        "error_answers": 0
+      },
+      "replay-1792435849746655602-invalidation.jsonl": {
+        "requests": 8,
+        "actions": {
+          "read": 6,
+          "deny": 2
+        },
+        "stderr_bytes": 0,
+        "error_answers": 0
+      },
+      "replay-1792435849746655602-ordering.jsonl": {
+        "requests": 19,
+        "actions": {
+          "observe": 2,
+          "assemble": 11,
+          "propose": 1,
+          "settle": 1,
+          "policy": 1,
+          "deny": 2,
+          "begin": 1
+        },
+        "stderr_bytes": 0,
+        "error_answers": 0
+      },
+      "replay-1792435849746655602-sparse.jsonl": {
+        "requests": 14,
+        "actions": {
+          "read": 14
+        },
+        "stderr_bytes": 0,
+        "error_answers": 0,
+        "first_read_rchar": 17720,
+        "first_repeat_rchar": 114
+      }
+    },
+    "reviewed_source": {
+      "crates/app/peritus-product-runner/src/local_context/assembly.rs": "6ed3e0f28101aea5045011942629c8f5a57afbec7175d0f67366f93d5e007992",
+      "crates/app/peritus-product-runner/src/local_context/assembly/exchanges.rs": "93b38dec2c2ebc01f62ee161542cb469c51710566d5e3ebccc06f91277f63570",
+      "crates/orchestration/peritus-agent/src/developer/context_port.rs": "5a43a8c49a9a77127ea37df48dbb7fef4bf14f5b53a2d51e6f021f8b5fd8dc2b",
+      "crates/orchestration/peritus-agent/src/developer/context_encoding.rs": "7a07015ab673e726b603c5b8f4b1048f05db1f60bf29f010abcc25f489bcaf0d"
+    },
+    "requests": 51
+  }
+}

@@ -9,6 +9,7 @@ Implementation pieces for `memory.rs`: Durable state owner shared by the loop po
 | File | Role |
 | --- | --- |
 | [checkpoint.rs](checkpoint.rs) | Persist exact prepared view and reconstruction artifacts before atomic publication. |
+| [decoded.rs](decoded.rs) | Bounded, scope/digest-keyed decoded projections of immutable owned message artifacts; cold loads retain artifact validation. |
 | [environment.rs](environment.rs) | Exact host workspace/conversation bindings, with separately observed file dependencies. |
 | [ingestion.rs](ingestion.rs) | Persist-before-observe source ingestion and exact invocation input pinning. |
 | [recovery.rs](recovery.rs) | Exact checkpoint reconstruction plus an ordered uncovered journal suffix. |

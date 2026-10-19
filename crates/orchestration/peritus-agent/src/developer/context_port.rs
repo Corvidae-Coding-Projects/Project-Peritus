@@ -16,6 +16,39 @@ pub fn estimate_developer_request_tokens(messages: &[Message], tools: &[ToolDefi
     estimated_request_tokens(messages, tools)
 }
 
+/// Composable input estimates using the production loop's exact accounting weights.
+/// Retaining a message contribution allows selection without reloading its source bytes.
+#[derive(Clone, Copy, Default)]
+pub struct DeveloperContextEstimate(u64);
+
+impl DeveloperContextEstimate {
+    /// Complete request framing, including tool definitions and fixed overhead.
+    #[must_use]
+    pub fn request(messages: &[Message], tools: &[ToolDefinition]) -> Self {
+        Self(super::context_encoding::estimated_request_bytes(messages, tools))
+    }
+    /// Only these messages, without duplicate request or tool-definition overhead.
+    #[must_use]
+    pub fn messages(messages: &[Message]) -> Self {
+        Self(super::context_encoding::estimated_message_bytes(messages))
+    }
+    /// Appends another retained contribution with saturating accounting.
+    #[must_use]
+    pub const fn with(self, additional: Self) -> Self {
+        Self(self.0.saturating_add(additional.0))
+    }
+    /// Replaces one previously included message contribution without loading other messages.
+    #[must_use]
+    pub const fn replacing(self, previous: Self, replacement: Self) -> Self {
+        Self(self.0.saturating_sub(previous.0).saturating_add(replacement.0))
+    }
+    /// Applies the production token estimate after all contributions have been combined.
+    #[must_use]
+    pub const fn tokens(self) -> u64 {
+        super::context_encoding::estimate_u64(self.0)
+    }
+}
+
 /// Inputs to local selection. The host must preserve current policy and protocol obligations.
 pub struct DeveloperContextAssembly<'a> {
     /// The receiving adapter's separate transport envelope, when one exists.

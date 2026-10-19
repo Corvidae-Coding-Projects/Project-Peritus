@@ -1,21 +1,57 @@
 //! Complete assistant/tool exchange grouping with no recovered-effect dispatch path.
 
 use super::super::{error, memory::LocalMemory};
-use peritus_agent::DeveloperLoopError;
+use peritus_agent::{DeveloperContextEstimate, DeveloperLoopError};
 use peritus_model_protocol::{
-    CanonicalJson, ContentBlock, JsonBounds, Message, ProtocolLimits, Role, ToolResult,
-    decode_messages,
+    CanonicalJson, ContentBlock, JsonBounds, Message, ProtocolLimits, Role, ToolCallId, ToolResult,
 };
 use std::collections::BTreeSet;
 
 #[derive(Clone)]
 pub(super) struct Exchange {
-    pub(super) messages: Vec<Message>,
     pub(super) sources: Vec<u64>,
+    message_ids: Vec<u64>,
+    message_shapes: Vec<(Role, usize)>,
+    pub(super) estimate: DeveloperContextEstimate,
+    replacements: Vec<(usize, usize, ContentBlock)>,
 }
 
-pub(super) fn messages(exchange: &Exchange) -> std::iter::Cloned<std::slice::Iter<'_, Message>> {
-    exchange.messages.iter().cloned()
+impl Exchange {
+    pub(super) fn load(&self, memory: &LocalMemory) -> Result<Vec<Message>, DeveloperLoopError> {
+        let mut messages = Vec::new();
+        for (index, id) in self.message_ids.iter().enumerate() {
+            let (role, count) = self.message_shapes[index];
+            let replacements = self
+                .replacements
+                .iter()
+                .filter(|(message, _, _)| *message == index)
+                .collect::<Vec<_>>();
+            if !replacements.is_empty() && replacements.len() == count {
+                // A fully obsolete result needs only its small receipt. Loading the old
+                // body here would churn the cache even though no old bytes are delivered.
+                let mut blocks = replacements
+                    .into_iter()
+                    .map(|(_, block, value)| (*block, value.clone()))
+                    .collect::<Vec<_>>();
+                blocks.sort_by_key(|(index, _)| *index);
+                messages.push(Message::new(
+                    role,
+                    blocks.into_iter().map(|(_, value)| value).collect(),
+                    ProtocolLimits::PRODUCTION,
+                )?);
+            } else {
+                let original = memory.message(*id)?;
+                let mut content = original.content().to_vec();
+                for (_, block, replacement) in replacements {
+                    *content
+                        .get_mut(*block)
+                        .ok_or_else(|| error("stale result block missing"))? = replacement.clone();
+                }
+                messages.push(Message::new(original.role(), content, ProtocolLimits::PRODUCTION)?);
+            }
+        }
+        Ok(messages)
+    }
 }
 
 pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> Option<String> {
@@ -25,31 +61,20 @@ pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> O
     let mut results = Vec::new();
     let mut total = 0_usize;
     for exchange in exchanges {
-        for message in &exchange.messages {
-            for block in message.content() {
-                let ContentBlock::ToolResult(result) = block else { continue };
-                let call_id = result.call_id().expose_for_wire();
-                let Some(source) = memory
-                    .sources
-                    .iter()
-                    .rev()
-                    .find(|source| source.call.as_ref().is_some_and(|call| call.id == call_id))
-                else {
-                    continue;
-                };
-                // Re-reading a retrieval receipt wraps its already archived sources again.
-                // Keep the exact receipt available for audit, but never solicit that recursive
-                // read merely because its optional inline exchange no longer fits.
-                if source.is_memory_receipt() {
-                    continue;
-                }
-                total = total.saturating_add(1);
-                if results.len() >= 8 {
-                    continue;
-                }
-                let tool = source.call.as_ref().map_or("unknown", |call| call.name.as_str());
+        for id in &exchange.sources {
+            let Ok(source) = memory.archived(*id) else { continue };
+            if source.kind != super::super::record::ArchiveKind::ToolOutput
+                || source.is_memory_receipt()
+            {
+                continue;
+            }
+            let Some(call) = &source.call else { continue };
+            total = total.saturating_add(1);
+            if results.len() < 8 {
                 results.push(format!(
-                    "- tool={tool} call={call_id} exact_source={}",
+                    "- tool={} call={} exact_source={}",
+                    call.name,
+                    call.id,
                     super::super::tools::source_handle(memory, source.sequence)
                 ));
             }
@@ -75,94 +100,252 @@ pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> O
     Some(notice)
 }
 
-pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoopError> {
-    let requirements = memory
-        .state
-        .protocol(memory.state.binding())
-        .map_err(|_| error("exchange scope mismatch"))?
-        .requirements();
-    let mut groups = Vec::new();
-    let mut current = Exchange { messages: Vec::new(), sources: Vec::new() };
-    let mut pending = BTreeSet::new();
-    for id in &memory.transcript.message_ids {
-        if requirements.iter().any(|source| source.get() == *id) {
-            continue;
-        }
-        let decoded = decode_messages(&memory.artifact(*id)?, ProtocolLimits::PRODUCTION)?;
-        if decoded.len() != 1 {
-            return Err(error("message observation contains multiple messages"));
-        }
-        let message =
-            decoded.into_iter().next().ok_or_else(|| error("empty message observation"))?;
-        match message.role() {
-            Role::Assistant => {
-                if !pending.is_empty() {
-                    return Err(error("assistant follows an unresolved tool exchange"));
-                }
-                for block in message.content() {
-                    if let ContentBlock::ToolCall(call) = block
-                        && !pending.insert(call.id().expose_for_wire().to_owned())
-                    {
-                        return Err(error("duplicate tool call in exchange"));
-                    }
-                }
-                current.messages.push(message);
-                current.sources.push(*id);
-            }
-            Role::Tool => {
-                for block in message.content() {
-                    if let ContentBlock::ToolResult(result) = block
-                        && !pending.remove(result.call_id().expose_for_wire())
-                    {
-                        return Err(error("tool result has no pending proposal"));
-                    }
-                    if let ContentBlock::ToolResult(result) = block
-                        && let Some(source) = memory.sources.iter().rev().find(|source| {
-                            source.kind == super::super::record::ArchiveKind::ToolOutput
-                                && source.call.as_ref().is_some_and(|call| {
-                                    call.id == result.call_id().expose_for_wire()
-                                })
-                        })
-                    {
-                        current.sources.push(source.sequence);
-                    }
-                }
-                current.messages.push(message);
-                current.sources.push(*id);
-            }
-            _ => return Err(error("unclassified instruction message in optional exchange")),
-        }
-        if pending.is_empty() && !current.messages.is_empty() {
-            groups.push(current);
-            current = Exchange { messages: Vec::new(), sources: Vec::new() };
-        }
+#[derive(Default)]
+pub(in crate::local_context) struct ExchangeIndex {
+    invocation: u64,
+    requirements: Vec<u64>,
+    processed: usize,
+    last_message: Option<u64>,
+    indexed_sources: usize,
+    tool_sources: std::collections::BTreeMap<String, u64>,
+    complete: Vec<IndexedExchange>,
+    partial: IndexedExchange,
+    pending: BTreeSet<String>,
+}
+
+#[derive(Clone, Default)]
+struct IndexedExchange {
+    messages: Vec<u64>,
+    sources: Vec<u64>,
+    message_shapes: Vec<(Role, usize)>,
+    estimate: DeveloperContextEstimate,
+    inspection_digest: Option<[u8; 32]>,
+    read_targets: Vec<Option<String>>,
+    read_stamps: Vec<ReadStamp>,
+}
+
+#[derive(Clone)]
+struct ReadStamp {
+    message: usize,
+    block: usize,
+    call: ToolCallId,
+    value: serde_json::Value,
+    original: Option<String>,
+    estimate: DeveloperContextEstimate,
+}
+
+impl ReadStamp {
+    fn obsolete(&self) -> Result<ContentBlock, DeveloperLoopError> {
+        let receipt = serde_json::json!({
+            "cached_observation_stale":true,"path":self.value.get("path"),
+            "source_sha256":self.value.get("source_sha256"),"original_observation":self.original,
+            "reason":"The source changed after this completed read. Its old body remains archived, not current evidence. Refresh only this target if the next step needs it; other tool effects in this batch remain settled."
+        });
+        Ok(ContentBlock::ToolResult(ToolResult::new(
+            self.call.clone(),
+            CanonicalJson::parse(
+                &receipt.to_string(),
+                JsonBounds::value(ProtocolLimits::PRODUCTION),
+            )?,
+            false,
+        )))
     }
-    // Incomplete proposals remain in explicit host pending pins, not raw provider replay.
-    // Keep the newest complete copy of an identical read exchange. Its archived bytes and
-    // receipt remain durable; omitting a duplicate never dispatches or replays an effect.
+}
+
+fn block_estimate(block: &ContentBlock) -> Result<DeveloperContextEstimate, DeveloperLoopError> {
+    // The synthetic single-block message adds the same framing on both sides of replacement.
+    Ok(DeveloperContextEstimate::messages(&[Message::new(
+        Role::Tool,
+        vec![block.clone()],
+        ProtocolLimits::PRODUCTION,
+    )?]))
+}
+
+impl IndexedExchange {
+    fn finish(&mut self, memory: &LocalMemory) -> Result<(), DeveloperLoopError> {
+        let messages = self
+            .messages
+            .iter()
+            .map(|id| memory.message(*id).map(|message| message.as_ref().clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.estimate = DeveloperContextEstimate::messages(&messages);
+        self.message_shapes =
+            messages.iter().map(|message| (message.role(), message.content().len())).collect();
+        let mut reads = BTreeSet::new();
+        for block in messages.iter().flat_map(Message::content) {
+            if let ContentBlock::ToolCall(call) = block
+                && call.name().as_str() == "workspace_read"
+            {
+                let arguments: serde_json::Value =
+                    serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or_default();
+                self.read_targets.push(
+                    arguments.get("path").and_then(serde_json::Value::as_str).map(str::to_owned),
+                );
+                reads.insert(call.id().expose_for_wire());
+            }
+        }
+        for (message_index, message) in messages.iter().enumerate() {
+            for (block_index, block) in message.content().iter().enumerate() {
+                if let ContentBlock::ToolResult(result) = block
+                    && !result.is_error()
+                    && reads.contains(result.call_id().expose_for_wire())
+                    && let Ok(value) = serde_json::from_slice::<serde_json::Value>(
+                        result.output().canonical_bytes(),
+                    )
+                {
+                    let original = memory
+                        .sources
+                        .iter()
+                        .rev()
+                        .find(|source| {
+                            source
+                                .call
+                                .as_ref()
+                                .is_some_and(|call| call.id == result.call_id().expose_for_wire())
+                        })
+                        .map(|source| super::super::tools::source_handle(memory, source.sequence));
+                    self.read_stamps.push(ReadStamp {message:message_index,block:block_index,call:result.call_id().clone(),
+                        value:serde_json::json!({"path":value.get("path"),"source_sha256":value.get("source_sha256")}),original,estimate:block_estimate(block)?});
+                }
+            }
+        }
+        self.inspection_digest =
+            inspection_key(&messages).map(|bytes| peritus_codec::sha256(&bytes).into_bytes());
+        Ok(())
+    }
+}
+
+impl ExchangeIndex {
+    pub(in crate::local_context) const fn processed(&self) -> usize {
+        self.processed
+    }
+
+    fn extend(&mut self, memory: &LocalMemory) -> Result<(), DeveloperLoopError> {
+        let requirements = memory
+            .state
+            .protocol(memory.state.binding())
+            .map_err(|_| error("exchange scope mismatch"))?
+            .requirements()
+            .iter()
+            .map(|id| id.get())
+            .collect::<Vec<_>>();
+        let ids = &memory.transcript.message_ids;
+        if self.invocation != memory.transcript.invocation
+            || self.requirements != requirements
+            || self.processed > ids.len()
+            || self.last_message != self.processed.checked_sub(1).and_then(|n| ids.get(n)).copied()
+        {
+            *self =
+                Self { invocation: memory.transcript.invocation, requirements, ..Self::default() };
+        }
+        for source in &memory.sources[self.indexed_sources..] {
+            if source.kind == super::super::record::ArchiveKind::ToolOutput
+                && let Some(call) = &source.call
+            {
+                self.tool_sources.insert(call.id.clone(), source.sequence);
+            }
+        }
+        self.indexed_sources = memory.sources.len();
+        let required = self.requirements.iter().copied().collect::<BTreeSet<_>>();
+        // Build the suffix transactionally. A malformed/incomplete tool sequence cannot
+        // advance the cursor or alter already completed exchange topology.
+        let mut pending = self.pending.clone();
+        let mut current = self.partial.clone();
+        let mut appended = Vec::new();
+        for id in &ids[self.processed..] {
+            if required.contains(id) {
+                continue;
+            }
+            let message = memory.message(*id)?;
+            match message.role() {
+                Role::Assistant => {
+                    if !pending.is_empty() {
+                        return Err(error("assistant follows an unresolved tool exchange"));
+                    }
+                    for block in message.content() {
+                        if let ContentBlock::ToolCall(call) = block
+                            && !pending.insert(call.id().expose_for_wire().to_owned())
+                        {
+                            return Err(error("duplicate tool call in exchange"));
+                        }
+                    }
+                }
+                Role::Tool => {
+                    for block in message.content() {
+                        if let ContentBlock::ToolResult(result) = block {
+                            if !pending.remove(result.call_id().expose_for_wire()) {
+                                return Err(error("tool result has no pending proposal"));
+                            }
+                            if let Some(source) =
+                                self.tool_sources.get(result.call_id().expose_for_wire())
+                            {
+                                current.sources.push(*source);
+                            }
+                        }
+                    }
+                }
+                _ => return Err(error("unclassified instruction message in optional exchange")),
+            }
+            current.messages.push(*id);
+            current.sources.push(*id);
+            if pending.is_empty() && !current.messages.is_empty() {
+                current.finish(memory)?;
+                appended.push(std::mem::take(&mut current));
+            }
+        }
+        self.complete.extend(appended);
+        self.partial = current;
+        self.pending = pending;
+        self.processed = ids.len();
+        self.last_message = ids.last().copied();
+        Ok(())
+    }
+}
+
+pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, DeveloperLoopError> {
+    let mut index = std::mem::take(&mut memory.exchange_index);
+    let extended = index.extend(memory);
+    memory.exchange_index = index;
+    extended?;
+    // Select on small immutable topology first. Omitted old bodies must not churn the
+    // decoded cache merely to rediscover that they will not be sent to the provider.
     let mut seen = BTreeSet::new();
     let mut unique = Vec::new();
-    for mut group in groups.into_iter().rev() {
-        refresh_read_results(memory, &mut group)?;
-        if group.messages.iter().flat_map(Message::content).any(|block| {
-            let ContentBlock::ToolCall(call) = block else { return false };
-            if call.name().as_str() != "workspace_read" {
-                return false;
-            }
-            let Ok(args) =
-                serde_json::from_slice::<serde_json::Value>(call.arguments().canonical_bytes())
-            else {
-                return true;
-            };
-            args.get("path")
-                .and_then(serde_json::Value::as_str)
-                .is_none_or(|path| !super::evidence::may_reuse_read(memory, path))
+    for indexed in memory.exchange_index.complete.iter().rev() {
+        if indexed.read_targets.iter().any(|path| {
+            path.as_deref().is_none_or(|path| !super::evidence::may_reuse_read(memory, path))
         }) {
             continue;
         }
-        if let Some(key) = inspection_key(&group)
-            && !seen.insert(key)
-        {
+        let mut group = Exchange {
+            message_ids: indexed.messages.clone(),
+            message_shapes: indexed.message_shapes.clone(),
+            sources: indexed.sources.clone(),
+            estimate: indexed.estimate,
+            replacements: Vec::new(),
+        };
+        let mut has_unique_stale_source = false;
+        for stamp in &indexed.read_stamps {
+            if super::evidence::read_is_current(memory, &stamp.value) {
+                continue;
+            }
+            let replacement = stamp.obsolete()?;
+            group.estimate =
+                group.estimate.replacing(stamp.estimate, block_estimate(&replacement)?);
+            group.replacements.push((stamp.message, stamp.block, replacement));
+            has_unique_stale_source |= stamp.original.is_some();
+        }
+        // Ordinary stale receipts contain their unique exact-source handle and cannot be
+        // duplicate inspections. Legacy unmatched receipts retain exact normalization.
+        let digest = if group.replacements.is_empty() {
+            indexed.inspection_digest
+        } else if has_unique_stale_source {
+            None
+        } else {
+            inspection_key(&group.load(memory)?)
+                .map(|bytes| peritus_codec::sha256(&bytes).into_bytes())
+        };
+        if digest.is_some_and(|key| !seen.insert(key)) {
             continue;
         }
         unique.push(group);
@@ -171,10 +354,10 @@ pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoo
     Ok(unique)
 }
 
-fn inspection_key(exchange: &Exchange) -> Option<Vec<u8>> {
+fn inspection_key(messages: &[Message]) -> Option<Vec<u8>> {
     let mut calls = std::collections::BTreeMap::new();
     let mut results = Vec::new();
-    for block in exchange.messages.iter().flat_map(Message::content) {
+    for block in messages.iter().flat_map(Message::content) {
         match block {
             ContentBlock::ToolCall(call) => {
                 if !matches!(
@@ -202,69 +385,4 @@ fn inspection_key(exchange: &Exchange) -> Option<Vec<u8>> {
         return None;
     }
     serde_json::to_vec(&results).ok()
-}
-
-// A stale read is one obsolete observation, not a reason to discard unrelated settled tools
-// from the same batch. Keep call/result association and the durable exact source handle.
-fn refresh_read_results(
-    memory: &LocalMemory,
-    group: &mut Exchange,
-) -> Result<(), DeveloperLoopError> {
-    let reads = group
-        .messages
-        .iter()
-        .flat_map(Message::content)
-        .filter_map(|block| {
-            let ContentBlock::ToolCall(call) = block else { return None };
-            (call.name().as_str() == "workspace_read")
-                .then(|| call.id().expose_for_wire().to_owned())
-        })
-        .collect::<BTreeSet<_>>();
-    for message in &mut group.messages {
-        let mut content = message.content().to_vec();
-        let mut changed = false;
-        for block in &mut content {
-            let ContentBlock::ToolResult(result) = block else { continue };
-            if !reads.contains(result.call_id().expose_for_wire()) || result.is_error() {
-                continue;
-            }
-            let Ok(value) =
-                serde_json::from_slice::<serde_json::Value>(result.output().canonical_bytes())
-            else {
-                continue;
-            };
-            if super::evidence::read_is_current(memory, &value) {
-                continue;
-            }
-            let original = memory
-                .sources
-                .iter()
-                .rev()
-                .find(|source| {
-                    source
-                        .call
-                        .as_ref()
-                        .is_some_and(|call| call.id == result.call_id().expose_for_wire())
-                })
-                .map(|source| super::super::tools::source_handle(memory, source.sequence));
-            let receipt = serde_json::json!({
-                "cached_observation_stale":true, "path":value.get("path"),
-                "source_sha256":value.get("source_sha256"), "original_observation":original,
-                "reason":"The source changed after this completed read. Its old body remains archived, not current evidence. Refresh only this target if the next step needs it; other tool effects in this batch remain settled."
-            });
-            *block = ContentBlock::ToolResult(ToolResult::new(
-                result.call_id().clone(),
-                CanonicalJson::parse(
-                    &receipt.to_string(),
-                    JsonBounds::value(ProtocolLimits::PRODUCTION),
-                )?,
-                false,
-            ));
-            changed = true;
-        }
-        if changed {
-            *message = Message::new(message.role(), content, ProtocolLimits::PRODUCTION)?;
-        }
-    }
-    Ok(())
 }

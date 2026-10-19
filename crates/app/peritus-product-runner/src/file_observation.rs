@@ -21,7 +21,7 @@ pub(crate) struct ContentObservation {
 }
 
 #[derive(Clone, Eq, PartialEq)]
-struct Fingerprint(Vec<u64>);
+pub(crate) struct Fingerprint(Vec<u64>);
 
 struct Cached {
     fingerprint: Fingerprint,
@@ -43,7 +43,7 @@ fn cache() -> &'static Mutex<Cache> {
 
 /// Metadata reuse includes inode identity, nanosecond change time, size and mode on Unix.
 /// Other platforms conservatively read content until an equivalent change token is available.
-fn fingerprint(metadata: &Metadata) -> Option<Fingerprint> {
+pub(crate) fn fingerprint(metadata: &Metadata) -> Option<Fingerprint> {
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return None;
     }

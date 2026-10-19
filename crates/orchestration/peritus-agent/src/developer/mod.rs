@@ -19,8 +19,8 @@ mod usage;
 pub use crate::usage::DeveloperUsage;
 pub use accounting::DeveloperAccountingEvent;
 pub use context_port::{
-    DeveloperContextAssembly, DeveloperContextEvent, DeveloperContextPort,
-    estimate_developer_request_tokens,
+    DeveloperContextAssembly, DeveloperContextEstimate, DeveloperContextEvent,
+    DeveloperContextPort, estimate_developer_request_tokens,
 };
 pub use entry::DeveloperLoop;
 pub use error::DeveloperLoopError;

@@ -1,10 +1,6 @@
 //! Byte-bounded, resumable line reads shared by workspace and reference tools.
 
-use std::{
-    fs,
-    io::{BufRead as _, BufReader},
-    path::Path,
-};
+use std::{io::BufRead, path::Path};
 
 use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
@@ -44,9 +40,7 @@ pub(super) fn read(
         256,
         MAX_DOCUMENT_READ_BYTES,
     );
-    let file = fs::File::open(path).map_err(|error| tool(error.to_string()))?;
-    let mut reader = BufReader::new(file);
-    let mut current = 1_usize;
+    let (mut reader, mut current) = super::inspection_document::reader(path, start, cancellation)?;
     // Bound captured source bytes directly, then fit the actual JSON response below.
     // A worst-case escaping allowance underfills ordinary source pages and forces
     // needless continuation reads even when the complete file would fit.
@@ -66,7 +60,7 @@ pub(super) fn read(
         let offset = if current == start { requested_offset } else { 0 };
         let mut discard_budget = 0;
         let budget = if current < start { &mut discard_budget } else { &mut raw_budget };
-        let Some(line) = read_line(&mut reader, offset, budget, cancellation)? else { break };
+        let Some(line) = read_line(reader.as_mut(), offset, budget, cancellation)? else { break };
         if current >= start && offset > line.total_bytes {
             return Err(tool("line byte offset is beyond the selected line"));
         }
@@ -190,7 +184,7 @@ struct ReadLine {
 }
 
 fn read_line(
-    reader: &mut BufReader<fs::File>,
+    reader: &mut dyn BufRead,
     offset: u64,
     budget: &mut usize,
     cancellation: &InspectionCancellation,

@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [incremental-context-real-2026-10-19.md](incremental-context-real-2026-10-19.md) | Incremental exchange selection and document reuse: exact before/after API behavior, freshness, permissions, pressure and recovery evidence. |
 | [checkpoint-cache-real-2026-10-19.md](checkpoint-cache-real-2026-10-19.md) | Actual checkpoint/read reduction, official Codex cache reuse, current-context authority, invalidation and recovery campaign. |
 | [tui-formatting-recall-real-2026-10-19.md](tui-formatting-recall-real-2026-10-19.md) | Actual terminal Markdown and saved-message recall/search campaign, including delayed replies, reconnect, paging and draft preservation. |
 | [tui-feedback-real-2026-10-19.md](tui-feedback-real-2026-10-19.md) | Observable contract and real-interface evidence for visible steering, file edits, and formatted terminal output. |

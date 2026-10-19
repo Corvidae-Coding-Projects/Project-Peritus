@@ -57,6 +57,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [incremental-context/](incremental-context/AGENTS.md) | Public product-tool/context consumers for reusable pages, append-only exchange selection, authority changes and cache pressure. |
 | [checkpoint-cache/](checkpoint-cache/AGENTS.md) | Actual scope/index/context, command/recovery, official provider caching and finite protocol-process replays. |
 | [deep-research-inquiry/](deep-research-inquiry/AGENTS.md) | Actual native inquiry/provenance consumers and separate live-artifact readback, with research-quality judgment kept distinct. |
 | [token-budgets/](token-budgets/AGENTS.md) | Actual public context/host consumers for token-budget removal, persistence, role isolation, and copied long-run assembly. |
