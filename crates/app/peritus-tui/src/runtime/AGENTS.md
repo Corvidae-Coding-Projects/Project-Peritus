@@ -14,6 +14,8 @@ Implementation pieces for `runtime.rs`: Orderly terminal ownership and asynchron
 | [connection.rs](connection.rs) | Owns transport handles, ordered sends, and automatic reconnection with bounded backoff while input stays responsive. |
 | [diagnostics.rs](diagnostics.rs) | Private bounded connection-stage/error log that excludes messages and drafts. |
 | [files.rs](files.rs) | One owned bounded external-text read at a time; the event loop stays interactive. |
+| [local.rs](local.rs) | Owned asynchronous file discovery, clipboard snapshots, and incremental public-transcript writes. |
+| [editor.rs](editor.rs) | Direct VISUAL/EDITOR invocation with a private temporary draft while the runtime lends terminal ownership. |
 | [images.rs](images.rs) | One owned bounded file read at a time; the event loop stays interactive. |
 | [interrupts.rs](interrupts.rs) | Keep process interrupts owned by the UI while a foreground child shares its terminal. |
 | [product.rs](product.rs) | Launcher-resolved product facts displayed by the interactive client. |

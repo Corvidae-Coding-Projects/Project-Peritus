@@ -4,6 +4,7 @@ mod brief;
 mod checkpoints;
 mod compaction;
 mod context;
+mod convenience;
 pub(super) mod doctor;
 mod effort;
 mod files;
@@ -57,7 +58,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
                 if model.chat.selecting_output() {
                     "Paste/F2/Esc returns · SELECT: drag, then terminal Copy · work continues"
                 } else {
-                    "↑ history · F3 search · F4 instructions · Drag to copy · F2 · Type /"
+                    "↑ history · F3 prompts · /keys shortcuts · Drag to copy · F2 · Type /"
                 },
                 Style::default().fg(MUTED),
             ),
@@ -67,7 +68,9 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     if let Some(seconds) = working_seconds {
         progress::draw(frame, regions[2], model, seconds);
     }
-    if model.chat.module_menu.is_some() {
+    if model.chat.convenience.panel.is_some() {
+        convenience::draw(frame, regions[1], model);
+    } else if model.chat.module_menu.is_some() {
         modules::draw(frame, regions[1], model);
     } else if model.chat.doctor.is_some() {
         doctor::draw(frame, regions[1], model);
@@ -163,6 +166,7 @@ fn draw_composer(
         && model.chat.module_menu.is_none()
         && !model.chat.workbench.open
         && model.chat.history.search.is_none()
+        && model.chat.convenience.panel.is_none()
     {
         frame.set_cursor_position((
             area.x

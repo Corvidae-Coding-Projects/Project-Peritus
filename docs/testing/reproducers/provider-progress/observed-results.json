@@ -1,0 +1,189 @@
+{
+  "actual_tui": {
+    "passed": true,
+    "elapsed_seconds": 12.628779399034102,
+    "seen": [
+      "accepted",
+      "generating",
+      "reasoning"
+    ],
+    "observations": [
+      {
+        "stage": "accepted",
+        "elapsed": 1.403649858024437,
+        "file_exists": false,
+        "text": "Provider runtime accepted the request; waiting for generation (1s elapsed)."
+      },
+      {
+        "stage": "reasoning",
+        "elapsed": 4.210784842027351,
+        "file_exists": false,
+        "text": "Provider is reasoning (3s elapsed)."
+      },
+      {
+        "stage": "generating",
+        "elapsed": 8.21943234599894,
+        "file_exists": false,
+        "text": "Receiving structured response: 2 bytes (8s elapsed). Validation follows completion."
+      }
+    ],
+    "daemon_sha256": "e875b9b09dadfdd89f3441af4d019a0b6bef71b748937ff5c4a1163be76b80c6",
+    "source_files_unchanged": true,
+    "discussion_only": true
+  },
+  "actual_provider_cases": [
+    {
+      "accepted_seconds": 1.495854094,
+      "cancelled": false,
+      "case": "short-cached-text",
+      "events": 9,
+      "final_text_bytes": 28,
+      "first_generating_seconds": 4.0411776,
+      "first_public_seconds": 4.321034593,
+      "no_tool_execution": true,
+      "passed": true,
+      "phases": [
+        {
+          "output_bytes": 0,
+          "phase": "accepted",
+          "seconds": 1.495854094
+        },
+        {
+          "output_bytes": 2,
+          "phase": "generating",
+          "seconds": 4.0411776
+        }
+      ],
+      "seconds": 4.321070573,
+      "tool_proposals": 0,
+      "usage": {
+        "cached_input_tokens": 0,
+        "input_tokens": 6416,
+        "output_tokens": 28
+      }
+    },
+    {
+      "accepted_seconds": 0.983712504,
+      "cancelled": false,
+      "case": "unicode-uncached-text",
+      "events": 11,
+      "final_text_bytes": 768,
+      "first_generating_seconds": null,
+      "first_public_seconds": 12.352728095,
+      "no_tool_execution": true,
+      "passed": true,
+      "phases": [
+        {
+          "output_bytes": 0,
+          "phase": "accepted",
+          "seconds": 0.983712504
+        }
+      ],
+      "seconds": 12.352763769,
+      "tool_proposals": 0,
+      "usage": {
+        "cached_input_tokens": 0,
+        "input_tokens": 10912,
+        "output_tokens": 425
+      }
+    },
+    {
+      "accepted_seconds": 0.159701483,
+      "cancelled": false,
+      "case": "cached-host-tool",
+      "events": 12,
+      "final_text_bytes": 0,
+      "first_generating_seconds": 2.932250269,
+      "first_public_seconds": 3.3455782640000002,
+      "no_tool_execution": true,
+      "passed": true,
+      "phases": [
+        {
+          "output_bytes": 0,
+          "phase": "accepted",
+          "seconds": 0.159701483
+        },
+        {
+          "output_bytes": 0,
+          "phase": "reasoning",
+          "seconds": 2.61397283
+        },
+        {
+          "output_bytes": 2,
+          "phase": "generating",
+          "seconds": 2.932250269
+        }
+      ],
+      "seconds": 3.345614743,
+      "tool_proposals": 1,
+      "usage": {
+        "cached_input_tokens": 0,
+        "input_tokens": 6493,
+        "output_tokens": 64
+      }
+    },
+    {
+      "accepted_seconds": 0.171660145,
+      "cancelled": true,
+      "case": "cancel-after-accepted",
+      "events": 3,
+      "final_text_bytes": 0,
+      "first_generating_seconds": null,
+      "first_public_seconds": null,
+      "no_tool_execution": true,
+      "passed": true,
+      "phases": [
+        {
+          "output_bytes": 0,
+          "phase": "accepted",
+          "seconds": 0.171660145
+        }
+      ],
+      "seconds": 0.178225878,
+      "tool_proposals": 0,
+      "usage": null
+    }
+  ],
+  "baseline_tui": {
+    "daemon_sha256": "7c171dd9f15e4074ede35acd0eb65a928d9f5db9fdc565ecdfb6511f0804e14e",
+    "conversation_completed": true,
+    "progress_stages_seen": [],
+    "replay_exit": 1,
+    "expected_mismatch": "missing accepted/reasoning/generating progress"
+  },
+  "delayed_actual_tui": {
+    "passed": true,
+    "elapsed_seconds": 30.515246470982675,
+    "seen": [
+      "accepted",
+      "generating",
+      "reasoning"
+    ],
+    "observations": [
+      {
+        "stage": "accepted",
+        "elapsed": 1.8043214479694143,
+        "file_exists": false,
+        "text": "Provider runtime accepted the request; waiting for generation (1s elapsed)."
+      },
+      {
+        "stage": "reasoning",
+        "elapsed": 4.261980703973677,
+        "file_exists": false,
+        "text": "Provider is reasoning (4s elapsed)."
+      },
+      {
+        "stage": "generating",
+        "elapsed": 30.514910107012838,
+        "file_exists": false,
+        "text": "Receiving structured response: 2 bytes (30s elapsed). Validation follows completion."
+      }
+    ],
+    "daemon_sha256": "e875b9b09dadfdd89f3441af4d019a0b6bef71b748937ff5c4a1163be76b80c6",
+    "source_files_unchanged": true,
+    "discussion_only": true,
+    "held_provider": true,
+    "heartbeat_seen": true
+  },
+  "owned_process_cleanup": true
+}

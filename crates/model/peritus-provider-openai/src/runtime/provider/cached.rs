@@ -26,6 +26,7 @@ struct Observed {
     stage: u8,
     thread: String,
     setup_rejected: bool,
+    output_bytes: u64,
 }
 impl Observed {
     fn event(&mut self, value: Value) {
@@ -112,6 +113,19 @@ pub(super) async fn run_turn(
                 }
                 let params=&value["params"];
                 match value["method"].as_str() {
+                    Some("turn/started")=>progress.runtime_progress("accepted",0),
+                    Some("item/started")=>{
+                        if params["item"]["type"]=="reasoning" {
+                            progress.runtime_progress("reasoning",0);
+                        }
+                    }
+                    Some("item/agentMessage/delta")=>{
+                        if let Some(delta)=params["delta"].as_str() {
+                            state.output_bytes=state.output_bytes.saturating_add(delta.len() as u64);
+                            let bytes=state.output_bytes;
+                            progress.runtime_progress("generating",bytes);
+                        }
+                    }
                     Some("item/completed")=>{
                         let item=&params["item"];
                         match item["type"].as_str() {

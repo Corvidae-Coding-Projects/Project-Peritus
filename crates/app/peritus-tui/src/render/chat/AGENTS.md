@@ -13,6 +13,7 @@ Implementation pieces for `chat.rs`: Conversation-first terminal layout with a p
 | [checkpoints.rs](checkpoints.rs) | Exact covered-path checkpoint and rewind preview without workspace mutation on inspection. |
 | [compaction.rs](compaction.rs) | Content-free local compaction preview; exact reply text remains in immutable archives. |
 | [context.rs](context.rs) | Content-free context inspector. The composer retains a separate non-overlapping area. |
+| [convenience.rs](convenience.rs) | Search results, full result previews, code-copy choices, shortcut capture, and syntax-theme previews. |
 | [doctor.rs](doctor.rs) | Responsive read-only diagnostic panel with independent scrolling and visible return action. |
 | [effort.rs](effort.rs) | Reasoning effort remains discoverable even when model discovery is unavailable. |
 | [files.rs](files.rs) | Exact file/range consent and current selection, with no implied provider delivery. |
@@ -26,7 +27,7 @@ Implementation pieces for `chat.rs`: Conversation-first terminal layout with a p
 | [markdown.rs](markdown.rs) | Terminal-inert Markdown formatting, width-aware tables, and cached message presentation. |
 | [permissions.rs](permissions.rs) | Effective host-intersected workspace permission projection. |
 | [progress.rs](progress.rs) | Compact active phase/timer line; actual operations and tool results are displayed in the transcript. |
-| [queue.rs](queue.rs) | Paginated input history, with exact row revisions and visibly separate lifecycle labels. |
+| [queue.rs](queue.rs) | Selectable saved-input rows, exact full-text details, withdrawal confirmation, and a visible multiline queue editor separate from the main composer. |
 | [status.rs](status.rs) | Connection-aware composer status stays visible even when provider labels fill the title. |
 | [transcript.rs](transcript.rs) | Public activity projection and wrapping shared by rendering and mouse copy. |
 | [workbench.rs](workbench.rs) | Bounded metadata inspector independent of composer and transcript scroll. |

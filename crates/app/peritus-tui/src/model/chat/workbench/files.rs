@@ -16,6 +16,7 @@ mod keys;
 
 #[derive(Debug, Default)]
 pub struct FileUi {
+    pub(crate) preserve_composer: bool,
     pub(crate) open: bool,
     pub(crate) list: bool,
     pub(crate) path: String,
@@ -111,9 +112,17 @@ impl AppModel {
         if !path.is_empty() {
             path.clone_into(&mut self.chat.workbench.files.path);
             self.chat.workbench.files.discard_preview();
-            self.clear_chat_command();
+            if !self.chat.workbench.files.preserve_composer || self.chat.buffer == "@" {
+                self.clear_chat_command();
+            }
         }
-        self.refresh_file_panel()
+        if self.chat.workbench.files.preserve_composer && !path.is_empty() {
+            // Choosing a file is the explicit read gesture. Refresh the authority binding,
+            // then continue to its preview, including after first-conversation creation.
+            self.preview_file()
+        } else {
+            self.refresh_file_panel()
+        }
     }
     pub(in crate::model) fn refresh_file_panel(&mut self) -> Vec<Effect> {
         if !self.files_available() || self.workbench_request_pending() {

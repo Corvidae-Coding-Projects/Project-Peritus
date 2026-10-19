@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [provider-progress-real-2026-10-19.md](provider-progress-real-2026-10-19.md) | Live 220-second wait diagnosis and real terminal/provider acceptance, reasoning, generation and cancellation feedback replay. |
+| [tui-conveniences-real-2026-10-19.md](tui-conveniences-real-2026-10-19.md) | Real terminal search, picker, clipboard, editor, queue, shortcuts, themes, and attachment recovery campaign. |
 | [incremental-context-real-2026-10-19.md](incremental-context-real-2026-10-19.md) | Incremental exchange selection and document reuse: exact before/after API behavior, freshness, permissions, pressure and recovery evidence. |
 | [checkpoint-cache-real-2026-10-19.md](checkpoint-cache-real-2026-10-19.md) | Actual checkpoint/read reduction, official Codex cache reuse, current-context authority, invalidation and recovery campaign. |
 | [tui-formatting-recall-real-2026-10-19.md](tui-formatting-recall-real-2026-10-19.md) | Actual terminal Markdown and saved-message recall/search campaign, including delayed replies, reconnect, paging and draft preservation. |

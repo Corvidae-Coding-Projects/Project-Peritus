@@ -25,11 +25,24 @@ pub(super) const fn starting(mode: ProductInteractionMode) -> &'static str {
 pub(super) fn waiting(
     options: &mut InteractionOptions,
     elapsed_seconds: u64,
+    progress: peritus_agent::DeveloperProviderProgress,
 ) -> Result<(), ProductRunServiceError> {
-    const WAIT_DETAIL: &str = "Waiting for public provider output; no new result is available yet.";
-    let text = format!(
-        "I'm still waiting for the provider's response ({elapsed_seconds}s so far). I'll show it when it arrives."
-    );
+    use peritus_agent::DeveloperProviderProgress;
+    const WAIT_DETAIL: &str = "Live provider observation. Structured tool proposals run only after complete response validation.";
+    let text = match progress {
+        DeveloperProviderProgress::AwaitingResponse => {
+            format!("Waiting for provider output ({elapsed_seconds}s elapsed).")
+        }
+        DeveloperProviderProgress::Accepted => format!(
+            "Provider runtime accepted the request; waiting for generation ({elapsed_seconds}s elapsed)."
+        ),
+        DeveloperProviderProgress::Reasoning => {
+            format!("Provider is reasoning ({elapsed_seconds}s elapsed).")
+        }
+        DeveloperProviderProgress::Generating { output_bytes } => format!(
+            "Receiving structured response: {output_bytes} bytes ({elapsed_seconds}s elapsed). Validation follows completion."
+        ),
+    };
     if let Some(last) = options.activities.last_mut()
         && last.kind() == ProductActivityKind::Status
         && last.detail() == WAIT_DETAIL

@@ -178,6 +178,45 @@ Enter to put a message in the composer. That Enter does not send it. Esc returns
 draft. History comes from the selected durable conversation and survives reopening; older pages
 load on demand. A late read cannot replace text typed while it was pending.
 
-F4 inspects the saved instruction queue without clearing your draft. Ctrl-R still reconnects.
+By default, F4 inspects the saved instruction queue without clearing your draft. Ctrl-R still reconnects.
 Ctrl-Y inserts the last text deleted with Ctrl-K, Ctrl-U, or Ctrl-W. These are local editor actions;
 none starts model work.
+
+## Local convenience controls
+
+The composer provides these defaults; `/keys` shows and remaps them. Remapping applies to
+convenience controls, while typing, reconnect, copy/stop, native selection, and prompt-history
+controls retain their reserved keys. Settings persist in the user's `peritus/tui.json` under
+`XDG_CONFIG_HOME` (or the platform configuration fallback), separately from provider settings.
+
+| Key | Command | Behavior |
+| --- | --- | --- |
+| Ctrl+F | `/find TEXT` | Literal, case-insensitive search of the current run's captured public transcript; Enter opens a complete result, c copies, Esc returns. |
+| Ctrl+O or bare @ | `/pick NAME` | Fuzzy project filename search, or an explicit absolute path; Enter opens the existing attachment preview. |
+| F4 | `/queue` | Arrows select; e edits, h holds/releases, Delete confirms withdrawal, Alt+arrows move; Shift+Enter adds a line in the separate editor. |
+| Ctrl+G | `/editor` | Edit the unsent draft in VISUAL or EDITOR; direct argv parsing supports quoted paths and flags. Closing successfully restores the draft for review and sending. |
+| Ctrl+V | `/paste-image` | Explicitly snapshot a clipboard PNG into the existing image preview and confirmation workflow. Terminal text paste still inserts text normally. |
+| Alt+C | `/copy` | Copy the latest available assistant response. |
+| Alt+Y | `/copy code` | Select and copy a literal fenced code block; Tab previews the full block. |
+| F9 | `/keys` | Select an action and press Enter to capture its replacement shortcut; `/keys ACTION KEY` and `/keys reset` are also supported. |
+| F10 | `/theme` | Preview and save dark, light, or plain syntax colors for fenced code, source reads, and diffs. |
+
+Search and rendering need no model requests. Ripgrep handles file enumeration and transcript
+search when installed; filename results are ranked locally, and a missing executable falls back
+to Git/directory enumeration or Rust literal transcript search. File discovery respects ordinary
+ignore rules with ripgrep/Git and avoids following directory symlinks. Search results are bounded
+and labeled, and changing a query invalidates the previous selection.
+
+The private `peritus/tui-transcripts` cache contains only public activities the client actually
+observed, indexed by run and activity sequence. It survives client restarts and replaces streaming
+updates at the same sequence. It cannot reconstruct activity omitted before capture or during a
+long disconnect; the search panel discloses that boundary. It never copies private provider
+reasoning or adds transcript content to model context. Remove the cache to discard this optional
+local search history.
+
+Clipboard image capture uses wl-paste on Wayland, xclip on X11, AppKit on macOS, or the Windows
+clipboard through PowerShell. Missing helpers or unsupported clipboard contents produce a visible
+error; `/images PATH` remains available. Captures are private temporary files retained through
+preview and cleaned up at client exit. The daemon still validates and authorizes attachments.
+The external editor receives only a private draft file; the TUI restores terminal input and keeps
+processing daemon events while the editor is open. Failure leaves the original draft unsent.

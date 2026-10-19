@@ -172,6 +172,23 @@ impl AppModel {
     }
 
     fn complete_receipted_draft(&mut self, command: &WorkbenchCommand) {
+        let keyboard_queue =
+            self.chat.workbench.queue_keyboard_operation == Some(command.operation());
+        if keyboard_queue {
+            self.chat.workbench.queue_keyboard_operation = None;
+            if let WorkbenchIntent::Queue(peritus_app_protocol::WorkbenchQueueIntent::Edit {
+                selected,
+                text,
+            }) = command.intent()
+                && self.chat.workbench.queue_editor.as_ref().is_some_and(|editor| {
+                    editor.target.query == command.query()
+                        && editor.target.selected == *selected
+                        && editor.text == text.as_str()
+                })
+            {
+                self.chat.workbench.queue_editor = None;
+            }
+        }
         if matches!(
             command.intent(),
             WorkbenchIntent::Queue(peritus_app_protocol::WorkbenchQueueIntent::Enqueue(_))
@@ -181,6 +198,14 @@ impl AppModel {
         }
         if let Some((_, draft)) = self.chat.workbench.unresolved.take()
             && self.chat.buffer == draft
+            && !keyboard_queue
+            && !(self.chat.workbench.files.preserve_composer
+                && matches!(
+                    command.intent(),
+                    WorkbenchIntent::AttachFileImport { .. } | WorkbenchIntent::SelectFile { .. }
+                ))
+            && !(self.chat.workbench.images.preserve_composer
+                && matches!(command.intent(), WorkbenchIntent::AttachImage { .. }))
             && !(matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
                 && self.chat.workbench.selected == Some(command.query()))
         {

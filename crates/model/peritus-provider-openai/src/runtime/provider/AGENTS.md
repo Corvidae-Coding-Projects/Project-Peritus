@@ -8,7 +8,7 @@ Implementation pieces for `provider.rs`: One-turn ownership of the pre-authentic
 
 | File | Role |
 | --- | --- |
-| [cached.rs](cached.rs) | Finite official app-server routing, isolated prediction forks, current user-data frames, usage/error normalization and safe pre-inference fallback. |
+| [cached.rs](cached.rs) | Finite official app-server routing, prediction forks, direct content-free progress, usage/errors and safe pre-inference fallback; notices stay outside the final decoder transcript. |
 | [failure.rs](failure.rs) | Redaction-safe runtime terminal classification. |
 | [invocation.rs](invocation.rs) | Hardened authentication and isolated one-turn process projections. |
 

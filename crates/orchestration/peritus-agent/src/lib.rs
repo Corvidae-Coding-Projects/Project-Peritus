@@ -37,10 +37,10 @@ pub use developer::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperContextAssembly,
     DeveloperContextEstimate, DeveloperContextEvent, DeveloperContextPort, DeveloperControlFlow,
     DeveloperInteraction, DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits,
-    DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperModelRole, DeveloperRetryReason,
-    DeveloperRetryRecord, DeveloperReviewRetryReason, DeveloperToolEffect, DeveloperToolExecutor,
-    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
-    estimate_developer_request_tokens,
+    DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperModelRole, DeveloperProviderProgress,
+    DeveloperRetryReason, DeveloperRetryRecord, DeveloperReviewRetryReason, DeveloperToolEffect,
+    DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
+    DeveloperUsage, estimate_developer_request_tokens,
 };
 pub use developer_interaction::{DeveloperInput, DeveloperRequestAdmission};
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};

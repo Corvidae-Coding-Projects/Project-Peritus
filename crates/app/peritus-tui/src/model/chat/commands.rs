@@ -12,6 +12,12 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn track_workbench_inspection(&mut self, effects: &[Effect]) {
+        if (self.chat.workbench.files.open && self.chat.workbench.files.preserve_composer)
+            || (self.chat.workbench.images.open && self.chat.workbench.images.preserve_composer)
+        {
+            // A local picker continues attachment UI, not a consumable composer command.
+            return;
+        }
         // Inspection has no durable mutation receipt. Retain the draft until its validated
         // response arrives, then leave an empty composer for the next command.
         if effects.iter().any(|effect| {
@@ -39,6 +45,8 @@ impl AppModel {
     }
 
     fn dispatch_slash_command(&mut self, text: &str) -> Vec<Effect> {
+        self.chat.workbench.files.preserve_composer = false;
+        self.chat.workbench.images.preserve_composer = false;
         self.chat.workbench.files.open = false;
         let (command, rest) = match catalog::parse(text) {
             Ok(parsed) => parsed,
@@ -57,6 +65,13 @@ impl AppModel {
             return effects;
         }
         match command {
+            Command::Find => return self.convenience_command("find", rest),
+            Command::Pick => return self.convenience_command("pick", rest),
+            Command::Copy => return self.convenience_command("copy", rest),
+            Command::Editor => return self.convenience_command("editor", rest),
+            Command::PasteImage => return self.convenience_command("paste-image", rest),
+            Command::Keys => return self.convenience_command("keys", rest),
+            Command::Theme => return self.convenience_command("theme", rest),
             Command::Modules => return self.module_menu_command(),
             Command::Module => {
                 return self.chat_mode_command(Mode::Chat, &format!("/module {rest}"));

@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+## 0.1.4
+
+### Added
+
+- Search captured public conversation and tool output with Ctrl+F, using local ripgrep and a fallback when it is unavailable. Open complete matching entries and search captured history after reopening a run.
+- Select files with the fuzzy Ctrl+O or @ picker, paste clipboard images with Ctrl+V, and edit unsent prompts in the configured external editor with Ctrl+G. Attachments retain explicit preview and confirmation.
+- Copy the latest answer with Alt+C or select a code block with Alt+Y. Configure convenience shortcuts through `/keys`, and choose persistent dark, light, or plain syntax themes through `/theme`.
+- Edit, hold, release, reorder, and withdraw queued steering from the keyboard while retaining the main prompt draft.
+
+### Fixed
+
+- Show actual provider acknowledgement, reasoning status, and incoming structured-response byte counts. Preserve the observed phase through waiting heartbeats instead of saying that nothing has arrived while a reply is being generated.
+- Preserve unrelated drafts through first-conversation file selection, deferred preview, attachment confirmation, and reopening a run. Continue clipboard-image preview after refreshed conversation metadata arrives.
+- Prevent stale search results from selecting the wrong entry and keep copied code blocks within their original assistant answer. Display readable project-relative filenames in the picker while preserving explicit absolute paths.
+
+### Real testing
+
+- Reuse the completed actual terminal, daemon, clipboard, editor, provider-progress, and transcript-search campaigns. Optimized terminal journeys passed 56 and 47 overlapping checks, including 36 generated draft-preservation actions; the final optimized attachment replay passed all five checks.
+- Transcript search passed five fresh-process consumer runs against a 300-entry corpus, including actual ripgrep, absent-ripgrep fallback, Unicode, literal queries, restart, and private-cache boundaries. Local controls and attachment confirmation did not initiate new provider requests.
+- Native release packages additionally exercise actual Unix installation and offline terminal startup. No unit tests, formal verification, or repository verification suites are part of this release workflow.
+
+### Compatibility
+
+- Existing daemon protocol and saved conversations remain compatible. Transcript search covers public activity captured by the client; uncaptured older history and disconnected gaps cannot be reconstructed by this cache.
+- Linux clipboard and terminal workflows were exercised directly. Native macOS and Windows clipboard helpers are included; the feature campaign did not exercise those helpers on native systems.
+- The native Deep Research plugin remains separately distributed through the module market; this release does not change its wire compatibility contract.
+
 ## 0.1.3
 
 ### Added

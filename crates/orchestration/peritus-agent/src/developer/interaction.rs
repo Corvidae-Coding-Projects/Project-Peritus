@@ -43,6 +43,23 @@ pub enum DeveloperReviewRetryReason {
     InvalidSubmission,
 }
 
+/// Content-free progress explicitly observed by a provider adapter.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum DeveloperProviderProgress {
+    /// No runtime progress observation has arrived.
+    #[default]
+    AwaitingResponse,
+    /// The provider runtime acknowledged the submitted turn, before public generation.
+    Accepted,
+    /// The provider reported that a reasoning item began; its private contents are not exposed.
+    Reasoning,
+    /// Structured reply bytes are arriving, but no tool proposal has been validated yet.
+    Generating {
+        /// Cumulative UTF-8 bytes received from the native reply stream.
+        output_bytes: u64,
+    },
+}
+
 /// Public execution activity, separate from the raw durable provider trace.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeveloperActivity<'a> {
@@ -54,7 +71,12 @@ pub enum DeveloperActivity<'a> {
         reasoning: peritus_model_protocol::ReasoningPolicy,
     },
     /// No public text has arrived while a provider request remains pending.
-    ModelWaiting { elapsed_seconds: u64 },
+    ModelWaiting {
+        /// Total elapsed time for this request.
+        elapsed_seconds: u64,
+        /// Latest actual content-free provider observation.
+        progress: DeveloperProviderProgress,
+    },
     /// A bounded syntax repair was durably recorded; no response contents are exposed here.
     ResponseHealed,
     /// A rejected independent review will be retried with fresh repository evidence.

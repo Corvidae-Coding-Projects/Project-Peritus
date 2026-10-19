@@ -16,12 +16,12 @@ owner = "C3"
 layer = "runtime"
 
 [dependencies]
-peritus-codec = { version = "=0.1.3", path = "../../foundation/peritus-codec" }
-peritus-network = { version = "=0.1.3", path = "../peritus-network" }
-peritus-process = { version = "=0.1.3", path = "../peritus-process" }
-peritus-sandbox = { version = "=0.1.3", path = "../peritus-sandbox" }
-peritus-secrets = { version = "=0.1.3", path = "../peritus-secrets" }
-peritus-types = { version = "=0.1.3", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.1.4", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.1.4", path = "../peritus-network" }
+peritus-process = { version = "=0.1.4", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.1.4", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.1.4", path = "../peritus-secrets" }
+peritus-types = { version = "=0.1.4", path = "../../foundation/peritus-types" }
 zeroize.workspace = true
 sha2.workspace = true
 

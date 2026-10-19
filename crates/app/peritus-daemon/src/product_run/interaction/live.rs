@@ -440,9 +440,14 @@ impl DeveloperInteraction for LiveConversation {
                     "",
                 )
             }
-            DeveloperActivity::ModelWaiting { elapsed_seconds } => {
-                progress.mark_event("provider still waiting");
-                narration::waiting(options, elapsed_seconds)
+            DeveloperActivity::ModelWaiting { elapsed_seconds, progress: observed } => {
+                progress.mark_event(match observed {
+                    peritus_agent::DeveloperProviderProgress::AwaitingResponse => "provider still waiting",
+                    peritus_agent::DeveloperProviderProgress::Accepted => "provider runtime accepted request",
+                    peritus_agent::DeveloperProviderProgress::Reasoning => "provider reasoning",
+                    peritus_agent::DeveloperProviderProgress::Generating { .. } => "provider response arriving",
+                });
+                narration::waiting(options, elapsed_seconds, observed)
             }
             DeveloperActivity::ResponseHealed => {
                 progress.mark_event("provider response repaired");

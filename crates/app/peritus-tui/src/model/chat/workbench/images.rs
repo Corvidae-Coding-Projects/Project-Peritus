@@ -17,6 +17,7 @@ mod upload;
 
 #[derive(Debug, Default)]
 pub struct ImageUi {
+    pub(crate) preserve_composer: bool,
     pub(crate) open: bool,
     pub(crate) path: String,
     pub(crate) caption: String,
@@ -26,6 +27,7 @@ pub struct ImageUi {
     pub(crate) list: bool,
     pub(crate) page: Option<peritus_app_protocol::WorkbenchImagePage>,
     pub(crate) selected: usize,
+    pending_preview: Option<(WorkbenchQuery, String)>,
     pub(super) reading: Option<ReadBinding>,
     upload: Option<Upload>,
     expected: Option<(Sha256Digest, u64)>,
@@ -45,6 +47,7 @@ impl ImageUi {
     }
 
     pub(in crate::model::chat) fn discard_preview(&mut self) {
+        self.pending_preview = None;
         self.preview = None;
         self.request = None;
         self.expected = None;
@@ -96,6 +99,7 @@ impl AppModel {
                 .create_command_conversation("Image conversation", format!("/attach {path}"));
         }
         self.chat.workbench.open = true;
+        self.chat.workbench.files.open = false;
         self.chat.workbench.images.open = true;
         self.chat.workbench.mode = WorkbenchMode::Sessions;
         self.chat.workbench.context_mode = None;
@@ -105,11 +109,32 @@ impl AppModel {
         }
         path.clone_into(&mut self.chat.workbench.images.path);
         self.chat.workbench.images.list = false;
-        if self.chat.workbench.snapshot.is_none() {
-            let query = self.chat.workbench.selected.expect("selected image conversation");
-            return self.refresh_snapshot_for_command(query, self.chat.buffer.clone());
+        self.request_image_preview()
+    }
+
+    pub(in crate::model::chat::workbench) fn request_image_preview(&mut self) -> Vec<Effect> {
+        if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
+            return Vec::new();
         }
-        self.begin_image_read()
+        let Some(query) = self.chat.workbench.selected else {
+            return Vec::new();
+        };
+        let image = &mut self.chat.workbench.images;
+        image.discard_preview();
+        image.pending_preview = Some((query, image.path.clone()));
+        self.refresh_selected_snapshot()
+    }
+
+    pub(in crate::model) fn complete_image_snapshot_refresh(&mut self) -> Option<Vec<Effect>> {
+        let (query, path) = self.chat.workbench.images.pending_preview.take()?;
+        if !self.chat.workbench.open
+            || !self.chat.workbench.images.open
+            || self.chat.workbench.selected != Some(query)
+            || self.chat.workbench.images.path != path
+        {
+            return Some(Vec::new());
+        }
+        Some(self.begin_image_read())
     }
 
     fn images_available(&self) -> bool {
@@ -151,6 +176,7 @@ impl AppModel {
             return Vec::new();
         };
         let image = &mut self.chat.workbench.images;
+        image.pending_preview = None;
         image.reading = Some(ReadBinding {
             operation,
             query: snapshot.query(),
@@ -232,9 +258,14 @@ impl AppModel {
     }
     pub(in crate::model) fn interrupt_image_import(&mut self) {
         let image = &mut self.chat.workbench.images;
+        let refreshing = image.pending_preview.take().is_some();
         let reading = image.reading.take().is_some();
         let uploading = image.upload.take().is_some();
-        if reading || uploading || (image.request.is_some() && image.preview.is_none()) {
+        if refreshing
+            || reading
+            || uploading
+            || (image.request.is_some() && image.preview.is_none())
+        {
             image.request = None;
             image.expected = None;
             "Import interrupted. Draft retained; refresh and explicitly preview again. No image acceptance was inferred.".clone_into(&mut self.chat.workbench.message);

@@ -16,6 +16,10 @@ Native terminal application state, daemon event handling, interaction routing, r
 | [help.rs](help.rs) | Key-reference content and bounded scrolling shared by input and rendering. |
 | [image_import.rs](image_import.rs) | Explicit local image reads. No shell expansion, clipboard polling, or provider operations. |
 | [input.rs](input.rs) | Keyboard-to-terminal byte mapping and line-editor helpers. |
+| [highlight.rs](highlight.rs) | Bundled syntax grammars and dark/light/plain source and diff presentation. |
+| [local.rs](local.rs) | Typed local presentation operations and their generation-fenced results. |
+| [preferences.rs](preferences.rs) | Persistent convenience shortcuts and syntax theme, separate from provider settings. |
+| [transcript_archive.rs](transcript_archive.rs) | Private incremental public-activity cache with literal local search and captured-history boundaries. |
 | [lib.rs](lib.rs) | Interactive, protocol-faithful terminal client for Peritus. |
 | [main.rs](main.rs) | `peritus-tui` interactive client entry point. Entry names: `main`. |
 | [model.rs](model.rs) | Deterministic application state and update reducer. |

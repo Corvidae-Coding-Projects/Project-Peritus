@@ -26,6 +26,13 @@ enum Arguments {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Command {
+    Find,
+    Pick,
+    Copy,
+    Editor,
+    PasteImage,
+    Keys,
+    Theme,
     Chat,
     Plan,
     Design,
@@ -120,6 +127,20 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
     let Some((prefix, partial)) = text.rsplit_once(char::is_whitespace) else { return Vec::new() };
     let words: Vec<_> = prefix.split_whitespace().collect();
     let choices: &[&str] = match words.as_slice() {
+        ["/theme"] => &["dark", "light", "plain"],
+        ["/copy"] => &["code"],
+        ["/keys"] => &[
+            "find",
+            "files",
+            "queue",
+            "editor",
+            "paste-image",
+            "copy",
+            "copy-code",
+            "keys",
+            "theme",
+            "reset",
+        ],
         ["/design"] => &["show", "build"],
         ["/brief"] => &["objective", "acceptance", "constraints", "assumptions"],
         ["/goal"] => &["confirm", "clear", "criterion"],

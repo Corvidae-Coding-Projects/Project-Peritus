@@ -70,6 +70,11 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn workbench_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if self.chat.workbench.mode == WorkbenchMode::Queue
+            && let Some(effects) = self.queue_key(key)
+        {
+            return effects;
+        }
         if self.chat.workbench.library_open()
             && let Some(effects) = self.library_key(key.code)
         {
