@@ -71,7 +71,7 @@ exclude credentials, prompts, model output, tool arguments, raw error bodies, an
 `CodexExecutable::pin` supports an explicitly managed path. Construct
 `CodexRuntimeConfig::new(executable, profile, process_limits)` and then
 `CodexRuntimeProvider::new(config)`. The provider owns the shared production process transport. It
-delegates authentication checks to `codex login status` immediately before every turn and directs
+delegates the first authentication check to `codex login status` and retains successful login availability for the provider lifetime and directs
 unauthenticated users to run `codex login`; Peritus never reads credential storage and never starts,
 refreshes, or exports an account login.
 
@@ -80,32 +80,47 @@ an advisory output limit, stateless local replay, unsupported resume, and best-e
 cancellation. It supports bounded inline images, inert host tool proposals, bounded parallel host
 tool proposals, portable reasoning-effort selection, and usage detail. High effort is the product
 default; a concrete minimal/low, medium, or high request is projected to the official executable.
-Automatic provider-managed prompt caching is accepted without exposing a cache handle or adding a
-runtime flag. Explicit cache keys and TTL breakpoints, audio, documents, remote media, remote
+Automatic provider-managed prompt caching uses the official app-server's framed stdio interface.
+A finite setup creates a routing-only local anchor containing the native context and a constant
+host marker, with no inference or Peritus task data. The anchor uses legacy history so a user
+setting selecting paginated history cannot make it unreadable. Each request loads that parent
+and uses its official ephemeral prediction fork, then injects the complete current Peritus
+request as user data. Stable routing-frame identity and metadata preserve cache affinity; task
+instructions, source bytes, tool results and images still come from the current host snapshot.
+No previous Peritus task or model output is inherited from the anchor. The anchor is small local
+Codex metadata; child task history remains ephemeral. Cache hits and expiry are vendor-managed,
+and actual cached-input counters remain distinct from local unchanged-prefix estimates.
+
+Unsupported setup falls back to ordinary isolated turns with a diagnostic. A rejected
+resume/fork/injection before model submission disables that unusable anchor and falls back
+without replaying accepted inference. Once turn submission starts, failures remain explicit;
+there is no automatic resubmission. Error categories and any reported usage survive normalization.
+Explicit cache keys and TTL breakpoints, audio, documents, remote media, remote
 persistence/background execution, continuation, reasoning replay or summaries, sampling controls,
 and caller-defined strict structured output are rejected before authentication or process
 submission.
 
-Each turn uses an isolated temporary working directory and output schema. The process is invoked in
-JSONL, ephemeral, read-only mode while ignoring user config/rules and Git state; native tools and
-features are disabled, and OpenAI/Codex credential, endpoint, organization, and project overrides
-are removed from the child environment. The output contract deliberately uses a bounded tool-name
-enum plus an `arguments_json` string. Full host schemas are prompt guidance only; returned names and
-argument objects are parsed and validated before becoming inert Peritus tool proposals. Native tool
-execution items, malformed JSONL, missing turn completion, and unknown correctness-critical shapes
-fail closed. The first structurally valid nonempty host-tool batch is a suspension boundary and
-owns that provider step; later messages cannot replace it before Peritus supplies the tool results.
-When no host tool is proposed, the bounded private `--output-last-message` artifact exclusively
-owns the final envelope. Earlier content-only messages are discarded as narration or drafts and
-never become host tool proposals. Required tool choices and argument
-object encoding are validated before any host proposal is emitted. Specific redaction-safe
+The provider reuses one private working directory. Native per-inference time reminders,
+independent Codex memories/compaction, skill discovery and execution features are disabled by
+explicit overrides because Peritus owns those responsibilities. Cache-disabled or fallback turns
+use ordinary JSONL `exec --ephemeral`, ignore user config/rules and Git state, and use separate
+private schemas, images and final-response artifacts. Both paths remove OpenAI/Codex credential,
+endpoint, organization and project overrides from the child environment. The output contract
+uses a bounded tool-name enum plus an `arguments_json` string. Full host schemas are guidance;
+returned names and argument objects are parsed and validated before becoming inert Peritus tool
+proposals. Native execution items, malformed envelopes, missing completion and unknown
+correctness-critical shapes fail closed. The first structurally valid nonempty host-tool batch
+owns that step; later narration cannot replace it before Peritus supplies its results. The cached
+path uses the final structured agent message; ordinary exec uses the private final-message file.
+Required tool choices and argument object encoding are validated before any proposal is emitted.
+Specific redaction-safe
 diagnostics and any valid observed usage survive rejected final output. Native execution is a
 non-retryable safety terminal, not a recoverable format error or provider-permission fallback.
 
-PNG, JPEG, WebP, and GIF bytes remain outside the text prompt. The request projection records only
-their attachment index, media type, and SHA-256 digest. Each image is written beneath the turn's
-private temporary directory and supplied through the official executable's `--image` option; the
-directory lifetime covers the child process and ends with the turn.
+PNG, JPEG, WebP, and GIF bytes remain outside the serialized text prompt. The text projection
+records only attachment index, media type and SHA-256. The cached structured path supplies actual
+inline image content to the official client. Ordinary exec writes images into the per-turn
+private directory and supplies `--image`; directory lifetime covers the child process.
 
 Subprocess stdin/stdout/stderr, timeout, cancellation, kill, and reap are bounded by
 `ProcessLimits` and the shared process transport. A normal completed turn is buffered and validated

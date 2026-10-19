@@ -51,14 +51,14 @@ pub(super) fn pipeline_activity(activity: &ProductActivity) -> ProductActivity {
         if completion.run_instructions.trim().is_empty() {
             completion.summary
         } else {
-            format!("{}\n\nRun: {}", completion.summary, completion.run_instructions)
+            format!("{}\n\n### Run\n{}", completion.summary, completion.run_instructions)
         }
     } else if let Ok(review) = serde_json::from_str::<Review>(activity.text()) {
         let mut text = review.summary;
         for finding in review.findings {
             let _ = write!(
                 text,
-                "\n\n{}: {} [{}]\n{}\nLocation: {}\nReproduce: {}\nSuggested fix: {}",
+                "\n\n### {}: {}\n*Category: {}*\n\n{}\n\n**Location:** {}\n\n**Reproduce:** {}\n\n**Suggested fix:** {}",
                 finding.severity,
                 finding.title,
                 finding.category,
@@ -76,7 +76,11 @@ pub(super) fn pipeline_activity(activity: &ProductActivity) -> ProductActivity {
         activity.sequence(),
         activity.kind(),
         bounded(&rendered),
-        activity.detail().to_owned(),
+        bounded(&format!(
+            "{}\nStructured response (raw JSON):\n{}",
+            activity.detail(),
+            activity.text()
+        )),
     )
     .unwrap_or_else(|_| activity.clone())
 }

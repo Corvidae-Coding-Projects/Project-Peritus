@@ -2,6 +2,7 @@
 
 mod config;
 mod executable;
+mod live;
 pub mod output;
 mod provider;
 pub mod request;

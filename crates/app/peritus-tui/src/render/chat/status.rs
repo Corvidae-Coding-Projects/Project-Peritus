@@ -13,50 +13,69 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 }
 
 fn online_status(model: &AppModel) -> String {
-    if let Some(status) = model.chat.goal_terminal_status() {
-        return status.to_owned();
-    }
-    if model.chat.snapshot.as_ref().is_some_and(|snapshot| {
-        snapshot.snapshot().phase() == peritus_app_protocol::ProductRunPhase::RecoveryRequired
-    }) {
-        return "Recovery required · /retry retries this exact run · /runs opens details"
-            .to_owned();
-    }
-    if !model.chat.expanded && model.chat.working.elapsed_seconds().is_some() {
-        "Ctrl-C stops".to_owned()
-    } else {
-        model.chat.snapshot.as_ref().map_or_else(
-            || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
-            |snapshot| {
+    let mut status = model.chat.snapshot.as_ref().map_or_else(
+        || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
+        |snapshot| {
+            let pending = snapshot.received() > snapshot.incorporated();
+            let receipt = format!(
+                "Steering: saved r{} · in model request r{}{}",
+                snapshot.received(),
+                snapshot.incorporated(),
+                if pending { " · awaiting next request" } else { "" },
+            );
+            if model.chat.goal_terminal_status().is_some() {
+                format!("{receipt}\nGoal cancelled · /runs details")
+            } else if snapshot.snapshot().phase()
+                == peritus_app_protocol::ProductRunPhase::RecoveryRequired
+            {
+                format!("{receipt}\nRecovery required · /retry retries · /runs details")
+            } else {
                 format!(
-                    "{} · input received {} / incorporated {} · Ctrl-C stops / exits",
-                    snapshot.snapshot().status(),
-                    snapshot.received(),
-                    snapshot.incorporated()
+                    "{receipt}\n{:?} · Enter {} · Ctrl-C {}",
+                    snapshot.snapshot().phase(),
+                    if model.chat.active() { "steers" } else { "sends" },
+                    if model.chat.active() { "stops" } else { "exits" }
                 )
-            },
-        )
+            }
+        },
+    );
+    if model.workbench_chat_pending() {
+        status.insert_str(0, "Sending input · draft kept · ");
     }
+    status
 }
 
 fn render_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel, status: &str) {
     // A transient notice expires after six seconds. Keep the actual connection failure
     // visible for as long as the client is offline, including unattended long runs.
+    let history_hint = model.chat.history.hint().unwrap_or_default();
     let notice = model.notice.as_ref().map_or_else(
         || match &model.connection {
             ConnectionStatus::Disconnected(error) => error.as_str(),
-            ConnectionStatus::Connecting | ConnectionStatus::Online { .. } => "",
+            ConnectionStatus::Connecting => "",
+            ConnectionStatus::Online { .. } if model.chat.history.is_loading() => {
+                "Loading saved messages · draft kept"
+            }
+            ConnectionStatus::Online { .. } => &history_hint,
         },
         |notice| notice.text.as_str(),
     );
+    let [receipt, notice_area] = ratatui::layout::Layout::vertical([
+        ratatui::layout::Constraint::Min(1),
+        ratatui::layout::Constraint::Length(1),
+    ])
+    .areas(area);
     frame.render_widget(
-        Paragraph::new(vec![
-            Line::styled(
-                crate::sanitize::sanitize_display_text(status),
-                Style::default().fg(MUTED),
-            ),
-            Line::styled(crate::sanitize::sanitize_display_text(notice), Style::default().fg(WARN)),
-        ]),
-        area,
+        Paragraph::new(crate::sanitize::sanitize_display_text(status))
+            .style(Style::default().fg(MUTED))
+            .wrap(ratatui::widgets::Wrap { trim: false }),
+        receipt,
+    );
+    frame.render_widget(
+        Paragraph::new(Line::styled(
+            crate::sanitize::sanitize_display_text(notice),
+            Style::default().fg(WARN),
+        )),
+        notice_area,
     );
 }

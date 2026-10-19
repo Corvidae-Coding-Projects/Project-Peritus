@@ -176,6 +176,9 @@ pub struct ProcessRequest {
     environment_removals: Vec<EnvironmentName>,
     environment_overrides: Vec<(EnvironmentName, std::ffi::OsString)>,
     stderr_observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
+    stdout_observer: Option<std::sync::Arc<dyn Fn(&[u8]) + Send + Sync>>,
+    stdin_close_signal: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    stdin_messages: Option<std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>>>,
     limits: ProcessLimits,
 }
 
@@ -229,6 +232,9 @@ impl ProcessRequest {
             environment_removals,
             environment_overrides: Vec::new(),
             stderr_observer: None,
+            stdout_observer: None,
+            stdin_close_signal: None,
+            stdin_messages: None,
             limits,
         })
     }
@@ -278,6 +284,54 @@ impl ProcessRequest {
 
     pub(crate) const fn stderr_observer(&self) -> Option<fn(&[u8]) -> Option<ProviderCoreError>> {
         self.stderr_observer
+    }
+
+    /// Observes the bounded stdout collected so far while the owned process is running.
+    /// Adapters may expose only validated public observations; this grants no tool authority.
+    #[must_use]
+    pub fn with_stdout_observer(
+        mut self,
+        observer: std::sync::Arc<dyn Fn(&[u8]) + Send + Sync>,
+    ) -> Self {
+        self.stdout_observer = Some(observer);
+        self
+    }
+
+    pub(crate) fn stdout_observer(&self) -> Option<&(dyn Fn(&[u8]) + Send + Sync)> {
+        self.stdout_observer.as_deref()
+    }
+
+    /// Keeps stdin open after its initial payload until a bounded stdout observer signals
+    /// completion. This supports finite JSON-RPC handshakes without an unowned helper.
+    /// The ordinary cancellation token, output ceilings and deadline remain authoritative.
+    #[must_use]
+    pub fn with_stdin_close_signal(
+        mut self,
+        signal: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ) -> Self {
+        self.stdin_close_signal = Some(signal);
+        self
+    }
+
+    pub(crate) fn stdin_close_signal(&self) -> Option<&std::sync::atomic::AtomicBool> {
+        self.stdin_close_signal.as_deref()
+    }
+
+    /// Supplies follow-up protocol messages from the stdout observer. The process transport
+    /// enforces the same cumulative stdin ceiling, cancellation and deadline for these bytes.
+    #[must_use]
+    pub fn with_stdin_messages(
+        mut self,
+        messages: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>>,
+    ) -> Self {
+        self.stdin_messages = Some(messages);
+        self
+    }
+
+    pub(crate) fn stdin_messages(
+        &self,
+    ) -> Option<&std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>> {
+        self.stdin_messages.as_deref()
     }
 
     /// Returns the pinned executable for a process transport implementation.

@@ -135,6 +135,8 @@ impl AppModel {
         }
         self.abandon_chat_observations();
         self.abandon_workbench_inspection();
+        self.chat.history = super::history::ComposerHistory::default();
+        self.chat.kill_buffer.clear();
         let library = self.chat.workbench.library.take();
         let open = self.chat.workbench.open;
         self.chat.workbench = WorkbenchUi::default();

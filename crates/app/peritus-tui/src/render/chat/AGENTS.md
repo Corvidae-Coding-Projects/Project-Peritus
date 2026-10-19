@@ -17,12 +17,15 @@ Implementation pieces for `chat.rs`: Conversation-first terminal layout with a p
 | [effort.rs](effort.rs) | Reasoning effort remains discoverable even when model discovery is unavailable. |
 | [files.rs](files.rs) | Exact file/range consent and current selection, with no implied provider delivery. |
 | [goal.rs](goal.rs) | Truthful goal, criterion, and usage projection. |
+| [history.rs](history.rs) | Searchable saved-message previews; selection loads the composer without sending. |
 | [images.rs](images.rs) | Readable exact-byte consent preview; pixels are not required for a terminal confirmation. |
 | [init.rs](init.rs) | Exact initialization source, command, and file-diff review panel. |
 | [inspector.rs](inspector.rs) | Shared wrapping and bounds for the metadata inspectors; rendering and keys use the same rows. |
 | [library.rs](library.rs) | Session identities remain selectable and visible independently of the metadata inspector. |
 | [memory.rs](memory.rs) | Exact project-guidance projection with content-free tombstone disclosure. |
+| [markdown.rs](markdown.rs) | Terminal-inert Markdown formatting, width-aware tables, and cached message presentation. |
 | [permissions.rs](permissions.rs) | Effective host-intersected workspace permission projection. |
+| [progress.rs](progress.rs) | Compact active phase/timer line; actual operations and tool results are displayed in the transcript. |
 | [queue.rs](queue.rs) | Paginated input history, with exact row revisions and visibly separate lifecycle labels. |
 | [status.rs](status.rs) | Connection-aware composer status stays visible even when provider labels fill the title. |
 | [transcript.rs](transcript.rs) | Public activity projection and wrapping shared by rendering and mouse copy. |

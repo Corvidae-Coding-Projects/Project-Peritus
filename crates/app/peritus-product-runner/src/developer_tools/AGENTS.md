@@ -25,6 +25,7 @@ Host-owned model tools: schemas, argument admission, workspace grounding, permis
 | [inspection_cancellation.rs](inspection_cancellation.rs) | Run-owned cancellation checks used while streaming filesystem inspection. |
 | [inspection_cursor.rs](inspection_cursor.rs) | Scope-bound continuation cursors for bounded filesystem listings and searches. |
 | [inspection_list.rs](inspection_list.rs) | Bounded workspace directory listing with scope-bound continuations. |
+| [inspection_document.rs](inspection_document.rs) | Bounded reusable document bytes and sparse line offsets; each access reopens and validates file identity, with streaming fallback. |
 | [inspection_read.rs](inspection_read.rs) | Byte-bounded, resumable line reads shared by workspace and reference tools. |
 | [inspection_search.rs](inspection_search.rs) | Streaming literal workspace search with scoped page continuations. |
 | [mod.rs](mod.rs) | Managed-workspace tools exposed to the D0 developer loop. |

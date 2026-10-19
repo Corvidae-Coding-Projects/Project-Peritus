@@ -29,7 +29,7 @@ pub(super) struct Submission {
 }
 
 impl AppModel {
-    pub(in crate::model) const fn workbench_chat_pending(&self) -> bool {
+    pub(crate) const fn workbench_chat_pending(&self) -> bool {
         self.chat.workbench.submission.is_some() || self.chat.workbench.unresolved.is_some()
     }
 

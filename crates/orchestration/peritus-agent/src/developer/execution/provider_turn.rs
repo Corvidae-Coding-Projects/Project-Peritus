@@ -62,14 +62,15 @@ impl RetryContext<'_, '_> {
             guidance.as_deref(),
         )?;
         let mut messages = messages.to_vec();
-        messages[0] = policy.clone();
+        messages[0] = policy.combined()?;
         let count = if self.context.is_local() {
             u16::from(self.context.prepare(
                 provider,
                 &mut messages,
                 &request.tools,
                 profile,
-                &policy,
+                &policy.system,
+                Some(&policy.state),
                 self.governing_input,
             )?)
         } else {

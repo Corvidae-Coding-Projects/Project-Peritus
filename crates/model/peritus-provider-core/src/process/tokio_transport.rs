@@ -2,11 +2,12 @@
 
 use core::future::Future as _;
 use std::future::poll_fn;
+use std::pin::Pin;
 use std::process::{ExitStatus, Stdio};
 use std::task::Poll;
 
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::process::{Child, ChildStderr, ChildStdout, Command};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::time::Instant;
 
 use super::{ProcessExit, ProcessOutput, ProcessRequest, ProcessTransport};
@@ -36,9 +37,16 @@ async fn run(
     let limits = request.limits();
     let deadline = Instant::now() + limits.timeout();
     let mut child = spawn(&request)?;
-    write_stdin(&mut child, request.stdin(), cancellation, deadline).await?;
+    let stdin = write_stdin(
+        &mut child,
+        request.stdin(),
+        cancellation,
+        deadline,
+        request.stdin_close_signal().is_some(),
+    )
+    .await?;
     let (stdout, stderr) = take_output(&mut child).await?;
-    collect(child, stdout, stderr, limits, cancellation, deadline, request.stderr_observer()).await
+    collect(child, stdout, stderr, stdin, limits, cancellation, deadline, &request).await
 }
 
 fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
@@ -70,7 +78,8 @@ async fn write_stdin(
     input: &[u8],
     cancellation: &CancellationToken,
     deadline: Instant,
-) -> Result<(), ProviderCoreError> {
+    keep_open: bool,
+) -> Result<Option<ChildStdin>, ProviderCoreError> {
     let Some(mut stdin) = child.stdin.take() else {
         terminate(child).await;
         return Err(ProviderCoreError::transport(
@@ -80,7 +89,7 @@ async fn write_stdin(
     };
     let write = async {
         stdin.write_all(input).await?;
-        stdin.shutdown().await
+        if keep_open { stdin.flush().await } else { stdin.shutdown().await }
     };
     let timed = tokio::time::timeout_at(deadline, write);
     let outcome = crate::cancellation::first(cancellation, timed).await;
@@ -93,11 +102,10 @@ async fn write_stdin(
         )),
         Some(Ok(Ok(()))) => Ok(()),
     };
-    drop(stdin);
     if result.is_err() {
         terminate(child).await;
     }
-    result
+    result.map(|()| keep_open.then_some(stdin))
 }
 
 async fn take_output(child: &mut Child) -> Result<(ChildStdout, ChildStderr), ProviderCoreError> {
@@ -122,12 +130,13 @@ async fn collect(
     mut child: Child,
     stdout: ChildStdout,
     stderr: ChildStderr,
+    stdin: Option<ChildStdin>,
     limits: super::ProcessLimits,
     cancellation: &CancellationToken,
     deadline: Instant,
-    observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
+    request: &ProcessRequest,
 ) -> Result<ProcessOutput, ProviderCoreError> {
-    let operation = collect_output(&mut child, stdout, stderr, limits, observer);
+    let operation = collect_output(&mut child, stdout, stderr, stdin, limits, request);
     let timed = tokio::time::timeout_at(deadline, operation);
     let outcome = crate::cancellation::first(cancellation, timed).await;
     let result = match outcome {
@@ -151,15 +160,30 @@ async fn collect_output(
     child: &mut Child,
     stdout: ChildStdout,
     stderr: ChildStderr,
+    mut stdin: Option<ChildStdin>,
     limits: super::ProcessLimits,
-    observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
+    request: &ProcessRequest,
 ) -> Result<(ExitStatus, Vec<u8>, Vec<u8>), ProviderCoreError> {
     let mut wait = Box::pin(child.wait());
-    let mut stdout = Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout", None));
-    let mut stderr = Box::pin(read_bounded(stderr, limits.max_stderr_bytes(), "stderr", observer));
+    let mut stdout = Box::pin(read_bounded(
+        stdout,
+        limits.max_stdout_bytes(),
+        "stdout",
+        None,
+        request.stdout_observer(),
+    ));
+    let mut stderr = Box::pin(read_bounded(
+        stderr,
+        limits.max_stderr_bytes(),
+        "stderr",
+        request.stderr_observer(),
+        None,
+    ));
     let mut status = None;
     let mut stdout_bytes = None;
     let mut stderr_bytes = None;
+    let mut pending_input: Option<(Vec<u8>, usize)> = None;
+    let mut input_bytes = request.stdin().len();
     poll_fn(|context| {
         if status.is_none() {
             match wait.as_mut().poll(context) {
@@ -182,6 +206,57 @@ async fn collect_output(
                 Poll::Pending => {}
             }
         }
+        if pending_input.is_none()
+            && let Some(messages) = request.stdin_messages()
+        {
+            let next = messages
+                .lock()
+                .map_err(|_| {
+                    ProviderCoreError::transport("process_stdin", "protocol input queue poisoned")
+                })?
+                .pop_front();
+            if let Some(next) = next {
+                input_bytes = input_bytes.saturating_add(next.len());
+                if input_bytes > limits.max_stdin_bytes {
+                    return Poll::Ready(Err(ProviderCoreError::limit_exceeded(
+                        "process_stdin",
+                        "protocol input exceeded cumulative byte limit",
+                    )));
+                }
+                pending_input = Some((next, 0));
+            }
+        }
+        if let Some((bytes, offset)) = &mut pending_input {
+            let input = stdin.as_mut().ok_or_else(|| {
+                ProviderCoreError::transport("process_stdin", "protocol input already closed")
+            })?;
+            match Pin::new(input).poll_write(context, &bytes[*offset..]) {
+                Poll::Ready(Ok(0)) | Poll::Ready(Err(_)) => {
+                    return Poll::Ready(Err(ProviderCoreError::transport(
+                        "process_stdin",
+                        "protocol write failed",
+                    )));
+                }
+                Poll::Ready(Ok(count)) => {
+                    *offset += count;
+                    if *offset == bytes.len() {
+                        pending_input = None;
+                    }
+                    context.waker().wake_by_ref();
+                }
+                Poll::Pending => {}
+            }
+        }
+        if pending_input.is_none()
+            && request
+                .stdin_messages()
+                .is_none_or(|queue| queue.lock().is_ok_and(|queue| queue.is_empty()))
+            && request
+                .stdin_close_signal()
+                .is_some_and(|signal| signal.load(std::sync::atomic::Ordering::Acquire))
+        {
+            drop(stdin.take());
+        }
         match (status.take(), stdout_bytes.take(), stderr_bytes.take()) {
             (Some(status), Some(stdout), Some(stderr)) => Poll::Ready(Ok((status, stdout, stderr))),
             (pending_status, pending_stdout, pending_stderr) => {
@@ -200,6 +275,7 @@ async fn read_bounded(
     limit: usize,
     operation: &'static str,
     observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
+    stdout_observer: Option<&(dyn Fn(&[u8]) + Send + Sync)>,
 ) -> Result<Vec<u8>, ProviderCoreError> {
     let mut output = Vec::new();
     let mut buffer = [0_u8; 8 * 1024];
@@ -223,6 +299,9 @@ async fn read_bounded(
             ));
         }
         output.extend_from_slice(&buffer[..count]);
+        if let Some(observe) = stdout_observer {
+            observe(&output);
+        }
         if let Some(error) = observer.and_then(|observe| observe(&output)) {
             return Err(error);
         }

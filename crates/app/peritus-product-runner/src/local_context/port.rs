@@ -312,6 +312,7 @@ impl DeveloperContextPort for LocalContextHandle {
             request.profile,
             request.tools,
             Some(request.invocation_policy),
+            request.invocation_state,
             request.governing_input,
             Some(request.provider),
         )

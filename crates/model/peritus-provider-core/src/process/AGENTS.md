@@ -8,7 +8,7 @@ Implementation pieces for `process.rs`: Bounded owned subprocess requests with a
 
 | File | Role |
 | --- | --- |
-| [tokio_transport.rs](tokio_transport.rs) | Tokio-backed subprocess execution hidden behind Peritus-owned values. |
+| [tokio_transport.rs](tokio_transport.rs) | Tokio-backed subprocess execution, bounded observer-driven protocol stdin, cancellation, deadlines and owned child cleanup. |
 
 Owning module: [process.rs](../process.rs). Inspect that parent before changing the local pieces.
 

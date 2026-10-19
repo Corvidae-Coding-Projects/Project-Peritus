@@ -13,8 +13,7 @@ impl AppModel {
                     self.paste_editor_event(&text);
                     Vec::new()
                 } else if self.view == View::Conversation {
-                    self.paste_chat_event(&text);
-                    Vec::new()
+                    self.paste_chat_event(&text)
                 } else if self.view == View::Terminal
                     && let Some(terminal) =
                         self.terminal.as_mut().filter(|terminal| terminal.capture_input())

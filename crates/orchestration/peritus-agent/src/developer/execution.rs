@@ -115,7 +115,8 @@ impl DeveloperLoop {
                     &mut messages,
                     &request.tools,
                     profile,
-                    &invocation_policy,
+                    &invocation_policy.system,
+                    Some(&invocation_policy.state),
                     governing_input.as_ref(),
                 )? {
                     trace.account(DeveloperAccountingEvent::Compaction)?;
@@ -125,7 +126,7 @@ impl DeveloperLoop {
             } else {
                 // Replace, never append: the current host projection is budgeted and cannot
                 // accumulate stale startup states or be compacted as optional conversation.
-                messages[0] = invocation_policy;
+                messages[0] = invocation_policy.combined()?;
                 if let Some(input) = governing_input.as_ref() {
                     if governing_installed {
                         messages[2] = input.clone();

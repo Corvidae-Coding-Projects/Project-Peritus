@@ -28,6 +28,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [error.rs](error.rs) | Stable redaction-safe product runner failures. |
 | [execution.rs](execution.rs) | E0 production writer-gates-review-fixer composition. |
 | [failover.rs](failover.rs) | Explicit provider-chain selection after ordinary role recovery is exhausted. |
+| [file_observation.rs](file_observation.rs) | Bounded process-local full-content hash reuse, guarded by file identity/change metadata; final candidate qualification bypasses reuse. |
 | [file_metadata.rs](file_metadata.rs) | Portable workspace metadata used by grounding and progress evidence. |
 | [gates.rs](gates.rs) | Candidate-aware D1 gate execution adapter. |
 | [guided_design.rs](guided_design.rs) | Versioned, run-scoped interactive Markdown draft storage and explicit input to implementation designers. |
@@ -40,6 +41,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [reviewer_turn.rs](reviewer_turn.rs) | Fresh tool-capable, read-only independent review turns. |
 | [trace.rs](trace.rs) | Durable per-run D0 provider/tool trace. |
 | [turn.rs](turn.rs) | Tool-capable writer/fixer turns and independent reviewer prompts. |
+| [tool_output.rs](tool_output.rs) | Shared display-only projection of returned source bodies, search hits, entries and pagination; recognizes saved Markdown sources and removes native file-read prefixes without changing model evidence. |
 | [workspace_delivery.rs](workspace_delivery.rs) | Delivery-specific adapters around the single production execution pipeline. |
 | [workspace_filter.rs](workspace_filter.rs) | Stable exclusion of tool-generated dependency and build trees from task candidates. |
 | [workspace_kind.rs](workspace_kind.rs) | Caller-resolved workspace delivery boundary, independent of interaction mode. |

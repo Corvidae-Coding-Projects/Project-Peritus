@@ -172,6 +172,13 @@ impl AppModel {
     }
 
     fn complete_receipted_draft(&mut self, command: &WorkbenchCommand) {
+        if matches!(
+            command.intent(),
+            WorkbenchIntent::Queue(peritus_app_protocol::WorkbenchQueueIntent::Enqueue(_))
+                | WorkbenchIntent::EnqueueMessage { .. }
+        ) {
+            self.chat.history.submitted();
+        }
         if let Some((_, draft)) = self.chat.workbench.unresolved.take()
             && self.chat.buffer == draft
             && !(matches!(command.intent(), WorkbenchIntent::CreateConversation(_))

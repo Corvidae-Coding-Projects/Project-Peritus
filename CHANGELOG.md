@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+## 0.1.3
+
+### Added
+
+- Recall submitted terminal instructions with Up/Down, search saved input with F3, and inspect pending steering with F4 while preserving the current draft.
+
+### Changed
+
+- Show live edits, code diffs, source ranges, command results, and steering receipts in the terminal. Render Markdown headings, tables, lists, and fenced code with readable contrast while retaining complete tool details.
+- Reuse unchanged file observations and checkpoint indexes, and observe command completion once instead of repeatedly scanning the full tracked candidate. Keep fresh observations at review and final settlement boundaries.
+- Reuse accepted task designs and source evidence through steering and continuation instead of restarting discovery for a known implementation task.
+- Keep stable evidence prefixes ahead of changing working state. Route eligible ChatGPT-account requests through an isolated official Codex cache anchor, with fallback before inference when setup is unavailable.
+- Assemble context incrementally from retained exchange metadata and decoded immutable messages. Select history before loading archived bodies, and create obsolete-source receipts without rereading their old payloads.
+- Reuse document bytes and sparse line offsets while file identity and change metadata match. Recheck current access on every read; changed sources, eviction, and larger documents retain ordinary fresh/streaming behavior.
+
+### Fixed
+
+- Preserve unrelated settled results when one read in a tool batch becomes stale, and keep assistant text from reordering pending calls and results.
+- Prevent cold checkpoint-index races from caching altered evidence, and recover Codex routing-anchor failures without an output-offset panic or replaying accepted inference.
+- Preserve terminal input history and unsent drafts across delayed replies, paging, conversation changes, and reconnects.
+
+### Real testing
+
+- Reuse the completed terminal feedback/formatting, checkpoint/cache, provider-routing, and incremental-context campaigns. The final context campaign passed 240 actions, 68 independent checks, saved recovery/order replays, and a real TUI/daemon/provider journey.
+- A 96-page replay returned identical output with about 97.9% fewer logical read bytes. Cache-pressure and source-change replays verified that omitted and obsolete history does not repeatedly reload large old bodies. These are bounded Linux measurements, not a universal speed or provider-cache guarantee.
+- Native release packages additionally exercise actual Unix installation and offline terminal startup. No unit tests, formal verification, or repository verification suites are part of this release workflow.
+
+### Compatibility
+
+- Existing saved run and working-context formats remain readable; the new caches are disposable host projections. Current source truth, permissions, pending-operation recovery, and provider capacity still apply.
+- The native Deep Research plugin remains separately distributed through the module market. This release does not change its wire compatibility contract.
+
 ## 0.1.2
 
 ### Changed

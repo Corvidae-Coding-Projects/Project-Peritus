@@ -8,7 +8,7 @@ Implementation pieces for `tool_activity.rs`: Bounded observations of actual too
 
 | File | Role |
 | --- | --- |
-| [display.rs](display.rs) | Human-readable command/argv projections; these strings are display-only, never shell input. |
+| [display.rs](display.rs) | Human-readable command/argv, saved Markdown sources and file-change previews correlated with successful host results; display-only, never shell input. |
 
 Owning module: [tool_activity.rs](../tool_activity.rs). Inspect that parent before changing the local pieces.
 

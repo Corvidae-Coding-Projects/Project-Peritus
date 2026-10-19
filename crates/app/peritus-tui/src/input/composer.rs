@@ -57,9 +57,9 @@ pub fn regions(area: Rect, lines: usize, working: bool) -> [Rect; 5] {
     Layout::vertical([
         Constraint::Length(2),
         Constraint::Min(3),
-        Constraint::Length(u16::from(working) * 5),
+        Constraint::Length(u16::from(working)),
         Constraint::Length(u16::try_from(lines.clamp(1, 6)).unwrap_or(6) + 2),
-        Constraint::Length(2),
+        Constraint::Length(if area.width < 70 && area.height >= 20 { 4 } else { 3 }),
     ])
     .areas(area)
 }

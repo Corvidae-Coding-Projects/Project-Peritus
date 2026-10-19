@@ -5,7 +5,6 @@ use sha2::{Digest as _, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write as _,
-    io::Read as _,
     path::{Path, PathBuf},
 };
 
@@ -245,22 +244,8 @@ pub(crate) fn file_digest(path: &Path) -> Result<String, std::io::Error> {
 }
 
 fn file_digest_and_bytes(path: &Path) -> Result<(String, u64), std::io::Error> {
-    let mut file = std::fs::File::open(path)?;
-    if !file.metadata()?.is_file() {
-        return Err(std::io::Error::other("not a regular file"));
-    }
-    let mut hash = Sha256::new();
-    let mut buffer = [0; 64 * 1024];
-    let mut bytes = 0_u64;
-    loop {
-        let count = file.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        hash.update(&buffer[..count]);
-        bytes = bytes.saturating_add(count as u64);
-    }
-    Ok((hash.finalize().iter().map(|byte| format!("{byte:02x}")).collect::<String>(), bytes))
+    let content = crate::file_observation::read(path, false)?;
+    Ok((content.digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>(), content.bytes))
 }
 
 fn listing_digest(root: &Path) -> Result<String, std::io::Error> {

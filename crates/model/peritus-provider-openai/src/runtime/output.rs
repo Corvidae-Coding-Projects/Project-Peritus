@@ -246,7 +246,12 @@ fn decode_event(event: &Value, state: &mut State) -> Result<(), DecodeFailure> {
             state.completed = true;
             Ok(())
         }
-        "turn.failed" | "error" => Err(reported_failure(event)),
+        "turn.failed" | "error" => {
+            if event.get("usage").is_some() {
+                state.usage = decode_usage(event.get("usage"))?;
+            }
+            Err(reported_failure(event))
+        }
         _ => Err(DecodeFailure::UnsupportedEvent),
     }
 }

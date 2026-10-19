@@ -10,7 +10,7 @@ next implementation slice; the designer cannot start another discovery loop.
 
 | File | Role |
 | --- | --- |
-| [reuse.rs](reuse.rs) | Exact request/design receipts and fresh ready-design handoff; task or draft changes invalidate reuse. |
+| [reuse.rs](reuse.rs) | Run/workspace/task-bound plan receipts; continue and steering amend the retained plan without regenerating it. Changed task/draft/artifact identity invalidates v2 reuse. |
 | [artifact.rs](artifact.rs) | Deterministic detailed designs for explicit generated-artifact workspaces. |
 
 Owning module: [design.rs](../design.rs). Inspect that parent before changing the local pieces.

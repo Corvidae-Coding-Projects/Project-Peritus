@@ -152,7 +152,7 @@ pub(super) async fn create_design(
     .await?;
     let status = format!("Detailed design ready at {}", document.path().display());
     let summary = format!(
-        "Design covers conversation revision {} and is ready for implementation.",
+        "Retained plan from revision {} is ready; the writer applies current user instructions as amendments.",
         document.conversation_revision()
     );
     emit(

@@ -39,6 +39,8 @@ impl LocalMemory {
         )?;
         self.transcript.invocation = sequence;
         self.transcript.request_prefix.clone_from(&request.request_prefix);
+        self.inline_epoch_start = None;
+        self.exchange_index = Default::default();
         self.transcript.current_inputs.clear();
         self.transcript.message_ids.clear();
         for pending in &mut self.transcript.pending {

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "design_doc": ".design/staged-project-execution.md",
+  "doc_hash": "sha256:7b49d8b013a32bb954d30bc40167e4a9855c92d7e27b5049efc53d4763cfe7af",
+  "stage": "designed",
+  "plans": [],
+  "runs": []
+}

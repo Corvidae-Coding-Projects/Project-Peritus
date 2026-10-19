@@ -11,7 +11,7 @@ Product provider/tool loop: request construction, current host invocation policy
 | [accounting.rs](accounting.rs) | Incremental accounting boundaries that survive failed or cancelled invocations. |
 | [context.rs](context.rs) | Layered context accounting and digest-bound transcript compaction for developer roles. |
 | [context_encoding.rs](context_encoding.rs) | Deterministic token estimates and canonical transcript-source encoding. |
-| [context_port.rs](context_port.rs) | Host-owned local context boundary for the production developer loop. |
+| [context_port.rs](context_port.rs) | Host-owned local context boundary and composable production input estimates for selecting cached exchanges. |
 | [entry.rs](entry.rs) | Public developer-loop entry points and context policy selection. |
 | [error.rs](error.rs) | Redaction-safe developer-loop failures. |
 | [execution.rs](execution.rs) | Tight provider/tool execution loop. |

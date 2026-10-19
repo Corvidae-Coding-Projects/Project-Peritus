@@ -64,6 +64,7 @@ impl AppModel {
             && self.editor.is_none()
             && !self.chat.selecting_output()
             && self.chat.doctor.is_none()
+            && self.chat.history.search.is_none()
             && !self.chat.workbench.open
             && !self.chat.effort_picker()
             && !self.chat.model_picker()

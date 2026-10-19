@@ -462,12 +462,18 @@ impl WorkspaceDeveloperTools {
         if occurrences == 0 || (!replace_all && occurrences != 1) {
             return Err(tool(format!("patch expected one match but found {occurrences}")));
         }
+        let start_line = content[..content.find(old).expect("nonzero match count")]
+            .bytes()
+            .filter(|byte| *byte == b'\n')
+            .count()
+            + 1;
         let replaced =
             if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
         atomic_write(&path, replaced.as_bytes())?;
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),
             ("replacements", Value::from(if replace_all { occurrences } else { 1 })),
+            ("start_line", Value::from(start_line)),
             ("bytes", Value::from(replaced.len())),
             ("sha256", Value::String(digest_hex(replaced.as_bytes()))),
         ]))

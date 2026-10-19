@@ -11,7 +11,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write as _,
     fs,
-    io::Read as _,
     path::{Path, PathBuf},
 };
 
@@ -38,7 +37,7 @@ struct Entry {
     descendants: BTreeMap<String, FileStamp>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct FileStamp {
     kind: String,
@@ -46,6 +45,17 @@ struct FileStamp {
     permissions: Option<u32>,
     bytes: u64,
     preview: String,
+}
+
+// Previews are a presentation projection, including for journals from older releases.
+// Candidate identity depends on exact bytes, type and permissions, never preview encoding.
+impl PartialEq for FileStamp {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+            && self.digest == other.digest
+            && self.permissions == other.permissions
+            && self.bytes == other.bytes
+    }
 }
 
 struct FileObservation {
@@ -104,14 +114,15 @@ impl ScopedBaseline {
     /// Directory descendants are comparison evidence, not an implicit request to capture live
     /// service data for rewind. Reading or editing a descendant explicitly enrolls that file.
     pub(crate) fn checkpoint_paths(&self) -> Result<Vec<PathBuf>, ProductRunnerError> {
-        let EnrolledPaths { entries, declarations } = self.load()?;
+        let enrolled = self.load()?;
+        let EnrolledPaths { entries, declarations } = enrolled.as_ref();
         entries
-            .into_iter()
-            .filter(|(path, _)| declarations.contains(path))
-            .filter_map(|(path, before)| match self.stamp(&path) {
+            .iter()
+            .filter(|(path, _)| declarations.contains(*path))
+            .filter_map(|(path, before)| match self.observed_kind(&path) {
                 Ok(current)
                     if matches!(before.kind.as_str(), "file" | "absent")
-                        && matches!(current.kind.as_str(), "file" | "absent") =>
+                        && matches!(current.as_str(), "file" | "absent") =>
                 {
                     match self.observed_path(&path) {
                         Ok(Some(_)) => Some(Ok(PathBuf::from(path))),
@@ -139,11 +150,26 @@ impl ScopedBaseline {
         &self,
         root: &Path,
     ) -> Result<ScopedCandidateObservation, ProductRunnerError> {
+        self.observe_candidate_mode(root, false)
+    }
+
+    pub(crate) fn observe_candidate_fresh(
+        &self,
+        root: &Path,
+    ) -> Result<ScopedCandidateObservation, ProductRunnerError> {
+        self.observe_candidate_mode(root, true)
+    }
+
+    fn observe_candidate_mode(
+        &self,
+        root: &Path,
+        fresh: bool,
+    ) -> Result<ScopedCandidateObservation, ProductRunnerError> {
         self.check_root(root)?;
         let mut content = Vec::new();
         let mut repository = Vec::new();
         for (path, before) in self.comparison()? {
-            let current = self.observe(&path)?;
+            let current = self.observe_mode(&path, fresh)?;
             if current.stamp != before {
                 content.push(current.checkpoint.clone());
             }
@@ -237,7 +263,7 @@ impl ScopedBaseline {
         }
     }
 
-    fn load(&self) -> Result<EnrolledPaths, ProductRunnerError> {
+    fn load(&self) -> Result<std::sync::Arc<EnrolledPaths>, ProductRunnerError> {
         self.load_index()
     }
 
@@ -262,7 +288,26 @@ impl ScopedBaseline {
         self.observe(relative).map(|observed| observed.stamp)
     }
 
+    fn observed_kind(&self, relative: &str) -> Result<String, ProductRunnerError> {
+        let Some(path) = self.observed_path(relative)? else { return Ok("absent".to_owned()) };
+        match fs::symlink_metadata(path) {
+            Ok(meta) if meta.is_file() => Ok("file".to_owned()),
+            Ok(meta) if meta.is_dir() => Ok("directory".to_owned()),
+            Ok(_) => Ok("other".to_owned()),
+            Err(error) if missing(&error) => Ok("absent".to_owned()),
+            Err(error) => Err(failure(error.to_string())),
+        }
+    }
+
     fn observe(&self, relative: &str) -> Result<FileObservation, ProductRunnerError> {
+        self.observe_mode(relative, false)
+    }
+
+    fn observe_mode(
+        &self,
+        relative: &str,
+        fresh: bool,
+    ) -> Result<FileObservation, ProductRunnerError> {
         let Some(path) = self.observed_path(relative)? else {
             return Ok(FileObservation::absent(relative));
         };
@@ -332,36 +377,24 @@ impl ScopedBaseline {
             };
             return Ok(FileObservation::new(relative, stamp, kind, Some(checkpoint_digest)));
         }
-        let mut file = match fs::File::open(path) {
-            Ok(file) => file,
+        let content = match crate::file_observation::read(&path, fresh) {
+            Ok(content) => content,
             Err(error) if missing(&error) => return Ok(FileObservation::absent(relative)),
             Err(error) => return Err(failure(error.to_string())),
         };
-        let mut hasher = Sha256::new();
-        let mut preview = Vec::new();
-        let mut buffer = [0; 8192];
-        loop {
-            let count = file.read(&mut buffer).map_err(|error| failure(error.to_string()))?;
-            if count == 0 {
-                break;
-            }
-            hasher.update(&buffer[..count]);
-            let remaining = MAX_PREVIEW_BYTES.saturating_sub(preview.len());
-            preview.extend_from_slice(&buffer[..count.min(remaining)]);
-        }
-        let digest = hasher.finalize().into();
+        let digest = content.digest;
         let stamp = FileStamp {
             kind: "file".to_owned(),
             digest: Some(digest),
             permissions,
-            bytes: metadata.len(),
-            preview: String::from_utf8(preview).unwrap_or_else(|_| "[binary content]".to_owned()),
+            bytes: content.bytes,
+            preview: String::from_utf8_lossy(&content.preview).into_owned(),
         };
         Ok(FileObservation::new(relative, stamp, ContentKind::File, Some(digest)))
     }
 
     fn comparison(&self) -> Result<BTreeMap<String, FileStamp>, ProductRunnerError> {
-        let mut before = self.load()?.entries;
+        let mut before = self.load()?.entries.clone();
         let mut roots = Vec::<String>::new();
         for path in before.keys() {
             if self

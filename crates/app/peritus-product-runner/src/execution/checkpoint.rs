@@ -13,8 +13,8 @@ use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
 use super::ConversationView;
 use crate::{
-    ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline,
-    developer_tools::ToolCheckpointBoundary,
+    ProductRunnerError, ProductRunnerErrorKind, WorkspaceMutationKind,
+    candidate::CandidateBaseline, developer_tools::ToolCheckpointBoundary,
 };
 
 /// Cloneable candidate recorder shared with synchronous developer-tool execution.
@@ -116,8 +116,37 @@ impl CandidateRecorder {
                     .and_then(|()| {
                         recorder.record(CandidateStage::Changed, revision, CheckpointEvidence::None)
                     }),
-                ToolCheckpointBoundary::ScopedCommandChange => {
-                    recorder.record(CandidateStage::Changed, revision, CheckpointEvidence::None)
+                ToolCheckpointBoundary::CommandMutation { path, owned_postchange } => conversation
+                    .seal_workspace_mutation_checkpoint(
+                        Path::new(&path),
+                        WorkspaceMutationKind::File,
+                        owned_postchange,
+                    )
+                    .map(|()| None)
+                    .map_err(|detail| {
+                        ProductRunnerError::new(
+                            ProductRunnerErrorKind::InvalidPrecondition,
+                            "seal command file checkpoint",
+                            detail,
+                        )
+                    }),
+                ToolCheckpointBoundary::CommandCompleted { verification, external_effect } => {
+                    if external_effect {
+                        recorder.mark_external_effect().map_err(|error| error.to_string())?;
+                    }
+                    recorder.record(
+                        if verification {
+                            CandidateStage::SelfChecked
+                        } else {
+                            CandidateStage::Changed
+                        },
+                        revision,
+                        if external_effect {
+                            CheckpointEvidence::ExternalEffect
+                        } else {
+                            CheckpointEvidence::None
+                        },
+                    )
                 }
                 ToolCheckpointBoundary::Verification => {
                     recorder.record(CandidateStage::SelfChecked, revision, CheckpointEvidence::None)
@@ -142,8 +171,23 @@ impl CandidateRecorder {
         conversation_revision: u64,
         acquired: CheckpointEvidence,
     ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
-        let scoped =
-            self.baseline.scope().map(|scope| scope.observe_candidate(&self.root)).transpose()?;
+        let scoped = self
+            .baseline
+            .scope()
+            .map(|scope| {
+                if matches!(requested_stage, CandidateStage::Changed | CandidateStage::SelfChecked)
+                    && matches!(
+                        acquired,
+                        CheckpointEvidence::None | CheckpointEvidence::ExternalEffect
+                    )
+                {
+                    scope.observe_candidate(&self.root)
+                } else {
+                    // Review, settlement and acceptance evidence always take fresh full hashes.
+                    scope.observe_candidate_fresh(&self.root)
+                }
+            })
+            .transpose()?;
         let has_workspace_candidate = match &scoped {
             Some(observed) => observed.has_changes,
             None => !self.baseline.changed_paths(&self.root)?.is_empty(),

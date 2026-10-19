@@ -90,25 +90,7 @@ pub(super) fn append(
         let bytes = memory.artifact(id)?;
         if source.call.as_ref().is_some_and(|call| call.name == "workspace_read") {
             let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else { continue };
-            let Some(path) = value.get("path").and_then(serde_json::Value::as_str) else {
-                continue;
-            };
-            let Some(expected) = value.get("source_sha256").and_then(serde_json::Value::as_str)
-            else {
-                continue;
-            };
-            if !may_reuse_read(memory, path) {
-                continue;
-            }
-            let file = crate::developer_tools::checked_protected_file_for_developer(
-                &memory.workspace,
-                path,
-                &memory.task_contract,
-                &memory.workspace_scope.protected,
-            );
-            if !file.is_ok_and(|file| {
-                crate::developer_tools::source_digest(&file).ok().as_deref() == Some(expected)
-            }) {
+            if !read_is_current(memory, &value) {
                 continue;
             }
         }
@@ -183,6 +165,23 @@ pub(super) fn may_reuse_read(memory: &LocalMemory, path: &str) -> bool {
             view.as_ref(),
         )
     })
+}
+
+pub(super) fn read_is_current(memory: &LocalMemory, value: &serde_json::Value) -> bool {
+    let Some(path) = value.get("path").and_then(serde_json::Value::as_str) else { return false };
+    let Some(expected) = value.get("source_sha256").and_then(serde_json::Value::as_str) else {
+        return false;
+    };
+    may_reuse_read(memory, path)
+        && crate::developer_tools::checked_protected_file_for_developer(
+            &memory.workspace,
+            path,
+            &memory.task_contract,
+            &memory.workspace_scope.protected,
+        )
+        .is_ok_and(|file| {
+            crate::developer_tools::source_digest(&file).ok().as_deref() == Some(expected)
+        })
 }
 
 fn index_inspections(memory: &mut LocalMemory) -> Result<(), DeveloperLoopError> {

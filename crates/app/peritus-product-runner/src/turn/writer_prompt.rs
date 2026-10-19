@@ -127,6 +127,6 @@ pub(super) fn writer_user(
         format!("\n\nHarness correction from the previous rejected turn:\n{value}")
     });
     format!(
-        "Conversation and task:\n{transcript}\n\nApproved implementation design:\n{design}\n\nWork directly in the managed workspace using the available tools and implement the design.{findings}{correction}"
+        "Current conversation and task:\n{transcript}\n\nRetained implementation plan (prior evidence, subordinate to current user instructions):\n{design}\n\nContinue implementing the current task in the managed workspace. Reuse this plan and retained source observations. Apply current steering as amendments directly; do not restart discovery or regenerate a plan for continue/retry. Read only a changed target or the exact missing body needed for the next edit, then make that edit. Current requirements and independent review still govern completion.{findings}{correction}"
     )
 }

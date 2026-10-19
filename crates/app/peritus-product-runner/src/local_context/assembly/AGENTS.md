@@ -8,12 +8,12 @@ Model-view construction: keep current host policy and governing input, select wo
 
 | File | Role |
 | --- | --- |
-| [evidence.rs](evidence.rs) | Bounded non-authoritative older evidence, never raw cross-invocation tool replay. |
-| [exchanges.rs](exchanges.rs) | Complete assistant/tool exchange grouping with no recovered-effect dispatch path. |
+| [evidence.rs](evidence.rs) | Current-permission and content-validated reusable evidence; exact source pages remain local and retrievable. |
+| [exchanges.rs](exchanges.rs) | Append-only exchange topology and estimates; select before loading archived bodies, with current permissions and stale-read receipts. |
 | [retrieval.rs](retrieval.rs) | Host-observed immutable evidence ranges survive omission of their retrieval receipts. |
 | [transport.rs](transport.rs) | Fit a known adapter envelope using retrievable prefixes of already durable observations. |
 | [validation.rs](validation.rs) | Exact-view accounting; savings compare with this invocation's unreduced complete exchanges. |
-| [working.rs](working.rs) | Render complete role-visible working state without a local token ceiling. |
+| [working.rs](working.rs) | Relevant current working entries; resolved, superseded and stale records stay archived, with provenance-aware duplicate suppression. |
 
 Owning module: [assembly.rs](../assembly.rs). Inspect that parent before changing the local pieces.
 
