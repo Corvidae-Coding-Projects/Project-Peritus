@@ -2,7 +2,8 @@
 //! Structured messages/tool calls remain withheld until the existing final validation succeeds.
 
 use peritus_model_protocol::{
-    EventEnvelope, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, StreamFragment,
+    CanonicalJson, EventEnvelope, ExtensionName, ItemId, ItemKind, JsonBounds, ModelEvent,
+    ModelName, ProtocolLimits, ProviderExtension, StreamFragment,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelStream, OwnedModelStream, ProviderCoreError,
@@ -12,6 +13,7 @@ use std::{
     future::poll_fn,
     sync::{Arc, Mutex},
     task::Poll,
+    time::{Duration, Instant},
 };
 
 #[derive(Default)]
@@ -22,9 +24,17 @@ struct Observed {
     offset: usize,
     summaries: u32,
     pending: VecDeque<ModelEvent>,
+    phase: Option<&'static str>,
+    last_progress: Option<Instant>,
 }
 
 impl Progress {
+    pub(super) fn runtime_progress(&self, phase: &'static str, bytes: u64) {
+        if let Ok(mut state) = self.0.lock() {
+            state.runtime_progress(phase, bytes);
+        }
+    }
+
     /// A rejected pre-inference handshake can safely choose the ordinary transport.
     /// Its byte stream starts at zero; already published item identities stay monotonic.
     pub(super) fn begin_transport(&self) {
@@ -45,6 +55,15 @@ impl Progress {
             else {
                 continue;
             };
+            let phase = match value["type"].as_str() {
+                Some("turn.started") => Some("accepted"),
+                Some("item.started") if value["item"]["type"] == "reasoning" => Some("reasoning"),
+                _ => None,
+            };
+            if let Some(phase) = phase {
+                state.runtime_progress(phase, 0);
+                continue;
+            }
             if value["type"] != "item.completed" || value["item"]["type"] != "reasoning" {
                 continue;
             }
@@ -75,6 +94,32 @@ impl Progress {
                 }
             }
             state.pending.push_back(ModelEvent::ItemCompleted(id));
+        }
+    }
+}
+
+impl Observed {
+    fn runtime_progress(&mut self, phase: &'static str, bytes: u64) {
+        // Native deltas can arrive token by token. Publish content-free progress at
+        // most once a second after a phase change, rather than persisting every token.
+        // These notices never enter the authoritative transcript decoded at completion.
+        if self.phase == Some(phase)
+            && self.last_progress.is_some_and(|last| last.elapsed() < Duration::from_secs(1))
+        {
+            return;
+        }
+        let payload = serde_json::json!({"phase":phase,"output_bytes":bytes});
+        if let (Ok(name), Ok(payload)) = (
+            ExtensionName::new("peritus.runtime_progress".to_owned()),
+            CanonicalJson::parse(
+                &payload.to_string(),
+                JsonBounds::value(ProtocolLimits::PRODUCTION),
+            ),
+        ) {
+            self.pending
+                .push_back(ModelEvent::ProviderEvent(ProviderExtension::new(name, payload)));
+            self.phase = Some(phase);
+            self.last_progress = Some(Instant::now());
         }
     }
 }

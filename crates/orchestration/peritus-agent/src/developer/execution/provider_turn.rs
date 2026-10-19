@@ -259,6 +259,10 @@ async fn drive(
                 ModelAdvance::EnvelopePending { .. } => {
                     let encoded = session.encode_pending()?;
                     trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
+                    let runtime_progress = session.pending().and_then(|envelope| {
+                        matches!(envelope.event(), ModelEvent::ProviderEvent(_))
+                            .then(|| envelope.event().clone())
+                    });
                     let public_text =
                         session.pending().and_then(|envelope| match envelope.event() {
                             ModelEvent::TextDelta { fragment, .. } => {
@@ -279,6 +283,9 @@ async fn drive(
                         )
                     });
                     let _ = session.accept_durable_pending()?;
+                    if let Some(event) = runtime_progress {
+                        progress.observe(&event)?;
+                    }
                     if healed && let Some(port) = interaction {
                         port.observe(DeveloperActivity::ResponseHealed)?;
                     }

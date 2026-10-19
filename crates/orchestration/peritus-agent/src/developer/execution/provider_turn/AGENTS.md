@@ -8,7 +8,7 @@ Implementation pieces for `provider_turn.rs`: Bounded provider retries and durab
 
 | File | Role |
 | --- | --- |
-| [progress.rs](progress.rs) | Honest waiting observations around an owned provider future, never simulated model output. |
+| [progress.rs](progress.rs) | Observed runtime acceptance/reasoning/generation and phase-preserving wait notices around an owned provider future; never simulated model output. |
 
 Owning module: [provider_turn.rs](../provider_turn.rs). Inspect that parent before changing the local pieces.
 

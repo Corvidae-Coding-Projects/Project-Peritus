@@ -10,7 +10,7 @@ Implementation pieces for `runtime.rs`: Constrained account-backed transport thr
 | --- | --- |
 | [config.rs](config.rs) | Immutable Codex runtime configuration and narrow capability validation. |
 | [executable.rs](executable.rs) | Discovery and immutable pinning of `OpenAI`'s unmodified `codex` executable. |
-| [live.rs](live.rs) | Pull-driven process execution with published public summaries before completion; structured tool proposals wait for final validation. |
+| [live.rs](live.rs) | Pull-driven public summaries and throttled content-free runtime progress; structured tool proposals wait for final validation. |
 | [output.rs](output.rs) | Fail-closed decoding of the bounded Codex JSONL turn transcript. |
 | [provider.rs](provider.rs) | One-turn ownership of the pre-authenticated Codex executable. |
 | [request.rs](request.rs) | Deterministic transcript projection for the credential-owning Codex router. |
