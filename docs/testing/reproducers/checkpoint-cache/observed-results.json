@@ -1,0 +1,124 @@
+{
+  "large_stable_source_provider": [
+    {
+      "cached_input_tokens": 0,
+      "input_tokens": 29128,
+      "marker_correct": true,
+      "output_tokens": 47,
+      "seconds": 5.032089977,
+      "turn": 0
+    },
+    {
+      "cached_input_tokens": 28928,
+      "input_tokens": 29128,
+      "marker_correct": true,
+      "output_tokens": 46,
+      "seconds": 3.56520973,
+      "turn": 1
+    },
+    {
+      "cached_input_tokens": 28928,
+      "input_tokens": 29128,
+      "marker_correct": true,
+      "output_tokens": 47,
+      "seconds": 3.760620866,
+      "turn": 2
+    },
+    {
+      "cached_input_tokens": 28928,
+      "input_tokens": 29128,
+      "marker_correct": true,
+      "output_tokens": 29,
+      "seconds": 3.7366171489999997,
+      "turn": 3
+    }
+  ],
+  "ordinary_cache_disabled": [
+    {
+      "cached_input_tokens": 0,
+      "input_tokens": 10775,
+      "marker_correct": true,
+      "output_tokens": 29,
+      "seconds": 4.287539382,
+      "turn": 0
+    }
+  ],
+  "official_invalid_model": [
+    {
+      "case": "invalid-model",
+      "category": "InvalidRequest",
+      "diagnostic": "RedactedDiagnostic { code: \"openai.codex_runtime.model_unavailable\", request_bytes: None, response_bytes: None, elapsed_millis: None }",
+      "pass": true
+    }
+  ],
+  "real_processes": [
+    {
+      "case": "ordinary",
+      "child_reaped": true,
+      "pass": true,
+      "seconds": 0.013840907
+    },
+    {
+      "case": "queued",
+      "child_reaped": true,
+      "pass": true,
+      "seconds": 0.01470421
+    },
+    {
+      "case": "oversize",
+      "child_reaped": true,
+      "pass": true,
+      "seconds": 0.011965002
+    },
+    {
+      "case": "timeout",
+      "child_reaped": true,
+      "pass": true,
+      "seconds": 0.301656223
+    },
+    {
+      "case": "cancel",
+      "child_reaped": true,
+      "pass": true,
+      "seconds": 0.252016863
+    },
+    {
+      "case": "stdout-limit",
+      "child_reaped": true,
+      "pass": true,
+      "seconds": 0.013223072
+    }
+  ],
+  "archived_anchor_recovery": {
+    "pass": true,
+    "first_anchor_archived": "01a15553-4d34-79a2-8c55-21c11ac9525a",
+    "responses": [
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 6656,
+        "marker_correct": true,
+        "output_tokens": 46,
+        "seconds": 5.119173978,
+        "turn": 0
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 10773,
+        "marker_correct": true,
+        "output_tokens": 29,
+        "seconds": 5.444612891,
+        "turn": 1
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 10773,
+        "marker_correct": true,
+        "output_tokens": 29,
+        "seconds": 5.069954496,
+        "turn": 2
+      }
+    ],
+    "fallback_only_before_model_submission": true,
+    "subsequent_request_uses_working_isolated_route": true
+  }
+}

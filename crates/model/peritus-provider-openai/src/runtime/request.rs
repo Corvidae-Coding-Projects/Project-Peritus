@@ -4,7 +4,7 @@ mod schema;
 
 use peritus_model_protocol::{
     CachePolicy, ContentBlock, MediaInput, MediaKind, ModelRequest, ReasoningEffort,
-    ReasoningPolicy, Role, StructuredOutput, SummaryPolicy, ToolChoice,
+    ReasoningPolicy, Role, StructuredOutput, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -122,7 +122,7 @@ fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCor
 const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, ProviderCoreError> {
     match policy {
         ReasoningPolicy::Disabled => Ok("high"),
-        ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None } => Ok(match effort {
+        ReasoningPolicy::Effort { effort, .. } => Ok(match effort {
             ReasoningEffort::Minimal => "minimal",
             ReasoningEffort::Low => "low",
             ReasoningEffort::Medium => "medium",
@@ -131,9 +131,9 @@ const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, Provi
             ReasoningEffort::Max => "max",
             ReasoningEffort::Ultra => "ultra",
         }),
-        ReasoningPolicy::Adaptive { .. } | ReasoningPolicy::Effort { .. } => Err(invalid(
-            "Codex runtime requires a concrete reasoning effort without a visible summary",
-        )),
+        ReasoningPolicy::Adaptive { .. } => {
+            Err(invalid("Codex runtime requires a concrete reasoning effort"))
+        }
     }
 }
 

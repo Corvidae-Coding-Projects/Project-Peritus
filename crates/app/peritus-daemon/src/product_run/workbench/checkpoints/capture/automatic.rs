@@ -51,16 +51,24 @@ impl ProductRunService {
     ) -> Result<u64, Error> {
         let query = public_query(conversation, workspace)?;
         let checkpoint = automatic_checkpoint_id(run, path, kind)?;
-        let (record, existing) = self.with_controls(false, |store| {
-            let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
-            let existing = store.load_checkpoint(conversation, checkpoint)?;
-            Ok((record, existing))
+        let existing_revision = self.with_controls(false, |store| {
+            store.inspect(conversation, |record| {
+                check_automatic_record(record, actor, workspace)?;
+                if let Some(existing) = store.load_checkpoint(conversation, checkpoint)? {
+                    validate_automatic_checkpoint(&existing, run, path, kind)?;
+                    Ok(Some(record.revision()))
+                } else {
+                    Ok(None)
+                }
+            })
         })?;
-        check_automatic_record(&record, actor, workspace)?;
-        if let Some(existing) = existing {
-            validate_automatic_checkpoint(&existing, run, path, kind)?;
-            return Ok(record.revision());
+        if let Some(revision) = existing_revision {
+            return Ok(revision);
         }
+        let record = self
+            .with_controls(false, |store| store.load(conversation))?
+            .ok_or(ControlError::NotFound)?;
+        check_automatic_record(&record, actor, workspace)?;
         if expected_revision.is_some_and(|expected| expected != record.revision()) {
             return Err(ControlError::StaleRevision.into());
         }
@@ -120,14 +128,31 @@ impl ProductRunService {
         validate_run_binding(start, run)?;
         let path = relative.to_str().ok_or(ControlError::InvalidInput)?;
         let conversation = start.conversation();
-        let record = self
-            .with_controls(false, |store| store.load(conversation))?
-            .ok_or(ControlError::NotFound)?;
         let actor = ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?;
         let workspace =
             WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        check_automatic_record(&record, actor, workspace)?;
         let checkpoint_id = automatic_checkpoint_id(run, path, kind)?;
+        let unchanged = self.with_controls(false, |store| {
+            store.inspect(conversation, |record| {
+                check_automatic_record(record, actor, workspace)?;
+                let checkpoint = store
+                    .load_checkpoint(conversation, checkpoint_id)?
+                    .ok_or(ControlError::NotFound)?;
+                validate_automatic_checkpoint(&checkpoint, run, path, kind)?;
+                Ok(checkpoint.sealed_by_run() == Some(run.into_bytes())
+                    && kind == WorkspaceMutationKind::File
+                    && checkpoint.paths().len() == 1
+                    && checkpoint.paths()[0].path() == path
+                    && checkpoint.paths()[0].owned_postchange() == Some(owned_postchange))
+            })
+        })?;
+        if unchanged {
+            return Ok(());
+        }
+        let record = self
+            .with_controls(false, |store| store.load(conversation))?
+            .ok_or(ControlError::NotFound)?;
+        check_automatic_record(&record, actor, workspace)?;
         let checkpoint = self
             .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
             .ok_or(ControlError::NotFound)?;

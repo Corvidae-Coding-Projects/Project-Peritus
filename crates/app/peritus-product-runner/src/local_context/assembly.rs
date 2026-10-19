@@ -78,7 +78,7 @@ impl LocalMemory {
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.prepare_view_with_governing(profile, tools, invocation_policy, None, None)
+        self.prepare_view_with_governing(profile, tools, invocation_policy, None, None, None)
     }
 
     pub(in crate::local_context) fn prepare_view_with_governing(
@@ -86,6 +86,7 @@ impl LocalMemory {
         profile: &ProviderProfile,
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
+        invocation_state: Option<&Message>,
         governing_input: Option<&Message>,
         provider: Option<&dyn peritus_provider_core::ModelProvider>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
@@ -94,6 +95,8 @@ impl LocalMemory {
         self.tools = tools.to_vec();
         let capacity = profile.limits().max_input_tokens();
         let (mut messages, mut selected) = self.pinned_messages()?;
+        // The host adds pending state last; keep literal pinned user text out of reordering.
+        let pending = if self.transcript.pending.is_empty() { None } else { messages.pop() };
         if let Some(policy) = invocation_policy {
             let first = messages.first_mut().ok_or_else(|| error("missing current host policy"))?;
             if first.role() != Role::System || policy.role() != Role::System {
@@ -110,6 +113,16 @@ impl LocalMemory {
         if !self.derived_memory_allowed() {
             messages.push(text_message(Role::Developer, DERIVED_MEMORY_POLICY.to_owned())?);
         }
+        let protected_prefix = messages.len();
+        if let Some(state) = invocation_state {
+            if state.role() != Role::Developer {
+                return Err(error("current executor state has non-host origin"));
+            }
+            messages.push(state.clone());
+        }
+        if let Some(pending) = pending {
+            messages.push(pending);
+        }
         messages.push(self.scope_message()?);
         let mut working = working::append(self, &mut messages, &mut selected)?;
         let historical_position = messages.len();
@@ -122,6 +135,7 @@ impl LocalMemory {
         // current exchanges, including previews chosen from previous host invocations.
         let historical = messages.split_off(current_end);
         messages.splice(historical_position..historical_position, historical);
+        cache_order(&mut messages, protected_prefix);
         if let Some(provider) = provider {
             if transport::fit(self, &mut messages, tools, provider)? {
                 working = self
@@ -136,9 +150,16 @@ impl LocalMemory {
         selected.dedup();
         let validation =
             self.view_validation(profile, estimated, uncompacted, selected, working)?;
+        let prefix_messages = messages
+            .iter()
+            .zip(&self.last_view)
+            .take_while(|(current, previous)| current == previous)
+            .count();
         crate::efficiency::event(
             &self.trace_path,
             serde_json::json!({
+                "unchanged_prefix_messages": prefix_messages,
+                "unchanged_prefix_estimated_tokens": estimate_developer_request_tokens(&messages[..prefix_messages], &[]).saturating_sub(estimate_developer_request_tokens(&[], &[])),
                 "event":"context-view", "invocation":self.transcript.request_prefix,
                 "estimated_input_tokens":estimated,"unreduced_input_tokens":uncompacted,
                 "input_tokens_saved":uncompacted.saturating_sub(estimated),
@@ -157,7 +178,7 @@ impl LocalMemory {
     }
 
     fn append_exchanges(
-        &self,
+        &mut self,
         messages: &mut Vec<Message>,
         selected: &mut Vec<u64>,
         tools: &[ToolDefinition],
@@ -176,38 +197,52 @@ impl LocalMemory {
         } else {
             capacity
         };
-        // Leave room for task-relevant source/skill evidence and the next useful turn.
-        // This is a provider-relative view preference, never an execution/token budget;
-        // the newest complete exchange is retained even when it exceeds the preference.
-        let history_target = if compact {
-            target.saturating_sub(
-                target.saturating_sub(estimate_developer_request_tokens(messages, tools)) / 4,
-            )
-        } else {
-            capacity
-        };
-        let mut chosen = Vec::new();
-        let mut omitted = Vec::new();
-        for group in groups.iter().rev() {
-            let mut candidate = messages.clone();
-            candidate.extend(group.messages.iter().cloned());
-            for previous in chosen.iter().rev() {
-                candidate.extend(exchanges::messages(previous));
-            }
-            // Keep the newest complete exchange even when pinned input already exceeds
-            // the profile target. Otherwise a successful tool result could disappear
-            // before the provider sees it. Older optional exchanges use the soft budget.
-            if !chosen.is_empty()
-                && estimate_developer_request_tokens(&candidate, tools) > history_target
-            {
-                omitted.push(group.clone());
-                continue;
-            }
-            // A large archived history is not a reason to discard recent pages which
-            // still fit. Fixed message counts evict a multi-page read before its
-            // beginning and end can coexist, causing repeated retrieval loops.
-            chosen.push(group.clone());
+        // Keep an append-only history epoch while it fits a useful share of capacity.
+        // Rolling a sliding window on every call destroys the provider's common prefix.
+        // This is a delivery preference, never a run budget or loss of archived evidence.
+        let pinned = estimate_developer_request_tokens(messages, tools);
+        let history_target = pinned.saturating_add(target.saturating_sub(pinned) / 3);
+        let epoch = self.inline_epoch_start.unwrap_or(0);
+        let mut chosen = groups
+            .iter()
+            .filter(|group| group.sources.first().is_some_and(|id| *id >= epoch))
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut projected = messages.clone();
+        for group in &chosen {
+            projected.extend(group.messages.iter().cloned());
         }
+        if estimate_developer_request_tokens(&projected, tools) > history_target {
+            // Roll only when full, retaining a recent complete seed with room to append.
+            chosen.clear();
+            let seed_target = pinned.saturating_add(history_target.saturating_sub(pinned) / 2);
+            for group in groups.iter().rev() {
+                let mut candidate = messages.clone();
+                candidate.extend(group.messages.iter().cloned());
+                for prior in chosen.iter().rev() {
+                    candidate.extend(exchanges::messages(prior));
+                }
+                if !chosen.is_empty()
+                    && estimate_developer_request_tokens(&candidate, tools) > seed_target
+                {
+                    break;
+                }
+                chosen.push(group.clone());
+            }
+            chosen.reverse();
+        }
+        self.inline_epoch_start = chosen.first().and_then(|group| group.sources.first().copied());
+        let mut omitted = groups
+            .iter()
+            .filter(|group| {
+                group
+                    .sources
+                    .first()
+                    .is_some_and(|id| self.inline_epoch_start.is_some_and(|start| *id < start))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        chosen.reverse();
         let mut notice = exchanges::omission_notice(self, &omitted)
             .map(|body| text_message(Role::User, body))
             .transpose()?;
@@ -294,4 +329,26 @@ pub(super) fn text_message(role: Role, text: String) -> Result<Message, Develope
         vec![ContentBlock::Text(BoundedText::new(text, ProtocolLimits::PRODUCTION)?)],
         ProtocolLimits::PRODUCTION,
     )?)
+}
+
+// Policy/requirements stay first. Current memory/pending metadata does not invalidate the
+// cacheable prefix of unchanged evidence, and completed current tool results remain last.
+fn cache_order(messages: &mut Vec<Message>, protected_prefix: usize) {
+    let mut volatile = Vec::new();
+    let mut index = 0;
+    messages.retain(|message| {
+        let pinned = index < protected_prefix;
+        index += 1;
+        if pinned { return true; }
+        let dynamic = matches!(message.role(), Role::User | Role::Developer) && message.content().iter().any(|block| matches!(block, ContentBlock::Text(text)
+            if ["CURRENT HOST INVOCATION STATE", "Local context scope=", "LOCAL WORKING STATE", "PENDING HOST OPERATIONS", "COMPLETED TOOL EVIDENCE OMITTED", "ARCHIVED OBSERVATION"]
+                .iter().any(|prefix| text.expose_for_wire().starts_with(prefix))));
+        if dynamic { volatile.push(message.clone()); }
+        !dynamic
+    });
+    let tail = messages
+        .iter()
+        .rposition(|message| message.role() == Role::Assistant)
+        .unwrap_or(messages.len());
+    messages.splice(tail..tail, volatile);
 }

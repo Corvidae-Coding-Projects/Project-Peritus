@@ -8,6 +8,10 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [checkpoint-cache-real-2026-10-19.md](checkpoint-cache-real-2026-10-19.md) | Actual checkpoint/read reduction, official Codex cache reuse, current-context authority, invalidation and recovery campaign. |
+| [tui-formatting-recall-real-2026-10-19.md](tui-formatting-recall-real-2026-10-19.md) | Actual terminal Markdown and saved-message recall/search campaign, including delayed replies, reconnect, paging and draft preservation. |
+| [tui-feedback-real-2026-10-19.md](tui-feedback-real-2026-10-19.md) | Observable contract and real-interface evidence for visible steering, file edits, and formatted terminal output. |
+| [tui-visible-work-real-2026-10-19.md](tui-visible-work-real-2026-10-19.md) | Corrective campaign for full useful tool output, live published summaries, and resumed-task plan reuse. |
 | [local-shutdown-2026-10-18.md](local-shutdown-2026-10-18.md) | Broken advertised shutdown command, concurrent-stop recovery, real CLI replay, and builder installation repair. |
 | [local-shutdown-evidence.json](local-shutdown-evidence.json) | Source/executable identities and real CLI scenario outcomes for local shutdown. |
 | [codex-notifications-real-2026-10-18.md](codex-notifications-real-2026-10-18.md) | Actual Codex advisory/model-access failure, decoder repair, live provider/TUI replays, and builder installation recovery. |

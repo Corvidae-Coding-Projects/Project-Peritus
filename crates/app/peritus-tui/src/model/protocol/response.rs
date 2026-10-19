@@ -10,6 +10,7 @@ use crate::model::{
 impl AppModel {
     pub(in crate::model) fn interrupt_pending_requests(&mut self) {
         self.recover_editor_drafts();
+        self.interrupt_composer_history();
         let prompts = self
             .pending
             .values()
@@ -33,6 +34,9 @@ impl AppModel {
             return Vec::new();
         }
         self.review_request_error(pending);
+        if let Some(PendingRequest::ChatBinding { run_id, .. }) = pending {
+            self.history_binding_error(*run_id);
+        }
         if matches!(pending, Some(PendingRequest::ArtifactCancel))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier
         {

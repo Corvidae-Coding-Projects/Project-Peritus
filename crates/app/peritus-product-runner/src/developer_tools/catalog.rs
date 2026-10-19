@@ -191,7 +191,7 @@ fn skill_definition() -> Result<ToolDefinition, ProductRunnerError> {
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "workspace_scope",
-        "Declare workspace-relative task files or a narrow task/output directory BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. Directory declarations capture existing files and discover new descendants; protected paths, links, Git metadata and build caches are excluded. This records comparison evidence, not permission or automatic rollback; preserve unrelated/private files. Do not declare the workspace root or a whole home directory; use narrower paths for large trees.",
+        "Declare workspace-relative task files or a narrow task/output directory BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. Directory declarations capture existing files and discover new descendants; protected paths, links, Git metadata and build caches are excluded. This records comparison evidence, not permission or automatic rollback; preserve unrelated/private files. Do not declare the workspace root or a whole home directory; use narrower paths for large trees. The result acknowledges declared roots and total tracked count; retrieve a needed inventory with workspace_list instead of expecting every tracked filename in this receipt.",
         r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
     )
 }

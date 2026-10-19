@@ -24,18 +24,21 @@ impl AppModel {
         changed
     }
 
-    pub(in crate::model) fn paste_chat_event(&mut self, text: &str) {
+    pub(in crate::model) fn paste_chat_event(&mut self, text: &str) -> Vec<Effect> {
         self.chat.output_selection = None;
         self.chat.output_mode.resume_for_paste();
+        if self.chat.history.search.is_some() {
+            return self.paste_history_search(text);
+        }
         if self.paste_file_field(text) || self.paste_image_field(text) {
-            return;
+            return Vec::new();
         }
         if self.chat.workbench.open
             || self.chat.doctor.is_some()
             || self.chat.model_picker()
             || self.chat.effort_picker()
         {
-            return;
+            return Vec::new();
         }
         let token_end =
             self.chat.buffer.find(char::is_whitespace).unwrap_or(self.chat.buffer.len());
@@ -46,6 +49,7 @@ impl AppModel {
         if changed && self.chat.buffer.trim_start().starts_with('/') && cursor <= token_end {
             self.chat.pasted_command = true;
         }
+        Vec::new()
     }
     fn output_selection_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
         self.chat.output_selection.as_ref()?;
@@ -93,6 +97,21 @@ impl AppModel {
         if self.chat.model_picker() {
             return self.model_picker_key(key);
         }
+        if self.chat.history.search.is_some() {
+            return self.history_search_key(key);
+        }
+        if key.code == KeyCode::F(3) {
+            return self.open_history_search();
+        }
+        if key.code == KeyCode::F(4) {
+            return self.open_instruction_queue();
+        }
+        if key.modifiers.contains(KeyModifiers::CONTROL)
+            && matches!(key.code, KeyCode::Char('y' | 'Y'))
+        {
+            let text = self.chat.kill_buffer.clone();
+            return self.paste_chat_event(&text);
+        }
         let commands = self.chat.matching_commands();
         match key.code {
             KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
@@ -116,6 +135,24 @@ impl AppModel {
                     (self.chat.command_selection + 1).min(commands.len() - 1);
             }
             KeyCode::Up | KeyCode::Down => {
+                if key.modifiers.is_empty() {
+                    let width = usize::from(
+                        self.chat.viewport.map_or(80, |area| area.width.saturating_sub(2)),
+                    );
+                    let draft = crate::input::composer::layout(
+                        &self.chat.buffer,
+                        self.chat.cursor,
+                        None,
+                        width,
+                    );
+                    if (key.code == KeyCode::Up && draft.row == 0)
+                        || (key.code == KeyCode::Down
+                            && self.chat.history.browsing()
+                            && draft.row + 1 == draft.lines.len())
+                    {
+                        return self.recall_history(key.code == KeyCode::Up);
+                    }
+                }
                 self.move_chat_cursor_vertically(key);
             }
             _ if crate::input::vertical_direction(key).is_some() => {
@@ -125,6 +162,7 @@ impl AppModel {
             KeyCode::PageDown => self.chat.scroll = self.chat.scroll.saturating_sub(12),
             KeyCode::End if self.chat.buffer.is_empty() => self.chat.scroll = 0,
             KeyCode::Esc if self.chat.selection_anchor.take().is_some() => {}
+            KeyCode::Esc if self.cancel_history_recall() => {}
             KeyCode::Esc => {
                 self.chat.workbench.snapshot_refresh_command = None;
                 self.chat.expanded = false;
@@ -150,12 +188,26 @@ impl AppModel {
                         .try_reserve(inserted_bytes.saturating_sub(selected_bytes))
                         .is_ok()
                 {
+                    let killing = key.modifiers.contains(KeyModifiers::CONTROL)
+                        && matches!(key.code, KeyCode::Char('k' | 'K' | 'u' | 'U' | 'w' | 'W'));
+                    let before = killing.then(|| self.chat.buffer.clone());
                     let _ = crate::input::selection::edit(
                         &mut self.chat.buffer,
                         &mut self.chat.cursor,
                         &mut self.chat.selection_anchor,
                         key,
                     );
+                    if let Some(before) = before
+                        && before.len() > self.chat.buffer.len()
+                    {
+                        let removed = before.len() - self.chat.buffer.len();
+                        let start = self.chat.cursor;
+                        if before.is_char_boundary(start)
+                            && before.is_char_boundary(start + removed)
+                        {
+                            self.chat.kill_buffer = before[start..start + removed].to_owned();
+                        }
+                    }
                     if self.chat.buffer.is_empty() {
                         self.chat.pasted_command = false;
                     }

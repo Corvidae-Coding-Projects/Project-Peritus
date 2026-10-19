@@ -43,7 +43,13 @@ impl<'a> ConversationTools<'a> {
 
 impl DeveloperToolExecutor for ConversationTools<'_> {
     fn system_guidance(&mut self) -> Option<String> {
-        self.workspace.system_guidance()
+        if self.allow_pipeline {
+            // This phase can only inspect or hand off. Its optional inspection must not impose
+            // another startup discovery phase before the executor that actually owns edits.
+            Some("Conversation is read-only. For understood, explicitly authorized implementation or continuation, call run_pipeline directly; its executor owns the one grounding check and target reads. A pending workspace grounding check is not a prerequisite to this handoff. For questions or read-only requests, inspect only the exact evidence needed to answer; do not start the pipeline.".to_owned())
+        } else {
+            self.workspace.system_guidance()
+        }
     }
 
     fn observe_model_context(

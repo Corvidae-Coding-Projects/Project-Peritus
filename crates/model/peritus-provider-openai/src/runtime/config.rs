@@ -75,6 +75,8 @@ fn validate(profile: &ProviderProfile) -> Result<(), ProviderCoreError> {
                         | Capability::ImageInput
                         | Capability::PromptCaching
                         | Capability::ReasoningControls
+                        | Capability::ReasoningSummaries
+                        | Capability::Streaming
                         | Capability::UsageDetail
                 ))
     });

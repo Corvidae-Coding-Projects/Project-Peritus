@@ -23,6 +23,7 @@ peritus-run-settlement = { version = "=0.1.2", path = "../../orchestration/perit
 peritus-tools-shell = { version = "=0.1.2", path = "../../tools/peritus-tools-shell" }
 peritus-types = { version = "=0.1.2", path = "../../foundation/peritus-types" }
 ratatui.workspace = true
+tui-markdown.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["process"] }

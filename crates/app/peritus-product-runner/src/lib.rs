@@ -36,6 +36,7 @@ mod execution;
 pub(crate) mod failover;
 
 mod file_metadata;
+mod file_observation;
 
 pub(crate) mod gates;
 
@@ -56,6 +57,8 @@ mod reviewer_turn;
 pub(crate) mod trace;
 
 mod turn;
+
+pub mod tool_output;
 
 mod workspace_delivery;
 pub use workspace_delivery::scope::ScopedBaseline;

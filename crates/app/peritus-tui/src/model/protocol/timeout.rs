@@ -48,6 +48,7 @@ impl PendingRequest {
             | Self::ConversationLibrary(_)
             | Self::ResumeConversationLibrary(_)
             | Self::WorkbenchQueue(_)
+            | Self::ComposerHistory(_)
             | Self::WorkbenchQueueCommand { .. }
             | Self::WorkbenchContext(_)
             | Self::WorkbenchBrief(_)

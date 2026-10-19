@@ -36,9 +36,20 @@ pub enum ToolCheckpointBoundary {
         /// Exact state produced by the admitted effect or completed command receipt.
         owned_postchange: CheckpointFileVersion,
     },
-    /// A command changed declared directory contents. Newly discovered outputs have comparison
-    /// baselines but no captured before-image; record delivery without inventing restore bodies.
-    ScopedCommandChange,
+    /// Seal a command-owned file version without repeatedly observing the entire candidate.
+    CommandMutation {
+        /// Canonical workspace-relative file path.
+        path: String,
+        /// Exact postimage owned by this completed command.
+        owned_postchange: CheckpointFileVersion,
+    },
+    /// Record one candidate after all command-owned file checkpoints have been sealed.
+    CommandCompleted {
+        /// The successful command acquired self-check evidence.
+        verification: bool,
+        /// The successful command performed an authorized external effect.
+        external_effect: bool,
+    },
     /// A declared verification command completed successfully.
     Verification,
     /// A caller-authorized external effect completed successfully.
@@ -267,19 +278,35 @@ impl WorkspaceDeveloperTools {
         let observer = self.checkpoint_observer.clone();
         for mutation in mutations {
             if let Some(observer) = &observer {
-                observer(ToolCheckpointBoundary::Mutation {
-                    path: mutation.path,
-                    kind: mutation.kind,
-                    owned_postchange: mutation.owned_postchange,
+                let boundary = if completed_command {
+                    ToolCheckpointBoundary::CommandMutation {
+                        path: mutation.path,
+                        owned_postchange: mutation.owned_postchange,
+                    }
+                } else {
+                    ToolCheckpointBoundary::Mutation {
+                        path: mutation.path,
+                        kind: mutation.kind,
+                        owned_postchange: mutation.owned_postchange,
+                    }
+                };
+                observer(boundary).map_err(tool)?;
+            }
+        }
+        if completed_command {
+            let purpose = string(arguments, "purpose")
+                .or_else(|| result.get("purpose").and_then(Value::as_str));
+            if let Some(observer) = observer
+                && (self.in_place_scope.is_some()
+                    || matches!(purpose, Some("verification" | "external_effect")))
+            {
+                observer(ToolCheckpointBoundary::CommandCompleted {
+                    verification: purpose == Some("verification"),
+                    external_effect: purpose == Some("external_effect"),
                 })
                 .map_err(tool)?;
             }
-        }
-        if completed_command
-            && let (Some(observer), Some(scope)) = (&observer, &self.in_place_scope)
-            && !scope.changed_paths(&self.root).map_err(|error| tool(error.to_string()))?.is_empty()
-        {
-            observer(ToolCheckpointBoundary::ScopedCommandChange).map_err(tool)?;
+            return Ok(());
         }
         let boundary = match name {
             "browser_control" | "desktop_control"

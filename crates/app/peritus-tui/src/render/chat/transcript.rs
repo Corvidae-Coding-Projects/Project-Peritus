@@ -15,14 +15,20 @@ pub fn transcript_rows(model: &AppModel, area: Rect) -> Vec<OutputRow> {
         if snapshot.activities().first().is_some_and(|first| first.sequence() > 1) {
             rows.extend(wrapped_rows(vec![Line::styled("Earlier activity is outside this bounded window. The durable conversation and trace remain available.", Style::default().fg(MUTED))], usize::from(area.width)));
         }
-        for activity in snapshot.activities() {
+        let mut activities = snapshot.activities().iter().peekable();
+        while let Some(activity) = activities.next() {
             let thinking = activity.kind() == ProductActivityKind::Status
                 && activity.detail() == "Provider thinking summary";
-            if !model.chat.expanded && activity.kind() == ProductActivityKind::Status && !thinking {
-                continue;
-            }
             if activity.kind() == ProductActivityKind::Tool {
-                rows.extend(tool_rows(activity, model.chat.expanded, usize::from(area.width)));
+                let mut body = activity.detail().to_owned();
+                let continuation =
+                    format!("{} · continued", activity.text().trim_end_matches(" · continued"));
+                while activities.peek().is_some_and(|next| {
+                    next.kind() == ProductActivityKind::Tool && next.text() == continuation
+                }) {
+                    body.push_str(activities.next().expect("peeked activity").detail());
+                }
+                rows.extend(tool_rows(model, activity, &body, usize::from(area.width)));
                 continue;
             }
             let (label, color) = match activity.kind() {
@@ -36,20 +42,32 @@ pub fn transcript_rows(model: &AppModel, area: Rect) -> Vec<OutputRow> {
                 }
                 ProductActivityKind::Tool => ("Tool", MUTED),
                 ProductActivityKind::Status => {
-                    (if thinking { "Thinking" } else { "Status" }, MUTED)
+                    (if thinking { "Thinking" } else { "Progress" }, ACCENT)
                 }
                 ProductActivityKind::Error => ("Error", BAD),
             };
             let mut lines =
                 vec![Line::styled(label, Style::default().fg(color).add_modifier(Modifier::BOLD))];
-            append_lines(&mut lines, activity.text());
+            if activity.kind() == ProductActivityKind::Assistant || thinking {
+                lines.extend(super::markdown::lines(model, activity, usize::from(area.width)));
+            } else {
+                append_lines(&mut lines, activity.text());
+            }
             if (model.chat.expanded || activity.kind() == ProductActivityKind::Error)
                 && !activity.detail().is_empty()
             {
                 append_lines(&mut lines, activity.detail());
             }
             lines.push(Line::from(""));
-            rows.extend(wrapped_rows(lines, usize::from(area.width)));
+            let width = usize::from(area.width);
+            rows.extend(wrapped_rows(
+                lines,
+                if activity.kind() == ProductActivityKind::Assistant || thinking {
+                    width.min(110)
+                } else {
+                    width
+                },
+            ));
         }
     } else {
         rows.extend(wrapped_rows(
@@ -82,39 +100,110 @@ fn append_lines(lines: &mut Vec<Line<'static>>, text: &str) {
 }
 
 fn tool_rows(
+    model: &AppModel,
     activity: &peritus_app_protocol::ProductActivity,
-    expanded: bool,
+    body: &str,
     width: usize,
 ) -> Vec<OutputRow> {
-    let mut tool = vec![Line::styled(
-        format!("• {}", crate::sanitize::sanitize_display_text(activity.text())),
-        Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
-    )];
-    let detail = crate::sanitize::sanitize_display_text(activity.detail());
-    tool.extend(
-        detail.lines().map(|line| Line::styled(format!("  │ {line}"), Style::default().fg(MUTED))),
-    );
-    let tool = wrapped_rows(tool, width);
-    let mut rows = Vec::new();
-    if !expanded && tool.len() > 7 {
-        rows.extend(tool.iter().take(3).cloned());
-        // The omitted middle is an explicit hard break, never hidden clipboard content.
-        if let Some(last) = rows.last_mut() {
-            last.hard_break = true;
-        }
-        rows.extend(wrapped_rows(
-            vec![Line::styled(
-                format!("  └ … {} more lines · /details", tool.len() - 6),
-                Style::default().fg(MUTED),
-            )],
-            width,
-        ));
-        rows.extend(tool.iter().skip(tool.len() - 3).cloned());
+    let text = crate::sanitize::sanitize_display_text(activity.text());
+    let failed = text.starts_with("Failed ");
+    let pending = text.starts_with("Calling ");
+    let changed = ["Updated ", "Wrote ", "Removed "].iter().any(|prefix| text.starts_with(prefix));
+    let color = if failed {
+        BAD
+    } else if changed {
+        GOOD
     } else {
-        rows.extend(tool);
+        Color::White
+    };
+    let mut tool = vec![Line::styled(
+        format!(
+            "{} {}",
+            if failed {
+                "!"
+            } else if pending {
+                "▶"
+            } else {
+                "✓"
+            },
+            tool_label(&text),
+        ),
+        Style::default().fg(color).add_modifier(Modifier::BOLD),
+    )];
+    let detail = crate::sanitize::sanitize_display_text(body);
+    let rendered = serde_json::from_str::<serde_json::Value>(&detail)
+        .ok()
+        .map(|value| peritus_product_runner::tool_output::render(&value))
+        .unwrap_or(detail);
+    let document = text.starts_with("Read document from saved context")
+        || ((text.contains("workspace_read ") || text.contains("skill_read "))
+            && text.split_whitespace().any(|token| {
+                token.trim_matches(['\'', '"']).to_ascii_lowercase().ends_with(".md")
+            }));
+    if document && !model.chat.expanded {
+        let prose = rendered
+            .lines()
+            .map(|line| {
+                if text.contains("workspace_read ") {
+                    line.split_once(": ")
+                        .filter(|(number, _)| number.chars().all(|ch| ch.is_ascii_digit()))
+                        .map_or(line, |(_, body)| body)
+                } else {
+                    line
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let readable_width = width.min(110);
+        tool.push(Line::from(""));
+        tool.extend(super::markdown::cached(model, activity.sequence(), &prose, readable_width));
+        let mut rows = wrapped_rows(tool, readable_width);
+        rows.push(OutputRow { line: Line::from(""), hard_break: true });
+        return rows;
     }
+    tool.extend(rendered.lines().map(|line| {
+        let color = if changed && line.starts_with('+') {
+            GOOD
+        } else if (changed && line.starts_with('-')) || line.starts_with("stderr:") {
+            BAD
+        } else if line.starts_with("@@") {
+            ACCENT
+        } else {
+            Color::Reset
+        };
+        Line::styled(format!("  │ {line}"), Style::default().fg(color))
+    }));
+    let mut rows = wrapped_rows(tool, width);
     rows.push(OutputRow { line: Line::from(""), hard_break: true });
     rows
+}
+
+fn tool_label(text: &str) -> String {
+    let prefixes = [
+        ("Called workspace_read ", "Read "),
+        ("Calling workspace_read ", "Reading "),
+        ("Called skill_read ", "Read skill "),
+        ("Calling skill_read ", "Reading skill "),
+        ("Called workspace_search ", "Searched "),
+        ("Calling workspace_search ", "Searching "),
+        ("Called workspace_list ", "Listed "),
+        ("Calling workspace_list ", "Listing "),
+        ("Called context_read ", "Read saved context "),
+        ("Calling context_read ", "Reading saved context "),
+        ("Called run_pipeline", "Handed work to the coding agent"),
+    ];
+    for (prefix, replacement) in prefixes {
+        if let Some(rest) = text.strip_prefix(prefix) {
+            return format!(
+                "{replacement}{}",
+                rest.replace("path=", "")
+                    .replace("query=", "for ")
+                    .replace("skill=", "· ")
+                    .replace(" · continued", "")
+            );
+        }
+    }
+    text.to_owned()
 }
 
 pub fn wrapped_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {
@@ -141,9 +230,20 @@ fn wrapped_rows(lines: Vec<Line<'static>>, width: usize) -> Vec<OutputRow> {
                     continue;
                 }
                 if used + cells > width {
-                    result.push(OutputRow { line: current, hard_break: false });
-                    current = Line::default().style(style);
-                    used = 0;
+                    let text = current.to_string();
+                    let boundary = text.char_indices().rev().find_map(|(index, ch)| {
+                        (ch.is_whitespace() && index > 0).then_some(index + ch.len_utf8())
+                    });
+                    if let Some(boundary) = boundary {
+                        let (head, tail) = split_at_byte(current, boundary);
+                        result.push(OutputRow { line: head, hard_break: false });
+                        current = tail;
+                        used = current.width();
+                    } else {
+                        result.push(OutputRow { line: current, hard_break: false });
+                        current = Line::default().style(style);
+                        used = 0;
+                    }
                 }
                 if let Some(last) = current.spans.last_mut()
                     && last.style == span.style
@@ -158,6 +258,24 @@ fn wrapped_rows(lines: Vec<Line<'static>>, width: usize) -> Vec<OutputRow> {
         result.push(OutputRow { line: current, hard_break: true });
     }
     result
+}
+
+// Keep the whitespace at a soft wrap so copying styled output preserves the original text.
+fn split_at_byte(line: Line<'static>, offset: usize) -> (Line<'static>, Line<'static>) {
+    let mut head = Line::default().style(line.style);
+    let mut tail = Line::default().style(line.style);
+    let mut remaining = offset;
+    for span in line.spans {
+        let split = remaining.min(span.content.len());
+        if split > 0 {
+            head.spans.push(Span::styled(span.content[..split].to_owned(), span.style));
+        }
+        if split < span.content.len() {
+            tail.spans.push(Span::styled(span.content[split..].to_owned(), span.style));
+        }
+        remaining = remaining.saturating_sub(split);
+    }
+    (head, tail)
 }
 
 fn split_logical_line(line: Line<'static>) -> Vec<Line<'static>> {

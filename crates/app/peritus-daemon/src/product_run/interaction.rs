@@ -228,11 +228,10 @@ impl ProductRunService {
         let options = &record.interaction;
         let persistence_failure = options.persistence_failure();
         let mut snapshot = live_snapshot(self, record)?;
-        let mut activities = if record.checkpoint.is_some() {
-            options.activities.iter().map(presentation::pipeline_activity).collect()
-        } else {
-            options.activities.clone()
-        };
+        // A completed role envelope is readable as soon as that role answers, including while
+        // review/fixing continues and before a candidate checkpoint exists.
+        let mut activities: Vec<_> =
+            options.activities.iter().map(presentation::pipeline_activity).collect();
         let input_revision = if let Some(detail) = persistence_failure {
             snapshot = super::snapshot::replace_snapshot(
                 &snapshot,

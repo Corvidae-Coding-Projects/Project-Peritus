@@ -119,6 +119,7 @@ impl AppModel {
         absent_goal: bool,
     ) {
         match pending {
+            PendingRequest::ComposerHistory(query) => self.composer_history_error(*query),
             PendingRequest::WorkbenchQueue(_) => {
                 self.chat.workbench.queue = None;
                 self.chat.workbench.message = format!(

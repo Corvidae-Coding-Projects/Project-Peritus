@@ -4,6 +4,7 @@ mod binding;
 mod catalog;
 mod commands;
 mod doctor;
+mod history;
 mod keys;
 mod models;
 mod modules;
@@ -24,6 +25,10 @@ pub use working::WorkingIndicator;
 
 #[derive(Debug)]
 pub struct ChatUi {
+    pub(crate) history: history::ComposerHistory,
+    pub(crate) kill_buffer: String,
+    pub(crate) formatted_messages:
+        std::cell::RefCell<std::collections::HashMap<u64, FormattedMessage>>,
     pub(crate) buffer: String,
     pub(crate) cursor: usize,
     pub(crate) selection_anchor: Option<usize>,
@@ -52,9 +57,19 @@ pub struct ChatUi {
     interrupt_requested: bool,
     pasted_command: bool,
 }
+
+#[derive(Debug)]
+pub(crate) struct FormattedMessage {
+    pub(crate) source: String,
+    pub(crate) width: usize,
+    pub(crate) lines: Vec<ratatui::text::Line<'static>>,
+}
 impl Default for ChatUi {
     fn default() -> Self {
         Self {
+            history: history::ComposerHistory::default(),
+            kill_buffer: String::new(),
+            formatted_messages: std::cell::RefCell::default(),
             buffer: String::new(),
             cursor: 0,
             selection_anchor: None,
@@ -130,6 +145,10 @@ impl AppModel {
         let text = self.chat.buffer.trim();
         if text.is_empty() {
             return Vec::new();
+        }
+        // Recalling durable user text is editing data, never reissuing a local command.
+        if self.chat.history.browsing() {
+            return self.send_chat_message(self.chat.buffer.clone());
         }
         if text.starts_with('/') {
             if self.chat.pasted_command {
@@ -267,6 +286,13 @@ impl AppModel {
             && let Some(product) = &mut self.product
         {
             product.settlements.insert(snapshot.snapshot().run_id(), *settlement);
+        }
+        // Retain only the current public window; long runs must not accumulate render caches.
+        self.chat.formatted_messages.get_mut().retain(|sequence, _| {
+            snapshot.activities().iter().any(|activity| activity.sequence() == *sequence)
+        });
+        if self.chat.snapshot.as_ref().is_none_or(|old| old.received() != snapshot.received()) {
+            self.chat.history.invalidate();
         }
         self.chat.snapshot = Some(snapshot);
     }

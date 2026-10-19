@@ -183,7 +183,7 @@ fn render_provider(
         model,
         200_000,
         64_000,
-        ProfileFeatures::account(image_input),
+        ProfileFeatures::account(image_input, provider == ProviderKind::CodexAccount),
     ));
     Ok(text)
 }
@@ -275,7 +275,7 @@ struct ProfileFeatures {
 }
 
 impl ProfileFeatures {
-    fn account(image_input: bool) -> Self {
+    fn account(image_input: bool, public_progress: bool) -> Self {
         let mut capabilities = vec![
             "parallel-tool-calls",
             "prompt-caching",
@@ -285,6 +285,9 @@ impl ProfileFeatures {
         ];
         if image_input {
             capabilities.push("image-input");
+        }
+        if public_progress {
+            capabilities.extend(["streaming", "reasoning-summaries"]);
         }
         Self::new(capabilities, image_input)
     }

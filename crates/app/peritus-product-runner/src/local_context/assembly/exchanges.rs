@@ -2,7 +2,10 @@
 
 use super::super::{error, memory::LocalMemory};
 use peritus_agent::DeveloperLoopError;
-use peritus_model_protocol::{ContentBlock, Message, ProtocolLimits, Role, decode_messages};
+use peritus_model_protocol::{
+    CanonicalJson, ContentBlock, JsonBounds, Message, ProtocolLimits, Role, ToolResult,
+    decode_messages,
+};
 use std::collections::BTreeSet;
 
 #[derive(Clone)]
@@ -139,7 +142,8 @@ pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoo
     // receipt remain durable; omitting a duplicate never dispatches or replays an effect.
     let mut seen = BTreeSet::new();
     let mut unique = Vec::new();
-    for group in groups.into_iter().rev() {
+    for mut group in groups.into_iter().rev() {
+        refresh_read_results(memory, &mut group)?;
         if group.messages.iter().flat_map(Message::content).any(|block| {
             let ContentBlock::ToolCall(call) = block else { return false };
             if call.name().as_str() != "workspace_read" {
@@ -198,4 +202,69 @@ fn inspection_key(exchange: &Exchange) -> Option<Vec<u8>> {
         return None;
     }
     serde_json::to_vec(&results).ok()
+}
+
+// A stale read is one obsolete observation, not a reason to discard unrelated settled tools
+// from the same batch. Keep call/result association and the durable exact source handle.
+fn refresh_read_results(
+    memory: &LocalMemory,
+    group: &mut Exchange,
+) -> Result<(), DeveloperLoopError> {
+    let reads = group
+        .messages
+        .iter()
+        .flat_map(Message::content)
+        .filter_map(|block| {
+            let ContentBlock::ToolCall(call) = block else { return None };
+            (call.name().as_str() == "workspace_read")
+                .then(|| call.id().expose_for_wire().to_owned())
+        })
+        .collect::<BTreeSet<_>>();
+    for message in &mut group.messages {
+        let mut content = message.content().to_vec();
+        let mut changed = false;
+        for block in &mut content {
+            let ContentBlock::ToolResult(result) = block else { continue };
+            if !reads.contains(result.call_id().expose_for_wire()) || result.is_error() {
+                continue;
+            }
+            let Ok(value) =
+                serde_json::from_slice::<serde_json::Value>(result.output().canonical_bytes())
+            else {
+                continue;
+            };
+            if super::evidence::read_is_current(memory, &value) {
+                continue;
+            }
+            let original = memory
+                .sources
+                .iter()
+                .rev()
+                .find(|source| {
+                    source
+                        .call
+                        .as_ref()
+                        .is_some_and(|call| call.id == result.call_id().expose_for_wire())
+                })
+                .map(|source| super::super::tools::source_handle(memory, source.sequence));
+            let receipt = serde_json::json!({
+                "cached_observation_stale":true, "path":value.get("path"),
+                "source_sha256":value.get("source_sha256"), "original_observation":original,
+                "reason":"The source changed after this completed read. Its old body remains archived, not current evidence. Refresh only this target if the next step needs it; other tool effects in this batch remain settled."
+            });
+            *block = ContentBlock::ToolResult(ToolResult::new(
+                result.call_id().clone(),
+                CanonicalJson::parse(
+                    &receipt.to_string(),
+                    JsonBounds::value(ProtocolLimits::PRODUCTION),
+                )?,
+                false,
+            ));
+            changed = true;
+        }
+        if changed {
+            *message = Message::new(message.role(), content, ProtocolLimits::PRODUCTION)?;
+        }
+    }
+    Ok(())
 }

@@ -127,6 +127,7 @@ impl AppModel {
             return Vec::new();
         }
         let conversation = binding.conversation();
+        let deferred_history = self.take_deferred_history(run);
         self.select_workbench_conversation(Some(conversation));
         self.chat.run_id = Some(run);
         self.chat.binding_checked = Some(run);
@@ -135,17 +136,20 @@ impl AppModel {
             self.view = crate::model::View::Conversation;
         }
         self.accept_chat(binding.interaction().clone());
+        let mut history_effects =
+            deferred_history.map_or_else(Vec::new, |history| self.resume_deferred_history(history));
         if let Some(PendingRequest::ProductMessageBinding { message, mode, .. }) = pending {
             self.view = crate::model::View::Conversation;
             if self.chat.buffer != *message {
                 self.notice(NoticeLevel::Info,"The conversation is ready. Your draft changed while it opened, so the original message was not sent; submit the retained draft when ready.");
-                return Vec::new();
+                return history_effects;
             }
             if let Some(mode) = mode {
                 self.chat.mode = *mode;
             }
-            return self.send_chat_message(message.clone());
+            history_effects.extend(self.send_chat_message(message.clone()));
+            return history_effects;
         }
-        Vec::new()
+        history_effects
     }
 }

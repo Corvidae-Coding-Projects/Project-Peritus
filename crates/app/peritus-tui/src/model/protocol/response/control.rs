@@ -177,6 +177,12 @@ fn project_live(
             model.accept_workbench_queue(query, page.clone());
         }
         (
+            AppResponsePayload::WorkbenchQueue(page),
+            Some(PendingRequest::ComposerHistory(query)),
+        ) => {
+            return model.accept_composer_history(query, page);
+        }
+        (
             AppResponsePayload::Workbench(snapshot),
             Some(PendingRequest::WorkbenchQueueCommand { query, intent, draft }),
         ) => return model.accept_queue_command_snapshot(query, intent, &draft, snapshot),

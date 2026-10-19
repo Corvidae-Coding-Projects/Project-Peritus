@@ -59,10 +59,12 @@ impl WorkspaceDeveloperTools {
                 .map_err(tool)?;
             scope.enroll(path).map_err(|error| tool(error.to_string()))?;
         }
-        Ok(object(vec![(
-            "tracked_paths",
-            serde_json::to_value(scope.paths().map_err(|error| tool(error.to_string()))?)
-                .map_err(|error| tool(error.to_string()))?,
-        )]))
+        let tracked = scope.paths().map_err(|error| tool(error.to_string()))?;
+        Ok(object(vec![
+            ("declared_paths", Value::Array(paths.clone())),
+            ("tracked_path_count", Value::from(tracked.len())),
+            ("inventory_included", Value::Bool(false)),
+            ("note", Value::String("Scope retained. Use workspace_list on a specific directory when its inventory is needed; unchanged tracked paths are not repeated here.".to_owned())),
+        ]))
     }
 }

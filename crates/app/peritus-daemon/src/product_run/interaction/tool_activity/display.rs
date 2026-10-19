@@ -1,6 +1,77 @@
 //! Human-readable command/argv projections; these strings are display-only, never shell input.
 use serde_json::Value;
 
+/// Only bounded proposed text is retained; completion requires a matching host result.
+#[derive(Clone)]
+pub(super) struct ChangePreview {
+    name: String,
+    path: String,
+    preview: String,
+}
+
+impl ChangePreview {
+    pub(super) fn capture(name: &str, arguments: &str) -> Option<Self> {
+        if !matches!(name, "workspace_patch" | "workspace_write" | "workspace_remove") {
+            return None;
+        }
+        let value: Value = serde_json::from_str(arguments).ok()?;
+        let path = value["path"].as_str()?.to_owned();
+        let preview = if name == "workspace_patch" {
+            format!(
+                "@@ replaced fragment @@\n{}\n{}",
+                fragment(value["old"].as_str()?, "-"),
+                fragment(value["new"].as_str()?, "+")
+            )
+        } else if name == "workspace_write" {
+            format!("Contents written (preview):\n{}", fragment(value["content"].as_str()?, " "))
+        } else {
+            String::new()
+        };
+        Some(Self { name: name.to_owned(), path, preview: safe(&preview) })
+    }
+
+    pub(super) fn finished(&self, result: &Value) -> Option<(String, String)> {
+        if result["path"].as_str()? != self.path {
+            return None;
+        }
+        if self.name == "workspace_remove" {
+            let kind = result["kind"].as_str()?;
+            return Some((
+                safe(&format!("Removed {}", self.path)),
+                safe(&format!("Removed {kind}: {}", self.path)),
+            ));
+        }
+        if self.name == "workspace_write" && result["changed"].as_bool() == Some(false) {
+            return Some((
+                safe(&format!("Unchanged {}", self.path)),
+                "Requested contents already match; no file change.".to_owned(),
+            ));
+        }
+        result["sha256"].as_str()?;
+        let bytes = result["bytes"].as_u64()?;
+        let text = if self.name == "workspace_patch" {
+            let count = result["replacements"].as_u64()?;
+            let location =
+                result["start_line"].as_u64().map_or_else(String::new, |line| format!(":{line}"));
+            format!("Updated {}{location} · {count} replacement(s)", self.path)
+        } else {
+            if result["changed"].as_bool() != Some(true) {
+                return None;
+            }
+            format!("Wrote {} · {bytes} bytes", self.path)
+        };
+        Some((safe(&text), safe(&format!("{}\nResulting file: {bytes} bytes", self.preview))))
+    }
+}
+
+fn fragment(text: &str, prefix: &str) -> String {
+    let mut lines = text.lines().map(|line| format!("{prefix}{line}")).collect::<Vec<_>>();
+    if text.is_empty() {
+        lines.push(format!("{prefix}[empty]"));
+    }
+    lines.join("\n")
+}
+
 pub(super) fn summary(name: &str, arguments: &str) -> String {
     let Ok(value) = serde_json::from_str::<Value>(arguments) else {
         return format!("{name} (invalid arguments)");
@@ -16,7 +87,17 @@ pub(super) fn summary(name: &str, arguments: &str) -> String {
         parts.join(" ")
     } else {
         let mut parts = vec![name.to_owned()];
-        for field in ["path", "paths", "pattern", "handle", "signal", "start_line", "end_line"] {
+        for field in [
+            "path",
+            "paths",
+            "query",
+            "pattern",
+            "skill",
+            "handle",
+            "signal",
+            "start_line",
+            "end_line",
+        ] {
             if let Some(value) = value.get(field) {
                 parts.push(format!(
                     "{field}={}",
@@ -60,7 +141,11 @@ pub(super) fn result(name: &str, output: &str) -> String {
             return safe(&parts.join("\n"));
         }
     }
-    safe(&serde_json::to_string_pretty(&value).unwrap_or_else(|_| "Result unavailable".to_owned()))
+    if name == "context_read" && peritus_product_runner::tool_output::is_markdown(&value) {
+        safe(&peritus_product_runner::tool_output::render_markdown(&value))
+    } else {
+        safe(&peritus_product_runner::tool_output::render(&value))
+    }
 }
 
 fn quote(value: &str) -> String {
@@ -120,23 +205,5 @@ fn safe(text: &str) -> String {
         lines.push(if sensitive { "[credential-like content redacted]" } else { line });
         private_key = (private_key || begin) && !end;
     }
-    bounded_preview(&lines.join("\n"))
-}
-
-fn bounded_preview(text: &str) -> String {
-    const MAXIMUM: usize = peritus_app_protocol::MAX_PRODUCT_ACTIVITY_BYTES;
-    const MARKER: &str = "\n… preview truncated …\n";
-    if text.len() <= MAXIMUM {
-        return text.to_owned();
-    }
-    let half = (MAXIMUM - MARKER.len()) / 2;
-    let mut head = half;
-    let mut tail = text.len() - half;
-    while !text.is_char_boundary(head) {
-        head -= 1;
-    }
-    while !text.is_char_boundary(tail) {
-        tail += 1;
-    }
-    format!("{}{MARKER}{}", &text[..head], &text[tail..])
+    lines.join("\n")
 }

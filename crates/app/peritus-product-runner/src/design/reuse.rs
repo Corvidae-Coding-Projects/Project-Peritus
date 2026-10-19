@@ -13,6 +13,8 @@ struct Receipt {
     design: String,
     #[serde(default)]
     guided: Option<String>,
+    #[serde(default)]
+    revision: u64,
 }
 
 fn digest(bytes: &[u8]) -> String {
@@ -20,25 +22,16 @@ fn digest(bytes: &[u8]) -> String {
 }
 
 fn request(input: &ProductRunInput) -> String {
-    digest(
-        format!(
-            "{}\0{}\0{}",
-            input.workspace_root.display(),
-            input.task,
-            input.conversation.stable_request_context()
-        )
-        .as_bytes(),
-    )
+    digest(format!("{}\0{}", input.workspace_root.display(), input.task,).as_bytes())
 }
 
 pub(super) fn load(input: &ProductRunInput) -> Result<Option<DesignDocument>, ProductRunnerError> {
     let path = input.trace_path.with_extension("design.md");
-    if input.conversation.revision() == input.conversation.incorporated_revision()
-        && let Ok(bytes) = fs::read(input.trace_path.with_extension("design-receipt.json"))
+    if let Ok(bytes) = fs::read(input.trace_path.with_extension("design-receipt.json"))
         && let Ok(saved) = serde_json::from_slice::<Receipt>(&bytes)
-        && saved.schema == 1
+        && matches!(saved.schema, 1 | 2)
         && saved.workspace == *input.workspace_id.as_bytes()
-        && saved.request == request(input)
+        && (saved.schema == 1 || saved.request == request(input))
         && saved.guided == guided_digest(input)
         && let Ok(markdown) = fs::read_to_string(&path)
         && saved.design == digest(markdown.as_bytes())
@@ -47,7 +40,14 @@ pub(super) fn load(input: &ProductRunInput) -> Result<Option<DesignDocument>, Pr
             &input.trace_path,
             serde_json::json!({"event":"design-reused","source":"host-receipt"}),
         );
-        return Ok(Some(DesignDocument::restored(path, markdown, input.conversation.revision())));
+        // A run-scoped v1 receipt predates immutable task identity. Recover its plan as prior
+        // evidence, never as approval of new input; current governed instructions reach the writer.
+        let revision = if saved.revision == 0 {
+            input.conversation.incorporated_revision()
+        } else {
+            saved.revision
+        };
+        return Ok(Some(DesignDocument::restored(path, markdown, revision)));
     }
     // Entering implementation is already an explicit host/user operation. Reuse the ready
     // interview result as its contract; the writer resolves only current target details.
@@ -74,11 +74,12 @@ pub(super) fn save(
     design: &DesignDocument,
 ) -> Result<(), ProductRunnerError> {
     let receipt = Receipt {
-        schema: 1,
+        schema: 2,
         workspace: *input.workspace_id.as_bytes(),
         request: request(input),
         design: digest(design.markdown().as_bytes()),
         guided: guided_digest(input),
+        revision: design.conversation_revision(),
     };
     let bytes =
         serde_json::to_vec(&receipt).map_err(|error| super::filesystem(error.to_string()))?;

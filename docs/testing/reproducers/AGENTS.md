@@ -8,6 +8,12 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [tui-markdown-documents.py](tui-markdown-documents.py) | Signed-in read-only provider journey for long Markdown, cross-chunk code fences, tables, literal Python, genuine hash text and raw numbered details. |
+| [tui-formatting-recall.py](tui-formatting-recall.py) | Actual terminal replay of Markdown tool output, durable recall/search, paused-daemon draft fences, paging, queue inspection, Unicode editing, reconnect and sizes. |
+| [tui-feedback.py](tui-feedback.py) | Real terminal, daemon, provider, file-edit, steering-receipt, formatting, resizing, and reattachment replay. |
+| [tui-feedback-view.py](tui-feedback-view.py) | Fresh-client replay of retained real-provider output, terminal selection, generated sizes, drafts, and reconnect without new model work. |
+| [tui-visible-work.py](tui-visible-work.py) | Actual xhigh-provider terminal journey with long reads/edits, search hits, public summaries during inference, and continued-plan reuse. |
+| [tui-visible-work-view.py](tui-visible-work-view.py) | Optimized-binary replay of full retained output, normal foreground, 13 sizes/reconnect, and a continued known edit without inspection or designer calls. |
 | [local-shutdown.py](local-shutdown.py) | Actual packaged CLI/daemon shutdown replay with endpoint discovery, repeated/concurrent stops, isolation, long paths, and failure handling. |
 | [codex-notifications.md](codex-notifications.md) | Captured Codex nonfatal-notification/model-rejection defect, independent expectations, and actual-provider replay commands. |
 | [codex-model-unavailable.jsonl](codex-model-unavailable.jsonl) | Actual credential-free Codex output that reproduced the hidden account/model rejection. |
@@ -51,6 +57,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [checkpoint-cache/](checkpoint-cache/AGENTS.md) | Actual scope/index/context, command/recovery, official provider caching and finite protocol-process replays. |
 | [deep-research-inquiry/](deep-research-inquiry/AGENTS.md) | Actual native inquiry/provenance consumers and separate live-artifact readback, with research-quality judgment kept distinct. |
 | [token-budgets/](token-budgets/AGENTS.md) | Actual public context/host consumers for token-budget removal, persistence, role isolation, and copied long-run assembly. |
 | [binary-evidence/](binary-evidence/AGENTS.md) | Real public-API and full TUI/daemon replay of binary previews, exact historical evidence paging, and post-writer model inputs. |

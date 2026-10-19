@@ -8,11 +8,72 @@ use std::{
     fs,
     io::BufRead as _,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex, OnceLock},
 };
 
 type Result<T> = std::result::Result<T, ProductRunnerError>;
 fn db_error(error: impl std::fmt::Display) -> ProductRunnerError {
     failure(format!("scope path index: {error}"))
+}
+
+// Readers retain SQLite's connection-local data_version. An enrollment committed by
+// any other connection invalidates the immutable snapshot. No workspace authority is
+// cached here: scope binding and path access checks remain with the caller.
+const MAX_READERS: usize = 4;
+const MAX_SNAPSHOT_BYTES: usize = 16 * 1024 * 1024;
+type ReaderSlot = Arc<Mutex<Option<CachedIndex>>>;
+static READERS: OnceLock<Mutex<BTreeMap<String, ReaderSlot>>> = OnceLock::new();
+
+struct CachedIndex {
+    connection: Connection,
+    identity: IndexIdentity,
+    legacy_bytes: u64,
+    version: i64,
+    paths: Arc<EnrolledPaths>,
+}
+
+#[derive(PartialEq)]
+struct IndexIdentity {
+    bytes: u64,
+    modified: Option<std::time::SystemTime>,
+    #[cfg(unix)]
+    inode: (u64, u64, i64, i64),
+}
+
+fn index_identity(path: &Path) -> Result<IndexIdentity> {
+    let meta = fs::symlink_metadata(path).map_err(db_error)?;
+    if !meta.is_file() || meta.file_type().is_symlink() {
+        return Err(failure("scope index is not a regular private file"));
+    }
+    Ok(identity_from_metadata(&meta))
+}
+
+fn identity_from_metadata(meta: &fs::Metadata) -> IndexIdentity {
+    IndexIdentity {
+        bytes: meta.len(),
+        modified: meta.modified().ok(),
+        #[cfg(unix)]
+        inode: {
+            use std::os::unix::fs::MetadataExt as _;
+            (meta.dev(), meta.ino(), meta.ctime(), meta.ctime_nsec())
+        },
+    }
+}
+
+fn reader_slot(key: String) -> Result<ReaderSlot> {
+    let mut readers = READERS.get_or_init(Mutex::default).lock().map_err(db_error)?;
+    if let Some(reader) = readers.get(&key) {
+        return Ok(reader.clone());
+    }
+    // Bound retained indexes independently of the number of runs ever opened.
+    if readers.len() >= MAX_READERS {
+        if let Some(oldest) = readers.keys().next().cloned() {
+            readers.remove(&oldest);
+        }
+    }
+    let slot = Arc::new(Mutex::new(None));
+    readers.insert(key, slot.clone());
+    Ok(slot)
 }
 
 impl ScopedBaseline {
@@ -37,7 +98,7 @@ impl ScopedBaseline {
         })
     }
 
-    fn open_index(&self) -> Result<Connection> {
+    fn open_index(&self) -> Result<(Connection, IndexIdentity, u64)> {
         let database = self.database_path();
         for suffix in ["", "-wal", "-shm", "-journal"] {
             let mut path = database.as_os_str().to_os_string();
@@ -77,7 +138,7 @@ impl ScopedBaseline {
             use std::os::unix::fs::OpenOptionsExt as _;
             options.mode(0o600);
         }
-        options.open(&database).map_err(db_error)?;
+        let database_file = options.open(&database).map_err(db_error)?;
         let mut connection = Connection::open(&database).map_err(db_error)?;
         connection.busy_timeout(std::time::Duration::from_secs(30)).map_err(db_error)?;
         connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
@@ -154,37 +215,103 @@ impl ScopedBaseline {
                 fs::File::open(parent).and_then(|file| file.sync_all()).map_err(db_error)?;
             }
         }
-        Ok(connection)
+        let identity = identity_from_metadata(&database_file.metadata().map_err(db_error)?);
+        if identity != index_identity(&database)? || self.journal_size()? != Some(legacy_bytes) {
+            return Err(failure("scope index or legacy journal changed while opening"));
+        }
+        Ok((connection, identity, legacy_bytes))
     }
 
-    pub(super) fn load_index(&self) -> Result<EnrolledPaths> {
-        let connection = self.open_index()?;
-        // One snapshot binds declarations and stamps even if another process enrolls a path.
-        connection.execute_batch("BEGIN DEFERRED").map_err(db_error)?;
+    pub(super) fn load_index(&self) -> Result<Arc<EnrolledPaths>> {
+        let key = serde_json::to_string(self).map_err(db_error)?;
+        let slot = reader_slot(key)?;
+        // A slow cold load for one codebase never holds the global readers lock.
+        let mut reader = slot.lock().map_err(db_error)?;
+        let legacy_bytes = self.journal_size()?;
+        let database = self.database_path();
+        if let Some(cached) = reader.as_ref() {
+            // Recheck private-file shape, including sidecars, even on a warm hit.
+            for suffix in ["-wal", "-shm", "-journal"] {
+                let mut sidecar = database.as_os_str().to_os_string();
+                sidecar.push(suffix);
+                match fs::symlink_metadata(sidecar) {
+                    Ok(meta) if !meta.is_file() || meta.file_type().is_symlink() => {
+                        return Err(failure("scope index is not a regular private file"));
+                    }
+                    Ok(_) => (),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+                    Err(error) => return Err(db_error(error)),
+                }
+            }
+            if cfg!(unix)
+                && legacy_bytes == Some(cached.legacy_bytes)
+                && index_identity(&database)? == cached.identity
+                && data_version(&cached.connection)? == cached.version
+            {
+                return Ok(cached.paths.clone());
+            }
+        }
+        // Open again on invalidation to revalidate the durable binding and legacy import.
+        *reader = None;
+        let (mut connection, identity, validated_legacy) = self.open_index()?;
+        let version = data_version(&connection)?;
+        let transaction = connection.transaction().map_err(db_error)?;
         let mut entries = BTreeMap::new();
-        let mut query = connection
-            .prepare("SELECT path,stamp FROM baselines ORDER BY path")
-            .map_err(db_error)?;
-        let rows = query
-            .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
-            .map_err(db_error)?;
-        for row in rows {
-            let (path, stamp) = row.map_err(db_error)?;
-            self.observed_path(&path)?;
-            entries.insert(path, serde_json::from_str(&stamp).map_err(db_error)?);
+        let mut retained_bytes = 0usize;
+        {
+            let mut query = transaction
+                .prepare("SELECT path,stamp FROM baselines ORDER BY path")
+                .map_err(db_error)?;
+            let rows = query
+                .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+                .map_err(db_error)?;
+            for row in rows {
+                let (path, stamp) = row.map_err(db_error)?;
+                self.observed_path(&path)?;
+                let mut stamp: FileStamp = serde_json::from_str(&stamp).map_err(db_error)?;
+                // Older journals encoded NUL-filled database pages as large JSON strings.
+                // Their display projection is binary; the original digest stays untouched.
+                if stamp.preview.contains('\0') {
+                    stamp.preview = "[binary content]".to_owned();
+                }
+                retained_bytes =
+                    retained_bytes.saturating_add(path.len() + stamp.preview.len() + 256);
+                entries.insert(path, stamp);
+            }
         }
         let mut declarations = BTreeSet::new();
-        let mut query =
-            connection.prepare("SELECT path FROM declarations ORDER BY path").map_err(db_error)?;
-        for path in query.query_map([], |row| row.get::<_, String>(0)).map_err(db_error)? {
-            declarations.insert(path.map_err(db_error)?);
+        {
+            let mut query = transaction
+                .prepare("SELECT path FROM declarations ORDER BY path")
+                .map_err(db_error)?;
+            for path in query.query_map([], |row| row.get::<_, String>(0)).map_err(db_error)? {
+                let path = path.map_err(db_error)?;
+                retained_bytes = retained_bytes.saturating_add(path.len() + 64);
+                declarations.insert(path);
+            }
         }
-        Ok(EnrolledPaths { entries, declarations })
+        transaction.commit().map_err(db_error)?;
+        if index_identity(&database)? != identity || self.journal_size()? != Some(validated_legacy)
+        {
+            return Err(failure("scope index or legacy journal changed while loading"));
+        }
+        let paths = Arc::new(EnrolledPaths { entries, declarations });
+        // Other hosts reread until a comparably strong file identity is available.
+        if cfg!(unix) && retained_bytes <= MAX_SNAPSHOT_BYTES {
+            *reader = Some(CachedIndex {
+                identity,
+                legacy_bytes: validated_legacy,
+                connection,
+                version,
+                paths: paths.clone(),
+            });
+        }
+        Ok(paths)
     }
 
     pub(super) fn enroll_index(&self, path: &str) -> Result<()> {
         self.checked_path(path)?;
-        let mut connection = self.open_index()?;
+        let (mut connection, _, _) = self.open_index()?;
         let transaction = connection
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(db_error)?;
@@ -251,4 +378,8 @@ fn insert(transaction: &Transaction<'_>, path: &str, stamp: &FileStamp) -> Resul
         .execute("INSERT OR IGNORE INTO baselines VALUES (?1,?2)", params![path, stamp])
         .map_err(db_error)?;
     Ok(())
+}
+
+fn data_version(connection: &Connection) -> Result<i64> {
+    connection.query_row("PRAGMA data_version", [], |row| row.get(0)).map_err(db_error)
 }

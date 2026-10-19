@@ -8,13 +8,16 @@ pub(super) mod doctor;
 mod effort;
 mod files;
 mod goal;
+mod history;
 mod images;
 mod init;
 pub(super) mod inspector;
 pub(super) mod library;
+mod markdown;
 mod memory;
 mod modules;
 mod permissions;
+mod progress;
 mod queue;
 mod status;
 mod transcript;
@@ -32,7 +35,7 @@ use crate::{
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
@@ -54,7 +57,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
                 if model.chat.selecting_output() {
                     "Paste/F2/Esc returns · SELECT: drag, then terminal Copy · work continues"
                 } else {
-                    "/effort · Drag text · Right-click Copy · Wheel scrolls · F2 · Type /"
+                    "↑ history · F3 search · F4 instructions · Drag to copy · F2 · Type /"
                 },
                 Style::default().fg(MUTED),
             ),
@@ -62,18 +65,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         regions[0],
     );
     if let Some(seconds) = working_seconds {
-        let progress = model.chat.snapshot.as_ref().map_or_else(
-            || format!("elapsed {seconds}s"),
-            |snapshot| snapshot.snapshot().status().to_owned(),
-        );
-        frame.render_widget(
-            Paragraph::new(crate::sanitize::sanitize_display_text(&format!(
-                "*working · {progress}"
-            )))
-            .wrap(Wrap { trim: false })
-            .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            regions[2],
-        );
+        progress::draw(frame, regions[2], model, seconds);
     }
     if model.chat.module_menu.is_some() {
         modules::draw(frame, regions[1], model);
@@ -85,6 +77,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         effort::draw(frame, regions[1], model);
     } else if model.chat.model_picker() {
         draw_models(frame, regions[1], model);
+    } else if model.chat.history.search.is_some() {
+        history::draw(frame, regions[1], model);
     } else {
         draw_transcript(frame, regions[1], model);
     }
@@ -168,6 +162,7 @@ fn draw_composer(
         && model.chat.doctor.is_none()
         && model.chat.module_menu.is_none()
         && !model.chat.workbench.open
+        && model.chat.history.search.is_none()
     {
         frame.set_cursor_position((
             area.x

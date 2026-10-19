@@ -1,5 +1,6 @@
 //! One-turn ownership of the pre-authenticated Codex executable.
 
+mod cached;
 mod failure;
 mod invocation;
 
@@ -23,8 +24,10 @@ use failure::{decode_failure, failure};
 /// Account-backed `OpenAI` provider constrained to the credential-owning `Codex` executable.
 pub struct CodexRuntimeProvider {
     config: CodexRuntimeConfig,
-    transport: Box<dyn ProcessTransport>,
+    transport: std::sync::Arc<dyn ProcessTransport>,
     authenticated: AtomicBool,
+    working_directory: std::sync::Arc<std::sync::Mutex<Option<std::sync::Arc<tempfile::TempDir>>>>,
+    cache_anchor: std::sync::Arc<std::sync::OnceLock<Option<invocation::CacheAnchor>>>,
 }
 
 /// Conventional client name for the account-backed Codex runtime provider.
@@ -36,8 +39,10 @@ impl CodexRuntimeProvider {
     pub fn new(config: CodexRuntimeConfig) -> Self {
         Self {
             config,
-            transport: Box::new(TokioProcessTransport),
+            transport: std::sync::Arc::new(TokioProcessTransport),
             authenticated: AtomicBool::new(false),
+            working_directory: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            cache_anchor: std::sync::Arc::new(std::sync::OnceLock::new()),
         }
     }
 
@@ -45,6 +50,26 @@ impl CodexRuntimeProvider {
     #[must_use]
     pub const fn profile(&self) -> &peritus_model_protocol::ProviderProfile {
         self.config.profile()
+    }
+
+    fn working_directory(&self) -> Result<std::sync::Arc<tempfile::TempDir>, ProviderCoreError> {
+        let mut directory = self.working_directory.lock().map_err(|_| {
+            ProviderCoreError::configuration(
+                "codex_runtime_directory",
+                "runtime directory lock poisoned",
+            )
+        })?;
+        if let Some(directory) = directory.as_ref() {
+            return Ok(directory.clone());
+        }
+        let created = std::sync::Arc::new(tempfile::tempdir().map_err(|_| {
+            ProviderCoreError::configuration(
+                "codex_runtime_directory",
+                "private runtime directory unavailable",
+            )
+        })?);
+        *directory = Some(created.clone());
+        Ok(created)
     }
 
     /// Delegates login-state inspection to `codex login status`.
@@ -91,7 +116,11 @@ impl CodexRuntimeProvider {
                 )?;
                 return Ok(OwnedModelStream::new(stream, cancellation));
             }
-            if let Err(error) = self.require_authenticated(&cancellation).await {
+            if let Err(error) = if self.authenticated.load(Ordering::Acquire) {
+                Ok(())
+            } else {
+                self.require_authenticated(&cancellation).await
+            } {
                 let stream = if error.kind() == ProviderCoreErrorKind::Cancelled {
                     CodexRuntimeStream::cancelled(request.model().clone())?
                 } else if error.kind() == ProviderCoreErrorKind::InvalidCredential {
@@ -106,76 +135,135 @@ impl CodexRuntimeProvider {
                 };
                 return Ok(OwnedModelStream::new(stream, cancellation));
             }
-            let output = match invocation::run_turn(
-                &self.config,
-                self.transport.as_ref(),
-                &request,
-                &runtime,
-                &cancellation,
-            )
-            .await
-            {
-                Ok(output) => output,
-                Err(error) if error.kind() == ProviderCoreErrorKind::Cancelled => {
-                    let stream = CodexRuntimeStream::cancelled(request.model().clone())?;
-                    return Ok(OwnedModelStream::new(stream, cancellation));
-                }
-                Err(error) if error.kind() == ProviderCoreErrorKind::Connect => return Err(error),
-                Err(error) => {
-                    let category = if error.operation() == "process_timeout" {
-                        FailureCategory::Timeout
-                    } else {
-                        FailureCategory::AmbiguousAcceptance
-                    };
-                    let stream = CodexRuntimeStream::failed(
-                        request.model().clone(),
-                        failure(
-                            self.config.profile().provider().clone(),
-                            category,
-                            TransportPhase::SendingBody,
-                            OutcomeCertainty::MaybeAccepted,
-                            Retryability::CallerDecision,
-                            "openai.codex_runtime.transport",
-                            None,
-                        )?,
-                        b"openai-codex-runtime-transport",
-                        true,
-                    )?;
-                    return Ok(OwnedModelStream::new(stream, cancellation));
-                }
+            let model = request.model().clone();
+            let progress = std::sync::Arc::new(super::live::Progress::default());
+            let runtime_provider = Self {
+                config: self.config.clone(),
+                transport: self.transport.clone(),
+                authenticated: AtomicBool::new(true),
+                working_directory: self.working_directory.clone(),
+                cache_anchor: self.cache_anchor.clone(),
             };
-            let decoded = decode_with_usage(
-                output.process.stdout(),
-                &runtime.allowed_tools,
-                runtime.min_calls..=runtime.max_calls,
-                output.final_message.as_deref().ok(),
-            );
-            if !output.process.exit().success() {
-                let decoded_turn = super::output::reported_process_failure(output.process.stderr())
-                    .map_or(decoded.turn, Err);
-                return self.failed_process(
-                    &request,
-                    &decoded_turn,
-                    decoded.usage,
-                    !output.process.stdout().is_empty(),
-                    cancellation,
-                );
-            }
-            let turn = match decoded.turn.and_then(|turn| output.final_message.map(|_| turn)) {
-                Ok(turn) => turn,
-                Err(reason) => {
-                    let stream = decode_failure(
-                        request.model().clone(),
-                        self.config.profile().provider().clone(),
-                        &reason,
-                        decoded.usage,
-                    )?;
-                    return Ok(OwnedModelStream::new(stream, cancellation));
-                }
-            };
-            let stream = CodexRuntimeStream::completed(&request, turn, output.process.stdout())?;
-            Ok(OwnedModelStream::new(stream, cancellation))
+            let owned_cancellation = cancellation.clone();
+            let observations = progress.clone();
+            let operation = Box::pin(async move {
+                runtime_provider
+                    .finish_inner(request, runtime, owned_cancellation, observations)
+                    .await
+            });
+            Ok(OwnedModelStream::new(
+                super::live::LiveRuntimeStream::new(model, operation, progress),
+                cancellation,
+            ))
         })
+    }
+
+    async fn finish_inner(
+        &self,
+        request: ModelRequest,
+        runtime: super::request::RuntimeRequest,
+        cancellation: CancellationToken,
+        progress: std::sync::Arc<super::live::Progress>,
+    ) -> Result<OwnedModelStream, ProviderCoreError> {
+        let working_directory = self.working_directory()?;
+        let cache_anchor = if matches!(
+            request.options().cache(),
+            peritus_model_protocol::CachePolicy::Automatic
+        ) {
+            if self.cache_anchor.get().is_none() {
+                let anchor = invocation::create_cache_anchor(
+                    &self.config,
+                    self.transport.as_ref(),
+                    working_directory.path(),
+                    &cancellation,
+                )
+                .await;
+                if anchor.is_err() {
+                    eprintln!(
+                        "peritus: Codex cache routing setup unavailable; using isolated uncached turns"
+                    );
+                }
+                let _ = self.cache_anchor.set(anchor.ok());
+            }
+            self.cache_anchor
+                .get()
+                .and_then(|anchor| anchor.as_ref())
+                .filter(|anchor| anchor.available.load(Ordering::Acquire))
+        } else {
+            None
+        };
+        let output = match invocation::run_turn(
+            &self.config,
+            self.transport.as_ref(),
+            &request,
+            &runtime,
+            working_directory.path(),
+            cache_anchor,
+            &cancellation,
+            progress,
+        )
+        .await
+        {
+            Ok(output) => output,
+            Err(error) if error.kind() == ProviderCoreErrorKind::Cancelled => {
+                let stream = CodexRuntimeStream::cancelled(request.model().clone())?;
+                return Ok(OwnedModelStream::new(stream, cancellation));
+            }
+            Err(error) if error.kind() == ProviderCoreErrorKind::Connect => return Err(error),
+            Err(error) => {
+                let category = if error.operation() == "process_timeout" {
+                    FailureCategory::Timeout
+                } else {
+                    FailureCategory::AmbiguousAcceptance
+                };
+                let stream = CodexRuntimeStream::failed(
+                    request.model().clone(),
+                    failure(
+                        self.config.profile().provider().clone(),
+                        category,
+                        TransportPhase::SendingBody,
+                        OutcomeCertainty::MaybeAccepted,
+                        Retryability::CallerDecision,
+                        "openai.codex_runtime.transport",
+                        None,
+                    )?,
+                    b"openai-codex-runtime-transport",
+                    true,
+                )?;
+                return Ok(OwnedModelStream::new(stream, cancellation));
+            }
+        };
+        let decoded = decode_with_usage(
+            output.process.stdout(),
+            &runtime.allowed_tools,
+            runtime.min_calls..=runtime.max_calls,
+            output.final_message.as_deref().ok(),
+        );
+        if !output.process.exit().success() {
+            let decoded_turn = super::output::reported_process_failure(output.process.stderr())
+                .map_or(decoded.turn, Err);
+            return self.failed_process(
+                &request,
+                &decoded_turn,
+                decoded.usage,
+                !output.process.stdout().is_empty(),
+                cancellation,
+            );
+        }
+        let turn = match decoded.turn.and_then(|turn| output.final_message.map(|_| turn)) {
+            Ok(turn) => turn,
+            Err(reason) => {
+                let stream = decode_failure(
+                    request.model().clone(),
+                    self.config.profile().provider().clone(),
+                    &reason,
+                    decoded.usage,
+                )?;
+                return Ok(OwnedModelStream::new(stream, cancellation));
+            }
+        };
+        let stream = CodexRuntimeStream::completed(&request, turn, output.process.stdout())?;
+        Ok(OwnedModelStream::new(stream, cancellation))
     }
 
     fn failed_process(

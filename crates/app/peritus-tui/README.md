@@ -127,11 +127,29 @@ an earlier probe is still running.
 Disconnected chat keeps an explicit offline status and Ctrl-R reconnect hint above the composer,
 including after transient notices disappear.
 
-Conversation view pins the active elapsed working indicator directly above the message-entry box in
-bold white. Tool calls remain visible without enabling diagnostics: one entry shows the command
-or operation, then its observed result, exit status and bounded output preview. Long entries keep
-their opening and final lines; `/details` expands retained details and host status diagnostics.
+Conversation view keeps a single active phase/timer line above the message-entry box. Saved and
+incorporated input revisions remain visible during work; incorporation means inclusion in a model
+request, not proof that the requested behavior is complete. A pending submission says it is still
+sending and retains its draft. Notices keep their own row so receipt wrapping cannot hide an error.
+
+Tool calls remain visible without enabling diagnostics. Successful patches show the file, first
+affected line, and colored removed/added text; full-file writes preview the contents written.
+Rejected edits, nonzero command exits, and timeouts show failure. No-op writes say unchanged.
+Reads show returned source bodies, searches show matching paths/lines/text, and listings show
+actual entries. Returned tool bodies and edit hunks remain in the scrollable transcript with the
+normal terminal foreground, without a seven-line or middle-of-diff display cut. Large results
+are split into protocol-sized continuation entries. A tool's own partial-page result is labeled.
+`/details` exposes additional assistant-envelope details and diagnostics; it is not needed to see
+ordinary tool output. Published provider summaries and host request status appear in the transcript.
 The timer stops on disconnect or idle/terminal phases; it never claims provider progress.
+
+Assistant messages, read Markdown documents, and skill output render headings, emphasis, lists,
+code blocks, links, and width-aware tables with a readable prose width. Consecutive tool-output
+chunks join before formatting, so a continued code block remains a code block. Source files,
+commands, and diffs keep their literal content. `/details` shows raw document output and hashes.
+User input remains literal. Formatting never opens links or fetches images, and terminal
+controls remain inert even when introduced by Markdown character references. Unchanged message
+formatting is cached only within the retained activity window. Resizing reflows the presentation.
 
 `/effort` opens the reasoning-effort picker without requiring model discovery. Use arrows and
 Enter, Tab to change roles, or `/effort [writer|reviewer|fixer] LEVEL`. Levels are `default`,
@@ -146,3 +164,20 @@ selection abandons discovery; an old reply cannot replace a reopened picker's cu
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
+
+## Recall and steering
+
+Up at the first displayed composer row recalls a previous saved user message; Down at the last
+row moves toward newer messages and then restores the unsent draft. Within a multiline draft,
+arrows still move the caret. Ctrl-P/N always move by row, and Shift-arrow selection is unchanged.
+Esc restores the original draft. Recalled messages are editable and are sent only when you press
+Enter; recall never revises previously incorporated instructions or executes local slash commands.
+
+F3 opens searchable conversation history. Type to filter, use Up/Down or F3 to select, and press
+Enter to put a message in the composer. That Enter does not send it. Esc returns to the original
+draft. History comes from the selected durable conversation and survives reopening; older pages
+load on demand. A late read cannot replace text typed while it was pending.
+
+F4 inspects the saved instruction queue without clearing your draft. Ctrl-R still reconnects.
+Ctrl-Y inserts the last text deleted with Ctrl-K, Ctrl-U, or Ctrl-W. These are local editor actions;
+none starts model work.

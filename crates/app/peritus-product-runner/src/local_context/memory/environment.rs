@@ -8,12 +8,7 @@ use peritus_context::{
     working::{WorkingBinding, WorkingEnvironment, WorkingFileDigest, WorkingLimits},
 };
 use peritus_types::Sha256Digest;
-use sha2::{Digest as _, Sha256};
-use std::{
-    fs::File,
-    io::Read as _,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 /// Direct folders have no whole-tree candidate identity. Only explicit file dependencies,
 /// conversation and task validity are supported; the digest is a directory namespace only.
@@ -56,9 +51,12 @@ pub(in crate::local_context) fn capture(
         ) else {
             continue;
         };
-        match File::open(full) {
-            Ok(file) => {
-                files.push(WorkingFileDigest::new(key(path.as_bytes())?, digest_file(file)?));
+        match crate::file_observation::read(&full, false) {
+            Ok(content) => {
+                files.push(WorkingFileDigest::new(
+                    key(path.as_bytes())?,
+                    Sha256Digest::new(content.digest),
+                ));
             }
             Err(failure) if failure.kind() == std::io::ErrorKind::NotFound => {}
             Err(_) => return Err(error("inspect file dependency")),
@@ -68,18 +66,4 @@ pub(in crate::local_context) fn capture(
     files.dedup();
     WorkingEnvironment::new(binding, candidate, files, limits)
         .map_err(|_| error("invalid working environment"))
-}
-
-fn digest_file(mut file: File) -> Result<Sha256Digest, DeveloperLoopError> {
-    let mut hasher = Sha256::new();
-    let mut buffer = [0; 8192];
-    let mut _total = 0_u64;
-    loop {
-        let count = file.read(&mut buffer).map_err(|_| error("hash file dependency"))?;
-        if count == 0 {
-            return Ok(Sha256Digest::new(hasher.finalize().into()));
-        }
-        _total = _total.checked_add(count as u64).ok_or_else(|| error("file size overflow"))?;
-        hasher.update(&buffer[..count]);
-    }
 }

@@ -23,6 +23,16 @@ impl ControlStore {
         Ok(self.load_replay(id)?.current().cloned())
     }
 
+    /// Inspects verified current state without cloning the full retained conversation.
+    pub(crate) fn inspect<T>(
+        &self,
+        id: ConversationId,
+        read: impl FnOnce(&ConversationRecord) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        let replay = self.load_replay(id)?;
+        read(replay.current().ok_or(peritus_product_runner::control::ControlError::NotFound)?)
+    }
+
     fn load_replay(&self, id: ConversationId) -> Result<Arc<ConversationReplay>, Error> {
         self.observed_replay(id).map(|(replay, _)| replay)
     }

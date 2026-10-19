@@ -8,7 +8,7 @@ Implementation pieces for `workspace_delivery.rs`: Delivery-specific adapters ar
 
 | File | Role |
 | --- | --- |
-| [scope_store.rs](scope_store.rs) | Transactional SQLite path index and original before-image journal migration. |
+| [scope_store.rs](scope_store.rs) | Transactional SQLite path index and original before-image migration; bounded reader snapshots invalidated by database identity, SQLite data version and legacy binding. |
 | [scope.rs](scope.rs) | In-place comparison evidence and captured candidate axes; exact-file automatic checkpoints, directory-descendant tracking, and binary-aware display of durable previews. No Git. |
 
 Owning module: [workspace_delivery.rs](../workspace_delivery.rs). Inspect that parent before changing the local pieces.

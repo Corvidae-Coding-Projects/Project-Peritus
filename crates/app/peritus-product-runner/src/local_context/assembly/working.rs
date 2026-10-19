@@ -46,7 +46,7 @@ pub(super) fn append_state(
             .limits()
             .max_input_tokens()
             .saturating_sub(estimate_developer_request_tokens(messages, &memory.tools))
-            / 2
+            / 8
     });
     let mut ranked = entries.iter().collect::<Vec<_>>();
     ranked.sort_by_key(|entry| {
@@ -73,7 +73,24 @@ pub(super) fn append_state(
         )
     });
     let mut visible = 0;
+    let mut seen = std::collections::BTreeSet::new();
     for entry in ranked {
+        // Resolved, stale and superseded records remain durable but are not current advice.
+        if matches!(
+            entry.status(),
+            WorkingEntryStatus::Superseded
+                | WorkingEntryStatus::Stale
+                | WorkingEntryStatus::Resolved
+        ) {
+            continue;
+        }
+        let mut identity = super::super::tools::entry_view(memory, entry);
+        if let Some(object) = identity.as_object_mut() {
+            object.remove("id");
+        }
+        if !seen.insert((identity.to_string(), format!("{:?}", entry.validity()))) {
+            continue;
+        }
         // Estimate before serializing a potentially very large individual record.
         if body.len().saturating_add(entry.content().bytes().len()).div_ceil(3) as u64 > available {
             continue;
