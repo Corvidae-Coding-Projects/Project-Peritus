@@ -1,0 +1,264 @@
+{
+  "main_scenarios": 26,
+  "independent_named_checks": 20,
+  "independent_fresh_invocations": 56,
+  "independent_pending_handoff": {
+    "provider_requests": 0,
+    "tools": 0,
+    "passed": true
+  },
+  "concurrent_edit": {
+    "passed": true,
+    "injected": true,
+    "stale_edit_rejected": true,
+    "injected_source_refreshed": true,
+    "external_comment_preserved": true,
+    "settlement": "Accepted"
+  },
+  "concurrent_metrics": {
+    "trace": "target/grounding-efficiency/concurrent-final/private/run.trace",
+    "rendered_read_bytes": 521,
+    "identical_rendered_read_bytes": 0,
+    "receipt_hash_validation_bytes": 243,
+    "reused_observations": 1,
+    "design_reuses": 1,
+    "first_useful_action": {
+      "at_unix_ms": 1792378926996,
+      "attempt_elapsed_millis": 36754,
+      "event": "first-useful-action",
+      "invocation": "peritus-51515151515151515151515151515151-writer-1-revision-1-invocation-1-df9c4d100a15430c95ae13ad87bf9826",
+      "invocation_elapsed_millis": 36733,
+      "schema": 1,
+      "semantics": "first changed workspace file or successful completed declared external operation; attempt_elapsed_millis is monotonic; wall time includes pauses",
+      "tool": "workspace_patch",
+      "wall_millis_since_first_invocation": 36734
+    },
+    "last_provider_snapshot": {
+      "at_unix_ms": 1792378958459,
+      "cached_input_tokens": 8064,
+      "event": "provider-accounting",
+      "input_tokens": 162366,
+      "invocation": "peritus-51515151515151515151515151515151-reviewer-1-revision-1-invocation-1-bea5394e85303e04a8092e0311ca31b4",
+      "model_requests": 8,
+      "output_tokens": 1746,
+      "response_usage": {
+        "cached_input_tokens": 0,
+        "input_tokens": 19941,
+        "output_tokens": 387
+      },
+      "schema": 1,
+      "semantics": "cumulative normalized snapshots; replace, do not sum snapshots"
+    },
+    "provider_reported_response_usage": [
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 18894,
+        "output_tokens": 85
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 19225,
+        "output_tokens": 78
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 19609,
+        "output_tokens": 438
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 20337,
+        "output_tokens": 78
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 20706,
+        "output_tokens": 212
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 21066,
+        "output_tokens": 302
+      },
+      {
+        "cached_input_tokens": 8064,
+        "input_tokens": 22588,
+        "output_tokens": 166
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 19941,
+        "output_tokens": 387
+      }
+    ],
+    "observed_response_input_tokens": 162366,
+    "observed_response_cached_input_tokens": 8064,
+    "responses_with_known_input_usage": 8,
+    "responses_with_known_cached_input_usage": 8,
+    "model_requests_observed": 8,
+    "system_policy_bytes_range": [
+      10633,
+      11483
+    ],
+    "context_views": 14,
+    "per_view_input_token_savings_range": [
+      0,
+      0
+    ],
+    "auxiliary_compaction_calls": 0,
+    "notes": "Read bytes count rendered text, not all filesystem I/O. The hash byte counter covers receipt revalidation; read pre/post checks and archived-preview validation add I/O; repeated bytes count identical pages. Context savings are per view, not cumulative provider billing. Null response usage means unknown. Per-response updates are replaced by invocation/request identity. Provider totals are cumulative snapshots; compare their last values, never sum snapshots. Attempt timing is monotonic; wall timing includes pauses. No source content is stored in these metrics."
+  },
+  "initial_feature_metrics": {
+    "trace": "target/grounding-efficiency/live/private/run.trace",
+    "rendered_read_bytes": 1264,
+    "identical_rendered_read_bytes": 172,
+    "receipt_hash_validation_bytes": 595,
+    "reused_observations": 3,
+    "design_reuses": 1,
+    "first_useful_action": {
+      "at_unix_ms": 1792378279508,
+      "attempt_elapsed_millis": 14950,
+      "event": "first-useful-action",
+      "invocation": "peritus-61616161616161616161616161616161-writer-1-revision-1-invocation-1-315b799589729b57137cd179c9ffa4fc",
+      "invocation_elapsed_millis": 14926,
+      "schema": 1,
+      "semantics": "first changed workspace file or successful completed declared external operation; attempt_elapsed_millis is monotonic; wall time includes pauses",
+      "tool": "workspace_patch",
+      "wall_millis_since_first_invocation": 72249
+    },
+    "last_provider_snapshot": {
+      "at_unix_ms": 1792378329036,
+      "cached_input_tokens": 0,
+      "event": "provider-accounting",
+      "input_tokens": 163881,
+      "invocation": "peritus-61616161616161616161616161616161-reviewer-1-revision-1-invocation-1-60f01163c7464ab9904e27dc4e217ef1",
+      "model_requests": 8,
+      "output_tokens": 1604,
+      "response_usage": {
+        "cached_input_tokens": 0,
+        "input_tokens": 21741,
+        "output_tokens": 321
+      },
+      "schema": 1,
+      "semantics": "cumulative normalized snapshots; replace, do not sum snapshots"
+    },
+    "provider_reported_response_usage": [
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 15449,
+        "output_tokens": 89
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 15771,
+        "output_tokens": 58
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 16144,
+        "output_tokens": 617
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 15936,
+        "output_tokens": 477
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 19352,
+        "output_tokens": 102
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 19734,
+        "output_tokens": 259
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 20096,
+        "output_tokens": 222
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 21607,
+        "output_tokens": 166
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 20008,
+        "output_tokens": 68
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 20335,
+        "output_tokens": 266
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 21008,
+        "output_tokens": 200
+      },
+      {
+        "cached_input_tokens": 0,
+        "input_tokens": 21741,
+        "output_tokens": 321
+      }
+    ],
+    "observed_response_input_tokens": 227181,
+    "observed_response_cached_input_tokens": 0,
+    "responses_with_known_input_usage": 12,
+    "responses_with_known_cached_input_usage": 12,
+    "model_requests_observed": 12,
+    "system_policy_bytes_range": [
+      8953,
+      11301
+    ],
+    "context_views": 20,
+    "per_view_input_token_savings_range": [
+      0,
+      0
+    ],
+    "auxiliary_compaction_calls": 0,
+    "notes": "Read bytes count rendered text, not all filesystem I/O. The hash byte counter covers receipt revalidation; read pre/post checks and archived-preview validation add I/O; repeated bytes count identical pages. Context savings are per view, not cumulative provider billing. Null response usage means unknown. Per-response updates are replaced by invocation/request identity. Provider totals are cumulative snapshots; compare their last values, never sum snapshots. Attempt timing is monotonic; wall timing includes pauses. No source content is stored in these metrics."
+  },
+  "prompt_comparison": {
+    "baseline": "33e1f1d",
+    "old_shared_workflow_only_bytes": 31569,
+    "new_max_complete_system_policy_bytes": 11301,
+    "conservative_reduction": 0.6420222370046564,
+    "threshold": 0.5,
+    "semantics": "Conservative source-grounded prompt comparison; excludes other old embedded skills, not a paired runtime or billing speedup."
+  },
+  "scope": "Actual production APIs, context storage, Codex provider and ProductRunner; native CLI/daemon/TUI build. No claim of whole-application, all-provider, GUI/TUI or multi-hour coverage.",
+  "native_build": {
+    "passed": true,
+    "log": "target/grounding-efficiency/final-build-4.log",
+    "jobs": 2,
+    "memory_max": "6G",
+    "packages": [
+      "peritus-launcher",
+      "peritus-cli",
+      "peritus-daemon",
+      "peritus-tui"
+    ]
+  },
+  "final_consumer_sha256": "ef775fc35765963c523edaa9b8c5f0e48c7619aa41d9489fc934297ea0233d5f",
+  "final_source_replay": {
+    "host_context_scenarios": 26,
+    "passed": true,
+    "pending_handoff_provider_requests": 0
+  },
+  "native_smoke": {
+    "cli_help": 0,
+    "tui_help": 0,
+    "cli_version": 0,
+    "daemon_version": 0,
+    "daemon_help_usage_response": 2
+  },
+  "working_tree": {
+    "branch": "develop",
+    "base_commit": "33e1f1d25d0d3fe73f7fe3100ce2bb45b0bb1a2f",
+    "committed": false,
+    "installed": false
+  }
+}

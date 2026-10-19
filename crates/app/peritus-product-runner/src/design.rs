@@ -1,6 +1,7 @@
 //! Mandatory repository-grounded design document produced before implementation.
 
 mod artifact;
+mod reuse;
 
 use std::{
     fs::{self, OpenOptions},
@@ -17,7 +18,6 @@ use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MINIMUM_DESIGN_BYTES: usize = 512;
 const MAXIMUM_DESIGN_BYTES: usize = 1024 * 1024;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DesignScope {
@@ -63,6 +63,9 @@ pub async fn create(
     cycle: u32,
     accounting: &mut RunAccounting,
 ) -> Result<DesignDocument, ProductRunnerError> {
+    if let Some(document) = reuse::load(input)? {
+        return Ok(document);
+    }
     let scope = design_scope(&input.workspace_root);
     if scope == DesignScope::Artifact && !input.workspace_kind.is_in_place() {
         return artifact::create(input);
@@ -90,10 +93,7 @@ pub async fn create(
         stable_context.push_str(&crate::guided_design::implementation_context(input)?);
         let (prompt, attachments) =
             media.into_parts(user_prompt(&stable_context, correction.as_deref()));
-        let mut tools = input.configure_tools(
-            WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
-                .with_task_contract(&transcript),
-        );
+        let mut tools = input.read_only_workspace_tools();
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
@@ -162,7 +162,11 @@ pub async fn create(
         };
         let path = input.trace_path.with_extension("design.md");
         publish(&path, markdown.as_bytes())?;
-        return Ok(DesignDocument { path, markdown, conversation_revision: revision });
+        let document = DesignDocument { path, markdown, conversation_revision: revision };
+        if let Err(error) = reuse::save(input, &document) {
+            eprintln!("peritus: design reuse receipt unavailable: {error}");
+        }
+        return Ok(document);
     }
 }
 
@@ -179,7 +183,7 @@ fn grounded_markdown(
 fn system_prompt(remaining: Option<std::time::Duration>) -> String {
     let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer. For a scoped change in an existing application, inspect only its owning modules, immediate callers, persistence boundary, and applicable local instructions. Stop discovery when you can name an actionable first slice and its contracts; do not conduct a whole-repository review unless the user requested one. Batch independent focused reads. Reuse unchanged observations within this invocation, and avoid rereading the same ranges or broad directory inventories. Mark remaining targeted questions in the design so implementation can resolve them while making progress.";
     let instructions = format!(
-        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
+        "You are the design architect in a serious coding harness. Use existing host-verified observations or inspect only the relevant repository contracts before designing. Return only a proportional Markdown task design, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Cover the objective, exact acceptance criteria, affected paths/contracts, next implementation slices, and real behavioral checks. Use additional architecture, data-flow and risk sections only when the change needs those decisions. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
     );
     if let Some(remaining) = remaining {
@@ -223,7 +227,7 @@ fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
 
 fn correction_prompt(error: &ProductRunnerError) -> String {
     format!(
-        "The previous design was rejected during {}: {}. Return the full design again. Its first nonblank line must be one document title beginning with `# `, and it must contain at least four section headings beginning with `## `. Do not make every section a top-level `#` heading.",
+        "The previous design was rejected during {}: {}. Return the full design again. Use one # title and a meaningful, proportional task plan. Small changes do not need extra sections or repeated requirements.",
         error.operation(),
         error.detail(),
     )
@@ -236,16 +240,14 @@ fn normalize(value: &str) -> Result<String, ProductRunnerError> {
         .or_else(|| trimmed.strip_prefix("```md"))
         .and_then(|inner| inner.strip_suffix("```"))
         .map_or(trimmed, str::trim);
-    let sections = markdown.lines().filter(|line| line.starts_with("## ")).count();
-    if markdown.len() < MINIMUM_DESIGN_BYTES
-        || markdown.len() > MAXIMUM_DESIGN_BYTES
+    if markdown.len() > MAXIMUM_DESIGN_BYTES
         || !markdown.starts_with("# ")
-        || sections < 4
+        || !markdown.lines().skip(1).any(|line| !line.trim().is_empty())
     {
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::InvalidModelOutput,
             "validate implementation design",
-            "designer must return a detailed Markdown document with a title and at least four sections",
+            "designer must return a Markdown task design with a title and meaningful body",
         ));
     }
     Ok(format!("{markdown}\n"))

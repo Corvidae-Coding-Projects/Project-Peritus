@@ -113,6 +113,16 @@ pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoo
                     {
                         return Err(error("tool result has no pending proposal"));
                     }
+                    if let ContentBlock::ToolResult(result) = block
+                        && let Some(source) = memory.sources.iter().rev().find(|source| {
+                            source.kind == super::super::record::ArchiveKind::ToolOutput
+                                && source.call.as_ref().is_some_and(|call| {
+                                    call.id == result.call_id().expose_for_wire()
+                                })
+                        })
+                    {
+                        current.sources.push(source.sequence);
+                    }
                 }
                 current.messages.push(message);
                 current.sources.push(*id);
@@ -125,5 +135,67 @@ pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoo
         }
     }
     // Incomplete proposals remain in explicit host pending pins, not raw provider replay.
-    Ok(groups)
+    // Keep the newest complete copy of an identical read exchange. Its archived bytes and
+    // receipt remain durable; omitting a duplicate never dispatches or replays an effect.
+    let mut seen = BTreeSet::new();
+    let mut unique = Vec::new();
+    for group in groups.into_iter().rev() {
+        if group.messages.iter().flat_map(Message::content).any(|block| {
+            let ContentBlock::ToolCall(call) = block else { return false };
+            if call.name().as_str() != "workspace_read" {
+                return false;
+            }
+            let Ok(args) =
+                serde_json::from_slice::<serde_json::Value>(call.arguments().canonical_bytes())
+            else {
+                return true;
+            };
+            args.get("path")
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(|path| !super::evidence::may_reuse_read(memory, path))
+        }) {
+            continue;
+        }
+        if let Some(key) = inspection_key(&group)
+            && !seen.insert(key)
+        {
+            continue;
+        }
+        unique.push(group);
+    }
+    unique.reverse();
+    Ok(unique)
+}
+
+fn inspection_key(exchange: &Exchange) -> Option<Vec<u8>> {
+    let mut calls = std::collections::BTreeMap::new();
+    let mut results = Vec::new();
+    for block in exchange.messages.iter().flat_map(Message::content) {
+        match block {
+            ContentBlock::ToolCall(call) => {
+                if !matches!(
+                    call.name().as_str(),
+                    "workspace_read" | "workspace_list" | "workspace_search" | "skill_read"
+                ) {
+                    return None;
+                }
+                calls.insert(
+                    call.id().expose_for_wire(),
+                    (call.name().as_str(), call.arguments().to_wire_string()),
+                );
+            }
+            ContentBlock::ToolResult(result) => {
+                let (name, args) = calls.remove(result.call_id().expose_for_wire())?;
+                let mut value: serde_json::Value =
+                    serde_json::from_slice(result.output().canonical_bytes()).ok()?;
+                value.as_object_mut()?.remove("local_context");
+                results.push(serde_json::json!([name, args, value]));
+            }
+            _ => {}
+        }
+    }
+    if !calls.is_empty() || results.is_empty() {
+        return None;
+    }
+    serde_json::to_vec(&results).ok()
 }

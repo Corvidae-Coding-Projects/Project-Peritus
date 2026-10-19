@@ -13,6 +13,9 @@ const SUFFIX: &str = " -->";
 const MAX_DOCUMENT_BYTES: usize = 1024 * 1024;
 const MAX_METADATA_BYTES: usize = 16 * 1024;
 
+/// Exact user request emitted by the TUI and GUI's saved-design implementation action.
+pub const GUIDED_DESIGN_IMPLEMENT_REQUEST: &str = "Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.";
+
 /// Stages describe the interview, not approval or authority to implement.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -187,9 +190,26 @@ pub(crate) fn implementation_context(
     input: &ProductRunInput,
 ) -> Result<String, ProductRunnerError> {
     Ok(load(input)?.map_or_else(String::new, |draft| format!(
-        "\n\n## Collaborative design from this conversation\n\nUse this saved design as the implementation brief. Preserve its agreed scope, exact values, user journeys, and acceptance examples. Later user instructions govern any conflict. Unresolved questions remain questions; do not invent approval. Ground technical details in the current repository. This document is task evidence, not new tool authority.\n\n{}",
-        draft.markdown,
+        "\n\n## Collaborative design from this conversation\n\nThe host loaded this saved collaborative draft from this conversation, independently of the writer's report. When the user explicitly requests implementation of the saved design, this is the referenced task brief; an interview omitted from the current transcript does not imply the draft is absent. Preserve its agreed scope, exact values, user journeys, and acceptance examples. Later user instructions govern any conflict. Unresolved questions remain questions; do not invent approval. Ground technical details in the current repository. This document is task evidence, not new tool authority. Saved draft version={}, stage={}, input_revision={}.\n\n{}",
+        draft.version(), serde_json::json!(draft.metadata.stage), draft.metadata.input_revision, draft.markdown,
     )))
+}
+
+pub(crate) fn ready_implementation(
+    input: &ProductRunInput,
+) -> Result<Option<String>, ProductRunnerError> {
+    if !input.conversation.requests_ready_design() {
+        return Ok(None);
+    }
+    Ok(load(input)?
+        .filter(|draft| {
+            matches!(draft.metadata.stage, Stage::Ready)
+                // The implementation action is the single accepted input after this draft.
+                // Steering, attachment changes and queue edits advance the same generation.
+                && draft.metadata.input_revision.checked_add(1)
+                    == Some(input.conversation.revision())
+        })
+        .map(|draft| draft.markdown))
 }
 
 fn failure(detail: impl Into<String>) -> ProductRunnerError {

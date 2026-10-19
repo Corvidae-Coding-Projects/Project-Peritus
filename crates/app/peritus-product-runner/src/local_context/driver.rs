@@ -26,10 +26,21 @@ pub async fn run_live_invocation(
     if interaction.is_some() {
         request.system.push_str(LIVE_COMMUNICATION);
     }
-    let mut trace = AccountingTrace::new(accounting.trace_path, accounting.accounting);
+    if let Some(memory) = memory {
+        request.tools.extend(memory.tool_definitions()?);
+    }
+    let mut measured = crate::efficiency::MeasuredTools::new(
+        tools,
+        accounting.trace_path,
+        &request.request_prefix,
+        &request.tools,
+        accounting.accounting.elapsed_millis(),
+    );
+    let tools: &mut dyn DeveloperToolExecutor = &mut measured;
+    let mut trace =
+        AccountingTrace::new(accounting.trace_path, accounting.accounting, &request.request_prefix);
     match memory {
         Some(memory) => {
-            request.tools.extend(memory.tool_definitions()?);
             trace.trace =
                 trace.trace.with_memory_scope(memory.scope_digest()?, memory.next_invocation()?);
             let mut port = memory.clone();

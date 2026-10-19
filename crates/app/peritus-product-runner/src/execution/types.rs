@@ -82,6 +82,11 @@ pub enum WorkspaceMutationKind {
 
 /// Live daemon-owned conversation supplied to every model turn.
 pub trait ConversationView: Send + Sync {
+    /// Whether the latest actionable accepted user input explicitly invokes the saved ready design.
+    /// This is a host-resolved task hint, not permission to implement or reuse an unrelated draft.
+    fn requests_ready_design(&self) -> bool {
+        false
+    }
     /// Whether media is supplied only through the revisioned input port. Governed conversations
     /// must not discover or cache image bytes in immutable role scaffolding.
     fn uses_explicit_media(&self) -> bool {

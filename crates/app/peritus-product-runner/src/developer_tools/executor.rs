@@ -76,6 +76,32 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    /// Attaches reusable source observations for one host-owned run/workspace scope.
+    /// The trace must be outside the model-writable workspace. Observations grant no
+    /// permissions; current access checks and full content-hash validation still apply.
+    #[must_use]
+    pub fn with_observation_receipts(
+        mut self,
+        trace: PathBuf,
+        run: peritus_types::RunId,
+        workspace: peritus_types::WorkspaceId,
+    ) -> Self {
+        if self.permission_denial("workspace_read").is_some() {
+            return self;
+        }
+        let mut scope = [0; 32];
+        scope[..16].copy_from_slice(run.as_bytes());
+        scope[16..].copy_from_slice(workspace.as_bytes());
+        let policy = &self.access_policy;
+        self.grounding.restore(trace.with_extension("observations.json"), scope, |relative| {
+            policy.authorize("workspace_read", &serde_json::json!({"path": relative})).is_ok()
+        });
+        crate::efficiency::event(
+            &trace,
+            serde_json::json!({"event":"grounding-reuse", "files_revalidated":self.grounding.reused_count(),"file_hash_validation_bytes":self.grounding.validation_bytes(),"semantics":"hash checks perform local IO; reuse reduces model-visible rediscovery, not all file reads"}),
+        );
+        self
+    }
     pub(crate) fn with_computer_runtime(mut self, runtime: crate::CommandRuntime) -> Self {
         if self.command_runtime.is_none() {
             self.command_runtime = Some(runtime);
@@ -322,9 +348,10 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             self.rust_reliability.task(&view.reference_authority_context());
         }
         Some(format!(
-            "{}\n{}",
+            "{}\n{}\n{}",
             crate::engineering_workflow::web::SKILL,
-            self.rust_reliability.guidance().unwrap_or_default()
+            self.rust_reliability.guidance().unwrap_or_default(),
+            self.grounding.guidance(),
         ))
     }
 

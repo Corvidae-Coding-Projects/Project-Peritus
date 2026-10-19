@@ -379,7 +379,9 @@ impl WorkspaceDeveloperTools {
             "workspace_search" => self.grounding.record_search(),
             "workspace_read" if result.get("reference_root").is_none() => {
                 if let Some(path) = string(arguments, "path") {
-                    self.grounding.record_read(path);
+                    if let Some(digest) = result.get("source_sha256").and_then(Value::as_str) {
+                        self.grounding.record_read(path, digest);
+                    }
                     self.ownership.observe_file(self.root.join(path));
                 }
             }

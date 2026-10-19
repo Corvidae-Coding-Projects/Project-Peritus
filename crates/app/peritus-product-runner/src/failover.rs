@@ -38,7 +38,7 @@ impl RoleRecovery {
     /// Builds the correction that starts a fresh repository-grounded invocation.
     pub fn correction(reason: &str) -> String {
         if reason == "segment_boundary" {
-            return "The preceding bounded invocation segment ended before the role produced its terminal result. Start the next segment from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets needed to resume, preserve completed work and evidence, and continue to the required terminal result without repeating finished effects.".to_owned();
+            return "The preceding bounded invocation segment ended before the role produced its terminal result. Continue from the retained design, completed results and host-verified observations; refresh only changed inputs or the next target needed to resume, preserve completed work and evidence, and continue to the required terminal result without repeating finished effects.".to_owned();
         }
         let repair = if matches!(reason, "malformed_payload" | "malformed_stream") {
             " The provider output contract was not satisfied. Return one valid response using only the declared host tools and their exact argument schemas. If the adapter requires a structured envelope, put role-specific text or JSON inside its content field, put calls in tool_calls, and encode arguments_json exactly once; do not use native tools, Markdown fences, undeclared fields, or a second structured result. Do not replay prior side effects: inspect the existing results and recover any retained command handle first."
@@ -46,7 +46,7 @@ impl RoleRecovery {
             ""
         };
         format!(
-            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. At entry to this new host invocation, ground once from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result. Later provider steps in this same invocation must continue from completed work, not repeat this startup sequence.{repair}"
+            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. Reuse host-verified observations and retained context. If grounding is missing, inspect only the required current target; do not restart repository discovery, preserve any useful existing work, and continue to the required terminal result. Later provider steps in this same invocation must continue from completed work, not repeat this startup sequence.{repair}"
         )
     }
 }

@@ -27,6 +27,7 @@ pub(crate) mod developer_tools;
 mod diagnostic;
 mod discard_recovery;
 
+mod efficiency;
 mod engineering_workflow;
 mod error;
 

@@ -9,6 +9,23 @@ use serde_json::Value;
 
 use super::executor::WorkspaceDeveloperTools;
 
+/// Reapply the same current read policy before presenting an archived source page.
+pub(crate) fn may_reuse_read(
+    root: &Path,
+    path: &str,
+    protected: &[PathBuf],
+    view: &dyn crate::ConversationView,
+) -> bool {
+    if !view.effective_permissions().allows(crate::control::PermissionCapability::Read) {
+        return false;
+    }
+    let mut policy =
+        WorkspaceAccessPolicy::from_transcript(root, &view.reference_authority_context());
+    policy.protect(root, protected);
+    policy.set_hard_constraints(root, &view.protected_paths());
+    policy.authorize("workspace_read", &serde_json::json!({"path":path})).is_ok()
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct WorkspaceAccessPolicy {
     protected_paths: BTreeSet<PathBuf>,

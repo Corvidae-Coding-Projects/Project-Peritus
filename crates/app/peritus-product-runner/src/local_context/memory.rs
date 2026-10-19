@@ -30,6 +30,8 @@ pub(super) struct LocalMemory {
     pub(super) config: LocalContextConfig,
     pub(super) workspace: PathBuf,
     pub(super) trace_path: PathBuf,
+    pub(super) inspection_targets: std::collections::BTreeMap<String, String>,
+    pub(super) inspection_indexed_through: u64,
     pub(super) trace_cursor: Option<crate::trace::local_memory::TraceCursor>,
     pub(super) binding: WorkingBinding,
     pub(super) limits: WorkingLimits,
@@ -39,10 +41,12 @@ pub(super) struct LocalMemory {
     pub(super) profile: Option<ProviderProfile>,
     pub(super) tools: Vec<ToolDefinition>,
     pub(super) local_compactor_failures: u64,
+    pub(super) semantic_through_observation: u64,
     pub(super) retrieval_calls: u64,
     pub(super) model_revision: u64,
     pub(super) compactor_runtime: Option<crate::CommandRuntime>,
     pub(super) task_contract: String,
+    pub(super) conversation: Option<std::sync::Arc<dyn crate::ConversationView>>,
     pub(super) workspace_scope: environment::WorkspaceScope,
 }
 
@@ -98,6 +102,8 @@ impl LocalMemory {
             config,
             workspace: workspace.to_path_buf(),
             trace_path: trace_path.to_path_buf(),
+            inspection_targets: std::collections::BTreeMap::new(),
+            inspection_indexed_through: 0,
             trace_cursor: None,
             binding,
             limits,
@@ -107,10 +113,12 @@ impl LocalMemory {
             profile: None,
             tools: Vec::new(),
             local_compactor_failures: 0,
+            semantic_through_observation: 0,
             retrieval_calls: 0,
             model_revision: 0,
             compactor_runtime: None,
             task_contract: String::new(),
+            conversation: None,
             workspace_scope,
         };
         memory.recover()?;

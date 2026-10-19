@@ -82,3 +82,7 @@ Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
 
 - [retained-state-growth/](retained-state-growth/AGENTS.md): real retained-state, protocol, scope, trace and native memory growth replays.
+
+Grounding efficiency: [grounding-efficiency.rs](grounding-efficiency.rs) is an ordinary public API consumer; [build-grounding-efficiency.py](build-grounding-efficiency.py) builds it outside workspace membership; [grounding-efficiency.py](grounding-efficiency.py) drives disposable fixtures with independent hash and context oracles. [summarize-grounding-efficiency.py](summarize-grounding-efficiency.py) summarizes actual efficiency sidecars without double-counting cumulative snapshots.
+
+[grounding-concurrent-edit.py](grounding-concurrent-edit.py) operates the real authenticated provider/ProductRunner while independently injecting a file change after an actual source receipt; it checks stale-edit rejection, final CLI behavior, and preservation.

@@ -75,6 +75,17 @@ impl ProductRunInput {
             .with_protected_paths(self.workspace_kind.protected_paths())
             .with_protection_view(std::sync::Arc::clone(&self.conversation))
             .with_in_place_scope(self.in_place_scope())
+            .with_observation_receipts(self.trace_path.clone(), self.run_id, self.workspace_id)
+    }
+
+    /// Creates read-only workspace tools with this run's current authority and verified facts.
+    /// This is the same scoped inspection path used by the designer and independent reviewer.
+    #[must_use]
+    pub fn read_only_workspace_tools(&self) -> WorkspaceDeveloperTools {
+        self.configure_tools(
+            WorkspaceDeveloperTools::read_only(self.workspace_root.clone())
+                .with_task_contract(&self.conversation.reference_authority_context()),
+        )
     }
 
     /// Returns the production developer catalog for this delivery and attachment scope.

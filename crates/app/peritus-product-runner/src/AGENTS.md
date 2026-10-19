@@ -23,6 +23,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [design.rs](design.rs) | Mandatory repository-grounded design document produced before implementation. |
 | [diagnostic.rs](diagnostic.rs) | Best-effort diagnostics for recoverable local command-state failures. |
 | [discard_recovery.rs](discard_recovery.rs) | Read-only classification of one explicitly authorized discard transaction. |
+| [efficiency.rs](efficiency.rs) | Content-free run measurements for source reuse, repeated reads, provider input/cache usage, prompt size, and first delivery action. |
 | [engineering_workflow.rs](engineering_workflow.rs) | Embedded production-engineering workflow and role skills. |
 | [error.rs](error.rs) | Stable redaction-safe product runner failures. |
 | [execution.rs](execution.rs) | E0 production writer-gates-review-fixer composition. |

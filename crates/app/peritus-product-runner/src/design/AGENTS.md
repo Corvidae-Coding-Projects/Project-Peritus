@@ -2,12 +2,13 @@
 
 ## Responsibility
 
-Implementation pieces for `design.rs`: Mandatory repository-grounded design document produced before implementation.
+Implementation pieces for `design.rs`: Task-proportional implementation designs and host-validated accepted-design reuse.
 
 ## Files in this folder
 
 | File | Role |
 | --- | --- |
+| [reuse.rs](reuse.rs) | Exact request/design receipts and fresh ready-design handoff; task or draft changes invalidate reuse. |
 | [artifact.rs](artifact.rs) | Deterministic detailed designs for explicit generated-artifact workspaces. |
 
 Owning module: [design.rs](../design.rs). Inspect that parent before changing the local pieces.

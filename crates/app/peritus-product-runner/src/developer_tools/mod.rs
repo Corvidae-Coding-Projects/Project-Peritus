@@ -41,6 +41,8 @@ mod inspection_search;
 mod ownership;
 
 mod path;
+pub(crate) use access_policy::may_reuse_read;
+pub(crate) use grounding::file_digest as source_digest;
 pub(crate) use path::ignored;
 mod preview;
 

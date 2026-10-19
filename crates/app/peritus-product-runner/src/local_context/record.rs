@@ -57,7 +57,7 @@ impl ArchivedObservation {
         self.call.as_ref().is_some_and(|call| {
             matches!(
                 call.name.as_str(),
-                "context_read" | "context_update" | "developer_evidence_read" | "skill_read"
+                "context_read" | "context_update" | "developer_evidence_read"
             )
         })
     }
