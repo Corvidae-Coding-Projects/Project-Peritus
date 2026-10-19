@@ -25,7 +25,7 @@ impl AppModel {
             }
             KeyCode::Char('i') => self.focus_image_field(ImageField::Path),
             KeyCode::Char('t') => self.focus_image_field(ImageField::Caption),
-            KeyCode::Char('p') => return Some(self.begin_image_read()),
+            KeyCode::Char('p') => return Some(self.request_image_preview()),
             KeyCode::Char('c') => return Some(self.confirm_image()),
             KeyCode::Char('x') => {
                 self.chat.workbench.images.discard_preview();

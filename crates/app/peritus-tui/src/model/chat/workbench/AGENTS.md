@@ -22,7 +22,7 @@ Implementation pieces for `workbench.rs`: Durable control intent tracking; recon
 | [memory.rs](memory.rs) | Explicit project-guidance inspection and revision-fenced lifecycle commands. |
 | [navigation.rs](navigation.rs) | Workbench refresh routing, panel keys, feature gates, and pending-request detection. |
 | [permissions.rs](permissions.rs) | Effective permission inspection and explicit revision-fenced restriction changes. |
-| [queue.rs](queue.rs) | Queue commands select exact inspected revisions, preserving the composer until acceptance. |
+| [queue.rs](queue.rs) | Queue commands and keyboard selection, separate multiline edit drafts, confirmed withdrawal, hold/release, and exact-ID moves. All mutations retain revision fences and durable receipts. |
 | [receipts.rs](receipts.rs) | Exact receipt correlation and explicit retry after an uncertain transport outcome. |
 | [refresh.rs](refresh.rs) | Refresh metadata-bound commands before creating an operation from a stale panel. |
 | [sessions.rs](sessions.rs) | Conversation-library navigation and metadata commands. |

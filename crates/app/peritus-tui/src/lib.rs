@@ -9,14 +9,18 @@ mod entry;
 mod error;
 pub(crate) mod file_import;
 mod help;
+mod highlight;
 pub(crate) mod image_import;
 mod input;
+mod local;
 mod model;
 mod modes;
+mod preferences;
 mod render;
 mod runtime;
 mod sanitize;
 mod terminal;
+mod transcript_archive;
 
 mod title;
 

@@ -18,6 +18,11 @@ pub enum ClipboardDestination {
 )]
 #[derive(Debug)]
 pub enum Action {
+    TranscriptArchiveFailed(String),
+    LocalResult {
+        generation: u64,
+        result: Result<crate::local::LocalReply, String>,
+    },
     ModuleResult {
         generation: u64,
         result: Result<serde_json::Value, String>,
@@ -61,6 +66,10 @@ pub enum Action {
 )]
 #[derive(Clone, Debug)]
 pub enum Effect {
+    LocalOperation {
+        generation: u64,
+        operation: crate::local::LocalOperation,
+    },
     ModuleOperation {
         generation: u64,
         operation: peritus_modules::ModuleOperation,

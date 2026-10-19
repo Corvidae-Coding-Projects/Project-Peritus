@@ -25,7 +25,15 @@ impl AppModel {
         };
         let title =
             peritus_app_protocol::ConversationTitle::new(title.to_owned()).expect("static title");
+        // A local attachment picker is continuing an unsent draft, unlike a slash command.
+        // Carry only its presentation intent through the new conversation's reset.
+        let preserve_file =
+            command.starts_with("/files ") && self.chat.workbench.files.preserve_composer;
+        let preserve_image =
+            command.starts_with("/attach ") && self.chat.workbench.images.preserve_composer;
         self.select_workbench_conversation(Some(query));
+        self.chat.workbench.files.preserve_composer = preserve_file;
+        self.chat.workbench.images.preserve_composer = preserve_image;
         let effects = self.submit_bound_workbench(
             peritus_app_protocol::WorkbenchIntent::CreateConversation(title),
             query,

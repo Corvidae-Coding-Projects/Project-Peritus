@@ -4,6 +4,48 @@ use super::{Arguments, Command, CommandSpec};
 
 pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
+        command: Command::Find,
+        name: "/find",
+        description: "Search locally saved public transcript text",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
+        command: Command::Pick,
+        name: "/pick",
+        description: "Find a project file by fuzzy name and preview attachment",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
+        command: Command::Copy,
+        name: "/copy",
+        description: "Copy the last response, or choose a code block with /copy code",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
+        command: Command::Editor,
+        name: "/editor",
+        description: "Open the unsent draft in VISUAL or EDITOR",
+        arguments: Arguments::None,
+    },
+    CommandSpec {
+        command: Command::PasteImage,
+        name: "/paste-image",
+        description: "Read a clipboard image and open attachment confirmation",
+        arguments: Arguments::None,
+    },
+    CommandSpec {
+        command: Command::Keys,
+        name: "/keys",
+        description: "View or change local convenience shortcuts",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
+        command: Command::Theme,
+        name: "/theme",
+        description: "Preview and save dark, light, or plain syntax colors",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
         command: Command::Modules,
         name: "/modules",
         description: "Discover, install and select native Rust plugins and workflows",

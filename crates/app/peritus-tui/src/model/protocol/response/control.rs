@@ -210,6 +210,9 @@ fn project_live(
             if let Some(effects) = model.complete_file_snapshot_refresh() {
                 return effects;
             }
+            if let Some(effects) = model.complete_image_snapshot_refresh() {
+                return effects;
+            }
             if model.chat.workbench.files.open && model.chat.workbench.files.list {
                 return model.complete_file_list_refresh();
             }

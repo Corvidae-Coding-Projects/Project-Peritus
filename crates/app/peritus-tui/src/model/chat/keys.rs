@@ -30,6 +30,13 @@ impl AppModel {
         if self.chat.history.search.is_some() {
             return self.paste_history_search(text);
         }
+        if self.chat.convenience.panel.is_some() {
+            self.paste_convenience(text);
+            return self.refresh_convenience_search();
+        }
+        if self.paste_queue_editor(text) {
+            return Vec::new();
+        }
         if self.paste_file_field(text) || self.paste_image_field(text) {
             return Vec::new();
         }
@@ -82,6 +89,9 @@ impl AppModel {
         if let Some(effects) = self.chat_control_key(key) {
             return effects;
         }
+        if self.chat.convenience.panel.is_some() {
+            return self.convenience_key(key);
+        }
         if self.chat.module_menu.is_some() {
             return self.module_menu_key(key);
         }
@@ -103,8 +113,8 @@ impl AppModel {
         if key.code == KeyCode::F(3) {
             return self.open_history_search();
         }
-        if key.code == KeyCode::F(4) {
-            return self.open_instruction_queue();
+        if let Some(effects) = self.convenience_shortcut(key) {
+            return effects;
         }
         if key.modifiers.contains(KeyModifiers::CONTROL)
             && matches!(key.code, KeyCode::Char('y' | 'Y'))
@@ -218,6 +228,9 @@ impl AppModel {
                     );
                 }
             }
+        }
+        if self.chat.buffer == "@" && key.code == KeyCode::Char('@') {
+            return self.open_file_picker();
         }
         Vec::new()
     }

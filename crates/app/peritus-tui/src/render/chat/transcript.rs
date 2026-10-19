@@ -161,7 +161,19 @@ fn tool_rows(
         rows.push(OutputRow { line: Line::from(""), hard_break: true });
         return rows;
     }
-    tool.extend(rendered.lines().map(|line| {
+    let source_path = text
+        .split("path=")
+        .nth(1)
+        .and_then(|rest| rest.split_whitespace().next())
+        .unwrap_or_default()
+        .trim_matches(['\'', '"']);
+    let highlighted = if changed || text.contains("workspace_read ") {
+        cached_source(model, activity.sequence(), &rendered, source_path, changed)
+    } else {
+        rendered.lines().map(|line| Line::raw(line.to_owned())).collect()
+    };
+    tool.extend(highlighted.into_iter().map(|mut styled| {
+        let line = styled.to_string();
         let color = if changed && line.starts_with('+') {
             GOOD
         } else if (changed && line.starts_with('-')) || line.starts_with("stderr:") {
@@ -171,11 +183,40 @@ fn tool_rows(
         } else {
             Color::Reset
         };
-        Line::styled(format!("  │ {line}"), Style::default().fg(color))
+        styled.spans.insert(0, Span::raw("  │ "));
+        if color != Color::Reset {
+            styled.style = styled.style.fg(color);
+        }
+        styled
     }));
     let mut rows = wrapped_rows(tool, width);
     rows.push(OutputRow { line: Line::from(""), hard_break: true });
     rows
+}
+
+fn cached_source(
+    model: &AppModel,
+    sequence: u64,
+    source: &str,
+    path: &str,
+    diff: bool,
+) -> Vec<Line<'static>> {
+    let key = format!("syntax:{path}:{diff}\0{source}");
+    let mut cache = model.chat.formatted_messages.borrow_mut();
+    if let Some(entry) = cache.get(&sequence).filter(|entry| entry.source == key) {
+        return entry.lines.clone();
+    }
+    let theme = model.chat.convenience.preferences.theme;
+    let lines = if diff {
+        crate::highlight::diff(source, theme)
+    } else {
+        crate::highlight::code(source, path, theme)
+    };
+    cache.insert(
+        sequence,
+        crate::model::chat::FormattedMessage { source: key, width: 0, lines: lines.clone() },
+    );
+    lines
 }
 
 fn tool_label(text: &str) -> String {

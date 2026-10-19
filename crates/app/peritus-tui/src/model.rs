@@ -375,6 +375,7 @@ impl AppModel {
                 peritus_app_protocol::ProductModelChoice::default(),
             );
         }
+        let initial_notice=(!chat.convenience.error.is_empty()).then(||Notice{level:NoticeLevel::Warning,text:format!("TUI preferences could not be loaded: {}. Defaults are active; /keys shows controls.",chat.convenience.error),ticks_remaining:40});
         Self {
             view: if product.is_some() { View::Conversation } else { View::Runs },
             chat,
@@ -389,7 +390,7 @@ impl AppModel {
             selected_prompt: 0,
             prompt_scroll: 0,
             terminal: None,
-            notice: None,
+            notice: initial_notice,
             editor: None,
             retained_editors: VecDeque::new(),
             quitting: false,
@@ -413,6 +414,11 @@ impl AppModel {
         let output_target = (self.chat.run_id, self.chat.workbench.selected);
         let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
         let mut effects = match action {
+            Action::LocalResult { generation, result } => self.local_result(generation, result),
+            Action::TranscriptArchiveFailed(error) => {
+                self.notice(NoticeLevel::Warning, error);
+                Vec::new()
+            }
             Action::ModuleResult { generation, result } => self.module_result(generation, result),
             Action::ClipboardWritten { operation, result } => {
                 self.clipboard_written(operation, result)

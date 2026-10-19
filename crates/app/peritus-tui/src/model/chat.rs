@@ -3,6 +3,7 @@
 mod binding;
 mod catalog;
 mod commands;
+pub(crate) mod convenience;
 mod doctor;
 mod history;
 mod keys;
@@ -25,6 +26,7 @@ pub use working::WorkingIndicator;
 
 #[derive(Debug)]
 pub struct ChatUi {
+    pub(crate) convenience: convenience::Convenience,
     pub(crate) history: history::ComposerHistory,
     pub(crate) kill_buffer: String,
     pub(crate) formatted_messages:
@@ -67,6 +69,7 @@ pub(crate) struct FormattedMessage {
 impl Default for ChatUi {
     fn default() -> Self {
         Self {
+            convenience: convenience::Convenience::default(),
             history: history::ComposerHistory::default(),
             kill_buffer: String::new(),
             formatted_messages: std::cell::RefCell::default(),
@@ -161,6 +164,7 @@ impl AppModel {
         }
         if let Some(path) = text.strip_prefix('@') {
             let path = path.to_owned();
+            self.chat.workbench.files.preserve_composer = false;
             return self.file_command(&path);
         }
         self.send_chat_message(self.chat.buffer.clone())

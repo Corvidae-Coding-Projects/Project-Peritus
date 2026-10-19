@@ -4,9 +4,11 @@ mod candidate;
 mod clipboard;
 mod connection;
 mod diagnostics;
+mod editor;
 mod files;
 mod images;
 mod interrupts;
+mod local;
 mod modules;
 mod product;
 mod state;
@@ -39,11 +41,33 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[derive(Default)]
 struct LocalReads {
+    local: local::LocalOperations,
+    archive: local::TranscriptWrites,
+    editor_active: bool,
+    transcript_search: Option<(u64, String, String)>,
     modules: modules::ModuleOperations,
     clipboard: clipboard::ClipboardWrites,
     files: files::FileReads,
     images: images::ImageReads,
     interrupts: Option<interrupts::Interrupts>,
+}
+
+impl LocalReads {
+    fn start_pending_search(&mut self) {
+        if self.archive.active() || self.editor_active {
+            return;
+        }
+        let Some((generation, scope, query)) = self.transcript_search.as_ref() else { return };
+        if self.local.start(
+            *generation,
+            crate::local::LocalOperation::SearchTranscript {
+                scope: scope.clone(),
+                query: query.clone(),
+            },
+        ) {
+            self.transcript_search = None;
+        }
+    }
 }
 
 /// Runtime configuration for one interactive client process.
@@ -158,6 +182,7 @@ pub async fn run_with_state(
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let result = loop {
+        reads.archive.observe(&model);
         terminal.draw(&mut model)?;
         let effects = match next_effects(
             &mut model,
@@ -175,6 +200,59 @@ pub async fn run_with_state(
         };
         match apply_effects(effects, &config, &mut model, &mut connection, &mut reads) {
             ControlFlow::Continue => {}
+            ControlFlow::EditDraft { generation, text } => {
+                input.stop()?;
+                // Input already queued for the composer belongs to the old terminal
+                // ownership interval, never to the editor or a restored draft.
+                while input_rx.try_recv().is_ok() {}
+                terminal.suspend()?;
+                reads.editor_active = true;
+                let mut editing = Box::pin(editor::execute(text));
+                let mut deferred = ControlFlow::Continue;
+                let outcome = loop {
+                    tokio::select! {
+                        result = &mut editing => break result,
+                        effects = background_effects(&mut model, &mut client_events_rx,
+                            &mut tick, &mut reads, &mut connection, &config) => {
+                            reads.archive.observe(&model);
+                            let flow = apply_effects(effects, &config, &mut model, &mut connection, &mut reads);
+                            if !matches!(flow, ControlFlow::Continue) {
+                                deferred = flow;
+                            }
+                        }
+                    }
+                };
+                reads.editor_active = false;
+                if let Some(interrupts) = reads.interrupts.as_mut() {
+                    interrupts::drain(interrupts);
+                }
+                // An editor may leave keystrokes in either queue. Flush before the new
+                // input worker starts so closing it can never submit a prompt by accident.
+                while input_rx.try_recv().is_ok() {}
+                terminal.resume()?;
+                drain_editor_input();
+                input = InputPump::start(input_tx.clone())?;
+                let effects = model.update(Action::LocalResult { generation, result: outcome });
+                let flow = apply_effects(effects, &config, &mut model, &mut connection, &mut reads);
+                let flow = if matches!(flow, ControlFlow::Continue) { deferred } else { flow };
+                match flow {
+                    ControlFlow::Quit => break Ok(ExitReason::UserQuit),
+                    ControlFlow::RecoverDaemon => break Ok(ExitReason::RecoverDaemon),
+                    ControlFlow::OpenConversation(query) => {
+                        break Ok(ExitReason::OpenConversation(query));
+                    }
+                    ControlFlow::OpenRun { run, workspace } => {
+                        break Ok(ExitReason::OpenRun { run, workspace });
+                    }
+                    ControlFlow::Continue => {}
+                    ControlFlow::RunCandidate { .. } | ControlFlow::EditDraft { .. } => {
+                        // Interactive foreground actions originate in user input, which
+                        // is suspended for the editor. Never start a second one implicitly.
+                        let _ = model.update(Action::LocalResult { generation,
+                            result: Err("Another foreground request arrived while editing; repeat it explicitly.".into()) });
+                    }
+                }
+            }
             ControlFlow::RunCandidate { workspace, instruction, candidate_digest } => {
                 input.stop()?;
                 terminal.suspend()?;
@@ -197,6 +275,9 @@ pub async fn run_with_state(
     };
 
     input.stop()?;
+    // Preserve the last public page before normal process exit. Archive work has one
+    // writer and one coalesced pending page, independent of daemon cleanup.
+    let _ = tokio::time::timeout(Duration::from_secs(2), reads.archive.finish()).await;
     let cleanup = model.cleanup_messages();
     let cleanup_result = connection.close(cleanup).await;
     if matches!(
@@ -230,6 +311,10 @@ fn client_action(
 
 enum ControlFlow {
     Continue,
+    EditDraft {
+        generation: u64,
+        text: String,
+    },
     RunCandidate {
         workspace: PathBuf,
         instruction: String,
@@ -253,6 +338,39 @@ fn apply_effects(
 ) -> ControlFlow {
     for effect in effects {
         match effect {
+            Effect::LocalOperation { generation, operation } => {
+                if reads.editor_active {
+                    let _ = model.update(Action::LocalResult { generation,
+                        result: Err("The external editor still owns the terminal; finish or close it first.".into()) });
+                } else if let crate::local::LocalOperation::SearchTranscript { scope, query } =
+                    operation
+                {
+                    // Persist all public activity observed before this query, then wait
+                    // beside normal input/transport for the archive writer to drain.
+                    reads.archive.observe(model);
+                    reads.local.cancel_search();
+                    reads.transcript_search = Some((generation, scope, query));
+                    reads.start_pending_search();
+                } else if let crate::local::LocalOperation::EditDraft { text } = operation {
+                    if reads.local.active() {
+                        let _ = model.update(Action::LocalResult { generation,
+                            result: Err("A local operation is still finishing; try the editor again shortly.".into()) });
+                    } else {
+                        return ControlFlow::EditDraft { generation, text };
+                    }
+                } else {
+                    reads.transcript_search = None;
+                    if !reads.local.start(generation, operation) {
+                        let _ = model.update(Action::LocalResult {
+                            generation,
+                            result: Err(
+                                "Another local operation is still finishing; try again shortly."
+                                    .into(),
+                            ),
+                        });
+                    }
+                }
+            }
             Effect::ModuleOperation { generation, operation } => {
                 if !reads.modules.start(generation, operation) {
                     let _ = model.update(Action::ModuleResult { generation, result: Err("A module operation is still finishing. Reopen the menu after it completes.".into()) });
@@ -318,6 +436,7 @@ async fn next_effects(
     config: &TuiConfig,
 ) -> Result<Vec<Effect>, TuiError> {
     loop {
+        reads.start_pending_search();
         let action = tokio::select! {
             () = interrupts::next(&mut reads.interrupts) => return Ok(vec![Effect::Quit]),
             input = input.recv() => match input {
@@ -334,6 +453,11 @@ async fn next_effects(
             },
             effects = connection.next(config, model), if connection.active() || connection.sending() => return Ok(effects),
             _ = tick.tick() => Action::Tick(std::time::Instant::now()),
+            local = reads.local.next(), if reads.local.active() => local,
+            archive = reads.archive.next(), if reads.archive.active() => match archive {
+                Some(action) => action,
+                None => continue,
+            },
             file = reads.files.next(), if reads.files.active() => file,
             modules = reads.modules.next(), if reads.modules.active() => modules,
             image = reads.images.next(), if reads.images.active() => image,
@@ -343,6 +467,66 @@ async fn next_effects(
             },
         };
         return Ok(model.update(action));
+    }
+}
+
+/// Like the foreground loop, without reading or drawing over the external editor.
+async fn background_effects(
+    model: &mut AppModel,
+    events: &mut mpsc::Receiver<ClientEvent>,
+    tick: &mut tokio::time::Interval,
+    reads: &mut LocalReads,
+    connection: &mut Connection,
+    config: &TuiConfig,
+) -> Vec<Effect> {
+    loop {
+        reads.start_pending_search();
+        let action = tokio::select! {
+            event = events.recv() => match event {
+                Some(event) => match client_action(event, model.protocol_context()) {
+                    Some(Action::Disconnected(error)) => return connection.disconnected("read/write", error, model),
+                    Some(action) => action,
+                    None => continue,
+                },
+                None => Action::Disconnected("all daemon client tasks stopped".into()),
+            },
+            effects = connection.next(config, model), if connection.active() || connection.sending() => return effects,
+            _ = tick.tick() => Action::Tick(std::time::Instant::now()),
+            local = reads.local.next(), if reads.local.active() => local,
+            archive = reads.archive.next(), if reads.archive.active() => match archive {
+                Some(action) => action,
+                None => continue,
+            },
+            file = reads.files.next(), if reads.files.active() => file,
+            modules = reads.modules.next(), if reads.modules.active() => modules,
+            image = reads.images.next(), if reads.images.active() => image,
+            clipboard = reads.clipboard.next(), if reads.clipboard.active() => match clipboard {
+                Some(action) => action,
+                None => continue,
+            },
+        };
+        return model.update(action);
+    }
+}
+
+fn drain_editor_input() {
+    #[cfg(unix)]
+    {
+        // Discard unread OS input after restoring raw mode. Crossterm's parsed
+        // event queue is separate and is drained below before the worker restarts.
+        let _ = nix::sys::termios::tcflush(std::io::stdin(), nix::sys::termios::FlushArg::TCIFLUSH);
+    }
+    // Bounded by both event count and elapsed time; no background clipboard polling.
+    let until = std::time::Instant::now() + Duration::from_millis(20);
+    for _ in 0..1024 {
+        if std::time::Instant::now() >= until
+            || !matches!(crossterm::event::poll(Duration::ZERO), Ok(true))
+        {
+            break;
+        }
+        if crossterm::event::read().is_err() {
+            break;
+        }
     }
 }
 
