@@ -8,6 +8,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [local-shutdown.py](local-shutdown.py) | Actual packaged CLI/daemon shutdown replay with endpoint discovery, repeated/concurrent stops, isolation, long paths, and failure handling. |
 | [codex-notifications.md](codex-notifications.md) | Captured Codex nonfatal-notification/model-rejection defect, independent expectations, and actual-provider replay commands. |
 | [codex-model-unavailable.jsonl](codex-model-unavailable.jsonl) | Actual credential-free Codex output that reproduced the hidden account/model rejection. |
 | [codex-notification-replay.rs](codex-notification-replay.rs) | Ordinary production-decoder replay and authenticated public Codex-provider/developer-loop consumer. |

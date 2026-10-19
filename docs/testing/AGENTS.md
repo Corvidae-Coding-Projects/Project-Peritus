@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [local-shutdown-2026-10-18.md](local-shutdown-2026-10-18.md) | Broken advertised shutdown command, concurrent-stop recovery, real CLI replay, and builder installation repair. |
+| [local-shutdown-evidence.json](local-shutdown-evidence.json) | Source/executable identities and real CLI scenario outcomes for local shutdown. |
 | [codex-notifications-real-2026-10-18.md](codex-notifications-real-2026-10-18.md) | Actual Codex advisory/model-access failure, decoder repair, live provider/TUI replays, and builder installation recovery. |
 | [codex-notifications-evidence.json](codex-notifications-evidence.json) | Exact source/binary identities, original/fixed decoding, live provider/TUI receipts, and retained-run reattachment. |
 | [automation-apparmor-real-2026-10-18.md](automation-apparmor-real-2026-10-18.md) | Actual Ubuntu release-installer failure, managed-browser namespace policy repair, and real sandbox replay evidence. |

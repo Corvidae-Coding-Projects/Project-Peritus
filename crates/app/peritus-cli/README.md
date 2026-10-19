@@ -32,7 +32,11 @@ cause, candidate digest, qualification evidence, changed paths, successful check
 instructions. Accepting or committing an unqualified candidate requires repeating the command with
 the exact digest printed by the client.
 
-`peritus --endpoint <address> shutdown --wait` retains the authenticated connection while G0 sends
+`peritus shutdown` discovers the current user's running daemon and waits for orderly shutdown and
+release of its state lock. It needs no endpoint, provider login, setup, or sibling executable, and
+reports success when the daemon is already stopped. It does not start a daemon or change settings.
+Automation can still select an explicit address with `--endpoint`; its existing `--wait` option
+retains the authenticated connection while G0 sends
 six bounded progress observations and one correlated clean or unclean completion. It no longer
 mistakes orderly endpoint withdrawal for an I/O failure.
 

@@ -13,9 +13,13 @@ pub(super) async fn launch_lock(
     timeout: Duration,
 ) -> Result<File, LauncherError> {
     let root = product.daemon_config().paths().state_root();
-    let path = root.join("launch.lock");
     fs::create_dir_all(root)
-        .map_err(|error| LauncherError::filesystem("prepare launch lock", &path, error))?;
+        .map_err(|error| LauncherError::filesystem("prepare launch lock", root, error))?;
+    lifecycle_lock(root, timeout).await
+}
+
+pub(super) async fn lifecycle_lock(root: &Path, timeout: Duration) -> Result<File, LauncherError> {
+    let path = root.join("launch.lock");
     let file = OpenOptions::new()
         .create(true)
         .read(true)
@@ -33,7 +37,7 @@ pub(super) async fn launch_lock(
             }
             Err(error) => {
                 return Err(LauncherError::DaemonSpawn(format!(
-                    "wait for another launcher: {error}"
+                    "wait for another launcher or shutdown: {error}"
                 )));
             }
         }
