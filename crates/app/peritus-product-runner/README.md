@@ -25,10 +25,11 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | [workflows/](workflows/AGENTS.md) | Compiled-in production engineering workflow guidance used by coding roles. |
 
 Daemon-owned production composition for interactive Peritus coding runs. Every run begins with a
-read-only, repository-grounded design pass that writes a durable detailed Markdown document and
-supplies it to all implementation turns. Source repositories use an architect model whose
-grounding is enforced by observed workspace listings and targeted reads, not accepted from model
-prose. Explicit `kind = "artifact"` workspaces use a proportional deterministic Rust design built
+read-only, repository-grounded design pass that writes a durable Markdown task plan and
+supplies it to all implementation turns. Source repositories use one startup grounding check per
+run/workspace. A successful permitted workspace listing or file read completes that check;
+the designer then has no further tools and returns its plan. Remaining source questions belong to
+the next implementation slice, rather than an open-ended discovery phase. Explicit `kind = "artifact"` workspaces use a proportional deterministic Rust design built
 from the exact durable conversation and a bounded sorted filesystem inventory, so a small
 time-bound artifact task does not spend most of its deadline generating repetitive planning prose.
 Both paths cover acceptance, findings, architecture, data flow, file plan, implementation slices,
@@ -122,9 +123,12 @@ media capability is checked against the current task. Safety, refusal, cancellat
 transport, and normalized ambiguous acceptance never trigger a switch. Each accepted transition is
 written to the append-only trace before its progress counter advances.
 
-Workspace grounding belongs to a host invocation, not to each provider request. Recovery prompts
-apply their startup sequence once; later steps receive current executor prerequisite state alongside
-the original host policy. Roles detect unchanged inspection cycles using a bounded 16-entry history
+Startup grounding belongs to the run/workspace, not to each role or provider invocation. Its
+completed marker survives retries, compaction, restarts, directory changes, and stale file receipts.
+Those changes invalidate specific observations, not the completed startup phase. Editing an existing
+file still requires its current read/hash; permissions and independent acceptance remain separate.
+After the check, the designer receives an empty tool catalog with tool choice `none` and hands off.
+Writer, fixer, and reviewer retain targeted tools for the actual task. Roles detect unchanged inspection cycles using a bounded 16-entry history
 of tool-name, argument, and result digests. Repeated identical visible observations produce advisory
 feedback while preserving grounding and continuation. New inspection evidence or a mutation
 boundary resets the warning. Command polling is not inspection repetition.

@@ -76,3 +76,5 @@ Keep this waypoint aligned when local files or child responsibilities change. De
 [Deep Research delivery evidence](deep-research-delivery-evidence.json) records focused native replay and separates the v1.2 delivery failure from pending report quality.
 
 [Grounding efficiency](grounding-efficiency-2026-10-18.md) documents task-scoped observation/design reuse, prompt delivery, compaction, metrics, and actual replay evidence.
+
+[Single grounding check](single-grounding-2026-10-18.md) records the enforced designer handoff, durable readiness, actual provider replay, and target-specific source safety.

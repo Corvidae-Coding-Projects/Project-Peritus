@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Product provider/tool loop: request construction, current host invocation policy, context compaction, retries, interaction admission, observations, and completion.
+Product provider/tool loop: request construction, current host invocation policy, context compaction, retries, interaction admission, observations, and completion. Executors can close tools at a phase handoff; terminal requests keep completed tool history valid without advertising new calls.
 
 ## Files in this folder
 

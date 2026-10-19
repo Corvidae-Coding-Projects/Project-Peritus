@@ -31,6 +31,7 @@ pub(super) fn build_model_request(
     selected_effort: Option<ReasoningEffort>,
 ) -> Result<ModelRequest, DeveloperLoopError> {
     let parallel_tools = if kind == ModelTurnKind::Developer
+        && !request.tools.is_empty()
         && required_tool.is_none()
         && negotiated.includes(Capability::ParallelToolCalls)
     {
@@ -66,6 +67,7 @@ pub(super) fn build_model_request(
                     "executor required undeclared developer tool: {required}"
                 ))
             })?,
+        None if request.tools.is_empty() => ToolChoice::None,
         None => ToolChoice::Auto,
     };
     let (request_id, tools, tool_choice, output_tokens) = match kind {

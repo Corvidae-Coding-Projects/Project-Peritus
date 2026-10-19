@@ -118,6 +118,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     fn required_tool_name(&self) -> Option<&str> {
         self.base.required_tool_name()
     }
+    fn tool_calls_allowed(&self) -> bool {
+        self.base.tool_calls_allowed()
+    }
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
@@ -145,10 +148,12 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
                 _ => None,
             })
             .sum();
+        let definitions = if self.base.tool_calls_allowed() { &self.definitions[..] } else { &[] };
         event(
             &self.trace,
             json!({"event":"model-view", "invocation":self.prefix,
-            "estimated_input_tokens":estimate_developer_request_tokens(messages,&self.definitions),
+            "estimated_input_tokens":estimate_developer_request_tokens(messages,definitions),
+            "advertised_tool_count":definitions.len(),
             "system_policy_bytes":policy_bytes, "message_count":messages.len()}),
         );
         Ok(())

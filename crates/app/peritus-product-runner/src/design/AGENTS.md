@@ -2,7 +2,9 @@
 
 ## Responsibility
 
-Implementation pieces for `design.rs`: Task-proportional implementation designs and host-validated accepted-design reuse.
+Implementation pieces for `design.rs`: Task plans handed off after one startup grounding check,
+and host-validated accepted-design reuse. Source questions left open by the plan belong to the
+next implementation slice; the designer cannot start another discovery loop.
 
 ## Files in this folder
 

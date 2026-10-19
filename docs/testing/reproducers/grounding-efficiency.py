@@ -71,12 +71,13 @@ with tempfile.TemporaryDirectory(prefix='peritus-grounding-real-') as directory:
   stamp=file.stat();file.write_text(second);os.utime(file,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
   data=invoke(f'generated-{i}-refresh',spec)
   assert second.strip() in data['outputs'][0]['output']['content']
- # A root observed empty must lose that credit as soon as a nonempty listing is observed.
+ # Startup completion survives new directory entries. This is not a cached claim that the
+ # root remains empty; source-specific edit and acceptance evidence are separate.
  empty=base/'empty';empty.mkdir();empty_spec=dict(spec,root=str(empty),trace=str(state/'empty.trace'),command_state=str(base/'empty-process'),operations=[['workspace_list',{}]])
  data=invoke('empty-root',empty_spec);assert data['after']['required_tool'] is None
  (empty/'new.txt').write_text('NEW-CURRENT-INPUT\n')
- data=invoke('nonempty-root-refresh',empty_spec);assert data['after']['required_tool']=='workspace_read'
- empty_spec['operations']=[];data=invoke('nonempty-root-fresh-process',empty_spec);assert data['before']['required_tool']=='workspace_read'
+ data=invoke('nonempty-root-refresh',empty_spec);assert data['after']['required_tool'] is None
+ empty_spec['operations']=[];data=invoke('nonempty-root-fresh-process',empty_spec);assert data['before']['required_tool'] is None
  # Force only the public context library's declared view target, without an inference call.
  # The hosted provider object remains real; this case makes no claims about its actual window.
  (root/'focus.txt').write_text('CRITICAL-TASK-FACT-7391\n')

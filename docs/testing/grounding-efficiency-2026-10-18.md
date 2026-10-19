@@ -1,5 +1,11 @@
 # Focused grounding and context reuse
 
+Follow-up: [one startup grounding check](single-grounding-2026-10-18.md) supersedes the startup
+phase behavior described here. Listing a nonempty root now completes that phase without requiring
+an additional file read. Later directory changes invalidate observations of emptiness, not startup
+completion. Target-specific hash and permission checks remain separate. The results below record
+the earlier campaign rather than the final one-check handoff.
+
 The human coding path now reuses host-verified source observations and exact accepted task designs. New roles and recovered context do not mandate another repository inventory. This changes discovery and prompt delivery, while preserving tool authority, independent review, and the developer loop.
 
 ## Behavior and ownership

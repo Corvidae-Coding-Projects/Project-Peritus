@@ -75,6 +75,7 @@ pub async fn create(
     let mut invocation = 0_u32;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
+    let mut tools = input.read_only_workspace_tools().for_design();
     loop {
         check_cancelled(input)?;
         crate::failover::bypass_open_circuit(input, "designer", cycle, accounting, &mut providers)?;
@@ -93,7 +94,6 @@ pub async fn create(
         stable_context.push_str(&crate::guided_design::implementation_context(input)?);
         let (prompt, attachments) =
             media.into_parts(user_prompt(&stable_context, correction.as_deref()));
-        let mut tools = input.read_only_workspace_tools();
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
@@ -181,9 +181,9 @@ fn grounded_markdown(
 }
 
 fn system_prompt(remaining: Option<std::time::Duration>) -> String {
-    let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer. For a scoped change in an existing application, inspect only its owning modules, immediate callers, persistence boundary, and applicable local instructions. Stop discovery when you can name an actionable first slice and its contracts; do not conduct a whole-repository review unless the user requested one. Batch independent focused reads. Reuse unchanged observations within this invocation, and avoid rereading the same ranges or broad directory inventories. Mark remaining targeted questions in the design so implementation can resolve them while making progress.";
+    let proportionality = "Scale the design to the actual change. This phase has one startup grounding check, reused if already complete. After that check return the task plan; the host closes further tools for this phase. Do not attempt a discovery loop or demand complete source knowledge before handing off. Use the request and retained observations, distinguish known contracts from proposed paths, and put specific source questions in the first implementation slice. The writer reads those exact targets while implementing. Preserve all requested outcomes without repeating requirements or inventing source facts.";
     let instructions = format!(
-        "You are the design architect in a serious coding harness. Use existing host-verified observations or inspect only the relevant repository contracts before designing. Return only a proportional Markdown task design, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Cover the objective, exact acceptance criteria, affected paths/contracts, next implementation slices, and real behavioral checks. Use additional architecture, data-flow and risk sections only when the change needs those decisions. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
+        "You are the design architect in a serious coding harness. Use existing host-verified observations or inspect only the relevant repository contracts before designing. Return only a proportional Markdown task plan, not JSON and not a code fence. A title is optional; the host supplies a missing heading without another request. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Use observed paths and contracts when available; label proposed paths and unresolved source questions honestly. Do not require repository-wide inspection before returning a plan. For a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Cover the objective, exact acceptance criteria, affected paths/contracts, next implementation slices, and real behavioral checks. Use additional architecture, data-flow and risk sections only when the change needs those decisions. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
     );
     if let Some(remaining) = remaining {
@@ -221,7 +221,7 @@ fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
         format!("\n\nHarness correction from the previous rejected design:\n{value}")
     });
     format!(
-        "Conversation and requested outcome:\n{transcript}\n\nInspect the managed workspace and write the complete implementation design that the writer will follow.{correction}"
+        "Conversation and requested outcome:\n{transcript}\n\nUse the single grounding check and retained evidence to write the task plan now. Hand unresolved source questions to the writer's next implementation slice; do not restart repository discovery.{correction}"
     )
 }
 
@@ -240,17 +240,24 @@ fn normalize(value: &str) -> Result<String, ProductRunnerError> {
         .or_else(|| trimmed.strip_prefix("```md"))
         .and_then(|inner| inner.strip_suffix("```"))
         .map_or(trimmed, str::trim);
+    let has_title = markdown.starts_with("# ");
     if markdown.len() > MAXIMUM_DESIGN_BYTES
-        || !markdown.starts_with("# ")
-        || !markdown.lines().skip(1).any(|line| !line.trim().is_empty())
+        || markdown.is_empty()
+        || (has_title && !markdown.lines().skip(1).any(|line| !line.trim().is_empty()))
     {
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::InvalidModelOutput,
             "validate implementation design",
-            "designer must return a Markdown task design with a title and meaningful body",
+            "designer must return a nonempty Markdown task plan with a meaningful body",
         ));
     }
-    Ok(format!("{markdown}\n"))
+    // A missing presentation heading must not spend another provider request or reopen
+    // discovery. The host owns the document envelope; preserve the actual plan verbatim.
+    Ok(if has_title {
+        format!("{markdown}\n")
+    } else {
+        format!("# Implementation task plan\n\n{markdown}\n")
+    })
 }
 
 fn publish(path: &Path, bytes: &[u8]) -> Result<(), ProductRunnerError> {

@@ -28,7 +28,7 @@ impl DeveloperLoop {
     )]
     pub(super) async fn run_inner(
         provider: &dyn ModelProvider,
-        request: DeveloperLoopRequest,
+        mut request: DeveloperLoopRequest,
         tools: &mut dyn DeveloperToolExecutor,
         trace: &mut dyn DeveloperTrace,
         mut context: ContextSession<'_>,
@@ -41,6 +41,7 @@ impl DeveloperLoop {
             user_message(request.prompt.clone(), request.attachments.clone(), protocol_limits)?,
         ];
         context.open(&request, &messages)?;
+        let tool_definitions = std::mem::take(&mut request.tools);
         let mut tool_calls = 0_u32;
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
@@ -52,10 +53,14 @@ impl DeveloperLoop {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
             }
+            request.tools =
+                if tools.tool_calls_allowed() { tool_definitions.clone() } else { Vec::new() };
             let selected = live.map(|(port, role)| port.provider(role)).transpose()?.flatten();
             let provider = selected.as_deref().unwrap_or(provider);
             let profile = provider.profile();
             let input = interaction.map(DeveloperInteraction::input).transpose()?;
+            // A terminal-only phase still carries completed tool exchanges in its history.
+            // Keep their capability negotiated even though no new tools are advertised.
             let mut required_capabilities = vec![Capability::ToolCalls];
             if !request.attachments.is_empty()
                 || input.as_ref().is_some_and(|input| !input.images.is_empty())

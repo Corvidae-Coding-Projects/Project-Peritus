@@ -77,6 +77,15 @@ pub trait DeveloperToolExecutor: Send {
         None
     }
 
+    /// Whether this phase can request any further tools.
+    ///
+    /// A host-owned handoff may close inspection after its prerequisite succeeds. The loop
+    /// then advertises no tools and requests a terminal response, including after a retry.
+    /// This is a phase boundary, not a token, time, or execution budget.
+    fn tool_calls_allowed(&self) -> bool {
+        true
+    }
+
     /// Returns and clears a deterministic correction after an unproductive tool sequence.
     ///
     /// The developer loop appends this as a user message after the current tool batch. Executors

@@ -156,7 +156,7 @@ fn call(index: impl std::fmt::Display, name: &str, args: &Value) -> Result<Compl
 fn probe(spec: &Value) -> Result<Value> {
     let input = input(spec)?;
     let mut tools = input.read_only_workspace_tools();
-    let before = json!({"required_tool":tools.required_tool_name(),"completion_blocker":tools.completion_blocker(),"guidance":tools.system_guidance()});
+    let before = json!({"required_tool":tools.required_tool_name(),"completion_blocker":tools.completion_blocker(),"tool_calls_allowed":tools.tool_calls_allowed(),"guidance":tools.system_guidance()});
     let mut outputs = Vec::new();
     for (i, item) in spec["operations"].as_array().unwrap_or(&Vec::new()).iter().enumerate() {
         let call = call(
@@ -168,7 +168,7 @@ fn probe(spec: &Value) -> Result<Value> {
         outputs.push(json!({"tool":call.name().as_str(),"is_error":observation.is_error,"output":serde_json::from_slice::<Value>(observation.output.canonical_bytes())?}));
     }
     Ok(
-        json!({"before":before,"outputs":outputs,"after":{"required_tool":tools.required_tool_name(),"completion_blocker":tools.completion_blocker(),"guidance":tools.system_guidance()}}),
+        json!({"before":before,"outputs":outputs,"after":{"required_tool":tools.required_tool_name(),"completion_blocker":tools.completion_blocker(),"tool_calls_allowed":tools.tool_calls_allowed(),"guidance":tools.system_guidance()}}),
     )
 }
 

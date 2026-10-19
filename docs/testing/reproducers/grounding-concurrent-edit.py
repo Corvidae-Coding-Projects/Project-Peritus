@@ -5,6 +5,7 @@ from pathlib import Path
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--consumer',type=Path,required=True)
 parser.add_argument('--output',type=Path,required=True)
+parser.add_argument('--ordinary-task',action='store_true',help='Exercise the designer handoff too, without a saved design')
 args=parser.parse_args();b=args.output.resolve();b.mkdir(parents=True,exist_ok=False)
 consumer=args.consumer.resolve();root=b/'workspace';root.mkdir()
 (root/'hello.py').write_text('import sys\n\nname = sys.argv[1] if len(sys.argv) > 1 else "world"\nprint(f"Hello, {name}!")\n')
@@ -12,6 +13,8 @@ consumer=args.consumer.resolve();root=b/'workspace';root.mkdir()
 spec={'root':str(root),'trace':str(b/'private/run.trace'),'model':'gpt-6.1-sol','run':81,'workspace':82,'seed_ready':True,'ready':True,
  'task':'Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.',
  'design':'# Add shouting\n\nAdd --shout to hello.py; --shout Ada must print HELLO, ADA!; no args prints Hello, world!. Preserve keep.txt and any concurrent external source comments. Use only actual CLI runs to check output. No unit tests, lint, formatting or formal checks. Keep the edit and review focused on this tiny request.'}
+if args.ordinary_task:
+ spec.update(seed_ready=False,ready=False,task='Add --shout to hello.py. With no args print Hello, world!; with Ada print Hello, Ada!; with --shout Ada print HELLO, ADA!; with --shout print HELLO, WORLD!. Preserve keep.txt and any concurrent external source comments. Use only actual CLI executions to check all four cases; no unit tests, lint, formatting or formal verification. Make the necessary implementation edit, exercise it, and finish. Do not inspect unrelated files.')
 (b/'spec.json').write_text(json.dumps(spec))
 with (b/'run.stdout').open('w') as stdout,(b/'run.stderr').open('w') as stderr:
  process=subprocess.Popen([str(consumer),'live',str(b/'spec.json')],stdout=stdout,stderr=stderr)
@@ -28,9 +31,9 @@ with (b/'run.stdout').open('w') as stdout,(b/'run.stderr').open('w') as stderr:
  assert injected,'Must observe read receipt and inject before first edit'
  result=json.loads((b/'run.stdout').read_text());assert result['settlement']=='Accepted',result
  assert '# EXTERNAL-CONCURRENT-CHANGE-89123' in source.read_text()
- for args,expected in [([], 'Hello, world!\n'),(['--shout','Ada'],'HELLO, ADA!\n')]:
-  command=subprocess.run(['python3',str(source),*args],capture_output=True,text=True)
-  assert command.returncode==0 and command.stdout==expected and not command.stderr,(args,command)
+ for cli_args,expected in [([], 'Hello, world!\n'),(['Ada'],'Hello, Ada!\n'),(['--shout','Ada'],'HELLO, ADA!\n'),(['--shout'],'HELLO, WORLD!\n')]:
+  command=subprocess.run(['python3',str(source),*cli_args],capture_output=True,text=True)
+  assert command.returncode==0 and command.stdout==expected and not command.stderr,(cli_args,command)
  assert (b/'workspace/keep.txt').read_text()=='KEEP-EXTERNAL-CASE\n'
  trace=(b/'private/run.trace').read_bytes()
  rejected = b'the target changed since its verified observation' in trace

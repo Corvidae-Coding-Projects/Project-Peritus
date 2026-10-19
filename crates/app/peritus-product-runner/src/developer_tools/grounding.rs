@@ -20,6 +20,8 @@ struct Receipts {
     root_listing: Option<String>,
     #[serde(default)]
     root_empty: bool,
+    #[serde(default)]
+    grounding_complete: bool,
 }
 
 #[derive(Default)]
@@ -62,10 +64,15 @@ impl GroundingEvidence {
         let root = std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
         if let Ok(bytes) = std::fs::read(&path)
             && let Ok(saved) = serde_json::from_slice::<Receipts>(&bytes)
-            && saved.schema == 1
+            && matches!(saved.schema, 1 | 2)
             && saved.scope == scope
             && saved.root == root
         {
+            // Readiness is a completed run/workspace phase. A changed file or directory
+            // invalidates that observation, not the fact that startup grounding happened.
+            // Schema 1 receipts predate the explicit marker but still record the check.
+            self.grounded = saved.grounding_complete
+                || (saved.schema == 1 && (saved.root_listing.is_some() || !saved.files.is_empty()));
             if saved.root_listing.is_some() && saved.root_listing == listing_digest(&self.root).ok()
             {
                 self.list_calls = 1;
@@ -97,11 +104,13 @@ impl GroundingEvidence {
     }
 
     pub(super) fn guidance(&self) -> String {
-        if self.reused == 0 && self.stale.is_empty() {
-            return String::new();
-        }
+        let status = if self.grounded {
+            "The single startup grounding check is COMPLETE for this run and workspace. Proceed with the current task; do not restart discovery or perform another grounding pass."
+        } else {
+            "Perform ONE workspace grounding check, then proceed with the current task. A successful workspace listing or file read completes startup grounding; it does not require reading the repository."
+        };
         format!(
-            "The host revalidated {} previously inspected file observation(s) against full content hashes and current access policy. A role change, retry, or compaction does not require another startup inventory. Use the accepted design and retained evidence. Read only a specific body/range you still need. Changed or missing prior observations: {:?}. Refresh any changed input needed for this task before relying on its old requirements or editing it; resolve that local change without restarting whole-repository discovery. These observations grant no permissions or acceptance credit.",
+            "{status} The host revalidated {} previously inspected file observation(s) against full content hashes and current access policy. A role change, retry, or compaction does not reset grounding. Use the accepted design and retained evidence. Subsequent reads must answer a specific implementation or review question, not extend startup discovery. Changed or missing prior observations: {:?}. Refresh a changed input only when this task needs it. These observations grant no permissions or acceptance credit.",
             self.reused, self.stale
         )
     }
@@ -109,12 +118,13 @@ impl GroundingEvidence {
     fn persist(&self) {
         let Some(path) = &self.receipt_path else { return };
         let saved = Receipts {
-            schema: 1,
+            schema: 2,
             scope: self.scope,
             root: std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone()),
             files: self.digests.clone(),
             root_listing: self.root_listing.clone(),
             root_empty: self.root_observed_empty,
+            grounding_complete: self.grounded,
         };
         let result =
             serde_json::to_vec(&saved).map_err(|error| error.to_string()).and_then(|bytes| {
@@ -128,25 +138,23 @@ impl GroundingEvidence {
     }
     pub fn record_list(&mut self, path: &str, entries: usize) {
         self.list_calls = self.list_calls.saturating_add(1);
+        self.grounded = true;
         if path.is_empty() || path == "." {
             self.root_observed_empty = entries == 0;
-            self.grounded = self.root_observed_empty || !self.read_paths.is_empty();
             self.root_listing = listing_digest(&self.root).ok();
-            self.persist();
         }
+        self.persist();
     }
 
     pub fn required_tool_name(&self) -> Option<&'static str> {
         if self.grounded {
             return None;
         }
-        if self.list_calls == 0 && self.read_paths.is_empty() {
-            Some("workspace_list")
-        } else if self.read_paths.is_empty() && !self.root_observed_empty {
-            Some("workspace_read")
-        } else {
-            None
-        }
+        Some("workspace_list")
+    }
+
+    pub(super) const fn is_complete(&self) -> bool {
+        self.grounded
     }
 
     pub const fn record_search(&mut self) {
@@ -207,13 +215,7 @@ impl GroundingEvidence {
         if self.grounded {
             return Ok(());
         }
-        if self.list_calls == 0 && self.read_paths.is_empty() {
-            return Err("repository grounding requires a successful workspace listing");
-        }
-        if self.read_paths.is_empty() && !self.root_observed_empty {
-            return Err("repository grounding requires reading an observed repository file");
-        }
-        Ok(())
+        Err("perform the single workspace grounding check before proceeding")
     }
 
     pub fn markdown(&self) -> String {
