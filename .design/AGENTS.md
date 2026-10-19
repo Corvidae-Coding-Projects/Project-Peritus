@@ -8,6 +8,8 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [staged-project-execution.md](staged-project-execution.md) | Core issue tracker, design decomposition, maturity-scoped agent loops, separate contexts, and host-owned automatic task closure. |
+| [staged-project-execution.pipeline.json](staged-project-execution.pipeline.json) | Design content identity and unstarted delivery-pipeline metadata for the staged project proposal. |
 | [module-market.md](module-market.md) | Market/research ownership, delivery boundaries and real-interface acceptance. |
 | [module-foundation.md](module-foundation.md) | Bundled/installable workflow registry, owned execution, private state and real-interface acceptance. |
 | [deep-research.md](deep-research.md) | Proposed durable Research mode: plan/Start, source-backed reports, recovery and versioned Design handoff. |
