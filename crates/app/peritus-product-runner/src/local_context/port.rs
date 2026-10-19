@@ -200,6 +200,7 @@ impl LocalContextHandle {
                 .map_err(|error| crate::turn::developer_error(&error))?
         };
         memory.compactor_runtime = Some(input.command_runtime.clone());
+        memory.conversation = Some(Arc::clone(&input.conversation));
         Ok(Some(Self {
             inner: Arc::new(Mutex::new(memory)),
             conversation: Arc::clone(&input.conversation),

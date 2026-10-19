@@ -8,6 +8,12 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [local-shutdown.py](local-shutdown.py) | Actual packaged CLI/daemon shutdown replay with endpoint discovery, repeated/concurrent stops, isolation, long paths, and failure handling. |
+| [codex-notifications.md](codex-notifications.md) | Captured Codex nonfatal-notification/model-rejection defect, independent expectations, and actual-provider replay commands. |
+| [codex-model-unavailable.jsonl](codex-model-unavailable.jsonl) | Actual credential-free Codex output that reproduced the hidden account/model rejection. |
+| [codex-notification-replay.rs](codex-notification-replay.rs) | Ordinary production-decoder replay and authenticated public Codex-provider/developer-loop consumer. |
+| [build-codex-notification-consumer.py](build-codex-notification-consumer.py) | Builds current or original decoder consumer outside workspace membership without a test target. |
+| [codex-notification-sequences.py](codex-notification-sequences.py) | Varied captured-wire placements, duplicate notices, terminal failures, malformed items, and native-tool rejection through the actual decoder. |
 | [automation-apparmor.py](automation-apparmor.py) | Disposable Ubuntu public setup consumer and real Chromium sandbox/HTTP/JavaScript replay, including literal paths, opt-out and policy recovery. |
 | [module-market-menu.py](module-market-menu.py) | Fresh TUI client invoking plugin-supplied numeric plan/report actions on a retained checked job. |
 | [module-market-browser.mjs](module-market-browser.mjs) | Actual GUI market selection and plugin-supplied plan/Start/report control replay. |
@@ -76,3 +82,9 @@ Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
 
 - [retained-state-growth/](retained-state-growth/AGENTS.md): real retained-state, protocol, scope, trace and native memory growth replays.
+
+Grounding efficiency: [grounding-efficiency.rs](grounding-efficiency.rs) is an ordinary public API consumer; [build-grounding-efficiency.py](build-grounding-efficiency.py) builds it outside workspace membership; [grounding-efficiency.py](grounding-efficiency.py) drives disposable fixtures with independent hash and context oracles. [summarize-grounding-efficiency.py](summarize-grounding-efficiency.py) summarizes actual efficiency sidecars without double-counting cumulative snapshots.
+
+[grounding-concurrent-edit.py](grounding-concurrent-edit.py) operates the real authenticated provider/ProductRunner while independently injecting a file change after an actual source receipt; it checks stale-edit rejection, final CLI behavior, and preservation.
+
+[Single grounding replay](single-grounding.py) drives fresh-process startup checks, changed-file and scope cases, and an authenticated designer handoff on a disposable Peritus copy.

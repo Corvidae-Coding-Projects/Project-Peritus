@@ -1,0 +1,432 @@
+{
+  "date": "2026-10-18",
+  "base_commit": "94c28296858eceee6bf176b309d81670f65140b1",
+  "source_sha256": {
+    "crates/app/peritus-cli/src/args/types.rs": "995ca12cbb90d0a49cb741c389926ee159920012e59ac459fd72aec6502f4f98",
+    "crates/app/peritus-cli/src/operation.rs": "7db723227dcac88e0c3702d8d08f013b7a62df09596e9fa99aa7d7c6d7254a31",
+    "crates/app/peritus-cli/src/runner.rs": "3ccb21ee66e4f6ca49d39c7aac476425b831efab0f2b5f6f2531f53075f26905",
+    "crates/app/peritus-launcher/src/daemon.rs": "555c624054e1122426078431df48491cccdf7a27ca4167f03539334f01946e29",
+    "crates/app/peritus-launcher/src/daemon/catalog.rs": "ad39b0ef6c9bceec9c7f5fc3548ffe39332529e2875c7f0e04a759f7eed99e90",
+    "crates/app/peritus-launcher/src/daemon/local.rs": "50e0e4fe14c5031382bbff3be5c26ca7d0d1ff9753e037e139c53694bc94d506"
+  },
+  "executables": {
+    "target/release/peritus": "62bbfe21fa4ec1f5e8ee3c74afeff208981cdf50aaf62c75cd4bd5a2f25a7b06",
+    "target/release/peritusd": "0935eedbca7f8ab5c9c78c031f6aefdf17bb70671dd57d59f70f9038eda69d0f",
+    "target/shutdown-real/before/peritus": "e2609eddd71346abf29a04d779a68ae23aa6ae68ed55012e1280479972a2b155"
+  },
+  "build": "cargo build --locked --release --jobs 2 -p peritus-cli --bin peritus",
+  "replay": "python3 docs/testing/reproducers/local-shutdown.py --binary target/release/peritus --baseline target/shutdown-real/before/peritus --output target/shutdown-real/final-with-symlinks",
+  "platform": "Linux x86_64; actual CLI, PTY, daemon, local IPC, filesystem and OS locks; offline disposable workspaces",
+  "unit_or_mock_suites": false,
+  "scenario_count": 29,
+  "disposable_daemon_count": 8,
+  "all_scenarios_met_expectations": true,
+  "initial_failures": [
+    {
+      "case": "original-reported-failure",
+      "command": [
+        "/home/doll/Project-Peritus/target/shutdown-real/before/peritus",
+        "shutdown"
+      ],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "peritus: usage: parse arguments: --endpoint <path-or-pipe> is required for daemon commands"
+    },
+    {
+      "case": "concurrent-stop-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 10,
+      "stdout": "",
+      "stderr": "{\"error\":{\"category\":\"connection\",\"message\":\"read daemon frame: early eof\"},\"ok\":false}"
+    }
+  ],
+  "scenarios": [
+    {
+      "case": "original-reported-failure",
+      "command": [
+        "/home/doll/Project-Peritus/target/shutdown-real/before/peritus",
+        "shutdown"
+      ],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "peritus: usage: parse arguments: --endpoint <path-or-pipe> is required for daemon commands",
+      "seconds": 0.0020199809805490077
+    },
+    {
+      "case": "never-installed",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "daemon is already stopped",
+      "stderr": "",
+      "seconds": 0.0018059530411846936
+    },
+    {
+      "case": "held-lock-not-stopped",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--timeout-seconds",
+        "1",
+        "shutdown"
+      ],
+      "exit": 10,
+      "stdout": "",
+      "stderr": "peritus: connection: wait for daemon exit: could not start packaged daemon: daemon shutdown has not completed; diagnostics: /tmp/peritus-shutdown-oqika4pf/held-lock/state/peritus/logs/peritusd.log",
+      "seconds": 1.02526335202856
+    },
+    {
+      "case": "reject-arbitrary-endpoint",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 70,
+      "stdout": "",
+      "stderr": "peritus: internal: find local daemon: cannot determine Peritus application directories: invalid live daemon endpoint descriptor: /tmp/peritus-shutdown-oqika4pf/held-lock/state/peritus/daemon/daemon.instance",
+      "seconds": 0.002001387008931488
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-shutdown-oqika4pf/plain/state/peritus/daemon/peritus-e2d1763730e9005d9055424616f153ce.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=c26d4998b005e9ef231ffae50bddea20",
+      "stderr": "",
+      "seconds": 0.0037680950481444597
+    },
+    {
+      "case": "implicit-stop-0",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0",
+      "stderr": "",
+      "seconds": 0.05495755298761651
+    },
+    {
+      "case": "repeat-stop-0",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": "",
+      "seconds": 0.0018286309787072241
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-3fa3fdfcd73f81369bf67dbcac4ed335/daemon.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=a6a558c15c35d44020d6da5e25a871ca",
+      "stderr": "",
+      "seconds": 0.003826799977105111
+    },
+    {
+      "case": "implicit-stop-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown",
+        "--wait"
+      ],
+      "exit": 0,
+      "stdout": "{\"completed_steps\":1,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":2,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":3,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":4,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":5,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":6,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"clean\",\"remaining\":[]}}",
+      "stderr": "",
+      "seconds": 0.0552962520159781
+    },
+    {
+      "case": "repeat-stop-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": "",
+      "seconds": 0.0021895160316489637
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-52620c981144ae613256fbf06d9b974a/daemon.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=63e4431bebc7006915a1e265828d5b4e",
+      "stderr": "",
+      "seconds": 0.003761999949347228
+    },
+    {
+      "case": "implicit-stop-2",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown",
+        "--wait"
+      ],
+      "exit": 0,
+      "stdout": "{\"completed_steps\":1,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":2,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":3,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":4,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":5,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"completed_steps\":6,\"kind\":\"shutdown-progress\",\"ok\":true,\"remaining\":[],\"total_steps\":6}\n{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"clean\",\"remaining\":[]}}",
+      "stderr": "",
+      "seconds": 0.05528256797697395
+    },
+    {
+      "case": "repeat-stop-2",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": "",
+      "seconds": 0.001867255021352321
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-shutdown-oqika4pf/first/state/peritus/daemon/peritus-1d0763e771188477c686e362b443cc61.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=4fc05ccd4b90226401444cd0554d7bf1",
+      "stderr": "",
+      "seconds": 0.0036324409884400666
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-shutdown-oqika4pf/second/state/peritus/daemon/peritus-f5cc26c24190777de43b2ee4dad05341.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=e170d3891464a1bc57dd61c0dbafc119",
+      "stderr": "",
+      "seconds": 0.0032835379824973643
+    },
+    {
+      "case": "invalid-session-does-not-stop",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--timeout-seconds",
+        "1",
+        "--session",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "shutdown"
+      ],
+      "exit": 10,
+      "stdout": "",
+      "stderr": "peritus: connection: read daemon frame: early eof",
+      "seconds": 1.026792849006597
+    },
+    {
+      "case": "explicit-overrides-local-root",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-shutdown-oqika4pf/second/state/peritus/daemon/peritus-f5cc26c24190777de43b2ee4dad05341.sock",
+        "shutdown",
+        "--wait"
+      ],
+      "exit": 0,
+      "stdout": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0",
+      "stderr": "",
+      "seconds": 0.004793845990207046
+    },
+    {
+      "case": "unaffected-neighbor",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-shutdown-oqika4pf/first/state/peritus/daemon/peritus-1d0763e771188477c686e362b443cc61.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=b18bae752189eb3505edbbee59b2994e",
+      "stderr": "",
+      "seconds": 0.0031908340170048177
+    },
+    {
+      "case": "concurrent-stop-0",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0",
+      "stderr": ""
+    },
+    {
+      "case": "concurrent-stop-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": ""
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-e823ef8c53d8f804b6e9cde59abc4449/daemon.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=2099c226c4bf93a6c0ffdf524e0ba658",
+      "stderr": "",
+      "seconds": 0.003413096012081951
+    },
+    {
+      "case": "concurrent-repeat-0-0",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0",
+      "stderr": ""
+    },
+    {
+      "case": "concurrent-repeat-0-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": ""
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-8ac89e9ebecb704d51c2397bdf33ae3a/daemon.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=efa40dcae9699093b88540859b44050a",
+      "stderr": "",
+      "seconds": 0.0038147579762153327
+    },
+    {
+      "case": "concurrent-repeat-1-0",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0",
+      "stderr": ""
+    },
+    {
+      "case": "concurrent-repeat-1-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": ""
+    },
+    {
+      "case": "ready",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--endpoint",
+        "/tmp/peritus-c9393db08cd9a2c1b9c5dab2cba75719/daemon.sock",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "daemon ready-read-write; session=488596290b2ec6fe8168b0a8725fcbe8",
+      "stderr": "",
+      "seconds": 0.0033688049879856408
+    },
+    {
+      "case": "concurrent-repeat-2-0",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "shutdown progress 1/6; remaining=0\nshutdown progress 2/6; remaining=0\nshutdown progress 3/6; remaining=0\nshutdown progress 4/6; remaining=0\nshutdown progress 5/6; remaining=0\nshutdown progress 6/6; remaining=0\nshutdown clean; remaining=0",
+      "stderr": ""
+    },
+    {
+      "case": "concurrent-repeat-2-1",
+      "command": [
+        "/home/doll/Project-Peritus/target/release/peritus",
+        "--json",
+        "shutdown"
+      ],
+      "exit": 0,
+      "stdout": "{\"kind\":\"shutdown-complete\",\"ok\":true,\"result\":{\"disposition\":\"already-stopped\",\"remaining\":[]}}",
+      "stderr": ""
+    }
+  ],
+  "deployment": {
+    "user": "builder",
+    "cli_sha256": "62bbfe21fa4ec1f5e8ee3c74afeff208981cdf50aaf62c75cd4bd5a2f25a7b06",
+    "shutdown": {
+      "first_plain_shutdown_clean": true,
+      "old_pid_exited": true,
+      "original_run_unchanged": true,
+      "repeat": {
+        "exit": 0,
+        "stdout": "daemon is already stopped",
+        "stderr": ""
+      }
+    },
+    "reattachment": {
+      "resume": [
+        {
+          "attempt": 1,
+          "ready": true,
+          "seconds": 4.678716593014542,
+          "exit": 0,
+          "daemon_pid": 1388371
+        },
+        {
+          "attempt": 2,
+          "ready": true,
+          "seconds": 0.31716684700222686,
+          "exit": 0,
+          "daemon_pid": 1388371
+        }
+      ],
+      "stopped_run_retained": true,
+      "phase": 8
+    }
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "schema": 1,
+  "base_commit": "1b5f60064278a124ce4dcce22f2dd0851da8a937",
+  "source_sha256": {
+    "crates/app/peritus-product-runner/src/design.rs": "343500a8057164ae65c79ecfa58b79d4fd13046aa964973ca043cef45b5cf56f",
+    "crates/app/peritus-product-runner/src/developer_tools/executor.rs": "90326351c4020fdbf47e420b6cf76c152a0993cbcfb2c3bdd74ef626b7cfac02",
+    "crates/app/peritus-product-runner/src/developer_tools/executor/construction.rs": "fc96227e538c88d47e787a2a0480f4c68cb050dcb9c6d6d3256e746d41da8790",
+    "crates/app/peritus-product-runner/src/developer_tools/grounding.rs": "5190ba4a96b7363de97255984893604dfa934cb9d3d69afdb23ef19171d82897",
+    "crates/app/peritus-product-runner/src/efficiency.rs": "9a390c0922d5f0f2056c071c300b8391603ae4d72c668a397c20ccd3b5b027a3",
+    "crates/app/peritus-product-runner/src/engineering_workflow.rs": "a61d47565cc52917f51e7cff0af758323055037a317325311a80bd2fc8363e04",
+    "crates/app/peritus-product-runner/src/local_context/tools.rs": "e253d2522a6b2b6da577696321117e9243235f0a73a934dfc4570b010af175a0",
+    "crates/app/peritus-product-runner/src/turn/writer_prompt.rs": "8122c88d9aaef8b5785bb447483619ebfee76e85907b55c6fdca549d9acf7ce0",
+    "crates/orchestration/peritus-agent/src/developer/execution.rs": "55cf33b055b647761c79acbef8b37078564bfbc40aff47c44415f39b4c082dc9",
+    "crates/orchestration/peritus-agent/src/developer/model_request.rs": "0494e0cb0fd80af465277afce8e874636c9a3c3509c9951ea18f6a74ad42c9f2",
+    "crates/orchestration/peritus-agent/src/developer/tool_executor.rs": "eee3554626276038aec955b19c23d6b2cfa00719347aae89dd5eb72269870b5f",
+    "docs/testing/reproducers/grounding-efficiency.rs": "a78b37af2d3d7720071301370dfbad91ca63f0aaf94bf8c39c382e6e6ac52236"
+  },
+  "consumer": {
+    "path": "/home/doll/Project-Peritus/target/debug/peritus-real-grounding-efficiency",
+    "sha256": "ec5cfb474c67c152583274e742321addbc940ed08480666c1e5881907cf9e956"
+  },
+  "baseline": {
+    "sha256": "ef775fc35765963c523edaa9b8c5f0e48c7619aa41d9489fc934297ea0233d5f",
+    "result_after_one_check": {
+      "completion_blocker": "repository grounding requires reading an observed repository file",
+      "required_tool": "workspace_read"
+    }
+  },
+  "single_grounding": {
+    "passed": [
+      "0-one-check-no-file-read",
+      "0-restart-directory-and-task-change",
+      "0-stale-target-refresh-and-deletion",
+      "0-separate-workspace-does-not-reuse",
+      "1-one-check-no-file-read",
+      "1-restart-directory-and-task-change",
+      "1-stale-target-refresh-and-deletion",
+      "1-separate-workspace-does-not-reuse",
+      "2-one-check-no-file-read",
+      "2-restart-directory-and-task-change",
+      "2-stale-target-refresh-and-deletion",
+      "2-separate-workspace-does-not-reuse",
+      "3-one-check-no-file-read",
+      "3-restart-directory-and-task-change",
+      "3-stale-target-refresh-and-deletion",
+      "3-separate-workspace-does-not-reuse",
+      "original-two-step-blocker-and-real-legacy-receipt-upgrade",
+      "live-peritus-design-one-check-then-tools-closed",
+      "live-peritus-restart-with-steering-zero-new-grounding"
+    ],
+    "binary": "/home/doll/Project-Peritus/target/debug/peritus-real-grounding-efficiency",
+    "sha256": "ec5cfb474c67c152583274e742321addbc940ed08480666c1e5881907cf9e956"
+  },
+  "retained_host_context": [
+    {
+      "case": "initial-observations",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "fresh-process-reuse",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "same-size-same-mtime-refresh",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "current-policy-revocation",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "restore-policy",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "different-workspace-scope",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "different-root",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "deleted-source",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "recreated-source",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "symlink-replacement",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "cached-read-does-not-grant-write",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "on-demand-guidance",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-0-read",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-0-refresh",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-1-read",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-1-refresh",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-2-read",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-2-refresh",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-3-read",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "generated-3-refresh",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "empty-root",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "nonempty-root-refresh",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "nonempty-root-fresh-process",
+      "mode": "probe",
+      "exit": 0
+    },
+    {
+      "case": "context-pressure-and-duplicate-reads",
+      "mode": "context",
+      "exit": 0
+    },
+    {
+      "case": "recovered-context-protected-source",
+      "mode": "context",
+      "exit": 0
+    },
+    {
+      "case": "recovered-context-read-revoked",
+      "mode": "context",
+      "exit": 0
+    }
+  ],
+  "peritus_copy": {
+    "source": "git archive HEAD",
+    "tool_calls": [
+      "workspace_list"
+    ],
+    "first_requests": 2,
+    "first_tool_calls": 1,
+    "steered_restart_requests": 1,
+    "steered_restart_tool_calls": 0,
+    "observed_input_tokens": 42310
+  },
+  "complete_cli": {
+    "result": {
+      "passed": true,
+      "injected": true,
+      "stale_edit_rejected": true,
+      "injected_source_refreshed": true,
+      "external_comment_preserved": true,
+      "settlement": "Accepted"
+    },
+    "calls": [
+      "workspace_list",
+      "workspace_read",
+      "workspace_patch",
+      "workspace_read",
+      "workspace_patch",
+      "run_command",
+      "run_command",
+      "run_command",
+      "run_command",
+      "workspace_read"
+    ],
+    "provider_requests": 10,
+    "input_tokens": 194184,
+    "cached_input_tokens": 8064,
+    "first_edit_ms": 49989,
+    "auxiliary_compaction_calls": 0
+  },
+  "initial_failures": {
+    "closed_tools_capability": "target/single-grounding/replay-01/live-design.stdout",
+    "heading_only_retry": "target/single-grounding/replay-02/live-private/run.trace"
+  },
+  "scope": "Public ProductRunner, real local filesystem/processes, official authenticated Codex runtime; no unit/formal/repository suites; no daemon or TUI session resumed.",
+  "native_release_binaries": {
+    "peritus": {
+      "sha256": "62bbfe21fa4ec1f5e8ee3c74afeff208981cdf50aaf62c75cd4bd5a2f25a7b06",
+      "bytes": 24927848
+    },
+    "peritusd": {
+      "sha256": "8f967d63ec5d2da60c839c77847b4d5fc030bbcc51e81e0ecf9e9c2ab74db124",
+      "bytes": 41736456
+    },
+    "peritus-tui": {
+      "sha256": "addbc614886624ede7a891e072b1b36996a2eaaadf0d32b7f371b7a2751152f7",
+      "bytes": 9074328
+    }
+  },
+  "native_entrypoints": {
+    "peritus --version": 0,
+    "peritusd --version": 0,
+    "peritus-tui --help": 0
+  }
+}

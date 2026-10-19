@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.1.2
+
+### Changed
+
+- Perform one startup grounding check per run/workspace, then hand the task plan to implementation. Retries, role changes, compaction, and restarts reuse that completed check instead of restarting repository discovery.
+- Reuse hash-verified source observations and accepted task designs. Preserve relevant source and skill evidence through context reconstruction while refreshing changed targets and applying current permissions.
+- Deliver concise role instructions and load detailed skills as needed. Record read reuse, provider input/cache usage, context savings, and time to the first actual change.
+
+### Fixed
+
+- Make plain `peritus shutdown` stop the current user's local daemon without requiring an unknown endpoint, including graceful concurrent shutdown recovery.
+- Preserve actionable Codex errors when advisory items precede the terminal failure, including unavailable-model diagnostics and configured-provider recovery.
+- Hand the exact accepted guided-design draft to independent review and avoid a new provider request solely to add a Markdown heading to a useful task plan.
+
+### Real testing
+
+- Reuse the completed real-interface campaigns for shutdown, Codex failures, source/context reuse, and the single-check designer handoff. The final grounding campaign passed 19 readiness/handoff scenarios and 26 retained host/context scenarios.
+- A real provider reached implementation on a disposable Peritus checkout after one grounding call, then after zero new calls on a steered restart. A complete CLI change passed actual command-output checks while preserving a concurrent source edit.
+- Native release packages additionally exercise actual Unix installation and offline terminal startup. No unit tests, formal verification, or repository verification suites are part of this release workflow.
+
+### Compatibility
+
+- Existing source-observation receipts remain readable. Startup readiness is separate from source truth: current reads, hashes, permissions, and behavioral acceptance still govern changes.
+- The Deep Research plugin remains separately distributed through the module market; this patch does not change its native plugin compatibility contract.
+
 ## 0.1.1
 
 ### Added

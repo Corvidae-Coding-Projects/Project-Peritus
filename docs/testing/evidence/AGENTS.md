@@ -17,3 +17,7 @@ Retained real-interface observations grouped by boundaries, framing, varied inpu
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
+
+[grounding-efficiency-2026-10-18.json](grounding-efficiency-2026-10-18.json) records bounded tool/context replay counts, provider/timing snapshots, prompt comparison, concurrent-edit results, and native build scope.
+
+[Single grounding evidence](single-grounding-2026-10-18.json) records source/consumer identities, generated phase checks, the one-call Peritus handoff, and the real concurrent-edit CLI result.

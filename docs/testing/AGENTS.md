@@ -8,6 +8,10 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [local-shutdown-2026-10-18.md](local-shutdown-2026-10-18.md) | Broken advertised shutdown command, concurrent-stop recovery, real CLI replay, and builder installation repair. |
+| [local-shutdown-evidence.json](local-shutdown-evidence.json) | Source/executable identities and real CLI scenario outcomes for local shutdown. |
+| [codex-notifications-real-2026-10-18.md](codex-notifications-real-2026-10-18.md) | Actual Codex advisory/model-access failure, decoder repair, live provider/TUI replays, and builder installation recovery. |
+| [codex-notifications-evidence.json](codex-notifications-evidence.json) | Exact source/binary identities, original/fixed decoding, live provider/TUI receipts, and retained-run reattachment. |
 | [automation-apparmor-real-2026-10-18.md](automation-apparmor-real-2026-10-18.md) | Actual Ubuntu release-installer failure, managed-browser namespace policy repair, and real sandbox replay evidence. |
 | [automation-apparmor-evidence.json](automation-apparmor-evidence.json) | Native Ubuntu consumer hashes, exact AppArmor policies, unchanged restrictions and owned renderer observations. |
 | [research-quality-rubric-v2.md](research-quality-rubric-v2.md) | Prospective, frozen semantic acceptance criteria for independent research; distinct from source matching and UI operation. |
@@ -70,3 +74,7 @@ Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md)
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
 
 [Deep Research delivery evidence](deep-research-delivery-evidence.json) records focused native replay and separates the v1.2 delivery failure from pending report quality.
+
+[Grounding efficiency](grounding-efficiency-2026-10-18.md) documents task-scoped observation/design reuse, prompt delivery, compaction, metrics, and actual replay evidence.
+
+[Single grounding check](single-grounding-2026-10-18.md) records the enforced designer handoff, durable readiness, actual provider replay, and target-specific source safety.

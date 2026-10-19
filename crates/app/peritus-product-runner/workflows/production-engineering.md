@@ -3,8 +3,9 @@
 Follow this workflow for every coding run, scaled to the requested change without dropping any
 requested behavior.
 
-1. Inspect the repository, its manifests, local conventions, existing tests, and public interfaces
-   before proposing or applying changes.
+1. Complete one startup grounding check per run/workspace, then get to work. Reuse that completed
+   check through role changes, retries, and compaction. Read a specific target or contract when the
+   next implementation or review decision needs it; do not inventory the whole repository first.
    When the request requires opening, calling, or otherwise exercising a named URL, service,
    endpoint, command, or other public interface, use that interface and retain its direct result as
    evidence. Reading its backing source, configuration, cache, or database may support the work but

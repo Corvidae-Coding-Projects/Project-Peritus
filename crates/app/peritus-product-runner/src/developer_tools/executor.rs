@@ -54,6 +54,7 @@ pub struct WorkspaceDeveloperTools {
     pub(super) access_policy: WorkspaceAccessPolicy,
     pub(super) references: ExplicitReferences,
     grounding: GroundingEvidence,
+    design_grounding_only: bool,
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
     in_place_scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
@@ -76,6 +77,39 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    /// The designer hands off after the run's one grounding check. Source-specific questions
+    /// belong to implementation; independent review keeps its ordinary read-only tools.
+    pub(crate) fn for_design(mut self) -> Self {
+        self.design_grounding_only = true;
+        self
+    }
+
+    /// Attaches reusable source observations for one host-owned run/workspace scope.
+    /// The trace must be outside the model-writable workspace. Observations grant no
+    /// permissions; current access checks and full content-hash validation still apply.
+    #[must_use]
+    pub fn with_observation_receipts(
+        mut self,
+        trace: PathBuf,
+        run: peritus_types::RunId,
+        workspace: peritus_types::WorkspaceId,
+    ) -> Self {
+        if self.permission_denial("workspace_read").is_some() {
+            return self;
+        }
+        let mut scope = [0; 32];
+        scope[..16].copy_from_slice(run.as_bytes());
+        scope[16..].copy_from_slice(workspace.as_bytes());
+        let policy = &self.access_policy;
+        self.grounding.restore(trace.with_extension("observations.json"), scope, |relative| {
+            policy.authorize("workspace_read", &serde_json::json!({"path": relative})).is_ok()
+        });
+        crate::efficiency::event(
+            &trace,
+            serde_json::json!({"event":"grounding-reuse", "files_revalidated":self.grounding.reused_count(),"file_hash_validation_bytes":self.grounding.validation_bytes(),"semantics":"hash checks perform local IO; reuse reduces model-visible rediscovery, not all file reads"}),
+        );
+        self
+    }
     pub(crate) fn with_computer_runtime(mut self, runtime: crate::CommandRuntime) -> Self {
         if self.command_runtime.is_none() {
             self.command_runtime = Some(runtime);
@@ -322,9 +356,15 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             self.rust_reliability.task(&view.reference_authority_context());
         }
         Some(format!(
-            "{}\n{}",
+            "{}\n{}\n{}\n{}",
             crate::engineering_workflow::web::SKILL,
-            self.rust_reliability.guidance().unwrap_or_default()
+            self.rust_reliability.guidance().unwrap_or_default(),
+            self.grounding.guidance(),
+            if self.design_grounding_only {
+                "DESIGN HANDOFF: Perform only the single grounding check if pending. Once complete, tools are closed for this design phase. Return the task plan from the request and available observations now. Do not invent source contracts; put specific unresolved source questions in the first implementation slice so the writer can read its actual target and get to work. No repeat discovery after retries, steering, or role changes."
+            } else {
+                ""
+            },
         ))
     }
 
@@ -355,6 +395,10 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         self.grounding.required_tool_name()
     }
 
+    fn tool_calls_allowed(&self) -> bool {
+        !self.design_grounding_only || !self.grounding.is_complete()
+    }
+
     fn execute(
         &mut self,
         call: &CompletedToolCall,
@@ -365,6 +409,14 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         // receipts, checkpoints, or any filesystem/process effect.
         if let Some(detail) = self.permission_denial(call.name().as_str()) {
             return observation(&object(vec![("error", Value::String(detail))]), true);
+        }
+        if !self.tool_calls_allowed() {
+            return observation(
+                &object(vec![("error", Value::String(
+                    "The single grounding check is complete. Return the design now; the implementer resolves specific target questions while working.".to_owned(),
+                ))]),
+                true,
+            );
         }
         self.refresh_hard_constraints();
         if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {

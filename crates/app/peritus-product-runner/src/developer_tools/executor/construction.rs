@@ -14,10 +14,11 @@ impl WorkspaceDeveloperTools {
     pub fn read_only(root: PathBuf) -> Self {
         let ownership = WorkspaceOwnership::direct();
         Self {
+            grounding: GroundingEvidence::new(root.clone()),
+            design_grounding_only: false,
             root,
             access_policy: WorkspaceAccessPolicy::default(),
             references: ExplicitReferences::default(),
-            grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
             in_place_scope: None,
@@ -49,10 +50,11 @@ impl WorkspaceDeveloperTools {
         command_runtime: crate::CommandRuntime,
     ) -> Self {
         Self {
+            grounding: GroundingEvidence::new(root.clone()),
+            design_grounding_only: false,
             root,
             access_policy: WorkspaceAccessPolicy::default(),
             references: ExplicitReferences::default(),
-            grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
             in_place_scope: None,

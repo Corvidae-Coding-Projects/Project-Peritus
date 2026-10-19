@@ -20,7 +20,7 @@ Host-owned model tools: schemas, argument admission, workspace grounding, permis
 | [evidence.rs](evidence.rs) | Bounded developer-command observations carried into independent review. |
 | [executor.rs](executor.rs) | Concrete bounded filesystem and structured-command developer tools. |
 | [folder_patch_request.rs](folder_patch_request.rs) | Effect-free target identity for a separately authenticated registered-folder patch. |
-| [grounding.rs](grounding.rs) | Deterministic evidence that a model inspected the managed repository. |
+| [grounding.rs](grounding.rs) | One startup check per run/workspace, its durable completion marker, and independently hash-validated target observations. |
 | [inspection.rs](inspection.rs) | Bounded read-only workspace inspection operations. |
 | [inspection_cancellation.rs](inspection_cancellation.rs) | Run-owned cancellation checks used while streaming filesystem inspection. |
 | [inspection_cursor.rs](inspection_cursor.rs) | Scope-bound continuation cursors for bounded filesystem listings and searches. |

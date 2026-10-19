@@ -84,6 +84,54 @@ pub async fn shutdown(
     await_shutdown(&mut client, shutdown, timeout, output).await
 }
 
+pub async fn shutdown_local(
+    session: Option<SessionId>,
+    timeout: Duration,
+    output: &Output,
+) -> Result<(), CliError> {
+    let layout = peritus_launcher::AppLayout::discover()
+        .map_err(|error| CliError::runtime("find local daemon", error.to_string()))?;
+    let _lifecycle = layout
+        .lock_daemon_lifecycle(timeout)
+        .await
+        .map_err(|error| CliError::connection("coordinate daemon shutdown", error.to_string()))?;
+    let endpoint = layout
+        .running_daemon_endpoint()
+        .map_err(|error| CliError::runtime("find local daemon", error.to_string()))?;
+    if let Some(endpoint) = endpoint {
+        let result = shutdown(endpoint.as_os_str(), session, timeout, true, output).await;
+        // A concurrent orderly stop may withdraw the endpoint before we connect. Only
+        // a released instance lock can establish that this connection failure is harmless.
+        if let Err(error) = result {
+            if error.category() != crate::error::ExitCategory::Connection {
+                return Err(error);
+            }
+            layout.wait_for_daemon_shutdown(timeout).await.map_err(|_| error)?;
+            return output.success(
+                "shutdown-complete",
+                serde_json::json!({
+                    "disposition": "stopped", "remaining": [], "completion_observed": false,
+                }),
+                "daemon stopped; another shutdown may have completed first",
+            );
+        }
+        layout
+            .wait_for_daemon_shutdown(timeout)
+            .await
+            .map_err(|error| CliError::connection("wait for daemon exit", error.to_string()))?;
+        return Ok(());
+    }
+    layout
+        .wait_for_daemon_shutdown(timeout)
+        .await
+        .map_err(|error| CliError::connection("wait for daemon exit", error.to_string()))?;
+    output.success(
+        "shutdown-complete",
+        serde_json::json!({ "disposition": "already-stopped", "remaining": [] }),
+        "daemon is already stopped",
+    )
+}
+
 async fn await_shutdown(
     client: &mut Client,
     shutdown: ShutdownRequest,

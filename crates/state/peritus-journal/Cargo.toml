@@ -12,15 +12,15 @@ keywords = ["journal", "sqlite", "event-sourcing", "formal-verification"]
 categories = ["database", "data-structures"]
 
 [dependencies]
-peritus-approval = { version = "=0.1.1", path = "../peritus-approval" }
-peritus-artifact-store = { version = "=0.1.1", path = "../peritus-artifact-store" }
-peritus-budget = { version = "=0.1.1", path = "../../foundation/peritus-budget" }
-peritus-codec = { version = "=0.1.1", path = "../../foundation/peritus-codec" }
-peritus-kernel = { version = "=0.1.1", path = "../../foundation/peritus-kernel" }
-peritus-leases = { version = "=0.1.1", path = "../peritus-leases" }
-peritus-policy = { version = "=0.1.1", path = "../../foundation/peritus-policy" }
-peritus-protocol = { version = "=0.1.1", path = "../../foundation/peritus-protocol" }
-peritus-types = { version = "=0.1.1", path = "../../foundation/peritus-types" }
+peritus-approval = { version = "=0.1.2", path = "../peritus-approval" }
+peritus-artifact-store = { version = "=0.1.2", path = "../peritus-artifact-store" }
+peritus-budget = { version = "=0.1.2", path = "../../foundation/peritus-budget" }
+peritus-codec = { version = "=0.1.2", path = "../../foundation/peritus-codec" }
+peritus-kernel = { version = "=0.1.2", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.1.2", path = "../peritus-leases" }
+peritus-policy = { version = "=0.1.2", path = "../../foundation/peritus-policy" }
+peritus-protocol = { version = "=0.1.2", path = "../../foundation/peritus-protocol" }
+peritus-types = { version = "=0.1.2", path = "../../foundation/peritus-types" }
 rusqlite = { workspace = true, features = ["limits"] }
 sha2.workspace = true
 

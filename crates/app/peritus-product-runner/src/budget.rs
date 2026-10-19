@@ -141,6 +141,10 @@ impl RunAccounting {
         self.state.progress
     }
 
+    pub(crate) fn elapsed_millis(&self) -> u64 {
+        self.started.elapsed().as_millis().try_into().unwrap_or(u64::MAX)
+    }
+
     pub fn remaining(&self) -> Option<Duration> {
         self.max_elapsed.map(|limit| limit.saturating_sub(self.started.elapsed()))
     }

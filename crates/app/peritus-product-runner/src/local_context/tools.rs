@@ -67,7 +67,7 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let name = call.name().as_str();
-        if !matches!(name, "context_read" | "context_update") {
+        if !self.base.tool_calls_allowed() || !matches!(name, "context_read" | "context_update") {
             return self.base.execute(call);
         }
         let permissions = self.memory.effective_permissions();
@@ -118,6 +118,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     }
     fn required_tool_name(&self) -> Option<&str> {
         self.base.required_tool_name()
+    }
+    fn tool_calls_allowed(&self) -> bool {
+        self.base.tool_calls_allowed()
     }
     fn take_progress_feedback(&mut self) -> Option<String> {
         self.base.take_progress_feedback()

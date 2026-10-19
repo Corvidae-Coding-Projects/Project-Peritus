@@ -12,14 +12,14 @@ keywords = ["evidence", "provenance", "artifacts", "formal-verification"]
 categories = ["database", "data-structures"]
 
 [dependencies]
-peritus-artifact-store = { version = "=0.1.1", path = "../peritus-artifact-store" }
-peritus-codec = { version = "=0.1.1", path = "../../foundation/peritus-codec" }
-peritus-journal = { version = "=0.1.1", path = "../peritus-journal" }
-peritus-projection = { version = "=0.1.1", path = "../peritus-projection" }
-peritus-protocol = { version = "=0.1.1", path = "../../foundation/peritus-protocol" }
-peritus-quality-policy = { version = "=0.1.1", path = "../../foundation/peritus-quality-policy" }
-peritus-spec = { version = "=0.1.1", path = "../../foundation/peritus-spec" }
-peritus-types = { version = "=0.1.1", path = "../../foundation/peritus-types" }
+peritus-artifact-store = { version = "=0.1.2", path = "../peritus-artifact-store" }
+peritus-codec = { version = "=0.1.2", path = "../../foundation/peritus-codec" }
+peritus-journal = { version = "=0.1.2", path = "../peritus-journal" }
+peritus-projection = { version = "=0.1.2", path = "../peritus-projection" }
+peritus-protocol = { version = "=0.1.2", path = "../../foundation/peritus-protocol" }
+peritus-quality-policy = { version = "=0.1.2", path = "../../foundation/peritus-quality-policy" }
+peritus-spec = { version = "=0.1.2", path = "../../foundation/peritus-spec" }
+peritus-types = { version = "=0.1.2", path = "../../foundation/peritus-types" }
 rusqlite.workspace = true
 fs4.workspace = true
 tempfile.workspace = true

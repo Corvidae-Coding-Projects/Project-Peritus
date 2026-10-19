@@ -15,7 +15,7 @@ USAGE:
   peritus [GLOBAL OPTIONS] <COMMAND>
 
 GLOBAL OPTIONS:
-  --endpoint <PATH-OR-PIPE>   Protected peritusd local endpoint
+  --endpoint <PATH-OR-PIPE>   Protected peritusd local endpoint (automatic for shutdown)
   --session <HEX-ID>         Resume a durable 128-bit session
   --timeout-seconds <N>      Connect/request timeout (default: 30)
   --json                     Emit stable JSON; streams use one object per line
@@ -35,6 +35,7 @@ COMMANDS:
   resume                        Open this folder's most recently active conversation
   status
   shutdown [--wait]
+                               Stop this user's daemon and wait; no endpoint needed
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
                  --idempotency-key <KEY> [--no-expected-revision]
   events watch --topic <TOPIC>... [--after <CURSOR>] [--window <N>]

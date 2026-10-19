@@ -16,6 +16,26 @@ impl LocalMemory {
         {
             return Ok(());
         }
+        // Auxiliary inference needs actual pressure and new evidence, not every tool batch.
+        let Some(profile) = &self.profile else { return Ok(()) };
+        let pressure = profile
+            .limits()
+            .max_input_tokens()
+            .saturating_mul(u64::from(self.config.trigger_percent))
+            / 100;
+        if peritus_agent::estimate_developer_request_tokens(&self.last_view, &self.tools) < pressure
+        {
+            return Ok(());
+        }
+        let through = self.sources.last().map_or(0, |source| source.sequence);
+        if through == self.semantic_through_observation {
+            return Ok(());
+        }
+        self.semantic_through_observation = through;
+        crate::efficiency::event(
+            &self.trace_path,
+            serde_json::json!({"event":"local-semantic-compaction","through_observation":through}),
+        );
         let runtime = self.compactor_runtime.clone();
         self.compact_with(|config, input| {
             runtime

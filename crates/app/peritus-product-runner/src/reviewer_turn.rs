@@ -92,11 +92,8 @@ pub async fn complete(
             Err(error) => return Err(error),
         };
         let (prompt, attachments) = media.into_parts(request.prompt);
-        let mut tools = input.configure_tools(
-            WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
-                .with_task_contract(evidence.conversation)
-                .with_reviewer_evidence_sources(request.archive),
-        );
+        let mut tools =
+            input.read_only_workspace_tools().with_reviewer_evidence_sources(request.archive);
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
@@ -178,7 +175,8 @@ fn prepare_request(
     memory: Option<&crate::local_context::LocalContextHandle>,
 ) -> Result<ReviewRequest, ProductRunnerError> {
     let system = turn::reviewer_system(remaining) + input.delivery_instructions();
-    let transcript = input.conversation.stable_request_context();
+    let mut transcript = input.conversation.stable_request_context();
+    transcript.push_str(&crate::guided_design::implementation_context(input)?);
     let tools = reviewer_definitions()?;
     let mut budget_tools = tools.clone();
     if let Some(memory) = memory {
@@ -252,7 +250,7 @@ fn record_rejected_review(
 
 fn correction_prompt(error: &ProductRunnerError) -> String {
     format!(
-        "The previous review was rejected during {}: {}. Request a fresh workspace_list call through the declared host tool-call interface, read the authoritative source inputs and exact changed files needed to verify the request, then return the complete typed reviewer JSON object.",
+        "The previous review was rejected during {}: {}. Use current or host-revalidated source observations, refresh only the exact inputs needed to resolve this rejection, then return the complete typed reviewer JSON object.",
         error.operation(),
         error.detail(),
     )

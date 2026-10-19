@@ -57,11 +57,19 @@ pub(super) fn read(
     if !metadata.is_file() {
         return Err(tool("path is not a regular text file"));
     }
+    let before = super::grounding::file_digest(&path).map_err(|error| tool(error.to_string()))?;
     let extra = vec![
+        ("path", Value::String(required_string(arguments, "path")?.to_owned())),
+        ("source_sha256", Value::String(before.clone())),
         ("bytes", Value::from(metadata.len())),
         ("permissions", Value::String(file_metadata::permissions(&metadata))),
     ];
-    inspection_read::read(&path, arguments, &extra, cancellation)
+    let value = inspection_read::read(&path, arguments, &extra, cancellation)?;
+    let after = super::grounding::file_digest(&path).map_err(|error| tool(error.to_string()))?;
+    if before != after {
+        return Err(tool("file changed during observation; reread this target"));
+    }
+    Ok(value)
 }
 
 pub(super) fn entry_kind(kind: fs::FileType) -> &'static str {

@@ -263,6 +263,9 @@ fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>)
 
 async fn execute(cli: Cli) -> Result<(), CliError> {
     let output = output::Output::new(cli.json);
+    if cli.endpoint.is_none() && matches!(&cli.command, Command::Shutdown { .. }) {
+        return operation::shutdown_local(cli.session, cli.timeout, &output).await;
+    }
     let endpoint = cli.endpoint.ok_or_else(|| {
         CliError::usage("--endpoint <path-or-pipe> is required for daemon commands")
     })?;

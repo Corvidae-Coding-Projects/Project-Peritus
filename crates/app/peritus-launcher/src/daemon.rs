@@ -13,6 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::{LauncherError, PreparedProduct};
 
 mod catalog;
+mod local;
 
 /// Exact packaged executables used by product composition.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -261,7 +262,9 @@ impl DaemonSupervisor {
         }
         let started = Instant::now();
         loop {
-            if !endpoint_ready(&endpoint).await && instance_lock_available(product)? {
+            if !endpoint_ready(&endpoint).await
+                && instance_lock_available(product.daemon_config().paths().state_root())?
+            {
                 return Ok(DaemonShutdown::Stopped);
             }
             if started.elapsed() >= self.readiness_timeout {
@@ -275,8 +278,8 @@ impl DaemonSupervisor {
     }
 }
 
-fn instance_lock_available(product: &PreparedProduct) -> Result<bool, LauncherError> {
-    let path = product.daemon_config().paths().state_root().join("daemon.lock");
+fn instance_lock_available(root: &Path) -> Result<bool, LauncherError> {
+    let path = root.join("daemon.lock");
     let file = match OpenOptions::new().read(true).write(true).open(&path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(true),

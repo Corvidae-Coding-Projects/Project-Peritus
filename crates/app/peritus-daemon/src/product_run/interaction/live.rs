@@ -19,6 +19,29 @@ pub(super) struct LiveConversation {
     pub(super) run_id: RunId,
 }
 impl ConversationView for LiveConversation {
+    fn requests_ready_design(&self) -> bool {
+        let Ok(records) = self.service.inner.records.read() else { return false };
+        let Some(run) = records.get(&self.run_id) else { return false };
+        self.service
+            .with_controls(false, |store| {
+                let record = store
+                    .load(run.interaction.workbench.conversation())?
+                    .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
+                let capture = store.capture_execution(&run.interaction.workbench)?;
+                // The UI action may still be pending its first model request. Use the same
+                // dependency/hold-aware selection as admission; do not incorporate it here.
+                Ok(capture
+                    .inputs()
+                    .included()
+                    .last()
+                    .and_then(|selected| record.inputs().latest(selected.id()))
+                    .is_some_and(|input| {
+                        input.text().trim()
+                            == peritus_product_runner::GUIDED_DESIGN_IMPLEMENT_REQUEST
+                    }))
+            })
+            .unwrap_or(false)
+    }
     fn uses_explicit_media(&self) -> bool {
         // An unavailable control binding must not permit a fallback to ambient file discovery.
         self.service.governed_run(self.run_id).unwrap_or(true)

@@ -196,6 +196,7 @@ impl ContextSession<'_> {
     ) -> Result<bool, DeveloperLoopError> {
         if let Some(port) = &mut self.0 {
             let prior = estimated_request_tokens(messages, tools);
+            let prior_units = transcript_units(messages);
             let candidate = port.assemble(DeveloperContextAssembly {
                 provider,
                 governing_input,
@@ -216,9 +217,28 @@ impl ContextSession<'_> {
             }
             let estimated = estimated_request_tokens(&candidate, tools);
             port.checkpoint(&candidate)?;
+            let reduced_units = transcript_units(&candidate) < prior_units;
             *messages = candidate;
-            return Ok(estimated < prior);
+            // A smaller policy or a rebuilt memory preview is not another compaction.
+            // Count displacement of actual transcript units, not every local view rebuild.
+            return Ok(estimated < prior && reduced_units);
         }
         Ok(false)
     }
+}
+
+fn transcript_units(messages: &[Message]) -> usize {
+    messages
+        .iter()
+        .map(|message| {
+            usize::from(message.role() == peritus_model_protocol::Role::Assistant)
+                + message
+                    .content()
+                    .iter()
+                    .filter(|block| {
+                        matches!(block, peritus_model_protocol::ContentBlock::ToolResult(_))
+                    })
+                    .count()
+        })
+        .sum()
 }

@@ -5,6 +5,7 @@ This module lets additional terminal windows reuse one daemon. Workspace metadat
 | File | Role |
 | --- | --- |
 | [catalog.rs](catalog.rs) | Bounded cross-process launch lock, packaged binary/configuration comparison, catalog publication, real CLI status exchange, and generation acknowledgment. |
+| [local.rs](local.rs) | Read-only discovery from the live instance descriptor and waiting for local daemon ownership to end, without provider setup or launching another daemon. |
 
 The [parent module](../daemon.rs) owns spawn/readiness supervision and executable identity. The [daemon catalog owner](../../../peritus-daemon/src/product_run/workspace_catalog.rs) admits workspace updates; [bootstrap configuration](../bootstrap/configuration/AGENTS.md) renders them. Configuration publication and acknowledgment do not execute a coding task.
 

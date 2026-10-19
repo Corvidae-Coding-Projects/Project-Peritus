@@ -30,6 +30,7 @@ pub use crate::execution::{
     RoleProviders, RunObserver, WorkspaceMutationKind,
 };
 
-pub use crate::local_context::inspect_local_context;
+pub use crate::local_context::{LocalContextHandle, inspect_local_context};
 
+pub use crate::guided_design::GUIDED_DESIGN_IMPLEMENT_REQUEST;
 pub use crate::workspace_kind::ProductWorkspaceKind;
