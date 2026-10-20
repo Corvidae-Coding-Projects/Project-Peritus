@@ -35,6 +35,12 @@ the exact digest printed by the client.
 `runs trace --run <ID> [--extensions]` reads one run's durable private provider trace without a
 daemon session. Omit `--run` to list retained traces newest first; the human and JSON results
 include each run identifier for the trace command.
+Trace inspection processes one selected frame at a time. `--extensions` skips other frame kinds
+before reading their payloads. Human and JSON output are rendered separately into an automatically
+removed file in the normal Peritus cache, then copied to stdout, preserving all-or-error output with memory tied to
+one selected frame rather than the whole trace. Temporary storage is required for the selected
+output; the system temporary directory is not used because it may be RAM-backed. I/O failures
+are reported without a partial success document.
 
 `peritus shutdown` discovers the current user's running daemon and waits for orderly shutdown and
 release of its state lock. It needs no endpoint, provider login, setup, or sibling executable, and

@@ -9,6 +9,7 @@ Implementation pieces for `product_run.rs`: Scriptable inspection and control of
 | File | Role |
 | --- | --- |
 | [presentation.rs](presentation.rs) | Human and JSON projections of authoritative product-run observations. |
+| [trace.rs](trace.rs) | Local retained-trace discovery and record-by-record human/JSON inspection, with early extension filtering. |
 
 Owning module: [product_run.rs](../product_run.rs). Inspect that parent before changing the local pieces.
 

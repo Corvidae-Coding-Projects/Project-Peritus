@@ -11,17 +11,16 @@ use std::{
 };
 
 use peritus_model_protocol::{ModelEvent, ProtocolLimits, decode_event_envelope};
-use peritus_product_runner::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, read_frames};
+use peritus_product_runner::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, TraceReader};
 use peritus_types::RunId;
 use serde_json::Value;
 
 use crate::{error::CliError, id::hex, output::Output};
 
-/// One described frame: whether it is a provider extension, and its human and JSON forms.
-struct Described {
-    provider_extension: bool,
-    json: Value,
-    human: String,
+/// Only the representation selected by this invocation is built for the current record.
+enum Described {
+    Json(Value),
+    Human(String),
 }
 
 pub(crate) fn execute(
@@ -46,27 +45,66 @@ pub(crate) fn execute(
             ),
         ));
     }
-    let frames = read_frames(&path).map_err(|error| match error {
+    let read_error = |error| match error {
         TraceReadError::Read(error) => {
             CliError::local_io("read the run private trace", Some(path.clone()), error)
         }
         TraceReadError::Framing(detail) => {
             CliError::protocol("decode the run private trace", detail)
         }
+    };
+    let mut reader = TraceReader::open(&path).map_err(&read_error)?;
+    // A system temporary directory can be RAM-backed. Keep potentially large output in the
+    // normal per-user cache so filtering/streaming does not move whole-trace growth into tmpfs.
+    let spool_directory = layout.cache_root().join("trace-output");
+    fs::create_dir_all(&spool_directory).map_err(|error| {
+        CliError::local_io("prepare trace output cache", Some(spool_directory.clone()), error)
     })?;
-    let mut human =
-        format!("run {}  {} records  {}\n", hex(run_id.as_bytes()), frames.len(), path.display());
-    let mut json = Vec::new();
-    for (index, frame) in frames.iter().enumerate() {
-        let described = describe(index + 1, frame)?;
-        if extensions_only && !described.provider_extension {
-            continue;
+    output.success_stream("product-run-trace", &spool_directory, |writer, json| {
+        if json {
+            writer.write_all(b"[").map_err(CliError::output)?;
+        } else {
+            // Preserve the human header's total count with a header-only pass over the same
+            // snapshot. No payload is loaded or retained to obtain this count.
+            reader.next_matching(|_| false).map_err(&read_error)?;
+            writeln!(
+                writer,
+                "run {}  {} records  {}",
+                hex(run_id.as_bytes()),
+                reader.records_read(),
+                path.display()
+            )
+            .map_err(CliError::output)?;
+            reader.rewind().map_err(&read_error)?;
         }
-        human.push_str(&described.human);
-        human.push('\n');
-        json.push(described.json);
-    }
-    output.success("product-run-trace", Value::Array(json), &human)
+        let mut first = true;
+        while let Some(frame) = reader
+            .next_matching(|kind| {
+                !extensions_only || kind == DeveloperTraceFrameKind::ProviderEnvelope
+            })
+            .map_err(&read_error)?
+        {
+            let Some(described) = describe(reader.records_read(), &frame, extensions_only, json)?
+            else {
+                continue;
+            };
+            match described {
+                Described::Json(value) => {
+                    if !first {
+                        writer.write_all(b",").map_err(CliError::output)?;
+                    }
+                    serde_json::to_writer(&mut *writer, &value)
+                        .map_err(|error| CliError::output(io::Error::other(error)))?;
+                }
+                Described::Human(text) => writeln!(writer, "{text}").map_err(CliError::output)?,
+            }
+            first = false;
+        }
+        if json {
+            writer.write_all(b"]").map_err(CliError::output)?;
+        }
+        Ok(())
+    })
 }
 
 /// Lists retained run traces newest first so an operator can find a run identifier locally.
@@ -137,17 +175,25 @@ struct RetainedRun {
     path: PathBuf,
 }
 
-fn describe(index: usize, frame: &TraceFrame) -> Result<Described, CliError> {
+fn describe(
+    index: u64,
+    frame: &TraceFrame,
+    extensions_only: bool,
+    json: bool,
+) -> Result<Option<Described>, CliError> {
     let kind = frame.kind();
     if kind != DeveloperTraceFrameKind::ProviderEnvelope {
-        let (value, text) = payload(frame.payload());
-        return Ok(Described {
-            provider_extension: false,
-            json: serde_json::json!({
-                "index": index, "kind": kind_name(kind), "payload": value,
-            }),
-            human: format!("{index:>6}  {:<22}  {text}", kind_name(kind)),
-        });
+        return Ok(Some(if json {
+            Described::Json(serde_json::json!({
+                "index": index, "kind": kind_name(kind), "payload": payload_value(frame.payload()),
+            }))
+        } else {
+            Described::Human(format!(
+                "{index:>6}  {:<22}  {}",
+                kind_name(kind),
+                payload_text(frame.payload())
+            ))
+        }));
     }
     let envelope =
         decode_event_envelope(frame.payload(), ProtocolLimits::PRODUCTION).map_err(|error| {
@@ -158,34 +204,46 @@ fn describe(index: usize, frame: &TraceFrame) -> Result<Described, CliError> {
         })?;
     let event = envelope.event();
     if let ModelEvent::ProviderEvent(extension) = event {
-        let (value, text) = payload(extension.value().canonical_bytes());
-        let name = extension.name().as_str().to_owned();
-        return Ok(Described {
-            provider_extension: true,
-            json: serde_json::json!({
+        let name = extension.name().as_str();
+        return Ok(Some(if json {
+            Described::Json(serde_json::json!({
                 "index": index, "kind": "provider-envelope", "event": "extension",
-                "extension": name, "value": value,
-            }),
-            human: format!("{index:>6}  {:<22}  extension {name} {text}", kind_name(kind)),
-        });
+                "extension": name, "value": payload_value(extension.value().canonical_bytes()),
+            }))
+        } else {
+            Described::Human(format!(
+                "{index:>6}  {:<22}  extension {name} {}",
+                kind_name(kind),
+                payload_text(extension.value().canonical_bytes())
+            ))
+        }));
+    }
+    if extensions_only {
+        return Ok(None);
     }
     let summary = event_summary(event);
-    Ok(Described {
-        provider_extension: false,
-        json: serde_json::json!({
+    Ok(Some(if json {
+        Described::Json(serde_json::json!({
             "index": index, "kind": "provider-envelope", "event": summary.0, "detail": summary.1,
-        }),
-        human: format!("{index:>6}  {:<22}  {} {}", kind_name(kind), summary.0, summary.1),
-    })
+        }))
+    } else {
+        Described::Human(format!(
+            "{index:>6}  {:<22}  {} {}",
+            kind_name(kind),
+            summary.0,
+            summary.1
+        ))
+    }))
 }
 
-fn payload(bytes: &[u8]) -> (Value, String) {
-    if let Ok(value) = serde_json::from_slice::<Value>(bytes) {
-        let text = serde_json::to_string(&value).unwrap_or_default();
-        return (value, text);
-    }
-    let text = String::from_utf8_lossy(bytes).into_owned();
-    (Value::String(text.clone()), text)
+fn payload_value(bytes: &[u8]) -> Value {
+    serde_json::from_slice(bytes)
+        .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(bytes).into_owned()))
+}
+
+fn payload_text(bytes: &[u8]) -> String {
+    serde_json::from_slice::<Value>(bytes)
+        .map_or_else(|_| String::from_utf8_lossy(bytes).into_owned(), |value| value.to_string())
 }
 
 fn event_summary(event: &ModelEvent) -> (&'static str, String) {

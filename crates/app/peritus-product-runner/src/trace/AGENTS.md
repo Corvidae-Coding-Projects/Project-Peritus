@@ -10,6 +10,7 @@ Implementation pieces for `trace.rs`: Durable per-run D0 provider/tool trace.
 | --- | --- |
 | [accounting.rs](accounting.rs) | Run-owned accounting is updated before another provider or tool boundary can fail. |
 | [local_memory.rs](local_memory.rs) | Versioned exact observation/checkpoint records; legacy tags remain unchanged and readable. |
+| [reader.rs](reader.rs) | Read-only snapshot iterator; filters frame headers before allocating payloads and supports constant-memory trace inspection. |
 
 Owning module: [trace.rs](../trace.rs). Inspect that parent before changing the local pieces.
 

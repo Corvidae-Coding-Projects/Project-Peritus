@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.1.6
+
+### Fixed
+
+- Preserve literal DSML marker and tag text inside OpenCode tool arguments. Reject competing structured preludes and duplicate JSON keys before converting nested arguments into inert host tool calls.
+- Read private traces one selected record at a time, skip irrelevant payloads from their headers, and build only the requested human or JSON representation. Output spooling in the normal Peritus cache preserves complete JSON/error responses without retaining the entire trace or output in memory or using the system's potentially RAM-backed temporary directory.
+
+### Real testing
+
+- Passed 108 public OpenCode-adapter wire replays, including 24 seeded generated literal inputs, Zen/Go routing, valid JSON and DSML, malformed payload recovery, duplicate-key rejection, and tool selection/count restrictions. The external vendor supplied a deterministic wire fixture; no live inference or host tool execution is claimed.
+- Compared the actual old and new trace CLI across human/JSON and complete/extension-only output. All 24 RSS measurements passed; a roughly 64 MiB trace's JSON-output peak dropped from 342 MiB to 18 MiB. Corruption, torn tails, unavailable temporary storage, actual captured provider events, a filtered sparse 10 GiB record, and public-reader append/reopen behavior passed.
+
 ## 0.1.5
 
 ### Changed

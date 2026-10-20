@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [opencode-parser-trace-real-2026-10-20.md](opencode-parser-trace-real-2026-10-20.md) | Repairs for all four v0.1.5 review findings: argument integrity, ambiguity/duplicate rejection, actual CLI memory and append/recovery evidence. |
 | [read-reuse-real-2026-10-20.md](read-reuse-real-2026-10-20.md) | Versioned visible-range reuse, archive restoration, changed-target refresh, retained task progress, and real API/live-provider evidence. |
 | [opencode-rejected-turn-diagnostic-real-2026-10-20.md](opencode-rejected-turn-diagnostic-real-2026-10-20.md) | Retained rejected OpenCode replies, the local private-trace reader, and the loop's refusal/retry narration, with real-run measurement and scripted replay evidence. |
 | [credential-store-wsl-real-2026-10-20.md](credential-store-wsl-real-2026-10-20.md) | Real provider-settings replay for an unreachable and a reachable WSL Secret Service, with the credential-store guidance and removal evidence. |

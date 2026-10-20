@@ -2,6 +2,9 @@
 
 pub mod accounting;
 pub mod local_memory;
+mod reader;
+
+pub use reader::TraceReader;
 
 use std::{
     fmt,
@@ -130,25 +133,14 @@ impl std::error::Error for TraceReadError {
 ///
 /// Returns [`TraceReadError::Read`] when the trace cannot be read from disk and
 /// [`TraceReadError::Framing`] when a record tag or declared length is not usable.
+///
+/// This convenience API collects all payloads. Use [`TraceReader`] to process arbitrarily long
+/// traces with memory proportional to one selected record instead of the entire file.
 pub fn read_frames(path: &Path) -> Result<Vec<TraceFrame>, TraceReadError> {
-    let bytes = fs::read(path).map_err(TraceReadError::Read)?;
+    let mut reader = TraceReader::open(path)?;
     let mut frames = Vec::new();
-    let mut offset = 0_usize;
-    while let Some(header) = bytes.get(offset..offset.saturating_add(9)) {
-        let tag = DeveloperTraceFrameKind::from_tag(header[0]).ok_or_else(|| {
-            TraceReadError::Framing(format!("unknown record tag {} at byte {offset}", header[0]))
-        })?;
-        // A nine-byte header always yields an eight-byte length; a shorter slice cannot occur.
-        let declared = <[u8; 8]>::try_from(&header[1..9]).map_or(u64::MAX, u64::from_le_bytes);
-        let declared = usize::try_from(declared).unwrap_or(usize::MAX);
-        // The file is already in memory, so a corrupt length cannot allocate beyond it.
-        let Some(payload) =
-            bytes.get(offset + 9..offset.saturating_add(9).saturating_add(declared))
-        else {
-            break;
-        };
-        frames.push(TraceFrame { kind: tag, payload: payload.to_vec() });
-        offset = offset.saturating_add(9).saturating_add(declared);
+    while let Some(frame) = reader.next_matching(|_| true)? {
+        frames.push(frame);
     }
     Ok(frames)
 }

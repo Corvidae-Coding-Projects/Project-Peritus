@@ -11,6 +11,7 @@ Release-specific human notes; each version records changes and delivery context,
 | [0.0.7.md](0.0.7.md) | Document: Peritus 0.0.7. |
 | [0.0.8.md](0.0.8.md) | Document: Peritus 0.0.8. |
 | [0.1.5.md](0.1.5.md) | Release preparation, real-interface evidence, known review findings, and native publication scope for Peritus 0.1.5. |
+| [0.1.6.md](0.1.6.md) | Corrected DSML argument/ambiguity handling and trace streaming, completed real-interface evidence and package scope. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
