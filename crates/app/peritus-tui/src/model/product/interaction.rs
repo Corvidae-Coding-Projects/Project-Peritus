@@ -3,10 +3,10 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use peritus_app_protocol::ProductRunControlAction;
 
-use super::ProviderRole;
+use super::{ProductUi, ProviderRole};
 use crate::{
     action::Effect,
-    model::{AppModel, View},
+    model::{AppModel, NoticeLevel, View},
 };
 
 impl AppModel {
@@ -54,6 +54,7 @@ impl AppModel {
             return None;
         }
         match key.code {
+            KeyCode::Char('y') => return Some(self.copy_selected_run_identity()),
             KeyCode::Enter => return Some(self.open_selected_conversation()),
             KeyCode::Char('m') => self.open_product_message_composer(),
             KeyCode::Char('i') => {
@@ -89,5 +90,17 @@ impl AppModel {
             _ => return None,
         }
         Some(Vec::new())
+    }
+
+    /// Copies the selected run identifier, the value `peritus runs trace --run` expects.
+    fn copy_selected_run_identity(&mut self) -> Vec<Effect> {
+        let Some(run) = self.product.as_ref().and_then(ProductUi::selected_run) else {
+            self.notice(NoticeLevel::Info, "Select a coding run before copying its identity.");
+            return Vec::new();
+        };
+        let identity: String =
+            run.run_id().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+        self.notice(NoticeLevel::Info, format!("Run identity: {identity}"));
+        self.copy_text(identity)
     }
 }

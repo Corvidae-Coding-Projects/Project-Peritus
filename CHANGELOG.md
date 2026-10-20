@@ -5,6 +5,8 @@
 ### Added
 
 - Read one run's durable private trace locally with `peritus runs trace --run <ID> [--extensions]`. It decodes every retained provider envelope, retry decision, and rejected model reply without a daemon session.
+- Omit `--run` on `peritus runs trace` to list retained trace identities newest first. In the Runs dashboard, `y` copies the selected run's 32-hex identifier.
+- Repair an OpenCode envelope behind a private prelude containing inline code spans or quoted pseudo-tool markup, or one final Markdown-fenced object. Ambiguous containers, additional candidates, and trailing text are still refused.
 
 ### Fixed
 
@@ -13,7 +15,7 @@
 
 ### Real testing
 
-- Measured the retained OpenCode Go run: 82 host attempts, 94 refused replies recorded without their text, 29 scheduled retries, and 71 repeated `Requesting model` lines inside a 256-activity window. Replayed the repaired behavior against a scripted OpenCode stand-in; all four scenarios passed, and the local trace reader was checked against the real trace, a truncated tail, an unknown record tag, an empty file, and a missing run.
+- Measured the retained OpenCode Go run: 82 host attempts, 94 refused replies recorded without their text, 29 scheduled retries, and 71 repeated `Requesting model` lines inside a 256-activity window. After the first repair, 29 refusals retained their text; 14 carried a complete envelope behind a prelude and all 14 are now repaired, while 15 DSML pseudo-tool replies without an envelope remain refused. Replayed seven scripted scenarios successfully, and checked trace listing, filtering, and missing-run behavior through the built CLI.
 
 ## 0.1.4
 

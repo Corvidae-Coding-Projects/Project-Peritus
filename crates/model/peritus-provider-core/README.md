@@ -111,10 +111,12 @@ delimiters or values, duplicate keys, multiple JSON candidates and unsupported s
 The C5 canonical parser, tool schemas, permissions and effect admission remain unchanged.
 
 The separate `private_envelope` entry point also accepts a plain prelude separated by a blank
-line from one complete object ending the payload. It is reserved for completed private model
-envelopes, such as Claude's `result` string. It never applies to public assistant prose, ordinary
-tool arguments, or the enclosing runtime JSON. Quotes, fences, container delimiters in the
-prelude, additional candidates, and trailing text are rejected.
+line from one complete object ending the payload, including inline code spans or quoted prose in
+that prelude, or one complete object wrapped in a final Markdown fence introduced by that prelude.
+It is reserved for completed private model envelopes, such as Claude's `result` string. It never
+applies to public assistant prose, ordinary tool arguments, or the enclosing runtime JSON.
+Additional fences, container delimiters in the prelude, additional candidates, and trailing text
+are rejected.
 
 Each repair emits a bounded `peritus.response_healing` event with policy `syntax-only-v1`
 (or `private-envelope-v1` for that entry point), its

@@ -93,26 +93,53 @@ fn request(provider: &dyn ModelProvider) -> Result<ModelRequest> {
 async fn drive(
     provider: &dyn ModelProvider,
     request: ModelRequest,
-) -> Result<(ResponseReducer, Vec<serde_json::Value>)> {
+) -> Result<(ResponseReducer, Vec<serde_json::Value>, Vec<serde_json::Value>)> {
     let mut reducer =
         ResponseReducer::new(provider.profile().provider().clone(), ProtocolLimits::PRODUCTION);
     let mut corrections = Vec::new();
+    let mut healings = Vec::new();
     let mut stream = provider.start(request, CancellationToken::new()).await?;
     while let Some(event) = stream.pull().await? {
-        if let ModelEvent::ProviderEvent(extension) = event.event()
-            && extension.name().as_str() == "peritus.opencode_turn_correction"
-        {
-            let value: serde_json::Value =
-                serde_json::from_slice(extension.value().canonical_bytes())?;
-            println!("CORRECTION {}", serde_json::to_string(&value)?);
-            corrections.push(value);
+        if let ModelEvent::ProviderEvent(extension) = event.event() {
+            match extension.name().as_str() {
+                "peritus.opencode_turn_correction" => {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(extension.value().canonical_bytes())?;
+                    println!("CORRECTION {}", serde_json::to_string(&value)?);
+                    corrections.push(value);
+                }
+                "peritus.response_healing" => {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(extension.value().canonical_bytes())?;
+                    println!(
+                        "HEALING {} {}",
+                        value["policy"].as_str().unwrap_or(""),
+                        value["target"].as_str().unwrap_or("")
+                    );
+                    healings.push(value);
+                }
+                _ => {}
+            }
         }
         reducer.push(event)?;
     }
     if reducer.terminal().is_none() {
         return Err("missing terminal".into());
     }
-    Ok((reducer, corrections))
+    Ok((reducer, corrections, healings))
+}
+
+fn check_healing(healings: &[serde_json::Value]) -> Result<()> {
+    if healings.len() != 1 {
+        return Err(format!("expected one envelope repair, saw {}", healings.len()).into());
+    }
+    let value = &healings[0];
+    if value["policy"].as_str() != Some("private-envelope-v1")
+        || value["target"].as_str() != Some("opencode.turn")
+    {
+        return Err(format!("healing has unexpected fields: {value}").into());
+    }
+    Ok(())
 }
 
 fn check_correction(value: &serde_json::Value, attempt: u64) -> Result<()> {
@@ -136,7 +163,9 @@ fn check_correction(value: &serde_json::Value, attempt: u64) -> Result<()> {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let arguments = std::env::args().collect::<Vec<_>>();
-    let expectation = arguments.get(1).ok_or("expectation needed (accepted|rejected)")?;
+    let expectation = arguments.get(1).ok_or(
+        "expectation needed (accepted|rejected|prelude_backticks|prelude_quoted|prelude_fenced)",
+    )?;
     let _root = Path::new(&std::env::var("PERITUS_REAL_CASE_ROOT")?);
     let config: toml::Value =
         toml::from_str(&std::fs::read_to_string(std::env::var("PERITUS_REAL_CONFIG")?)?)?;
@@ -158,14 +187,12 @@ async fn main() -> Result<()> {
         json!(["parallel-tool-calls", "streaming", "tool-calls", "usage-detail"]);
     let provider = provider(route)?;
     let request = request(provider.as_ref())?;
-    let (reducer, corrections) = drive(provider.as_ref(), request).await?;
+    let (reducer, corrections, healings) = drive(provider.as_ref(), request).await?;
     match reducer.terminal() {
         Some(TerminalOutcome::Succeeded { .. }) => println!("TERMINAL succeeded"),
-        Some(TerminalOutcome::Failed(failure)) => println!(
-            "TERMINAL failed {:?} {}",
-            failure.category(),
-            failure.diagnostic().code()
-        ),
+        Some(TerminalOutcome::Failed(failure)) => {
+            println!("TERMINAL failed {:?} {}", failure.category(), failure.diagnostic().code())
+        }
         other => println!("TERMINAL {other:?}"),
     }
     match expectation.as_str() {
@@ -191,6 +218,15 @@ async fn main() -> Result<()> {
             }
             check_correction(&corrections[0], 1)?;
             check_correction(&corrections[1], 2)?;
+        }
+        "prelude_backticks" | "prelude_quoted" | "prelude_fenced" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the repaired prelude did not complete the turn".into());
+            }
+            if !corrections.is_empty() {
+                return Err(format!("expected no refusal, saw {}", corrections.len()).into());
+            }
+            check_healing(&healings)?;
         }
         other => return Err(format!("unknown expectation {other}").into()),
     }

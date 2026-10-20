@@ -64,3 +64,33 @@ OUTCOME error provider opencode ended the request (malformed_payload; opencode.r
 RESULT rejected checks passed
 ```
 
+## prelude_backticks
+
+An explanatory prelude with an inline code span is repaired without a refused turn.
+
+```
+HEALING private-envelope-v1 opencode.turn
+TERMINAL succeeded
+RESULT prelude_backticks checks passed
+```
+
+## prelude_quoted
+
+An explanatory prelude with quoted pseudo-tool markup is repaired without a refused turn.
+
+```
+HEALING private-envelope-v1 opencode.turn
+TERMINAL succeeded
+RESULT prelude_quoted checks passed
+```
+
+## prelude_fenced
+
+An explanatory prelude introducing one final `json`-fenced envelope is repaired without a refused turn.
+
+```
+HEALING private-envelope-v1 opencode.turn
+TERMINAL succeeded
+RESULT prelude_fenced checks passed
+```
+

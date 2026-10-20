@@ -3,8 +3,12 @@
 mod presentation;
 mod trace;
 
-/// Reads one run's durable private trace without a daemon session.
-pub(crate) fn trace(run_id: RunId, extensions_only: bool, output: &Output) -> Result<(), CliError> {
+/// Reads one run's durable private trace, or lists retained traces, without a daemon session.
+pub(crate) fn trace(
+    run_id: Option<RunId>,
+    extensions_only: bool,
+    output: &Output,
+) -> Result<(), CliError> {
     trace::execute(run_id, extensions_only, output)
 }
 

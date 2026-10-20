@@ -101,7 +101,7 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!(" {controls} · PgUp/PgDn · Home/End · i inspect ")),
+                .title(format!(" {controls} · y copy id · PgUp/PgDn · Home/End · i inspect ")),
         ),
         areas.detail,
     );

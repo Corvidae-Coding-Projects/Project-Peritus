@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Build public consumers and replay scripted vendor turns for the rejected-turn diagnostic.
 
-Three scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
-corrected reply, two refused replies, and one rate-limited turn followed by a valid reply. The
-provider scenarios must publish the bounded `peritus.opencode_turn_correction` extension carrying
-the rejected model text; the agent scenario must announce its model request once and report the
-bounded retry. This is a scripted-vendor replay, not real inference; it establishes the adapter
-retention, the diagnostic contract, and the loop's public narration only.
+Seven scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
+corrected reply, two refused replies, a rate-limited turn followed by a valid reply, turns whose
+plain prelude contains an inline code span or quoted pseudo-tool markup, a turn whose envelope
+sits inside a `json` fence, and one refused reply through the developer loop. The provider
+scenarios must publish the bounded
+`peritus.opencode_turn_correction` extension carrying the rejected model text, or a
+`peritus.response_healing` audit when the prelude is accepted; the agent scenarios must announce
+their model request once and report the bounded retry. This is a scripted-vendor replay, not real
+inference; it establishes the adapter retention, the healing contract, the diagnostic surface, and
+the loop's public narration only.
 """
 import argparse
 import json
@@ -17,7 +21,20 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", required=True, type=Path)
-parser.add_argument("--scenario", choices=("all", "accepted", "rejected"), default="all")
+parser.add_argument(
+    "--scenario",
+    choices=(
+        "all",
+        "accepted",
+        "rejected",
+        "retry",
+        "refused_turn",
+        "prelude_backticks",
+        "prelude_quoted",
+        "prelude_fenced",
+    ),
+    default="all",
+)
 args = parser.parse_args()
 here = Path(__file__).resolve().parent
 checkout = here.parents[3]
@@ -110,11 +127,46 @@ scenarios = {
             "RESULT rejected checks passed",
         ],
     },
+    "prelude_backticks": {
+        "binary": "provider",
+        "script": ["prelude_backticks"],
+        "required": [
+            "HEALING private-envelope-v1 opencode.turn",
+            "TERMINAL succeeded",
+            "RESULT prelude_backticks checks passed",
+        ],
+    },
+    "prelude_quoted": {
+        "binary": "provider",
+        "script": ["prelude_quoted"],
+        "required": [
+            "HEALING private-envelope-v1 opencode.turn",
+            "TERMINAL succeeded",
+            "RESULT prelude_quoted checks passed",
+        ],
+    },
+    "prelude_fenced": {
+        "binary": "provider",
+        "script": ["prelude_fenced"],
+        "required": [
+            "HEALING private-envelope-v1 opencode.turn",
+            "TERMINAL succeeded",
+            "RESULT prelude_fenced checks passed",
+        ],
+    },
 }
 selected = (
     [args.scenario]
     if args.scenario != "all"
-    else ["accepted", "rejected", "retry", "refused_turn"]
+    else [
+        "accepted",
+        "rejected",
+        "retry",
+        "refused_turn",
+        "prelude_backticks",
+        "prelude_quoted",
+        "prelude_fenced",
+    ]
 )
 failures = []
 for name in selected:

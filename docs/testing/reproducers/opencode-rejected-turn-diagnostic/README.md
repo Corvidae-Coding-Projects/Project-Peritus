@@ -15,7 +15,7 @@ file-level responsibilities.
 | [consumer.rs](consumer.rs) | Provider-level public-library consumer; asserts the retained rejected text and the terminal outcome. |
 | [agent.rs](agent.rs) | Developer-loop consumer; records the public activities the loop publishes for one refused turn. |
 | [scripted-opencode.py](scripted-opencode.py) | Scripted OpenCode stand-in answering `--version`, `models`, and `run` from a fixed reply script. |
-| [replay.py](replay.py) | Builds both consumers and runs the four scenarios with disposable state. |
+| [replay.py](replay.py) | Builds both consumers and runs the seven scenarios with disposable state. |
 | [observed-baseline.txt](observed-baseline.txt) | Verbatim transcripts of the recorded run and its check outcomes. |
 
 ## What this case shows
@@ -32,7 +32,11 @@ The repaired behavior:
 - The adapter's `peritus.opencode_turn_correction` extension retains the rejected reply text
   (`rejected`, `rejected_bytes`, `rejected_truncated`), bounded to 16 KiB.
 - `peritus runs trace --run <ID> [--extensions]` reads a run's durable private trace locally,
-  without a daemon session, and the failure hint names that command.
+  without a daemon session, and the failure hint names that command. Omitting `--run` lists
+  retained run identities newest first for terminal-side discovery.
+- The private-envelope repair accepts an explanatory prelude containing inline code spans or
+  quoted pseudo-tool markup, and a single final object wrapped in a Markdown fence, while still
+  rejecting ambiguous candidates.
 - The loop announces its model request once per logical turn and reports each refusal and retry
   as its own transition.
 
@@ -63,6 +67,9 @@ commit, and any failed check. The script exits non-zero if any check fails.
 | `rejected` | provider | `invalid`, `invalid` | Two corrections, then a terminal `malformed_payload; opencode.runtime.invalid_turn_json` failure. |
 | `retry` | agent | `rate_limit`, `valid` | `ModelStarted` once, one `ProviderRetry 2/3 retryable_provider_response`, succeeded turn. |
 | `refused_turn` | agent | `invalid` | `ModelStarted` once, two retries, six refusals across three attempts, terminal error naming `peritus runs trace`. |
+| `prelude_backticks` | provider | `prelude_backticks` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
+| `prelude_quoted` | provider | `prelude_quoted` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
+| `prelude_fenced` | provider | `prelude_fenced` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
 
 ## Limits
 
