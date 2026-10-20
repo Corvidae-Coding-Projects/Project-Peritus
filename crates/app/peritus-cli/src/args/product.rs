@@ -65,8 +65,15 @@ fn trace(parser: &mut Parser) -> Result<Command, CliError> {
             _ => return Err(CliError::usage(format!("unknown runs trace option: {option}"))),
         }
     }
-    let run_id = RunId::new(required(run, "--run")?)
-        .map_err(|_| CliError::usage("--run cannot be the all-zero identifier"))?;
+    if extensions_only && run.is_none() {
+        return Err(CliError::usage("--extensions requires --run"));
+    }
+    let run_id = run
+        .map(|bytes| {
+            RunId::new(bytes)
+                .map_err(|_| CliError::usage("--run cannot be the all-zero identifier"))
+        })
+        .transpose()?;
     Ok(Command::ProductRunTrace { run_id, extensions_only })
 }
 

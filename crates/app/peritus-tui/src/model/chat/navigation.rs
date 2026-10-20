@@ -103,8 +103,8 @@ impl AppModel {
         Ok(destination) => {
             if owns_selection { self.chat.output_selection = None; }
             self.notice(NoticeLevel::Info, match destination {
-                crate::action::ClipboardDestination::Desktop => "Selected text copied to the desktop clipboard",
-                crate::action::ClipboardDestination::Terminal => "Selected text sent to the terminal clipboard",
+                crate::action::ClipboardDestination::Desktop => "Copied to the desktop clipboard",
+                crate::action::ClipboardDestination::Terminal => "Copied to the terminal clipboard",
             });
         }
         Err(error) => self.notice(NoticeLevel::Error, format!("Copy failed: {error}. Selection retained; retry Copy or use F2 terminal selection.")),

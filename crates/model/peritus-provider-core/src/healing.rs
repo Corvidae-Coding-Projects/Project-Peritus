@@ -57,7 +57,8 @@ pub fn object(
 ///
 /// Use only for the model-authored private envelope of a completed runtime result, never
 /// public assistant content, ordinary tool arguments, or the runtime transport itself.
-/// A prelude cannot contain quotes, fences, or container delimiters. The object must be
+/// A prelude cannot contain fences or container delimiters; a plain prelude may contain inline
+/// code spans or quoted prose and may introduce one Markdown-fenced object. The object must be
 /// the sole structured candidate and end the payload. Schema and authorization checks follow.
 ///
 /// # Errors

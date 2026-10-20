@@ -14,7 +14,7 @@ documented sandbox-free prerequisite.
 | [consumer.rs](consumer.rs) | Provider-level consumer over the production registry and scripted stand-in; checks the bounded correction extension and terminal outcome. |
 | [agent.rs](agent.rs) | Developer-loop consumer with a recording interaction; counts the public activities one refused turn publishes. |
 | [scripted-opencode.py](scripted-opencode.py) | Scripted OpenCode stand-in that answers the adapter's `--version`, `models`, and `run` commands from a fixed reply script. |
-| [replay.py](replay.py) | Builds both consumers offline and runs the four scenarios with disposable configuration, key, and reply script. |
+| [replay.py](replay.py) | Builds both consumers offline and runs the ten scenarios with disposable configuration, key, reply script, and prompt capture. |
 | [observed-baseline.txt](observed-baseline.txt) | Verbatim transcripts of the recorded run and its check outcomes. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).

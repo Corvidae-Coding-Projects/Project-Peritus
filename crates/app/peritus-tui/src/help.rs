@@ -51,6 +51,7 @@ const LINES: &[&str] = &[
     "  w/e/f          cycle writer/reviewer/fixer provider (Runs)",
     "  i/v/a/c/p/D    inspect / run / accept / commit / export / discard (Runs)",
     "  x/r            cancel / retry selected coding run (Runs)",
+    "  y              copy the selected run identity (Runs)",
     "  PageUp/Down    scroll Diff, Review, Preview, or selected approval details",
     "  Home/End       beginning/end of those details",
     "",

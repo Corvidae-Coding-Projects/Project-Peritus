@@ -5,11 +5,15 @@
 ### Added
 
 - Read one run's durable private trace locally with `peritus runs trace --run <ID> [--extensions]`. It decodes every retained provider envelope, retry decision, and rejected model reply without a daemon session.
+- Omit `--run` on `peritus runs trace` to list retained trace identities newest first. In the Runs dashboard, `y` copies the selected run's 32-hex identifier.
+- Repair an OpenCode envelope behind a private prelude containing inline code spans or quoted pseudo-tool markup, or one final Markdown-fenced object. Ambiguous containers, additional candidates, and trailing text are still refused.
+- Normalize a complete terminal DeepSeek DSML calls block into the ordinary inert tool-call shape under `peritus.opencode_turn_normalization`. Declared-name, argument-object, call-count, and tool-selection checks still apply; incomplete, ambiguous, or undeclared calls are refused.
 
 ### Fixed
 
 - Retain the rejected reply text when an OpenCode turn is refused, bounded to 16 KiB, and name `peritus runs trace` in the failure hint instead of promising a diagnostic that no command could read.
 - Announce one model request per logical turn. Retries and refusals report their own transition instead of repeating `Requesting model` for every bounded attempt.
+- Explicitly instruct OpenCode models not to emit DSML, XML/HTML-like tags, special-token markers, or other pseudo-tool syntax in the wire prefix, prompt tail, and correction prompt.
 
 - Select the OpenCode Zen/Go runtime by native executables only. A Windows OpenCode installation reached through WSL interop no longer passes discovery, so provider setup reports the actionable installation path instead of a model-catalog failure and still finds a native 1.19.0 that appears later on `PATH`.
 
@@ -17,7 +21,8 @@
 
 ### Real testing
 
-- Measured the retained OpenCode Go run: 82 host attempts, 94 refused replies recorded without their text, 29 scheduled retries, and 71 repeated `Requesting model` lines inside a 256-activity window. Replayed the repaired behavior against a scripted OpenCode stand-in; all four scenarios passed, and the local trace reader was checked against the real trace, a truncated tail, an unknown record tag, an empty file, and a missing run.
+- Measured the retained OpenCode Go run: 82 host attempts, 94 refused replies recorded without their text, 29 scheduled retries, and 71 repeated `Requesting model` lines inside a 256-activity window. After the first repair, 29 refusals retained their text; 14 carried a complete envelope behind a prelude and all 14 are now repaired, while 15 DSML pseudo-tool replies without an envelope remain refused. Replayed seven scripted scenarios successfully, and checked trace listing, filtering, and missing-run behavior through the built CLI.
+- Inspected a later retained trace with 93 refused replies: 70 used DSML calls markup, 19 contained a JSON envelope, and the remainder used XML-like or hybrid forms. The scripted replay now covers an accepted standard-plus-nested DSML turn, an undeclared DSML tool, and malformed DSML, alongside the earlier prelude and correction cases. All ten scenarios pass against the built provider consumer.
 
 - Reproduced the reported WSL catalog failure through the actual terminal provider-settings flow, retained the real vendor-command failure and path probes, and re-verified discovery and advertised-model metadata against the official Linux 1.19.0 release asset.
 

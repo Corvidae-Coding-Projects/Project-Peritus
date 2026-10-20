@@ -8,9 +8,15 @@ by `PERITUS_SCRIPT_STATE`, so the two vendor processes of one corrected turn see
 sequence. It performs no network access, reads no credential, and never runs vendor code.
 
 Reply entries are `valid` (one complete private envelope), `invalid` (the same envelope with one
-extra closing brace), or `rate_limit` (a 429 vendor error frame). The extra brace is the defect
-retained from the real captured failure: the bounded repair extracts only a container that ends
-the payload, so this reply is refused.
+extra closing brace), `prelude_backticks` (plain prose with an inline code span, a blank line, then
+the envelope), `prelude_quoted` (quoted pseudo-tool markup, a blank line, then the envelope),
+`prelude_fenced` (plain prose, a blank line, then the envelope inside a `json` fence), `dsml`
+(a prose prelude followed by a complete DeepSeek DSML calls block with one standard call and one
+nested arguments call), `dsml_unknown_tool` (the same block naming an undeclared tool),
+`dsml_malformed` (a parameter without its closing tag), or `rate_limit` (a 429 vendor error frame).
+The extra brace is the defect retained from the real captured failure: the bounded repair extracts
+only a container that ends the payload, so this reply is refused. The three prelude forms and the
+DSML forms are the repair shapes observed in the real run.
 """
 import json
 import os
@@ -20,6 +26,53 @@ MODEL = "scripted-reply-model"
 SESSION = "ses_scripted_rejected_turn"
 MESSAGE = "msg_scripted_rejected_turn"
 ENVELOPE = '{"content":"Scripted reply for the rejected-turn diagnostic replay.","tool_calls":[]}'
+PRELUDE_BACKTICKS = "Baseline is green at HEAD `ba6c0db`.\n\n"
+PRELUDE_QUOTED = (
+    'Announced <tool_call name="patch" path="src/main.rs">\n'
+    '<parameter name="content">\n\n'
+)
+PRELUDE_FENCED = "Baseline is green at HEAD ba6c0db.\n\n```json\n"
+DSML = (
+    "I will inspect the README and search the source.\n\n"
+    '<｜｜DSML｜｜ calls>\n'
+    '<｜｜DSML｜｜ invoke name="workspace_read">\n'
+    '<｜｜DSML｜｜ parameter name="path" string="true">README.md</｜｜DSML｜｜ parameter>\n'
+    "</｜｜DSML｜｜ invoke>\n"
+    '<｜｜DSML｜｜ invoke name="workspace_search">\n'
+    '<｜｜DSML｜｜ parameter name="arguments" string="false">{"query":"TODO","path":"src"}</｜｜DSML｜｜ parameter>\n'
+    '<｜｜DSML｜｜ parameter name="name" string="true">workspace_search</｜｜DSML｜｜ parameter>\n'
+    "</｜｜DSML｜｜ invoke>\n"
+    "</｜｜DSML｜｜ calls>"
+)
+DSML_UNKNOWN_TOOL = DSML.replace('name="workspace_read"', 'name="workspace_delete"')
+DSML_MALFORMED = (
+    "I will read the README.\n\n"
+    '<｜｜DSML｜｜ calls>\n'
+    '<｜｜DSML｜｜ invoke name="workspace_read">\n'
+    '<｜｜DSML｜｜ parameter name="path" string="true">README.md\n'
+    "</｜｜DSML｜｜ invoke>\n"
+    "</｜｜DSML｜｜ calls>"
+)
+
+
+def reply_text(reply: str) -> str:
+    if reply == "valid":
+        return ENVELOPE
+    if reply == "invalid":
+        return ENVELOPE + "}"
+    if reply == "prelude_backticks":
+        return PRELUDE_BACKTICKS + ENVELOPE
+    if reply == "prelude_quoted":
+        return PRELUDE_QUOTED + ENVELOPE
+    if reply == "prelude_fenced":
+        return PRELUDE_FENCED + ENVELOPE + "\n```"
+    if reply == "dsml":
+        return DSML
+    if reply == "dsml_unknown_tool":
+        return DSML_UNKNOWN_TOOL
+    if reply == "dsml_malformed":
+        return DSML_MALFORMED
+    raise ValueError(f"unknown scripted reply {reply}")
 
 
 def main() -> int:
@@ -43,15 +96,19 @@ def main() -> int:
         )
         return 0
     if "run" in arguments:
-        # The submitted prompt is consumed and discarded: replies come only from the script.
-        sys.stdin.buffer.read()
+        # Replies come only from the script; the prompt is optionally retained for replay checks.
+        prompt = sys.stdin.buffer.read()
+        prompt_capture = os.environ.get("PERITUS_SCRIPT_PROMPT")
+        if prompt_capture:
+            with open(prompt_capture, "wb") as handle:
+                handle.write(prompt)
         reply = next_reply(
             os.environ["PERITUS_SCRIPT_STATE"], os.environ["PERITUS_SCRIPT"]
         )
         if reply == "rate_limit":
             emit_error(429, "scripted rate limit")
         else:
-            emit(ENVELOPE if reply == "valid" else ENVELOPE + "}")
+            emit(reply_text(reply))
         return 0
     return 2
 

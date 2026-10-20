@@ -90,29 +90,152 @@ fn request(provider: &dyn ModelProvider) -> Result<ModelRequest> {
     )?)
 }
 
+fn request_with_tools(provider: &dyn ModelProvider) -> Result<ModelRequest> {
+    let profile = provider.profile();
+    let capabilities = negotiate(
+        profile,
+        RequestedCapabilities::new(
+            &[Capability::ToolCalls],
+            &[Capability::UsageDetail, Capability::Streaming, Capability::ParallelToolCalls],
+            profile.limits(),
+        )?,
+    )?;
+    let schema = JsonSchema::parse(
+        r#"{"type":"object"}"#,
+        SchemaDialect::Draft202012,
+        JsonBounds::schema(ProtocolLimits::PRODUCTION),
+    )?;
+    let tools = ["workspace_read", "workspace_search"]
+        .into_iter()
+        .map(|name| {
+            Ok(ToolDefinition::new(ToolName::new(name.to_owned())?, None, schema.clone(), false))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let options = RequestOptions::new(
+        StructuredOutput::Text,
+        ReasoningPolicy::Disabled,
+        GenerationConfig::new(2048, vec![], None, None, None)?,
+        CachePolicy::Disabled,
+        PersistencePolicy::LOCAL_FIRST,
+        None,
+        vec![],
+    );
+    Ok(ModelRequest::new(
+        profile,
+        capabilities,
+        RequestId::new("scripted-dsml-request".into())?,
+        vec![message(Role::User, "Reply with the scripted vendor turn.")?],
+        tools,
+        ToolChoice::Auto,
+        ParallelToolPolicy::Allowed(2),
+        options,
+        ProtocolLimits::PRODUCTION,
+    )?)
+}
+
 async fn drive(
     provider: &dyn ModelProvider,
     request: ModelRequest,
-) -> Result<(ResponseReducer, Vec<serde_json::Value>)> {
+) -> Result<(ResponseReducer, Vec<serde_json::Value>, Vec<serde_json::Value>, Vec<serde_json::Value>)>
+{
     let mut reducer =
         ResponseReducer::new(provider.profile().provider().clone(), ProtocolLimits::PRODUCTION);
     let mut corrections = Vec::new();
+    let mut healings = Vec::new();
+    let mut normalizations = Vec::new();
     let mut stream = provider.start(request, CancellationToken::new()).await?;
     while let Some(event) = stream.pull().await? {
-        if let ModelEvent::ProviderEvent(extension) = event.event()
-            && extension.name().as_str() == "peritus.opencode_turn_correction"
-        {
-            let value: serde_json::Value =
-                serde_json::from_slice(extension.value().canonical_bytes())?;
-            println!("CORRECTION {}", serde_json::to_string(&value)?);
-            corrections.push(value);
+        if let ModelEvent::ProviderEvent(extension) = event.event() {
+            match extension.name().as_str() {
+                "peritus.opencode_turn_correction" => {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(extension.value().canonical_bytes())?;
+                    println!("CORRECTION {}", serde_json::to_string(&value)?);
+                    corrections.push(value);
+                }
+                "peritus.response_healing" => {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(extension.value().canonical_bytes())?;
+                    println!(
+                        "HEALING {} {}",
+                        value["policy"].as_str().unwrap_or(""),
+                        value["target"].as_str().unwrap_or("")
+                    );
+                    healings.push(value);
+                }
+                "peritus.opencode_turn_normalization" => {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(extension.value().canonical_bytes())?;
+                    println!(
+                        "NORMALIZATION {} {} {}",
+                        value["policy"].as_str().unwrap_or(""),
+                        value["target"].as_str().unwrap_or(""),
+                        value["tool_calls"].as_u64().unwrap_or(0)
+                    );
+                    normalizations.push(value);
+                }
+                _ => {}
+            }
         }
         reducer.push(event)?;
     }
     if reducer.terminal().is_none() {
         return Err("missing terminal".into());
     }
-    Ok((reducer, corrections))
+    Ok((reducer, corrections, healings, normalizations))
+}
+
+fn check_healing(healings: &[serde_json::Value]) -> Result<()> {
+    if healings.len() != 1 {
+        return Err(format!("expected one envelope repair, saw {}", healings.len()).into());
+    }
+    let value = &healings[0];
+    if value["policy"].as_str() != Some("private-envelope-v1")
+        || value["target"].as_str() != Some("opencode.turn")
+    {
+        return Err(format!("healing has unexpected fields: {value}").into());
+    }
+    Ok(())
+}
+
+fn check_normalization(
+    reducer: &ResponseReducer,
+    normalizations: &[serde_json::Value],
+) -> Result<()> {
+    if normalizations.len() != 1 {
+        return Err(format!("expected one DSML normalization, saw {}", normalizations.len()).into());
+    }
+    let value = &normalizations[0];
+    if value["policy"].as_str() != Some("dsml-v1")
+        || value["target"].as_str() != Some("opencode.turn")
+        || value["tool_calls"].as_u64() != Some(2)
+        || value["tools_executed"].as_bool() != Some(false)
+    {
+        return Err(format!("normalization has unexpected fields: {value}").into());
+    }
+    let mut text = None;
+    let mut calls = Vec::new();
+    for item in reducer.completed_items() {
+        match item {
+            ReducedItem::Text { text: value, .. } => text = Some(value.expose_for_wire()),
+            ReducedItem::ToolCall { call, .. } => {
+                let arguments = serde_json::from_slice(call.arguments().canonical_bytes())?;
+                calls.push((call.name().as_str().to_owned(), arguments));
+            }
+            _ => {}
+        }
+    }
+    if text != Some("I will inspect the README and search the source.") {
+        return Err(format!("unexpected normalized content: {text:?}").into());
+    }
+    let expected = vec![
+        ("workspace_read".to_owned(), json!({"path": "README.md"})),
+        ("workspace_search".to_owned(), json!({"query": "TODO", "path": "src"})),
+    ];
+    if calls != expected {
+        return Err(format!("unexpected normalized calls: {calls:?}").into());
+    }
+    Ok(())
 }
 
 fn check_correction(value: &serde_json::Value, attempt: u64) -> Result<()> {
@@ -133,10 +256,24 @@ fn check_correction(value: &serde_json::Value, attempt: u64) -> Result<()> {
     Ok(())
 }
 
+fn check_single_rejection(corrections: &[serde_json::Value], reason: &str) -> Result<()> {
+    if corrections.len() != 1 {
+        return Err(format!("expected one correction, saw {}", corrections.len()).into());
+    }
+    if corrections[0]["reason"].as_str() != Some(reason)
+        || corrections[0]["tools_executed"].as_bool() != Some(false)
+    {
+        return Err(format!("unexpected correction: {}", corrections[0]).into());
+    }
+    Ok(())
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let arguments = std::env::args().collect::<Vec<_>>();
-    let expectation = arguments.get(1).ok_or("expectation needed (accepted|rejected)")?;
+    let expectation = arguments.get(1).ok_or(
+        "expectation needed (accepted|rejected|prelude_*|dsml|dsml_unknown_tool|dsml_malformed)",
+    )?;
     let _root = Path::new(&std::env::var("PERITUS_REAL_CASE_ROOT")?);
     let config: toml::Value =
         toml::from_str(&std::fs::read_to_string(std::env::var("PERITUS_REAL_CONFIG")?)?)?;
@@ -157,15 +294,19 @@ async fn main() -> Result<()> {
     route["profile"]["capabilities"] =
         json!(["parallel-tool-calls", "streaming", "tool-calls", "usage-detail"]);
     let provider = provider(route)?;
-    let request = request(provider.as_ref())?;
-    let (reducer, corrections) = drive(provider.as_ref(), request).await?;
+    let request = if expectation == "dsml" || expectation.starts_with("dsml_") {
+        request_with_tools(provider.as_ref())?
+    } else {
+        request(provider.as_ref())?
+    };
+    let (reducer, corrections, healings, normalizations) =
+        drive(provider.as_ref(), request).await?;
     match reducer.terminal() {
         Some(TerminalOutcome::Succeeded { .. }) => println!("TERMINAL succeeded"),
-        Some(TerminalOutcome::Failed(failure)) => println!(
-            "TERMINAL failed {:?} {}",
-            failure.category(),
-            failure.diagnostic().code()
-        ),
+        Some(TerminalOutcome::Failed(failure)) => {
+            println!("TERMINAL failed {:?} {}", failure.category(), failure.diagnostic().code())
+        }
+        Some(TerminalOutcome::RequiresAction { .. }) => println!("TERMINAL requires_action"),
         other => println!("TERMINAL {other:?}"),
     }
     match expectation.as_str() {
@@ -191,6 +332,36 @@ async fn main() -> Result<()> {
             }
             check_correction(&corrections[0], 1)?;
             check_correction(&corrections[1], 2)?;
+        }
+        "prelude_backticks" | "prelude_quoted" | "prelude_fenced" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the repaired prelude did not complete the turn".into());
+            }
+            if !corrections.is_empty() {
+                return Err(format!("expected no refusal, saw {}", corrections.len()).into());
+            }
+            check_healing(&healings)?;
+        }
+        "dsml" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::RequiresAction { .. })) {
+                return Err("the normalized DSML turn did not request its tools".into());
+            }
+            if !corrections.is_empty() {
+                return Err(format!("expected no refusal, saw {}", corrections.len()).into());
+            }
+            check_normalization(&reducer, &normalizations)?;
+        }
+        "dsml_unknown_tool" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the corrected undeclared-tool turn did not complete".into());
+            }
+            check_single_rejection(&corrections, "opencode.runtime.invalid_turn_tools")?;
+        }
+        "dsml_malformed" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the corrected malformed-DSML turn did not complete".into());
+            }
+            check_single_rejection(&corrections, "opencode.runtime.invalid_turn_json")?;
         }
         other => return Err(format!("unknown expectation {other}").into()),
     }

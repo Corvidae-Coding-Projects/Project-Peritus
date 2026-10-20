@@ -110,6 +110,29 @@ fn decode_turn(
     runtime: &super::request::RuntimeRequest,
     usage: UsageCounters,
 ) -> Result<RuntimeTurn, TurnRejection> {
+    match json_turn(result, request, runtime, usage) {
+        Ok(turn) => Ok(turn),
+        Err(TurnRejection::Json) => match super::dsml::normalize(result)? {
+            Some(turn) => finish_turn(
+                turn.content,
+                turn.tool_calls,
+                request,
+                runtime,
+                usage,
+                vec![turn.audit],
+            ),
+            None => Err(TurnRejection::Json),
+        },
+        Err(reason) => Err(reason),
+    }
+}
+
+fn json_turn(
+    result: &str,
+    request: &ModelRequest,
+    runtime: &super::request::RuntimeRequest,
+    usage: UsageCounters,
+) -> Result<RuntimeTurn, TurnRejection> {
     let (json, repairs) = peritus_provider_core::healing::private_envelope(
         result,
         "opencode.turn",
@@ -134,20 +157,11 @@ fn decode_turn(
         _ => return Err(TurnRejection::Content),
     };
     let calls = object.get("tool_calls").and_then(Value::as_array).ok_or(TurnRejection::Tools)?;
-    if content.contains('\0') || content.is_empty() && calls.is_empty() {
-        return Err(TurnRejection::Content);
-    }
-    if calls.len() > runtime.max_calls
-        || calls.is_empty()
-            && matches!(request.tool_choice(), ToolChoice::Required | ToolChoice::Specific(_))
-    {
-        return Err(TurnRejection::Tools);
-    }
     let mut tool_calls = Vec::new();
     for call in calls {
         let call = call.as_object().ok_or(TurnRejection::Arguments)?;
         let name = call.get("name").and_then(Value::as_str).ok_or(TurnRejection::Tools)?;
-        if call.len() != 2 || !runtime.allowed_tools.contains(name) {
+        if call.len() != 2 {
             return Err(TurnRejection::Tools);
         }
         let arguments = call
@@ -157,7 +171,30 @@ fn decode_turn(
             .clone();
         tool_calls.push(RuntimeToolCall { name: name.to_owned(), arguments });
     }
-    Ok(RuntimeTurn { content, tool_calls, usage, repairs: repairs.into_iter().collect() })
+    finish_turn(content, tool_calls, request, runtime, usage, repairs.into_iter().collect())
+}
+
+fn finish_turn(
+    content: String,
+    tool_calls: Vec<RuntimeToolCall>,
+    request: &ModelRequest,
+    runtime: &super::request::RuntimeRequest,
+    usage: UsageCounters,
+    repairs: Vec<ModelEvent>,
+) -> Result<RuntimeTurn, TurnRejection> {
+    if content.contains('\0') || content.is_empty() && tool_calls.is_empty() {
+        return Err(TurnRejection::Content);
+    }
+    if tool_calls.len() > runtime.max_calls
+        || tool_calls.is_empty()
+            && matches!(request.tool_choice(), ToolChoice::Required | ToolChoice::Specific(_))
+    {
+        return Err(TurnRejection::Tools);
+    }
+    if tool_calls.iter().any(|call| !runtime.allowed_tools.contains(&call.name)) {
+        return Err(TurnRejection::Tools);
+    }
+    Ok(RuntimeTurn { content, tool_calls, usage, repairs })
 }
 
 fn identity(

@@ -4,6 +4,7 @@
 //! disposable configuration; OpenCode owns provider SDK selection and gateway request headers.
 
 mod catalog;
+mod dsml;
 mod executable;
 mod isolation;
 mod output;

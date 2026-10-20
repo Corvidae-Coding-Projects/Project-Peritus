@@ -6,21 +6,12 @@ pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<&str> {
         return fenced.strip_suffix("```").map(str::trim);
     }
     let start = text.find(['{', '['])?;
-    // A second structured candidate or markdown fence is ambiguous, not explanatory prose.
-    let prelude = &text[..start];
-    let separated = prelude.trim_end_matches([' ', '\t']);
-    let plain_prelude =
-        allow_plain_prelude && (separated.ends_with("\n\n") || separated.ends_with("\r\n\r\n"));
-    if prelude.contains(['[', ']', '{', '}', '`', '"'])
-        || start > 0 && !prelude.trim_end().ends_with(':') && !plain_prelude
-    {
-        return None;
-    }
     let bytes = text.as_bytes();
     let mut depth = 0_usize;
     let mut cursor = start;
-    while cursor < bytes.len() {
-        match bytes[cursor] {
+    let end = loop {
+        let byte = *bytes.get(cursor)?;
+        match byte {
             b'"' => cursor = string_end(bytes, cursor)?,
             b'{' | b'[' => {
                 depth += 1;
@@ -31,18 +22,40 @@ pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<&str> {
             b'}' | b']' => {
                 depth = depth.checked_sub(1)?;
                 if depth == 0 {
-                    let end = cursor + 1;
-                    if !text[end..].trim().is_empty() {
-                        return None;
-                    }
-                    return Some(&text[start..end]);
+                    break cursor + 1;
                 }
             }
             _ => {}
         }
         cursor += 1;
+    };
+    let mut prelude = &text[..start];
+    let tail = text[end..].trim();
+    if !tail.is_empty() {
+        // One object wrapped in a Markdown fence that follows the prelude is formatting, not a
+        // second candidate. The fence must open immediately before the object and close the
+        // payload, so the object stays the sole structured candidate.
+        if tail != "```" {
+            return None;
+        }
+        prelude = prelude
+            .trim_end()
+            .strip_suffix("```json")
+            .or_else(|| prelude.trim_end().strip_suffix("```"))?;
     }
-    None
+    // A second structured candidate is ambiguous, not explanatory prose. Inline code spans and
+    // quoted prose are ordinary text; the private envelope may also carry one final fenced object.
+    let separated = prelude.trim_end_matches([' ', '\t']);
+    let plain_prelude =
+        allow_plain_prelude && (separated.ends_with("\n\n") || separated.ends_with("\r\n\r\n"));
+    if prelude.contains(['[', ']', '{', '}'])
+        || prelude.contains("```")
+        || (!allow_plain_prelude && prelude.contains(['`', '"']))
+        || start > 0 && !prelude.trim_end().ends_with(':') && !plain_prelude
+    {
+        return None;
+    }
+    Some(&text[start..end])
 }
 
 pub(super) fn normalize(input: &str) -> Option<String> {
