@@ -1,0 +1,221 @@
+# Observed baseline — provider setup with and without the OS credential store
+
+Captured 2026-10-20 on WSL2 Debian, Peritus 0.1.4 build `target/debug/peritus`, official Linux
+OpenCode 1.19.0 first on PATH (`--path-prefix`). Every block below is verbatim pty output from
+`docs/testing/reproducers/credential-store-unavailable/replay.py`; ANSI bracketed-paste markers
+appear because hidden credential entry enables them. No inference request was made.
+
+## unavailable-openai-api
+
+```
+
+Provider settings
+Select one or more providers. Existing credentials stay in the OS key store.
+
+  1. OpenAI with ChatGPT account            Sign in
+  2. Anthropic with Claude account          Sign in
+  3. OpenAI API                             Add key
+  4. Anthropic API                          Add key
+  5. Google Gemini API                      Add key
+  6. Compatible endpoint                    Add key
+  7. OpenCode Zen via OpenCode CLI          Add key
+  8. OpenCode Go via OpenCode CLI           Add key
+  9. OpenRouter                             Add key
+  10. Groq                                   Add key
+  11. Together AI                            Add key
+  12. Fireworks AI                           Add key
+  13. DeepSeek                               Add key
+  0. Offline browse mode
+  Zen/Go use the official OpenCode CLI with your API key; no separate login.
+
+Providers (comma-separated numbers, or 0 for offline) [0]: 3
+
+OpenAI API
+Peritus stores provider keys in the operating-system credential store, which is not available here.
+On Linux and WSL that store is the freedesktop Secret Service: start a session D-Bus and an unlocked gnome-keyring, then open Peritus again.
+docs/c3-platform-security.md records the exact commands.
+peritus: internal: configure providers: interactive setup failed: provider setup needs a working operating-system credential store
+
+=== exit code: 70
+```
+
+## unavailable-opencode-go
+
+```
+
+Provider settings
+Select one or more providers. Existing credentials stay in the OS key store.
+
+  1. OpenAI with ChatGPT account            Sign in
+  2. Anthropic with Claude account          Sign in
+  3. OpenAI API                             Add key
+  4. Anthropic API                          Add key
+  5. Google Gemini API                      Add key
+  6. Compatible endpoint                    Add key
+  7. OpenCode Zen via OpenCode CLI          Add key
+  8. OpenCode Go via OpenCode CLI           Add key
+  9. OpenRouter                             Add key
+  10. Groq                                   Add key
+  11. Together AI                            Add key
+  12. Fireworks AI                           Add key
+  13. DeepSeek                               Add key
+  0. Offline browse mode
+  Zen/Go use the official OpenCode CLI with your API key; no separate login.
+
+Providers (comma-separated numbers, or 0 for offline) [0]: 8
+
+OpenCode Go via OpenCode CLI
+Peritus stores provider keys in the operating-system credential store, which is not available here.
+On Linux and WSL that store is the freedesktop Secret Service: start a session D-Bus and an unlocked gnome-keyring, then open Peritus again.
+docs/c3-platform-security.md records the exact commands.
+peritus: internal: configure providers: interactive setup failed: provider setup needs a working operating-system credential store
+
+=== exit code: 70
+```
+
+## available-opencode-go
+
+```
+
+Provider settings
+Select one or more providers. Existing credentials stay in the OS key store.
+
+  1. OpenAI with ChatGPT account            Sign in
+  2. Anthropic with Claude account          Sign in
+  3. OpenAI API                             Add key
+  4. Anthropic API                          Add key
+  5. Google Gemini API                      Add key
+  6. Compatible endpoint                    Add key
+  7. OpenCode Zen via OpenCode CLI          Add key
+  8. OpenCode Go via OpenCode CLI           Add key
+  9. OpenRouter                             Add key
+  10. Groq                                   Add key
+  11. Together AI                            Add key
+  12. Fireworks AI                           Add key
+  13. DeepSeek                               Add key
+  0. Offline browse mode
+  Zen/Go use the official OpenCode CLI with your API key; no separate login.
+
+Providers (comma-separated numbers, or 0 for offline) [0]: 8
+
+OpenCode Go via OpenCode CLI
+The key will be stored by your operating system, not in Peritus files.
+Paste the API key and press Enter. Input is hidden: 
+[?2004h
+[?2004lCredential captured. Saving it to the operating-system credential store…
+Discovering available models from this provider…
+  1. claude-haiku-5-5
+  2. deepseek-v4-flash
+  3. deepseek-v4-flash-vision-exp
+  4. deepseek-v4-pro
+  5. deepseek-v4.1-flash
+  6. glm-5.2
+  7. glm-5.3
+  8. glm-5.3-flash
+  9. gpt-5.6-luna
+  10. gpt-6-luna
+  11. grok-4.6
+  12. grok-4.7
+  13. hy3
+  14. hy4-preview
+  15. kimi-k2.7-code
+  16. kimi-k3
+  17. longcat-2.0
+  18. longcat-2.5-preview-free
+  19. mimo-v2.5
+  20. mimo-v2.5-pro
+  21. mimo-v2.6-flash
+  22. mimo-v2.6-pro
+  23. minimax-m2.7
+  24. minimax-m3
+  25. muse-spark-1.2-contributor
+  26. muse-spark-1.3-contributor
+  27. qwen3.7-plus
+  28. qwen3.8-flash
+  29. qwen3.8-max
+  30. space-bunny
+  31. step-5-preview-free
+These are provider-advertised models, not capability verification. No inference was requested.
+Choose a model number, or explicitly enter `manual MODEL_ID`: manual local-opencode-go-placeholder
+Using your explicit manual model ID; availability is unverified.
+Tool calling: unknown; connection not tested.
+The official OpenCode CLI selects the protocol for this model. Peritus owns all tools and conversation history.
+OpenCode Go via OpenCode CLI is configured. Connection not yet tested.
+Test generation and tool calling now? Up to 3 small requests may use paid tokens. [y/N]: 
+
+Review model for new conversations
+Choose the provider and model used for independent review. This leaves your coding model unchanged.
+  0. Use the default provider and its selected model
+  1. OpenCode Go via OpenCode CLI
+Reviewer provider [0]: 
+Provider settings saved.
+
+=== exit code: 0
+```
+
+## cleanup-opencode-go
+
+```
+
+Provider settings
+Select one or more providers. Existing credentials stay in the OS key store.
+
+  1. OpenAI with ChatGPT account            Sign in
+  2. Anthropic with Claude account          Sign in
+  3. OpenAI API                             Add key
+  4. Anthropic API                          Add key
+  5. Google Gemini API                      Add key
+  6. Compatible endpoint                    Add key
+  7. OpenCode Zen via OpenCode CLI          Add key
+  8. OpenCode Go via OpenCode CLI           selected, configured; connection not tested this session
+  9. OpenRouter                             Add key
+  10. Groq                                   Add key
+  11. Together AI                            Add key
+  12. Fireworks AI                           Add key
+  13. DeepSeek                               Add key
+  0. Offline browse mode
+  Zen/Go use the official OpenCode CLI with your API key; no separate login.
+
+Providers (comma-separated numbers, or 0 for offline) [current selection]: 0
+Continuing in offline browse mode. Agent runs will ask for a provider.
+Provider settings saved.
+
+=== exit code: 0
+```
+
+## after-cleanup-opencode-go
+
+```
+
+Provider settings
+Select one or more providers. Existing credentials stay in the OS key store.
+
+  1. OpenAI with ChatGPT account            Sign in
+  2. Anthropic with Claude account          Sign in
+  3. OpenAI API                             Add key
+  4. Anthropic API                          Add key
+  5. Google Gemini API                      Add key
+  6. Compatible endpoint                    Add key
+  7. OpenCode Zen via OpenCode CLI          Add key
+  8. OpenCode Go via OpenCode CLI           Add key
+  9. OpenRouter                             Add key
+  10. Groq                                   Add key
+  11. Together AI                            Add key
+  12. Fireworks AI                           Add key
+  13. DeepSeek                               Add key
+  0. Offline browse mode
+  Zen/Go use the official OpenCode CLI with your API key; no separate login.
+
+Providers (comma-separated numbers, or 0 for offline) [0]: 0
+Continuing in offline browse mode. Agent runs will ask for a provider.
+Provider settings saved.
+
+=== exit code: 0
+```
+
+## secret-service-inventory
+
+```
+--- items in the Peritus provider namespace:
+aoao 0 0
+```

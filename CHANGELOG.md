@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- Check the operating-system credential store before provider setup asks for a key. An unavailable keyring now reports how to start the Linux and WSL Secret Service instead of failing with `PERITUS-SECRETS-006` after hidden input and model discovery.
+
+### Real testing
+
+- Replayed provider setup with and without a session D-Bus and unlocked gnome-keyring. The unavailable store produced the corrective guidance before any key entry; the available store stored a placeholder credential, saved provider settings, and removed it again through the product's own path with no leftover item in the provider namespace. The retained reproducer passed 21 checks.
+
 ## 0.1.4
 
 ### Added

@@ -125,6 +125,16 @@ pub fn remove_direct_credential(profile: &DirectProviderProfile) -> Result<(), O
     Ok(())
 }
 
+/// Reports whether the operating-system credential store can accept provider credentials.
+///
+/// Setup checks this before it asks for a secret it could not save. Probing reads and writes
+/// nothing; a store that is present but locked still reports available here and fails on the
+/// exact write with its own locked or denied outcome.
+#[must_use]
+pub fn credential_store_available() -> bool {
+    PlatformCredentialStore::providers().probe().available()
+}
+
 /// Discovers models for a saved direct route using its existing OS credential reference.
 ///
 /// # Errors

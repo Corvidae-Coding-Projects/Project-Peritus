@@ -25,6 +25,7 @@ pub(super) fn setup(
     terminal.line("")?;
     terminal.line(kind.label())?;
     ensure_runtime(terminal, kind)?;
+    ensure_credential_store(terminal)?;
     terminal.line("The key will be stored by your operating system, not in Peritus files.")?;
 
     let (endpoint, model, protocol, header) = settings(terminal, kind)?;
@@ -67,6 +68,31 @@ fn settings(
 }
 
 type DirectSettings = (Option<String>, String, Option<CompatibleProtocol>, Option<String>);
+
+/// Refuses to collect a key the operating-system credential store could not hold.
+///
+/// The platform store is probed before any secret is requested, so an unavailable keyring is
+/// reported with corrective guidance instead of after hidden input and model discovery.
+fn ensure_credential_store(terminal: &mut Terminal<'_>) -> Result<(), LauncherError> {
+    if peritus_provider_onboarding::credential_store_available() {
+        return Ok(());
+    }
+    terminal.line(
+        "Peritus stores provider keys in the operating-system credential store, which is not available here.",
+    )?;
+    if cfg!(target_os = "linux") {
+        terminal.line(
+            "On Linux and WSL that store is the freedesktop Secret Service: start a session D-Bus and an unlocked gnome-keyring, then open Peritus again.",
+        )?;
+        terminal.line("docs/c3-platform-security.md records the exact commands.")?;
+    } else {
+        terminal
+            .line("Unlock or repair the platform credential store, then open Peritus again.")?;
+    }
+    Err(LauncherError::Interaction(
+        "provider setup needs a working operating-system credential store".to_owned(),
+    ))
+}
 
 fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, LauncherError> {
     terminal.line("Protocol: 1. Responses  2. Chat Completions")?;

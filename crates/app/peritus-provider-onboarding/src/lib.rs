@@ -9,7 +9,8 @@ mod status;
 
 pub use account::{AccountLogin, AccountProvider, ProviderCatalog};
 pub use direct::{
-    DirectCredential, DirectProviderDraft, discover_direct_models, remove_direct_credential,
+    DirectCredential, DirectProviderDraft, credential_store_available, discover_direct_models,
+    remove_direct_credential,
 };
 pub use error::OnboardingError;
 pub use install::install_account_provider;
