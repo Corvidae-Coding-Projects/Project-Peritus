@@ -12,6 +12,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | --- | --- |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 | [archive.py](archive.py) | Canonical native release archives using Python's standard library (3.12+). |
+| [replay_archive_junctions.py](replay_archive_junctions.py) | Windows CLI replay for root, nested, and dangling directory junction rejection, plus ordinary archive readback. |
 | [native-build.md](native-build.md) | Document: Native release compilation. |
 | [native_build.py](native_build.py) | Compile native daemon libraries and their binary consumers in observed phases. |
 | [native_inputs.py](native_inputs.py) | Observed inputs for native daemon libraries and their same-run binary consumers. |
@@ -36,6 +37,29 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | [rpm/](rpm/AGENTS.md) | RPM specification and package lifecycle/install layout declarations. |
 | [schemas/](schemas/AGENTS.md) | Versioned native-package/platform report contracts retained for packaging and release consumers. |
 | [windows/](windows/AGENTS.md) | PowerShell native install/upgrade/uninstall scripts and Windows launch/service integration. |
+
+### Replay Windows archive junction rejection
+
+On Windows with Python 3.12+ and Windows PowerShell, run from the repository root:
+
+```powershell
+python packaging/replay_archive_junctions.py
+```
+
+The replay creates disposable local fixture directories and junctions, invokes the
+actual `packaging/archive.py` CLI, and removes its fixtures. It checks eight cases:
+ordinary ZIP and tar.gz content readback, plus rejection of nested, root, and dangling
+junctions in both formats. Rejection must happen before the destination is created.
+Use `--work-dir PATH` to choose the fixture parent and `--archive-script PATH` to
+replay against another revision's archive script.
+
+At revision `0690a488118cc5b90006f65fe0a262f6be58ba4e`, all six junction cases
+failed: nested and root junctions included an outside fixture's file in the archive;
+dangling junctions failed only after creating a partial archive. The contract in
+`archive.py` permits only regular directories/files and rejects links before writing.
+The corrected command rejects all three junction shapes while retaining ordinary
+archive behavior. This replay checks static fixture trees; concurrent filesystem
+replacement during archiving is outside its scope.
 
 Install the latest public release below, select a specific published version, or use
 [Install from source](#install-from-source) for development builds.
