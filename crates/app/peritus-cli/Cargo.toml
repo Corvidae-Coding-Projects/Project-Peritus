@@ -28,6 +28,7 @@ peritus-tools-shell = { version = "=0.1.5", path = "../../tools/peritus-tools-sh
 peritus-types = { version = "=0.1.5", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 
 [[bin]]

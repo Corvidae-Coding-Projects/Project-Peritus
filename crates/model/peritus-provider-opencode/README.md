@@ -43,6 +43,10 @@ path. The wire and correction instructions explicitly reject DSML, XML/HTML-like
 special-token pseudo-tool syntax. A complete terminal DSML calls block is also normalized under a
 private audit into the same inert tool-call shape, then subjected to the ordinary declared-name,
 argument-object, count, and selection checks; incomplete or ambiguous markup still fails closed.
+Structural markers are recognized at tag boundaries without rewriting parameter bodies. JSON-valued
+parameters pass duplicate-rejecting canonical parsing before flattening, and a structured or fenced
+prelude cannot compete with the terminal calls block. String values retain their exact bytes; literal
+matching parameter-closing delimiters require the ordinary JSON envelope instead of DSML.
 Tool-only turns may omit public commentary without inventing assistant text.
 Go regional-privacy rejections name the required account setting instead of suggesting an API
 protocol change; Peritus does not modify that setting.

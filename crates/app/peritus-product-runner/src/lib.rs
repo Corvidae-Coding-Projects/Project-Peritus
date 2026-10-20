@@ -74,4 +74,4 @@ mod api;
 
 pub use api::*;
 
-pub use trace::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, read_frames};
+pub use trace::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, TraceReader, read_frames};

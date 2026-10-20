@@ -8,6 +8,8 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [trace-streaming.py](trace-streaming.py) | Actual before/after trace CLI output, errors, torn tails, peak RSS and sparse-payload filtering replay. |
+| [trace-reader.rs](trace-reader.rs) | Public reader consumer operating actual append, snapshot, rewind and fresh-process-equivalent reopen behavior. |
 | [tui-markdown-documents.py](tui-markdown-documents.py) | Signed-in read-only provider journey for long Markdown, cross-chunk code fences, tables, literal Python, genuine hash text and raw numbered details. |
 | [tui-formatting-recall.py](tui-formatting-recall.py) | Actual terminal replay of Markdown tool output, durable recall/search, paused-daemon draft fences, paging, queue inspection, Unicode editing, reconnect and sizes. |
 | [tui-feedback.py](tui-feedback.py) | Real terminal, daemon, provider, file-edit, steering-receipt, formatting, resizing, and reattachment replay. |
@@ -57,6 +59,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [opencode-dsml-integrity/](opencode-dsml-integrity/AGENTS.md) | Public OpenCode-adapter input/recovery replay for literal marker preservation, ambiguous candidates and duplicate keys. |
 | [provider-progress/](provider-progress/AGENTS.md) | Actual provider and terminal progress, validation, Unicode, cancellation and delayed-heartbeat replay. |
 | [tui-conveniences/](tui-conveniences/AGENTS.md) | Actual terminal and transcript-consumer replays for local conveniences, draft retention, attachment confirmation, and restart. |
 | [incremental-context/](incremental-context/AGENTS.md) | Public product-tool/context consumers for reusable pages, append-only exchange selection, authority changes and cache pressure. |
