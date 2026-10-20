@@ -1,6 +1,6 @@
 //! Optional live user-input and public activity boundary for developer execution.
 
-use super::DeveloperLoopError;
+use super::{DeveloperLoopError, DeveloperRetryReason};
 pub use crate::developer_interaction::{DeveloperInput, DeveloperRequestAdmission};
 
 /// Host-owned role whose model is selected at each new logical model turn.
@@ -69,6 +69,22 @@ pub enum DeveloperActivity<'a> {
         model: &'a str,
         /// Reasoning control in the outgoing request, not an inferred provider outcome.
         reasoning: peritus_model_protocol::ReasoningPolicy,
+    },
+    /// A completed provider reply was refused by its adapter and will be replaced.
+    ResponseRejected {
+        /// One-based attempt whose reply was refused.
+        attempt: u8,
+        /// Stable adapter diagnostic code; the rejected text stays in the private trace.
+        reason: &'a str,
+    },
+    /// The same logical turn will be requested again after an unusable attempt.
+    ProviderRetry {
+        /// One-based attempt about to start.
+        next_attempt: u8,
+        /// Maximum attempts admitted for this logical turn.
+        max_attempts: u8,
+        /// Checked reason the previous attempt did not produce a usable turn.
+        reason: DeveloperRetryReason,
     },
     /// No public text has arrived while a provider request remains pending.
     ModelWaiting {

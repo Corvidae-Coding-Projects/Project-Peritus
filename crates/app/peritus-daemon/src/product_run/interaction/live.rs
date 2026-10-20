@@ -457,6 +457,29 @@ impl DeveloperInteraction for LiveConversation {
                     "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
                 )
             }
+            DeveloperActivity::ResponseRejected { attempt, reason } => {
+                progress.mark_event("provider reply rejected");
+                options.streaming_text = false;
+                options.append(
+                    ProductActivityKind::Status,
+                    &format!("Provider reply rejected ({reason})"),
+                    &format!(
+                        "Reply {attempt} of this turn was not a valid Peritus turn, so none of its proposed tools ran. The rejected text is retained in this run's private trace: peritus runs trace --run {}",
+                        crate::product_run::deliverable::run_hex(self.run_id),
+                    ),
+                )
+            }
+            DeveloperActivity::ProviderRetry { next_attempt, max_attempts, reason } => {
+                // The retry is still one model request for accounting and liveness purposes.
+                progress.begin_provider_request();
+                progress.mark_event("provider retry scheduled");
+                options.streaming_text = false;
+                options.append(
+                    ProductActivityKind::Status,
+                    &format!("Retrying model request (attempt {next_attempt} of {max_attempts})"),
+                    &format!("The previous attempt ended without a usable reply: {}.", retry_reason(reason)),
+                )
+            }
             DeveloperActivity::ReviewRetry { next_attempt, reason } => {
                 progress.mark_event("review retry scheduled");
                 narration::review_retry(options, next_attempt, reason)
@@ -491,6 +514,17 @@ const fn goal_role(role: DeveloperModelRole) -> peritus_product_runner::control:
         DeveloperModelRole::Writer => peritus_product_runner::control::GoalRole::Writer,
         DeveloperModelRole::Reviewer => peritus_product_runner::control::GoalRole::Reviewer,
         DeveloperModelRole::Fixer => peritus_product_runner::control::GoalRole::Fixer,
+    }
+}
+
+const fn retry_reason(reason: peritus_agent::DeveloperRetryReason) -> &'static str {
+    use peritus_agent::DeveloperRetryReason as Reason;
+    match reason {
+        Reason::EmptyResponse => "the provider returned no usable reply",
+        Reason::RetryableProviderResponse => "the provider reported a retryable response failure",
+        Reason::Connection => "the provider connection failed",
+        Reason::Transport => "the provider transport was interrupted",
+        Reason::MalformedStream => "the provider stream was malformed or incomplete",
     }
 }
 

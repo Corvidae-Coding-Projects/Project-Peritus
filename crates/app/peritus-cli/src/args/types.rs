@@ -63,6 +63,7 @@ COMMANDS:
   runs list
   runs show --run <ID>
   runs execute --run <ID>
+  runs trace --run <ID> [--extensions]
   runs <accept|commit> --run <ID> [--confirm-unqualified <CANDIDATE-DIGEST>]
   runs <export|discard|retry|cancel|acknowledge> --run <ID>
   completions <bash|zsh|fish|powershell>
@@ -122,6 +123,11 @@ pub enum Command {
     TerminalDetach(TerminalBindingArgs),
     TerminalCancel(TerminalBindingArgs),
     ProductRuns(ProductRunArgs),
+    /// Local read of one run's durable private trace; no daemon session is needed.
+    ProductRunTrace {
+        run_id: RunId,
+        extensions_only: bool,
+    },
 }
 
 pub enum ProductRunArgs {

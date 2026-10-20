@@ -29,7 +29,12 @@ pub(super) struct NativeFailure {
 pub(super) enum Decoded {
     Turn(RuntimeTurn),
     Failure(NativeFailure),
-    Rejected { reason: TurnRejection, usage: UsageCounters },
+    Rejected {
+        reason: TurnRejection,
+        usage: UsageCounters,
+        /// Complete model-authored reply text that failed the private envelope contract.
+        rejected: String,
+    },
 }
 
 pub(super) fn decode(
@@ -95,7 +100,7 @@ pub(super) fn decode(
     }
     Ok(match decode_turn(&result, request, runtime, usage) {
         Ok(turn) => Decoded::Turn(turn),
-        Err(reason) => Decoded::Rejected { reason, usage },
+        Err(reason) => Decoded::Rejected { reason, usage, rejected: result },
     })
 }
 

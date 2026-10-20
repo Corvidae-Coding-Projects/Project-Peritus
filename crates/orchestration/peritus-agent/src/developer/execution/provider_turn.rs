@@ -2,7 +2,8 @@
 use super::super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperRetryRecord, DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent,
+    DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
 };
@@ -158,7 +159,7 @@ pub(super) async fn complete_turn(
         if let Some(owner) = retry_context.as_mut() {
             owner.tools.observe_model_context(model_request.messages())?;
         }
-        if !admit_role_request(interaction, profile, &model_request)? {
+        if !admit_role_request(interaction, profile, &model_request, attempt)? {
             return Ok(None);
         }
         let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
@@ -199,6 +200,7 @@ pub(super) async fn complete_turn(
                     return Err(terminal_error(session.terminal()));
                 };
                 planner.record_and_wait(&record, trace).await?;
+                announce_retry(interaction, &record)?;
                 *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
             }
             Err(error) => {
@@ -206,6 +208,7 @@ pub(super) async fn complete_turn(
                     return Err(error);
                 };
                 planner.record_and_wait(&record, trace).await?;
+                announce_retry(interaction, &record)?;
                 *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
             }
         }
@@ -217,6 +220,7 @@ fn admit_role_request(
     interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
     profile: &peritus_model_protocol::ProviderProfile,
     request: &ModelRequest,
+    attempt: u8,
 ) -> Result<bool, DeveloperLoopError> {
     let Some((port, role, revision)) = interaction else { return Ok(true) };
     match port.prepare_role_request(role, revision, request)? {
@@ -224,11 +228,27 @@ fn admit_role_request(
         DeveloperRequestAdmission::Stale => return Ok(false),
         DeveloperRequestAdmission::Stopped => return Err(DeveloperLoopError::Cancelled),
     }
-    port.observe(DeveloperActivity::ModelStarted {
-        model: profile.model().as_str(),
-        reasoning: request.options().reasoning(),
-    })?;
+    // One logical turn announces its model request once. A retry reports its own transition
+    // instead of repeating the same request line for every bounded attempt.
+    if attempt == 1 {
+        port.observe(DeveloperActivity::ModelStarted {
+            model: profile.model().as_str(),
+            reasoning: request.options().reasoning(),
+        })?;
+    }
     Ok(true)
+}
+
+fn announce_retry(
+    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    record: &DeveloperRetryRecord,
+) -> Result<(), DeveloperLoopError> {
+    let Some((port, _, _)) = interaction else { return Ok(()) };
+    port.observe(DeveloperActivity::ProviderRetry {
+        next_attempt: record.attempt().checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?,
+        max_attempts: record.max_attempts(),
+        reason: record.reason(),
+    })
 }
 
 async fn drive(

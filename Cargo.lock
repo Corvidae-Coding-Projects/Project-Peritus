@@ -2726,6 +2726,7 @@ dependencies = [
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-launcher",
+ "peritus-model-protocol",
  "peritus-modules",
  "peritus-product-runner",
  "peritus-run-settlement",

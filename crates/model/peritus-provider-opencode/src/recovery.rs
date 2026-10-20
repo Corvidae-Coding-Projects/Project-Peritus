@@ -6,6 +6,12 @@ use peritus_model_protocol::{
 };
 use peritus_provider_core::ProviderCoreError;
 
+/// Maximum model-authored reply text retained for one rejected turn.
+///
+/// The complete reply is available while decoding, but the durable private trace keeps only a
+/// bounded prefix so one runaway vendor answer cannot grow a run record without limit.
+pub(super) const MAX_RETAINED_REJECTED_BYTES: usize = 16 * 1024;
+
 #[derive(Clone, Copy)]
 pub(super) enum TurnRejection {
     Json,
@@ -47,10 +53,23 @@ impl TurnRejection {
         prompt
     }
 
-    pub(super) fn audit(self, attempt: u32) -> Result<ModelEvent, ProviderCoreError> {
-        // No provider text, credentials, or invented public assistant message enters diagnostics.
-        let value =
-            serde_json::json!({"attempt":attempt,"reason":self.code(),"tools_executed":false});
+    pub(super) fn audit(
+        self,
+        attempt: u32,
+        rejected: &str,
+    ) -> Result<ModelEvent, ProviderCoreError> {
+        // The rejected reply is private model-authored text. It is retained only in the durable
+        // private trace so an operator can read why the turn was refused; no credential, public
+        // assistant message, or redacted diagnostic ever carries it.
+        let (retained, truncated) = retained_prefix(rejected);
+        let value = serde_json::json!({
+            "attempt": attempt,
+            "reason": self.code(),
+            "tools_executed": false,
+            "rejected": retained,
+            "rejected_bytes": u64::try_from(rejected.len()).unwrap_or(u64::MAX),
+            "rejected_truncated": truncated,
+        });
         let value =
             CanonicalJson::parse(&value.to_string(), JsonBounds::value(ProtocolLimits::PRODUCTION))
                 .map_err(|_| super::malformed())?;
@@ -58,6 +77,17 @@ impl TurnRejection {
             .map_err(|_| super::malformed())?;
         Ok(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)))
     }
+}
+
+fn retained_prefix(text: &str) -> (&str, bool) {
+    if text.len() <= MAX_RETAINED_REJECTED_BYTES {
+        return (text, false);
+    }
+    let mut end = MAX_RETAINED_REJECTED_BYTES;
+    while end > 0 && !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    (&text[..end], true)
 }
 
 pub(super) fn combined_usage(

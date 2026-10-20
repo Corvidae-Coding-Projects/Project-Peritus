@@ -44,6 +44,13 @@ impl<'a> ProviderProgress<'a> {
 
     pub(super) fn observe(&mut self, event: &ModelEvent) -> Result<(), DeveloperLoopError> {
         let ModelEvent::ProviderEvent(extension) = event else { return Ok(()) };
+        if let Some((attempt, reason)) = rejected_turn(extension) {
+            if let Some(interaction) = self.interaction {
+                interaction
+                    .observe(DeveloperActivity::ResponseRejected { attempt, reason: &reason })?;
+            }
+            return Ok(());
+        }
         let Some(progress) = runtime_progress(extension) else { return Ok(()) };
         self.progress = progress;
         if let Some(interaction) = self.interaction {
@@ -97,4 +104,18 @@ fn runtime_progress(extension: &ProviderExtension) -> Option<DeveloperProviderPr
         }),
         _ => None,
     }
+}
+
+/// Reads an adapter's private refusal notice without exposing the rejected reply text.
+///
+/// The adapter-owned extension name is part of the published private-trace contract; the
+/// rejected text itself stays in the trace and never enters this content-free activity.
+fn rejected_turn(extension: &ProviderExtension) -> Option<(u8, String)> {
+    if extension.name().as_str() != "peritus.opencode_turn_correction" {
+        return None;
+    }
+    let value: serde_json::Value =
+        serde_json::from_slice(extension.value().canonical_bytes()).ok()?;
+    let attempt = u8::try_from(value["attempt"].as_u64()?).ok()?;
+    Some((attempt, value["reason"].as_str()?.to_owned()))
 }

@@ -70,6 +70,12 @@ impl AppLayout {
         self.state.join("daemon/workspaces")
     }
 
+    /// Returns the daemon-owned root holding one durable private trace per product run.
+    #[must_use]
+    pub fn daemon_product_runs_root(&self) -> PathBuf {
+        self.state.join("daemon/product-runs")
+    }
+
     /// Returns the protected root containing canonical C1 registration files.
     #[must_use]
     pub fn workspace_registrations_root(&self) -> PathBuf {

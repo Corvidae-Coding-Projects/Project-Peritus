@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- Read one run's durable private trace locally with `peritus runs trace --run <ID> [--extensions]`. It decodes every retained provider envelope, retry decision, and rejected model reply without a daemon session.
+
+### Fixed
+
+- Retain the rejected reply text when an OpenCode turn is refused, bounded to 16 KiB, and name `peritus runs trace` in the failure hint instead of promising a diagnostic that no command could read.
+- Announce one model request per logical turn. Retries and refusals report their own transition instead of repeating `Requesting model` for every bounded attempt.
+
+### Real testing
+
+- Measured the retained OpenCode Go run: 82 host attempts, 94 refused replies recorded without their text, 29 scheduled retries, and 71 repeated `Requesting model` lines inside a 256-activity window. Replayed the repaired behavior against a scripted OpenCode stand-in; all four scenarios passed, and the local trace reader was checked against the real trace, a truncated tail, an unknown record tag, an empty file, and a missing run.
+
 ## 0.1.4
 
 ### Added

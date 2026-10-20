@@ -196,10 +196,12 @@ impl OpenCodeRuntimeProvider {
             // Native framing and failures stay authoritative. Only a completed, successful,
             // tool-disabled inference with a rejected model envelope can be regenerated.
             match super::output::decode(output.stdout(), &request, &runtime) {
-                Ok(super::output::Decoded::Rejected { reason, usage })
+                Ok(super::output::Decoded::Rejected { reason, usage, rejected })
                     if output.exit().success() =>
                 {
-                    corrections.push(reason.audit(if rejected_usage.is_some() { 2 } else { 1 })?);
+                    corrections.push(
+                        reason.audit(if rejected_usage.is_some() { 2 } else { 1 }, &rejected)?,
+                    );
                     if rejected_usage.is_none() {
                         rejected_usage = Some(usage);
                         prompt = reason.correction(&runtime.prompt);
