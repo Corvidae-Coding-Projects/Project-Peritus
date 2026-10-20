@@ -43,8 +43,10 @@ path. Tool-only turns may omit public commentary without inventing assistant tex
 Go regional-privacy rejections name the required account setting instead of suggesting an API
 protocol change; Peritus does not modify that setting.
 Public report objects are serialized once, and literal transcript text avoids an extra escaping
-layer. Discovery skips unsupported PATH candidates. Native executable resolution is deferred
-until this route is used, keeping unrelated provider startup independent.
+layer. Discovery skips unsupported PATH candidates, including a Windows installation reached
+through WSL interop, which cannot honour the private POSIX configuration, state, and temporary
+paths this transport owns. Native executable resolution is deferred until this route is used,
+keeping unrelated provider startup independent.
 Model discovery uses `opencode models SERVICE --verbose`, including advertised metadata.
 Output-token limits are advisory. Text and Peritus tool history are supported; native session
 continuations, image attachments, explicit reasoning controls, and server cancellation are
