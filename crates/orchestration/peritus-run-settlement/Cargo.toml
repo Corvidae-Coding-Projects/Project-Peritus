@@ -10,7 +10,7 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-types = { version = "=0.1.4", path = "../../foundation/peritus-types" }
+peritus-types = { version = "=0.1.5", path = "../../foundation/peritus-types" }
 
 [package.metadata.peritus]
 owner = "E0"

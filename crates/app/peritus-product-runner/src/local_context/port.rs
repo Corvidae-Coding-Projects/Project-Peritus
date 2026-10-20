@@ -248,6 +248,14 @@ impl DeveloperContextPort for LocalContextHandle {
         if source.is_memory_receipt() {
             return Ok(None);
         }
+        if source.call.as_ref().is_some_and(|call| call.name == "workspace_read")
+            && serde_json::from_slice::<Value>(&memory.artifact(source.sequence)?)
+                .ok()
+                .is_some_and(|value| value["read_reuse"]["state"] == "already_visible")
+        {
+            // A reuse receipt points to original pages; never invite a chain of receipt reads.
+            return Ok(None);
+        }
         let value = Value::from_iter([
             ("handle", Value::from(super::tools::source_handle(&memory, source.sequence))),
             ("base_revision", Value::from(memory.model_revision)),

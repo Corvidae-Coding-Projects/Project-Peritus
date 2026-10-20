@@ -70,6 +70,13 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
     ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
         self.workspace.observation_images(call, observation)
     }
+    fn reuse_workspace_read(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        self.workspace.reuse_workspace_read(call, observation)
+    }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if matches!(call.name().as_str(), "run_pipeline" | "design_draft") {
             DeveloperToolEffect::MutationCapable

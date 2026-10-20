@@ -15,6 +15,7 @@ pub(super) fn append(
     target: u64,
 ) -> Result<(), DeveloperLoopError> {
     index_inspections(memory)?;
+    super::super::read_reuse::observe_view(memory, messages)?;
     if memory.conversation.as_ref().is_some_and(|view| {
         !view.effective_permissions().allows(crate::control::PermissionCapability::Read)
     }) {
@@ -90,7 +91,7 @@ pub(super) fn append(
         let bytes = memory.artifact(id)?;
         if source.call.as_ref().is_some_and(|call| call.name == "workspace_read") {
             let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else { continue };
-            if !read_is_current(memory, &value) {
+            if !read_is_current(memory, &value) || value.get("content").is_none() {
                 continue;
             }
         }
@@ -117,19 +118,35 @@ pub(super) fn append(
             (String::from_utf8_lossy(&bytes).into_owned(), "UNTRUSTED TOOL EVIDENCE")
         };
         let mut take = bytes_left.saturating_sub(192).min(text.len());
+        let source_read = source.call.as_ref().is_some_and(|call| call.name == "workspace_read");
+        let exact_read = source_read && memory.read_reuse.has_page(id);
         let fitted = loop {
-            let prefix = &text[..text.floor_char_boundary(take)];
+            let preview = if exact_read {
+                let Some(preview) = super::super::read_reuse::preview(memory, id, take)? else {
+                    break None;
+                };
+                Some(preview)
+            } else {
+                None
+            };
+            let rendered = preview.as_ref().map(serde_json::Value::to_string);
+            let prefix = rendered.as_deref().unwrap_or(&text[..text.floor_char_boundary(take)]);
             let body = format!(
-                "ARCHIVED OBSERVATION {} — {label}\nvisible preview bytes 0..{} of {}; exact source remains available through context_read.\n{prefix:?}",
+                "ARCHIVED OBSERVATION {} — {label}\nvisible preview bytes {}; archived source bytes {}; exact source remains available through context_read.\n{}",
                 super::super::tools::source_handle(memory, id),
                 prefix.len(),
                 text.len(),
+                serde_json::to_string(prefix)
+                    .map_err(|_| super::super::error("encode evidence preview"))?,
             );
             if !prefix.is_empty() && body.len() <= bytes_left {
                 let message = text_message(Role::User, body.clone())?;
                 let mut candidate = messages.clone();
                 candidate.push(message.clone());
                 if estimate_developer_request_tokens(&candidate, tools) <= target {
+                    if let Some(preview) = &preview {
+                        super::super::read_reuse::register_rendered(memory, &body, id, preview);
+                    }
                     break Some((body.len(), message));
                 }
             }
@@ -156,7 +173,7 @@ fn page_key(bytes: &[u8]) -> [u8; 32] {
     peritus_codec::sha256(bytes).into_bytes()
 }
 
-pub(super) fn may_reuse_read(memory: &LocalMemory, path: &str) -> bool {
+pub(in crate::local_context) fn may_reuse_read(memory: &LocalMemory, path: &str) -> bool {
     memory.conversation.as_ref().is_some_and(|view| {
         crate::developer_tools::may_reuse_read(
             &memory.workspace,

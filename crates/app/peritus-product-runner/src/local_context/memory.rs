@@ -53,6 +53,7 @@ pub(super) struct LocalMemory {
     pub(super) task_contract: String,
     pub(super) conversation: Option<std::sync::Arc<dyn crate::ConversationView>>,
     pub(super) workspace_scope: environment::WorkspaceScope,
+    pub(super) read_reuse: super::read_reuse::ReadReuse,
 }
 
 pub(super) struct PreparedView {
@@ -129,6 +130,7 @@ impl LocalMemory {
             task_contract: String::new(),
             conversation: None,
             workspace_scope,
+            read_reuse: Default::default(),
         };
         memory.recover()?;
         let trace_path = memory.trace_path.clone();

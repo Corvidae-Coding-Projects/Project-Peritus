@@ -17,13 +17,14 @@ import zipfile
 
 def entries(source):
     """Validate the entire tree before creating an archive, without following links."""
-    if source.is_symlink() or not source.is_dir():
+    if source.is_symlink() or source.is_junction() or not source.is_dir():
         raise ValueError("archive source must be a regular directory")
     result = []
 
     def visit(path):
         mode = path.lstat().st_mode
-        if not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
+        # Windows junctions look like directories to lstat, but redirect traversal.
+        if path.is_junction() or not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
             raise ValueError(f"non-regular archive entry: {path}")
         name = path.relative_to(source.parent).as_posix()
         if "\\" in name or any(part in ("", ".", "..") for part in name.split("/")):

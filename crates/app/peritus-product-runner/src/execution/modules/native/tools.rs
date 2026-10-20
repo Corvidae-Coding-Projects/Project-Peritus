@@ -102,6 +102,26 @@ impl DeveloperToolExecutor for NativeTools<'_> {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        self.execute_with_read(call, None)
+    }
+    fn reuse_workspace_read(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        if call.name().as_str() != "workspace_read" {
+            return Ok(None);
+        }
+        self.execute_with_read(call, Some(observation)).map(Some)
+    }
+}
+
+impl NativeTools<'_> {
+    fn execute_with_read(
+        &mut self,
+        call: &CompletedToolCall,
+        reused: Option<&DeveloperToolObservation>,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         if self.input.provider_cancellation.is_cancelled()
             || self.input.cancelled.load(std::sync::atomic::Ordering::Acquire)
         {
@@ -142,7 +162,14 @@ impl DeveloperToolExecutor for NativeTools<'_> {
                 true,
             );
         }
-        let observation = self.workspace.execute(call)?;
+        let cached = reused
+            .map(|value| self.workspace.reuse_workspace_read(call, value))
+            .transpose()?
+            .flatten();
+        let observation = match cached {
+            Some(value) => value,
+            None => self.workspace.execute(call)?,
+        };
         let result: Value = serde_json::from_slice(observation.output.canonical_bytes())
             .map_err(|e| DeveloperLoopError::Tool(e.to_string()))?;
         let retained=self.runtime.call_sync(self.input,"observe",json!({"key":self.request.key,"name":name,"arguments_json":std::str::from_utf8(call.arguments().canonical_bytes()).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?,"result_json":result.to_string(),"is_error":observation.is_error})).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?;

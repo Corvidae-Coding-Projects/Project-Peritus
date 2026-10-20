@@ -163,6 +163,26 @@ impl DeveloperToolExecutor for ModuleTools<'_> {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        self.execute_with_read(call, None)
+    }
+    fn reuse_workspace_read(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        if call.name().as_str() != "workspace_read" {
+            return Ok(None);
+        }
+        self.execute_with_read(call, Some(observation)).map(Some)
+    }
+}
+
+impl ModuleTools<'_> {
+    fn execute_with_read(
+        &mut self,
+        call: &CompletedToolCall,
+        reused: Option<&DeveloperToolObservation>,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         if self.input.provider_cancellation.is_cancelled()
             || self.input.cancelled.load(std::sync::atomic::Ordering::Acquire)
         {
@@ -189,6 +209,11 @@ impl DeveloperToolExecutor for ModuleTools<'_> {
                 &json!({"error":"tool is not declared for this module role"}),
                 true,
             );
+        }
+        if let Some(reused) = reused
+            && let Some(value) = self.workspace.reuse_workspace_read(call, reused)?
+        {
+            return Ok(value);
         }
         self.workspace.execute(call)
     }

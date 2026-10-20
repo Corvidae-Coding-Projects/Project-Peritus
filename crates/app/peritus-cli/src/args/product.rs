@@ -18,6 +18,7 @@ pub(super) fn parse_product(parser: &mut Parser) -> Result<Command, CliError> {
         }
         "show" => ProductRunArgs::Show { run_id: run_id(parser)? },
         "execute" => ProductRunArgs::Execute { run_id: run_id(parser)? },
+        "trace" => return trace(parser),
         "accept" => control(parser, ProductRunControlAction::Accept, true)?,
         "commit" => control(parser, ProductRunControlAction::Commit, true)?,
         "export" => control(parser, ProductRunControlAction::Export, false)?,
@@ -45,6 +46,35 @@ fn run_id(parser: &mut Parser) -> Result<RunId, CliError> {
     }
     RunId::new(required(run, "--run")?)
         .map_err(|_| CliError::usage("--run cannot be the all-zero identifier"))
+}
+
+fn trace(parser: &mut Parser) -> Result<Command, CliError> {
+    let mut run = None;
+    let mut extensions_only = false;
+    while let Some(option) = parser.peek_utf8()? {
+        match option {
+            "--run" => {
+                parser.pop();
+                let value = parser.value_utf8("--run")?;
+                set_once(&mut run, parse_hex_id(&value, "--run")?, "--run")?;
+            }
+            "--extensions" => {
+                parser.pop();
+                extensions_only = true;
+            }
+            _ => return Err(CliError::usage(format!("unknown runs trace option: {option}"))),
+        }
+    }
+    if extensions_only && run.is_none() {
+        return Err(CliError::usage("--extensions requires --run"));
+    }
+    let run_id = run
+        .map(|bytes| {
+            RunId::new(bytes)
+                .map_err(|_| CliError::usage("--run cannot be the all-zero identifier"))
+        })
+        .transpose()?;
+    Ok(Command::ProductRunTrace { run_id, extensions_only })
 }
 
 fn control(

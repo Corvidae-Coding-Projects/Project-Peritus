@@ -60,6 +60,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [provider-progress/](provider-progress/AGENTS.md) | Actual provider and terminal progress, validation, Unicode, cancellation and delayed-heartbeat replay. |
 | [tui-conveniences/](tui-conveniences/AGENTS.md) | Actual terminal and transcript-consumer replays for local conveniences, draft retention, attachment confirmation, and restart. |
 | [incremental-context/](incremental-context/AGENTS.md) | Public product-tool/context consumers for reusable pages, append-only exchange selection, authority changes and cache pressure. |
+| [read-reuse/](read-reuse/AGENTS.md) | Actual memory-decorated workspace reads, visible byte/range coverage, archive restoration, scoped recovery, and retained failures. |
 | [checkpoint-cache/](checkpoint-cache/AGENTS.md) | Actual scope/index/context, command/recovery, official provider caching and finite protocol-process replays. |
 | [deep-research-inquiry/](deep-research-inquiry/AGENTS.md) | Actual native inquiry/provenance consumers and separate live-artifact readback, with research-quality judgment kept distinct. |
 | [token-budgets/](token-budgets/AGENTS.md) | Actual public context/host consumers for token-budget removal, persistence, role isolation, and copied long-run assembly. |
@@ -84,8 +85,11 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [rsi-production/](rsi-production/AGENTS.md) | Real-interface replay resources for rsi production; start with the local README/driver and its documented disposable-state prerequisites. |
 | [runtime-friction/](runtime-friction/AGENTS.md) | Real-interface replay resources for runtime friction; start with the local README/driver and its documented disposable-state prerequisites. |
 | [second-instance/](second-instance/AGENTS.md) | Actual concurrent terminal windows, live catalog publication, permission readback, reconnect, and rejected-update replay. |
+| [opencode-rejected-turn-diagnostic/](opencode-rejected-turn-diagnostic/AGENTS.md) | Scripted-vendor replay of OpenCode turn refusal: retained rejected text, the local private-trace reader, and the loop's refusal/retry narration. |
 | [opencode-malformed-output/](opencode-malformed-output/AGENTS.md) | Real vendor inference, malformed-turn correction, exact host-read/report oracles, and saved failing vendor frames for issue 127. |
+| [opencode-wsl-interop/](opencode-wsl-interop/AGENTS.md) | Production discovery against a Windows OpenCode reached through WSL interop, with an independent native-host oracle and retained baseline observations. |
 | [updater-release-metadata/](updater-release-metadata/AGENTS.md) | Real-interface replay resources for updater release metadata; start with the local README/driver and its documented disposable-state prerequisites. |
+| [credential-store-unavailable/](credential-store-unavailable/AGENTS.md) | Real provider-settings replay for an absent and a reachable operating-system credential store, with retained transcripts and an independent Secret Service inventory. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 

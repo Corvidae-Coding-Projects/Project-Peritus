@@ -8,6 +8,10 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [read-reuse-real-2026-10-20.md](read-reuse-real-2026-10-20.md) | Versioned visible-range reuse, archive restoration, changed-target refresh, retained task progress, and real API/live-provider evidence. |
+| [opencode-rejected-turn-diagnostic-real-2026-10-20.md](opencode-rejected-turn-diagnostic-real-2026-10-20.md) | Retained rejected OpenCode replies, the local private-trace reader, and the loop's refusal/retry narration, with real-run measurement and scripted replay evidence. |
+| [credential-store-wsl-real-2026-10-20.md](credential-store-wsl-real-2026-10-20.md) | Real provider-settings replay for an unreachable and a reachable WSL Secret Service, with the credential-store guidance and removal evidence. |
+| [opencode-wsl-interop-real-testing-2026-10-20.md](opencode-wsl-interop-real-testing-2026-10-20.md) | Windows OpenCode reached through WSL interop pinned as the runtime, actionable discovery failure, and real pre/post provider-setup evidence. |
 | [provider-progress-real-2026-10-19.md](provider-progress-real-2026-10-19.md) | Live 220-second wait diagnosis and real terminal/provider acceptance, reasoning, generation and cancellation feedback replay. |
 | [tui-conveniences-real-2026-10-19.md](tui-conveniences-real-2026-10-19.md) | Real terminal search, picker, clipboard, editor, queue, shortcuts, themes, and attachment recovery campaign. |
 | [incremental-context-real-2026-10-19.md](incremental-context-real-2026-10-19.md) | Incremental exchange selection and document reuse: exact before/after API behavior, freshness, permissions, pressure and recovery evidence. |

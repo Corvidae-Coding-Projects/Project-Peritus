@@ -109,6 +109,17 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     fn system_guidance(&mut self) -> Option<String> {
         self.base.system_guidance()
     }
+    fn reuse_workspace_read(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        let output = self.base.reuse_workspace_read(call, observation)?;
+        if let Some(output) = &output {
+            self.record_observation(call, output);
+        }
+        Ok(output)
+    }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         self.base.effect(call)
     }
@@ -163,6 +174,13 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let output = self.base.execute(call)?;
+        self.record_observation(call, &output);
+        Ok(output)
+    }
+}
+
+impl MeasuredTools<'_> {
+    fn record_observation(&mut self, call: &CompletedToolCall, output: &DeveloperToolObservation) {
         let name = call.name().as_str();
         let arguments: Value =
             serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or(Value::Null);
@@ -241,6 +259,5 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
             );
             self.save();
         }
-        Ok(output)
     }
 }

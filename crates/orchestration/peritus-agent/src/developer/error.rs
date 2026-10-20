@@ -111,7 +111,7 @@ fn failure_hint(
     if diagnostic_code.starts_with("opencode.runtime.invalid_turn_")
         || diagnostic_code == "opencode.runtime.invalid_tool_arguments"
     {
-        return "OpenCode returned an invalid Peritus turn after one automatic correction. No proposed tools from that reply were executed. Retry the run or choose another model; the diagnostic identifies the rejected part of the reply.";
+        return "OpenCode returned an invalid Peritus turn after one automatic correction. No proposed tools from that reply were executed. Read the rejected reply with `peritus runs trace --run <run-id>`, then retry the run or choose another model.";
     }
     use peritus_model_protocol::FailureCategory as Category;
     match category {

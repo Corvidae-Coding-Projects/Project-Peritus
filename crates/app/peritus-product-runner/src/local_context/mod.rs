@@ -6,6 +6,7 @@ mod driver;
 mod memory;
 mod pages;
 mod port;
+pub(crate) mod read_reuse;
 mod record;
 mod semantic;
 mod storage;

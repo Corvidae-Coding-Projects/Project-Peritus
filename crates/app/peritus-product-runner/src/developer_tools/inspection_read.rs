@@ -40,6 +40,8 @@ pub(super) fn read(
         256,
         MAX_DOCUMENT_READ_BYTES,
     );
+    let mut extra = extra.to_vec();
+    extra.push(("start_line_byte_offset", Value::from(requested_offset)));
     let (mut reader, mut current) = super::inspection_document::reader(path, start, cancellation)?;
     // Bound captured source bytes directly, then fit the actual JSON response below.
     // A worst-case escaping allowance underfills ordinary source pages and forces
@@ -60,9 +62,26 @@ pub(super) fn read(
         let offset = if current == start { requested_offset } else { 0 };
         let mut discard_budget = 0;
         let budget = if current < start { &mut discard_budget } else { &mut raw_budget };
-        let Some(line) = read_line(reader.as_mut(), offset, budget, cancellation)? else { break };
+        let Some(mut line) = read_line(reader.as_mut(), offset, budget, cancellation)? else {
+            break;
+        };
         if current >= start && offset > line.total_bytes {
             return Err(tool("line byte offset is beyond the selected line"));
+        }
+        // Host-only interval narrowing may stop before an already-visible suffix. The
+        // public argument validator rejects this internal field in model proposals.
+        if current == end
+            && let Some(limit) = arguments.get("end_line_byte_offset").and_then(Value::as_u64)
+        {
+            let keep = limit
+                .checked_sub(offset)
+                .and_then(|value| usize::try_from(value).ok())
+                .ok_or_else(|| tool("invalid host read interval"))?
+                .min(line.text.len());
+            if !line.text.is_char_boundary(keep) {
+                return Err(tool("host read interval splits UTF-8"));
+            }
+            line.text.truncate(keep);
         }
         let complete = line.complete
             && u64::try_from(line.text.len()).unwrap_or(u64::MAX)
@@ -86,6 +105,10 @@ pub(super) fn read(
         }
     }
 
+    let eof =
+        next.is_none() && reader.fill_buf().map_err(|error| tool(error.to_string()))?.is_empty();
+    extra.push(("eof", Value::Bool(eof)));
+    let extra = extra.as_slice();
     let mut value = response(extra, &lines, start, next);
     let omitted = if encoded_len(&value)? > max_bytes {
         if lines.is_empty() {
@@ -258,7 +281,17 @@ fn response(
         ("end_line", Value::from(lines.last().map_or(start, |line| line.number))),
         ("next_line", next.map_or(Value::Null, |(line, _)| Value::from(line))),
         ("next_line_byte_offset", next.map_or(Value::Null, |(_, offset)| Value::from(offset))),
+        ("source_range", serde_json::json!({
+            "start": {"line":start,"byte":extra.iter().find(|(key,_)| *key == "start_line_byte_offset").map_or(0,|(_,value)| value.as_u64().unwrap_or(0))},
+            "end": lines.last().map_or(serde_json::json!({"line":start,"byte":0}), |line| {
+                if line.complete { serde_json::json!({"line":line.number.saturating_add(1),"byte":0}) }
+                else { serde_json::json!({"line":line.number,"byte":line.offset.saturating_add(line.text.len() as u64)}) }
+            })
+        })),
     ]);
+    if next.is_some() {
+        fields.push(("eof", Value::Bool(false)));
+    }
     object(fields)
 }
 

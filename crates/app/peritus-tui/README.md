@@ -39,6 +39,8 @@ waiting, cancelled, stopped, and recovery-required states directly. Its handoff 
 remaining work, and run instructions. Users can inspect, continue, run, export, accept, commit, or
 discard a candidate without finding an internal worktree or log. Foreground run commands temporarily
 return terminal ownership to the candidate and restore the full-screen interface afterward.
+Press `y` to copy the selected run's 32-hex identifier, including when the detail panel shows it
+with the operation prefix. That copied value is what `peritus runs trace --run` expects.
 Completion alone does not label a handoff accepted. Explicit acceptance and commitment use their
 own durable flags. A committed candidate runs against its recorded post-commit identity; earlier
 check and review evidence stays historical after the Git identity changes.

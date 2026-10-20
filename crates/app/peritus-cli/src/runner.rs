@@ -67,6 +67,14 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             Err(error) => report_error(&error, cli.json),
         };
     }
+    if let Command::ProductRunTrace { run_id, extensions_only } = &cli.command {
+        // The durable private trace is local daemon state; reading it needs no session.
+        let output = output::Output::new(cli.json);
+        return match product_run::trace(*run_id, *extensions_only, &output) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => report_error(&error, cli.json),
+        };
+    }
     if let Command::Automation { setup } = &cli.command {
         let result = if *setup {
             peritus_product_runner::computer_setup()
@@ -327,6 +335,7 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         | Command::Automation { .. }
         | Command::Workspaces
         | Command::Open { .. }
+        | Command::ProductRunTrace { .. }
         | Command::Resume => Ok(()),
     }
 }

@@ -36,6 +36,7 @@ mod command;
 mod construction;
 mod in_place;
 mod inspection_progress;
+mod read_reuse;
 
 use active::ActiveCommandLedger;
 use checkpoint_observer::PreparedMutation;
@@ -403,6 +404,60 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        self.execute_with_read(call, None)
+    }
+
+    fn reuse_workspace_read(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        if call.name().as_str() != "workspace_read" {
+            return Ok(None);
+        }
+        self.execute_with_read(call, Some(observation)).map(Some)
+    }
+
+    fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        self.inspection_progress.observe_model_context(messages);
+        Ok(())
+    }
+
+    fn observation_images(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
+        self.computer_observation_images(call, observation)
+    }
+
+    fn completion_blocker(&self) -> Option<String> {
+        self.grounding.validate().err().map(str::to_owned)
+    }
+
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        if let Some(feedback) = self.inspection_progress.feedback() {
+            return Some(
+                self.rust_reliability
+                    .refresh()
+                    .map_or(feedback.clone(), |refresh| format!("{feedback}\n{refresh}")),
+            );
+        }
+        if !std::mem::take(&mut self.progress_feedback_pending) {
+            return None;
+        }
+        Some(PROGRESS_FEEDBACK.to_owned())
+    }
+}
+
+mod effects;
+
+impl WorkspaceDeveloperTools {
+    fn execute_with_read(
+        &mut self,
+        call: &CompletedToolCall,
+        reused: Option<&DeveloperToolObservation>,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let arguments: Value = serde_json::from_slice(call.arguments().canonical_bytes())
             .map_err(|error| tool(error.to_string()))?;
         // Live permissions are checked before access-policy refresh, in-place enrollment,
@@ -485,7 +540,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 return Ok(observation);
             }
         }
-        let result = self.dispatch_tool(call, &arguments);
+        let result = self.dispatch_reusing_read(call, &arguments, reused);
         let (mut value, is_error, accepted) = match result {
             Ok(value) => {
                 let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
@@ -524,37 +579,4 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         }
         self.finish_observation(call, &arguments, &value, is_error, accepted, effect && accepted)
     }
-
-    fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
-        self.inspection_progress.observe_model_context(messages);
-        Ok(())
-    }
-
-    fn observation_images(
-        &mut self,
-        call: &CompletedToolCall,
-        observation: &DeveloperToolObservation,
-    ) -> Result<Vec<peritus_model_protocol::MediaInput>, DeveloperLoopError> {
-        self.computer_observation_images(call, observation)
-    }
-
-    fn completion_blocker(&self) -> Option<String> {
-        self.grounding.validate().err().map(str::to_owned)
-    }
-
-    fn take_progress_feedback(&mut self) -> Option<String> {
-        if let Some(feedback) = self.inspection_progress.feedback() {
-            return Some(
-                self.rust_reliability
-                    .refresh()
-                    .map_or(feedback.clone(), |refresh| format!("{feedback}\n{refresh}")),
-            );
-        }
-        if !std::mem::take(&mut self.progress_feedback_pending) {
-            return None;
-        }
-        Some(PROGRESS_FEEDBACK.to_owned())
-    }
 }
-
-mod effects;

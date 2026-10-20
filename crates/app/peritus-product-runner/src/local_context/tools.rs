@@ -20,16 +20,16 @@ pub(super) use entry_view::entry_view;
 pub use schema::definitions;
 pub(in crate::local_context) use schema::definitions_with_config;
 
+/// Adds durable role-scoped context tools and evidence reuse to an authorized host executor.
 pub struct MemoryTools<'a> {
     base: &'a mut dyn DeveloperToolExecutor,
     memory: LocalContextHandle,
 }
 
 impl<'a> MemoryTools<'a> {
-    pub(crate) const fn new(
-        base: &'a mut dyn DeveloperToolExecutor,
-        memory: LocalContextHandle,
-    ) -> Self {
+    /// Wraps host tools with scoped durable evidence retrieval and read reuse.
+    /// The underlying executor retains all permissions, freshness and grounding checks.
+    pub const fn new(base: &'a mut dyn DeveloperToolExecutor, memory: LocalContextHandle) -> Self {
         Self { base, memory }
     }
 }
@@ -47,7 +47,8 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         self.base.observation_images(call, observation)
     }
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
-        self.base.observe_model_context(messages)
+        self.base.observe_model_context(messages)?;
+        super::read_reuse::observe_view(&mut *self.memory.lock()?, messages)
     }
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
@@ -68,7 +69,37 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let name = call.name().as_str();
         if !self.base.tool_calls_allowed() || !matches!(name, "context_read" | "context_update") {
-            return self.base.execute(call);
+            let candidate = if self.base.tool_calls_allowed() && name == "workspace_read" {
+                super::read_reuse::plan(&mut *self.memory.lock()?, call)?
+            } else {
+                None
+            };
+            // No memory lock crosses the workspace executor, including reuse admission.
+            let reused = candidate
+                .as_ref()
+                .map(|candidate| self.base.reuse_workspace_read(call, candidate))
+                .transpose()?
+                .flatten();
+            let output = match reused {
+                Some(output) => output,
+                None => self.base.execute(call)?,
+            };
+            if name == "workspace_read" && !output.is_error {
+                let mut memory = self.memory.lock()?;
+                memory.read_reuse.record_output(&output);
+                if let Ok(value) = serde_json::from_slice::<Value>(output.output.canonical_bytes())
+                    && let Some(state) = value
+                        .get("read_reuse")
+                        .and_then(|reuse| reuse.get("state"))
+                        .and_then(Value::as_str)
+                {
+                    crate::efficiency::event(
+                        &memory.trace_path,
+                        serde_json::json!({"event":"read-reuse-applied","state":state,"delivered_response_bytes":output.output.canonical_bytes().len(),"delivered_body_bytes":value.get("content").and_then(Value::as_str).map_or(0,str::len),"invocation":memory.transcript.request_prefix}),
+                    );
+                }
+            }
+            return Ok(output);
         }
         let permissions = self.memory.effective_permissions();
         let required: &[PermissionCapability] = if name == "context_read" {
@@ -144,7 +175,10 @@ pub(super) fn source_handle(memory: &LocalMemory, sequence: u64) -> String {
 
 use source_handle as handle;
 
-fn sequence(memory: &LocalMemory, handle: &str) -> Result<u64, DeveloperLoopError> {
+pub(in crate::local_context) fn sequence(
+    memory: &LocalMemory,
+    handle: &str,
+) -> Result<u64, DeveloperLoopError> {
     let tail = handle.strip_prefix("obs:").ok_or_else(|| error("invalid observation handle"))?;
     let number = if let Some((scope, number)) = tail.split_once(':') {
         if scope != hex(memory.store.scope_digest().as_bytes()) {

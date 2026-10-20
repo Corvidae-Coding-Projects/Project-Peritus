@@ -604,7 +604,7 @@ impl AppModel {
         Vec::new()
     }
 
-    fn copy_text(&mut self, text: String) -> Vec<Effect> {
+    pub(in crate::model) fn copy_text(&mut self, text: String) -> Vec<Effect> {
         let Ok(operation) =
             peritus_app_protocol::ControlOperationId::new(self.ids.bytes(b"quick-copy"))
         else {

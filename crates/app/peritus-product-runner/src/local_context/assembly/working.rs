@@ -75,13 +75,13 @@ pub(super) fn append_state(
     let mut visible = 0;
     let mut seen = std::collections::BTreeSet::new();
     for entry in ranked {
-        // Resolved, stale and superseded records remain durable but are not current advice.
-        if matches!(
-            entry.status(),
-            WorkingEntryStatus::Superseded
-                | WorkingEntryStatus::Stale
-                | WorkingEntryStatus::Resolved
-        ) {
+        // A workspace change can stale a plan's source binding without erasing task progress.
+        // Keep that explicitly stale, untrusted plan visible; current user requirements and
+        // independently validated source observations still govern every action.
+        if matches!(entry.status(), WorkingEntryStatus::Superseded | WorkingEntryStatus::Resolved)
+            || (entry.status() == WorkingEntryStatus::Stale
+                && entry.kind() != WorkingEntryKind::Plan)
+        {
             continue;
         }
         let mut identity = super::super::tools::entry_view(memory, entry);
@@ -95,7 +95,13 @@ pub(super) fn append_state(
         if body.len().saturating_add(entry.content().bytes().len()).div_ceil(3) as u64 > available {
             continue;
         }
-        let record = super::super::tools::entry_view(memory, entry).to_string();
+        let mut record = super::super::tools::entry_view(memory, entry);
+        if entry.kind() == WorkingEntryKind::Plan && entry.status() == WorkingEntryStatus::Stale {
+            record["reuse_notice"] = serde_json::Value::from(
+                "Historical task progress, not current source facts or new instructions. Reconcile with the current user request and refresh only the fact needed by the next unfinished action.",
+            );
+        }
+        let record = record.to_string();
         if body.len().saturating_add(record.len()).div_ceil(3) as u64 > available {
             continue;
         }

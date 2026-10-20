@@ -1,0 +1,21 @@
+{
+  "replay": "python3 docs/testing/reproducers/read-reuse/replay.py --consumer /path/to/read-reuse-consumer --output /path/to/fresh-results",
+  "cases": [
+    {
+      "name": "receipt-metadata-page-budget",
+      "fixture": "long.txt: UTF-8 bytes of ('猫Ω🙂-UNIQUE-' repeated 140 times)",
+      "actions": "Request line 1 with max_bytes=1024 repeatedly while retaining previous returned pages.",
+      "expected": "Every JSON response fits 1024 bytes; returned source fragments reconstruct exactly the original line with no repeated bytes.",
+      "original_failure": "The first read_missing response exceeded max_bytes after its reuse metadata was added.",
+      "final": "PASS"
+    },
+    {
+      "name": "continuation-reference-growth",
+      "fixture": "byte-middle.txt: concatenate '猫-INDEX-Ω🙂;' for zero-padded indices 0000 through 0359",
+      "actions": "Read from a valid UTF-8 byte boundary near offset 100, then repeatedly request the entire line with max_bytes=1024.",
+      "expected": "Fill missing intervals until complete; each returned fragment equals its declared source interval and does not overlap an earlier visible interval.",
+      "original_failure": "After seven growing reference lists, fitting declined reuse and a base read resent bytes 0..683.",
+      "final": "PASS"
+    }
+  ]
+}
