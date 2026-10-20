@@ -1,0 +1,68 @@
+# Retained pre-fix observations, 2026-10-20 (Debian WSL2, interop enabled)
+
+Host kernel: 6.18.54.1-microsoft-standard-WSL2. Peritus 0.1.4 installed binary, plus the
+develop checkout at 0690a488118cc5b90006f65fe0a262f6be58ba4e.
+
+## PATH candidates named `opencode`
+
+$ opencode --version                                         # /home/yria/.opencode/bin/opencode
+opencode v2.0.32
+
+$ ~/.nvm/versions/node/v22.23.2/bin/opencode --version
+1.18.31
+
+$ /mnt/c/Users/Admin/AppData/Roaming/npm/opencode --version  # npm shim -> vendor Windows opencode.exe
+1.19.0
+
+Only the Windows entry answers the pinned version probe, so discovery pinned it.
+
+## The pinned Windows executable cannot run the metadata command
+
+$ /mnt/c/Users/Admin/AppData/Roaming/npm/opencode models opencode-go --verbose
+Error: Unexpected error
+
+Database is not empty and has no session table
+exit 1
+
+The same failure occurs with the isolated configuration Peritus supplies (private XDG roots,
+OPENCODE_TEST_HOME, PWD, and auth.json) and from a Windows filesystem working directory.
+`--version` and `models --help` still succeed, which is why the version probe alone accepted it.
+
+## Provider setup, pre-fix
+
+$ peritus providers
+...
+OpenCode Go via OpenCode CLI
+The key will be stored by your operating system, not in Peritus files.
+Paste the API key and press Enter. Input is hidden:
+Credential captured. Saving it to the operating-system credential store...
+Discovering available models from this provider...
+model discovery failed: PERITUS-PROVIDER-CORE-009 model_catalog: OpenCode did not return a complete service model catalog; install a supported official CLI and retry
+These are provider-advertised models, not capability verification. No inference was requested.
+
+No installation prompt appeared, because the same probe had already accepted the Windows entry.
+The placeholder key used for this replay was never stored: discovery fails before the profile is
+published.
+
+## Provider setup, fixed, without a native runtime
+
+$ peritus providers
+...
+OpenCode Go via OpenCode CLI
+Zen and Go use the official OpenCode CLI as a model transport. ...
+Install the official OpenCode CLI now? [Y/n]:
+...
+
+Declining reports: Install the official OpenCode CLI, then retry provider setup.
+
+## Supported runtime, fixed
+
+The official Linux x64 asset `opencode-linux-x64.tar.gz` from release `v1.19.0`
+(sha256 7bb9e61ad6feacf2e89c10a6a2c1840e3de4220bb50ba1fc7110f31806076aec, ELF x86-64,
+`--version` = `1.19.0`) was extracted to a disposable directory and appended to `PATH` after
+the Windows entry. The retained consumer then reported:
+
+runtime /tmp/oc119/bin/opencode
+nativity native
+catalog 31 advertised models
+verdict PASS
