@@ -99,12 +99,12 @@ impl<V> Entry<V> {
 
 /// Registry with short-lock publication and optional demand-loaded historical values.
 pub struct PublishedRecords<K, V> {
-    records: RwLock<BTreeMap<K, Arc<Entry<V>>>>,
+    records: RwLock<Arc<BTreeMap<K, Arc<Entry<V>>>>>,
     writers: PublicationGates<K>,
 }
 
 /// Stable pointers to published records. Hints never grant authority to execute or mutate.
-pub struct PublishedView<K, V>(BTreeMap<K, Arc<Entry<V>>>);
+pub struct PublishedView<K, V>(Arc<BTreeMap<K, Arc<Entry<V>>>>);
 impl<K: Ord, V> PublishedView<K, V> {
     /// Loads only this exact record, returning no record if its loader rejects durable state.
     pub fn get(&self, key: &K) -> Option<&Arc<V>> {
@@ -154,12 +154,12 @@ impl<K: Ord + Clone, V: Clone> PublishedRecords<K, V> {
     #[must_use]
     pub fn new(records: BTreeMap<K, V>) -> Self {
         Self {
-            records: RwLock::new(
+            records: RwLock::new(Arc::new(
                 records
                     .into_iter()
                     .map(|(key, value)| (key, Arc::new(Entry::loaded(Arc::new(value)))))
                     .collect(),
-            ),
+            )),
             writers: PublicationGates::default(),
         }
     }
@@ -173,7 +173,8 @@ impl<K: Ord + Clone, V: Clone> PublishedRecords<K, V> {
         loader: impl Fn() -> Option<V> + Send + Sync + 'static,
     ) -> Result<(), PublicationError> {
         let _permit = self.writers.enter(key.clone());
-        self.records.write().map_err(|_| PublicationError)?.entry(key).or_insert_with(|| {
+        let mut records = self.records.write().map_err(|_| PublicationError)?;
+        Arc::make_mut(&mut records).entry(key).or_insert_with(|| {
             Arc::new(Entry {
                 hint: Arc::new(hint),
                 value: OnceLock::new(),
@@ -184,14 +185,14 @@ impl<K: Ord + Clone, V: Clone> PublishedRecords<K, V> {
         Ok(())
     }
 
-    /// Takes a snapshot containing shared record pointers, without cloning record payloads.
+    /// Takes an O(1) shared map snapshot, without copying historical keys or record payloads.
     ///
     /// # Errors
     /// Returns an error if the publication map was poisoned.
     pub fn read(&self) -> Result<PublishedView<K, V>, PublicationError> {
         self.records
             .read()
-            .map(|records| PublishedView(records.clone()))
+            .map(|records| PublishedView(Arc::clone(&records)))
             .map_err(|_| PublicationError)
     }
 
@@ -202,7 +203,7 @@ impl<K: Ord + Clone, V: Clone> PublishedRecords<K, V> {
     pub fn try_read(&self) -> Result<PublishedView<K, V>, PublicationError> {
         self.records
             .try_read()
-            .map(|records| PublishedView(records.clone()))
+            .map(|records| PublishedView(Arc::clone(&records)))
             .map_err(|_| PublicationError)
     }
 
@@ -240,9 +241,9 @@ impl<K: Ord + Clone, V: Clone> PendingRecords<'_, K, V> {
                 .get(key)
                 .cloned();
             if let Some(current) = current {
-                self.local.0.insert(key.clone(), current);
+                Arc::make_mut(&mut self.local.0).insert(key.clone(), current);
             } else {
-                self.local.0.remove(key);
+                Arc::make_mut(&mut self.local.0).remove(key);
             }
             self.permits.insert(key.clone(), permit);
         }
@@ -253,8 +254,8 @@ impl<K: Ord + Clone, V: Clone> PendingRecords<'_, K, V> {
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         self.acquire(key);
         let value = Arc::clone(self.local.get(key)?);
-        self.local.0.insert(key.clone(), Arc::new(Entry::loaded(value)));
-        let entry = Arc::get_mut(self.local.0.get_mut(key)?)?;
+        Arc::make_mut(&mut self.local.0).insert(key.clone(), Arc::new(Entry::loaded(value)));
+        let entry = Arc::get_mut(Arc::make_mut(&mut self.local.0).get_mut(key)?)?;
         entry.hint = Arc::clone(entry.value.get()?);
         entry.value.get_mut().map(Arc::make_mut)
     }
@@ -262,8 +263,7 @@ impl<K: Ord + Clone, V: Clone> PendingRecords<'_, K, V> {
     /// Stages a new or replacement record under its exact-key permit.
     pub fn insert(&mut self, key: K, value: V) -> Option<Arc<V>> {
         self.acquire(&key);
-        self.local
-            .0
+        Arc::make_mut(&mut self.local.0)
             .insert(key, Arc::new(Entry::loaded(Arc::new(value))))
             .and_then(|entry| entry.get().cloned())
     }
@@ -271,17 +271,18 @@ impl<K: Ord + Clone, V: Clone> PendingRecords<'_, K, V> {
     /// Stages removal; published readers retain their existing immutable views.
     pub fn remove(&mut self, key: &K) -> Option<Arc<V>> {
         self.acquire(key);
-        self.local.0.remove(key).and_then(|entry| entry.get().cloned())
+        Arc::make_mut(&mut self.local.0).remove(key).and_then(|entry| entry.get().cloned())
     }
 }
 
 impl<K: Ord + Clone, V: Clone> Drop for PendingRecords<'_, K, V> {
     fn drop(&mut self) {
-        if std::thread::panicking() {
+        if std::thread::panicking() || self.dirty.is_empty() {
             return;
         }
         let mut published =
             self.owner.records.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let published = Arc::make_mut(&mut published);
         for key in &self.dirty {
             if let Some(value) = self.local.0.get(key) {
                 published.insert(key.clone(), Arc::clone(value));

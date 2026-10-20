@@ -9,3 +9,5 @@ These are standalone consumers of production interfaces, built as ordinary execu
 Use isolated XDG state and copy fixture data. Do not point mutating consumers at a person's daemon. Evidence and timings belong in the associated testing report; generated binaries and raw state stay outside this repository.
 
 `bootstrap.py` opens the offline human TUI; `history-replay.py` restarts copied governed runs. `cache-invalidation.py` and `invalidation-probe.rs` test external-commit fencing and corruption rejection. `baseline-identity.rs` links the original production identity API for compatibility comparisons.
+
+`registry-review.rs` measures production snapshot/lookup scaling. `cache-read-review.rs` reads real conversations repeatedly over IPC and records per-group latency, cache counters, and daemon RSS. These are bounded performance consumers, not unit suites.
