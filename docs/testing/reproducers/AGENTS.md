@@ -88,6 +88,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [opencode-malformed-output/](opencode-malformed-output/AGENTS.md) | Real vendor inference, malformed-turn correction, exact host-read/report oracles, and saved failing vendor frames for issue 127. |
 | [opencode-wsl-interop/](opencode-wsl-interop/AGENTS.md) | Production discovery against a Windows OpenCode reached through WSL interop, with an independent native-host oracle and retained baseline observations. |
 | [updater-release-metadata/](updater-release-metadata/AGENTS.md) | Real-interface replay resources for updater release metadata; start with the local README/driver and its documented disposable-state prerequisites. |
+| [credential-store-unavailable/](credential-store-unavailable/AGENTS.md) | Real provider-settings replay for an absent and a reachable operating-system credential store, with retained transcripts and an independent Secret Service inventory. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
