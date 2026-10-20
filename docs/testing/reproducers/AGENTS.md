@@ -85,6 +85,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [runtime-friction/](runtime-friction/AGENTS.md) | Real-interface replay resources for runtime friction; start with the local README/driver and its documented disposable-state prerequisites. |
 | [second-instance/](second-instance/AGENTS.md) | Actual concurrent terminal windows, live catalog publication, permission readback, reconnect, and rejected-update replay. |
 | [opencode-malformed-output/](opencode-malformed-output/AGENTS.md) | Real vendor inference, malformed-turn correction, exact host-read/report oracles, and saved failing vendor frames for issue 127. |
+| [opencode-wsl-interop/](opencode-wsl-interop/AGENTS.md) | Production discovery against a Windows OpenCode reached through WSL interop, with an independent native-host oracle and retained baseline observations. |
 | [updater-release-metadata/](updater-release-metadata/AGENTS.md) | Real-interface replay resources for updater release metadata; start with the local README/driver and its documented disposable-state prerequisites. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).

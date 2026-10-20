@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- Select the OpenCode Zen/Go runtime by native executables only. A Windows OpenCode installation reached through WSL interop no longer passes discovery, so provider setup reports the actionable installation path instead of a model-catalog failure and still finds a native 1.19.0 that appears later on `PATH`.
+
+### Real testing
+
+- Reproduced the reported WSL catalog failure through the actual terminal provider-settings flow, retained the real vendor-command failure and path probes, and re-verified discovery and advertised-model metadata against the official Linux 1.19.0 release asset.
+
 ## 0.1.4
 
 ### Added
