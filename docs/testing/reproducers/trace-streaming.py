@@ -79,14 +79,19 @@ for corrupt in [frame(255, b"unknown"), frame(1, b"not-a-provider-envelope")]:
         observed = invoke(a.cli, True, extensions)
         assert observed.returncode == 14, (observed.returncode, observed.stderr)
         assert observed.stdout == b"" and json.loads(observed.stderr)["ok"] is False, (observed.stdout, observed.stderr)
-        assert not list((root / "tmp").iterdir()), "temporary output must be cleaned on failure"
+        assert not list((root / "cache/peritus/trace-output").iterdir()), "output spool must be cleaned on failure"
 checks.append({"case": "corruption-no-partial-success", "variants": 4, "result": "PASS"})
 
 trace.write_bytes(ordinary)
 bad_tmp = dict(env, TMPDIR=str(root / "missing-temporary-directory"))
 observed = invoke(a.cli, True, environment=bad_tmp)
+assert observed.returncode == 0 and json.loads(observed.stdout)["ok"] is True, observed
+checks.append({"case": "system-temporary-directory-not-used", "result": "PASS"})
+blocker = root / "unavailable-cache"
+blocker.write_text("not a directory")
+observed = invoke(a.cli, True, environment=dict(env, XDG_CACHE_HOME=str(blocker)))
 assert observed.returncode == 13 and observed.stdout == b"" and json.loads(observed.stderr)["ok"] is False, observed
-checks.append({"case": "temporary-storage-failure", "result": "PASS"})
+checks.append({"case": "output-cache-storage-failure", "result": "PASS"})
 
 payload = json.dumps({"call_id": "read", "name": "workspace_read", "arguments": '{"path":"design.md"}',
                       "output": json.dumps({"text": "x" * (64 * 1024)}), "is_error": False}, separators=(",", ":")).encode()
@@ -130,4 +135,5 @@ report = {"cli": str(a.cli.resolve()), "cli_sha256": digest(a.cli), "baseline_sh
           "checks": checks, "measurements": measurements, "boundary": "actual Linux CLI, disposable local trace files; no leak or native cross-platform claim"}
 (root / "results.json").write_text(json.dumps(report, indent=2) + "\n")
 assert not list((root / "tmp").iterdir())
+assert not list((root / "cache/peritus/trace-output").iterdir())
 print(json.dumps({"functional_groups": len(checks), "memory_runs": len(measurements), "result": "PASS"}))

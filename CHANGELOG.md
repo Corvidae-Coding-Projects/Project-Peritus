@@ -5,7 +5,7 @@
 ### Fixed
 
 - Preserve literal DSML marker and tag text inside OpenCode tool arguments. Reject competing structured preludes and duplicate JSON keys before converting nested arguments into inert host tool calls.
-- Read private traces one selected record at a time, skip irrelevant payloads from their headers, and build only the requested human or JSON representation. Temporary output spooling preserves complete JSON/error responses without retaining the entire trace or output in memory.
+- Read private traces one selected record at a time, skip irrelevant payloads from their headers, and build only the requested human or JSON representation. Output spooling in the normal Peritus cache preserves complete JSON/error responses without retaining the entire trace or output in memory or using the system's potentially RAM-backed temporary directory.
 
 ### Real testing
 

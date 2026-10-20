@@ -38,9 +38,10 @@ impl Output {
     pub(crate) fn success_stream(
         &self,
         kind: &str,
+        spool_directory: &std::path::Path,
         render: impl FnOnce(&mut dyn std::io::Write, bool) -> Result<(), CliError>,
     ) -> Result<(), CliError> {
-        let mut file = tempfile::tempfile()
+        let mut file = tempfile::tempfile_in(spool_directory)
             .map_err(|error| CliError::local_io("create temporary streamed output", None, error))?;
         {
             let mut writer = std::io::BufWriter::new(&mut file);

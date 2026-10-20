@@ -18,13 +18,16 @@ This follow-up repairs all four on `develop`. The already-published v0.1.5 binar
 - Trace inspection loaded the whole file, copied its payloads, then retained both output formats.
   `TraceReader` captures one file-length snapshot, traverses framed records, and seeks past excluded
   payloads before allocation. The CLI constructs only the requested representation and spools it to
-  an automatically removed temporary file. Success is copied to stdout only after rendering finishes;
+  an automatically removed file in the normal Peritus cache. Success is copied to stdout only after rendering finishes;
   a framing, decoding or storage failure retains the ordinary complete error response.
 
 The existing collecting `read_frames` API remains compatible and is explicitly documented as a
 collection API. Streaming callers use `TraceReader`. Trace tags, payload encoding and the separate
 local-memory recovery reader are unchanged. Memory scales with one selected record, not total run
-length. Selected output needs temporary disk space; no trace-size or run-size cap was introduced.
+length. Selected output needs cache disk space; no trace-size or run-size cap was introduced.
+This machine's system `/tmp` is tmpfs, so using the default temporary directory would move large
+outputs into RAM-backed storage despite flat process RSS. The explicit cache destination avoids
+that default. A deliberately missing `TMPDIR` still succeeds; an unusable cache reports an I/O error.
 
 ## Actual program exercised
 
@@ -69,14 +72,15 @@ production provider envelopes were captured outside the checkout and read by the
 
 ## Actual CLI and public-reader results
 
-[Trace CLI replay](reproducers/trace-streaming.py): **9 scenario groups PASS**, comprising output
-compatibility, ten torn-tail variants, four corruption/filter combinations, unavailable temporary
+[Trace CLI replay](reproducers/trace-streaming.py): **10 scenario groups PASS**, comprising output
+compatibility, ten torn-tail variants, four corruption/filter combinations, unavailable cache storage,
+independence from the system temporary directory,
 storage, 24 before/after RSS measurements, and a filtered sparse 10 GiB tool record.
 
 Human output matched the original CLI byte-for-byte and parsed JSON matched semantically in all
 four output/filter combinations. Extension indices retained their positions in the full trace.
 Unknown tags and malformed selected provider envelopes returned protocol errors, with empty stdout
-and one valid JSON error on stderr. Temporary files were cleaned after success and failure.
+and one valid JSON error on stderr. Cache spool files were cleaned after success and failure.
 
 Fixed-size roughly 64 KiB records produced traces of 4.0, 16.0 and 64.1 MiB. The expected maximum
 RSS variation across these sizes was at most 8 MiB for each fixed-mode series; every series passed.
@@ -84,10 +88,10 @@ The largest trace measured:
 
 | Mode | Original peak RSS | Fixed peak RSS |
 | --- | ---: | ---: |
-| Human, all records | 211.7 MiB | 17.6 MiB |
-| JSON, all records | 341.8 MiB | 18.0 MiB |
-| Human, extensions only | 143.7 MiB | 16.7 MiB |
-| JSON, extensions only | 143.9 MiB | 16.7 MiB |
+| Human, all records | 211.6 MiB | 17.9 MiB |
+| JSON, all records | 341.8 MiB | 18.1 MiB |
+| Human, extensions only | 144.2 MiB | 16.7 MiB |
+| JSON, extensions only | 143.7 MiB | 17.0 MiB |
 
 The sparse 10 GiB record was tested only with filtering on the fixed CLI; no giant baseline
 allocation was attempted. This demonstrates early exclusion without introducing a size cap.

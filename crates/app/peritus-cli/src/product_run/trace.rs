@@ -54,7 +54,13 @@ pub(crate) fn execute(
         }
     };
     let mut reader = TraceReader::open(&path).map_err(&read_error)?;
-    output.success_stream("product-run-trace", |writer, json| {
+    // A system temporary directory can be RAM-backed. Keep potentially large output in the
+    // normal per-user cache so filtering/streaming does not move whole-trace growth into tmpfs.
+    let spool_directory = layout.cache_root().join("trace-output");
+    fs::create_dir_all(&spool_directory).map_err(|error| {
+        CliError::local_io("prepare trace output cache", Some(spool_directory.clone()), error)
+    })?;
+    output.success_stream("product-run-trace", &spool_directory, |writer, json| {
         if json {
             writer.write_all(b"[").map_err(CliError::output)?;
         } else {
