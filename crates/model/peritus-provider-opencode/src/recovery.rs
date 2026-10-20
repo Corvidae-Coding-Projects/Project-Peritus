@@ -47,7 +47,7 @@ impl TurnRejection {
     pub(super) fn correction(self, original: &[u8]) -> Vec<u8> {
         let mut prompt = original.to_vec();
         prompt.extend_from_slice(format!(
-            "\n\nPERITUS TRANSPORT CORRECTION\nThe previous inference completed but {}. None of its proposed tools were executed. Regenerate the same next turn from the original conversation above. Return exactly one JSON object with content and tool_calls, followed by no other text. Escape quotes, newlines and backslashes within JSON strings. Keep both fields inside the same outer object. Empty content is permitted only when requesting tools. Do not simulate tool results or restart completed observations.\n",
+            "\n\nPERITUS TRANSPORT CORRECTION\nThe previous inference completed but {}. None of its proposed tools were executed. Regenerate the same next turn from the original conversation above. Return exactly one JSON object with content and tool_calls, followed by no other text. Escape quotes, newlines and backslashes within JSON strings. Keep both fields inside the same outer object. Empty content is permitted only when requesting tools. Every tool call must be a normal JSON object with name and object-valued arguments inside tool_calls. Do not emit DSML, XML or HTML-like tool tags, special-token markers such as <|...|> or <｜...｜>, quoted tool-call markup, or any other pseudo-tool syntax. Do not simulate tool results or restart completed observations.\n",
             self.explanation(),
         ).as_bytes());
         prompt

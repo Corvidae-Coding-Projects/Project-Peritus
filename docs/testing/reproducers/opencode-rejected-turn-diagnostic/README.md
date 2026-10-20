@@ -15,7 +15,7 @@ file-level responsibilities.
 | [consumer.rs](consumer.rs) | Provider-level public-library consumer; asserts the retained rejected text and the terminal outcome. |
 | [agent.rs](agent.rs) | Developer-loop consumer; records the public activities the loop publishes for one refused turn. |
 | [scripted-opencode.py](scripted-opencode.py) | Scripted OpenCode stand-in answering `--version`, `models`, and `run` from a fixed reply script. |
-| [replay.py](replay.py) | Builds both consumers and runs the seven scenarios with disposable state. |
+| [replay.py](replay.py) | Builds both consumers and runs the ten scenarios with disposable state. |
 | [observed-baseline.txt](observed-baseline.txt) | Verbatim transcripts of the recorded run and its check outcomes. |
 
 ## What this case shows
@@ -37,6 +37,11 @@ The repaired behavior:
 - The private-envelope repair accepts an explanatory prelude containing inline code spans or
   quoted pseudo-tool markup, and a single final object wrapped in a Markdown fence, while still
   rejecting ambiguous candidates.
+- The request and correction instructions explicitly forbid DSML, XML, HTML-like tags, and
+  special-token pseudo-tool syntax. A complete terminal DSML calls block is also converted under
+  `peritus.opencode_turn_normalization` into ordinary inert tool calls, with the normal declared
+  name, argument-object, count, and selection checks still applied. Incomplete or ambiguous DSML
+  is refused rather than partially interpreted.
 - The loop announces its model request once per logical turn and reports each refusal and retry
   as its own transition.
 
@@ -70,6 +75,9 @@ commit, and any failed check. The script exits non-zero if any check fails.
 | `prelude_backticks` | provider | `prelude_backticks` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
 | `prelude_quoted` | provider | `prelude_quoted` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
 | `prelude_fenced` | provider | `prelude_fenced` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
+| `dsml` | provider | `dsml` | One `dsml-v1` normalization for two declared calls, no refusal, `requires_action`. |
+| `dsml_unknown_tool` | provider | `dsml_unknown_tool`, `valid` | One refusal naming the undeclared tool, then a succeeded turn. |
+| `dsml_malformed` | provider | `dsml_malformed`, `valid` | One JSON refusal, then a succeeded turn. |
 
 ## Limits
 
@@ -77,5 +85,7 @@ commit, and any failed check. The script exits non-zero if any check fails.
   the replay establishes the adapter retention contract and the loop's public narration only.
 - The `rejected` text asserted here is the scripted stand-in's own reply. It shows that the exact
   refused bytes are retained, not that any particular model produces this defect.
+- The `dsml` scenario also captures the submitted prompt and asserts that the explicit JSON-only
+  tool-syntax instruction reached the vendor process.
 - The extension name `peritus.opencode_turn_correction` is the adapter-owned private-trace
   contract; the replay asserts it directly rather than through a rendered terminal.

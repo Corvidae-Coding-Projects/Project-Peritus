@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Build public consumers and replay scripted vendor turns for the rejected-turn diagnostic.
 
-Seven scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
+Ten scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
 corrected reply, two refused replies, a rate-limited turn followed by a valid reply, turns whose
 plain prelude contains an inline code span or quoted pseudo-tool markup, a turn whose envelope
-sits inside a `json` fence, and one refused reply through the developer loop. The provider
-scenarios must publish the bounded
+sits inside a `json` fence, accepted and refused DSML tool markup, and one refused reply through
+the developer loop. The provider scenarios must publish the bounded
 `peritus.opencode_turn_correction` extension carrying the rejected model text, or a
-`peritus.response_healing` audit when the prelude is accepted; the agent scenarios must announce
-their model request once and report the bounded retry. This is a scripted-vendor replay, not real
-inference; it establishes the adapter retention, the healing contract, the diagnostic surface, and
-the loop's public narration only.
+`peritus.response_healing` or `peritus.opencode_turn_normalization` audit when a repair is
+accepted; the agent scenarios must announce their model request once and report the bounded retry.
+This is a scripted-vendor replay, not real inference; it establishes the adapter retention, the
+healing contract, the diagnostic surface, and the loop's public narration only.
 """
 import argparse
 import json
@@ -32,6 +32,9 @@ parser.add_argument(
         "prelude_backticks",
         "prelude_quoted",
         "prelude_fenced",
+        "dsml",
+        "dsml_unknown_tool",
+        "dsml_malformed",
     ),
     default="all",
 )
@@ -154,6 +157,31 @@ scenarios = {
             "RESULT prelude_fenced checks passed",
         ],
     },
+    "dsml": {
+        "binary": "provider",
+        "script": ["dsml"],
+        "required": [
+            "NORMALIZATION dsml-v1 opencode.turn 2",
+            "TERMINAL requires_action",
+            "RESULT dsml checks passed",
+        ],
+    },
+    "dsml_unknown_tool": {
+        "binary": "provider",
+        "script": ["dsml_unknown_tool", "valid"],
+        "required": [
+            "TERMINAL succeeded",
+            "RESULT dsml_unknown_tool checks passed",
+        ],
+    },
+    "dsml_malformed": {
+        "binary": "provider",
+        "script": ["dsml_malformed", "valid"],
+        "required": [
+            "TERMINAL succeeded",
+            "RESULT dsml_malformed checks passed",
+        ],
+    },
 }
 selected = (
     [args.scenario]
@@ -166,6 +194,9 @@ selected = (
         "prelude_backticks",
         "prelude_quoted",
         "prelude_fenced",
+        "dsml",
+        "dsml_unknown_tool",
+        "dsml_malformed",
     ]
 )
 failures = []
@@ -184,6 +215,7 @@ for name in selected:
         PERITUS_REAL_CAPTURE=str(vendor),
         PERITUS_SCRIPT=str(script),
         PERITUS_SCRIPT_STATE=str(state),
+        PERITUS_SCRIPT_PROMPT=str(root / "prompt.txt"),
         TMPDIR=str(root / "tmp"),
     )
     command = [
@@ -203,6 +235,15 @@ for name in selected:
             failures.append(f"{name}: missing {required!r}")
     if process.returncode != 0:
         failures.append(f"{name}: consumer exited {process.returncode}")
+    if name == "dsml":
+        prompt_path = root / "prompt.txt"
+        if not prompt_path.is_file():
+            failures.append("dsml: prompt capture missing")
+        else:
+            prompt = prompt_path.read_text()
+            for required in ("STRICT JSON TOOL SYNTAX", "Never emit DSML", "tool_calls array"):
+                if required not in prompt:
+                    failures.append(f"dsml: prompt missing {required!r}")
 (root / "result.json").write_text(
     json.dumps(
         {

@@ -39,7 +39,11 @@ fresh inference with a correction prompt. Rejected proposals never reach host to
 corrections account for both inferences and retain a fixed diagnostic audit event. Persistent
 format failures identify the rejected part and allow ordinary safe-request recovery. Native
 framing errors, process failures, access denials, and cancellation do not enter that correction
-path. Tool-only turns may omit public commentary without inventing assistant text.
+path. The wire and correction instructions explicitly reject DSML, XML/HTML-like tool tags, and
+special-token pseudo-tool syntax. A complete terminal DSML calls block is also normalized under a
+private audit into the same inert tool-call shape, then subjected to the ordinary declared-name,
+argument-object, count, and selection checks; incomplete or ambiguous markup still fails closed.
+Tool-only turns may omit public commentary without inventing assistant text.
 Go regional-privacy rejections name the required account setting instead of suggesting an API
 protocol change; Peritus does not modify that setting.
 Public report objects are serialized once, and literal transcript text avoids an extra escaping

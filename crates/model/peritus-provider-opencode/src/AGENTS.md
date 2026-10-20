@@ -9,6 +9,7 @@ Official OpenCode CLI transport for Zen/Go, executable/model discovery, isolated
 | File | Role |
 | --- | --- |
 | [catalog.rs](catalog.rs) | Model metadata delegated to the vendor's own SDK catalog. |
+| [dsml.rs](dsml.rs) | Strict, bounded conversion of terminal DeepSeek DSML tool markup into inert validated calls. |
 | [executable.rs](executable.rs) | Explicit discovery and pinning of the official OpenCode executable. |
 | [isolation.rs](isolation.rs) | Disposable vendor configuration and short-lived private credential custody. |
 | [lib.rs](lib.rs) | Unmodified OpenCode CLI as a tool-disabled Zen/Go inference transport. Entry names: `service_id`, `malformed`. |

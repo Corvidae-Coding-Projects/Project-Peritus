@@ -94,3 +94,33 @@ TERMINAL succeeded
 RESULT prelude_fenced checks passed
 ```
 
+## dsml
+
+A complete DeepSeek DSML block with one standard call and one nested `arguments` call is normalized without a refused turn.
+
+```
+NORMALIZATION dsml-v1 opencode.turn 2
+TERMINAL requires_action
+RESULT dsml checks passed
+```
+
+## dsml_unknown_tool
+
+A complete DSML block naming an undeclared tool is refused before any call reaches the host, then the corrected reply succeeds.
+
+```
+CORRECTION {"attempt":1,"reason":"opencode.runtime.invalid_turn_tools","rejected":"I will inspect the README and search the source.\n\n<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"workspace_delete\">\n<｜｜DSML｜｜ parameter name=\"path\" string=\"true\">README.md</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n<｜｜DSML｜｜ invoke name=\"workspace_search\">\n<｜｜DSML｜｜ parameter name=\"arguments\" string=\"false\">{\"query\":\"TODO\",\"path\":\"src\"}</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"name\" string=\"true\">workspace_search</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>","rejected_bytes":566,"rejected_truncated":false,"tools_executed":false}
+TERMINAL succeeded
+RESULT dsml_unknown_tool checks passed
+```
+
+## dsml_malformed
+
+An incomplete DSML parameter is refused as invalid JSON, then the corrected reply succeeds.
+
+```
+CORRECTION {"attempt":1,"reason":"opencode.runtime.invalid_turn_json","rejected":"I will read the README.\n\n<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"workspace_read\">\n<｜｜DSML｜｜ parameter name=\"path\" string=\"true\">README.md\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>","rejected_bytes":214,"rejected_truncated":false,"tools_executed":false}
+TERMINAL succeeded
+RESULT dsml_malformed checks passed
+```
+

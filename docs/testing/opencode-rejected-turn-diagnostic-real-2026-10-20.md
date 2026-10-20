@@ -68,8 +68,8 @@ Framing was checked against copies of that real trace under a disposable `XDG_ST
 ### Scripted-vendor replay
 
 `docs/testing/reproducers/opencode-rejected-turn-diagnostic/replay.py` builds the two consumers
-offline and drives them against a scripted OpenCode stand-in. All four scenarios passed with 0
-failed checks:
+offline and drives them against a scripted OpenCode stand-in. All four initial scenarios passed
+with 0 failed checks:
 
 | Scenario | Observation |
 | --- | --- |
@@ -91,7 +91,7 @@ spans or quoted prose, and one final Markdown-fenced object introduced by that p
 requires the object to be the sole structured candidate ending the payload. Preludes containing
 container delimiters or additional fences, multiple candidates, trailing text, and unterminated
 containers remain rejected. The scripted replay now covers `prelude_backticks`, `prelude_quoted`,
-and `prelude_fenced`; all seven scenarios pass.
+and `prelude_fenced`; all seven prelude-era scenarios pass.
 
 Run discovery also changed:
 
@@ -106,10 +106,40 @@ The TUI key is compiled and announced in the dashboard title and help. A live in
 not exercised because the running installed daemon uses different executable or provider settings
 than this checkout, and the launcher correctly preserves it instead of restarting it.
 
+## Follow-up: DeepSeek DSML and repeated refusals
+
+The user reported that DeepSeek still often needed two `invalid_turn_json` refusals before a turn
+succeeded. The retained trace now contained 93 correction records with their rejected text. Of
+those, 70 carried a DeepSeek DSML calls block. Across those 70 replies there were 169 `invoke`
+blocks: 79 used ordinary named parameters, 72 used the `arguments` object plus `name` form, and 18
+were structurally malformed hybrids. The remaining refusals were JSON envelopes behind prose,
+XML-like calls, or multiple candidates.
+
+The request previously said only that the response must be one JSON object. It did not name the
+model-native markup that DeepSeek was emitting, and the correction prompt likewise repeated the
+generic requirement. The adapter now adds an explicit JSON-only tool-syntax instruction to the
+wire prefix, the prompt tail, and the correction prompt. It names DSML, XML/HTML-like tags,
+special-token markers, and pseudo-tool syntax as invalid and shows a normal JSON call with an
+argument object.
+
+A complete terminal DSML calls block is also normalized without another inference. The adapter
+accepts a prose prelude followed by one `calls`/`tool_calls` block, parses standard parameters and
+the observed `arguments`-plus-`name` form, converts nested arguments to the ordinary call shape,
+and publishes the private `peritus.opencode_turn_normalization` audit. The existing checks still
+gate declared tool names, object-valued arguments, maximum call count, and tool selection. The
+parser requires the block to be unique and final, rejects fenced examples and incomplete tags, and
+does not execute anything itself.
+
+The replay now has ten scenarios. The DSML success case expects two normalized calls and
+`TERMINAL requires_action`; the undeclared-tool case expects one `invalid_turn_tools` correction;
+the malformed case expects one `invalid_turn_json` correction. The replay also captures the actual
+submitted prompt and checks that `STRICT JSON TOOL SYNTAX`, `Never emit DSML`, and `tool_calls array`
+reached the vendor process. All ten scenarios pass with 0 failed checks.
+
 ## Retained evidence
 
 - [Reproducer](reproducers/opencode-rejected-turn-diagnostic/README.md) — consumers, scripted
-  stand-in, and the four scenarios.
+  stand-in, and the ten scenarios.
 - [Observed baseline](reproducers/opencode-rejected-turn-diagnostic/observed-baseline.txt) —
   verbatim transcripts of the recorded run and its check outcomes.
 
@@ -125,6 +155,6 @@ than this checkout, and the launcher correctly preserves it instead of restartin
   text and the repeated request lines. It cannot show the repaired narration; the scripted replay
   and the fresh trace reader cover that.
 - The 16 KiB retention bound is exercised by construction, not by a real reply that large; the
-  scripted replies are under 100 bytes and report `rejected_truncated: false`.
+  scripted replies report `rejected_truncated: false`.
 - The extension name `peritus.opencode_turn_correction` is the adapter-owned private-trace
   contract. Only the OpenCode adapter publishes it; other adapters are unchanged.
