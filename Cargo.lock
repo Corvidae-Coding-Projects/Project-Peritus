@@ -2728,11 +2728,13 @@ dependencies = [
  "peritus-launcher",
  "peritus-model-protocol",
  "peritus-modules",
- "peritus-product-runner",
  "peritus-run-settlement",
+ "peritus-tools-computer",
  "peritus-tools-shell",
  "peritus-tools-web",
+ "peritus-trace",
  "peritus-types",
+ "peritus-workspace",
  "serde_json",
  "sha2 0.11.0",
  "tempfile",
@@ -2802,6 +2804,7 @@ dependencies = [
  "peritus-policy",
  "peritus-process",
  "peritus-product-runner",
+ "peritus-product-state",
  "peritus-projection",
  "peritus-protocol",
  "peritus-provider-anthropic",
@@ -3262,6 +3265,7 @@ dependencies = [
  "peritus-plugin-sdk",
  "peritus-policy",
  "peritus-process",
+ "peritus-product-state",
  "peritus-protocol",
  "peritus-provider-core",
  "peritus-review",
@@ -3278,6 +3282,7 @@ dependencies = [
  "peritus-tools-computer",
  "peritus-tools-shell",
  "peritus-tools-web",
+ "peritus-trace",
  "peritus-types",
  "peritus-workspace",
  "rusqlite",
@@ -3294,8 +3299,10 @@ dependencies = [
 name = "peritus-product-state"
 version = "0.1.6"
 dependencies = [
+ "peritus-types",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
 ]
 
 [[package]]
@@ -3758,11 +3765,12 @@ dependencies = [
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-modules",
- "peritus-product-runner",
+ "peritus-product-state",
  "peritus-protocol",
  "peritus-run-settlement",
  "peritus-tools-shell",
  "peritus-types",
+ "peritus-workspace",
  "pulldown-cmark",
  "ratatui",
  "regex",
@@ -3813,6 +3821,7 @@ version = "0.1.6"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
+ "getrandom 0.4.3",
  "peritus-artifact-store",
  "peritus-codec",
  "peritus-git",
@@ -3823,7 +3832,10 @@ dependencies = [
  "peritus-policy",
  "peritus-protocol",
  "peritus-types",
+ "serde",
+ "serde_json",
  "sha2 0.11.0",
+ "tempfile",
 ]
 
 [[package]]

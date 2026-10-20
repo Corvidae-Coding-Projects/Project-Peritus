@@ -21,7 +21,7 @@ source_exceptions = [
     { path = "crates/foundation/peritus-release-policy/src/catalog.rs", owner = "H4", rationale = "The closed 25-criterion and 44-evidence-requirement H4 catalog keeps stable IDs, exact criterion ownership, source-class mappings, and canonical ordering together as one directly auditable release contract." },
     { path = "crates/app/peritus-tui/src/model.rs", owner = "G2", rationale = "The bounded presentation state keeps view, notice, prompt, event, terminal, and pending-request invariants together while protocol and interaction transitions remain split into submodules." },
     { path = "crates/extensions/peritus-mcp/src/server.rs", owner = "G3", rationale = "The MCP server keeps its closed JSON-RPC lifecycle, request dispatch, cancellation registry, bounded pagination, and response mapping in one auditable protocol surface." },
-    { path = "crates/extensions/peritus-plugin-sdk/src/manifest.rs", owner = "G3", rationale = "The canonical plugin manifest keeps the versioned entrypoint, capability, quota, signature, trust, validation, and digest contract together for compatibility review." },
+    { path = "crates/foundation/peritus-plugin-sdk/src/manifest.rs", owner = "G3", rationale = "The canonical plugin manifest keeps the versioned entrypoint, capability, quota, signature, trust, validation, and digest contract together for compatibility review." },
     { path = "crates/analysis/peritus-eval/src/aggregate/reducer.rs", owner = "E3", rationale = "The pure evaluation reducer keeps its closed command vocabulary, legal phase transitions, and corresponding canonical command encoding in one auditable surface." },
     { path = "crates/analysis/peritus-eval/src/aggregate/state.rs", owner = "E3", rationale = "Complete evaluation state and its versioned canonical encode/decode implementation remain together so replay digest correspondence can be audited directly." },
     { path = "crates/analysis/peritus-eval/src/aggregate/types.rs", owner = "E3", rationale = "The closed durable aggregate vocabulary keeps phase, rollout, plan, publication, report, and failure tag mappings visible together." },
@@ -207,15 +207,15 @@ layer = "extensions"
 
 [[packages]]
 name = "peritus-plugin-host"
-path = "crates/extensions/peritus-plugin-host"
+path = "crates/runtime/peritus-plugin-host"
 owner = "G3"
-layer = "extensions"
+layer = "runtime"
 
 [[packages]]
 name = "peritus-plugin-sdk"
-path = "crates/extensions/peritus-plugin-sdk"
+path = "crates/foundation/peritus-plugin-sdk"
 owner = "G3"
-layer = "extensions"
+layer = "foundation"
 
 [[packages]]
 name = "peritus-tui"

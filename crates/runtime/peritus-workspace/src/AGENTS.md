@@ -8,6 +8,9 @@ Target-owned authorization and lifecycle boundary for isolated Peritus workspace
 
 | File | Role |
 | --- | --- |
+| [task_candidate.rs](task_candidate.rs) | Stable managed candidate identity and errors, independent of agent execution. |
+| [workspace_filter.rs](workspace_filter.rs) | Canonical source/generated-path filtering. |
+| [file_metadata.rs](file_metadata.rs) | Source permission and metadata capture shared by task candidates. |
 | [authorization.rs](authorization.rs) | Complete borrowed request for one target-owned authorization decision. |
 | [caller.rs](caller.rs) | Dependency-neutral C4 caller and immutable target bindings. |
 | [candidate.rs](candidate.rs) | Authorized candidate creation and content-addressed manifest finalization. |
@@ -52,3 +55,5 @@ Target-owned authorization and lifecycle boundary for isolated Peritus workspace
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
+
+[Task candidate runtime](task_candidate/AGENTS.md) owns the extracted candidate tree.

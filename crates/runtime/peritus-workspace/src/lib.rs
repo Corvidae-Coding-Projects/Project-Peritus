@@ -77,3 +77,11 @@ pub use rollback::{
 pub use scoped_inspection::{FileReadSelection, FolderInspection, InspectedFile};
 pub use state::{WorkspaceCondition, WorkspaceState};
 pub use writable::WritableWorkspace;
+
+/// Portable source permission observations.
+pub mod file_metadata;
+/// Exact candidate snapshots and fenced user-requested handoff effects.
+pub mod task_candidate;
+/// Stable exclusion of generated dependency/build output.
+pub mod workspace_filter;
+pub(crate) use task_candidate::CandidateError as ProductRunnerError;

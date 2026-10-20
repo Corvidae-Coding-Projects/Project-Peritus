@@ -12,8 +12,10 @@ keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]
-peritus-plugin-host = { version = "=0.1.6", path = "../../extensions/peritus-plugin-host" }
-peritus-plugin-sdk = { version = "=0.1.6", path = "../../extensions/peritus-plugin-sdk" }
+peritus-trace = { version = "=0.1.6", path = "../../observe/peritus-trace" }
+peritus-product-state = { version = "=0.1.6", path = "../peritus-product-state" }
+peritus-plugin-host = { version = "=0.1.6", path = "../../runtime/peritus-plugin-host" }
+peritus-plugin-sdk = { version = "=0.1.6", path = "../../foundation/peritus-plugin-sdk" }
 fs4.workspace = true
 peritus-modules = { version = "=0.1.6", path = "../../orchestration/peritus-modules" }
 peritus-tools-web = { version = "=0.1.6", path = "../../tools/peritus-tools-web" }

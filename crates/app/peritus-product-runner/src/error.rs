@@ -66,3 +66,9 @@ impl fmt::Display for ProductRunnerError {
 }
 
 impl std::error::Error for ProductRunnerError {}
+
+impl From<peritus_workspace::task_candidate::CandidateError> for ProductRunnerError {
+    fn from(error: peritus_workspace::task_candidate::CandidateError) -> Self {
+        Self::new(ProductRunnerErrorKind::Repository, error.operation(), error.detail())
+    }
+}

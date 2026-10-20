@@ -38,10 +38,10 @@ mod reservations;
 pub struct ControlStore {
     journal: SqliteJournal,
     store: StoreId,
-    // One aggregate, with a connection-bound mutation observation. No persisted cache format.
-    replay: RefCell<Option<replay::CachedReplay>>,
+    // Independently reusable conversation states; external writes still invalidate their fences.
+    replay: RefCell<replay::ReplayCache>,
     // Fields are dropped in declaration order: close the journal before releasing ownership.
-    _owner: ControlOwner,
+    _owner: Option<ControlOwner>,
 }
 
 struct ControlOwner(File);
@@ -76,7 +76,17 @@ impl ControlStore {
             store,
             SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
         )?;
-        Ok(Self { journal, store, replay: RefCell::new(None), _owner: owner })
+        Ok(Self { journal, store, replay: RefCell::default(), _owner: Some(owner) })
+    }
+
+    /// Read-only loading never takes the daemon's writer ownership lock or mutates the store.
+    pub(crate) fn read_only(root: &Path, store: StoreId) -> Result<Self, Error> {
+        Ok(Self {
+            journal: SqliteJournal::open_existing_read_only(root.join("control.sqlite3"), store)?,
+            store,
+            replay: RefCell::default(),
+            _owner: None,
+        })
     }
 
     /// Atomically publishes exact intent, successor state and original receipt through C0.
@@ -236,11 +246,13 @@ impl ControlStore {
         .plan()?;
         // Even an indeterminate append is resolved by its original exact identity. A caller
         // never receives success solely from the pre-commit pure transition above.
+        let reusable = self.reusable_conversations(operation.conversation())?;
         match self.journal.append_observed(plan, &observation) {
             Ok((batch, observation)) => {
                 let durable =
                     self.resolve(operation)?.ok_or(Error::Corrupt("committed receipt missing"))?;
                 self.verify_request_archive(operation, batch.last_position(), current.as_ref())?;
+                self.advance_unmodified_replays(&reusable, &observation);
                 self.cache_replay(operation.conversation(), replay, observation);
                 Ok(durable)
             }

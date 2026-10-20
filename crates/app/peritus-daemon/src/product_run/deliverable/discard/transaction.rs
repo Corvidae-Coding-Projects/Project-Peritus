@@ -8,7 +8,7 @@ use super::{
 use peritus_product_runner::{DiscardTransactionState, ProductRunner};
 use peritus_types::{Sha256Digest, WorkspaceId};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, io::Write as _, path::Path};
+use std::{io::Write as _, path::Path};
 
 const INTERRUPTION_CAUSE: &str = "explicit discard recovery is pending";
 
@@ -149,10 +149,15 @@ impl Pending {
 
 pub(in crate::product_run) fn workspace_available(
     directory: &Path,
-    records: &BTreeMap<peritus_types::RunId, RunRecord>,
+    records: &peritus_product_state::publication::PublishedView<peritus_types::RunId, RunRecord>,
     workspace: WorkspaceId,
 ) -> Result<(), ProductRunServiceError> {
-    for record in records.values().filter(|record| record.request.workspace_id() == workspace) {
+    for record in records
+        .hints()
+        .filter(|(_, record)| record.request.workspace_id() == workspace)
+        .filter(|(_, record)| path(directory, record).with_extension("discard-intent").exists())
+        .filter_map(|(run, _)| records.get(run))
+    {
         if Pending::read(directory, record)?.is_some() {
             return Err(ProductRunServiceError::internal(
                 "resume interrupted discard",

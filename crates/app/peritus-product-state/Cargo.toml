@@ -12,6 +12,8 @@ keywords = ["agents", "application-state", "formal-verification"]
 categories = ["data-structures", "development-tools"]
 
 [dependencies]
+peritus-types = { version = "=0.1.6", path = "../../foundation/peritus-types" }
+sha2.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

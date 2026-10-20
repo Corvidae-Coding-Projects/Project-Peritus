@@ -8,6 +8,9 @@ Pure, resumable product state for the single-command Peritus experience.
 
 | File | Role |
 | --- | --- |
+| [tool_output.rs](tool_output.rs) | Client-safe structured tool-output summaries and document rendering data. |
+| [publication.rs](publication.rs) | Per-key mutation ownership, immutable publication, and demand-loaded history entries. |
+| [file_text.rs](file_text.rs) | Canonical exact UTF-8 file attachment validation and digest. |
 | [error.rs](error.rs) | Product-state validation failures. |
 | [identity.rs](identity.rs) | Stable non-secret installation identity. |
 | [lib.rs](lib.rs) | Pure, resumable product state for the single-command Peritus experience. |

@@ -36,9 +36,9 @@ impl super::ProductRunService {
     ) -> Vec<(peritus_types::RunId, peritus_types::ActionId, peritus_types::ProcessId)> {
         let records = self.inner.records.read().ok().map(|records| {
             records
-                .values()
-                .filter(|record| record.snapshot.phase().terminal())
-                .cloned()
+                .hints()
+                .filter(|(_, record)| record.snapshot.phase().terminal())
+                .map(|(_, record)| Arc::clone(record))
                 .collect::<Vec<_>>()
         });
         let Some(records) = records else { return Vec::new() };
@@ -46,6 +46,14 @@ impl super::ProductRunService {
         for record in records {
             let receipts = effects_path(&self.inner.directory, &record);
             if receipts.exists() {
+                // Index hints are only for selection. Keep process ownership only for an
+                // exact admitted operation, even when its full continuation stays deferred.
+                let accepted = self
+                    .with_controls(false, |store| store.resolve(&record.interaction.workbench))
+                    .is_ok_and(|receipt| receipt.is_some());
+                if !accepted {
+                    continue;
+                }
                 match peritus_product_runner::CommandRuntime::receipt_linked_live_owners(
                     &receipts,
                     record.request.run_id(),
@@ -66,6 +74,19 @@ impl super::ProductRunService {
                     }
                 }
             }
+            if !receipts.exists() {
+                continue;
+            }
+            let pending = uncertain_effects(&receipts)
+                .map(|effects| {
+                    effects.iter().any(|effect| effect.state() != UncertainEffectState::Reviewed)
+                })
+                .unwrap_or(true);
+            if !pending {
+                continue;
+            }
+            let Ok(view) = self.inner.records.read() else { continue };
+            let Some(record) = view.get(&record.request.run_id()) else { continue };
             if let Err(error) = self.reconcile_command_receipts(&record) {
                 diagnostic::report(&format!(
                     "peritusd: native command receipt recovery remains unresolved for run {}: {error}",

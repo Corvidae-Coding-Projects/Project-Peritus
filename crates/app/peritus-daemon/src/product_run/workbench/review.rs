@@ -175,6 +175,16 @@ pub(super) async fn resume_feedback(
             return Ok(());
         }
     };
+    let workspace = service
+        .inner
+        .records
+        .read()
+        .map_err(|_| ProductRunServiceError::Unavailable)?
+        .get(&run)
+        .ok_or(ProductRunServiceError::NotFound)?
+        .request
+        .workspace_id();
+    let _admission = service.inner.admissions.enter(workspace);
     let launch = {
         let mut records =
             service.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
@@ -244,7 +254,7 @@ pub(super) async fn resume_feedback(
             cancelled,
             token,
             record.finding_state.clone(),
-            record.resume.clone(),
+            record.resume.as_deref().cloned(),
         )
     };
     service.spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6).await;

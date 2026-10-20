@@ -8,6 +8,7 @@ Implementation pieces for `persistence.rs`: Durable product-run snapshots and re
 
 | File | Role |
 | --- | --- |
+| [index.rs](index.rs) | Disposable metadata indexes; full authority and continuation validation is deferred until selection. |
 | [continuation.rs](continuation.rs) | Digest-addressed continuation bytes published before their small atomic run-record pointer. |
 | [deliverable.rs](deliverable.rs) | Durable candidate projection, independent from interactive mode. |
 | [interaction.rs](interaction.rs) | Strictly checked durable conversation-mode extension. |

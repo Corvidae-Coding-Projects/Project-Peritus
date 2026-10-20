@@ -18,7 +18,7 @@ use peritus_app_protocol::{
     AppRequestPayload, AppResponsePayload, ProductRunControl, ProductRunControlAction,
     ProductRunQuery, ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
-use peritus_product_runner::ProductRunner;
+
 use peritus_run_settlement::{CandidateStage, RunSettlement};
 use peritus_tools_shell::ExecInput;
 use peritus_types::{RunId, SessionId};
@@ -165,7 +165,7 @@ async fn execute_candidate(
             CliError::protocol("run exact candidate", "daemon omitted the candidate identity")
         })?;
     let workspace = Path::new(deliverable.workspace_path());
-    let current = ProductRunner::candidate_digest(workspace).map_err(|error| {
+    let current = peritus_workspace::task_candidate::identity(workspace).map_err(|error| {
         CliError::runtime("validate exact candidate", error.detail().to_owned())
     })?;
     if current != checkpoint.identity().repository_digest() {

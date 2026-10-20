@@ -2,7 +2,6 @@
 
 use std::{path::PathBuf, process::Command};
 
-use peritus_product_runner::ProductRunner;
 use peritus_tools_shell::ExecInput;
 use peritus_types::Sha256Digest;
 
@@ -38,7 +37,7 @@ fn execute_blocking(
     instruction: &str,
     candidate_digest: Sha256Digest,
 ) -> Result<(), String> {
-    let current = ProductRunner::candidate_digest(workspace)
+    let current = peritus_workspace::task_candidate::identity(workspace)
         .map_err(|error| format!("could not validate exact candidate: {}", error.detail()))?;
     if current != candidate_digest {
         return Err(

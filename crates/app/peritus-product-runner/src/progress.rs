@@ -83,6 +83,17 @@ impl WorkspaceCheckpoint {
     /// Returns a canonical digest of HEAD, source contents, file kinds, and permissions.
     #[must_use]
     pub fn digest(&self) -> Sha256Digest {
+        if let [entry] = self.entries.as_slice()
+            && entry.kind == ContentKind::Repository
+            && entry.path.as_os_str().is_empty()
+            && entry.permissions.is_none()
+            && let Some(repository) = entry.digest
+        {
+            return peritus_workspace::task_candidate::managed_checkpoint_digest(
+                &self.head, repository,
+            );
+        }
+
         let mut hasher = Sha256::new();
         hash_bytes(&mut hasher, self.head.as_bytes());
         for entry in &self.entries {

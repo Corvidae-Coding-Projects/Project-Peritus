@@ -76,11 +76,8 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         };
     }
     if let Command::Automation { setup } = &cli.command {
-        let result = if *setup {
-            peritus_product_runner::computer_setup()
-        } else {
-            peritus_product_runner::computer_status()
-        };
+        let result =
+            if *setup { peritus_tools_computer::setup() } else { peritus_tools_computer::status() };
         return match result {
             Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
                 |error| report_error(&CliError::output(error), cli.json),
@@ -233,7 +230,7 @@ fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>)
     }
     // Portable/source and system-package installs have no per-user installer hook.
     // Provision once here; a transient download failure must not disable offline coding.
-    if let Err(error) = peritus_product_runner::computer_ensure_setup() {
+    if let Err(error) = peritus_tools_computer::ensure_setup() {
         eprintln!("Peritus browser automation setup is incomplete: {error}");
     }
     let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {

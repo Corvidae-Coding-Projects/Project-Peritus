@@ -12,6 +12,10 @@ keywords = ["workspace", "git", "authorization", "formal-verification"]
 categories = ["filesystem", "development-tools"]
 
 [dependencies]
+getrandom.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
 cap-std.workspace = true
 cap-fs-ext.workspace = true
 peritus-artifact-store = { version = "=0.1.6", path = "../../state/peritus-artifact-store" }

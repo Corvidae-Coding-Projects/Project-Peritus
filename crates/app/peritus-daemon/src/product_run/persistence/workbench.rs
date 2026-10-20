@@ -10,28 +10,22 @@ use std::{
     time::SystemTime,
 };
 
-pub(in crate::product_run) fn load_workbench_records(
+pub(in crate::product_run) fn load_record(
     root: &Path,
-    controls: Option<&ControlStore>,
+    path: PathBuf,
+    controls: &ControlStore,
+) -> Option<RunRecord> {
+    load_paths(root, controls, vec![path]).ok()?.into_values().next()
+}
+
+fn load_paths(
+    root: &Path,
+    controls: &ControlStore,
+    paths: Vec<PathBuf>,
 ) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
     let directory = root.join("runs");
-    if !directory.exists() {
-        return Ok(BTreeMap::new());
-    }
-    let Some(controls) = controls else {
-        for path in projection_paths(&directory) {
-            quarantine_record(&path, "workbench projection has no governing control store", None);
-        }
-        return Ok(BTreeMap::new());
-    };
     let mut records = BTreeMap::new();
     let quarantine = directory.join(".quarantine");
-    let mut paths = projection_paths(&directory);
-    paths.extend(
-        projection_paths(&quarantine)
-            .into_iter()
-            .filter(|path| path.file_name().is_some_and(|name| !directory.join(name).exists())),
-    );
     for path in paths {
         let recovering = path.parent() == Some(quarantine.as_path());
         let metadata = match fs::symlink_metadata(&path) {
@@ -257,7 +251,7 @@ fn resume_marker_valid(
     })
 }
 
-fn projection_paths(directory: &Path) -> Vec<PathBuf> {
+pub(super) fn projection_paths(directory: &Path) -> Vec<PathBuf> {
     let Ok(entries) = fs::read_dir(directory) else {
         return Vec::new();
     };

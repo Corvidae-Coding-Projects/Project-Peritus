@@ -125,7 +125,7 @@ impl ProductRunService {
         if let Ok(outcome) = &result {
             record.checkpoint = outcome.settlement().checkpoint().copied();
             record.settlement = Some(*outcome.settlement());
-            record.resume = outcome.resume().cloned();
+            record.resume = outcome.resume().cloned().map(std::sync::Arc::new);
             record.remaining_work = outcome.remaining_work().to_vec();
             record.interruption_cause = outcome.detail().map_or_else(String::new, str::to_owned);
             record.candidate_actionable =

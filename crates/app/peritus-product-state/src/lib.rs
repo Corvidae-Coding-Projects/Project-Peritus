@@ -19,3 +19,12 @@ pub use provider::{
 };
 pub use state::{PRODUCT_STATE_SCHEMA_VERSION, ProductState};
 pub use workspace::{WorkspaceProfile, WorkspaceSelection, WorkspaceTrust};
+
+/// Immutable run observations and per-record mutation ownership.
+pub mod publication;
+
+/// Human-readable tool observation projections, independent of agent execution.
+pub mod tool_output;
+
+/// Exact immutable selected text, without filesystem or execution authority.
+pub mod file_text;

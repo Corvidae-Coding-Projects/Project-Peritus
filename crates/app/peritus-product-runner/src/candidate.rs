@@ -6,7 +6,7 @@ use std::{
     process::Command,
 };
 
-pub mod managed;
+pub(crate) use peritus_workspace::task_candidate::managed;
 
 use crate::workspace_filter;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -65,7 +65,7 @@ impl CandidateBaseline {
             return scope.changed_paths(root);
         }
         if let Some(baseline) = &self.managed {
-            return baseline.changed_paths(root);
+            return baseline.changed_paths(root).map_err(Into::into);
         }
         let mut paths = BTreeSet::new();
         let tracked = Command::new("git")
@@ -159,7 +159,7 @@ impl CandidateBaseline {
         // An in-place run has no repository-history axis. Its exact enrolled file snapshot is both
         // the source-content observation and the handoff fence.
         self.in_place.as_ref().map_or_else(
-            || managed::ManagedBaseline::source_digest(root),
+            || managed::ManagedBaseline::source_digest(root).map_err(Into::into),
             |scope| scope.progress_checkpoint(root).map(|checkpoint| checkpoint.digest()),
         )
     }

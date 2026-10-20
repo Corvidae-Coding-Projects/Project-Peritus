@@ -39,12 +39,7 @@ impl PersistedRecord {
             progress: PersistedProgress::from_run(&record.progress),
             checkpoint: record.checkpoint.as_ref().map(PersistedCheckpoint::from_checkpoint),
             settlement_cause: record.settlement.as_ref().map(|value| value.cause().tag()),
-            resume_state: record
-                .resume
-                .as_ref()
-                .map(ProductRunResume::encode_durable)
-                .transpose()
-                .map_err(|_| ProductRunServiceError::Unavailable)?,
+            resume_state: None,
             resume_artifact: None,
             remaining_work: record.remaining_work.clone(),
             interruption_cause: record.interruption_cause.clone(),
@@ -215,7 +210,8 @@ impl PersistedRecord {
             progress: self.progress.into_run(),
             checkpoint,
             settlement,
-            resume,
+            resume: resume.map(Arc::new),
+            continuation_cache: Default::default(),
             remaining_work: self.remaining_work,
             interruption_cause: self.interruption_cause,
             candidate_actionable: self.candidate_actionable,

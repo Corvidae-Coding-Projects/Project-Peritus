@@ -122,9 +122,10 @@ pub(super) fn mark_stale(
     record.resume = record
         .resume
         .take()
-        .map(|resume| resume.reconcile_candidate(checkpoint))
+        .map(|resume| std::sync::Arc::unwrap_or_clone(resume).reconcile_candidate(checkpoint))
         .transpose()
-        .map_err(|_| ProductRunServiceError::InvalidState)?;
+        .map_err(|_| ProductRunServiceError::InvalidState)?
+        .map(std::sync::Arc::new);
     project_reconciled(record, checkpoint, settlement)
 }
 

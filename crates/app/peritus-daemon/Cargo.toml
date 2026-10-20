@@ -12,6 +12,7 @@ keywords = ["agents", "daemon", "ipc", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]
+peritus-product-state = { version = "=0.1.6", path = "../peritus-product-state" }
 peritus-agent = { version = "=0.1.6", path = "../../orchestration/peritus-agent" }
 fs4.workspace = true
 image.workspace = true

@@ -53,7 +53,7 @@ pub fn read(path: &Path, selection: WorkbenchFileRange) -> Result<FileBytes, &'s
     {
         return Err("The external file changed while reading; select it again.");
     }
-    peritus_product_runner::attachment::ValidatedFileText::new(bytes.clone())
+    peritus_product_state::file_text::ValidatedFileText::new(bytes.clone())
         .map_err(|_| "Selected bytes must be exact UTF-8 text without binary controls.")?;
     let digest = peritus_codec::sha256(&bytes);
     let file = WorkbenchFileMetadata::new(source_digest, source_bytes, range, digest)

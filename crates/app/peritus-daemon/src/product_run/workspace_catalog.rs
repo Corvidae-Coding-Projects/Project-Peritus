@@ -51,6 +51,9 @@ impl LiveWorkspaces {
     pub(super) fn get(&self, id: &WorkspaceId) -> Option<PathBuf> {
         self.view.read().ok()?.roots.get(id).cloned()
     }
+    pub(super) fn roots(&self) -> BTreeMap<WorkspaceId, PathBuf> {
+        self.view.read().map(|view| view.roots.clone()).unwrap_or_default()
+    }
     pub(super) fn contains_key(&self, id: &WorkspaceId) -> bool {
         self.view.read().is_ok_and(|view| view.roots.contains_key(id))
     }
