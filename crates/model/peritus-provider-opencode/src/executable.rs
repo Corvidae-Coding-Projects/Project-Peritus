@@ -59,12 +59,16 @@ impl OpenCodeExecutable {
         Err(unavailable())
     }
 
-    /// Canonicalizes an explicitly selected regular executable.
+    /// Canonicalizes and pins an explicitly selected native host executable.
     ///
     /// # Errors
-    /// Rejects missing, non-regular, or non-executable files.
+    /// Rejects missing, non-regular, non-executable, or foreign-host files.
     pub fn pin(path: impl AsRef<Path>) -> Result<Self, ProviderCoreError> {
-        ProcessExecutable::pin(path).map(Self)
+        let executable = ProcessExecutable::pin(path)?;
+        if !native_program(executable.as_path()) {
+            return Err(foreign_program());
+        }
+        Ok(Self(executable))
     }
 
     /// Returns its pinned native path.
@@ -112,8 +116,75 @@ fn directories() -> Vec<std::path::PathBuf> {
 fn unavailable() -> ProviderCoreError {
     ProviderCoreError::configuration(
         "opencode_runtime_executable",
-        "supported OpenCode 1.19.0 executable not found; install the official pinned CLI, then retry provider setup",
+        "supported OpenCode 1.19.0 executable not found; install the official pinned CLI for this system, then retry provider setup",
     )
+}
+
+const fn foreign_program() -> ProviderCoreError {
+    ProviderCoreError::configuration(
+        "opencode_runtime_executable",
+        "this OpenCode is a Windows program reached through WSL interop; install the official OpenCode 1.19.0 CLI for this system, then retry provider setup",
+    )
+}
+
+/// Whether a pinned candidate is a native program for this host.
+///
+/// WSL executes Windows programs from the drives it mounts for the distribution. Such a
+/// program can answer a version probe while being unable to honour the private POSIX
+/// configuration, state, and temporary paths this transport requires, so it is never a
+/// supported runtime.
+#[cfg(windows)]
+const fn native_program(_path: &Path) -> bool {
+    true
+}
+
+#[cfg(not(windows))]
+fn native_program(path: &Path) -> bool {
+    !windows_program(path) && !interop_mount(path)
+}
+
+/// Whether the file begins with the Windows portable-executable header.
+#[cfg(not(windows))]
+fn windows_program(path: &Path) -> bool {
+    use std::io::Read as _;
+    let mut header = [0_u8; 2];
+    std::fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut header))
+        .is_ok_and(|()| header == *b"MZ")
+}
+
+/// Whether the path is reached through a WSL distribution's Windows-drive mount.
+///
+/// Windows drives use a filesystem type that no native Linux installation uses, and a
+/// customized automount root is still identified through its own mount entry.
+#[cfg(not(windows))]
+fn interop_mount(path: &Path) -> bool {
+    if !wsl_kernel() {
+        return false;
+    }
+    let Ok(mounts) = std::fs::read_to_string("/proc/mounts") else {
+        return false;
+    };
+    let mut containing: Option<(&str, &str)> = None;
+    for line in mounts.lines() {
+        let mut fields = line.split(' ');
+        let (Some(_source), Some(point), Some(kind)) =
+            (fields.next(), fields.next(), fields.next())
+        else {
+            continue;
+        };
+        if path.starts_with(point) && containing.is_none_or(|(best, _)| point.len() >= best.len()) {
+            containing = Some((point, kind));
+        }
+    }
+    containing.is_some_and(|(_, kind)| matches!(kind, "drvfs" | "9p" | "virtiofs"))
+}
+
+/// Whether this Linux host runs a WSL distribution kernel.
+#[cfg(not(windows))]
+fn wsl_kernel() -> bool {
+    std::fs::read_to_string("/proc/sys/kernel/osrelease")
+        .is_ok_and(|release| release.to_ascii_lowercase().contains("microsoft"))
 }
 
 #[cfg(windows)]
