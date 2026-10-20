@@ -4,9 +4,13 @@
 
 ### Fixed
 
+- Check the operating-system credential store before provider setup asks for a key. An unavailable keyring now reports how to start the Linux and WSL Secret Service instead of failing with `PERITUS-SECRETS-006` after hidden input and model discovery.
+
 - Select the OpenCode Zen/Go runtime by native executables only. A Windows OpenCode installation reached through WSL interop no longer passes discovery, so provider setup reports the actionable installation path instead of a model-catalog failure and still finds a native 1.19.0 that appears later on `PATH`.
 
 ### Real testing
+
+- Replayed provider setup with and without a session D-Bus and unlocked gnome-keyring. The unavailable store produced the corrective guidance before any key entry; the available store stored a placeholder credential, saved provider settings, and removed it again through the product's own path with no leftover item in the provider namespace. The retained reproducer passed 21 checks.
 
 - Reproduced the reported WSL catalog failure through the actual terminal provider-settings flow, retained the real vendor-command failure and path probes, and re-verified discovery and advertised-model metadata against the official Linux 1.19.0 release asset.
 

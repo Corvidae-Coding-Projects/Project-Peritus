@@ -145,6 +145,27 @@ retry; the session cannot falsely report released while it remains present.
 Routing tokens, upstream credentials, and secret values do not appear in canonical plans,
 manifests, recovery records, observations, errors, terminal results, or ordinary debug output.
 
+### Linux and WSL credential store
+
+On Linux and WSL the platform store is the freedesktop Secret Service, reached over the session
+D-Bus. A default WSL distribution has neither, so the probe reports the store as unavailable and
+provider setup stops before it asks for a key. Start a session bus and an unlocked keyring in the
+environment that launches Peritus, then run it again:
+
+```sh
+dbus-daemon --session --fork --print-address=1
+export DBUS_SESSION_BUS_ADDRESS=<address printed above>
+printf '\n' | gnome-keyring-daemon --daemonize --unlock --components=secrets
+```
+
+The keyring is created under `~/.local/share/keyrings` with mode `0600`. An empty passphrase
+creates the login keyring without a prompt; a passphrase-protected keyring is asked for at login.
+A store that is reachable but locked, or reachable without a usable login collection, still passes
+the probe and fails on the first write with its own outcome, so unlock it before setup. The daemon
+inherits the launcher environment, so run `peritus shutdown` after the bus address changes. Keeping
+these commands in a login shell profile, or enabling `[boot] systemd=true` in `/etc/wsl.conf` so the
+distribution's own keyring service owns the store, makes it available to every later session.
+
 ## Platform support and probes
 
 ### Linux
