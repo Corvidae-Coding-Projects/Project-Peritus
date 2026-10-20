@@ -10,6 +10,7 @@ Install/distribution assets: native package recipes, launch/service assets, noti
 | --- | --- |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 | [archive.py](archive.py) | Canonical native release archives using Python's standard library (3.12+). |
+| [replay_archive_junctions.py](replay_archive_junctions.py) | Windows CLI replay for root, nested, and dangling directory junction rejection, plus ordinary archive readback. |
 | [native-build.md](native-build.md) | Document: Native release compilation. |
 | [native_build.py](native_build.py) | Compile native daemon libraries and their binary consumers in observed phases. |
 | [native_inputs.py](native_inputs.py) | Observed inputs for native daemon libraries and their same-run binary consumers. |
