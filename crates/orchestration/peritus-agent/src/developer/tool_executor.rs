@@ -47,6 +47,22 @@ pub trait DeveloperToolExecutor: Send {
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError>;
 
+    /// Revalidates a host-archived workspace read before reusing its evidence or coverage.
+    ///
+    /// Implementations must apply the same current permissions, argument/path checks and
+    /// grounding bookkeeping as a normal read, and read fresh bytes if its version changed.
+    /// The default declines reuse; the caller then executes the original call normally.
+    ///
+    /// # Errors
+    /// Returns a structural dispatch failure, as for [`Self::execute`].
+    fn reuse_workspace_read(
+        &mut self,
+        _call: &CompletedToolCall,
+        _observation: &DeveloperToolObservation,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        Ok(None)
+    }
+
     /// Returns actual image observations associated with the completed tool result.
     ///
     /// Implementations must authenticate and bound the bytes before supplying them. The loop

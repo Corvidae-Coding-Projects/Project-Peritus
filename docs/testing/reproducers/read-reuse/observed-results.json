@@ -1,0 +1,185 @@
+{
+  "seed": 20261020,
+  "generated_requests": 48,
+  "fresh_processes": 2,
+  "raw_base_executor_body_bytes": [
+    1030,
+    1030
+  ],
+  "cases": [
+    {
+      "case": "exact repeats and contained ranges return receipts with no duplicate body",
+      "status": "PASS"
+    },
+    {
+      "case": "more than 16 observations and unrelated edits preserve focus evidence",
+      "status": "PASS"
+    },
+    {
+      "case": "overlaps deliver only missing intervals and adjacent pages jointly cover a request",
+      "status": "PASS"
+    },
+    {
+      "case": "a visible middle interval produces correct disjoint-gap continuation",
+      "status": "PASS"
+    },
+    {
+      "case": "omitted evidence restores exact archived pages without falsely claiming visibility",
+      "status": "PASS"
+    },
+    {
+      "case": "host-rendered archive previews count as visible evidence after reconstruction",
+      "status": "PASS"
+    },
+    {
+      "case": "restored content refreshes live permissions metadata",
+      "status": "PASS"
+    },
+    {
+      "case": "same-length edit with restored mtime refreshes the original request",
+      "status": "PASS"
+    },
+    {
+      "case": "a source edit preserves explicitly stale task-plan progress across assembly",
+      "status": "PASS"
+    },
+    {
+      "case": "file replacement invalidates stale delivery coverage",
+      "status": "PASS"
+    },
+    {
+      "case": "revoked read permission and protected paths cannot reuse cached evidence",
+      "status": "PASS"
+    },
+    {
+      "case": "malformed calls and invalid offsets still follow ordinary rejection",
+      "status": "PASS"
+    },
+    {
+      "case": "symlink replacement cannot bypass normal path admission",
+      "status": "PASS"
+    },
+    {
+      "case": "truncated Unicode lines restore and advance with exact byte coverage and page budgets",
+      "status": "PASS"
+    },
+    {
+      "case": "a middle-of-line first read preserves its visible bytes while filling both missing sides",
+      "status": "PASS"
+    },
+    {
+      "case": "empty documents and newline-only EOF observations reuse correctly",
+      "status": "PASS"
+    },
+    {
+      "case": "a truncated archived preview credits only displayed bytes and restores the missing suffix",
+      "status": "PASS"
+    },
+    {
+      "case": "48 seeded overlapping and disjoint-gap requests satisfy an independent source-token oracle",
+      "status": "PASS"
+    },
+    {
+      "case": "fresh process restores role-scoped evidence and then reuses current delivery",
+      "status": "PASS"
+    },
+    {
+      "case": "independent reviewer acquires its own evidence before reusing its own delivery",
+      "status": "PASS"
+    }
+  ],
+  "states": {
+    "fresh": 40,
+    "already_visible": 65,
+    "read_missing": 29,
+    "restored": 13,
+    "error": 7
+  },
+  "delivered_body_bytes": {
+    "fresh": 103494,
+    "already_visible": 0,
+    "read_missing": 8565,
+    "restored": 102728,
+    "error": 0
+  },
+  "durable_operations": {
+    "workspace_read": 154,
+    "context_update": 1
+  },
+  "live_runs": {
+    "live-read-reuse": {
+      "outcome": {
+        "candidate": {
+          "changed_paths": [
+            "greet.py"
+          ],
+          "summary": "Implemented greet.py with a required name and --upper. Verified both greeting cases and missing-name behavior, including output and exit status.\n\nDeliverable: 1 changed file(s); 4 exact-target acceptance command(s) passed. Candidate stage: Qualified."
+        },
+        "detail": null,
+        "settlement": "Accepted"
+      },
+      "first_action": [
+        {
+          "at_unix_ms": 1792507116811,
+          "attempt_elapsed_millis": 44123,
+          "event": "first-useful-action",
+          "invocation": "peritus-61616161616161616161616161616161-writer-1-revision-1-invocation-1-7665786e188e2f8ba431b2160742531d",
+          "invocation_elapsed_millis": 18374,
+          "schema": 1,
+          "semantics": "first changed workspace file or successful completed declared external operation; attempt_elapsed_millis is monotonic; wall time includes pauses",
+          "tool": "workspace_write",
+          "wall_millis_since_first_invocation": 44097
+        }
+      ],
+      "applied_reuse": [],
+      "logged_elapsed_ms": 78628,
+      "model_requests": 8
+    },
+    "live-duplicate-reuse": {
+      "outcome": {
+        "candidate": {
+          "changed_paths": [
+            "greet.py"
+          ],
+          "summary": "Implemented greet.py. Verified Raven and --upper 猫 output with exit 0; missing name prints usage to stderr and exits 2. Completed both required design reads. No unit tests or scaffolding created.\n\nDeliverable: 1 changed file(s); 4 exact-target acceptance command(s) passed. Candidate stage: Qualified."
+        },
+        "detail": null,
+        "settlement": "Accepted"
+      },
+      "first_action": [
+        {
+          "at_unix_ms": 1792507296819,
+          "attempt_elapsed_millis": 63141,
+          "event": "first-useful-action",
+          "invocation": "peritus-61616161616161616161616161616161-writer-1-revision-1-invocation-1-e46a145c9bef70944435b35ba9ef0fdc",
+          "invocation_elapsed_millis": 35421,
+          "schema": 1,
+          "semantics": "first changed workspace file or successful completed declared external operation; attempt_elapsed_millis is monotonic; wall time includes pauses",
+          "tool": "workspace_write",
+          "wall_millis_since_first_invocation": 63120
+        }
+      ],
+      "applied_reuse": [
+        {
+          "at_unix_ms": 1792507276237,
+          "delivered_body_bytes": 0,
+          "delivered_response_bytes": 319,
+          "event": "read-reuse-applied",
+          "invocation": "peritus-61616161616161616161616161616161-writer-1-revision-1-invocation-1-e46a145c9bef70944435b35ba9ef0fdc",
+          "schema": 1,
+          "state": "already_visible"
+        }
+      ],
+      "logged_elapsed_ms": 98878,
+      "model_requests": 10
+    }
+  },
+  "source_hashes": {
+    "crates/app/peritus-product-runner/src/local_context/read_reuse.rs": "cc33632ec81ebba78d808b592429ae5f1398175a9e638220886df2bc8dafe38d",
+    "crates/app/peritus-product-runner/src/developer_tools/executor/read_reuse.rs": "61267c7d0667aedb5b795758dd764d66b0428fb05ea3e34edc892ccf3d2a1d93",
+    "crates/app/peritus-product-runner/src/local_context/read_reuse/page.rs": "421779c01f0d91d56cff93e29d16461f2a95132016581c89d512789b11afd6f5",
+    "crates/app/peritus-product-runner/src/local_context/read_reuse/view.rs": "5ea81a59ccff28c8347c0c8c7c2984c192acdf5e841e2085f5a36489b62c7d5d",
+    "crates/app/peritus-product-runner/src/developer_tools/inspection_read.rs": "374a8c296baaa41fa51011c5dd89bcab36d729d3e58f8ab9f0605d7793a0f732",
+    "crates/app/peritus-product-runner/src/developer_tools/catalog.rs": "382a675d241c7c38aa0261d968c1f7228f3abc5af91f9bb255beb3c7ab5160af"
+  }
+}

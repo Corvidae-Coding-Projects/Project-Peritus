@@ -128,10 +128,24 @@ completed marker survives retries, compaction, restarts, directory changes, and 
 Those changes invalidate specific observations, not the completed startup phase. Editing an existing
 file still requires its current read/hash; permissions and independent acceptance remain separate.
 After the check, the designer receives an empty tool catalog with tool choice `none` and hands off.
-Writer, fixer, and reviewer retain targeted tools for the actual task. Roles detect unchanged inspection cycles using a bounded 16-entry history
-of tool-name, argument, and result digests. Repeated identical visible observations produce advisory
-feedback while preserving grounding and continuation. New inspection evidence or a mutation
-boundary resets the warning. Command polling is not inspection repetition.
+Writer, fixer, and reviewer retain targeted tools for the actual task.
+
+With local memory enabled, source delivery is tracked by workspace path, content digest, exact
+line/byte coverage, and role-scoped archive handle. Unchanged ranges already present in the final
+provider-visible context return successful `already_visible` reuse receipts without another body.
+Missing archived pages restore automatically; overlapping requests read only their missing spans.
+Truncated lines and reconstructed archive previews receive only their actual displayed coverage.
+Unrelated edits preserve coverage. The workspace executor still checks permissions, normal paths,
+OS access and the current digest before admitting reuse; changed sources refresh normally.
+Independent review has its own archive and obtains its own evidence. Old observations without
+exact coverage refresh conservatively, and unavailable reuse data falls back to an ordinary read.
+
+The archive remains the durable source of truth; reuse adds no separate journal or run budget.
+Current plans survive source changes as explicitly stale, non-authoritative progress, alongside
+host-observed completed mutations. Current user requirements and fresh target evidence still govern
+the next action. Efficiency events distinguish candidate reuse from applied receipts, restoration,
+and delivery of missing spans and report actual returned bytes. The existing bounded inspection
+warning remains supplementary; command polling is not inspection repetition.
 
 The developer catalog also exposes bounded read-only reference listing and text reads. Their roots
 come only from normal absolute paths in the current user-authored input, excluding provider replies

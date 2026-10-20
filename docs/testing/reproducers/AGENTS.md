@@ -60,6 +60,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [provider-progress/](provider-progress/AGENTS.md) | Actual provider and terminal progress, validation, Unicode, cancellation and delayed-heartbeat replay. |
 | [tui-conveniences/](tui-conveniences/AGENTS.md) | Actual terminal and transcript-consumer replays for local conveniences, draft retention, attachment confirmation, and restart. |
 | [incremental-context/](incremental-context/AGENTS.md) | Public product-tool/context consumers for reusable pages, append-only exchange selection, authority changes and cache pressure. |
+| [read-reuse/](read-reuse/AGENTS.md) | Actual memory-decorated workspace reads, visible byte/range coverage, archive restoration, scoped recovery, and retained failures. |
 | [checkpoint-cache/](checkpoint-cache/AGENTS.md) | Actual scope/index/context, command/recovery, official provider caching and finite protocol-process replays. |
 | [deep-research-inquiry/](deep-research-inquiry/AGENTS.md) | Actual native inquiry/provenance consumers and separate live-artifact readback, with research-quality judgment kept distinct. |
 | [token-budgets/](token-budgets/AGENTS.md) | Actual public context/host consumers for token-budget removal, persistence, role isolation, and copied long-run assembly. |
