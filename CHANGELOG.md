@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.6
+
 ### Fixed
 
 - Preserve literal DSML marker and tag text inside OpenCode tool arguments. Reject competing structured preludes and duplicate JSON keys before converting nested arguments into inert host tool calls.
