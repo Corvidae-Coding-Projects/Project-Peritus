@@ -6,7 +6,7 @@ Interactive terminal client for the Peritus daemon.
 
 Package `peritus-tui` is a member of the root Cargo workspace; architectural owner `G2` in `app`.
 
-Local dependency waypoints: [peritus-app-protocol](../peritus-app-protocol/AGENTS.md), [peritus-codec](../../foundation/peritus-codec/AGENTS.md), [peritus-protocol](../../foundation/peritus-protocol/AGENTS.md), [peritus-product-runner](../peritus-product-runner/AGENTS.md), [peritus-run-settlement](../../orchestration/peritus-run-settlement/AGENTS.md), [peritus-tools-shell](../../tools/peritus-tools-shell/AGENTS.md), [peritus-types](../../foundation/peritus-types/AGENTS.md).
+Local dependency waypoints: [peritus-app-protocol](../peritus-app-protocol/AGENTS.md), [peritus-codec](../../foundation/peritus-codec/AGENTS.md), [peritus-protocol](../../foundation/peritus-protocol/AGENTS.md), [peritus-product-state](../peritus-product-state/AGENTS.md), [peritus-workspace](../../runtime/peritus-workspace/AGENTS.md), [peritus-run-settlement](../../orchestration/peritus-run-settlement/AGENTS.md), [peritus-tools-shell](../../tools/peritus-tools-shell/AGENTS.md), [peritus-types](../../foundation/peritus-types/AGENTS.md).
 
 ## Files in this folder
 

@@ -14,14 +14,14 @@ default = []
 integration-fixtures = ["dep:peritus-codec"]
 
 [dependencies]
-peritus-artifact-store = { version = "=0.1.6", path = "../../state/peritus-artifact-store" }
-peritus-codec = { version = "=0.1.6", path = "../../foundation/peritus-codec", optional = true }
-peritus-policy = { version = "=0.1.6", path = "../../foundation/peritus-policy" }
-peritus-process = { version = "=0.1.6", path = "../../runtime/peritus-process" }
-peritus-sandbox = { version = "=0.1.6", path = "../../runtime/peritus-sandbox" }
-peritus-tool-protocol = { version = "=0.1.6", path = "../peritus-tool-protocol" }
-peritus-tool-router = { version = "=0.1.6", path = "../peritus-tool-router" }
-peritus-types = { version = "=0.1.6", path = "../../foundation/peritus-types" }
+peritus-artifact-store = { version = "=0.1.7", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.1.7", path = "../../foundation/peritus-codec", optional = true }
+peritus-policy = { version = "=0.1.7", path = "../../foundation/peritus-policy" }
+peritus-process = { version = "=0.1.7", path = "../../runtime/peritus-process" }
+peritus-sandbox = { version = "=0.1.7", path = "../../runtime/peritus-sandbox" }
+peritus-tool-protocol = { version = "=0.1.7", path = "../peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.1.7", path = "../peritus-tool-router" }
+peritus-types = { version = "=0.1.7", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 
 [[bin]]

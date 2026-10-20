@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ContinuationArtifact {
     digest: [u8; 32],
@@ -85,4 +85,65 @@ pub(super) fn load(
         ));
     }
     Ok(bytes)
+}
+
+// Cache only the identity of a verified saved object, never a second encoded continuation copy.
+// A changed on-disk object invalidates reuse; the next save rewrites original correct bytes.
+#[derive(Clone, Default)]
+pub(in crate::product_run) struct ResumeCache(
+    std::sync::Arc<std::sync::Mutex<Option<SavedResume>>>,
+);
+struct SavedResume {
+    source: std::sync::Weak<peritus_product_runner::ProductRunResume>,
+    artifact: ContinuationArtifact,
+    stamp: ArtifactStamp,
+}
+#[derive(Clone, PartialEq, Eq)]
+struct ArtifactStamp {
+    length: u64,
+    modified: std::time::SystemTime,
+    #[cfg(unix)]
+    identity: (u64, u64, i64, i64),
+}
+fn stamp(path: &Path) -> Option<ArtifactStamp> {
+    let metadata = fs::symlink_metadata(path).ok()?;
+    if !metadata.is_file() {
+        return None;
+    }
+    Some(ArtifactStamp {
+        length: metadata.len(),
+        modified: metadata.modified().ok()?,
+        #[cfg(unix)]
+        identity: {
+            use std::os::unix::fs::MetadataExt as _;
+            (metadata.dev(), metadata.ino(), metadata.ctime(), metadata.ctime_nsec())
+        },
+    })
+}
+pub(super) fn store_resume(
+    runs: &Path,
+    record: &super::RunRecord,
+) -> Result<Option<ContinuationArtifact>, ProductRunServiceError> {
+    let Some(resume) = &record.resume else {
+        return Ok(None);
+    };
+    let mut cache =
+        record.continuation_cache.0.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
+    if let Some(saved) = &*cache {
+        if saved.source.upgrade().is_some_and(|source| std::sync::Arc::ptr_eq(&source, resume))
+            && stamp(&artifact_path(runs, &saved.artifact.digest)?) == Some(saved.stamp.clone())
+        {
+            return Ok(Some(saved.artifact.clone()));
+        }
+    }
+    let bytes = resume.encode_durable().map_err(|_| ProductRunServiceError::Unavailable)?;
+    let artifact = store(runs, &bytes)?;
+    if let Some(stamp) = stamp(&artifact_path(runs, &artifact.digest)?) {
+        *cache = Some(SavedResume {
+            source: std::sync::Arc::downgrade(resume),
+            artifact: artifact.clone(),
+            stamp,
+        });
+    }
+    Ok(Some(artifact))
 }

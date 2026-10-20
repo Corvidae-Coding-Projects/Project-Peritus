@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.1.7
+
+### Changed
+
+- Bundle skills and their resources automatically from the canonical `skills/` directory, including real-testing. Adding a skill no longer requires a separate registration in Rust.
+- Publish run state independently per run and share immutable metadata snapshots, so one run's persistence does not block reads or unrelated run updates.
+- Reuse validated conversation replays and defer historical run and continuation loading until selected. Disposable indexes accelerate restart while authoritative state, permissions, and recovery checks remain in force.
+- Share unchanged continuation snapshots and stored artifacts instead of repeatedly encoding and writing them. Move client helpers and native-plugin components to their actual architectural owners while preserving compatibility exports.
+
+### Fixed
+
+- Drain native-plugin stderr continuously and retain the causal diagnostic and exit status, including after large stderr floods. Clean up and reap failed or timed-out plugin processes.
+- Refresh conversation replay caches after external database changes, reject corrupt records, and allow repaired historical state to load again without restarting the daemon.
+
+### Real testing
+
+- Passed 56 actual terminal scenarios, 28 CLI/launcher/shutdown cases, concurrent run-publication exercises, replay-cache and external-commit checks, copied historical-run recovery, candidate identity comparisons, trace readback, and native-plugin failure/reaping scenarios.
+- On the recorded copied history, warm startup fell from 182 ms to 30 ms and logical read volume from 18.1 MB to 0.59 MB. Median repeated metadata queries fell from 0.231 ms to 0.015 ms. First selection now pays the deferred history-loading cost.
+- An 8,000-query native replay recorded six cold replays and 7,994 cache hits, with observed RSS leveling near 30 MiB during the 16-second sample. This is bounded performance evidence, not a multi-hour memory-leak assessment.
+
 ## 0.1.6
 
 ### Fixed

@@ -32,3 +32,6 @@ pub use redaction::{
     ArtifactVaultReference, RedactedValue, SensitivePayload, SensitivityClass, redact_sensitive,
 };
 pub use storage::{JournalTraceStore, RecordedObservation};
+
+/// Stable product developer trace format and streaming read-only access.
+pub mod developer;

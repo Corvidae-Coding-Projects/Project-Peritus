@@ -18,8 +18,8 @@ members = [
     "crates/app/testing/peritus-release-artifacts",
     "crates/app/testing/peritus-release-operator",
     "crates/extensions/peritus-mcp",
-    "crates/extensions/peritus-plugin-host",
-    "crates/extensions/peritus-plugin-sdk",
+    "crates/runtime/peritus-plugin-host",
+    "crates/foundation/peritus-plugin-sdk",
     "crates/foundation/peritus-budget",
     "crates/foundation/peritus-codec",
     "crates/foundation/peritus-kernel",
@@ -86,7 +86,7 @@ default-members = ["xtask"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.6"
+version = "0.1.7"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"

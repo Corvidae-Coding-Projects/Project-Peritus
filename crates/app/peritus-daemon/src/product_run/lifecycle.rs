@@ -20,9 +20,15 @@ impl ProductRunService {
     pub(crate) async fn shutdown(&self, timeout: Duration) {
         let mut interrupted = Vec::new();
         if let Ok(mut records) = self.inner.records.write() {
-            for (run_id, record) in records.iter_mut() {
+            let active = records
+                .hints()
+                .filter(|(_, record)| !record.snapshot.phase().terminal())
+                .map(|(run, _)| *run)
+                .collect::<Vec<_>>();
+            for run_id in active {
+                let Some(record) = records.get_mut(&run_id) else { continue };
                 if !record.snapshot.phase().terminal() {
-                    interrupted.push((*run_id, record.user_cancelled));
+                    interrupted.push((run_id, record.user_cancelled));
                     if let Ok(snapshot) = replace_snapshot(
                         &record.snapshot,
                         record.snapshot.phase(),
@@ -132,6 +138,16 @@ impl ProductRunService {
         goal_resume: Option<&peritus_product_runner::control::ControlOperation>,
         message: Option<([u8; 16], u16)>,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let workspace = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&run_id)
+            .ok_or(ProductRunServiceError::NotFound)?
+            .request
+            .workspace_id();
+        let _admission = self.inner.admissions.enter(workspace);
         let (request, root, providers, cancelled, token, finding_state, resume, snapshot) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
@@ -215,7 +231,7 @@ impl ProductRunService {
             record.user_cancelled = false;
             record.provider_cancellation = token.clone();
             record.snapshot =
-                super::snapshot::retry_snapshot(&record.request, record.resume.as_ref())?;
+                super::snapshot::retry_snapshot(&record.request, record.resume.as_deref())?;
             record.progress.begin_attempt();
             record.settlement = None;
             record.interruption_cause.clear();
@@ -231,7 +247,7 @@ impl ProductRunService {
                 cancelled,
                 token,
                 record.finding_state.clone(),
-                record.resume.clone(),
+                record.resume.as_deref().cloned(),
                 record.snapshot.clone(),
             )
         };

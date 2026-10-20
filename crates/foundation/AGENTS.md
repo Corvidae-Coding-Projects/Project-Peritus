@@ -14,6 +14,7 @@ Shared identities, bounded codecs, authority/policy contracts, budgets, and acce
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [peritus-plugin-sdk/](peritus-plugin-sdk/AGENTS.md) | Stable plugin wire contracts, manifests, and module declarations. |
 | [peritus-budget/](peritus-budget/AGENTS.md) | hierarchical resource-budget accounting for Project Peritus. |
 | [peritus-codec/](peritus-codec/AGENTS.md) | Canonical versioned framing and bounded binary decoding for Peritus. |
 | [peritus-kernel/](peritus-kernel/AGENTS.md) | lifecycle state machines and authoritative event reduction for Peritus. |

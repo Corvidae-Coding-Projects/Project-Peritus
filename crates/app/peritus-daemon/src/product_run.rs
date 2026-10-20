@@ -25,7 +25,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock, atomic::AtomicBool},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use peritus_app_protocol::{
@@ -65,7 +65,8 @@ struct Inner {
     controls: std::sync::Mutex<Option<crate::product_control::ControlStore>>,
     control_store: peritus_journal::StoreId,
     directory: PathBuf,
-    records: RwLock<BTreeMap<RunId, RunRecord>>,
+    records: peritus_product_state::publication::PublishedRecords<RunId, RunRecord>,
+    admissions: peritus_product_state::publication::PublicationGates<WorkspaceId>,
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
     automatic_provider_failover: bool,
     local_context: peritus_product_runner::LocalContextConfig,
@@ -127,7 +128,8 @@ struct RunRecord {
     progress: RunProgress,
     checkpoint: Option<CandidateCheckpoint>,
     settlement: Option<RunSettlement>,
-    resume: Option<ProductRunResume>,
+    resume: Option<Arc<ProductRunResume>>,
+    continuation_cache: persistence::continuation::ResumeCache,
     remaining_work: Vec<String>,
     interruption_cause: String,
     candidate_actionable: bool,
@@ -142,6 +144,7 @@ impl ProductRunService {
         request: ProductRunRequest,
         mut interaction: interaction::InteractionOptions,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let _admission = self.inner.admissions.enter(request.workspace_id());
         self.validate_workspace_mode(request.workspace_id(), interaction.mode)?;
         let providers = self.resolve_selected_providers(request.providers(), &interaction)?;
         let workspace_root = self
@@ -191,6 +194,7 @@ impl ProductRunService {
                     checkpoint: None,
                     settlement: None,
                     resume: None,
+                    continuation_cache: Default::default(),
                     remaining_work: Vec::new(),
                     interruption_cause: String::new(),
                     candidate_actionable: false,
@@ -262,6 +266,7 @@ impl ProductRunService {
         }
         recent_records(&records, query.offset())
             .into_iter()
+            .filter_map(|run| records.get(&run))
             .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
             .map(|record| live_snapshot(self, record))
             .collect()
@@ -305,8 +310,11 @@ impl ProductRunService {
     }
 }
 
-fn recent_records(records: &BTreeMap<RunId, RunRecord>, offset: u64) -> Vec<&RunRecord> {
-    let mut recent = records.values().collect::<Vec<_>>();
+fn recent_records(
+    records: &peritus_product_state::publication::PublishedView<RunId, RunRecord>,
+    offset: u64,
+) -> Vec<RunId> {
+    let mut recent = records.hints().map(|(_, record)| record).collect::<Vec<_>>();
     recent.sort_by(|left, right| {
         right
             .progress
@@ -319,5 +327,5 @@ fn recent_records(records: &BTreeMap<RunId, RunRecord>, offset: u64) -> Vec<&Run
     });
     let offset = usize::try_from(offset).unwrap_or(usize::MAX).min(recent.len());
     recent.drain(..offset);
-    recent
+    recent.into_iter().map(|record| record.request.run_id()).collect()
 }

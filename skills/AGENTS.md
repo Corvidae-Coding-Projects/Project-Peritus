@@ -1,21 +1,22 @@
 # skills — navigation
 
-## Responsibility
+Canonical skill packages, discovered recursively within each package and embedded by the
+[product-runner build](../crates/app/peritus-product-runner/build.rs). Read [README.md](README.md)
+for the package format and automatic registration contract.
 
-Bundled model guidance packages. These supply instructions/resources; execution and permissions remain in the host.
-
-## Files in this folder
-
-| File | Role |
+| Folder | Role |
 | --- | --- |
-| [README.md](README.md) | Human overview and linked directory map for this architectural area. |
+| [architect/](architect/AGENTS.md) | Repository-grounded implementation designs and delivery slices. |
+| [computer-automation/](computer-automation/AGENTS.md) | Instructions for operating real browser and desktop interfaces. |
+| [developer/](developer/AGENTS.md) | Implementation and repair guidance shared by writers and fixers. |
+| [engineering-workflow/](engineering-workflow/AGENTS.md) | Detailed literal-contract, data, provenance, and acceptance guidance. |
+| [real-testing/](real-testing/AGENTS.md) | Actual-interface behavioral acceptance, exploration, and failure replay. |
+| [reviewer/](reviewer/AGENTS.md) | Independent review against explicit requirements and concrete evidence. |
+| [rust-reliability/](rust-reliability/AGENTS.md) | Rust ownership, async, recovery, and reliability guidance and references. |
+| [web-research/](web-research/AGENTS.md) | Web discovery, original source reading, citations, and retained-page reuse. |
 
-## Child areas
+The [runtime catalog](../crates/app/peritus-product-runner/src/bundled_skills.rs) owns lookup;
+[tool readers](../crates/app/peritus-product-runner/src/developer_tools/bundled_skill.rs) own paged
+model delivery. Execution and permissions remain with the host.
 
-| Folder | Role / next waypoint |
-| --- | --- |
-| [rust-reliability/](rust-reliability/AGENTS.md) | Canonical Rust reliability guidance, references, agent metadata, and an optional helper. Runtime activation/resource access lives in peritus-product-runner. |
-
-Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../AGENTS.md).
-
-Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
+Navigation: [Repository map](../AGENTS.md).

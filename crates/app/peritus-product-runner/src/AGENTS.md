@@ -13,6 +13,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [attachment.rs](attachment.rs) | Validation of explicitly selected immutable image bytes, without filesystem authority. |
 | [attachment_read.rs](attachment_read.rs) | Exact immutable attachment range request and bounded response. |
 | [budget.rs](budget.rs) | Cumulative accounting and caller-selected elapsed horizon for one complete product run. |
+| [bundled_skills.rs](bundled_skills.rs) | Automatically generated immutable skill catalog, original resource lookup and native paginated readers. |
 | [bundle.rs](bundle.rs) | Bounded deterministic repository context construction, including binary-aware previews for untracked files. |
 | [candidate.rs](candidate.rs) | Exact current candidate paths relative to the managed worktree HEAD. |
 | [context_config.rs](context_config.rs) | Explicit local-only context policy and optional bounded subprocess configuration. |
@@ -24,7 +25,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [diagnostic.rs](diagnostic.rs) | Best-effort diagnostics for recoverable local command-state failures. |
 | [discard_recovery.rs](discard_recovery.rs) | Read-only classification of one explicitly authorized discard transaction. |
 | [efficiency.rs](efficiency.rs) | Content-free run measurements for source reuse, repeated reads, provider input/cache usage, prompt size, and first delivery action. |
-| [engineering_workflow.rs](engineering_workflow.rs) | Embedded production-engineering workflow and role skills. |
+| [engineering_workflow.rs](engineering_workflow.rs) | Core role policy and on-demand discovery of canonical skill resources. |
 | [error.rs](error.rs) | Stable redaction-safe product runner failures. |
 | [execution.rs](execution.rs) | E0 production writer-gates-review-fixer composition. |
 | [failover.rs](failover.rs) | Explicit provider-chain selection after ordinary role recovery is exhausted. |

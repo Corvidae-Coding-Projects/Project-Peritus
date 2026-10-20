@@ -17,6 +17,7 @@ impl ProductRunner {
         workspace_root: &Path,
     ) -> Result<Sha256Digest, ProductRunnerError> {
         crate::candidate::managed::ManagedBaseline::source_digest(workspace_root)
+            .map_err(Into::into)
     }
 
     /// Computes the exact current candidate digest used by checkpoint identity.
@@ -99,7 +100,7 @@ impl ProductRunner {
         workspace: &Path,
         bytes: &str,
     ) -> Result<Vec<u8>, ProductRunnerError> {
-        parse_baseline(bytes)?.patch(workspace)
+        parse_baseline(bytes)?.patch(workspace).map_err(Into::into)
     }
 
     /// Exports the recorded committed candidate across its nested Git roots.
@@ -113,7 +114,7 @@ impl ProductRunner {
         bytes: &str,
         commit: &str,
     ) -> Result<Vec<u8>, ProductRunnerError> {
-        parse_baseline(bytes)?.patch_from_commit(workspace, commit)
+        parse_baseline(bytes)?.patch_from_commit(workspace, commit).map_err(Into::into)
     }
 
     /// Discards task-owned changes using durable preimages even if the sidecar was lost.
@@ -127,7 +128,7 @@ impl ProductRunner {
         paths: &[String],
     ) -> Result<Vec<std::path::PathBuf>, ProductRunnerError> {
         let paths = paths.iter().map(std::path::PathBuf::from).collect::<Vec<_>>();
-        parse_baseline(bytes)?.discard(workspace, &paths)
+        parse_baseline(bytes)?.discard(workspace, &paths).map_err(Into::into)
     }
 
     /// Retains exact discard preimages and ownership before restoration can start.
@@ -155,6 +156,7 @@ impl ProductRunner {
             candidate.into_bytes(),
         )
         .map(Sha256Digest::new)
+        .map_err(Into::into)
     }
 
     /// Reads bound discard progress without performing or retrying any restoration.
@@ -171,6 +173,7 @@ impl ProductRunner {
             binding.into_bytes(),
             digest.into_bytes(),
         )
+        .map_err(Into::into)
     }
 
     /// Explicitly resumes the exact bound discard after fencing current owned values.
@@ -188,6 +191,7 @@ impl ProductRunner {
             binding.into_bytes(),
             digest.into_bytes(),
         )
+        .map_err(Into::into)
     }
 }
 

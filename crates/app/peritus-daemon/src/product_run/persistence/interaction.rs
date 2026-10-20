@@ -50,6 +50,10 @@ impl PersistedInteraction {
                 .collect(),
         }
     }
+    pub(super) fn strip_history(&mut self) {
+        self.activities.clear();
+        self.observed_images.clear();
+    }
     pub(super) fn restore(self) -> Result<InteractionOptions, ProductRunServiceError> {
         let invalid = || ProductRunServiceError::InvalidMessage;
         let mode = ProductInteractionMode::from_tag(self.mode).ok_or_else(invalid)?;

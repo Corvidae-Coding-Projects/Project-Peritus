@@ -9,12 +9,24 @@ use peritus_journal::ReplayObservation;
 use peritus_product_runner::control::{
     ControlOperation, ConversationId, ConversationRecord, ConversationReplay,
 };
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
+
+const CACHE_BYTES: usize = 64 * 1024 * 1024;
+
+#[derive(Default)]
+pub(super) struct ReplayCache {
+    entries: BTreeMap<ConversationId, CachedReplay>,
+    clock: u64,
+    bytes: usize,
+    hits: u64,
+    misses: u64,
+}
 
 pub(super) struct CachedReplay {
-    conversation: ConversationId,
     replay: Arc<ConversationReplay>,
     observation: ReplayObservation,
+    used: u64,
+    bytes: usize,
 }
 
 impl ControlStore {
@@ -41,14 +53,19 @@ impl ControlStore {
         &self,
         id: ConversationId,
     ) -> Result<(Arc<ConversationReplay>, ReplayObservation), Error> {
-        let cached = self.replay.borrow_mut().take();
-        if let Some(cached) = cached
-            && cached.conversation == id
-            && self.journal.replay_observation_is_current(&cached.observation)?
         {
-            let result = (Arc::clone(&cached.replay), cached.observation.clone());
-            *self.replay.borrow_mut() = Some(cached);
-            return Ok(result);
+            let mut cache = self.replay.borrow_mut();
+            cache.clock = cache.clock.wrapping_add(1);
+            let clock = cache.clock;
+            if let Some(cached) = cache.entries.get_mut(&id)
+                && self.journal.replay_observation_is_current(&cached.observation)?
+            {
+                cached.used = clock;
+                let result = (Arc::clone(&cached.replay), cached.observation.clone());
+                cache.hits = cache.hits.saturating_add(1);
+                return Ok(result);
+            }
+            cache.misses = cache.misses.saturating_add(1);
         }
         let observation = self.journal.observe_replay()?;
         let (replay, _) = self.load_at_revision(id, None)?;
@@ -57,10 +74,9 @@ impl ControlStore {
         if !self.journal.replay_observation_is_current(&observation)? {
             return Err(peritus_product_runner::control::ControlError::StaleRevision.into());
         }
-        self.cache_replay(id, replay, observation.clone());
-        let cached = self.replay.borrow();
-        let replay = cached.as_ref().ok_or(Error::Corrupt("verified replay missing"))?;
-        Ok((Arc::clone(&replay.replay), observation))
+        let replay = Arc::new(replay);
+        self.cache_replay_arc(id, Arc::clone(&replay), observation.clone());
+        Ok((replay, observation))
     }
 
     pub(super) fn cache_replay(
@@ -69,8 +85,85 @@ impl ControlStore {
         replay: ConversationReplay,
         observation: ReplayObservation,
     ) {
-        *self.replay.borrow_mut() =
-            Some(CachedReplay { conversation, replay: Arc::new(replay), observation });
+        self.cache_replay_arc(conversation, Arc::new(replay), observation);
+    }
+
+    fn cache_replay_arc(
+        &self,
+        id: ConversationId,
+        replay: Arc<ConversationReplay>,
+        observation: ReplayObservation,
+    ) {
+        // Eviction limits only this optimization. Oversized histories remain usable through
+        // verified cold replay and are never rejected by a run or conversation budget.
+        let bytes = match replay.current().map(ConversationRecord::canonical_bytes).transpose() {
+            Ok(bytes) => bytes.map_or(0, |value| value.len()).saturating_mul(2),
+            Err(_) => return,
+        };
+        let mut cache = self.replay.borrow_mut();
+        if let Some(old) = cache.entries.remove(&id) {
+            cache.bytes = cache.bytes.saturating_sub(old.bytes);
+        }
+        if bytes > CACHE_BYTES {
+            return;
+        }
+        while cache.bytes.saturating_add(bytes) > CACHE_BYTES {
+            let Some(oldest) =
+                cache.entries.iter().min_by_key(|(_, value)| value.used).map(|(key, _)| *key)
+            else {
+                break;
+            };
+            if let Some(old) = cache.entries.remove(&oldest) {
+                cache.bytes = cache.bytes.saturating_sub(old.bytes);
+            }
+        }
+        cache.clock = cache.clock.wrapping_add(1);
+        let used = cache.clock;
+        cache.bytes = cache.bytes.saturating_add(bytes);
+        cache.entries.insert(id, CachedReplay { replay, observation, used, bytes });
+    }
+
+    pub(super) fn reusable_conversations(
+        &self,
+        except: ConversationId,
+    ) -> Result<Vec<ConversationId>, Error> {
+        self.replay
+            .borrow()
+            .entries
+            .iter()
+            .filter(|(id, _)| **id != except)
+            .filter_map(|(id, cached)| {
+                match self.journal.replay_observation_is_current(&cached.observation) {
+                    Ok(true) => Some(Ok(*id)),
+                    Ok(false) => None,
+                    Err(error) => Some(Err(error.into())),
+                }
+            })
+            .collect()
+    }
+
+    pub(super) fn advance_unmodified_replays(
+        &self,
+        ids: &[ConversationId],
+        observation: &ReplayObservation,
+    ) {
+        let mut cache = self.replay.borrow_mut();
+        for id in ids {
+            if let Some(cached) = cache.entries.get_mut(id) {
+                cached.observation = observation.clone();
+            }
+        }
+    }
+
+    pub(crate) fn replay_cache_summary(&self) -> String {
+        let cache = self.replay.borrow();
+        format!(
+            "{} cached conversations; {} cache hits; {} cold replays; {} estimated retained bytes",
+            cache.entries.len(),
+            cache.hits,
+            cache.misses,
+            cache.bytes
+        )
     }
 
     /// Reads an exact historical state while still verifying the complete current archive.

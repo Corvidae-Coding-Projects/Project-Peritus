@@ -37,17 +37,22 @@ impl ProductRunService {
         findings.push(finding("provider-authentication", Status::Unsupported,
             "No credential value was read or displayed, and no authentication or network probe was run.",
             "Use the provider's explicit authentication flow if a request reports an authentication failure.")?);
+        if let Ok(summary) = self.with_controls(false, |store| Ok(store.replay_cache_summary())) {
+            findings.push(finding("conversation-replay-cache", Status::Healthy, &summary,
+                "Verified states are reused per conversation; cache eviction only causes cold replay.")?);
+        }
         let records =
             self.inner.records.try_read().map_err(|_| ProductRunServiceError::Unavailable)?;
         findings.push(finding(
             "loaded-product-state",
             Status::Healthy,
-            "Daemon-owned product records are readable in memory; they were validated at startup.",
+            "Run metadata is indexed; selected full records are validated when loaded.",
             "This is not a full on-disk integrity scan or a repair.",
         )?);
         let (live, unresolved) = records
-            .values()
-            .filter(|record| record.request.workspace_id() == query.workspace())
+            .hints()
+            .filter(|(_, record)| record.request.workspace_id() == query.workspace())
+            .filter_map(|(run, _)| records.get(run))
             .try_fold((false, false), |(live, unresolved), record| {
                 let state = self.project_operation(record)?.state();
                 Ok::<_, ProductRunServiceError>((

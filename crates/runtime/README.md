@@ -16,6 +16,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [peritus-plugin-host/](peritus-plugin-host/AGENTS.md) | Isolated process/Wasm discovery, trust, transport, diagnostics, and lifecycle ownership. |
 | [peritus-git/](peritus-git/AGENTS.md) | Structured Git repository and detached-worktree operations for Project Peritus. |
 | [peritus-local-socket/](peritus-local-socket/AGENTS.md) | Bounded, owner-protected filesystem locations for local Peritus sockets. |
 | [peritus-network/](peritus-network/AGENTS.md) | outbound connection planning and bounded managed proxy. |

@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-External integration boundaries: MCP bridge, plugin manifest/protocol SDK, and isolated plugin execution host.
+External integration boundary for the MCP bridge. Plugin contracts live in foundation; isolated execution lives in runtime.
 
 ## Files in this folder
 
@@ -15,8 +15,6 @@ External integration boundaries: MCP bridge, plugin manifest/protocol SDK, and i
 | Folder | Role / next waypoint |
 | --- | --- |
 | [peritus-mcp/](peritus-mcp/AGENTS.md) | Bounded MCP JSON-RPC server and non-authoritative Peritus bridge. |
-| [peritus-plugin-host/](peritus-plugin-host/AGENTS.md) | Isolated process and Wasm plugin discovery, trust, lifecycle, and quota host. |
-| [peritus-plugin-sdk/](peritus-plugin-sdk/AGENTS.md) | Versioned wire contracts and canonical manifests for isolated Peritus plugins. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 

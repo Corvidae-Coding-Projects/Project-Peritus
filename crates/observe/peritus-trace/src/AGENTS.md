@@ -8,6 +8,7 @@ Durable causal tracing and redaction boundary for Peritus.
 
 | File | Role |
 | --- | --- |
+| [developer.rs](developer.rs) | Stable developer trace frames, errors, and streaming read-only access. |
 | [binding.rs](binding.rs) | Immutable binding from observations to existing Peritus domain identities. |
 | [codec.rs](codec.rs) | Canonical family-60 observation encoding and decoding. |
 | [error.rs](error.rs) | Stable redaction-safe trace failure vocabulary. |
@@ -29,3 +30,5 @@ Durable causal tracing and redaction boundary for Peritus.
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
+
+[Developer trace reader](developer/AGENTS.md) owns the selected-frame iterator.

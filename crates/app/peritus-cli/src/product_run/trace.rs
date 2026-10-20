@@ -11,7 +11,7 @@ use std::{
 };
 
 use peritus_model_protocol::{ModelEvent, ProtocolLimits, decode_event_envelope};
-use peritus_product_runner::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, TraceReader};
+use peritus_trace::developer::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, TraceReader};
 use peritus_types::RunId;
 use serde_json::Value;
 

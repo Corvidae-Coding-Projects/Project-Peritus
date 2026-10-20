@@ -319,6 +319,7 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         | "attachment_read"
         | "developer_evidence_read"
         | "skill_read"
+        | "skill_list"
         | "view_image"
         | "command_output" => Some(&[Read]),
         "web_search" | "web_open" => Some(&[Read, Network]),
@@ -358,7 +359,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         }
         Some(format!(
             "{}\n{}\n{}\n{}",
-            crate::engineering_workflow::web::SKILL,
+            crate::bundled_skills::instructions("web-research"),
             self.rust_reliability.guidance().unwrap_or_default(),
             self.grounding.guidance(),
             if self.design_grounding_only {
@@ -378,6 +379,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "attachment_read"
                 | "developer_evidence_read"
                 | "skill_read"
+                | "skill_list"
                 | "view_image"
                 | "computer_snapshot"
                 | "computer_status"
@@ -486,6 +488,7 @@ impl WorkspaceDeveloperTools {
                     | "attachment_read"
                     | "developer_evidence_read"
                     | "skill_read"
+                    | "skill_list"
                     | "view_image"
                     | "computer_snapshot"
                     | "computer_status"

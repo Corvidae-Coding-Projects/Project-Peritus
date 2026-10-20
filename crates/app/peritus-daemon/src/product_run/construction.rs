@@ -2,8 +2,7 @@
 
 use super::{
     Arc, BTreeMap, BTreeSet, DaemonComponents, DaemonError, Inner, Mutex, Path, PreviewCaptureHost,
-    ProcessStore, ProductRunService, RwLock, WorkspaceCatalog, filesystem, fs, invalid,
-    persistence, reconcile_restored_candidates,
+    ProcessStore, ProductRunService, WorkspaceCatalog, filesystem, fs, invalid, persistence,
 };
 
 impl ProductRunService {
@@ -30,8 +29,7 @@ impl ProductRunService {
                 .ok_or_else(|| invalid("configured product provider could not be resolved"))?;
             providers.insert(key.profile_id(), provider);
         }
-        let mut records = BTreeMap::new();
-        let workspace_roots = workspaces.roots();
+        let indexed = persistence::index::scan(&state_root.join("workbench-v1"));
         let control_root = state_root.join("workbench-v1");
         let controls = if control_root.join("control.sqlite3").exists() {
             Some(crate::product_control::ControlStore::open(&control_root, control_store).map_err(
@@ -48,11 +46,6 @@ impl ProductRunService {
         } else {
             None
         };
-        for (run, record) in persistence::load_workbench_records(&control_root, controls.as_ref())?
-        {
-            records.insert(run, record);
-        }
-        reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
         let service = Self {
             inner: Arc::new(Inner {
                 improvements: std::sync::Mutex::new(
@@ -70,7 +63,8 @@ impl ProductRunService {
                 controls: std::sync::Mutex::new(controls),
                 control_store,
                 directory,
-                records: RwLock::new(records),
+                records: peritus_product_state::publication::PublishedRecords::new(BTreeMap::new()),
+                admissions: peritus_product_state::publication::PublicationGates::default(),
                 providers,
                 automatic_provider_failover: product_policy.automatic_provider_failover(),
                 local_context,
@@ -91,6 +85,44 @@ impl ProductRunService {
                 preview_capture: PreviewCaptureHost::discover(),
             }),
         };
+        for (run, hint, path) in indexed {
+            let owner = Arc::downgrade(&service.inner);
+            let control_root = control_root.clone();
+            let candidate_directory = service.inner.directory.clone();
+            service
+                .inner
+                .records
+                .insert_deferred(run, hint, move || {
+                    let inner = owner.upgrade()?;
+                    let controls = match crate::product_control::ControlStore::read_only(
+                        &control_root,
+                        inner.control_store,
+                    ) {
+                        Ok(controls) => controls,
+                        Err(error) => {
+                            crate::diagnostic::report(&format!(
+                                "peritusd: deferred run controls unavailable: {error}"
+                            ));
+                            return None;
+                        }
+                    };
+                    let record = persistence::load_record(&control_root, path.clone(), &controls)?;
+                    let mut selected = BTreeMap::from([(run, record)]);
+                    let roots = inner.workspaces.roots();
+                    if let Err(error) = super::reconcile_restored_candidates(
+                        &candidate_directory,
+                        &mut selected,
+                        &roots,
+                    ) {
+                        crate::diagnostic::report(&format!(
+                            "peritusd: deferred candidate recovery unavailable: {error}"
+                        ));
+                        return None;
+                    }
+                    selected.remove(&run)
+                })
+                .map_err(|_| invalid("run metadata could not be published"))?;
+        }
         let live_command_owners = service.reconcile_restored_command_receipts();
         Ok((service, live_command_owners))
     }

@@ -11,6 +11,8 @@ mod attachment_read;
 
 mod budget;
 
+pub mod bundled_skills;
+
 pub(crate) mod bundle;
 
 mod candidate;

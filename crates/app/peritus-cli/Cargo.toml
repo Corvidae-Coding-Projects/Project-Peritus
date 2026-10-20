@@ -14,18 +14,20 @@ categories = ["command-line-utilities", "development-tools"]
 system-package = ["peritus-launcher/system-package"]
 
 [dependencies]
-peritus-modules = { version = "=0.1.6", path = "../../orchestration/peritus-modules" }
-peritus-tools-web = { version = "=0.1.6", path = "../../tools/peritus-tools-web" }
+peritus-tools-computer = { version = "=0.1.7", path = "../../tools/peritus-tools-computer" }
+peritus-workspace = { version = "=0.1.7", path = "../../runtime/peritus-workspace" }
+peritus-trace = { version = "=0.1.7", path = "../../observe/peritus-trace" }
+peritus-modules = { version = "=0.1.7", path = "../../orchestration/peritus-modules" }
+peritus-tools-web = { version = "=0.1.7", path = "../../tools/peritus-tools-web" }
 base64.workspace = true
-peritus-app-client = { version = "=0.1.6", path = "../peritus-app-client" }
-peritus-app-protocol = { version = "=0.1.6", path = "../peritus-app-protocol" }
-peritus-codec = { version = "=0.1.6", path = "../../foundation/peritus-codec" }
-peritus-launcher = { version = "=0.1.6", path = "../peritus-launcher" }
-peritus-model-protocol = { version = "=0.1.6", path = "../../model/peritus-model-protocol" }
-peritus-product-runner = { version = "=0.1.6", path = "../peritus-product-runner" }
-peritus-run-settlement = { version = "=0.1.6", path = "../../orchestration/peritus-run-settlement" }
-peritus-tools-shell = { version = "=0.1.6", path = "../../tools/peritus-tools-shell" }
-peritus-types = { version = "=0.1.6", path = "../../foundation/peritus-types" }
+peritus-app-client = { version = "=0.1.7", path = "../peritus-app-client" }
+peritus-app-protocol = { version = "=0.1.7", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.1.7", path = "../../foundation/peritus-codec" }
+peritus-launcher = { version = "=0.1.7", path = "../peritus-launcher" }
+peritus-model-protocol = { version = "=0.1.7", path = "../../model/peritus-model-protocol" }
+peritus-run-settlement = { version = "=0.1.7", path = "../../orchestration/peritus-run-settlement" }
+peritus-tools-shell = { version = "=0.1.7", path = "../../tools/peritus-tools-shell" }
+peritus-types = { version = "=0.1.7", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 sha2.workspace = true
 tempfile.workspace = true

@@ -78,3 +78,24 @@ impl JournalReader {
         self.journal.head(key)
     }
 }
+
+impl SqliteJournal {
+    /// Opens an existing validated store through a physically read-only connection.
+    /// Unlike `JournalReader`, individual query methods own their read transactions.
+    /// No schema installation, recovery, checkpointing or file creation is performed.
+    ///
+    /// # Errors
+    /// Rejects missing stores, schema/identity drift, and unreadable state.
+    pub fn open_existing_read_only(
+        path: impl AsRef<Path>,
+        store: StoreId,
+    ) -> Result<Self, JournalError> {
+        let reader = JournalReader::open(path, store)?;
+        reader
+            .journal
+            .connection
+            .execute_batch("COMMIT;")
+            .map_err(|error| JournalError::sqlite("finish read-only identity snapshot", error))?;
+        Ok(reader.journal)
+    }
+}

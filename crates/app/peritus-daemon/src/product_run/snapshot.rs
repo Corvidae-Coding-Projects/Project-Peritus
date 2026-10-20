@@ -1,7 +1,5 @@
 //! Product-run snapshot construction and state replacement.
 
-use std::collections::BTreeMap;
-
 use peritus_app_protocol::{
     AppResponsePayload, ProductRunObservation, ProductRunPhase, ProductRunSettlementSnapshot,
     ProductRunSnapshot,
@@ -25,6 +23,7 @@ impl super::ProductRunService {
         }
         super::recent_records(&records, query.offset())
             .into_iter()
+            .filter_map(|run| records.get(&run))
             .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
             .map(|record| observation(self, record))
             .collect()
@@ -165,11 +164,11 @@ pub(super) fn replace_snapshot(
 }
 
 pub(super) fn workspace_has_active_run(
-    records: &BTreeMap<RunId, RunRecord>,
+    records: &peritus_product_state::publication::PublishedView<RunId, RunRecord>,
     workspace_id: WorkspaceId,
     except: Option<RunId>,
 ) -> bool {
-    records.iter().any(|(run_id, record)| {
+    records.hints().any(|(run_id, record)| {
         if Some(*run_id) == except || record.request.workspace_id() != workspace_id {
             return false;
         }

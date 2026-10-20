@@ -12,7 +12,7 @@ Host-owned model tools: schemas, argument admission, workspace grounding, permis
 | [access_policy.rs](access_policy.rs) | Request-derived restrictions for inputs exposed only through a named public interface. |
 | [arguments.rs](arguments.rs) | Admission for the closed JSON Schema subset used by the host's workspace tool catalog. This is not a general JSON Schema implementation. Unsupported catalog keywords fail closed; permissions, grounding, filesystem checks and… |
 | [attachment_read.rs](attachment_read.rs) | Read-only pages from an exact, daemon-authenticated immutable attachment selection. |
-| [bundled_skill.rs](bundled_skill.rs) | Exact read-only pages from bundled skill resources, with no filesystem lookup or grounding. |
+| [bundled_skill.rs](bundled_skill.rs) | Dynamic skill/package discovery and exact read-only text/binary resource pages, with no runtime filesystem lookup or grounding. |
 | [catalog.rs](catalog.rs) | Provider-neutral workspace tool schemas. |
 | [command_budget.rs](command_budget.rs) | Live command allowances derived from the enclosing product-run horizon. |
 | [computer.rs](computer.rs) | Provider-neutral browser, native app, and actual image tool integration. |

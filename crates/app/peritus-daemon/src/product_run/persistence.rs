@@ -25,10 +25,11 @@ mod interaction;
 mod preview;
 mod progress;
 use preview::restore_preview;
-mod continuation;
+pub(super) mod continuation;
+pub(super) mod index;
 mod settlement;
 mod workbench;
-pub(super) use workbench::load_workbench_records;
+pub(super) use workbench::load_record;
 
 use settlement::{PersistedCheckpoint, restore_settlement};
 
@@ -64,9 +65,7 @@ pub(super) fn write_record(
     })?;
     let directory = workbench_directory.as_path();
     let mut persisted = PersistedRecord::from_record(record)?;
-    if let Some(bytes) = persisted.resume_state.take() {
-        persisted.resume_artifact = Some(continuation::store(directory, &bytes)?);
-    }
+    persisted.resume_artifact = continuation::store_resume(directory, record)?;
     let path = directory.join(format!("{}.json", persisted.run_id));
     let temporary = path.with_extension("json.new");
     let mut file = fs::File::create(&temporary).map_err(|error| {
@@ -88,7 +87,7 @@ pub(super) fn write_record(
         ProductRunServiceError::persistence("sync the product-run temporary record", error)
     })?;
 
-    fs::rename(temporary, path).map_err(|error| {
+    fs::rename(temporary, &path).map_err(|error| {
         ProductRunServiceError::persistence("replace the durable product-run record", error)
     })?;
 
@@ -97,6 +96,12 @@ pub(super) fn write_record(
         fs::File::open(directory).and_then(|file| file.sync_all()).map_err(|error| {
             ProductRunServiceError::persistence("sync the product-run directory", error)
         })?;
+    }
+    if let Err(error) = index::write(&path, persisted) {
+        crate::diagnostic::report(&format!(
+            "peritusd: run index unavailable for {}: {error}",
+            path.display()
+        ));
     }
     Ok(())
 }

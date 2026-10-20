@@ -133,7 +133,7 @@ fn tool_rows(
     let detail = crate::sanitize::sanitize_display_text(body);
     let rendered = serde_json::from_str::<serde_json::Value>(&detail)
         .ok()
-        .map(|value| peritus_product_runner::tool_output::render(&value))
+        .map(|value| peritus_product_state::tool_output::render(&value))
         .unwrap_or(detail);
     let document = text.starts_with("Read document from saved context")
         || ((text.contains("workspace_read ") || text.contains("skill_read "))

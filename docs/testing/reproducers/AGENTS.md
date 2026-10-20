@@ -4,6 +4,8 @@
 
 Retained drivers/consumers for replaying actual program defects with disposable state and independently stated expectations.
 
+[Automatic bundled-skill campaign](bundled-skills/AGENTS.md): native catalog/resource consumer and seeded rebuild lifecycle replay.
+
 ## Files in this folder
 
 | File | Role |
