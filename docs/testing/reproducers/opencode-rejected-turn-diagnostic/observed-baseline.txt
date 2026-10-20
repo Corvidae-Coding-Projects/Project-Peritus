@@ -1,0 +1,66 @@
+# Observed baseline — OpenCode rejected-turn diagnostic
+
+Captured 2026-10-20 on WSL2 Debian, Peritus 0.1.4 built from this checkout
+(`cargo build --offline -p peritus-cli`), with the provider-level and agent-level consumers built
+offline into `target/`. Every block below is verbatim stdout from
+`docs/testing/reproducers/opencode-rejected-turn-diagnostic/replay.py`, which answers the adapter
+with `docs/testing/reproducers/opencode-rejected-turn-diagnostic/scripted-opencode.py`. No network
+access, credential use, or vendor inference occurred.
+
+The consumer names each recorded correction as `CORRECTION` and each recorded public activity as
+`ACTIVITY`. `rejected_bytes` counts the complete refused reply; `rejected_truncated` is false while
+the reply stays within the 16 KiB retention bound.
+
+## accepted
+
+One refused reply followed by a valid corrected reply: one correction retaining the rejected text, then a succeeded turn.
+
+```
+CORRECTION {"attempt":1,"reason":"opencode.runtime.invalid_turn_json","rejected":"{\"content\":\"Scripted reply for the rejected-turn diagnostic replay.\",\"tool_calls\":[]}}","rejected_bytes":86,"rejected_truncated":false,"tools_executed":false}
+TERMINAL succeeded
+RESULT accepted checks passed
+```
+
+## rejected
+
+Two refused replies: two corrections, then the terminal `malformed_payload; opencode.runtime.invalid_turn_json` failure.
+
+```
+CORRECTION {"attempt":1,"reason":"opencode.runtime.invalid_turn_json","rejected":"{\"content\":\"Scripted reply for the rejected-turn diagnostic replay.\",\"tool_calls\":[]}}","rejected_bytes":86,"rejected_truncated":false,"tools_executed":false}
+CORRECTION {"attempt":2,"reason":"opencode.runtime.invalid_turn_json","rejected":"{\"content\":\"Scripted reply for the rejected-turn diagnostic replay.\",\"tool_calls\":[]}}","rejected_bytes":86,"rejected_truncated":false,"tools_executed":false}
+TERMINAL failed MalformedPayload opencode.runtime.invalid_turn_json
+RESULT rejected checks passed
+```
+
+## retry
+
+A rate-limited attempt followed by a valid reply: the model request is announced once and the retry reports itself.
+
+```
+ACTIVITY ModelStarted scripted-reply-model
+ACTIVITY ProviderRetry 2/3 retryable_provider_response
+ACTIVITY Text 55 bytes
+COUNTS model_started=1 provider_retry=1 response_rejected=0
+OUTCOME ok turns=1 retries=1 text="Scripted reply for the rejected-turn diagnostic replay."
+RESULT retry checks passed
+```
+
+## refused_turn
+
+One refused reply through the developer loop with three bounded attempts: one `ModelStarted`, two `ProviderRetry`, six refusals, and a terminal error naming `peritus runs trace`.
+
+```
+ACTIVITY ModelStarted scripted-reply-model
+ACTIVITY ResponseRejected 1 opencode.runtime.invalid_turn_json
+ACTIVITY ResponseRejected 2 opencode.runtime.invalid_turn_json
+ACTIVITY ProviderRetry 2/3 retryable_provider_response
+ACTIVITY ResponseRejected 1 opencode.runtime.invalid_turn_json
+ACTIVITY ResponseRejected 2 opencode.runtime.invalid_turn_json
+ACTIVITY ProviderRetry 3/3 retryable_provider_response
+ACTIVITY ResponseRejected 1 opencode.runtime.invalid_turn_json
+ACTIVITY ResponseRejected 2 opencode.runtime.invalid_turn_json
+COUNTS model_started=1 provider_retry=2 response_rejected=6
+OUTCOME error provider opencode ended the request (malformed_payload; opencode.runtime.invalid_turn_json). OpenCode returned an invalid Peritus turn after one automatic correction. No proposed tools from that reply were executed. Read the rejected reply with `peritus runs trace --run <run-id>`, then retry the run or choose another model.
+RESULT rejected checks passed
+```
+

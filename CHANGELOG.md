@@ -2,17 +2,26 @@
 
 ## Unreleased
 
+### Added
+
+- Read one run's durable private trace locally with `peritus runs trace --run <ID> [--extensions]`. It decodes every retained provider envelope, retry decision, and rejected model reply without a daemon session.
+
 ### Fixed
 
-- Check the operating-system credential store before provider setup asks for a key. An unavailable keyring now reports how to start the Linux and WSL Secret Service instead of failing with `PERITUS-SECRETS-006` after hidden input and model discovery.
+- Retain the rejected reply text when an OpenCode turn is refused, bounded to 16 KiB, and name `peritus runs trace` in the failure hint instead of promising a diagnostic that no command could read.
+- Announce one model request per logical turn. Retries and refusals report their own transition instead of repeating `Requesting model` for every bounded attempt.
 
 - Select the OpenCode Zen/Go runtime by native executables only. A Windows OpenCode installation reached through WSL interop no longer passes discovery, so provider setup reports the actionable installation path instead of a model-catalog failure and still finds a native 1.19.0 that appears later on `PATH`.
 
+- Check the operating-system credential store before provider setup asks for a key. An unavailable keyring now reports how to start the Linux and WSL Secret Service instead of failing with `PERITUS-SECRETS-006` after hidden input and model discovery.
+
 ### Real testing
 
-- Replayed provider setup with and without a session D-Bus and unlocked gnome-keyring. The unavailable store produced the corrective guidance before any key entry; the available store stored a placeholder credential, saved provider settings, and removed it again through the product's own path with no leftover item in the provider namespace. The retained reproducer passed 21 checks.
+- Measured the retained OpenCode Go run: 82 host attempts, 94 refused replies recorded without their text, 29 scheduled retries, and 71 repeated `Requesting model` lines inside a 256-activity window. Replayed the repaired behavior against a scripted OpenCode stand-in; all four scenarios passed, and the local trace reader was checked against the real trace, a truncated tail, an unknown record tag, an empty file, and a missing run.
 
 - Reproduced the reported WSL catalog failure through the actual terminal provider-settings flow, retained the real vendor-command failure and path probes, and re-verified discovery and advertised-model metadata against the official Linux 1.19.0 release asset.
+
+- Replayed provider setup with and without a session D-Bus and unlocked gnome-keyring. The unavailable store produced the corrective guidance before any key entry; the available store stored a placeholder credential, saved provider settings, and removed it again through the product's own path with no leftover item in the provider namespace. The retained reproducer passed 21 checks.
 
 ## 0.1.4
 

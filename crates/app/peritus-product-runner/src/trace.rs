@@ -4,6 +4,7 @@ pub mod accounting;
 pub mod local_memory;
 
 use std::{
+    fmt,
     fs::{self, File, OpenOptions},
     io::{self, Write as _},
     path::{Path, PathBuf},
@@ -69,6 +70,87 @@ impl DeveloperTraceFrameKind {
 pub struct FileDeveloperTrace {
     path: PathBuf,
     memory_scope: Option<local_memory::Scope>,
+}
+
+/// One decoded record of a durable developer trace, in append order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceFrame {
+    kind: DeveloperTraceFrameKind,
+    payload: Vec<u8>,
+}
+
+impl TraceFrame {
+    /// Stable record kind of this frame.
+    #[must_use]
+    pub const fn kind(&self) -> DeveloperTraceFrameKind {
+        self.kind
+    }
+
+    /// Exact recorded payload bytes, unmodified.
+    #[must_use]
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+}
+
+/// Why one durable developer trace could not be read.
+#[derive(Debug)]
+pub enum TraceReadError {
+    /// The trace file could not be read from disk.
+    Read(io::Error),
+    /// The trace framing is corrupt: an unknown record tag, or a length that cannot be satisfied.
+    Framing(String),
+}
+
+impl fmt::Display for TraceReadError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Read(error) => write!(formatter, "{error}"),
+            Self::Framing(detail) => formatter.write_str(detail),
+        }
+    }
+}
+
+impl std::error::Error for TraceReadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Read(error) => Some(error),
+            Self::Framing(_) => None,
+        }
+    }
+}
+
+/// Reads every complete record of one durable developer trace without modifying it.
+///
+/// A trailing incomplete record is ignored: the writer appends one synchronized frame at a time,
+/// so an unterminated tail can only be a record a running daemon has not finished writing. An
+/// unknown record tag is reported instead of silently discarded.
+///
+/// # Errors
+///
+/// Returns [`TraceReadError::Read`] when the trace cannot be read from disk and
+/// [`TraceReadError::Framing`] when a record tag or declared length is not usable.
+pub fn read_frames(path: &Path) -> Result<Vec<TraceFrame>, TraceReadError> {
+    let bytes = fs::read(path).map_err(TraceReadError::Read)?;
+    let mut frames = Vec::new();
+    let mut offset = 0_usize;
+    while let Some(header) = bytes.get(offset..offset.saturating_add(9)) {
+        let tag = DeveloperTraceFrameKind::from_tag(header[0]).ok_or_else(|| {
+            TraceReadError::Framing(format!("unknown record tag {} at byte {offset}", header[0]))
+        })?;
+        // A nine-byte header always yields an eight-byte length; a shorter slice cannot occur.
+        let declared = <[u8; 8]>::try_from(&header[1..9]).map_or(u64::MAX, u64::from_le_bytes);
+        let declared = usize::try_from(declared).unwrap_or(usize::MAX);
+        // The file is already in memory, so a corrupt length cannot allocate beyond it.
+        let Some(payload) =
+            bytes.get(offset + 9..offset.saturating_add(9).saturating_add(declared))
+        else {
+            break;
+        };
+        frames.push(TraceFrame { kind: tag, payload: payload.to_vec() });
+        offset = offset.saturating_add(9).saturating_add(declared);
+    }
+    Ok(frames)
 }
 
 impl FileDeveloperTrace {
