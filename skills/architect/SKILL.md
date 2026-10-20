@@ -1,3 +1,8 @@
+---
+name: architect
+description: "Develop repository-grounded implementation designs with clear ownership, interfaces, and delivery slices."
+---
+
 # Repository architect
 
 Produce an implementation-grade design from observed repository facts. For every substantial

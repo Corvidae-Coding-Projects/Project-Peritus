@@ -1,3 +1,8 @@
+---
+name: developer
+description: "Implement and repair maintainable code against the accepted task design and real behavioral evidence."
+---
+
 # Maintainable developer
 
 Implement against the approved design and keep the repository understandable after the change.
@@ -13,29 +18,30 @@ and required project checks, subject to the user's command restrictions. For a d
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
 when it is missing or incompatible; report or resolve the environment failure instead. For a
 performance change, record a same-workload baseline and candidate measurement before claiming an
-improvement; use profiling when the cause is not already evident.
-For a closed mutation contract, verify the complete diff against the allowed paths, values, and
-transformations; a helpful adjacent edit is still outside scope.
-For API clients, make pagination prove forward progress, reject repeated cursors or pages, bound
-retries, and surface permanent errors immediately.
+improvement; enumerate every value in a small bounded discrete input range, and require a margin
+beyond ordinary timing noise before claiming a consistent win. For uncertain causes,
+use profiling when the cause is not already evident. For a closed mutation contract,
+verify the complete diff against the allowed paths, values, and transformations; a helpful adjacent
+edit is still outside scope. For an
+artifact-only request with no requested retained source, execute
+the bounded producer directly and verify the resulting artifacts and effects rather than creating
+an application package solely to host one run. For API clients, make pagination prove forward
+progress, reject repeated cursors or pages, bound retries, and surface permanent errors immediately.
+For binary, deleted, damaged, or truncated inputs, search for a contract-supplied stable fragment
+and inspect bounded neighboring bytes or records before trying speculative decoding or encryption
+hypotheses; validate any reconstructed value against the complete contract.
 When consuming aggregate data alongside an exclusion or adjustment ledger, preserve the aggregate
 unless the source contract identifies it as pre-adjustment and provides enough record-level evidence
 to derive every requested metric without guessed membership or effects.
 For outputs that reference heterogeneous source records, retain the authoritative category and
 stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
 category rather than by individual record.
-When an output must mention, discuss, or reference a named artifact, identifier, field, clause,
-command, or path, preserve that exact literal at least once in the owning output.
+When an output must mention, discuss, or reference a named artifact, identifier, field, clause, command, or path, preserve that exact literal at least once in the owning output. When a request says a value, sequence, record, or payload must match a named authoritative source, preserve the complete selected source value and apply only explicitly named transformations; outside semantic labels do not authorize deleting part of it.
 For reconciliation outputs, route each item to its contract-defined primary or reject representation
 without unrequested duplication, keep material exception states in status values, choose the most
 specific evidenced reason, and reconcile summary exception counts across every output artifact.
 A failed reference lookup must use a missing-reference reason; reserve invalid-reference reasons for
 records that are present and fail validation.
-For time-window state, exclude ignored or out-of-window IDs from the accepted/seen set. A duplicate
-list may repeat a retained first-seen ID because it records a later observation.
-Make partial and checkpoint result artifacts self-contained for their captured round with completed
-results, the pending or failed stop boundary, and stop reason. Preserve them in later rounds unless
-revision is explicit; mutable current state and logs do not replace the snapshot.
 Treat a ledger named for one closed classification as a projection of only that class; do not include
 neighboring review or informational classes without an explicit overlap rule.
 When one conflict-provenance collection is available, retain every evaluated losing source whose

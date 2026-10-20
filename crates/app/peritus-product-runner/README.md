@@ -12,6 +12,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 | File | Role |
 | --- | --- |
+| [build.rs](build.rs) | Discovers and embeds every canonical skill package and resource. |
 | [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-product-runner`. |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 
@@ -20,9 +21,9 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | Folder | Role / next waypoint |
 | --- | --- |
 | [examples/](examples/AGENTS.md) | Direct native consumers of ProductRunner, including credentialed disposable-workspace examples; read each entrypoint before running it. |
-| [skills/](skills/AGENTS.md) | Compiled-in model instruction documents for computer automation and real testing. Runtime selection lives in engineering_workflow. |
 | [src/](src/AGENTS.md) | The product execution coordinator: design, writer/reviewer/fixer turns, authorized tools, candidate/gate handling, local context, and final settlement. |
-| [workflows/](workflows/AGENTS.md) | Compiled-in production engineering workflow guidance used by coding roles. |
+
+Canonical guidance lives in [repository skills](../../../skills/AGENTS.md).
 
 Daemon-owned production composition for interactive Peritus coding runs. Every run begins with a
 read-only, repository-grounded design pass that writes a durable Markdown task plan and
@@ -47,8 +48,11 @@ verification, and explicit risks or non-goals. The adapter then joins:
 - a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
   and explicit deliverable handoff consumed by the daemon.
 
-Every coding run includes the bundled [real-testing skill](skills/real-testing.md) in the design,
-writer/fixer, and reviewer prompts. Behavioral acceptance defaults to operating the actual program,
+Every coding role receives concise real-testing policy. The full
+[real-testing skill](../../../skills/real-testing/SKILL.md) and all other guidance live in the
+[canonical skill packages](../../../skills/README.md), discovered and embedded automatically by
+`build.rs`. Agents discover packages and resource paths through `skill_list` and read relevant
+pages through `skill_read`, without a per-skill Rust registry or copied instruction constants. Behavioral acceptance defaults to operating the actual program,
 checking independent expectations, exploring relevant inputs and lifecycle transitions, and
 preserving reproducible failures. User restrictions remain authoritative. The existing design,
 check, reviewer, and fixer stages remain in place.

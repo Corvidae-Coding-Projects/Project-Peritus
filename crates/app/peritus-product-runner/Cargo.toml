@@ -61,6 +61,9 @@ yaml-rust2.workspace = true
 [target.'cfg(target_os = "linux")'.dependencies]
 peritus-sandbox-linux = { version = "=0.1.6", path = "../../runtime/peritus-sandbox-linux" }
 
+[build-dependencies]
+yaml-rust2.workspace = true
+
 [target.'cfg(target_os = "macos")'.dependencies]
 peritus-sandbox-macos = { version = "=0.1.6", path = "../../runtime/peritus-sandbox-macos" }
 

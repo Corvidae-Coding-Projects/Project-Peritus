@@ -1,6 +1,9 @@
-//! Independent-review role instructions.
+---
+name: reviewer
+description: "Review the exact candidate independently against the user request, concrete contracts, and actual evidence."
+---
 
-pub const SKILL: &str = r"# Independent reviewer
+# Independent reviewer
 
 Review the exact diff, design, request, and gate evidence. Treat a production source file over 500
 lines, business logic concentrated in a root module, unrelated responsibilities combined in one
@@ -89,4 +92,3 @@ of the same engine and source as independent corroboration. Require the evidence
 visually confusable or low-confidence elements and resolve material ambiguity from source-level
 structure or a genuinely independent method with different failure modes. Exactness resting only on
 correlated extractor agreement is a concrete correctness finding, not optional evidence enrichment.
-";

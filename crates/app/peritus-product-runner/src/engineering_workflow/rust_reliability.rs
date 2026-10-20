@@ -2,30 +2,6 @@
 
 use serde_json::Value;
 
-pub(crate) const SKILL: &str = include_str!("../../../../../skills/rust-reliability/SKILL.md");
-
-pub(crate) fn resource(path: &str) -> Option<&'static str> {
-    match path {
-        "SKILL.md" => Some(SKILL),
-        "references/behavioral-scenarios.md" => Some(include_str!(
-            "../../../../../skills/rust-reliability/references/behavioral-scenarios.md"
-        )),
-        "references/checks-and-harness.md" => Some(include_str!(
-            "../../../../../skills/rust-reliability/references/checks-and-harness.md"
-        )),
-        "references/rust-failure-modes.md" => Some(include_str!(
-            "../../../../../skills/rust-reliability/references/rust-failure-modes.md"
-        )),
-        "scripts/rust_checks.py" => {
-            Some(include_str!("../../../../../skills/rust-reliability/scripts/rust_checks.py"))
-        }
-        "agents/openai.yaml" => {
-            Some(include_str!("../../../../../skills/rust-reliability/agents/openai.yaml"))
-        }
-        _ => None,
-    }
-}
-
 #[derive(Default)]
 pub(crate) struct Activation {
     active: bool,

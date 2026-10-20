@@ -12,6 +12,7 @@ Local dependency waypoints: [peritus-harness](../../orchestration/peritus-harnes
 
 | File | Role |
 | --- | --- |
+| [build.rs](build.rs) | Discovers canonical root skill packages and generates their immutable resource registry. |
 | [Cargo.toml](Cargo.toml) | Cargo package/dependency/target declarations for `peritus-product-runner`. |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
 
@@ -20,9 +21,9 @@ Local dependency waypoints: [peritus-harness](../../orchestration/peritus-harnes
 | Folder | Role / next waypoint |
 | --- | --- |
 | [examples/](examples/AGENTS.md) | Direct native consumers of ProductRunner, including credentialed disposable-workspace examples; read each entrypoint before running it. |
-| [skills/](skills/AGENTS.md) | Compiled-in model instruction documents for computer automation and real testing. Runtime selection lives in engineering_workflow. |
 | [src/](src/AGENTS.md) | The product execution coordinator: design, writer/reviewer/fixer turns, authorized tools, candidate/gate handling, local context, and final settlement. |
-| [workflows/](workflows/AGENTS.md) | Compiled-in production engineering workflow guidance used by coding roles. |
+
+Canonical bundled guidance: [repository skills](../../../skills/AGENTS.md).
 
 ## Nearby owners
 

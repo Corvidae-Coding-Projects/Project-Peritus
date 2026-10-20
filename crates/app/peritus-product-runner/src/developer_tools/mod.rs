@@ -9,6 +9,7 @@ mod arguments;
 mod attachment_read;
 
 mod bundled_skill;
+pub(crate) use bundled_skill::{list as list_bundled_skills, read as read_bundled_skill};
 mod catalog;
 
 mod command_budget;

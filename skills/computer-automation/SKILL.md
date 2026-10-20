@@ -1,3 +1,8 @@
+---
+name: computer-automation
+description: "Operate real browser and desktop interfaces through observed controls and retained sessions."
+---
+
 # Computer automation
 
 Use Peritus's actual browser and desktop tools when the task requires operating a UI. Describe an observable expected result first, operate the real interface, then inspect a new observation and independently read back any saved result. Opening an app, a successful click, and a screenshot filename alone do not establish that the requested behavior works.

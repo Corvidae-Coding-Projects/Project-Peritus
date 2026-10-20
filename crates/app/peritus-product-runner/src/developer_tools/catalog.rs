@@ -128,6 +128,7 @@ pub fn definitions_for_attachments(
     definitions.extend(super::computer::definitions()?);
     definitions.extend(super::web::definitions()?);
     definitions.push(skill_definition()?);
+    definitions.push(skill_list_definition()?);
     if !has_selected_file_attachments {
         definitions.retain(|definition| definition.name().as_str() != "attachment_read");
     }
@@ -162,6 +163,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     definitions.extend(super::computer::observer_definitions()?);
     definitions.extend(super::web::definitions()?);
     definitions.push(skill_definition()?);
+    definitions.push(skill_list_definition()?);
     Ok(definitions)
 }
 
@@ -183,8 +185,16 @@ pub(crate) fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError
 fn skill_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "skill_read",
-        "Read an exact UTF-8 page from a bundled skill resource without filesystem access or workspace grounding. Task-focused role guidance is delivered in the current policy; detailed engineering, real-testing, computer, role and Rust resources are loaded only as needed. References and the optional helper source are available here; reading or possessing the helper grants no process authority and does not override user command restrictions. Begin at offset 0 and continue at next_offset until null. total_bytes and sha256 identify the complete immutable resource. Use exact relative paths only.",
-        r#"{"type":"object","additionalProperties":false,"properties":{"skill":{"type":"string","enum":["rust-reliability","engineering-workflow","real-testing","computer-automation","developer","reviewer","architect"]},"path":{"type":"string","enum":["SKILL.md","references/behavioral-scenarios.md","references/checks-and-harness.md","references/rust-failure-modes.md","scripts/rust_checks.py","agents/openai.yaml"]},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288,"default":16384}},"required":["skill","path"]}"#,
+        "Read an exact page from any bundled skill resource without filesystem access or workspace grounding. Use skill_list to discover packages and exact paths. UTF-8 resources return text; binary resources return encoding=hex with byte-based offsets. Task-focused role guidance is delivered in the current policy; detailed engineering, real-testing, computer, role and Rust resources are loaded only as needed. References and the optional helper source are available here; reading or possessing the helper grants no process authority and does not override user command restrictions. Begin at offset 0 and continue at next_offset until null. total_bytes and sha256 identify the complete immutable resource. Use exact relative paths only.",
+        r#"{"type":"object","additionalProperties":false,"properties":{"skill":{"type":"string","minLength":1},"path":{"type":"string","minLength":1},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288,"default":16384}},"required":["skill","path"]}"#,
+    )
+}
+
+fn skill_list_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "skill_list",
+        "Discover all skills embedded in this build, with their descriptions. Pass skill to list every resource path, original byte size and encoding in that package. Results are exact paged JSON text in bytes; continue at next_offset until null. Discovery neither reads the workspace nor grants grounding or command authority. Load only relevant resources using skill_read.",
+        r#"{"type":"object","additionalProperties":false,"properties":{"skill":{"type":"string","minLength":1},"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288,"default":16384}},"required":[]}"#,
     )
 }
 
