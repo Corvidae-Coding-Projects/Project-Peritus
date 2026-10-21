@@ -17,19 +17,23 @@ pub(super) fn terminal_summary(outcome: &ProductRunOutcome, detail: &str) -> Str
     summary
 }
 
-pub(super) fn fail_handoff(record: &mut super::super::RunRecord) {
-    let detail = "Passing checks could not be projected into a durable deliverable handoff";
+pub(super) fn fail_handoff(record: &mut super::super::RunRecord, reason: &str) {
+    let detail = if record.interruption_cause.is_empty() {
+        reason.to_owned()
+    } else {
+        format!("{reason}: {}", record.interruption_cause)
+    };
     if let Ok(snapshot) = replace_snapshot(
         &record.snapshot,
         ProductRunPhase::Failed,
         "Create durable deliverable handoff failed",
-        detail,
+        &detail,
     ) {
         record.snapshot = snapshot;
     }
     let _ = record.interaction.append(
         peritus_app_protocol::ProductActivityKind::Status,
-        detail,
+        &detail,
         "Durable handoff failure",
     );
 }

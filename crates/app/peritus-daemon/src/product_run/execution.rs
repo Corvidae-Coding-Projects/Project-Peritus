@@ -162,7 +162,10 @@ impl ProductRunService {
         let public_reply = match result {
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
                 let Some(output) = outcome.candidate() else {
-                    fail_handoff(record);
+                    fail_handoff(
+                        record,
+                        "The runner reported an accepted result without a candidate to hand off",
+                    );
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 };
@@ -171,7 +174,10 @@ impl ProductRunService {
                 if deliverable.is_none()
                     && !self.inner.workspaces.is_direct(&record.request.workspace_id())
                 {
-                    fail_handoff(record);
+                    fail_handoff(
+                        record,
+                        "The accepted candidate could not be projected into a durable deliverable",
+                    );
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 }
@@ -202,7 +208,10 @@ impl ProductRunService {
                         None => snapshot,
                     };
                 } else {
-                    fail_handoff(record);
+                    fail_handoff(
+                        record,
+                        "The accepted candidate could not be projected into a durable snapshot",
+                    );
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 }
@@ -210,7 +219,10 @@ impl ProductRunService {
             }
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::WaitingForUser => {
                 let Some(question) = outcome.question() else {
-                    fail_handoff(record);
+                    fail_handoff(
+                        record,
+                        "The runner requested user input without retaining a question",
+                    );
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 };
@@ -350,20 +362,30 @@ impl ProductRunService {
     }
 
     fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
-        if self
-            .with_controls(false, |store| {
-                let execution = store.execution_record(&record.interaction.workbench)?;
-                if execution.inputs().invocations().is_empty() {
-                    // A pre-admission refusal has no provider invocation to bind a reply to.
-                    // Its original diagnostic is retained by the run's terminal activity/state;
-                    // do not replace it with a handoff error or manufacture an invocation.
-                    return Ok(());
-                }
-                store.publish_reply(&record.interaction.workbench, &text)
-            })
-            .is_err()
-        {
-            fail_handoff(record);
+        let result = self.with_controls(false, |store| {
+            let execution = store.execution_record(&record.interaction.workbench)?;
+            let Some(invocation) =
+                execution.inputs().invocations().last().map(|value| value.invocation())
+            else {
+                // A pre-admission refusal has no provider invocation to bind a reply to.
+                // Its original diagnostic is retained by the run's terminal activity/state;
+                // do not replace it with a handoff error or manufacture an invocation.
+                return Ok(());
+            };
+            if execution.replies().iter().any(|reply| reply.after_invocation() == invocation) {
+                // A resumed run can terminate before its next invocation, leaving the prior reply
+                // as the last one. The terminal state already carries that outcome; do not
+                // manufacture a second reply for the same invocation or overwrite the cause.
+                return Ok(());
+            }
+            store.publish_reply(&record.interaction.workbench, &text)
+        });
+        if let Err(error) = result {
+            let _ = record.interaction.append(
+                peritus_app_protocol::ProductActivityKind::Error,
+                "The terminal reply could not be delivered to the conversation.",
+                &error.to_string(),
+            );
             record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         }
     }

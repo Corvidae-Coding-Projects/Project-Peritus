@@ -13,7 +13,7 @@ pub enum ProductRunServiceError {
     Control(peritus_product_runner::control::ControlError),
     Duplicate,
     NotFound,
-    ProviderUnavailable,
+    ProviderUnavailable(String),
     EffortUnsupported,
     WorkspaceUnavailable,
     GitRequired,
@@ -95,7 +95,7 @@ impl ProductRunServiceError {
     pub(super) fn describe(&self) -> String {
         match self {
             Self::Context { operation, detail, .. } => format!("{operation}: {detail}"),
-            _ => self.default_diagnostic().to_owned(),
+            _ => self.default_diagnostic(),
         }
     }
 
@@ -122,15 +122,15 @@ impl ProductRunServiceError {
                 ResponsibleSubsystem::Command,
                 self.default_diagnostic(),
             ),
-            Self::ProviderUnavailable => (
-                AppErrorCode::InvalidIdentifier,
-                RetryDisposition::NewRequest,
+            Self::ProviderUnavailable(detail) => (
+                AppErrorCode::NotReady,
+                RetryDisposition::AfterRecovery,
                 ResponsibleSubsystem::Provider,
-                self.default_diagnostic(),
+                detail,
             ),
             Self::WorkspaceUnavailable => (
-                AppErrorCode::InvalidIdentifier,
-                RetryDisposition::NewRequest,
+                AppErrorCode::NotReady,
+                RetryDisposition::AfterRecovery,
                 ResponsibleSubsystem::Workspace,
                 self.default_diagnostic(),
             ),
@@ -187,51 +187,59 @@ impl ProductRunServiceError {
             code,
             retry,
             subsystem,
-            bounded_diagnostic(diagnostic.to_owned()),
+            bounded_diagnostic(diagnostic),
         ))
     }
 
-    const fn default_diagnostic(&self) -> &'static str {
+    fn default_diagnostic(&self) -> String {
         use peritus_product_runner::control::ControlError;
         match self {
-            Self::Duplicate => "This run identifier is already in use. Start a new run.",
+            Self::Duplicate => "This run identifier is already in use. Start a new run.".to_owned(),
             Self::NotFound | Self::Control(ControlError::NotFound) => {
-                "The requested run no longer exists. Refresh the run list and try again."
+                "The requested run no longer exists. Refresh the run list and try again.".to_owned()
             }
-            Self::ProviderUnavailable => {
-                "The selected provider or model is unavailable. Check provider settings and refresh the model list."
-            }
+            Self::ProviderUnavailable(detail) => detail.clone(),
             Self::EffortUnsupported => {
                 "The selected reasoning effort is unsupported by this provider. Choose another effort or use the provider default."
+                    .to_owned()
             }
             Self::WorkspaceUnavailable => {
                 "The workspace is unavailable. Reopen an existing readable workspace and try again."
+                    .to_owned()
             }
             Self::GitRequired => {
                 "This operation requires a Git workspace. Initialize Git or open a Git repository."
+                    .to_owned()
             }
             Self::InvalidState | Self::Control(ControlError::IdempotencyConflict) => {
                 "The request conflicts with the run's current state. Refresh the run before retrying."
+                    .to_owned()
             }
             Self::InvalidMessage | Self::Control(ControlError::InvalidInput) => {
                 "The request contains invalid conversation or command data. Correct it and submit a new request."
+                    .to_owned()
             }
             Self::Unavailable => {
                 "The daemon could not access required run state. Inspect the daemon log, restart Peritus, and retry."
+                    .to_owned()
             }
             Self::Control(ControlError::StaleRevision) => {
                 "The request used an outdated revision. Refresh the conversation and submit a new request."
+                    .to_owned()
             }
             Self::Control(ControlError::Capacity) => {
                 "The run reached a configured capacity limit. Finish or remove existing work before retrying."
+                    .to_owned()
             }
             Self::Control(ControlError::ScopeMismatch) => {
                 "The request belongs to a different workspace or session. Reopen the workspace and retry."
+                    .to_owned()
             }
             Self::Control(ControlError::UnsupportedSchema) => {
                 "Stored control state uses an unsupported schema. Upgrade Peritus or reconcile the stored state."
+                    .to_owned()
             }
-            Self::Context { .. } => "The operation failed.",
+            Self::Context { .. } => "The operation failed.".to_owned(),
         }
     }
 }
