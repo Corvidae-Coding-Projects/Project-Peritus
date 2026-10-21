@@ -295,6 +295,9 @@ impl DeveloperContextPort for LocalContextHandle {
             DeveloperContextEvent::Message(message) => {
                 memory.observe_message(message)?;
             }
+            DeveloperContextEvent::HostObservation(message) => {
+                memory.observe_host_message(message)?;
+            }
             DeveloperContextEvent::ToolObservation { call, observation } => {
                 memory.observe_tool(call, observation)?;
             }

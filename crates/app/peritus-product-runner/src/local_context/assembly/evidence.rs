@@ -89,6 +89,12 @@ pub(super) fn append(
             continue;
         }
         let bytes = memory.artifact(id)?;
+        if source.call.as_ref().is_some_and(|call| call.name == "skill_read")
+            && !serde_json::from_slice::<serde_json::Value>(&bytes)
+                .is_ok_and(|value| crate::developer_tools::bundled_skill_is_current(&value))
+        {
+            continue;
+        }
         if source.call.as_ref().is_some_and(|call| call.name == "workspace_read") {
             let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else { continue };
             if !read_is_current(memory, &value) || value.get("content").is_none() {
@@ -175,6 +181,19 @@ fn page_key(bytes: &[u8]) -> [u8; 32] {
 
 pub(in crate::local_context) fn may_reuse_read(memory: &LocalMemory, path: &str) -> bool {
     memory.conversation.as_ref().is_some_and(|view| {
+        if std::path::Path::new(path).is_absolute() {
+            return crate::developer_tools::may_reuse_read(
+                &memory.workspace,
+                path,
+                &memory.workspace_scope.protected,
+                view.as_ref(),
+            ) && crate::developer_tools::authorized_reference_file(
+                &memory.workspace,
+                &view.reference_authority_context(),
+                path,
+            )
+            .is_ok();
+        }
         crate::developer_tools::may_reuse_read(
             &memory.workspace,
             path,
@@ -189,6 +208,21 @@ pub(super) fn read_is_current(memory: &LocalMemory, value: &serde_json::Value) -
     let Some(expected) = value.get("source_sha256").and_then(serde_json::Value::as_str) else {
         return false;
     };
+    if std::path::Path::new(path).is_absolute() {
+        return may_reuse_read(memory, path)
+            && memory.conversation.as_ref().is_some_and(|view| {
+                crate::developer_tools::authorized_reference_file(
+                    &memory.workspace,
+                    &view.reference_authority_context(),
+                    path,
+                )
+                .is_ok_and(|file| {
+                    std::fs::File::open(&file).is_ok()
+                        && crate::developer_tools::source_digest(&file).ok().as_deref()
+                            == Some(expected)
+                })
+            });
+    }
     may_reuse_read(memory, path)
         && crate::developer_tools::checked_protected_file_for_developer(
             &memory.workspace,

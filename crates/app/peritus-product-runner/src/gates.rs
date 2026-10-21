@@ -112,7 +112,14 @@ fn run_scoped_with_cancellation(
     };
     coverage::authorize(&plan)?;
     execution_policy::authorize(&plan, request_context)?;
-    let execution_context = execution_context(root, &plan, request_context);
+    let context = execution_context(root, &plan, request_context);
+    let execution_context = peritus_codec::sha256(
+        &[
+            context.as_bytes().as_slice(),
+            &[u8::from(cancellation.allows(crate::control::PermissionCapability::Process))],
+        ]
+        .concat(),
+    );
     let (records, observations) =
         execute_plan(root, &plan, ownership, request_context, cancellation);
     let report = TargetGateReport::from_execution_with_observations(
@@ -209,6 +216,10 @@ fn execute_plan(
                 GateOutcome::Required(record) => records.push(record),
                 GateOutcome::Optional(observation) => observations.push(observation),
             }
+            continue;
+        }
+        if !cancellation.allows(crate::control::PermissionCapability::Process) {
+            records.push(GateExecutionRecord { command: specification.display(), label: specification.label().to_owned(), exit_code: None, output: "Process permission is required for this declared command; it was not executed. Enable /permissions process or use an applicable real-interface acceptance path.".to_owned() });
             continue;
         }
         let mut command = Command::new(specification.program());

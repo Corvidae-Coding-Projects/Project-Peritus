@@ -29,6 +29,13 @@ pub async fn run_live_invocation(
     if let Some(memory) = memory {
         request.tools.extend(memory.tool_definitions()?);
     }
+    let mut memory_tools;
+    let tools: &mut dyn DeveloperToolExecutor = if let Some(memory) = memory {
+        memory_tools = MemoryTools::new(tools, memory.clone());
+        &mut memory_tools
+    } else {
+        tools
+    };
     let mut measured = crate::efficiency::MeasuredTools::new(
         tools,
         accounting.trace_path,
@@ -44,13 +51,12 @@ pub async fn run_live_invocation(
             trace.trace =
                 trace.trace.with_memory_scope(memory.scope_digest()?, memory.next_invocation()?);
             let mut port = memory.clone();
-            let mut tools = MemoryTools::new(tools, memory.clone());
             match interaction {
                 Some(interaction) => {
                     DeveloperLoop::run_interactive_for_role(
                         model,
                         request,
-                        &mut tools,
+                        tools,
                         &mut trace,
                         Some(&mut port),
                         interaction,
@@ -59,10 +65,8 @@ pub async fn run_live_invocation(
                     .await
                 }
                 None => {
-                    DeveloperLoop::run_with_context(
-                        model, request, &mut tools, &mut trace, &mut port,
-                    )
-                    .await
+                    DeveloperLoop::run_with_context(model, request, tools, &mut trace, &mut port)
+                        .await
                 }
             }
         }

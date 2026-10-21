@@ -90,12 +90,27 @@ impl LocalMemory {
         }) {
             return Err(error("opaque provider content is not local working memory"));
         }
-        let kind = match message.role() {
+        self.observe_message_kind(message, None)
+    }
+
+    pub(in crate::local_context) fn observe_host_message(
+        &mut self,
+        message: &Message,
+    ) -> Result<u64, DeveloperLoopError> {
+        self.observe_message_kind(message, Some(ArchiveKind::HostObservation))
+    }
+
+    fn observe_message_kind(
+        &mut self,
+        message: &Message,
+        origin: Option<ArchiveKind>,
+    ) -> Result<u64, DeveloperLoopError> {
+        let kind = origin.unwrap_or(match message.role() {
             Role::System | Role::Developer => ArchiveKind::Policy,
             Role::User => ArchiveKind::User,
             Role::Assistant => ArchiveKind::Assistant,
             Role::Tool => ArchiveKind::ToolMessage,
-        };
+        });
         let bytes = encode_messages(std::slice::from_ref(message), ProtocolLimits::PRODUCTION)?;
         let observation = self.persist_observation(kind, &bytes, None, None, false)?;
         self.project_observation(&observation)?;

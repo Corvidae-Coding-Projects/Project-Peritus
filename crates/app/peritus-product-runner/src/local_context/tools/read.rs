@@ -101,6 +101,17 @@ fn source_page(
     while index < source_count {
         let id = if ids.is_empty() { memory.sources[index].sequence } else { ids[index] };
         let source = memory.archived(id)?;
+        if !super::super::source_policy::allowed(memory, id)? {
+            if !ids.is_empty() {
+                return Ok(rejected(
+                    memory,
+                    "archived source is excluded by the current read/reference/private policy; no source bytes returned",
+                ));
+            }
+            index += 1;
+            offset = 0;
+            continue;
+        }
         if search.is_some()
             && (source.kind == ArchiveKind::ToolMessage || source.is_memory_receipt())
         {
@@ -341,4 +352,19 @@ fn find_match(
         carry.drain(..carry.len() - keep);
     }
     Ok(None)
+}
+
+/// An immutable cached result still passes current source admission on every request.
+pub(super) fn cached_allowed(
+    memory: &LocalMemory,
+    bytes: &[u8],
+) -> Result<bool, DeveloperLoopError> {
+    let Ok(request) = serde_json::from_slice::<Read>(bytes) else { return Ok(false) };
+    for handle in &request.observation_ids {
+        let id = sequence(memory, handle)?;
+        if !super::super::source_policy::allowed(memory, id)? {
+            return Ok(false);
+        }
+    }
+    Ok(!request.observation_ids.is_empty())
 }

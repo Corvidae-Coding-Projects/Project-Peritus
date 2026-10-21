@@ -148,8 +148,7 @@ pub async fn complete_developer_turn(
             Ok(resolution) => resolution,
             Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
         };
-        let Some(result) = provider::apply(resolution, &mut correction, &mut pending_question)
-        else {
+        let Some(result) = provider::apply(resolution, &mut correction) else {
             continue;
         };
         let terminal = match parse_grounded_terminal(&tools, &result).and_then(|terminal| {
@@ -166,7 +165,7 @@ pub async fn complete_developer_turn(
                 if current != checkpoint {
                     checkpoint = current;
                 }
-                correction = Some(correction::rejected_terminal(&error));
+                correction = Some(correction::rejected_terminal(&error, &result.text));
                 pending_question = None;
                 accounting.record_role_retry()?;
                 continue;
@@ -371,11 +370,11 @@ async fn run_developer_invocation(
 }
 
 fn retry_unverified_question(
-    question: &str,
+    _question: &str,
     workspace_unchanged: bool,
     pending_question: Option<&str>,
 ) -> bool {
-    workspace_unchanged && pending_question != Some(question)
+    workspace_unchanged && pending_question.is_none()
 }
 
 pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {

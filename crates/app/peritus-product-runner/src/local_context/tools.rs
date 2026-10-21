@@ -48,7 +48,10 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     }
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.base.observe_model_context(messages)?;
-        super::read_reuse::observe_view(&mut *self.memory.lock()?, messages)
+        let mut memory = self.memory.lock()?;
+        memory.activity.observe_view(messages);
+        super::assembly::retrieval::observe_view(&mut memory, messages)?;
+        super::read_reuse::observe_view(&mut memory, messages)
     }
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
@@ -64,6 +67,46 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     }
 
     fn execute(
+        &mut self,
+        call: &CompletedToolCall,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        let output = self.execute_inner(call)?;
+        let mut memory = self.memory.lock()?;
+        let mut activity = std::mem::take(&mut memory.activity);
+        let result = activity.outcome(&memory, call, &output);
+        memory.activity = activity;
+        if let Some(value) = result? {
+            return Ok(DeveloperToolObservation {
+                output: CanonicalJson::parse(
+                    &value.to_string(),
+                    JsonBounds::value(ProtocolLimits::PRODUCTION),
+                )?,
+                is_error: false,
+            });
+        }
+        Ok(output)
+    }
+    fn completion_blocker(&self) -> Option<String> {
+        self.base.completion_blocker()
+    }
+    fn required_tool_name(&self) -> Option<&str> {
+        self.base.required_tool_name()
+    }
+    fn tool_calls_allowed(&self) -> bool {
+        self.base.tool_calls_allowed()
+    }
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        let feedback = self.memory.lock().ok().and_then(|mut memory| memory.activity.feedback());
+        let base = self.base.take_progress_feedback();
+        feedback.or(base)
+    }
+    fn continuation_blocker(&self) -> Option<String> {
+        self.base.continuation_blocker()
+    }
+}
+
+impl MemoryTools<'_> {
+    fn execute_inner(
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
@@ -133,7 +176,15 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         // No lock crosses base execution, and memory never updates its grounding/receipt state.
         let mut memory = self.memory.lock()?;
         let value = match name {
-            "context_read" => read::execute(&mut memory, call.arguments().canonical_bytes())?,
+            "context_read" => match memory.activity.context_candidate(call) {
+                Some(value)
+                    if read::cached_allowed(&memory, call.arguments().canonical_bytes())? =>
+                {
+                    value
+                }
+                Some(_) => read::execute(&mut memory, call.arguments().canonical_bytes())?,
+                None => read::execute(&mut memory, call.arguments().canonical_bytes())?,
+            },
             _ => update::execute(&mut memory, call.arguments().canonical_bytes())?,
         };
         drop(memory);
@@ -143,21 +194,6 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
             JsonBounds::value(ProtocolLimits::PRODUCTION),
         )?;
         Ok(DeveloperToolObservation { output, is_error })
-    }
-    fn completion_blocker(&self) -> Option<String> {
-        self.base.completion_blocker()
-    }
-    fn required_tool_name(&self) -> Option<&str> {
-        self.base.required_tool_name()
-    }
-    fn tool_calls_allowed(&self) -> bool {
-        self.base.tool_calls_allowed()
-    }
-    fn take_progress_feedback(&mut self) -> Option<String> {
-        self.base.take_progress_feedback()
-    }
-    fn continuation_blocker(&self) -> Option<String> {
-        self.base.continuation_blocker()
     }
 }
 

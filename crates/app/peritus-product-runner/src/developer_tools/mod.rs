@@ -153,3 +153,7 @@ pub(crate) fn checked_protected_observation(
         .map_err(path::tool)?;
     path::observed(root, relative)
 }
+
+pub(crate) use reference::authorized_file as authorized_reference_file;
+
+pub(crate) use bundled_skill::is_current as bundled_skill_is_current;

@@ -14,13 +14,21 @@ use peritus_provider_core::CancellationToken;
 pub struct GateCancellation {
     cancelled: Arc<AtomicBool>,
     provider: CancellationToken,
+    permissions: Option<Arc<dyn crate::ConversationView>>,
 }
 
 impl GateCancellation {
     pub(crate) const fn new(cancelled: Arc<AtomicBool>, provider: CancellationToken) -> Self {
-        Self { cancelled, provider }
+        Self { cancelled, provider, permissions: None }
     }
 
+    pub(crate) fn with_permissions(mut self, view: Arc<dyn crate::ConversationView>) -> Self {
+        self.permissions = Some(view);
+        self
+    }
+    pub(crate) fn allows(&self, capability: crate::control::PermissionCapability) -> bool {
+        self.permissions.as_ref().is_none_or(|view| view.effective_permissions().allows(capability))
+    }
     pub(crate) fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Acquire) || self.provider.is_cancelled()
     }

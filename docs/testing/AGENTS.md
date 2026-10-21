@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [read-loop-recovery-real-2026-10-20.md](read-loop-recovery-real-2026-10-20.md) | Twelve read-loop findings, additional historical/private-source defects, and native/generated/live-provider recovery evidence. |
+| [read-loop-recovery-evidence.json](read-loop-recovery-evidence.json) | Final executable identity, 1,120 real API actions, independent boundary counts, and actual official-provider/CLI results. |
 | [structural-runtime-performance-2026-10-20.md](structural-runtime-performance-2026-10-20.md) | Post-fix runtime measurements, metadata snapshot scaling repair, and remaining source-grounded performance targets. |
 | [structural-runtime-real-2026-10-20.md](structural-runtime-real-2026-10-20.md) | Native behavior evidence for publication, replay caching, deferred history, client boundaries, and plugin diagnostics. |
 | [bundled-skills-real-2026-10-20.md](bundled-skills-real-2026-10-20.md) | Canonical skill migration, native exact-byte readers and automatic package/resource rebuild lifecycle. |

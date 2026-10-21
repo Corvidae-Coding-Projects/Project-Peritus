@@ -27,7 +27,7 @@ use super::{
 };
 use crate::control::{HostPermissions, PermissionCapability};
 const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
-const MAX_PROGRESS_NUDGES: u8 = 2;
+
 const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
 
 mod active;
@@ -211,7 +211,7 @@ impl WorkspaceDeveloperTools {
             self.record_success(call.name().as_str(), arguments, value);
         }
         self.observe_delivery_progress(call.name().as_str(), arguments, value, accepted);
-        self.inspection_progress.observe(call.name().as_str(), arguments, value, mutation_boundary);
+
         self.rust_reliability.observe(
             call.name().as_str(),
             arguments,
@@ -229,6 +229,17 @@ pub(super) fn reviewer_evidence_page(
     offset: u64,
     start: usize,
     maximum: usize,
+) -> Result<Value, DeveloperLoopError> {
+    reviewer_evidence_page_with_metadata(section, evidence, offset, start, maximum, &[])
+}
+
+pub(super) fn reviewer_evidence_page_with_metadata(
+    section: &str,
+    evidence: &str,
+    offset: u64,
+    start: usize,
+    maximum: usize,
+    metadata: &[(&str, Value)],
 ) -> Result<Value, DeveloperLoopError> {
     let digest = Sha256::digest(evidence.as_bytes());
     let mut sha256 = String::with_capacity(64);
@@ -255,14 +266,18 @@ pub(super) fn reviewer_evidence_page(
         } else {
             Value::Null
         };
-        Ok(object(vec![
+        let mut value = object(vec![
             ("bytes", Value::String(evidence[start..end].to_owned())),
             ("next_offset", next_offset),
             ("offset", Value::from(offset)),
             ("section", Value::String(section.to_owned())),
             ("sha256", Value::String(sha256.clone())),
             ("total_bytes", Value::from(total_bytes)),
-        ]))
+        ]);
+        for (key, extra) in metadata {
+            value[*key] = extra.clone();
+        }
+        Ok(value)
     };
     // EOF replaces the numeric continuation with null, which can shrink the envelope.
     // Check that endpoint before searching the monotonically growing nonterminal pages.
@@ -406,7 +421,12 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
-        self.execute_with_read(call, None)
+        let output = self.execute_with_read(call, None)?;
+        let args =
+            serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or(Value::Null);
+        let value = serde_json::from_slice(output.output.canonical_bytes()).unwrap_or(Value::Null);
+        self.inspection_progress.observe(call.name().as_str(), &args, &value, false);
+        Ok(output)
     }
 
     fn reuse_workspace_read(
@@ -417,7 +437,12 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if call.name().as_str() != "workspace_read" {
             return Ok(None);
         }
-        self.execute_with_read(call, Some(observation)).map(Some)
+        let output = self.execute_with_read(call, Some(observation))?;
+        let args =
+            serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or(Value::Null);
+        let value = serde_json::from_slice(output.output.canonical_bytes()).unwrap_or(Value::Null);
+        self.inspection_progress.observe(call.name().as_str(), &args, &value, false);
+        Ok(Some(output))
     }
 
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {

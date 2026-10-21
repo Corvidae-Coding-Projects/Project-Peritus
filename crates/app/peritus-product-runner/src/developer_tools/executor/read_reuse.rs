@@ -25,7 +25,12 @@ impl WorkspaceDeveloperTools {
         };
         self.inspection_cancellation.check()?;
         // Reopen even on a metadata/hash-cache hit so reuse cannot bypass revoked OS access.
-        let path = checked(&self.root, arguments["path"].as_str().unwrap_or(""), true)?;
+        let raw = arguments["path"].as_str().unwrap_or("");
+        let path = if std::path::Path::new(raw).is_absolute() {
+            self.references.resolve(raw)?.1
+        } else {
+            checked(&self.root, raw, true)?
+        };
         let _readable =
             std::fs::File::open(&path).map_err(|error| super::tool(error.to_string()))?;
         let digest = super::super::grounding::file_digest(&path)
@@ -50,8 +55,15 @@ impl WorkspaceDeveloperTools {
                 narrowed[key] = value.clone();
             }
         }
-        let mut value =
-            super::super::inspection::read(&self.root, &narrowed, &self.inspection_cancellation)?;
+        let mut value = if std::path::Path::new(raw).is_absolute() {
+            super::super::reference::read(
+                &self.references,
+                &narrowed,
+                &self.inspection_cancellation,
+            )?
+        } else {
+            super::super::inspection::read(&self.root, &narrowed, &self.inspection_cancellation)?
+        };
         // An external edit between admission and dispatch also invalidates the skipped ranges.
         if value["source_sha256"] != candidate["source_sha256"] {
             return self.dispatch_tool(call, arguments);

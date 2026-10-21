@@ -53,6 +53,10 @@ pub(super) struct LocalMemory {
     pub(super) task_contract: String,
     pub(super) conversation: Option<std::sync::Arc<dyn crate::ConversationView>>,
     pub(super) workspace_scope: environment::WorkspaceScope,
+    pub(super) activity: super::activity::Activity,
+    pub(super) source_policy:
+        std::cell::RefCell<std::collections::BTreeMap<u64, super::source_policy::Descriptor>>,
+    pub(super) continuation_actions: std::cell::RefCell<std::collections::BTreeMap<u64, String>>,
     pub(super) read_reuse: super::read_reuse::ReadReuse,
 }
 
@@ -131,6 +135,9 @@ impl LocalMemory {
             conversation: None,
             workspace_scope,
             read_reuse: Default::default(),
+            activity: Default::default(),
+            continuation_actions: Default::default(),
+            source_policy: Default::default(),
         };
         memory.recover()?;
         let trace_path = memory.trace_path.clone();

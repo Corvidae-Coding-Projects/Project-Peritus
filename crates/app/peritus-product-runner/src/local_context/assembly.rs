@@ -1,8 +1,9 @@
 //! Semantic pinning, complete current exchanges, and local-only evidence selection.
 
+mod continuation;
 pub(super) mod evidence;
 pub(super) mod exchanges;
-mod retrieval;
+pub(super) mod retrieval;
 mod transport;
 mod validation;
 mod working;
@@ -136,6 +137,7 @@ impl LocalMemory {
         let (uncompacted, target) =
             self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
         let current_end = messages.len();
+        continuation::append(self, &mut messages, &mut selected, tools, target)?;
         evidence::append(self, &mut messages, &mut selected, tools, target)?;
         // Earlier assistant plans are historical observations, not a new user turn after
         // current settled tool results. Keep every optional historical view before those

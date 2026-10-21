@@ -9,6 +9,8 @@ Durable working-context host: journal/artifact storage, current-policy assembly,
 | File | Role |
 | --- | --- |
 | [pages.rs](pages.rs) | Content-addressed working/source pages, atomic checkpoint roots, and legacy snapshot restoration. |
+| [activity.rs](activity.rs) | Bounded role-scoped outcome fingerprints, final-view reuse, and progress feedback derived from durable metadata. |
+| [source_policy.rs](source_policy.rs) | Current read/reference/private admission for archived sources, receipt chains, and source-linked working entries. |
 | [assembly.rs](assembly.rs) | Semantic pinning, complete current exchanges, and local-only evidence selection. |
 | [checkpoint_validation.rs](checkpoint_validation.rs) | Shared semantic validation for recovered and read-only inspected checkpoints. |
 | [driver.rs](driver.rs) | Shared production invocation switch; legacy mode is explicit and never an error fallback. |

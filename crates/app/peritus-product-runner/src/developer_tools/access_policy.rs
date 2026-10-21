@@ -87,12 +87,12 @@ fn configured_relative(root: &Path, path: &Path) -> Option<PathBuf> {
         if let Ok(relative) = path.strip_prefix(root) {
             return Some(relative.to_owned());
         }
-        return root.starts_with(path).then(PathBuf::new);
+        return Some(if root.starts_with(path) { PathBuf::new() } else { path.to_owned() });
     }
     (!path.components().any(|component| {
         matches!(component, Component::ParentDir | Component::RootDir | Component::Prefix(_))
     }))
-    .then(|| path.to_owned())
+    .then(|| normalized_relative(&path.to_string_lossy()))
 }
 
 impl WorkspaceAccessPolicy {
@@ -260,7 +260,7 @@ fn opaque_path(root: &Path, raw: &str) -> Option<PathBuf> {
 }
 
 fn normalized_relative(raw: &str) -> PathBuf {
-    Path::new(raw.strip_prefix("./").unwrap_or(raw)).to_path_buf()
+    Path::new(raw).components().filter(|part| !matches!(part, Component::CurDir)).collect()
 }
 
 fn match_offsets(text: &str, marker: &str) -> Vec<usize> {
