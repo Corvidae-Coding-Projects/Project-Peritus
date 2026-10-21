@@ -6,7 +6,6 @@ use super::{
 use std::fmt::Write as _;
 
 pub(in crate::bootstrap) fn refresh_transport(
-    layout: &crate::AppLayout,
     store: &crate::persistence::ProductStateStore,
     state: &mut peritus_product_state::ProductState,
 ) -> Result<(), LauncherError> {
@@ -20,33 +19,6 @@ pub(in crate::bootstrap) fn refresh_transport(
     }
     let mut selection = state.providers().clone();
     if selection.migrate_opencode_runtime() && state.configure_providers(selection) {
-        store.commit(state)?;
-    }
-    let path = layout.daemon_config(state.generation());
-    let actual = match std::fs::read(&path) {
-        Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(error) => {
-            return Err(LauncherError::filesystem(
-                "read prior OpenCode configuration",
-                &path,
-                error,
-            ));
-        }
-    };
-    // Preserve old immutable bytes. Admit only this exact earlier generated native profile;
-    // arbitrary edits to other routes, authority, or workspace paths still fail closed.
-    let current = super::render_configuration(layout, state)?;
-    let legacy = current.split("\n[[providers]]\n").map(|section| {
-        if section.contains("hosted_service = \"opencode-zen\"") || section.contains("hosted_service = \"opencode-go\"") {
-            section.replacen("capabilities = [\"parallel-tool-calls\", \"streaming\", \"tool-calls\", \"usage-detail\"]",
-                "capabilities = [\"streaming\", \"tool-calls\", \"usage-detail\"]", 1)
-        } else { section.to_owned() }
-    }).collect::<Vec<_>>().join("\n[[providers]]\n");
-    if current != legacy
-        && super::compatibility::matches_current_or_legacy_timeout_configuration(&actual, &legacy)
-    {
-        state.advance_configuration_generation()?;
         store.commit(state)?;
     }
     Ok(())

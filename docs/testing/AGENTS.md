@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [configuration-upgrade-real-2026-10-21.md](configuration-upgrade-real-2026-10-21.md) | Released CLI collision, shared generated-format migration, actual bootstrap/terminal restart, concurrency and recovery evidence. |
+| [configuration-upgrade-evidence.json](configuration-upgrade-evidence.json) | Binary/source identities and concrete outcomes for 43 generated-configuration upgrade scenarios. |
 | [model-capacities-real-2026-10-21.md](model-capacities-real-2026-10-21.md) | Route/model capacity resolution, shared output headroom, configured overrides, real catalogs, and live inference evidence. |
 | [model-capacities-evidence.json](model-capacities-evidence.json) | Final executable hashes, actual catalog capacities, request metadata, and durable-memory readbacks. |
 | [read-loop-recovery-real-2026-10-20.md](read-loop-recovery-real-2026-10-20.md) | Twelve read-loop findings, additional historical/private-source defects, and native/generated/live-provider recovery evidence. |

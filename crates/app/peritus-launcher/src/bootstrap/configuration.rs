@@ -79,13 +79,47 @@ pub fn ensure_configuration(
     let expected = DaemonConfig::parse(&text)?;
     let path = layout.daemon_config(state.generation());
     let actual = read_exact_or_publish(&path, text.as_bytes())?;
-    if !compatibility::matches_current_or_legacy_timeout_configuration(&actual, &text) {
+    if actual != text.as_bytes() {
         return Err(LauncherError::PlatformPaths(format!(
             "generated daemon configuration generation {} has different content",
             state.generation()
         )));
     }
     Ok((expected, path))
+}
+
+/// Moves known renderer upgrades to a new immutable generation under the bootstrap lock.
+pub(super) fn refresh_generation(
+    layout: &AppLayout,
+    store: &crate::persistence::ProductStateStore,
+    state: &mut ProductState,
+) -> Result<(), LauncherError> {
+    let path = layout.daemon_config(state.generation());
+    let actual = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(LauncherError::filesystem(
+                "read prior generated configuration",
+                path,
+                error,
+            ));
+        }
+    };
+    let expected = render_configuration(layout, state)?;
+    if actual == expected.as_bytes()
+        || !compatibility::matches_current_or_legacy_configuration(&actual, &expected)
+    {
+        return Ok(());
+    }
+    // Validate before committing. Keep every old config and state generation untouched.
+    // If publication is interrupted, the next prepare resumes from the new durable state.
+    let _ = DaemonConfig::parse(&expected)?;
+    let mut next = state.clone();
+    next.advance_configuration_generation()?;
+    store.commit(&next)?;
+    *state = next;
+    Ok(())
 }
 
 fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<String, LauncherError> {

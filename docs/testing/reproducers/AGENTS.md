@@ -63,6 +63,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [configuration-upgrade/](configuration-upgrade/AGENTS.md) | Public bootstrap, real released CLI failure, historical hosted profile migration, interruption/concurrency, and actual terminal restart replay. |
 | [opencode-dsml-integrity/](opencode-dsml-integrity/AGENTS.md) | Public OpenCode-adapter input/recovery replay for literal marker preservation, ambiguous candidates and duplicate keys. |
 | [provider-progress/](provider-progress/AGENTS.md) | Actual provider and terminal progress, validation, Unicode, cancellation and delayed-heartbeat replay. |
 | [tui-conveniences/](tui-conveniences/AGENTS.md) | Actual terminal and transcript-consumer replays for local conveniences, draft retention, attachment confirmation, and restart. |

@@ -27,7 +27,7 @@ pub(in crate::bootstrap) fn refresh(
         }
     };
     let expected = render_configuration(layout, state)?;
-    if compatibility::matches_current_or_legacy_timeout_configuration(&actual, &expected) {
+    if compatibility::matches_current_or_legacy_configuration(&actual, &expected) {
         return Ok(());
     }
     // Migrate the old active-window-only tool inventory to installation-wide availability.
@@ -42,7 +42,7 @@ pub(in crate::bootstrap) fn refresh(
         1,
     );
     let actual_prefix = upgraded.as_str();
-    if !compatibility::matches_current_or_legacy_timeout_configuration(
+    if !compatibility::matches_current_or_legacy_configuration(
         actual_prefix.as_bytes(),
         expected_prefix,
     ) || !matches_durable_catalog(layout, state, catalog)?

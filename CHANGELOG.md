@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Migrate existing hosted provider configuration to model-limit discovery without a generation-content collision at launch. Recognize older OpenCode capabilities and provider timeouts together, preserve prior files and durable choices, and recover interrupted publication on retry.
+
 ## 0.1.9
 
 ### Fixed
