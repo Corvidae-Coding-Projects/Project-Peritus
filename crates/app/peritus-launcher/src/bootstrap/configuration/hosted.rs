@@ -10,12 +10,9 @@ pub(in crate::bootstrap) fn refresh_transport(
     store: &crate::persistence::ProductStateStore,
     state: &mut peritus_product_state::ProductState,
 ) -> Result<(), LauncherError> {
-    if !state
-        .providers()
-        .enabled()
-        .iter()
-        .any(|kind| matches!(kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo))
-    {
+    // Named hosted profiles are the only routes that emit `discover_model_limits`. Check all of
+    // them so HTTP-hosted routes released before that field existed also migrate.
+    if !state.providers().enabled().iter().any(|kind| kind.hosted_service().is_some()) {
         return Ok(());
     }
     let mut selection = state.providers().clone();
@@ -27,29 +24,66 @@ pub(in crate::bootstrap) fn refresh_transport(
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(error) => {
-            return Err(LauncherError::filesystem(
-                "read prior OpenCode configuration",
-                &path,
-                error,
-            ));
+            return Err(LauncherError::filesystem("read prior hosted configuration", &path, error));
         }
     };
-    // Preserve old immutable bytes. Admit only this exact earlier generated native profile;
-    // arbitrary edits to other routes, authority, or workspace paths still fail closed.
+    // Preserve old immutable bytes. Admit only exact earlier generated hosted profiles;
+    // arbitrary edits to token settings, routes, authority, or workspace paths still fail closed.
     let current = super::render_configuration(layout, state)?;
-    let legacy = current.split("\n[[providers]]\n").map(|section| {
-        if section.contains("hosted_service = \"opencode-zen\"") || section.contains("hosted_service = \"opencode-go\"") {
-            section.replacen("capabilities = [\"parallel-tool-calls\", \"streaming\", \"tool-calls\", \"usage-detail\"]",
-                "capabilities = [\"streaming\", \"tool-calls\", \"usage-detail\"]", 1)
-        } else { section.to_owned() }
-    }).collect::<Vec<_>>().join("\n[[providers]]\n");
-    if current != legacy
-        && super::compatibility::matches_current_or_legacy_timeout_configuration(&actual, &legacy)
-    {
+    // v0.1.8 generated hosted profiles without this field. Later releases enabled live model
+    // capacity discovery, so the same durable choices need a new immutable generation.
+    let without_discovery = remove_discovered_model_limits(&current);
+    // Older OpenCode releases also omitted parallel tool calls from the generated capabilities.
+    let without_discovery_or_parallel_tools =
+        remove_opencode_parallel_tool_calls(&without_discovery);
+    let legacy = [&without_discovery, &without_discovery_or_parallel_tools].into_iter().any(
+        |configuration| {
+            configuration.as_str() != current
+                && super::compatibility::matches_current_or_legacy_timeout_configuration(
+                    &actual,
+                    configuration,
+                )
+        },
+    );
+    if legacy {
         state.advance_configuration_generation()?;
         store.commit(state)?;
     }
     Ok(())
+}
+
+fn remove_discovered_model_limits(configuration: &str) -> String {
+    configuration
+        .split("\n[[providers]]\n")
+        .map(|section| {
+            if section.contains("hosted_service = ") {
+                section.replacen("discover_model_limits = true\n", "", 1)
+            } else {
+                section.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n[[providers]]\n")
+}
+
+fn remove_opencode_parallel_tool_calls(configuration: &str) -> String {
+    configuration
+        .split("\n[[providers]]\n")
+        .map(|section| {
+            if section.contains("hosted_service = \"opencode-zen\"")
+                || section.contains("hosted_service = \"opencode-go\"")
+            {
+                section.replacen(
+                    "capabilities = [\"parallel-tool-calls\", \"streaming\", \"tool-calls\", \"usage-detail\"]",
+                    "capabilities = [\"streaming\", \"tool-calls\", \"usage-detail\"]",
+                    1,
+                )
+            } else {
+                section.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n[[providers]]\n")
 }
 
 pub(super) fn render(
@@ -104,4 +138,78 @@ pub(super) fn render(
         ),
     ));
     Ok(text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use peritus_product_state::ProviderSelection;
+
+    #[test]
+    fn migrates_v018_hosted_configuration_generation() {
+        migrate_case(
+            ProviderKind::OpenCodeGo,
+            CompatibleProtocol::OpenCodeRuntime,
+            "deepseek-v4.1-flash",
+        );
+        migrate_case(ProviderKind::OpenRouter, CompatibleProtocol::ChatCompletions, "vendor/model");
+    }
+
+    fn migrate_case(kind: ProviderKind, protocol: CompatibleProtocol, model: &str) {
+        let root = tempfile::tempdir().expect("temporary application root");
+        let layout = crate::AppLayout::for_test(
+            root.path().join("config"),
+            root.path().join("state"),
+            root.path().join("cache"),
+        )
+        .prepare()
+        .expect("prepare isolated roots");
+        crate::ProductBootstrap::new(layout.clone()).prepare().expect("initialize product state");
+        let profile = DirectProviderProfile::new(
+            kind,
+            "peritus-secret-v1:00000000000000000000000000000000:0123456789abcdef".to_owned(),
+            None,
+            model.to_owned(),
+            Some(protocol),
+            None,
+        )
+        .expect("valid hosted profile");
+        let selection =
+            ProviderSelection::with_direct_profiles(vec![kind], Some(kind), vec![profile])
+                .expect("valid hosted selection");
+        let prepared = crate::ProductBootstrap::new(layout.clone())
+            .configure_providers(selection)
+            .expect("publish current hosted configuration");
+        let previous_path = prepared.daemon_config_path();
+        let previous_generation = prepared.state().generation();
+        let current = std::fs::read_to_string(&previous_path).expect("read current configuration");
+        assert!(current.contains("discover_model_limits = true"));
+
+        // Simulate the exact hosted bytes generated by v0.1.8 before live capacity discovery.
+        let legacy = current.replacen("discover_model_limits = true\n", "", 1);
+        std::fs::write(&previous_path, &legacy).expect("write legacy configuration");
+
+        let migrated = crate::ProductBootstrap::new(layout.clone())
+            .prepare()
+            .expect("migrate unchanged prior hosted configuration");
+        assert_eq!(migrated.state().generation(), previous_generation + 1);
+        assert_ne!(migrated.daemon_config_path(), previous_path);
+        let migrated_text = std::fs::read_to_string(migrated.daemon_config_path())
+            .expect("read migrated configuration");
+        assert!(migrated_text.contains("discover_model_limits = true"));
+        assert_eq!(
+            std::fs::read_to_string(&previous_path).expect("read preserved prior configuration"),
+            legacy
+        );
+
+        // Arbitrary token edits remain outside the admitted legacy shape.
+        let custom =
+            migrated_text.replacen("max_input_tokens = 32768", "max_input_tokens = 32769", 1);
+        std::fs::write(migrated.daemon_config_path(), custom).expect("write custom configuration");
+        let error = match crate::ProductBootstrap::new(layout).prepare() {
+            Ok(_) => panic!("custom configuration must fail closed"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("has different content"));
+    }
 }

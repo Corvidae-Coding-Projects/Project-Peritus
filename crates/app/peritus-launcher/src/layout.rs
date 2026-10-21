@@ -23,6 +23,11 @@ impl AppLayout {
         platform_layout()
     }
 
+    #[cfg(test)]
+    pub(crate) const fn for_test(configuration: PathBuf, state: PathBuf, cache: PathBuf) -> Self {
+        Self { configuration, state, cache }
+    }
+
     /// Creates, protects, and canonicalizes all application roots.
     ///
     /// # Errors
