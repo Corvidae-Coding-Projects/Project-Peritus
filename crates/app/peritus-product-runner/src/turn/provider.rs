@@ -60,17 +60,15 @@ pub(super) fn resolve(
 pub(super) fn apply(
     resolution: ProviderResolution,
     correction: &mut Option<String>,
-    pending_question: &mut Option<String>,
 ) -> Option<DeveloperLoopOutcome> {
     match resolution {
         ProviderResolution::Outcome(result) => Some(result),
         ProviderResolution::Retry(Some(reason)) => {
             *correction = Some(RoleRecovery::correction(reason));
-            *pending_question = None;
             None
         }
         ProviderResolution::Retry(None) => {
-            (*correction, *pending_question) = (None, None);
+            *correction = None;
             None
         }
     }

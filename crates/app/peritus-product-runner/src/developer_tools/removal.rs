@@ -51,6 +51,7 @@ fn result(path: &str, kind: &str) -> Value {
     Value::Object(
         [
             ("path".to_owned(), Value::String(path.to_owned())),
+            ("changed".to_owned(), Value::Bool(true)),
             ("kind".to_owned(), Value::String(kind.to_owned())),
         ]
         .into_iter()

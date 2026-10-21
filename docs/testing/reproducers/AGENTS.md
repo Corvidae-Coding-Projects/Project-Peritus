@@ -107,3 +107,5 @@ Grounding efficiency: [grounding-efficiency.rs](grounding-efficiency.rs) is an o
 [grounding-concurrent-edit.py](grounding-concurrent-edit.py) operates the real authenticated provider/ProductRunner while independently injecting a file change after an actual source receipt; it checks stale-edit rejection, final CLI behavior, and preservation.
 
 [Single grounding replay](single-grounding.py) drives fresh-process startup checks, changed-file and scope cases, and an authenticated designer handoff on a disposable Peritus copy.
+
+- [read-loop-recovery/](read-loop-recovery/AGENTS.md): native public-API read/recovery, scope, generated-range, and official-provider pipeline replays.

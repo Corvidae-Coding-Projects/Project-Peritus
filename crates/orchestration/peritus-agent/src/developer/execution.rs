@@ -245,7 +245,7 @@ impl DeveloperLoop {
                         &mut messages,
                         Message::new(Role::Assistant, assistant, protocol_limits)?,
                     )?;
-                    context.append(&mut messages, message(
+                    context.append_host(&mut messages, message(
                         Role::User,
                         format!(
                             "The harness cannot accept that terminal response yet: {blocker}. Continue in this same session, use the declared host tools to satisfy the missing evidence, and then return the complete requested terminal response."
@@ -404,7 +404,7 @@ impl DeveloperLoop {
                     } else {
                         content.push(ContentBlock::Text(BoundedText::new("The selected model does not support image input. The screenshot remains an artifact, but you have not visually inspected it; use the structured observation or request an image-capable model.".to_owned(), protocol_limits)?));
                     }
-                    context.append(
+                    context.append_host(
                         &mut messages,
                         Message::new(Role::User, content, protocol_limits)?,
                     )?;
@@ -414,7 +414,8 @@ impl DeveloperLoop {
             // Capturing first preserves an executor's pending-warning state for this batch.
             let continuation_blocker = tools.continuation_blocker();
             if let Some(feedback) = tools.take_progress_feedback() {
-                context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
+                context
+                    .append_host(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
             if let Some(blocker) = continuation_blocker {

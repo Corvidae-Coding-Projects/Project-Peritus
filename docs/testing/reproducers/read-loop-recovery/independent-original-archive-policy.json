@@ -1,0 +1,61 @@
+{
+  "consumer_sha256": "a251e7e5ac4518129bb8bd6c7273923cbb292352f9a33babb9c8a41fe925c1a3",
+  "cases": [
+    {
+      "kind": "local",
+      "status": "FAIL",
+      "mismatches": [
+        "assembled provider view contains provenance-linked private bytes",
+        "original_tool_output reveals private bytes",
+        "tool_message_wrapper reveals private bytes",
+        "prior_context_read_output reveals private bytes",
+        "transitive_context_read_output reveals private bytes",
+        "literal search reveals private source obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "source-supported state entry reveals private bytes"
+      ],
+      "handles": {
+        "original_tool_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "tool_message_wrapper": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000006",
+        "prior_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000008",
+        "transitive_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000014"
+      },
+      "search_returned_handles": [
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000022",
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000040"
+      ],
+      "actions": 20,
+      "processes": 2
+    },
+    {
+      "kind": "external",
+      "status": "FAIL",
+      "mismatches": [
+        "assembled provider view contains provenance-linked private bytes",
+        "original_tool_output reveals private bytes",
+        "tool_message_wrapper reveals private bytes",
+        "prior_context_read_output reveals private bytes",
+        "transitive_context_read_output reveals private bytes",
+        "literal search reveals private source obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "source-supported state entry reveals private bytes"
+      ],
+      "handles": {
+        "original_tool_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "tool_message_wrapper": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000006",
+        "prior_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000008",
+        "transitive_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000014"
+      },
+      "search_returned_handles": [
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000022",
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000040"
+      ],
+      "actions": 20,
+      "processes": 2
+    }
+  ],
+  "status": "FAIL",
+  "driver": "independent_archive_policy.py",
+  "driver_sha256": "015d6120b11e0e997d5225b34f97f9e90787a969f3cfd368dae82802945f95e5",
+  "contract": "After cold reopen with the source in private_paths, no original or provenance-linked archive/state page returns fixture bytes."
+}

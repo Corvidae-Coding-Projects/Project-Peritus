@@ -28,7 +28,7 @@ pub(super) struct ExplicitReferences {
 }
 
 impl ExplicitReferences {
-    fn from_task(workspace_root: &Path, task: &str) -> Self {
+    pub(super) fn from_task(workspace_root: &Path, task: &str) -> Self {
         let mut roots = BTreeSet::new();
         for token in task_tokens(task) {
             let Some(path) = explicit_absolute_path(&token.0, token.1) else { continue };
@@ -82,13 +82,19 @@ pub(super) fn read(
     if !metadata.is_file() {
         return Err(tool("external reference path is not a regular text file"));
     }
+    let before = super::grounding::file_digest(&path).map_err(|error| tool(error.to_string()))?;
     let extra = vec![
+        ("source_sha256", Value::String(before.clone())),
         ("reference_root", Value::String(root.to_string_lossy().into_owned())),
         ("path", Value::String(path.to_string_lossy().into_owned())),
         ("bytes", Value::from(metadata.len())),
         ("permissions", Value::String(file_metadata::permissions(&metadata))),
     ];
-    inspection_read::read(&path, arguments, &extra, cancellation)
+    let value = inspection_read::read(&path, arguments, &extra, cancellation)?;
+    if super::grounding::file_digest(&path).map_err(|error| tool(error.to_string()))? != before {
+        return Err(tool("reference changed during observation; refresh only this reference"));
+    }
+    Ok(value)
 }
 
 pub(super) fn reference_io_error(error: &std::io::Error) -> DeveloperLoopError {
@@ -101,4 +107,13 @@ pub(super) fn reference_io_error(error: &std::io::Error) -> DeveloperLoopError {
 
 pub(super) fn reference_not_found() -> DeveloperLoopError {
     tool("not_found: no exact or filesystem-native alias exists for the explicit reference path")
+}
+
+/// Revalidates reference authority using the current literal user contract, never archived text.
+pub(crate) fn authorized_file(
+    workspace: &Path,
+    contract: &str,
+    raw: &str,
+) -> Result<PathBuf, DeveloperLoopError> {
+    ExplicitReferences::from_task(workspace, contract).resolve(raw).map(|(_, file)| file)
 }

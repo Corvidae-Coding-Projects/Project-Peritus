@@ -13,6 +13,7 @@ Release-specific human notes; each version records changes and delivery context,
 | [0.1.5.md](0.1.5.md) | Release preparation, real-interface evidence, known review findings, and native publication scope for Peritus 0.1.5. |
 | [0.1.6.md](0.1.6.md) | Corrected DSML argument/ambiguity handling and trace streaming, completed real-interface evidence and package scope. |
 | [0.1.7.md](0.1.7.md) | Automatic skill bundling, isolated run publication, deferred history and replay reuse, plugin diagnostics, and measured runtime scope. |
+| [0.1.8.md](0.1.8.md) | Repeated-read recovery, retained role progress, scoped archive admission, reviewer delivery, and typed document transport with real-interface evidence. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 

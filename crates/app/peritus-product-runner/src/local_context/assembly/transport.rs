@@ -8,7 +8,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::ModelProvider;
 
 pub(super) fn fit(
-    memory: &LocalMemory,
+    memory: &mut LocalMemory,
     messages: &mut [Message],
     tools: &[ToolDefinition],
     provider: &dyn ModelProvider,
@@ -54,28 +54,60 @@ pub(super) fn fit(
             }) else {
                 return Err(error("oversized tool view has no durable exact source"));
             };
-            let exact = memory.artifact(source.sequence)?;
+            let source_id = source.sequence;
+            let exact = memory.artifact(source_id)?;
             let exact = std::str::from_utf8(&exact)
                 .map_err(|_| error("archived JSON observation is not UTF-8"))?;
+            let mut source_value: serde_json::Value = serde_json::from_str(exact)
+                .map_err(|_| error("decode archived transport source"))?;
+            // Preserve the temporal qualification of a read that preceded a settled edit.
+            // Fitting its archived body must not turn historical evidence into current state.
+            if let Ok(projected) =
+                serde_json::from_slice::<serde_json::Value>(result.output().canonical_bytes())
+                && projected.get("observation_time").is_some()
+            {
+                for key in [
+                    "cached_observation_stale",
+                    "observation_time",
+                    "reason",
+                    "original_observation",
+                ] {
+                    if let Some(value) = projected.get(key) {
+                        source_value[key] = value.clone();
+                    }
+                }
+            }
             let original = result.clone();
-            let handle = source_handle(memory, source.sequence);
+            let handle = source_handle(memory, source_id);
             let mut content = messages[index].content().to_vec();
             let role = messages[index].role();
             let mut install = |end: usize,
                                messages: &mut [Message]|
              -> Result<(), DeveloperLoopError> {
                 let end = exact.floor_char_boundary(end);
-                let value = serde_json::json!({
-                    "peritus_provider_view": {
-                        "truncated": true,
-                        "reason": "The full observation exceeds this provider's submitted-turn character capacity. It is durably retained, and this is a contiguous prefix of its JSON bytes, not a complete file-read result. Retrieve the remainder with context_read using the exact source handle and next_offset; do not repeat settled effects.",
-                        "source": handle,
-                        "original_bytes": exact.len(),
-                        "visible_bytes": end,
-                        "next_offset": end,
-                        "prefix": &exact[..end],
-                    }
-                });
+                let value = if let Some(page) =
+                    super::super::read_reuse::provider_page(memory, source_id, &source_value, end)?
+                {
+                    page
+                } else {
+                    serde_json::json!({
+                        "peritus_provider_view": {
+                            "truncated": true,
+                            "reason": "The full observation exceeds this provider's submitted-turn character capacity. It is durably retained, and this is a contiguous prefix of its JSON bytes, not a complete file-read result. Retrieve the remainder with context_read using the exact source handle and next_offset; do not repeat settled effects.",
+                            "source": handle,
+                            "original_bytes": exact.len(),
+                            "visible_bytes": end,
+                            "next_offset": end,
+                            "prefix": &exact[..end],
+                        }
+                    })
+                };
+                super::super::read_reuse::register_rendered(
+                    memory,
+                    &value.to_string(),
+                    source_id,
+                    &value,
+                );
                 let output = CanonicalJson::parse(
                     &value.to_string(),
                     JsonBounds::value(ProtocolLimits::PRODUCTION),

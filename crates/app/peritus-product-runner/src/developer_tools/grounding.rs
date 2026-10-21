@@ -80,6 +80,7 @@ impl GroundingEvidence {
                 self.root_listing = saved.root_listing;
             }
             for (relative, expected) in saved.files {
+                let relative = relative_key(&relative);
                 if !allowed(&relative) {
                     continue;
                 }
@@ -161,10 +162,12 @@ impl GroundingEvidence {
     }
 
     pub fn record_listed_path(&mut self, path: &str) {
-        self.listed_paths.insert(PathBuf::from(path));
+        self.listed_paths.insert(PathBuf::from(relative_key(path)));
     }
 
     pub fn record_read(&mut self, path: &str, digest: &str) {
+        let key = relative_key(path);
+        let path = key.as_str();
         self.grounded = true;
         self.read_paths.insert(PathBuf::from(path));
         self.stale.remove(path);
@@ -173,6 +176,8 @@ impl GroundingEvidence {
     }
 
     pub fn record_mutation(&mut self, path: &str) {
+        let key = relative_key(path);
+        let path = key.as_str();
         self.mutation_paths.insert(PathBuf::from(path));
         self.stale.remove(path);
         // The role has the exact successful write/patch postimage. Preserve that observation,
@@ -188,6 +193,8 @@ impl GroundingEvidence {
     }
 
     pub fn ensure_mutation_allowed(&self, path: &str, exists: bool) -> Result<(), String> {
+        let key = relative_key(path);
+        let path = key.as_str();
         self.validate().map_err(str::to_owned)?;
         if exists && !self.read_paths.contains(&PathBuf::from(path)) {
             return Err(format!(
@@ -203,6 +210,8 @@ impl GroundingEvidence {
     }
 
     pub fn ensure_empty_directory_removal_allowed(&self, path: &str) -> Result<(), String> {
+        let key = relative_key(path);
+        let path = key.as_str();
         self.validate().map_err(str::to_owned)?;
         if !self.listed_paths.contains(&PathBuf::from(path)) {
             return Err(format!("list the empty directory before removing it: {path}"));
@@ -260,4 +269,14 @@ fn listing_digest(root: &Path) -> Result<String, std::io::Error> {
         hash.update(bytes);
     }
     Ok(hash.finalize().iter().map(|byte| format!("{byte:02x}")).collect::<String>())
+}
+
+// Admission has already rejected traversal/absolute paths. Equivalent spellings share evidence.
+fn relative_key(path: &str) -> String {
+    Path::new(path)
+        .components()
+        .filter(|part| !matches!(part, std::path::Component::CurDir))
+        .collect::<PathBuf>()
+        .to_string_lossy()
+        .into_owned()
 }

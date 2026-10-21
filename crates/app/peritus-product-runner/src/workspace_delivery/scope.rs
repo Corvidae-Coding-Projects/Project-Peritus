@@ -204,7 +204,11 @@ impl ScopedBaseline {
     /// # Errors
     /// Rejects invalid/protected paths, oversized evidence or filesystem failures before effects.
     pub fn enroll(&self, path: &str) -> Result<(), ProductRunnerError> {
-        self.enroll_index(path)
+        let full = self.checked_path(path)?;
+        let relative =
+            full.strip_prefix(&self.root).map_err(|_| failure("scope target escaped workspace"))?;
+        let relative = relative.to_str().ok_or_else(|| failure("scope path is not UTF-8"))?;
+        self.enroll_index(relative)
     }
 
     /// Renders a bounded comparison preview; exact full-file digests determine changes.

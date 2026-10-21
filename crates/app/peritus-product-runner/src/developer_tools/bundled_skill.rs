@@ -4,7 +4,11 @@ use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 
-use super::{executor::reviewer_evidence_page, path::tool, wire::required_string};
+use super::{
+    executor::{reviewer_evidence_page, reviewer_evidence_page_with_metadata},
+    path::tool,
+    wire::required_string,
+};
 
 pub(crate) fn read(arguments: &Value) -> Result<Value, DeveloperLoopError> {
     let skill = required_string(arguments, "skill")?;
@@ -17,7 +21,14 @@ pub(crate) fn read(arguments: &Value) -> Result<Value, DeveloperLoopError> {
         if start > source.len() || !source.is_char_boundary(start) {
             return Err(tool("offset must be a UTF-8 boundary within the resource"));
         }
-        return reviewer_evidence_page(path, source, offset, start, maximum);
+        return reviewer_evidence_page_with_metadata(
+            path,
+            source,
+            offset,
+            start,
+            maximum,
+            &[("skill", Value::String(skill.to_owned()))],
+        );
     }
     binary_page(path, bytes, start, maximum)
 }
@@ -111,4 +122,15 @@ fn hex(bytes: &[u8]) -> String {
             [char::from(HEX[usize::from(byte >> 4)]), char::from(HEX[usize::from(byte & 15)])]
         })
         .collect()
+}
+
+/// Archived guidance is reused only for the currently bundled resource version.
+pub(crate) fn is_current(value: &Value) -> bool {
+    let (Some(skill), Some(path), Some(digest)) =
+        (value["skill"].as_str(), value["section"].as_str(), value["sha256"].as_str())
+    else {
+        return false;
+    };
+    crate::bundled_skills::resource(skill, path)
+        .is_some_and(|bytes| hex(&Sha256::digest(bytes)) == digest)
 }

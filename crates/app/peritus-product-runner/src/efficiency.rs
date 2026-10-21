@@ -53,6 +53,10 @@ struct State {
     read_bytes: u64,
     repeated_read_bytes: u64,
     seen: BTreeSet<String>,
+    #[serde(default)]
+    inspection_calls: u64,
+    #[serde(default)]
+    repeated_calls: u64,
 }
 
 pub(crate) struct MeasuredTools<'a> {
@@ -186,34 +190,16 @@ impl MeasuredTools<'_> {
             serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or(Value::Null);
         let value: Value =
             serde_json::from_slice(output.output.canonical_bytes()).unwrap_or(Value::Null);
-        if !output.is_error
-            && matches!(
-                name,
-                "workspace_read" | "skill_read" | "attachment_read" | "developer_evidence_read"
-            )
-        {
-            let bytes = value
-                .get("content")
-                .or_else(|| value.get("bytes"))
-                .and_then(Value::as_str)
-                .map_or(0, str::len) as u64;
-            let text = value
-                .get("content")
-                .or_else(|| value.get("bytes"))
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let identity = json!([
-                name,
-                arguments.get("path"),
-                arguments.get("skill"),
-                arguments.get("section"),
-                text
-            ]);
-            let key = format!(
-                "{:02x?}",
-                peritus_codec::sha256(identity.to_string().as_bytes()).as_bytes()
-            );
-            let repeated = !self.state.seen.insert(key);
+        if crate::local_context::activity::inspection(name) || output.is_error {
+            let bytes = output.output.canonical_bytes().len() as u64;
+            let key = format!("{:02x?}", crate::local_context::activity::identity(name, &value));
+            let reused = value["read_reuse"]["state"] == "already_visible"
+                || value["observation_reuse"]["state"] == "already_visible";
+            let repeated = !self.state.seen.insert(key) || reused;
+            self.state.inspection_calls = self.state.inspection_calls.saturating_add(1);
+            if repeated {
+                self.state.repeated_calls = self.state.repeated_calls.saturating_add(1);
+            }
             self.state.read_bytes = self.state.read_bytes.saturating_add(bytes);
             if repeated {
                 self.state.repeated_read_bytes =
@@ -221,15 +207,13 @@ impl MeasuredTools<'_> {
             }
             event(
                 &self.trace,
-                json!({"event":"inspection", "invocation":self.prefix,"tool":name,
-                "read_bytes":bytes,"repeated_bytes":if repeated {bytes} else {0},
-                "total_read_bytes":self.state.read_bytes,"total_repeated_read_bytes":self.state.repeated_read_bytes}),
+                json!({"event":"inspection", "invocation":self.prefix,"tool":name,"is_error":output.is_error,"inspection_calls":self.state.inspection_calls,"repeated_calls":self.state.repeated_calls,"reused_visible_evidence":reused,"read_bytes":bytes,"repeated_bytes":if repeated {bytes} else {0},"total_read_bytes":self.state.read_bytes,"total_repeated_read_bytes":self.state.repeated_read_bytes}),
             );
             self.save();
         }
         let action = !output.is_error
             && ((matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
-                && value.get("changed").and_then(Value::as_bool) != Some(false))
+                && value.get("changed").and_then(Value::as_bool) == Some(true))
                 || (arguments["purpose"].as_str() == Some("external_effect")
                     && value["success"].as_bool() == Some(true)
                     && ((name == "run_command" && value["state"].as_str() != Some("running"))

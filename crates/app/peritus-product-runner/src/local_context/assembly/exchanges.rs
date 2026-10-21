@@ -13,7 +13,7 @@ pub(super) struct Exchange {
     message_ids: Vec<u64>,
     message_shapes: Vec<(Role, usize)>,
     pub(super) estimate: DeveloperContextEstimate,
-    replacements: Vec<(usize, usize, ContentBlock)>,
+    replacements: Vec<(usize, usize, Replacement)>,
 }
 
 impl Exchange {
@@ -31,8 +31,8 @@ impl Exchange {
                 // body here would churn the cache even though no old bytes are delivered.
                 let mut blocks = replacements
                     .into_iter()
-                    .map(|(_, block, value)| (*block, value.clone()))
-                    .collect::<Vec<_>>();
+                    .map(|(_, block, value)| Ok((*block, value.load(memory)?)))
+                    .collect::<Result<Vec<_>, DeveloperLoopError>>()?;
                 blocks.sort_by_key(|(index, _)| *index);
                 messages.push(Message::new(
                     role,
@@ -45,7 +45,8 @@ impl Exchange {
                 for (_, block, replacement) in replacements {
                     *content
                         .get_mut(*block)
-                        .ok_or_else(|| error("stale result block missing"))? = replacement.clone();
+                        .ok_or_else(|| error("stale result block missing"))? =
+                        replacement.load(memory)?;
                 }
                 messages.push(Message::new(original.role(), content, ProtocolLimits::PRODUCTION)?);
             }
@@ -122,10 +123,13 @@ struct IndexedExchange {
     inspection_digest: Option<[u8; 32]>,
     read_targets: Vec<Option<String>>,
     read_stamps: Vec<ReadStamp>,
+    settled_mutations: Vec<String>,
 }
 
 #[derive(Clone)]
 struct ReadStamp {
+    source_message: u64,
+    before_later_effect: bool,
     message: usize,
     block: usize,
     call: ToolCallId,
@@ -134,8 +138,47 @@ struct ReadStamp {
     estimate: DeveloperContextEstimate,
 }
 
+#[derive(Clone)]
+enum Replacement {
+    Fixed(ContentBlock),
+    Historical(ReadStamp),
+}
+impl Replacement {
+    fn load(&self, memory: &LocalMemory) -> Result<ContentBlock, DeveloperLoopError> {
+        match self {
+            Self::Fixed(block) => Ok(block.clone()),
+            Self::Historical(stamp) => stamp.historical(memory),
+        }
+    }
+}
 impl ReadStamp {
-    fn obsolete(&self) -> Result<ContentBlock, DeveloperLoopError> {
+    fn historical(&self, memory: &LocalMemory) -> Result<ContentBlock, DeveloperLoopError> {
+        {
+            let message = memory.message(self.source_message)?;
+            if let Some(ContentBlock::ToolResult(result)) = message.content().get(self.block) {
+                let mut value: serde_json::Value =
+                    serde_json::from_slice(result.output().canonical_bytes())
+                        .map_err(|_| error("decode historical read before settled effect"))?;
+                value["cached_observation_stale"] = serde_json::json!(true);
+                value["observation_time"] =
+                    serde_json::json!("before_later_settled_workspace_effect");
+                value["reason"] = serde_json::json!(
+                    "This successful read observed the file BEFORE a later settled write/patch/removal owned by this run. The body is historical evidence of that observation, not the current file state. Use it to understand or verify the completed sequence; do not reread a deleted temporary file or restart grounding."
+                );
+                value["original_observation"] = serde_json::json!(self.original);
+                return Ok(ContentBlock::ToolResult(ToolResult::new(
+                    self.call.clone(),
+                    CanonicalJson::parse(
+                        &value.to_string(),
+                        JsonBounds::value(ProtocolLimits::PRODUCTION),
+                    )?,
+                    false,
+                )));
+            }
+        }
+        self.receipt()
+    }
+    fn receipt(&self) -> Result<ContentBlock, DeveloperLoopError> {
         let receipt = serde_json::json!({
             "cached_observation_stale":true,"path":self.value.get("path"),
             "source_sha256":self.value.get("source_sha256"),"original_observation":self.original,
@@ -171,6 +214,41 @@ impl IndexedExchange {
         self.estimate = DeveloperContextEstimate::messages(&messages);
         self.message_shapes =
             messages.iter().map(|message| (message.role(), message.content().len())).collect();
+        let mut mutations = std::collections::BTreeMap::new();
+        for block in messages.iter().flat_map(Message::content) {
+            if let ContentBlock::ToolCall(call) = block
+                && matches!(
+                    call.name().as_str(),
+                    "workspace_write" | "workspace_patch" | "workspace_remove"
+                )
+            {
+                let args: serde_json::Value =
+                    serde_json::from_slice(call.arguments().canonical_bytes())
+                        .map_err(|_| error("decode mutation identity"))?;
+                if let Some(path) = args["path"].as_str() {
+                    mutations.insert(call.id().expose_for_wire(), path.to_owned());
+                }
+            }
+        }
+        let mut effects = Vec::new();
+        for (message_index, message) in messages.iter().enumerate() {
+            for (block_index, block) in message.content().iter().enumerate() {
+                if let ContentBlock::ToolResult(result) = block
+                    && !result.is_error()
+                    && let Some(path) = mutations.get(result.call_id().expose_for_wire())
+                {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(result.output().canonical_bytes())
+                            .map_err(|_| error("decode settled mutation"))?;
+                    // Older patch/remove receipts predate the explicit changed field.
+                    // A successful legacy mutation still establishes the later operation.
+                    if value.get("changed").and_then(serde_json::Value::as_bool) != Some(false) {
+                        effects.push(((message_index, block_index), path.clone()));
+                    }
+                }
+            }
+        }
+        self.settled_mutations = effects.iter().map(|(_, path)| path.clone()).collect();
         let mut reads = BTreeSet::new();
         for block in messages.iter().flat_map(Message::content) {
             if let ContentBlock::ToolCall(call) = block
@@ -204,8 +282,13 @@ impl IndexedExchange {
                                 .is_some_and(|call| call.id == result.call_id().expose_for_wire())
                         })
                         .map(|source| super::super::tools::source_handle(memory, source.sequence));
-                    self.read_stamps.push(ReadStamp {message:message_index,block:block_index,call:result.call_id().clone(),
-                        value:serde_json::json!({"path":value.get("path"),"source_sha256":value.get("source_sha256")}),original,estimate:block_estimate(block)?});
+                    let before_later_effect = value["path"].as_str().is_some_and(|path| {
+                        effects.iter().any(|(at, target)| {
+                            *at > (message_index, block_index) && same_path(path, target)
+                        })
+                    });
+                    self.read_stamps.push(ReadStamp {source_message:self.messages[message_index],before_later_effect,message:message_index,block:block_index,call:result.call_id().clone(),
+                        value:serde_json::json!({"path":value.get("path"),"source_sha256":value.get("source_sha256"),"reference_root":value.get("reference_root")}),original,estimate:block_estimate(block)?});
                 }
             }
         }
@@ -284,6 +367,9 @@ impl ExchangeIndex {
                         }
                     }
                 }
+                Role::User
+                    if memory.archived(*id)?.kind
+                        == super::super::record::ArchiveKind::HostObservation => {}
                 _ => return Err(error("unclassified instruction message in optional exchange")),
             }
             current.messages.push(*id);
@@ -311,6 +397,7 @@ pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, Develope
     // decoded cache merely to rediscover that they will not be sent to the provider.
     let mut seen = BTreeSet::new();
     let mut unique = Vec::new();
+    let mut later_mutations = BTreeSet::<String>::new();
     for indexed in memory.exchange_index.complete.iter().rev() {
         if indexed.read_targets.iter().any(|path| {
             path.as_deref().is_none_or(|path| !super::evidence::may_reuse_read(memory, path))
@@ -329,9 +416,20 @@ pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, Develope
             if super::evidence::read_is_current(memory, &stamp.value) {
                 continue;
             }
-            let replacement = stamp.obsolete()?;
-            group.estimate =
-                group.estimate.replacing(stamp.estimate, block_estimate(&replacement)?);
+            let receipt = stamp.receipt()?;
+            let historical = stamp.before_later_effect
+                || stamp.value["path"].as_str().is_some_and(|path| {
+                    later_mutations.iter().any(|target| same_path(path, target))
+                });
+            let replacement = if historical {
+                // Charge the original body plus annotation, but load it only after selection.
+                group.estimate = group.estimate.with(block_estimate(&receipt)?);
+                Replacement::Historical(stamp.clone())
+            } else {
+                group.estimate =
+                    group.estimate.replacing(stamp.estimate, block_estimate(&receipt)?);
+                Replacement::Fixed(receipt)
+            };
             group.replacements.push((stamp.message, stamp.block, replacement));
             has_unique_stale_source |= stamp.original.is_some();
         }
@@ -348,6 +446,7 @@ pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, Develope
         if digest.is_some_and(|key| !seen.insert(key)) {
             continue;
         }
+        later_mutations.extend(indexed.settled_mutations.iter().cloned());
         unique.push(group);
     }
     unique.reverse();
@@ -385,4 +484,14 @@ fn inspection_key(messages: &[Message]) -> Option<Vec<u8>> {
         return None;
     }
     serde_json::to_vec(&results).ok()
+}
+
+fn same_path(left: &str, right: &str) -> bool {
+    let normal = |path: &str| {
+        std::path::Path::new(path)
+            .components()
+            .filter(|part| !matches!(part, std::path::Component::CurDir))
+            .collect::<std::path::PathBuf>()
+    };
+    normal(left) == normal(right)
 }

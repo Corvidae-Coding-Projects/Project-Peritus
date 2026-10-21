@@ -130,7 +130,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
         let output = if allowed {
             r#"{"handoff":"The host will run the existing design, writer, verification, reviewer and fixer pipeline for the unchanged user conversation."}"#
         } else {
-            r#"{"error":"Pipeline handoff is unavailable in read-only mode or received invalid arguments."}"#
+            r#"{"error":"Pipeline handoff requires an authorized implementation request, current read and write permissions, and an empty argument object. Process and network permissions are checked only by tools that need them."}"#
         };
         Ok(DeveloperToolObservation {
             output: CanonicalJson::parse(output, JsonBounds::value(ProtocolLimits::PRODUCTION))?,
@@ -147,14 +147,9 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
 
 pub(super) fn pipeline_permissions_allow(conversation: &dyn ConversationView) -> bool {
     let permissions = conversation.effective_permissions();
-    [
-        PermissionCapability::Read,
-        PermissionCapability::Write,
-        PermissionCapability::Process,
-        PermissionCapability::Network,
-    ]
-    .into_iter()
-    .all(|capability| permissions.allows(capability))
+    [PermissionCapability::Read, PermissionCapability::Write]
+        .into_iter()
+        .all(|capability| permissions.allows(capability))
 }
 
 pub(super) fn definition() -> Result<ToolDefinition, DeveloperLoopError> {

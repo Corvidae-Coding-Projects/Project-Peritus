@@ -35,6 +35,16 @@ pub(super) fn state_page(
         ("cursor", Value::Null),
     ]);
     for (index, entry) in entries.iter().enumerate().skip(start.index) {
+        let readable = entry
+            .links()
+            .supports()
+            .iter()
+            .chain(entry.links().contradicts())
+            .map(|id| super::super::super::source_policy::allowed(memory, id.get()))
+            .collect::<Result<Vec<_>, _>>()?;
+        if readable.iter().any(|allowed| !allowed) {
+            continue;
+        }
         let item = entry_view(memory, entry);
         // Text and link metadata can independently exceed a page. The JSON fragment mode
         // makes the entire exact entry retrievable, including arbitrarily many references.
@@ -113,6 +123,7 @@ pub(super) fn state_page(
         }
         return Ok(response);
     }
+    response["cursor"] = Value::Null;
     Ok(response)
 }
 

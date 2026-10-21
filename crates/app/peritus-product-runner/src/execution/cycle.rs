@@ -197,19 +197,14 @@ pub(super) async fn inspect_gates(
     )?;
     check_cancelled(input)?;
     let permissions = input.conversation.effective_permissions();
-    if ![
-        crate::control::PermissionCapability::Read,
-        crate::control::PermissionCapability::Write,
-        crate::control::PermissionCapability::Process,
-        crate::control::PermissionCapability::Network,
-    ]
-    .into_iter()
-    .all(|capability| permissions.allows(capability))
+    if ![crate::control::PermissionCapability::Read, crate::control::PermissionCapability::Write]
+        .into_iter()
+        .all(|capability| permissions.allows(capability))
     {
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::InvalidPrecondition,
             "run exact-target gates",
-            "execution permissions changed before gate launch; inspect /permissions",
+            "read and write permissions are required for candidate inspection; inspect /permissions",
         ));
     }
     let conversation = input.conversation.render();
@@ -233,7 +228,8 @@ pub(super) async fn inspect_gates(
         gates::GateCancellation::new(
             std::sync::Arc::clone(&input.cancelled),
             input.provider_cancellation.clone(),
-        ),
+        )
+        .with_permissions(std::sync::Arc::clone(&input.conversation)),
     )
     .await?;
     check_cancelled(input)?;

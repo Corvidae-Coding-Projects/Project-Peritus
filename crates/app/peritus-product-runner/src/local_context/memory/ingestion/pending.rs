@@ -28,7 +28,8 @@ impl LocalMemory {
             ArchiveKind::Policy
             | ArchiveKind::User
             | ArchiveKind::Assistant
-            | ArchiveKind::ToolMessage => {
+            | ArchiveKind::ToolMessage
+            | ArchiveKind::HostObservation => {
                 if !self.transcript.message_ids.contains(&source.sequence) {
                     self.transcript.message_ids.push(source.sequence);
                 }

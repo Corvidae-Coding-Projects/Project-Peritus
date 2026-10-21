@@ -344,6 +344,7 @@ fn path_key(path: &str) -> Option<String> {
         match component {
             Component::Normal(part) => normalized.push(part),
             Component::CurDir => {}
+            Component::RootDir | Component::Prefix(_) => normalized.push(component.as_os_str()),
             _ => return None,
         }
     }
@@ -355,3 +356,26 @@ pub(super) fn progress(memory: &LocalMemory) -> String {
 }
 
 pub(super) use view::{observe_view, preview, register_rendered};
+
+/// A complete typed file page fitted to a provider envelope, preserving source coordinates.
+pub(in crate::local_context) fn provider_page(
+    memory: &LocalMemory,
+    id: u64,
+    value: &Value,
+    maximum: usize,
+) -> Result<Option<Value>, DeveloperLoopError> {
+    let Some(page) = Page::from_value(id, value) else { return Ok(None) };
+    if let Some(mut value) = page::slice_value(value, &page, page.span, maximum)? {
+        value["local_context"] = json!({"handle":source_handle(memory,id)});
+        return Ok(Some(value));
+    }
+    let mut empty = value.clone();
+    empty["content"] = json!("");
+    empty["source_range"] = json!(Span { start: page.span.start, end: page.span.start });
+    empty["end_line"] = json!(page.span.start.line);
+    empty["next_line"] = json!(page.span.start.line);
+    empty["next_line_byte_offset"] = json!(page.span.start.byte);
+    empty["eof"] = json!(false);
+    empty["local_context"] = json!({"handle":source_handle(memory,id)});
+    Ok(Some(empty))
+}

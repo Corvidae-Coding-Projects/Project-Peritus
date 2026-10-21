@@ -1,5 +1,6 @@
 //! Local working-memory host: C0 effects around C6 deterministic state.
 
+pub(crate) mod activity;
 mod assembly;
 mod checkpoint_validation;
 mod driver;
@@ -9,6 +10,7 @@ mod port;
 pub(crate) mod read_reuse;
 mod record;
 mod semantic;
+mod source_policy;
 mod storage;
 
 mod tools;

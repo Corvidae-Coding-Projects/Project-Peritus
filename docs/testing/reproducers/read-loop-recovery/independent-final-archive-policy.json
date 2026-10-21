@@ -1,0 +1,110 @@
+{
+  "consumer_sha256": "75fc6a3a3623e1e39235e9f288a0abf23da4cd9db37d2f8298e2cb11f1756e2e",
+  "cases": [
+    {
+      "kind": "local",
+      "status": "PASS",
+      "mismatches": [],
+      "handles": {
+        "original_tool_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "tool_message_wrapper": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000006",
+        "prior_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000008",
+        "transitive_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000014"
+      },
+      "search_returned_handles": [
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000022",
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000040"
+      ],
+      "actions": 20,
+      "processes": 2
+    },
+    {
+      "kind": "external",
+      "status": "PASS",
+      "mismatches": [],
+      "handles": {
+        "original_tool_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000005",
+        "tool_message_wrapper": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000006",
+        "prior_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000008",
+        "transitive_context_read_output": "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000014"
+      },
+      "search_returned_handles": [
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000022",
+        "obs:618e5fe1201d59a478c12711fff45fcc75b6dff499f9e047a452df5b528f8c77:000040"
+      ],
+      "actions": 20,
+      "processes": 2
+    }
+  ],
+  "status": "PASS",
+  "driver": "independent_archive_policy.py",
+  "driver_sha256": "015d6120b11e0e997d5225b34f97f9e90787a969f3cfd368dae82802945f95e5",
+  "contract": "After cold reopen with the source in private_paths, no original or provenance-linked archive/state page returns fixture bytes.",
+  "historical_policy_replay": {
+    "status": "PASS",
+    "consumer_sha256": "75fc6a3a3623e1e39235e9f288a0abf23da4cd9db37d2f8298e2cb11f1756e2e",
+    "actions": 5,
+    "processes": 2,
+    "oracle_input": {
+      "target": "temporary-operation.json",
+      "expected_write_content": "{\"temporary\":true}\n",
+      "expected_numbered_read": "1: {\"temporary\":true}",
+      "origin": "recorded workspace_write request",
+      "origin_trace_sha256": "71eaac70f0a8143b35635986a50150a9266d99e7bcc5c92aa42de6965c96370e"
+    },
+    "cases": [
+      {
+        "case": "control",
+        "status": "PASS",
+        "historical_exact_original_write_bytes": true,
+        "host_Read_revocation_hides_historical_body": true,
+        "temp_stays_deleted": true
+      },
+      {
+        "case": "protected",
+        "status": "PASS",
+        "private_historical_body_hidden": true,
+        "private_exact_archive_source_not_retrieved": true,
+        "temp_stays_deleted": true
+      }
+    ],
+    "driver": "independent_historical_policy.py",
+    "driver_sha256": "5f39c4ce2b2c221da7fd55a4b85283f8472c147bd3d077495638f8a104f8014d",
+    "oracle": "Expected historical source bytes came from the actual completed workspace_write arguments, not read output. Both copies kept the temporary file deleted."
+  },
+  "independent_boundary_campaign": {
+    "status": "PASS",
+    "commands": 302,
+    "processes": 38,
+    "generator_seed": 202610204719,
+    "campaigns": [
+      {
+        "name": "final20-core",
+        "commands": 139,
+        "processes": 13
+      },
+      {
+        "name": "final20-generated",
+        "commands": 72,
+        "processes": 12
+      },
+      {
+        "name": "final20-policy",
+        "commands": 24,
+        "processes": 6
+      },
+      {
+        "name": "final20-normalized",
+        "commands": 27,
+        "processes": 3
+      },
+      {
+        "name": "final20-archive-policy",
+        "commands": 40,
+        "processes": 4
+      }
+    ]
+  },
+  "total_independent_commands": 307,
+  "total_independent_processes": 40
+}

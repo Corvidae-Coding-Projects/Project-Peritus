@@ -76,6 +76,8 @@ pub struct DeveloperContextAssembly<'a> {
 pub enum DeveloperContextEvent<'a> {
     /// Exact visible message, including proposed calls, result views, and host corrections.
     Message(&'a Message),
+    /// Replaceable host feedback or media evidence; never a literal user instruction.
+    HostObservation(&'a Message),
     /// Complete tool output, after trace persistence and before model-visible limiting.
     ToolObservation {
         /// Associated proposal; its identifier is scoped to the current invocation.
@@ -215,6 +217,16 @@ impl ContextSession<'_> {
         message: Message,
     ) -> Result<(), DeveloperLoopError> {
         self.observe(DeveloperContextEvent::Message(&message))?;
+        messages.push(message);
+        Ok(())
+    }
+
+    pub(super) fn append_host(
+        &mut self,
+        messages: &mut Vec<Message>,
+        message: Message,
+    ) -> Result<(), DeveloperLoopError> {
+        self.observe(DeveloperContextEvent::HostObservation(&message))?;
         messages.push(message);
         Ok(())
     }

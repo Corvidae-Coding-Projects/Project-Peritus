@@ -1,17 +1,14 @@
 //! Bounded, content-based detection of an unchanged inspection cycle.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 
 use peritus_model_protocol::{ContentBlock, Message};
 use peritus_types::Sha256Digest;
 use serde_json::Value;
 
-const RECENT_OBSERVATIONS: usize = 16;
-const WARN_REPEATS: u8 = 1;
-
 #[derive(Default)]
 pub(super) struct InspectionProgress {
-    recent: VecDeque<Sha256Digest>,
+    recent: BTreeSet<Sha256Digest>,
     visible_observations: Option<Vec<Sha256Digest>>,
     repeats: u8,
     warning_pending: bool,
@@ -51,10 +48,10 @@ impl InspectionProgress {
             if self.recent.contains(digest) {
                 continue;
             }
-            if self.recent.len() == RECENT_OBSERVATIONS {
-                self.recent.pop_front();
+            self.recent.insert(*digest);
+            if self.recent.len() > 16384 {
+                self.recent.pop_first();
             }
-            self.recent.push_back(*digest);
         }
         self.visible_observations = Some(visible);
     }
@@ -66,14 +63,8 @@ impl InspectionProgress {
         result: &Value,
         mutation_boundary: bool,
     ) {
-        if !is_inspection(name) {
-            // Only a capability that may have changed the workspace invalidates content-bound
-            // observations. Read-only status and polling tools cannot make the same bytes fresh.
-            if mutation_boundary {
-                self.recent.clear();
-                self.repeats = 0;
-                self.warning_pending = false;
-            }
+        let _ = mutation_boundary; // Actual content identity, not capability, determines freshness.
+        if !is_inspection(name) && result.get("error").is_none() {
             return;
         }
         let digest = fingerprint(name, arguments, result);
@@ -84,7 +75,7 @@ impl InspectionProgress {
                 .is_none_or(|observations| observations.contains(&digest));
             if visible {
                 self.repeats = self.repeats.saturating_add(1);
-                if self.repeats == WARN_REPEATS {
+                if self.repeats > 0 {
                     self.warning_pending = true;
                 }
             } else {
@@ -95,10 +86,10 @@ impl InspectionProgress {
         } else {
             self.repeats = 0;
             self.warning_pending = false;
-            if self.recent.len() == RECENT_OBSERVATIONS {
-                self.recent.pop_front();
+            self.recent.insert(digest);
+            if self.recent.len() > 16384 {
+                self.recent.pop_first();
             }
-            self.recent.push_back(digest);
         }
     }
 
@@ -110,9 +101,14 @@ impl InspectionProgress {
 }
 
 fn is_inspection(name: &str) -> bool {
-    matches!(name, "workspace_list" | "workspace_read" | "workspace_search" | "attachment_read")
+    crate::local_context::activity::inspection(name)
 }
 
 fn fingerprint(name: &str, arguments: &Value, result: &Value) -> Sha256Digest {
-    peritus_codec::sha256(format!("{name}\n{arguments}\n{result}").as_bytes())
+    let mut output = result.clone();
+    if let Some(object) = output.as_object_mut() {
+        object.remove("local_context");
+        object.remove("execution_resources");
+    }
+    peritus_codec::sha256(format!("{name}\n{arguments}\n{output}").as_bytes())
 }

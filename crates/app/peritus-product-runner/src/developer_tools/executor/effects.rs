@@ -1,10 +1,9 @@
 //! Effect receipts, delivery progress, and bounded filesystem mutations.
 
 use super::{
-    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_PROGRESS_NUDGES,
-    ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools,
-    WorkspaceToolMode, atomic_write, checked, fs, object, observation, removal, required_string,
-    string, tool,
+    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, ReceiptDecision,
+    TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools, WorkspaceToolMode,
+    atomic_write, checked, fs, object, observation, removal, required_string, string, tool,
 };
 
 impl WorkspaceDeveloperTools {
@@ -315,7 +314,7 @@ impl WorkspaceDeveloperTools {
         }
         let workspace_mutation = accepted
             && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
-            && result.get("changed").and_then(Value::as_bool) != Some(false);
+            && result.get("changed").and_then(Value::as_bool) == Some(true);
         let external_effect = matches!(
             name,
             "run_command"
@@ -331,11 +330,7 @@ impl WorkspaceDeveloperTools {
             && accepted
             && (string(arguments, "purpose") == Some("external_effect")
                 || result.get("purpose").and_then(Value::as_str) == Some("external_effect"));
-        let gui_progress = accepted
-            && matches!(name, "browser_control" | "desktop_control")
-            && result.get("success").and_then(Value::as_bool) == Some(true)
-            && !matches!(string(arguments, "action"), Some("list" | "evaluate"));
-        if workspace_mutation || external_effect || gui_progress {
+        if workspace_mutation || external_effect {
             self.tools_without_delivery_progress = 0;
             self.progress_feedback_pending = false;
             self.progress_nudges = 0;
@@ -343,9 +338,7 @@ impl WorkspaceDeveloperTools {
         }
         self.tools_without_delivery_progress =
             self.tools_without_delivery_progress.saturating_add(1);
-        if self.tools_without_delivery_progress >= TOOLS_WITHOUT_DELIVERY_PROGRESS
-            && self.progress_nudges < MAX_PROGRESS_NUDGES
-        {
+        if self.tools_without_delivery_progress >= TOOLS_WITHOUT_DELIVERY_PROGRESS {
             self.tools_without_delivery_progress = 0;
             self.progress_nudges = self.progress_nudges.saturating_add(1);
             self.progress_feedback_pending = true;
@@ -378,7 +371,11 @@ impl WorkspaceDeveloperTools {
                 );
             }
             "workspace_search" => self.grounding.record_search(),
-            "workspace_read" if result.get("reference_root").is_none() => {
+            "workspace_read"
+                if result.get("reference_root").is_none()
+                    && !string(arguments, "path")
+                        .is_some_and(|path| std::path::Path::new(path).is_absolute()) =>
+            {
                 if let Some(path) = string(arguments, "path") {
                     if let Some(digest) = result.get("source_sha256").and_then(Value::as_str) {
                         self.grounding.record_read(path, digest);
@@ -433,6 +430,7 @@ impl WorkspaceDeveloperTools {
                 ("path", Value::String(relative.to_owned())),
                 ("bytes", Value::from(content.len())),
                 ("changed", Value::Bool(false)),
+                ("sha256", Value::String(digest_hex(content.as_bytes()))),
             ]));
         }
         if let Some(parent) = path.parent() {
@@ -470,10 +468,17 @@ impl WorkspaceDeveloperTools {
             + 1;
         let replaced =
             if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
-        atomic_write(&path, replaced.as_bytes())?;
+        let changed = replaced != content;
+        if changed {
+            atomic_write(&path, replaced.as_bytes())?;
+        }
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),
-            ("replacements", Value::from(if replace_all { occurrences } else { 1 })),
+            ("changed", Value::Bool(changed)),
+            (
+                "replacements",
+                Value::from(if changed { if replace_all { occurrences } else { 1 } } else { 0 }),
+            ),
             ("start_line", Value::from(start_line)),
             ("bytes", Value::from(replaced.len())),
             ("sha256", Value::String(digest_hex(replaced.as_bytes()))),

@@ -25,9 +25,12 @@ impl WorkspaceDeveloperTools {
             name,
             "workspace_read" | "workspace_write" | "workspace_patch" | "workspace_remove"
         ) {
-            scope
-                .enroll(required_string(arguments, "path")?)
-                .map_err(|error| tool(error.to_string()))?;
+            let path = required_string(arguments, "path")?;
+            // Explicit external references are read-only evidence, never writable task scope.
+            if name == "workspace_read" && std::path::Path::new(path).is_absolute() {
+                return Ok(());
+            }
+            scope.enroll(path).map_err(|error| tool(error.to_string()))?;
         }
         if matches!(name, "run_command" | "command_start")
             && scope.paths().map_err(|error| tool(error.to_string()))?.is_empty()

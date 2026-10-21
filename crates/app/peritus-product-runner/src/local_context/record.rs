@@ -17,6 +17,7 @@ pub(super) enum ArchiveKind {
     User,
     Assistant,
     ToolMessage,
+    HostObservation,
     ToolOutput,
 }
 
@@ -26,7 +27,9 @@ impl ArchiveKind {
             Self::Policy => ObservationKind::HostPolicy,
             Self::User => ObservationKind::UserInstruction,
             Self::Assistant => ObservationKind::AgentMessage,
-            Self::ToolMessage | Self::ToolOutput => ObservationKind::ToolOutput,
+            Self::HostObservation | Self::ToolMessage | Self::ToolOutput => {
+                ObservationKind::ToolOutput
+            }
         }
     }
 }
@@ -111,6 +114,8 @@ pub(super) struct TranscriptManifest {
     pub(super) pending: Vec<PendingDescriptor>,
     pub(super) files: Vec<String>,
     pub(super) facts_through: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) delivered_evidence: Vec<DeliveredEvidence>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -187,4 +192,15 @@ pub(super) fn decode<T: DeserializeOwned + Serialize>(
         return Err(error("noncanonical host memory record"));
     }
     Ok(value)
+}
+
+/// Only ranges in the final submitted model view receive review retrieval credit.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Ord, PartialOrd)]
+#[serde(deny_unknown_fields)]
+pub(super) struct DeliveredEvidence {
+    pub(super) section: String,
+    pub(super) sha256: String,
+    pub(super) total_bytes: u64,
+    pub(super) start: u64,
+    pub(super) end: u64,
 }

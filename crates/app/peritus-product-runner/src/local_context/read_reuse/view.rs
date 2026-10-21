@@ -11,6 +11,9 @@ pub(in crate::local_context) fn register_rendered(
     id: u64,
     value: &Value,
 ) {
+    if value["cached_observation_stale"] == true {
+        return;
+    }
     if let Some(page) = Page::from_value(id, value) {
         memory
             .read_reuse
@@ -57,6 +60,10 @@ pub(in crate::local_context) fn observe_view(
 }
 
 fn credit_result(memory: &LocalMemory, index: &mut ReadReuse, value: &Value) {
+    let key = peritus_codec::sha256(value.to_string().as_bytes()).into_bytes();
+    if let Some((id, span)) = index.rendered.get(&key).copied() {
+        index.visible.entry(id).or_default().push(span);
+    }
     if let Some(handle) =
         value.get("local_context").and_then(|value| value.get("handle")).and_then(Value::as_str)
     {

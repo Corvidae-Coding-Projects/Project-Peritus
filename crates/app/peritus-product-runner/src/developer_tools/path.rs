@@ -12,7 +12,13 @@ pub fn checked(
     value: &str,
     allow_missing: bool,
 ) -> Result<PathBuf, DeveloperLoopError> {
-    let relative = Path::new(value);
+    let raw = Path::new(value);
+    if raw.components().any(|part| !matches!(part, Component::Normal(_) | Component::CurDir)) {
+        return Err(tool("path must be a normal workspace-relative path"));
+    }
+    let relative =
+        raw.components().filter(|part| !matches!(part, Component::CurDir)).collect::<PathBuf>();
+    let relative = relative.as_path();
     if relative == Path::new(".") {
         return Ok(root.to_path_buf());
     }
@@ -58,7 +64,13 @@ pub fn canonical_command_cwd(root: &Path, cwd: &Path) -> Result<PathBuf, Develop
 /// Observe an enrolled path's metadata without following terminal or ancestor links.
 /// An opaque/missing parent means its former children are absent from this workspace.
 pub(super) fn observed(root: &Path, value: &str) -> Result<Option<PathBuf>, DeveloperLoopError> {
-    let relative = Path::new(value);
+    let raw = Path::new(value);
+    if raw.components().any(|part| !matches!(part, Component::Normal(_) | Component::CurDir)) {
+        return Err(tool("path must be a normal workspace-relative path"));
+    }
+    let relative =
+        raw.components().filter(|part| !matches!(part, Component::CurDir)).collect::<PathBuf>();
+    let relative = relative.as_path();
     if relative.is_absolute()
         || relative.components().any(|part| !matches!(part, Component::Normal(_)))
         || relative.starts_with(".git")
