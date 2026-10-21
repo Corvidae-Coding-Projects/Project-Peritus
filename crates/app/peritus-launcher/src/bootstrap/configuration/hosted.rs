@@ -82,13 +82,13 @@ pub(super) fn render(
             .map_err(|_| invalid("profile identity formatting failed"))?;
     }
     let mut text = format!(
-        "\n[[providers]]\nkind = \"hosted\"\nhosted_service = {}\nwire_protocol = {}\ncredential_reference = {}\n",
+        "\n[[providers]]\nkind = \"hosted\"\nhosted_service = {}\nwire_protocol = {}\ncredential_reference = {}\ndiscover_model_limits = true\n",
         toml_string(service),
         toml_string(protocol),
         toml_string(direct.credential_reference())
     );
-    // These conservative request ceilings and required adapter features are not live capability
-    // claims. The UI reports catalog metadata and explicit connection tests independently.
+    // Token values are fallbacks for unavailable catalog fields, not ceilings on discovered
+    // route/model capacities. Adapter features remain separate from numeric model metadata.
     text.push_str(&profile_block(
         &profile_id,
         direct.model(),

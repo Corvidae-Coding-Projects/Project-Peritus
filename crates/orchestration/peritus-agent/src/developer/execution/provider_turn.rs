@@ -154,7 +154,7 @@ pub(super) async fn complete_turn(
             attempt,
             kind,
             required_tool,
-            provider.reasoning_effort(),
+            provider,
         )?;
         if let Some(owner) = retry_context.as_mut() {
             owner.tools.observe_model_context(model_request.messages())?;

@@ -25,13 +25,43 @@ pub enum ResponseCancellationOutcome {
 /// Implementations own provider-specific encoding, response parsing, credentials, and transport.
 /// Their public boundary remains entirely Peritus-owned.
 pub trait ModelProvider: Send + Sync {
-    /// Returns the exact profile implemented by this provider instance.
+    /// Returns the configured route/capability contract and fallback numeric limits.
+    /// Use `request_profile` after metadata preparation for execution token capacities.
     fn profile(&self) -> &ProviderProfile;
+
+    /// Resolves numeric limits for this exact route/model and requested output allowance.
+    ///
+    /// Call `prepare_context` first. Discovery may replace fallback token capacities, but must
+    /// preserve identity, capabilities, lifecycle guarantees, and non-token resource limits.
+    /// Providers without model-specific discovery retain their explicitly configured profile.
+    ///
+    /// # Errors
+    /// Rejects contradictory model metadata rather than sending an oversized request.
+    fn request_profile(&self, _output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
+        Ok(self.profile().clone())
+    }
+
+    /// Fits the requested output to model limits and any shared context remaining after input.
+    /// The input estimate must include message and tool framing. An uncapped caller uses
+    /// `u64::MAX`; this is not a reservation of the model's entire output maximum.
+    ///
+    /// # Errors
+    /// Rejects an input that leaves no output space in an advertised shared context window.
+    fn output_tokens_for_input(
+        &self,
+        _input_tokens: u64,
+        requested: u64,
+    ) -> Result<u64, ProviderCoreError> {
+        Ok(requested.min(self.request_profile(requested)?.limits().max_output_tokens()))
+    }
 
     /// Soft selection target accounting for a transport-specific input envelope.
     /// This does not replace the model's token capacity or impose a global token ceiling.
     fn context_input_target(&self) -> u64 {
-        self.profile().limits().max_input_tokens()
+        self.request_profile(u64::MAX).map_or_else(
+            |_| self.profile().limits().max_input_tokens(),
+            |p| p.limits().max_input_tokens(),
+        )
     }
 
     /// Loads required runtime metadata before an initial role context is projected.

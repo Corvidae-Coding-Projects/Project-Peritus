@@ -8,10 +8,10 @@ Provider-independent owned transport primitives for Peritus.
 
 | File | Role |
 | --- | --- |
-| [adapter.rs](adapter.rs) | Provider-neutral adapter ownership contract. |
+| [adapter.rs](adapter.rs) | Provider-neutral adapter ownership contract, metadata preparation, and effective request profiles. |
 | [backoff.rs](backoff.rs) | Cancellation-aware execution of checked backoff delays. |
 | [cancellation.rs](cancellation.rs) | Race-free cooperative cancellation without a runtime type in the public API. |
-| [catalog.rs](catalog.rs) | Provider-owned model discovery; no bundled model names or implicit fallback catalog. |
+| [catalog.rs](catalog.rs) | Provider-owned model discovery and route-matched numeric capacity resolution; no bundled model names. |
 | [connection.rs](connection.rs) | Explicit, bounded connection qualification without application tools or workspace access. |
 | [continuation.rs](continuation.rs) | Persisted continuation bindings restored into provider-owned runtime state. |
 | [credential.rs](credential.rs) | Narrow, zeroizing credential resolution and HTTP projection. |
@@ -38,7 +38,7 @@ Provider-independent owned transport primitives for Peritus.
 
 | Folder | Role / next waypoint |
 | --- | --- |
-| [catalog/](catalog/AGENTS.md) | Implementation pieces for `catalog.rs`: Provider-owned model discovery; no bundled model names or implicit fallback catalog. |
+| [catalog/](catalog/AGENTS.md) | Implementation pieces for `catalog.rs`: Provider-owned model discovery and route-matched numeric capacity resolution; no bundled model names. |
 | [framing/](framing/AGENTS.md) | Implementation pieces for `framing.rs`: Incremental bounded Server-Sent Events and newline-delimited JSON framing. |
 | [healing/](healing/AGENTS.md) | Implementation pieces for `healing.rs`: Bounded syntax-only repair of complete model-authored JSON, never transport framing. |
 | [hosted/](hosted/AGENTS.md) | Implementation pieces for `hosted.rs`: Reviewed hosted API identities and operation routes; never a fallback model catalog. |

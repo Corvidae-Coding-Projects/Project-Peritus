@@ -57,7 +57,14 @@ impl DeveloperLoop {
                 if tools.tool_calls_allowed() { tool_definitions.clone() } else { Vec::new() };
             let selected = live.map(|(port, role)| port.provider(role)).transpose()?.flatten();
             let provider = selected.as_deref().unwrap_or(provider);
-            let profile = provider.profile();
+            provider.prepare_context(&request.cancellation).await.map_err(|error| {
+                DeveloperLoopError::Model(crate::ModelDriveError::Provider(error))
+            })?;
+            let resolved_profile =
+                provider.request_profile(request.limits.max_output_tokens()).map_err(|error| {
+                    DeveloperLoopError::Model(crate::ModelDriveError::Provider(error))
+                })?;
+            let profile = &resolved_profile;
             let input = interaction.map(DeveloperInteraction::input).transpose()?;
             // A terminal-only phase still carries completed tool exchanges in its history.
             // Keep their capability negotiated even though no new tools are advertised.

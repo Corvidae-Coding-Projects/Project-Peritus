@@ -1,0 +1,617 @@
+{
+  "base_commit": "559dc98293e0875c537543dd47969d927b41b12f",
+  "branch": "develop",
+  "uncommitted_source": true,
+  "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "seed": 271828,
+  "scenarios": [
+    {
+      "case": "contracts",
+      "status": "PASS",
+      "seconds": 0.008,
+      "exit": 0
+    },
+    {
+      "case": "http-catalog",
+      "status": "PASS",
+      "seconds": 0.565,
+      "exit": 0
+    },
+    {
+      "case": "zen-catalog",
+      "status": "PASS",
+      "seconds": 6.278,
+      "exit": 0
+    },
+    {
+      "case": "go-catalog",
+      "status": "PASS",
+      "seconds": 6.229,
+      "exit": 0
+    },
+    {
+      "case": "fixed",
+      "status": "PASS",
+      "seconds": 31.298,
+      "exit": 0
+    },
+    {
+      "case": "live",
+      "status": "PASS",
+      "seconds": 22.631,
+      "exit": 0
+    },
+    {
+      "case": "codex",
+      "status": "PASS",
+      "seconds": 29.14,
+      "exit": 0
+    }
+  ],
+  "artifacts": {
+    "consumer": {
+      "sha256": "c190f237d93592dff75f1e40f673941bd0164ee125e0ebb55316d1ad7777f68b"
+    },
+    "peritusd": {
+      "sha256": "2777f20a8dbde5df150f1965d854cea11b6c5771ed0526a064e73763aa89d66d"
+    }
+  },
+  "capacity_contracts": {
+    "codex_unchanged": true,
+    "invalid_rejected": 4,
+    "kind": "contracts",
+    "shared_output_cases": 7,
+    "valid": [
+      {
+        "input": 1048576,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 384000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 1046528,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 384000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 1044480,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 384000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 1048575,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 384000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 984000,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 64000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 90000,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 8000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 16000,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 1000,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 32768,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 4096,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 123456,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 4096,
+        "parallel": 8,
+        "tools": 64
+      },
+      {
+        "input": 32768,
+        "media": 1,
+        "model": "deepseek-v4.1-flash",
+        "output": 65536,
+        "parallel": 8,
+        "tools": 64
+      }
+    ]
+  },
+  "http_catalog": [
+    {
+      "kind": "http-catalog",
+      "last_token_output": 1,
+      "resolved": {
+        "input": 131071,
+        "media": 1,
+        "model": "aion-labs/aion-2.0",
+        "output": 32768,
+        "parallel": 8,
+        "tools": 64
+      }
+    },
+    {
+      "kind": "http-catalog",
+      "last_token_output": 1,
+      "resolved": {
+        "input": 131071,
+        "media": 1,
+        "model": "aion-labs/aion-3.0",
+        "output": 32768,
+        "parallel": 8,
+        "tools": 64
+      }
+    },
+    {
+      "kind": "http-catalog",
+      "last_token_output": 1,
+      "resolved": {
+        "input": 131071,
+        "media": 1,
+        "model": "aion-labs/aion-3.0-mini",
+        "output": 32768,
+        "parallel": 8,
+        "tools": 64
+      }
+    },
+    {
+      "kind": "http-catalog",
+      "last_token_output": 1,
+      "resolved": {
+        "input": 262143,
+        "media": 1,
+        "model": "aion-labs/aion-3.5",
+        "output": 32768,
+        "parallel": 8,
+        "tools": 64
+      }
+    },
+    {
+      "kind": "http-catalog",
+      "last_token_output": 1,
+      "resolved": {
+        "input": 262143,
+        "media": 1,
+        "model": "aion-labs/aion-3.5-mini",
+        "output": 32768,
+        "parallel": 8,
+        "tools": 64
+      }
+    },
+    {
+      "kind": "http-catalog",
+      "last_token_output": 1,
+      "resolved": {
+        "input": 999999,
+        "media": 1,
+        "model": "amazon/nova-2-lite-v1",
+        "output": 65535,
+        "parallel": 8,
+        "tools": 64
+      }
+    }
+  ],
+  "routes": {
+    "zen-catalog": [
+      {
+        "advertised": {
+          "context": 1000000,
+          "input": null,
+          "output": 384000
+        },
+        "kind": "catalog",
+        "resolved": {
+          "input": 999999,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen",
+        "small_output": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        }
+      },
+      {
+        "kind": "policy",
+        "name": "fixed-default",
+        "resolved": {
+          "input": 32768,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 4096,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "policy",
+        "name": "custom-preserved",
+        "resolved": {
+          "input": 70000,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 9000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "policy",
+        "name": "custom-automatic",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 160000,
+          "media": 1,
+          "model": "big-pickle",
+          "output": 32000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "claude-fable-5",
+          "output": 128000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "claude-fable-5-1",
+          "output": 128000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 197952,
+          "media": 1,
+          "model": "claude-haiku-4-5",
+          "output": 64000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "claude-haiku-5-5",
+          "output": 128000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 197952,
+          "media": 1,
+          "model": "claude-opus-4-5",
+          "output": 64000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-zen"
+      }
+    ],
+    "go-catalog": [
+      {
+        "advertised": {
+          "context": 1000000,
+          "input": null,
+          "output": 384000
+        },
+        "kind": "catalog",
+        "resolved": {
+          "input": 999999,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go",
+        "small_output": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        }
+      },
+      {
+        "kind": "policy",
+        "name": "fixed-default",
+        "resolved": {
+          "input": 32768,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 4096,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "policy",
+        "name": "custom-preserved",
+        "resolved": {
+          "input": 70000,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 9000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "policy",
+        "name": "custom-automatic",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "claude-haiku-5-5",
+          "output": 128000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4-flash-vision-exp",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4-pro",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "deepseek-v4.1-flash",
+          "output": 384000,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      },
+      {
+        "kind": "switch",
+        "resolved": {
+          "input": 997952,
+          "media": 1,
+          "model": "glm-5.2",
+          "output": 131072,
+          "parallel": 8,
+          "tools": 64
+        },
+        "service": "opencode-go"
+      }
+    ]
+  },
+  "workflows": {
+    "fixed": {
+      "result": {
+        "compactions": 1,
+        "exact_answer": true,
+        "kind": "fixed",
+        "requests": [
+          {
+            "estimated_input": 82162,
+            "input_limit": 32768,
+            "model": "deepseek-v4.1-flash",
+            "output_limit": 4096,
+            "requested_output": 4096
+          },
+          {
+            "estimated_input": 82454,
+            "input_limit": 32768,
+            "model": "deepseek-v4.1-flash",
+            "output_limit": 4096,
+            "requested_output": 4096
+          },
+          {
+            "estimated_input": 82614,
+            "input_limit": 32768,
+            "model": "deepseek-v4.1-flash",
+            "output_limit": 4096,
+            "requested_output": 4096
+          }
+        ],
+        "status": "PASS"
+      },
+      "durable_validation": {
+        "max_input_tokens": 32768,
+        "estimated_input_tokens": 82614,
+        "local_compactor_failures": 0,
+        "input_tokens_saved": 102,
+        "retrieval_calls": 0
+      }
+    },
+    "live": {
+      "result": {
+        "compactions": 0,
+        "exact_answer": true,
+        "kind": "run",
+        "requests": [
+          {
+            "estimated_input": 82162,
+            "input_limit": 999999,
+            "model": "deepseek-v4.1-flash",
+            "output_limit": 384000,
+            "requested_output": 384000
+          },
+          {
+            "estimated_input": 82479,
+            "input_limit": 999999,
+            "model": "deepseek-v4.1-flash",
+            "output_limit": 384000,
+            "requested_output": 384000
+          },
+          {
+            "estimated_input": 82746,
+            "input_limit": 999999,
+            "model": "deepseek-v4.1-flash",
+            "output_limit": 384000,
+            "requested_output": 384000
+          }
+        ],
+        "status": "PASS",
+        "tools": 2,
+        "turns": 3
+      },
+      "durable_validation": {
+        "max_input_tokens": 999999,
+        "estimated_input_tokens": 82746,
+        "local_compactor_failures": 0,
+        "input_tokens_saved": 0,
+        "retrieval_calls": 0
+      }
+    },
+    "codex": {
+      "result": {
+        "exact_answer": true,
+        "kind": "codex",
+        "requests": [
+          {
+            "estimated_input": 10945,
+            "input_limit": 234567,
+            "model": "gpt-6-luna",
+            "output_limit": 16000,
+            "requested_output": 16000
+          },
+          {
+            "estimated_input": 11206,
+            "input_limit": 234567,
+            "model": "gpt-6-luna",
+            "output_limit": 16000,
+            "requested_output": 16000
+          },
+          {
+            "estimated_input": 11458,
+            "input_limit": 234567,
+            "model": "gpt-6-luna",
+            "output_limit": 16000,
+            "requested_output": 16000
+          }
+        ],
+        "status": "PASS"
+      },
+      "durable_validation": {
+        "max_input_tokens": 234567,
+        "estimated_input_tokens": 11458,
+        "local_compactor_failures": 0,
+        "input_tokens_saved": 0,
+        "retrieval_calls": 0
+      }
+    }
+  },
+  "final_inference_requests": 9
+}

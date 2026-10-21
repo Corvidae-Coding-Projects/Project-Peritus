@@ -20,7 +20,9 @@ pub struct OpenCodeRuntimeProvider {
     credential: CredentialReference,
     credentials: Arc<dyn CredentialSource>,
     profile: ProviderProfile,
+    discover_limits: bool,
     catalog: Mutex<Vec<DiscoveredModel>>,
+    catalog_loading: tokio::sync::Mutex<()>,
 }
 
 impl OpenCodeRuntimeProvider {
@@ -92,8 +94,32 @@ impl OpenCodeRuntimeProvider {
             credential,
             credentials,
             profile,
+            discover_limits: true,
             catalog: Mutex::new(Vec::new()),
+            catalog_loading: tokio::sync::Mutex::new(()),
         })
+    }
+
+    /// Chooses catalog token capacities or explicitly configured fixed token limits.
+    #[must_use]
+    pub const fn with_discovered_limits(mut self, discover: bool) -> Self {
+        self.discover_limits = discover;
+        self
+    }
+
+    fn model_metadata(&self) -> Result<Option<DiscoveredModel>, ProviderCoreError> {
+        if !self.discover_limits {
+            return Ok(None);
+        }
+        let service = super::service_id(self.service)?;
+        let id = model_id(self.profile.model(), service)?;
+        Ok(self
+            .catalog
+            .lock()
+            .map_err(|_| catalog_error())?
+            .iter()
+            .find(|model| model.id.as_str() == id)
+            .cloned())
     }
 
     async fn executable(
@@ -326,20 +352,27 @@ impl ModelProvider for OpenCodeRuntimeProvider {
         &self.profile
     }
 
-    fn context_input_target(&self) -> u64 {
-        let fallback = self.profile.limits().max_input_tokens();
-        let Ok(service) = super::service_id(self.service) else { return fallback };
-        let Ok(id) = model_id(self.profile.model(), service) else { return fallback };
-        self.catalog
-            .lock()
-            .ok()
-            .and_then(|models| {
-                models
-                    .iter()
-                    .find(|model| model.id.as_str() == id)
-                    .and_then(|model| model.input_tokens)
-            })
-            .unwrap_or(fallback)
+    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
+        let Some(model) = self.model_metadata()? else {
+            return Ok(self.profile.clone());
+        };
+        peritus_provider_core::catalog::profile_with_model_limits(
+            &self.profile,
+            &model,
+            output_tokens,
+        )
+    }
+
+    fn output_tokens_for_input(&self, input: u64, output: u64) -> Result<u64, ProviderCoreError> {
+        let Some(model) = self.model_metadata()? else {
+            return Ok(output.min(self.profile.limits().max_output_tokens()));
+        };
+        peritus_provider_core::catalog::output_tokens_for_input(
+            &self.profile,
+            &model,
+            input,
+            output,
+        )
     }
 
     fn prepare_context<'a>(
@@ -347,6 +380,7 @@ impl ModelProvider for OpenCodeRuntimeProvider {
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
         Box::pin(async {
+            let _loading = self.catalog_loading.lock().await;
             let empty = self.catalog.lock().map_err(|_| catalog_error())?.is_empty();
             if empty {
                 self.discover_models(cancellation).await?;
@@ -399,13 +433,17 @@ impl ModelProvider for OpenCodeRuntimeProvider {
             ));
         }
         let profile = peritus_provider_core::catalog::selected_profile(&self.profile, model)?;
-        Ok(Arc::new(Self::with_executable_path(
+        let selected = Self::with_executable_path(
             self.executable_path.clone(),
             self.service,
             self.credential.clone(),
             Arc::clone(&self.credentials),
             profile,
-        )?))
+        )?
+        .with_discovered_limits(self.discover_limits);
+        *selected.catalog.lock().map_err(|_| catalog_error())? =
+            self.catalog.lock().map_err(|_| catalog_error())?.clone();
+        Ok(Arc::new(selected))
     }
 
     fn start(

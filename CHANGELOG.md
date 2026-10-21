@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.1.9
+
+### Fixed
+
+- Use the exact hosted route and selected model's discovered token capacities for context assembly, compaction, negotiation, and output generation, instead of imposing the generated 32K input / 4K output fallback on every model.
+- Keep shared context separate from input/output maxima. Uncapped turns use the available input window and fit output to the remaining space, without reserving a model's entire output maximum on every request.
+- Prepare and reuse model metadata before developer turns, review/fixer evidence projection, and model switches. Preserve explicit fixed settings, custom configured limits, and existing account-provider behavior.
+
+### Real testing
+
+- Actual Zen and Go model catalogs, six hosted HTTP catalog models, six configured-policy combinations, twelve model switches, and shared-window/fallback boundary checks passed.
+- Nine actual inference requests passed: DeepSeek completed requests above 82K estimated input tokens without compaction, while a fixed 32K comparison compacted history; a Codex account workflow retained its configured limits and returned exact file contents.
+- Evidence and coverage boundaries are recorded in `docs/testing/model-capacities-real-2026-10-21.md`. No unit, mock, formal-verification, or repository qualification suite was run. Full 1M input and 384K output generation were not stress-tested.
+
 ## 0.1.8
 
 ### Fixed

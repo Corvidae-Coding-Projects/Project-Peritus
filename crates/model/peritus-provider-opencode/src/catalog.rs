@@ -86,17 +86,10 @@ fn parse(bytes: &[u8], service: &str) -> Result<Vec<DiscoveredModel>, ProviderCo
         model.tools = value.pointer("/capabilities/toolcall").and_then(Value::as_bool);
         model.output_tokens =
             value.pointer("/limit/output").and_then(Value::as_u64).filter(|value| *value > 0);
-        model.input_tokens = value
-            .pointer("/limit/input")
-            .and_then(Value::as_u64)
-            .filter(|value| *value > 0)
-            .or_else(|| {
-                value
-                    .pointer("/limit/context")
-                    .and_then(Value::as_u64)
-                    .and_then(|context| context.checked_sub(model.output_tokens.unwrap_or(0)))
-                    .filter(|value| *value > 0)
-            });
+        model.context_tokens =
+            value.pointer("/limit/context").and_then(Value::as_u64).filter(|n| *n > 0);
+        model.input_tokens =
+            value.pointer("/limit/input").and_then(Value::as_u64).filter(|value| *value > 0);
         models.push(model);
     }
     if models.is_empty() {

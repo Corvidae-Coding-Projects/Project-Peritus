@@ -270,6 +270,7 @@ async fn run_developer_invocation(
     (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
     ProductRunnerError,
 > {
+    let preparation = model.prepare_context(&input.provider_cancellation).await;
     let transcript = input.conversation.render();
     let media = input.media(&transcript, model.profile())?;
     let stable_context = input.conversation.stable_request_context();
@@ -343,6 +344,13 @@ async fn run_developer_invocation(
     );
     if let Some(archive) = archive {
         tools = tools.with_reviewer_evidence_sources(archive);
+    }
+    if let Err(error) = preparation {
+        // Feed metadata failures through the same role recovery/failover path as inference.
+        return Ok((
+            Err(DeveloperLoopError::Model(peritus_agent::ModelDriveError::Provider(error))),
+            tools,
+        ));
     }
     let result = crate::local_context::run_live_invocation(
         model,

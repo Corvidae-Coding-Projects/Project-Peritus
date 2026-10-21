@@ -78,6 +78,8 @@ impl OfficialExecutableSelection {
 pub enum ProviderDeclaration {
     /// Named hosted API with per-model discovery and protocol routing.
     Hosted {
+        /// Resolve token capacities from exact route/model metadata instead of fallback values.
+        discover_model_limits: bool,
         /// Reviewed service identity and credential destination.
         service: peritus_provider_core::hosted::HostedService,
         /// Opaque credential reference resolved only at the HTTP boundary.
@@ -87,6 +89,8 @@ pub enum ProviderDeclaration {
     },
     /// Official OpenCode executable with a Peritus-owned Zen/Go API credential.
     OpenCodeRuntime {
+        /// Resolve token capacities from the selected Zen/Go model catalog.
+        discover_model_limits: bool,
         /// Pinned vendor executable.
         executable: OfficialExecutableSelection,
         /// Explicit Zen or Go service identity.

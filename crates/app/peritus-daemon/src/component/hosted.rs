@@ -20,17 +20,39 @@ pub(super) struct HostedProvider {
     credentials: Arc<dyn CredentialSource>,
     adapter: Arc<dyn ModelProvider>,
     catalog: Arc<Mutex<BTreeMap<String, DiscoveredModel>>>,
+    discover_limits: bool,
+    catalog_attempted: Arc<tokio::sync::Mutex<bool>>,
 }
 
 impl HostedProvider {
+    fn model_metadata(&self) -> Result<Option<DiscoveredModel>, ProviderCoreError> {
+        if !self.discover_limits {
+            return Ok(None);
+        }
+        Ok(self
+            .catalog
+            .lock()
+            .map_err(|_| unavailable("hosted model catalog lock failed"))?
+            .get(self.profile().model().as_str())
+            .cloned())
+    }
     pub(super) fn new(
         service: HostedService,
         credential: CredentialReference,
         profile: ProviderProfile,
         credentials: Arc<dyn CredentialSource>,
+        discover_limits: bool,
     ) -> Result<Self, ProviderCoreError> {
         let adapter = build(service, &credential, profile, &credentials)?;
-        Ok(Self { service, credential, credentials, adapter, catalog: Arc::default() })
+        Ok(Self {
+            service,
+            credential,
+            credentials,
+            adapter,
+            catalog: Arc::default(),
+            discover_limits,
+            catalog_attempted: Arc::default(),
+        })
     }
 }
 
@@ -39,8 +61,55 @@ impl ModelProvider for HostedProvider {
         self.adapter.profile()
     }
 
-    fn context_input_target(&self) -> u64 {
-        self.adapter.context_input_target()
+    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
+        let Some(model) = self.model_metadata()? else {
+            return Ok(self.profile().clone());
+        };
+        peritus_provider_core::catalog::profile_with_model_limits(
+            self.profile(),
+            &model,
+            output_tokens,
+        )
+    }
+
+    fn output_tokens_for_input(&self, input: u64, output: u64) -> Result<u64, ProviderCoreError> {
+        let Some(model) = self.model_metadata()? else {
+            return Ok(output.min(self.profile().limits().max_output_tokens()));
+        };
+        peritus_provider_core::catalog::output_tokens_for_input(
+            self.profile(),
+            &model,
+            input,
+            output,
+        )
+    }
+
+    fn prepare_context<'a>(
+        &'a self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+        Box::pin(async move {
+            let mut attempted = self.catalog_attempted.lock().await;
+            if !self
+                .catalog
+                .lock()
+                .map_err(|_| unavailable("hosted model catalog lock failed"))?
+                .is_empty()
+            {
+                *attempted = true;
+            }
+            if self.discover_limits && !*attempted {
+                let result = self.discover_models(cancellation).await;
+                if cancellation.is_cancelled() {
+                    return Err(ProviderCoreError::cancelled("hosted_model_discovery"));
+                }
+                // Catalog failure must not disable an otherwise working explicit API route,
+                // or turn every model/tool turn into another failed metadata request.
+                *attempted = true;
+                let _metadata = result;
+            }
+            self.adapter.prepare_context(cancellation).await
+        })
     }
 
     fn context_input_fits(
@@ -157,8 +226,10 @@ impl ModelProvider for HostedProvider {
             self.credential.clone(),
             profile,
             Arc::clone(&self.credentials),
+            self.discover_limits,
         )?;
         provider.catalog = Arc::clone(&self.catalog);
+        provider.catalog_attempted = Arc::clone(&self.catalog_attempted);
         Ok(Arc::new(provider))
     }
 }

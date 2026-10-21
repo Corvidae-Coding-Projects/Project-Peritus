@@ -108,6 +108,7 @@ pub struct ProviderRoute {
     executable: Option<PathBuf>,
     hosted_service: Option<String>,
     wire_protocol: Option<ProviderRouteKind>,
+    discover_model_limits: Option<bool>,
 }
 
 mod locality;
@@ -121,11 +122,15 @@ impl ProviderRoute {
     /// Returns a stable configuration error for profile, endpoint, credential-reference, or
     /// executable drift.
     pub fn declaration(&self) -> Result<ProviderDeclaration, DaemonError> {
+        if self.discover_model_limits.is_some() && self.kind != ProviderRouteKind::Hosted {
+            return Err(invalid("discover_model_limits is supported only for named hosted routes"));
+        }
         let profile = self.profile.build(self.adapter_kind()?)?;
         let declaration = match self.kind {
             ProviderRouteKind::Hosted => {
                 if self.adapter_kind()? == ProviderRouteKind::OpenCodeRuntime {
                     ProviderDeclaration::OpenCodeRuntime {
+                        discover_model_limits: self.discover_model_limits(),
                         executable: self.executable_selection(),
                         service: self.hosted()?,
                         credential: self.credential()?,
@@ -133,6 +138,7 @@ impl ProviderRoute {
                     }
                 } else {
                     ProviderDeclaration::Hosted {
+                        discover_model_limits: self.discover_model_limits(),
                         service: self.hosted()?,
                         credential: self.credential()?,
                         profile,
@@ -277,6 +283,12 @@ impl ProviderRoute {
         self.executable
             .clone()
             .map_or(OfficialExecutableSelection::Discover, OfficialExecutableSelection::Pinned)
+    }
+
+    fn discover_model_limits(&self) -> bool {
+        self.discover_model_limits.unwrap_or(
+            self.profile.max_input_tokens == 32_768 && self.profile.max_output_tokens == 4_096,
+        )
     }
 
     pub(crate) const fn requires_credential_broker(&self) -> bool {

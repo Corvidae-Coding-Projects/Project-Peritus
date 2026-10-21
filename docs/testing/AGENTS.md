@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [model-capacities-real-2026-10-21.md](model-capacities-real-2026-10-21.md) | Route/model capacity resolution, shared output headroom, configured overrides, real catalogs, and live inference evidence. |
+| [model-capacities-evidence.json](model-capacities-evidence.json) | Final executable hashes, actual catalog capacities, request metadata, and durable-memory readbacks. |
 | [read-loop-recovery-real-2026-10-20.md](read-loop-recovery-real-2026-10-20.md) | Twelve read-loop findings, additional historical/private-source defects, and native/generated/live-provider recovery evidence. |
 | [read-loop-recovery-evidence.json](read-loop-recovery-evidence.json) | Final executable identity, 1,120 real API actions, independent boundary counts, and actual official-provider/CLI results. |
 | [structural-runtime-performance-2026-10-20.md](structural-runtime-performance-2026-10-20.md) | Post-fix runtime measurements, metadata snapshot scaling repair, and remaining source-grounded performance targets. |
