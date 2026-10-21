@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.1.8
+
+### Fixed
+
+- Preserve approved external-reference reads, current task decisions, next steps, and settled effects through retry, compaction, and restart. Historical reads before a later owned edit or deletion remain explicitly historical evidence instead of disappearing.
+- Reuse delivered immutable reviewer pages across invocation boundaries, with separate coverage for changed sources and independent roles. Repair rejected final responses without demanding another grounding pass.
+- Track repeated outcomes across workspace, context, skill, and other inspection tools, including rotating cycles and rejected requests. Return compact receipts for unchanged evidence already in view; no-op edits and unrelated commands do not reset progress.
+- Keep host feedback distinct from user requirements. Honor current permissions and private-source exclusions through original, wrapped, chained, and derived archive retrieval paths; normalize ordinary relative path aliases consistently.
+- Allow local implementation handoff and candidate inspection with Read/Write permission while checking Process permission at actual command launch. Keep large document results as typed UTF-8 pages with precise continuation metadata when fitting the provider envelope.
+
+### Real testing
+
+- Passed 1,120 actual API actions covering generated overlapping ranges, role isolation, cold recovery, current permissions, chained archives, repeated outcomes, and large-document transport.
+- A real official-provider conversation/design/edit/review run reached Accepted with workspace Process and Network disabled; independent execution of its resulting CLI printed exactly `After` with empty stderr. No unit, mock, formal-verification, or repository qualification suite was run.
+- Defects, replay commands, artifact identities, and bounded coverage are recorded in `docs/testing/read-loop-recovery-real-2026-10-20.md`.
+
 ## 0.1.7
 
 ### Changed

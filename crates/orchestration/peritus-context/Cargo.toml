@@ -10,11 +10,11 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-codec = { version = "=0.1.7", path = "../../foundation/peritus-codec" }
-peritus-policy = { version = "=0.1.7", path = "../../foundation/peritus-policy" }
-peritus-role = { version = "=0.1.7", path = "../peritus-role" }
-peritus-run-knowledge = { version = "=0.1.7", path = "../peritus-run-knowledge" }
-peritus-types = { version = "=0.1.7", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.1.8", path = "../../foundation/peritus-codec" }
+peritus-policy = { version = "=0.1.8", path = "../../foundation/peritus-policy" }
+peritus-role = { version = "=0.1.8", path = "../peritus-role" }
+peritus-run-knowledge = { version = "=0.1.8", path = "../peritus-run-knowledge" }
+peritus-types = { version = "=0.1.8", path = "../../foundation/peritus-types" }
 
 [package.metadata.peritus]
 owner = "C6"
