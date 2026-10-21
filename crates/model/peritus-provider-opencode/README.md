@@ -56,6 +56,12 @@ through WSL interop, which cannot honour the private POSIX configuration, state,
 paths this transport owns. Native executable resolution is deferred until this route is used,
 keeping unrelated provider startup independent.
 Model discovery uses `opencode models SERVICE --verbose`, including advertised metadata.
+Numeric capacities are resolved from the exact service/model before context selection and
+generation. Shared context and separate input/output limits retain their distinct meanings.
+The base profile remains the route/capability contract and supplies missing-field fallbacks.
+Use `request_profile` after `prepare_context` when constructing requests directly; configured
+fixed limits are available through `with_discovered_limits(false)` or the hosted route setting
+`discover_model_limits = false`. The product developer loop performs this resolution itself.
 Output-token limits are advisory. Text and Peritus tool history are supported; native session
 continuations, image attachments, explicit reasoning controls, and server cancellation are
 not currently advertised. Local cancellation terminates the owned process group.

@@ -28,8 +28,9 @@ pub(super) fn build_model_request(
     attempt: u8,
     kind: ModelTurnKind,
     required_tool: Option<&str>,
-    selected_effort: Option<ReasoningEffort>,
+    provider: &dyn peritus_provider_core::ModelProvider,
 ) -> Result<ModelRequest, DeveloperLoopError> {
+    let selected_effort = provider.reasoning_effort();
     let parallel_tools = if kind == ModelTurnKind::Developer
         && !request.tools.is_empty()
         && required_tool.is_none()
@@ -84,6 +85,12 @@ pub(super) fn build_model_request(
             request.limits.max_output_tokens(),
         ),
     };
+    let output_tokens = provider
+        .output_tokens_for_input(
+            super::context_port::estimate_developer_request_tokens(messages, &tools),
+            output_tokens,
+        )
+        .map_err(|error| DeveloperLoopError::Model(crate::ModelDriveError::Provider(error)))?;
     Ok(ModelRequest::new(
         profile,
         negotiated,

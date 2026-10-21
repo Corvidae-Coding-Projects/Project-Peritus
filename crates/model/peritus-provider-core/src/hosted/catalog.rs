@@ -112,11 +112,10 @@ fn enrich(
             service.route(dialect)?;
         }
         model.tools = value.get("tool_call").and_then(Value::as_bool);
-        model.input_tokens = value
-            .pointer("/limit/input")
-            .or_else(|| value.pointer("/limit/context"))
-            .and_then(Value::as_u64)
-            .filter(|n| *n > 0);
+        model.context_tokens =
+            value.pointer("/limit/context").and_then(Value::as_u64).filter(|n| *n > 0);
+        model.input_tokens =
+            value.pointer("/limit/input").and_then(Value::as_u64).filter(|n| *n > 0);
         model.output_tokens =
             value.pointer("/limit/output").and_then(Value::as_u64).filter(|n| *n > 0);
     }

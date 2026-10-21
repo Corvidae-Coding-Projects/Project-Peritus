@@ -208,7 +208,13 @@ fn instantiate(
         })
     };
     match declaration {
-        ProviderDeclaration::OpenCodeRuntime { executable, service, credential, profile } => {
+        ProviderDeclaration::OpenCodeRuntime {
+            executable,
+            service,
+            credential,
+            profile,
+            discover_model_limits,
+        } => {
             let provider =
                 peritus_provider_opencode::OpenCodeRuntimeProvider::with_executable_path(
                     match executable {
@@ -219,12 +225,18 @@ fn instantiate(
                     credential,
                     direct_broker()?,
                     profile,
-                )?;
+                )?
+                .with_discovered_limits(discover_model_limits);
             Ok((ProviderAdapterKind::OpenCodeRuntime, Arc::new(provider)))
         }
-        ProviderDeclaration::Hosted { service, credential, profile } => {
-            let provider =
-                super::hosted::HostedProvider::new(service, credential, profile, direct_broker()?)?;
+        ProviderDeclaration::Hosted { service, credential, profile, discover_model_limits } => {
+            let provider = super::hosted::HostedProvider::new(
+                service,
+                credential,
+                profile,
+                direct_broker()?,
+                discover_model_limits,
+            )?;
             Ok((ProviderAdapterKind::Hosted, Arc::new(provider)))
         }
         ProviderDeclaration::OpenAi { config, profile } => {

@@ -10,6 +10,7 @@ publish = false
 readme = "README.md"
 
 [dependencies]
+tokio = { workspace = true, features = ["sync"] }
 peritus-codec = { version = "=0.1.8", path = "../../foundation/peritus-codec" }
 peritus-model-protocol = { version = "=0.1.8", path = "../peritus-model-protocol" }
 peritus-provider-core = { version = "=0.1.8", path = "../peritus-provider-core" }

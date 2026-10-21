@@ -4,6 +4,31 @@ HTTP contracts reviewed against official documentation and upstream source on **
 Zen and Go now use the official OpenCode 1.19.0 executable contract, exercised on **2026-10-13**.
 Other hosted services continue through the reviewed HTTP adapters.
 
+## Model token capacities
+
+Generated named hosted routes set `discover_model_limits = true`. Their profile token numbers
+are fallbacks for missing metadata, rather than ceilings imposed on every selected model.
+`ModelProvider::prepare_context` loads the selected route's catalog before role projection and
+developer turns. `request_profile(requested_output_tokens)` then resolves the exact model's
+numeric limits for prompt assembly, local and legacy compaction, negotiation, and generation.
+Capabilities, route identity, non-token limits, and lifecycle guarantees remain configured.
+Changing the selected model reuses cached catalog entries without copying another model's limits.
+
+Input-only and output-only ceilings are distinct from a shared input-plus-output context window.
+When the catalog supplies a shared window, an explicit output allowance reserves only that
+allowance, bounded by the model's output maximum. Uncapped developer turns select input against
+the shared window with minimum reply space, then fit output to the smaller of the model maximum
+and the space left after input assembly, including tool framing. They do not reserve the entire
+maximum output on every turn or request unlimited provider output. OpenCode's output allowance
+remains advisory. The existing compaction trigger still leaves headroom during ordinary growth.
+
+Set `discover_model_limits = false` on a named hosted route to retain fixed configured token
+limits. For existing configurations without this key, the old generated 32,768/4,096 pair opts
+into discovery; other custom pairs stay fixed. Explicit compatible endpoints and account routes
+keep their configured behavior. Hosted HTTP catalog failures retain fallbacks without retrying
+discovery on every tool turn; an explicit catalog refresh can update them. OpenCode still requires
+a successful vendor catalog because exact model admission already depends on it.
+
 ## Discovery and operation selection
 
 | Service | Live model discovery | Inference contract |

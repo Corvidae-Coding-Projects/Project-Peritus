@@ -6,6 +6,8 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 [Automatic bundled-skill campaign](bundled-skills/AGENTS.md): native catalog/resource consumer and seeded rebuild lifecycle replay.
 
+[Route-specific model capacities](model-capacities/AGENTS.md): actual catalogs, developer-loop inference, and configured-limit replay.
+
 ## Files in this folder
 
 | File | Role |

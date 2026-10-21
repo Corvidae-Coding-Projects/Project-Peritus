@@ -32,6 +32,8 @@ pub struct DiscoveredModel {
     pub input_tokens: Option<u64>,
     /// Advertised output-token ceiling.
     pub output_tokens: Option<u64>,
+    /// Shared input-plus-output context window, when separately advertised.
+    pub context_tokens: Option<u64>,
 }
 
 impl DiscoveredModel {
@@ -45,8 +47,91 @@ impl DiscoveredModel {
         if label.is_empty() || label.len() > 512 || label.chars().any(char::is_control) {
             return Err(unavailable("catalog model label is invalid"));
         }
-        Ok(Self { id, label, dialect: None, tools: None, input_tokens: None, output_tokens: None })
+        Ok(Self {
+            id,
+            label,
+            dialect: None,
+            tools: None,
+            input_tokens: None,
+            output_tokens: None,
+            context_tokens: None,
+        })
     }
+}
+
+/// Applies already route/model-matched metadata without changing capability or identity claims.
+///
+/// Input, output, and shared context are independent constraints. Reserve only the requested
+/// output (bounded by the advertised maximum), never subtract the maximum twice. Uncapped
+/// callers reserve only minimum reply space here and fit output after assembling input. Missing fields
+/// retain configured fallbacks; zero or impossible metadata is rejected.
+///
+/// # Errors
+/// Returns a safe error for contradictory or zero token limits.
+pub fn profile_with_model_limits(
+    profile: &ProviderProfile,
+    model: &DiscoveredModel,
+    requested_output: u64,
+) -> Result<ProviderProfile, ProviderCoreError> {
+    let fallback = profile.limits();
+    let output = model.output_tokens.unwrap_or(fallback.max_output_tokens());
+    let mut input =
+        model.input_tokens.or(model.context_tokens).unwrap_or(fallback.max_input_tokens());
+    if let Some(context) = model.context_tokens {
+        let available = context
+            .checked_sub(if requested_output == u64::MAX {
+                1
+            } else {
+                output.min(requested_output)
+            })
+            .filter(|n| *n > 0)
+            .ok_or_else(|| unavailable("model context cannot accommodate requested output"))?;
+        input = input.min(available);
+    }
+    let limits = peritus_model_protocol::ModelLimits::new(
+        input,
+        output,
+        fallback.max_tools(),
+        fallback.max_parallel_tool_calls(),
+        fallback.max_inline_media_bytes(),
+    )
+    .map_err(|_| unavailable("advertised model token limits are invalid"))?;
+    ProviderProfile::new(
+        profile.profile_id(),
+        profile.revision(),
+        profile.provider().clone(),
+        profile.model().clone(),
+        profile.dialect(),
+        profile.capabilities(),
+        profile.provenance(),
+        limits,
+        profile.output_limit_enforcement(),
+        profile.state_mode(),
+        profile.resume_kind(),
+        profile.cancellation_kind(),
+    )
+    .map_err(|_| unavailable("model limits contradict the configured provider profile"))
+}
+
+/// Fits output to the remaining shared window of already route/model-matched metadata.
+///
+/// # Errors
+/// Rejects zero output or an input that consumes the entire shared context.
+pub fn output_tokens_for_input(
+    profile: &ProviderProfile,
+    model: &DiscoveredModel,
+    input: u64,
+    requested: u64,
+) -> Result<u64, ProviderCoreError> {
+    let mut output =
+        requested.min(model.output_tokens.unwrap_or(profile.limits().max_output_tokens()));
+    if let Some(context) = model.context_tokens {
+        output = output.min(context.saturating_sub(input));
+    }
+    if output == 0 {
+        return Err(unavailable("model context leaves no space for requested output"));
+    }
+    Ok(output)
 }
 
 /// Derives a new immutable profile identity for a selected model, preserving the explicit route.

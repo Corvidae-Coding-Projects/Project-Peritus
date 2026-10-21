@@ -39,7 +39,10 @@ pub(super) fn model(value: &Value, google: bool) -> Result<DiscoveredModel, Prov
     model.input_tokens = value
         .get("inputTokenLimit")
         .or_else(|| value.get("max_input_tokens"))
-        .or_else(|| value.get("context_window"))
+        .and_then(Value::as_u64)
+        .filter(|value| *value > 0);
+    model.context_tokens = value
+        .get("context_window")
         .or_else(|| value.get("context_length"))
         .or_else(|| value.get("contextLength"))
         .and_then(Value::as_u64)
