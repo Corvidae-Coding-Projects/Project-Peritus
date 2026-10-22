@@ -2,17 +2,24 @@
 
 ## Unreleased
 
+## 0.1.10
+
 ### Fixed
 
-- Render saved-context entries as their actual text and metadata, preserve fragmented/unknown entry data, and remove misleading null-query context-read labels while retaining directory-listing behavior.
-- Allow retained runs to select replacement providers through `/provider`, including after the original route was removed. Persist provider/model choices together, retain run history and queued input, and apply changes to subsequent turns.
-- Let `peritus providers` change an existing direct/hosted model using the saved key, with an explicit manual fallback when discovery is unavailable; keep runtime installation checks on operations that actually require the runtime.
-- Migrate existing hosted provider configuration to model-limit discovery without a generation-content collision at launch. Recognize older OpenCode capabilities and provider timeouts together, preserve prior files and durable choices, and recover interrupted publication on retry.
-- Recover long OpenCode planning replies that contain literal control characters in JSON strings, omit the optional empty `tool_calls` field, or append an exact duplicated trailing `tool_calls` fragment. Accept unenveloped prose only when it has no container opener, tool field, tag, or DSML marker, and record that normalization as `plain-text-v1` without executing tools.
+- Migrate older generated hosted-provider configurations without a generation-content collision at launch. Preserve prior files and saved choices, and recover interrupted publication on retry.
+- Retain actionable provider failures during admission, retry, and handoff recovery instead of replacing them with misleading identifier or empty-reply errors.
+- Allow retained runs to select replacement providers through `/provider`, including after their original route was removed. Save role providers and models together without losing history or queued input.
+- Let `peritus providers` change a model using the saved credential reference, with a manual fallback when discovery is unavailable. Keep runtime installation checks on operations that require the runtime.
+- Recover long OpenCode planning replies containing literal control characters, an omitted optional empty tool-call array, or an exact duplicated trailing fragment. Restricted plain-text normalization remains inert; malformed or undeclared tool requests still fail closed.
+- Show saved-context entry text and metadata, fragmented and unfamiliar entry data, and accurate null-query labels while preserving ordinary directory listings.
+- Preview long file, skill, and saved-context reads with visible `/details` expansion. Handle long individual lines, preserve complete model/durable results, and restore a usable viewport when collapsing a scrolled result. Errors, commands, and edits remain fully visible.
 
 ### Real testing
 
-- The scripted public-adapter replay now covers fifteen scenarios. The four new planning shapes failed before the fix and pass after it: control characters are escaped into content, an omitted empty call array defaults safely, the exact trailing fragment is rejoined, and unenveloped prose succeeds as inert content. A separate pseudo-tool prose case confirms the plain-text fallback still refuses HTML-like tags, and the malformed and undeclared DSML refusals remain intact. This is deterministic vendor-wire coverage, not live inference.
+- Reuse the completed generated-configuration campaign's 43 scenarios and the October 22 actual daemon, provider-settings, retained-run recovery, native TUI, and public-interface campaigns.
+- Exercise 96 generated control-character/Unicode parser cases, six strict rejection boundaries, 140 saved-context entry shapes, and real official Codex requests. Three fresh retained-run provider-replacement campaigns recovered on the same run IDs after daemon restart; model-only settings worked across six provider families without reentering keys.
+- Native long-read expansion/collapse passed at 80, 120, and 160 columns. Further actual-provider reads covered Markdown, Unicode long lines, short files, and missing-file errors.
+- Evidence and explicit coverage boundaries are in `docs/testing/configuration-upgrade-real-2026-10-21.md` and `docs/testing/open-items-real-2026-10-22.md`. No unit, mock, formal-verification, or repository qualification suites were run for this campaign. New paid Zen/Go inference was not exercised.
 
 ## 0.1.9
 
