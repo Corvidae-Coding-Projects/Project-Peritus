@@ -42,3 +42,31 @@ Replays and commands are in [the reproducer guide](reproducers/open-issues/READM
 Raw observations are outside the checkout at
 `/home/doll/.cache/peritus-open-items-20261022/pr149-before` and `pr149-after`.
 The replay's actual daemons were shut down; no installed binaries or user sessions were changed.
+
+## PR #150: long OpenCode planning replies
+
+Reviewed and integrated the contributor's C0 string escaping, optional empty `tool_calls`,
+exact duplicated empty trailing-fragment reconstruction, and inert plain-prose fallback.
+Tool choice/selection validation and canonical duplicate-key rejection remain in the actual
+production path; the fallback never executes tools and records `plain-text-v1` provenance.
+
+The native [public parser consumer](reproducers/open-issues/healing.rs) generated 96 actual
+inputs: all 32 literal C0 characters crossed with ASCII, Unicode and quoted/backslash-bearing
+content. The pre-PR library rejected all 96 and the captured trailing fragment. The changed
+library returns every content value byte-for-byte and repairs that exact fragment. Six strict
+boundary cases remain rejected: ordinary tool-argument use of the fragment, duplicate content,
+duplicate call fields, nonempty trailing calls, a second object and truncation. These are
+actual public library calls, without a provider stand-in or copied repair implementation.
+
+Four real requests through the signed-in official Codex also passed after the shared-core
+change: exact ASCII, exact Unicode, one inert named tool proposal and cancellation immediately
+after runtime acceptance. No host tool was executed. This checks the adjacent provider path;
+it does not establish live Zen/Go inference. The omitted-array and plain-prose adapter branches
+were source-reviewed; the contributor's fifteen scripted wire scenarios are retained with
+their explicit scripted-vendor limitation and were not run as a substitute for live inference.
+
+Artifacts: `pr150-before.json`, `pr150-after.json` and `pr150-codex/result.json` under
+`/home/doll/.cache/peritus-open-items-20261022`. The production build uses the same bounded
+command above; `link.py --source .../healing.rs` produces the public parser consumer and
+`--source docs/testing/reproducers/provider-progress/provider-consumer.rs` produces the real
+Codex consumer. The latter takes one fresh output directory argument.

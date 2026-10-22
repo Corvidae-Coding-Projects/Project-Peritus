@@ -5,6 +5,11 @@
 ### Fixed
 
 - Migrate existing hosted provider configuration to model-limit discovery without a generation-content collision at launch. Recognize older OpenCode capabilities and provider timeouts together, preserve prior files and durable choices, and recover interrupted publication on retry.
+- Recover long OpenCode planning replies that contain literal control characters in JSON strings, omit the optional empty `tool_calls` field, or append an exact duplicated trailing `tool_calls` fragment. Accept unenveloped prose only when it has no container opener, tool field, tag, or DSML marker, and record that normalization as `plain-text-v1` without executing tools.
+
+### Real testing
+
+- The scripted public-adapter replay now covers fifteen scenarios. The four new planning shapes failed before the fix and pass after it: control characters are escaped into content, an omitted empty call array defaults safely, the exact trailing fragment is rejoined, and unenveloped prose succeeds as inert content. A separate pseudo-tool prose case confirms the plain-text fallback still refuses HTML-like tags, and the malformed and undeclared DSML refusals remain intact. This is deterministic vendor-wire coverage, not live inference.
 
 ## 0.1.9
 

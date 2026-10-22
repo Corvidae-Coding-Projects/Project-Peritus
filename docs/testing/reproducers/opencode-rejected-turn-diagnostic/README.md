@@ -15,7 +15,7 @@ file-level responsibilities.
 | [consumer.rs](consumer.rs) | Provider-level public-library consumer; asserts the retained rejected text and the terminal outcome. |
 | [agent.rs](agent.rs) | Developer-loop consumer; records the public activities the loop publishes for one refused turn. |
 | [scripted-opencode.py](scripted-opencode.py) | Scripted OpenCode stand-in answering `--version`, `models`, and `run` from a fixed reply script. |
-| [replay.py](replay.py) | Builds both consumers and runs the ten scenarios with disposable state. |
+| [replay.py](replay.py) | Builds both consumers and runs the fifteen scenarios with disposable state. |
 | [observed-baseline.txt](observed-baseline.txt) | Verbatim transcripts of the recorded run and its check outcomes. |
 
 ## What this case shows
@@ -37,6 +37,11 @@ The repaired behavior:
 - The private-envelope repair accepts an explanatory prelude containing inline code spans or
   quoted pseudo-tool markup, and a single final object wrapped in a Markdown fence, while still
   rejecting ambiguous candidates.
+- Long planning replies recover literal newlines, tabs, and other C0 controls inside JSON strings,
+  a content-only envelope with the optional empty `tool_calls` omitted, and the exact duplicated
+  trailing `,"tool_calls":[]}` fragment. An unenveloped reply is accepted as plain content only
+  when it contains no JSON container opener, `tool_calls` field, angle-bracket tag, or DSML
+  marker; that normalization records `plain-text-v1` and never executes a tool.
 - The request and correction instructions explicitly forbid DSML, XML, HTML-like tags, and
   special-token pseudo-tool syntax. A complete terminal DSML calls block is also converted under
   `peritus.opencode_turn_normalization` into ordinary inert tool calls, with the normal declared
@@ -72,6 +77,11 @@ commit, and any failed check. The script exits non-zero if any check fails.
 | `rejected` | provider | `invalid`, `invalid` | Two corrections, then a terminal `malformed_payload; opencode.runtime.invalid_turn_json` failure. |
 | `retry` | agent | `rate_limit`, `valid` | `ModelStarted` once, one `ProviderRetry 2/3 retryable_provider_response`, succeeded turn. |
 | `refused_turn` | agent | `invalid` | `ModelStarted` once, two retries, six refusals across three attempts, terminal error naming `peritus runs trace`. |
+| `raw_newlines` | provider | `raw_newlines` | One `private-envelope-v1` repair for literal control characters, no refusal, succeeded turn with newline and tab content preserved. |
+| `missing_tool_calls` | provider | `missing_tool_calls` | The omitted empty array defaults to no calls, no refusal or repair, succeeded turn. |
+| `trailing_tool_calls_fragment` | provider | `trailing_tool_calls_fragment` | One `private-envelope-v1` repair rejoining the exact trailing empty field, no refusal, succeeded turn. |
+| `plain_prose` | provider | `plain_prose` | One `plain-text-v1` normalization, no refusal or JSON repair, succeeded turn with the prose preserved. |
+| `plain_tool_markup` | provider | `plain_tool_markup`, `valid` | Unenveloped pseudo-tool prose is still refused as invalid JSON, then the corrected turn succeeds. |
 | `prelude_backticks` | provider | `prelude_backticks` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
 | `prelude_quoted` | provider | `prelude_quoted` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
 | `prelude_fenced` | provider | `prelude_fenced` | One `private-envelope-v1` repair, no refusal, succeeded turn. |
@@ -83,6 +93,8 @@ commit, and any failed check. The script exits non-zero if any check fails.
 
 - The vendor is scripted. No network access, no credential use, and no vendor inference occur;
   the replay establishes the adapter retention contract and the loop's public narration only.
+- The four long-planning shapes are derived from the rejected DeepSeek replies retained in a real
+  run trace; they reproduce the same malformed shapes without retaining that run's planning text.
 - The `rejected` text asserted here is the scripted stand-in's own reply. It shows that the exact
   refused bytes are retained, not that any particular model produces this defect.
 - The `dsml` scenario also captures the submitted prompt and asserts that the explicit JSON-only
