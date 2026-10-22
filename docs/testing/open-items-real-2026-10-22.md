@@ -113,3 +113,37 @@ pre-issue public TUI consumer linked for PR #149. `model-key-reuse.py` takes `--
 `--seed-consumer` and `--output`. Both are operated with `uv run --with pyte python3`.
 Artifacts are in `issue151-switch`, `issue151-switch-final`, `issue151-roles-final` and
 `issue151-keys-final` under the campaign cache. All fixture daemons/terminals were closed.
+
+## Issue #145: saved-context text and null-query labels
+
+The shared human projection treated every `entries` array as directory paths. It now dispatches
+actual working entries by their id/kind/status/text fields, preserves unfamiliar records as
+JSON, and labels an empty state correctly. JSON-fragment pages retain their data and continuation
+notice. Ordinary directory paths and trailing directory slashes keep their existing rendering.
+This changes the human projection only; the tool result supplied to the model remains intact.
+
+The actual tool-label emitter omits null arguments and quotes literal search strings, so a
+null state/source query differs from a literal search for `"null"`. The TUI recognizes bare
+context-read calls and cleans up the earlier null-query label spelling. Decoded tool strings
+are sanitized after JSON decoding as well as before it reaches display formatting.
+
+The native public-projection consumer crosses seven entry kinds, five statuses and four body
+shapes (140 cases). The pre-fix renderer preserved none of those bodies, mislabeled empty state
+as an empty directory, and hid fragment/unknown entry data. The changed renderer passes all
+140 body/id/kind/status comparisons plus the empty-state, JSON-fragment, unknown-record and
+unchanged-directory cases.
+
+A real official-account/native TUI journey read a 301-line file and retrieved its exact archived
+source with context_read/query=null. The resulting context-read card and source body were
+observed in the terminal, the null-query label was absent, and the file digest was unchanged.
+The first proposed UI exercise asked the read-only conversation role to modify/browse derived
+working memory; that role correctly refused. The valid UI scenario uses its permitted exact
+source retrieval path. Working-entry bodies are covered separately through the real shared
+projection API rather than bypassing that role policy or presenting a fabricated UI result.
+Already-recorded historical `?` detail strings are not reconstructed by this change.
+
+Artifacts: `issue145-before.json`, `issue145-after.json`, `issue145-native` (the invalid-role
+attempt) and `issue145-native-valid` under the campaign cache. The valid fixture metadata is in
+`issue145-native-valid/fixture.json`; its actual terminal/daemon were closed and its owned source
+and state are retained temporarily for the next display replay. The source fixture's optional
+`PERITUS_FIXTURE_WORKSPACE` puts it outside the application's protected cache/state directories.

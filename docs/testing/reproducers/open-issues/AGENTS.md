@@ -13,4 +13,6 @@ Real application interface consumers for the October 22 issue/PR campaign.
 | [terminal.py](terminal.py) | Actual PTY operation and independent terminal emulation for settings and retained-run campaigns. |
 | [provider-switch.py](provider-switch.py) | Actual missing-Go-provider reproduction, role-specific picker changes, restart, and real official-account Retry on the same run. |
 | [model-key-reuse.py](model-key-reuse.py) | Actual model-only settings edits across six provider families without key entry or reference replacement. |
+| [tool-output.rs](tool-output.rs) | Actual shared presentation API for 140 working-entry shapes, directories, empty state, JSON fragments and unfamiliar record preservation. |
+| [context-display.py](context-display.py) | Real official-account workspace read, exact archived-source retrieval and native context-read label display; retains its owned fixture for display replay. |
 | [README.md](README.md) | Execution instructions and scope boundaries. |

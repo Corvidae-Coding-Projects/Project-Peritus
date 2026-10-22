@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Render saved-context entries as their actual text and metadata, preserve fragmented/unknown entry data, and remove misleading null-query context-read labels while retaining directory-listing behavior.
 - Allow retained runs to select replacement providers through `/provider`, including after the original route was removed. Persist provider/model choices together, retain run history and queued input, and apply changes to subsequent turns.
 - Let `peritus providers` change an existing direct/hosted model using the saved key, with an explicit manual fallback when discovery is unavailable; keep runtime installation checks on operations that actually require the runtime.
 - Migrate existing hosted provider configuration to model-limit discovery without a generation-content collision at launch. Recognize older OpenCode capabilities and provider timeouts together, preserve prior files and durable choices, and recover interrupted publication on retry.

@@ -63,7 +63,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     if args[1] == "seed" {
         for number in 1..=2 {
-            let root = layout.cache_root().join(format!("workspace-{number}"));
+            let root = std::env::var_os("PERITUS_FIXTURE_WORKSPACE").map_or_else(
+                || layout.cache_root().join(format!("workspace-{number}")),
+                |root| std::path::PathBuf::from(root).join(format!("workspace-{number}")),
+            );
             std::fs::create_dir_all(&root)?;
             let observed = peritus_workspace::FolderIdentity::observe(&root)?;
             let digest = observed

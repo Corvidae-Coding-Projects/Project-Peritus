@@ -98,17 +98,19 @@ fn render_value(value: &Value, depth: u8, markdown: bool) -> String {
                 hit["text"].as_str().unwrap_or("")
             );
         }
+    } else if let Some(fragment) = value["entry_json_fragment"]["data"].as_str() {
+        text.push_str("Saved context entry (JSON fragment)\n");
+        text.push_str(fragment);
     } else if let Some(entries) = value["entries"].as_array() {
         if entries.is_empty() {
-            text.push_str("Empty directory.");
+            text.push_str(if value["authority"] == "none" && value["base_revision"].is_u64() {
+                "No saved context entries."
+            } else {
+                "Empty directory."
+            });
         }
         for entry in entries {
-            let path = entry["path"].as_str().or_else(|| entry.as_str()).unwrap_or("?");
-            let _ = writeln!(
-                text,
-                "{path}{}",
-                if entry["kind"].as_str() == Some("directory") { "/" } else { "" }
-            );
+            render_entry(&mut text, entry);
         }
     } else {
         return serde_json::to_string_pretty(value)
@@ -122,6 +124,7 @@ fn render_value(value: &Value, depth: u8, markdown: bool) -> String {
     if value["truncated"].as_bool() == Some(true)
         || !value["next_line"].is_null()
         || !value["next_cursor"].is_null()
+        || !value["cursor"].is_null()
     {
         let _ = write!(text, "\nTool returned a partial page");
         if let Some(next) = value["next_line"].as_u64() {
@@ -133,4 +136,33 @@ fn render_value(value: &Value, depth: u8, markdown: bool) -> String {
         let _ = write!(text, "\nOmissions: {}", Value::Array(omissions.clone()));
     }
     text
+}
+
+fn render_entry(text: &mut String, entry: &Value) {
+    if let (Some(id), Some(kind), Some(status), Some(body)) = (
+        entry["id"].as_str(),
+        entry["kind"].as_str(),
+        entry["status"].as_str(),
+        entry["text"].as_str(),
+    ) {
+        let _ = writeln!(text, "{kind} · {status} [{id}]\n{body}");
+        if let Some(next) = entry["next_text_offset"].as_u64() {
+            let _ =
+                writeln!(text, "Text continues at byte {next} of {}.", entry["text_total_bytes"]);
+        }
+    } else if let Some(path) = entry["path"].as_str().or_else(|| entry.as_str()) {
+        let _ = writeln!(
+            text,
+            "{path}{}",
+            if entry["kind"].as_str() == Some("directory") { "/" } else { "" }
+        );
+    } else {
+        // `entries` is shared by multiple tools; preserve an unfamiliar record instead of
+        // inventing a missing directory path or discarding its actual content.
+        let _ = writeln!(
+            text,
+            "{}",
+            serde_json::to_string_pretty(entry).unwrap_or_else(|_| "Result unavailable".to_owned())
+        );
+    }
 }

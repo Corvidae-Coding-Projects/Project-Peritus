@@ -135,6 +135,7 @@ fn tool_rows(
         .ok()
         .map(|value| peritus_product_state::tool_output::render(&value))
         .unwrap_or(detail);
+    let rendered = crate::sanitize::sanitize_display_text(&rendered);
     let document = text.starts_with("Read document from saved context")
         || ((text.contains("workspace_read ") || text.contains("skill_read "))
             && text.split_whitespace().any(|token| {
@@ -220,6 +221,12 @@ fn cached_source(
 }
 
 fn tool_label(text: &str) -> String {
+    if text == "Called context_read" {
+        return "Read saved context".to_owned();
+    }
+    if text == "Calling context_read" {
+        return "Reading saved context".to_owned();
+    }
     let prefixes = [
         ("Called workspace_read ", "Read "),
         ("Calling workspace_read ", "Reading "),
@@ -235,6 +242,13 @@ fn tool_label(text: &str) -> String {
     ];
     for (prefix, replacement) in prefixes {
         if let Some(rest) = text.strip_prefix(prefix) {
+            let rest = if prefix.contains("context_read") {
+                rest.strip_prefix("query=null")
+                    .filter(|tail| tail.is_empty() || tail.starts_with(char::is_whitespace))
+                    .map_or(rest, str::trim_start)
+            } else {
+                rest
+            };
             return format!(
                 "{replacement}{}",
                 rest.replace("path=", "")

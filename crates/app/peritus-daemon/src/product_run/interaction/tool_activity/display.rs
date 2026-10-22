@@ -99,10 +99,15 @@ pub(super) fn summary(name: &str, arguments: &str) -> String {
             "end_line",
         ] {
             if let Some(value) = value.get(field) {
-                parts.push(format!(
-                    "{field}={}",
+                if value.is_null() {
+                    continue;
+                }
+                let display = if field == "query" && value.is_string() {
+                    value.to_string()
+                } else {
                     quote(value.as_str().map_or_else(|| value.to_string(), str::to_owned).as_str())
-                ));
+                };
+                parts.push(format!("{field}={}", display));
             }
         }
         parts.join(" ")
