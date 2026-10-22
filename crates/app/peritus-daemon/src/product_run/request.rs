@@ -53,6 +53,10 @@ impl ProductRunRequest {
         self.providers
     }
 
+    pub(super) fn set_providers(&mut self, providers: ProductProviderSelection) {
+        self.providers = providers;
+    }
+
     pub(super) fn execution_task(&self) -> &str {
         &self.execution_task
     }

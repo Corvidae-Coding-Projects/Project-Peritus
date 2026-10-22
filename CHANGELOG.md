@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Allow retained runs to select replacement providers through `/provider`, including after the original route was removed. Persist provider/model choices together, retain run history and queued input, and apply changes to subsequent turns.
+- Let `peritus providers` change an existing direct/hosted model using the saved key, with an explicit manual fallback when discovery is unavailable; keep runtime installation checks on operations that actually require the runtime.
 - Migrate existing hosted provider configuration to model-limit discovery without a generation-content collision at launch. Recognize older OpenCode capabilities and provider timeouts together, preserve prior files and durable choices, and recover interrupted publication on retry.
 - Recover long OpenCode planning replies that contain literal control characters in JSON strings, omit the optional empty `tool_calls` field, or append an exact duplicated trailing `tool_calls` fragment. Accept unenveloped prose only when it has no container opener, tool field, tag, or DSML marker, and record that normalization as `plain-text-v1` without executing tools.
 

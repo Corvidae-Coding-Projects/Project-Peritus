@@ -69,6 +69,7 @@ impl AppModel {
             && !self.chat.workbench.open
             && !self.chat.effort_picker()
             && !self.chat.model_picker()
+            && !self.chat.provider_picker()
             && self.chat.matching_commands().is_empty()
     }
 

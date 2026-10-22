@@ -30,6 +30,7 @@ Implementation pieces for `chat.rs`: Conversation-first terminal layout with a p
 | [queue.rs](queue.rs) | Selectable saved-input rows, exact full-text details, withdrawal confirmation, and a visible multiline queue editor separate from the main composer. |
 | [status.rs](status.rs) | Connection-aware composer status stays visible even when provider labels fill the title. |
 | [transcript.rs](transcript.rs) | Public activity projection and wrapping shared by rendering and mouse copy. |
+| [providers.rs](providers.rs) | Provider/role picker, including recovery from a retained run whose prior provider was removed. |
 | [workbench.rs](workbench.rs) | Bounded metadata inspector independent of composer and transcript scroll. |
 
 ## Child areas

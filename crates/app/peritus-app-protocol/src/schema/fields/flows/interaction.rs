@@ -10,6 +10,16 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
         rust_type: "ProductModelUpdate",
         fields: &[
             field("runId", W::Identifier, &[B::NonZero], "RunId", "RunId", J::Identifier, true),
+            // Present only in additive request tag 61; tags 25/27 remain unchanged.
+            field(
+                "providers",
+                W::Struct,
+                &[],
+                "Option<ProductProviderSelection>",
+                "ProductProviderSelection",
+                J::Ref("ProductProviderSelection"),
+                false,
+            ),
             field(
                 "models",
                 W::Struct,

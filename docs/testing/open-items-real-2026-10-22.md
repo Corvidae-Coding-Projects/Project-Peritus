@@ -70,3 +70,46 @@ Artifacts: `pr150-before.json`, `pr150-after.json` and `pr150-codex/result.json`
 command above; `link.py --source .../healing.rs` produces the public parser consumer and
 `--source docs/testing/reproducers/provider-progress/provider-consumer.rs` produces the real
 Codex consumer. The latter takes one fresh output directory argument.
+
+## Issue #151: provider replacement and saved-key model edits
+
+Added `/provider`, with arrow/Enter selection, Tab role selection, and explicit numeric forms
+for all roles or writer/reviewer/fixer. Existing runs retain authoritative old profile IDs;
+the new negotiated `app.provider-selection` request (additive tag 61) atomically persists
+replacement providers and models. Changed roles reset to the replacement route's configured
+model; unchanged roles keep their choices. Legacy model-only tags 25/27 retain their exact
+encoding. The server authenticates ownership, resolves the requested choices before mutation,
+fences concurrent selection changes, and restores request/snapshot/interaction on save failure.
+Live selection uses the existing per-turn provider lookup. Choosing does not resume a run.
+
+Actual native TUI replay first created a failed Go run with an unavailable credential store,
+then removed Go from the configured providers. The old TUI reproduced the stranded header and
+had no `/provider` command. The changed TUI selected a replacement on that same run. Three
+fresh campaigns retained the original activities, saved the new selection across daemon restart,
+and successfully retried the original instruction through the signed-in official Codex; each
+returned exactly `RETAINED-RUN-PROVIDER-RECOVERY-153791` on its original run ID.
+
+The final campaign additionally configured Zen and changed reviewer and fixer independently
+through actual `/provider reviewer 2` and `/provider fixer 2`, then restored all roles. Native
+IPC checks exercised three distinct role effort values in the additive request, rejected an
+unknown provider without changing the snapshot, and accepted a legacy model-only update
+without changing providers. This establishes actual cross-provider selection and account retry;
+it does not claim paid Zen/Go inference or an in-flight switch during an outstanding request.
+
+Provider settings now offer `m` to discover/change a model using the existing credential
+reference, with Enter-to-keep and explicit manual-ID fallback. The first real settings replay
+also exposed an unnecessary runtime installation check before any existing-route action.
+That check now belongs to connection testing; replacing a key still uses normal setup.
+Six actual settings runs (Go, Zen, OpenRouter, compatible endpoint, Anthropic, Gemini) changed
+the model with an unavailable credential store. No key prompt appeared; independent persisted
+profile comparisons found only the expected model change. All credential references, endpoints,
+headers and protocols were retained. No secret was created, copied or read by these fixtures.
+
+Replay commands use the consumers in [the guide](reproducers/open-issues/README.md): link
+`selection.rs` and `ui.rs` from `issue151-build.jsonl`, and rebuild the configuration-upgrade
+seed consumer with that same log. Then run `provider-switch.py` with `--binary-dir`,
+`--seed-consumer`, `--ui`, `--old-ui`, `--probe` and `--output`. The old UI is the actual
+pre-issue public TUI consumer linked for PR #149. `model-key-reuse.py` takes `--binary`,
+`--seed-consumer` and `--output`. Both are operated with `uv run --with pyte python3`.
+Artifacts are in `issue151-switch`, `issue151-switch-final`, `issue151-roles-final` and
+`issue151-keys-final` under the campaign cache. All fixture daemons/terminals were closed.

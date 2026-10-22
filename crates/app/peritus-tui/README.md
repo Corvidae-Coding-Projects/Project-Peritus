@@ -153,6 +153,14 @@ User input remains literal. Formatting never opens links or fetches images, and 
 controls remain inert even when introduced by Markdown character references. Unchanged message
 formatting is cached only within the retained activity window. Resizing reflows the presentation.
 
+`/provider` opens the configured provider picker for this conversation, including retained runs
+whose earlier provider is no longer configured. Arrows select, Enter saves, Tab changes the
+target role, and Esc cancels. `/provider NUMBER` selects all roles; `/provider reviewer NUMBER`
+(or `writer`/`fixer`) changes one. Changed roles use the replacement provider's configured model;
+unchanged roles keep their model/effort choice. Saved history and pending instructions stay on
+the same run. Selection does not start work; use `/retry` for a stopped run. Existing turns
+finish with their captured selection, and subsequent turns use the acknowledged replacement.
+
 `/effort` opens the reasoning-effort picker without requiring model discovery. Use arrows and
 Enter, Tab to change roles, or `/effort [writer|reviewer|fixer] LEVEL`. Levels are `default`,
 `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`; provider/model support varies.

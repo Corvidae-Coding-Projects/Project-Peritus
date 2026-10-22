@@ -4,11 +4,23 @@ use super::ChatUi;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Picker {
+    Provider,
     Model,
     Effort,
 }
 
 impl ChatUi {
+    pub(crate) fn provider_picker(&self) -> bool {
+        self.picker == Some(Picker::Provider)
+    }
+    pub(crate) const fn show_provider_picker(&mut self) {
+        self.picker = Some(Picker::Provider);
+    }
+    pub(crate) fn close_provider_picker(&mut self) {
+        if self.provider_picker() {
+            self.picker = None;
+        }
+    }
     pub(crate) fn model_picker(&self) -> bool {
         self.picker == Some(Picker::Model)
     }

@@ -150,4 +150,11 @@ impl ProductRunSnapshot {
         self.deliverable = Some(deliverable);
         self
     }
+
+    /// Retains execution evidence while changing explicitly selected future role providers.
+    #[must_use]
+    pub const fn with_providers(mut self, providers: ProductProviderSelection) -> Self {
+        self.providers = providers;
+        self
+    }
 }

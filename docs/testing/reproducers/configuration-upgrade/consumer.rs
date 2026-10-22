@@ -14,7 +14,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut models = BTreeMap::new();
         for kind in &enabled {
             if kind.is_account() {
-                models.insert(*kind, "fixture-account-model".to_owned());
+                models.insert(
+                    *kind,
+                    std::env::var("PERITUS_REAL_ACCOUNT_MODEL")
+                        .unwrap_or_else(|_| "fixture-account-model".to_owned()),
+                );
                 continue;
             }
             let endpoint = match kind {

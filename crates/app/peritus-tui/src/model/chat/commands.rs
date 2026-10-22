@@ -78,6 +78,7 @@ impl AppModel {
             }
             Command::Design => return self.design_command(rest),
             Command::Model => return self.model_command(rest),
+            Command::Provider => return self.provider_command(rest),
             Command::Effort => return self.effort_command(rest),
             Command::Doctor => return self.doctor_command(),
             _ => {}

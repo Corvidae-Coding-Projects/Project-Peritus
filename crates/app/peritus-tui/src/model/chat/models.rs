@@ -113,7 +113,7 @@ impl AppModel {
             .collect()
     }
 
-    fn abandon_model_discovery(&mut self) {
+    pub(super) fn abandon_model_discovery(&mut self) {
         self.pending.retain(|_, pending| !matches!(pending, PendingRequest::ModelQuery(_)));
         self.pending_started.retain(|id, _| self.pending.contains_key(id));
     }

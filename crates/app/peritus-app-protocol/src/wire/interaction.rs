@@ -17,7 +17,20 @@ pub(super) fn write_model_update(
     value: &crate::ProductModelUpdate,
 ) -> Result<(), CodecError> {
     write_id(w, value.run_id().as_bytes())?;
+    if let Some(providers) = value.providers() {
+        product::write_providers(w, providers)?;
+        w.write_option_tag(value.models().has_effort())?;
+    }
     write_models(w, value.models())
+}
+
+pub(super) fn read_provider_update(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::ProductModelUpdate, CodecError> {
+    let run = read_id(r, peritus_types::RunId::new)?;
+    let providers = product::read_providers(r)?;
+    let efforts = r.read_option_tag()?;
+    Ok(crate::ProductModelUpdate::new(run, read_models(r, efforts)?).with_providers(providers))
 }
 
 pub(super) fn read_model_update(

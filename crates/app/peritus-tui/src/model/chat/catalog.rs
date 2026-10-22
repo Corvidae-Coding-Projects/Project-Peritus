@@ -26,6 +26,7 @@ enum Arguments {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Command {
+    Provider,
     Find,
     Pick,
     Copy,

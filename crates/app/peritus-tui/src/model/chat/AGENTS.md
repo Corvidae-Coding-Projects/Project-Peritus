@@ -17,6 +17,7 @@ Implementation pieces for `chat.rs`: Persistent conversational composer, explici
 | [history.rs](history.rs) | Scoped durable message recall/search, draft restoration, paging, and stale-response protection; reads never submit inputs. |
 | [keys.rs](keys.rs) | Keyboard and deliberate-paste ownership for the persistent composer. |
 | [models.rs](models.rs) | Exact provider-discovered selection; manual identifiers are always explicitly marked. |
+| [providers.rs](providers.rs) | Configured provider picker and explicit future-turn provider/model replacement on new or retained conversations. |
 | [navigation.rs](navigation.rs) | Composer selection and mouse ownership, using the same geometry as rendering. |
 | [picker.rs](picker.rs) | Exactly one selection overlay can own conversation input at a time. |
 | [workbench.rs](workbench.rs) | Durable control intent tracking; reconnect resolves the original operation, never invents one. |
