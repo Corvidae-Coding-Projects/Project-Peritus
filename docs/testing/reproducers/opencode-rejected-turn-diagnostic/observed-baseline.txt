@@ -2,7 +2,9 @@
 
 Captured 2026-10-20 on WSL2 Debian, Peritus 0.1.4 built from this checkout
 (`cargo build --offline -p peritus-cli`), with the provider-level and agent-level consumers built
-offline into `target/`. Every block below is verbatim stdout from
+offline into `target/`. The five recovery scenarios (four long-planning shapes plus a pseudo-tool
+safety case) were added and captured on 2026-10-22 from the 0.1.9 checkout. Every block below is
+verbatim stdout from
 `docs/testing/reproducers/opencode-rejected-turn-diagnostic/replay.py`, which answers the adapter
 with `docs/testing/reproducers/opencode-rejected-turn-diagnostic/scripted-opencode.py`. No network
 access, credential use, or vendor inference occurred.
@@ -10,6 +12,11 @@ access, credential use, or vendor inference occurred.
 The consumer names each recorded correction as `CORRECTION` and each recorded public activity as
 `ACTIVITY`. `rejected_bytes` counts the complete refused reply; `rejected_truncated` is false while
 the reply stays within the 16 KiB retention bound.
+
+Before the recovery change, `raw_newlines`, `trailing_tool_calls_fragment`, and `plain_prose` each
+produced two corrections followed by `TERMINAL failed MalformedPayload
+opencode.runtime.invalid_turn_json`. `missing_tool_calls` produced two corrections followed by the
+same failure with `opencode.runtime.invalid_turn_envelope`.
 
 ## accepted
 
@@ -43,6 +50,55 @@ ACTIVITY Text 55 bytes
 COUNTS model_started=1 provider_retry=1 response_rejected=0
 OUTCOME ok turns=1 retries=1 text="Scripted reply for the rejected-turn diagnostic replay."
 RESULT retry checks passed
+```
+
+## raw_newlines
+
+A planning envelope with literal newlines and a tab inside its content string is repaired without a refused turn.
+
+```
+HEALING private-envelope-v1 opencode.turn
+TERMINAL succeeded
+RESULT raw_newlines checks passed
+```
+
+## missing_tool_calls
+
+A content-only planning envelope defaults its omitted empty `tool_calls` to no calls.
+
+```
+TERMINAL succeeded
+RESULT missing_tool_calls checks passed
+```
+
+## trailing_tool_calls_fragment
+
+An envelope closed after content followed by the exact intended empty `,"tool_calls":[]}` fragment is rejoined without a refused turn.
+
+```
+HEALING private-envelope-v1 opencode.turn
+TERMINAL succeeded
+RESULT trailing_tool_calls_fragment checks passed
+```
+
+## plain_prose
+
+An unenveloped planning answer with no JSON container opener, tool field, tag, or DSML marker is normalized as inert plain text.
+
+```
+NORMALIZATION plain-text-v1 opencode.turn 0
+TERMINAL succeeded
+RESULT plain_prose checks passed
+```
+
+## plain_tool_markup
+
+Unenveloped prose containing an HTML-like pseudo-tool tag is still refused, then the corrected reply succeeds.
+
+```
+CORRECTION {"attempt":1,"reason":"opencode.runtime.invalid_turn_json","rejected":"I will read the README.\n\n<tool_call name=\"workspace_read\">{\"path\":\"README.md\"}</tool_call>","rejected_bytes":90,"rejected_truncated":false,"tools_executed":false}
+TERMINAL succeeded
+RESULT plain_tool_markup checks passed
 ```
 
 ## refused_turn

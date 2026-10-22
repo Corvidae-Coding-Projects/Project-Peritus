@@ -278,6 +278,9 @@ impl AppRequestPayload {
             }
             Self::QueryWorkbenchQueue(_) => Some(crate::WellKnownProtocolFeature::WorkbenchInputs),
             Self::Doctor(_) => Some(crate::WellKnownProtocolFeature::ProductDiagnostics),
+            Self::UpdateModels(update) if update.providers().is_some() => {
+                Some(crate::WellKnownProtocolFeature::ProviderSelection)
+            }
             Self::WorkbenchCommand(command) | Self::QueryWorkbenchReceipt(command) => {
                 Some(required_workbench_intent_feature(command.intent()))
             }

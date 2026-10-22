@@ -2,17 +2,29 @@
 
 use super::{ProductRoleModels, ProductRunMessageError, ProductRunSnapshot, bounded_text};
 
-/// Changes model choices for an existing conversation without adding user input or restarting it.
+/// Changes future model/provider choices without adding user input or restarting execution.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductModelUpdate {
     run_id: peritus_types::RunId,
     models: ProductRoleModels,
+    providers: Option<super::ProductProviderSelection>,
 }
 impl ProductModelUpdate {
     /// Selects exact role models for subsequent logical model turns.
     #[must_use]
     pub const fn new(run_id: peritus_types::RunId, models: ProductRoleModels) -> Self {
-        Self { run_id, models }
+        Self { run_id, models, providers: None }
+    }
+    /// Atomically replaces role providers and their model choices for subsequent turns.
+    #[must_use]
+    pub const fn with_providers(mut self, providers: super::ProductProviderSelection) -> Self {
+        self.providers = Some(providers);
+        self
+    }
+    /// Explicit provider replacement, or none to retain the current routes.
+    #[must_use]
+    pub const fn providers(&self) -> Option<super::ProductProviderSelection> {
+        self.providers
     }
     /// Conversation to update.
     #[must_use]

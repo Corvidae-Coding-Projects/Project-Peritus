@@ -55,10 +55,10 @@ impl AppModel {
         }
         let absent_goal = matches!(pending, Some(PendingRequest::WorkbenchGoal(_)))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier;
-        if let Some(effects) = self.resolve_rejected_control(pending, error.code()) {
+        if let Some(effects) = self.resolve_rejected_control(pending, error) {
             return effects;
         }
-        self.workbench_error(pending, error.code());
+        self.workbench_error(pending, error);
         if matches!(
             pending,
             Some(

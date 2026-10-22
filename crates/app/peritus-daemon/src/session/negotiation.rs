@@ -199,6 +199,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::WorkbenchInitArtifacts,
         WellKnownProtocolFeature::WorkbenchMemory,
         WellKnownProtocolFeature::GracefulShutdown,
+        WellKnownProtocolFeature::ProviderSelection,
     ]
     .into_iter()
     .map(ProtocolFeatureName::well_known)

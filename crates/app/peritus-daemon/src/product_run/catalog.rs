@@ -39,7 +39,12 @@ impl ProductRunService {
             .inner
             .providers
             .get(&query.profile())
-            .ok_or(ProductRunServiceError::ProviderUnavailable)?;
+            .ok_or_else(|| {
+                ProductRunServiceError::ProviderUnavailable(
+                    "The selected provider profile is not configured. Open provider settings and configure it before starting this run."
+                        .to_owned(),
+                )
+            })?;
         let slot = self.inner.model_catalogs.slot(query.profile()).await;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -114,7 +119,19 @@ impl ProductRunService {
             }
             let catalog = self.query_models(ProductModelQuery::new(profile, false)).await?;
             if !catalog.models().iter().any(|model| model.id() == choice.id()) {
-                return Err(ProductRunServiceError::ProviderUnavailable);
+                let detail = if catalog.error().is_empty() {
+                    format!(
+                        "The selected model `{}` is not advertised by this provider. Refresh the model list or choose another model before starting the run.",
+                        choice.id()
+                    )
+                } else {
+                    format!(
+                        "The selected model `{}` could not be verified because model discovery failed: {}",
+                        choice.id(),
+                        catalog.error()
+                    )
+                };
+                return Err(ProductRunServiceError::ProviderUnavailable(detail));
             }
         }
         Ok(())
@@ -143,7 +160,12 @@ impl ProductRunService {
             .inner
             .providers
             .get(&profile)
-            .ok_or(ProductRunServiceError::ProviderUnavailable)?;
+            .ok_or_else(|| {
+                ProductRunServiceError::ProviderUnavailable(
+                    "The selected provider profile is not configured. Open provider settings and configure it before starting this run."
+                        .to_owned(),
+                )
+            })?;
         let selected = if choice.id().is_empty()
             || choice.id() == provider.profile().model().as_str()
         {
@@ -151,7 +173,12 @@ impl ProductRunService {
         } else {
             let model = peritus_model_protocol::ModelName::new(choice.id().to_owned())
                 .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-            provider.select_model(model).map_err(|_| ProductRunServiceError::ProviderUnavailable)?
+            provider.select_model(model).map_err(|_| {
+                ProductRunServiceError::ProviderUnavailable(format!(
+                    "The provider did not accept model `{}`. Refresh the model list or choose another model before starting the run.",
+                    choice.id()
+                ))
+            })?
         };
         let effort = match choice.effort() {
             ProductModelEffort::Default => return Ok(selected),

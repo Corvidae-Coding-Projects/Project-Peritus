@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Build public consumers and replay scripted vendor turns for the rejected-turn diagnostic.
 
-Ten scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
-corrected reply, two refused replies, a rate-limited turn followed by a valid reply, turns whose
-plain prelude contains an inline code span or quoted pseudo-tool markup, a turn whose envelope
-sits inside a `json` fence, accepted and refused DSML tool markup, and one refused reply through
-the developer loop. The provider scenarios must publish the bounded
+Fifteen scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
+corrected reply, two refused replies, a rate-limited turn followed by a valid reply, a long-envelope
+shape with literal control characters, an omitted empty `tool_calls`, a duplicated trailing
+`tool_calls` fragment, unenveloped planning prose that remains inert, refused pseudo-tool prose,
+turns whose plain prelude contains an inline code span or quoted pseudo-tool markup, a turn whose
+envelope sits inside a `json` fence, accepted and refused DSML tool markup, and one refused reply
+through the developer loop. The provider scenarios must publish the bounded
 `peritus.opencode_turn_correction` extension carrying the rejected model text, or a
 `peritus.response_healing` or `peritus.opencode_turn_normalization` audit when a repair is
 accepted; the agent scenarios must announce their model request once and report the bounded retry.
@@ -29,6 +31,11 @@ parser.add_argument(
         "rejected",
         "retry",
         "refused_turn",
+        "raw_newlines",
+        "missing_tool_calls",
+        "trailing_tool_calls_fragment",
+        "plain_prose",
+        "plain_tool_markup",
         "prelude_backticks",
         "prelude_quoted",
         "prelude_fenced",
@@ -130,6 +137,43 @@ scenarios = {
             "RESULT rejected checks passed",
         ],
     },
+    "raw_newlines": {
+        "binary": "provider",
+        "script": ["raw_newlines"],
+        "required": [
+            "HEALING private-envelope-v1 opencode.turn",
+            "TERMINAL succeeded",
+            "RESULT raw_newlines checks passed",
+        ],
+    },
+    "missing_tool_calls": {
+        "binary": "provider",
+        "script": ["missing_tool_calls"],
+        "required": ["TERMINAL succeeded", "RESULT missing_tool_calls checks passed"],
+    },
+    "trailing_tool_calls_fragment": {
+        "binary": "provider",
+        "script": ["trailing_tool_calls_fragment"],
+        "required": [
+            "HEALING private-envelope-v1 opencode.turn",
+            "TERMINAL succeeded",
+            "RESULT trailing_tool_calls_fragment checks passed",
+        ],
+    },
+    "plain_prose": {
+        "binary": "provider",
+        "script": ["plain_prose"],
+        "required": [
+            "NORMALIZATION plain-text-v1 opencode.turn 0",
+            "TERMINAL succeeded",
+            "RESULT plain_prose checks passed",
+        ],
+    },
+    "plain_tool_markup": {
+        "binary": "provider",
+        "script": ["plain_tool_markup", "valid"],
+        "required": ["TERMINAL succeeded", "RESULT plain_tool_markup checks passed"],
+    },
     "prelude_backticks": {
         "binary": "provider",
         "script": ["prelude_backticks"],
@@ -191,6 +235,11 @@ selected = (
         "rejected",
         "retry",
         "refused_turn",
+        "raw_newlines",
+        "missing_tool_calls",
+        "trailing_tool_calls_fragment",
+        "plain_prose",
+        "plain_tool_markup",
         "prelude_backticks",
         "prelude_quoted",
         "prelude_fenced",

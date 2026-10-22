@@ -4,6 +4,12 @@ use super::{Arguments, Command, CommandSpec};
 
 pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
+        command: Command::Provider,
+        name: "/provider",
+        description: "Choose providers for this conversation, including a retained run",
+        arguments: Arguments::Message,
+    },
+    CommandSpec {
         command: Command::Find,
         name: "/find",
         description: "Search locally saved public transcript text",
@@ -148,7 +154,7 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         command: Command::Details,
         name: "/details",
-        description: "Show or hide harness diagnostics",
+        description: "Expand or collapse long reads and diagnostics",
         arguments: Arguments::None,
     },
     CommandSpec {

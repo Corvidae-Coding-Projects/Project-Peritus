@@ -1,0 +1,572 @@
+{
+  "passed": true,
+  "seed": 271821,
+  "cases": 43,
+  "results": [
+    {
+      "label": "current-all-hosted",
+      "providers": [
+        "open-code-zen",
+        "open-code-go",
+        "open-router",
+        "groq",
+        "together-ai",
+        "fireworks-ai",
+        "deep-seek"
+      ],
+      "historical_format": {},
+      "generation": 21,
+      "passed": true
+    },
+    {
+      "label": "open-code-zen",
+      "providers": [
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-go",
+      "providers": [
+        "open-code-go"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-router",
+      "providers": [
+        "open-router"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "groq",
+      "providers": [
+        "groq"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "together-ai",
+      "providers": [
+        "together-ai"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "fireworks-ai",
+      "providers": [
+        "fireworks-ai"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "deep-seek",
+      "providers": [
+        "deep-seek"
+      ],
+      "historical_format": {
+        "discovery": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-zen-caps-False-False",
+      "providers": [
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": false,
+        "parallel": true,
+        "timeout": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-zen-caps-False-True",
+      "providers": [
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": false,
+        "parallel": true,
+        "timeout": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-zen-caps-True-False",
+      "providers": [
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-zen-caps-True-True",
+      "providers": [
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-go-caps-False-False",
+      "providers": [
+        "open-code-go"
+      ],
+      "historical_format": {
+        "discovery": false,
+        "parallel": true,
+        "timeout": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-go-caps-False-True",
+      "providers": [
+        "open-code-go"
+      ],
+      "historical_format": {
+        "discovery": false,
+        "parallel": true,
+        "timeout": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-go-caps-True-False",
+      "providers": [
+        "open-code-go"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "open-code-go-caps-True-True",
+      "providers": [
+        "open-code-go"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "mixed-skipped-upgrade",
+      "providers": [
+        "open-code-zen",
+        "open-code-go",
+        "open-router",
+        "groq",
+        "together-ai",
+        "fireworks-ai",
+        "deep-seek",
+        "open-ai-api",
+        "anthropic-api",
+        "google-gemini-api",
+        "compatible-endpoint",
+        "codex-account",
+        "claude-account"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "current-nonhosted",
+      "providers": [
+        "open-ai-api",
+        "anthropic-api",
+        "google-gemini-api",
+        "compatible-endpoint",
+        "codex-account",
+        "claude-account"
+      ],
+      "historical_format": {},
+      "generation": 21,
+      "passed": true
+    },
+    {
+      "label": "nonhosted-timeout-and-folders",
+      "providers": [
+        "open-ai-api",
+        "anthropic-api",
+        "google-gemini-api",
+        "compatible-endpoint",
+        "codex-account",
+        "claude-account"
+      ],
+      "historical_format": {
+        "timeout": true,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "current-offline",
+      "providers": [],
+      "historical_format": {},
+      "generation": 21,
+      "passed": true
+    },
+    {
+      "label": "offline-timeout",
+      "providers": [],
+      "historical_format": {
+        "timeout": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-0",
+      "providers": [
+        "together-ai",
+        "fireworks-ai",
+        "groq",
+        "compatible-endpoint",
+        "google-gemini-api",
+        "open-router",
+        "open-code-zen",
+        "open-code-go",
+        "deep-seek",
+        "anthropic-api",
+        "open-ai-api"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": false,
+        "timeout": false,
+        "folders": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-1",
+      "providers": [
+        "compatible-endpoint"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true,
+        "folders": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-2",
+      "providers": [
+        "google-gemini-api",
+        "fireworks-ai",
+        "open-router",
+        "groq",
+        "anthropic-api",
+        "together-ai",
+        "compatible-endpoint",
+        "open-ai-api"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": false,
+        "timeout": false,
+        "folders": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-3",
+      "providers": [
+        "google-gemini-api",
+        "open-code-zen",
+        "anthropic-api"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-4",
+      "providers": [
+        "open-router",
+        "google-gemini-api",
+        "open-ai-api",
+        "anthropic-api",
+        "compatible-endpoint",
+        "groq",
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true,
+        "folders": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-5",
+      "providers": [
+        "compatible-endpoint",
+        "anthropic-api",
+        "open-ai-api"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": false,
+        "folders": false
+      },
+      "generation": 21,
+      "passed": true
+    },
+    {
+      "label": "generated-6",
+      "providers": [
+        "open-code-zen",
+        "deep-seek"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": false,
+        "timeout": true,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-7",
+      "providers": [
+        "open-code-go",
+        "open-code-zen",
+        "anthropic-api"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": false,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-8",
+      "providers": [
+        "compatible-endpoint",
+        "fireworks-ai",
+        "open-code-go",
+        "open-ai-api",
+        "google-gemini-api",
+        "deep-seek",
+        "open-code-zen"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": false,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-9",
+      "providers": [
+        "open-router",
+        "anthropic-api",
+        "open-code-go",
+        "together-ai",
+        "google-gemini-api",
+        "compatible-endpoint",
+        "deep-seek",
+        "open-code-zen",
+        "fireworks-ai",
+        "groq"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": false,
+        "timeout": false,
+        "folders": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-10",
+      "providers": [
+        "fireworks-ai",
+        "groq",
+        "google-gemini-api",
+        "compatible-endpoint",
+        "together-ai",
+        "open-router",
+        "open-code-zen",
+        "deep-seek",
+        "open-ai-api",
+        "open-code-go",
+        "anthropic-api"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": true,
+        "folders": false
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "generated-11",
+      "providers": [
+        "compatible-endpoint",
+        "deep-seek",
+        "groq"
+      ],
+      "historical_format": {
+        "discovery": true,
+        "parallel": true,
+        "timeout": false,
+        "folders": true
+      },
+      "generation": 22,
+      "passed": true
+    },
+    {
+      "label": "reject-explicit-false",
+      "passed": true
+    },
+    {
+      "label": "reject-model",
+      "passed": true
+    },
+    {
+      "label": "reject-credential",
+      "passed": true
+    },
+    {
+      "label": "reject-folder-authority",
+      "passed": true
+    },
+    {
+      "label": "reject-unknown-field",
+      "passed": true
+    },
+    {
+      "label": "interrupted-publication-retry",
+      "passed": true
+    },
+    {
+      "label": "backed-up-configuration-regeneration",
+      "passed": true
+    },
+    {
+      "label": "reject-unrelated-direct-capabilities",
+      "passed": true
+    },
+    {
+      "label": "concurrent-upgrade",
+      "outcomes": [
+        "prepared",
+        "bootstrap-busy",
+        "bootstrap-busy",
+        "bootstrap-busy"
+      ],
+      "passed": true
+    },
+    {
+      "label": "actual-terminal-upgrade-and-reopen",
+      "passed": true
+    }
+  ],
+  "artifacts": {
+    "consumer": "d25a90d37ff3c4cd874fda9a0b7d115a12ff9a06bdd9b4ad7bdc5ea8f2a86bc5",
+    "binary": "b0f1ab10f1f0735eee6c99e3c1a11804b133526ce7c7f92f04395334b7ea21cf",
+    "baseline": "35ff70913e8f783929e1069b5be1bd0535b04c8892995be3292fa19426cff0ae"
+  },
+  "base_commit": "cdf106c9b0b13d50446e33606511fec15ce03f6f",
+  "recorded_at": "2026-10-21T07:07:21.257259+00:00",
+  "source_sha256": {
+    "crates/app/peritus-launcher/src/bootstrap.rs": "606a3aebfd552ebe85272c3a52067f57756e2d6480f06dd59ea65040432d44dd",
+    "crates/app/peritus-launcher/src/bootstrap/configuration.rs": "da8af3e3af3956cb9a9d973567857d55375eca65eed323263ce319dde496dd94",
+    "crates/app/peritus-launcher/src/bootstrap/configuration/compatibility.rs": "c7408081d794f4d86af5aa30fbb6a07729ac29928cd55e0e19889f97628433be",
+    "crates/app/peritus-launcher/src/bootstrap/configuration/folder_catalog.rs": "fe5fc75c167fdf2b4426ec379c7ed43a8da893bad9029f55eb56030978498415",
+    "crates/app/peritus-launcher/src/bootstrap/configuration/hosted.rs": "67de1828a94be8ad664092d94e0c37c9c8f709fbf0517cf6977a3f25317364e4",
+    "docs/testing/reproducers/configuration-upgrade/consumer.rs": "d3dc3b57e2baed51337207888cc8c282318caa118d1716169dfa33888f1d0d37",
+    "docs/testing/reproducers/configuration-upgrade/build.py": "4174a08c86362820b1e607337e7de38001635d76eda525a0b5de862d967c112b",
+    "docs/testing/reproducers/configuration-upgrade/replay.py": "12b5e1ff51b5804098ca652e20edd109f7ebe8aa4fbe50a91fd650c426eccd54"
+  },
+  "original_failure": "Peritus browser automation setup is incomplete: Browser automation is not installed and PERITUS_INSTALL_DEPS=0 disables automatic dependency installation\nperitus: internal: launch interactive product: cannot determine Peritus application directories: generated daemon configuration generation 21 has different content",
+  "runtime_boundaries": {
+    "platform": "Linux x86_64",
+    "provider_inference_requested": false,
+    "browser_dependency_downloads": false,
+    "production_user_state_modified": false,
+    "unit_or_repository_verification_suites_run": false
+  }
+}

@@ -81,7 +81,7 @@ pub struct WorkbenchUi {
     pub(crate) memory: Option<peritus_app_protocol::WorkbenchMemory>,
     memory_view: WorkbenchMemoryView,
     pub(crate) unresolved: Option<(WorkbenchCommand, String)>,
-    rejected_control: Option<peritus_app_protocol::AppErrorCode>,
+    rejected_control: Option<peritus_app_protocol::AppProtocolError>,
     pub(crate) inspection_draft: Option<String>,
     submission: Option<conversation::Submission>,
 }

@@ -108,6 +108,20 @@ impl ProductUi {
         ))
     }
 
+    pub(in crate::model) fn select_providers(&mut self, selection: ProductProviderSelection) {
+        for (target, profile) in [
+            (&mut self.writer, selection.writer()),
+            (&mut self.reviewer, selection.reviewer()),
+            (&mut self.fixer, selection.fixer()),
+        ] {
+            if let Some(index) =
+                self.launch.providers().iter().position(|provider| provider.profile_id() == profile)
+            {
+                *target = index;
+            }
+        }
+    }
+
     fn cycle_role(&mut self, role: ProviderRole) {
         let count = self.launch.providers().len();
         if count == 0 {

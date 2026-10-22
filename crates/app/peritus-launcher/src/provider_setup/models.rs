@@ -10,6 +10,15 @@ pub(super) fn choose_direct(
     kind: peritus_product_state::ProviderKind,
     result: Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError>,
 ) -> Result<(String, Option<CompatibleProtocol>), LauncherError> {
+    choose_direct_with_default(terminal, kind, result, None)
+}
+
+pub(super) fn choose_direct_with_default(
+    terminal: &mut Terminal<'_>,
+    kind: peritus_product_state::ProviderKind,
+    result: Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError>,
+    existing: Option<&peritus_product_state::DirectProviderProfile>,
+) -> Result<(String, Option<CompatibleProtocol>), LauncherError> {
     let models = match result {
         Ok(models) => models,
         Err(error) => {
@@ -17,8 +26,11 @@ pub(super) fn choose_direct(
             Vec::new()
         }
     };
-    let model =
-        choose(terminal, Ok(models.iter().map(|model| model.id.as_str().to_owned()).collect()))?;
+    let (model, _) = choose_with_default(
+        terminal,
+        Ok(models.iter().map(|model| model.id.as_str().to_owned()).collect()),
+        existing.map(|profile| (profile.model(), false)),
+    )?;
     let metadata = models.iter().find(|entry| entry.id.as_str() == model);
     terminal.line(match metadata.and_then(|entry| entry.tools) {
         Some(true) => "Tool calling: advertised by provider; connection not tested.",
@@ -43,7 +55,9 @@ pub(super) fn choose_direct(
         Some(WireDialect::CompatibleChatCompletions) => CompatibleProtocol::ChatCompletions,
         Some(WireDialect::AnthropicMessages) => CompatibleProtocol::AnthropicMessages,
         Some(WireDialect::GeminiGenerateContentV1) => CompatibleProtocol::GoogleGenerateContent,
-        _ => CompatibleProtocol::ChatCompletions,
+        _ => existing
+            .and_then(|profile| profile.compatible_protocol())
+            .unwrap_or(CompatibleProtocol::ChatCompletions),
     };
     Ok((model, Some(protocol)))
 }

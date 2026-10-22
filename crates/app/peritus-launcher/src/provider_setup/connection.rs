@@ -7,14 +7,34 @@ pub(super) fn existing(
     terminal: &mut Terminal<'_>,
     profile: &DirectProviderProfile,
 ) -> Result<DirectProviderProfile, LauncherError> {
-    super::direct::ensure_runtime(terminal, profile.kind())?;
     loop {
-        let answer = terminal.prompt(&format!("{} / {}: Enter to keep, r to replace key/model, t to test connection (up to 3 small requests; may use paid tokens): ", profile.kind().label(), profile.model()))?;
+        let answer = terminal.prompt(&format!("{} / {}: Enter to keep, m to change model using saved key, r to replace key/settings, t to test connection (up to 3 small requests; may use paid tokens): ", profile.kind().label(), profile.model()))?;
         match answer.to_ascii_lowercase().as_str() {
             "" => return Ok(profile.clone()),
             "r" => return super::direct::setup(terminal, profile.kind()),
-            "t" => test(terminal, profile)?,
-            _ => terminal.line("Press Enter, r, or t.")?,
+            "m" => {
+                terminal.line("Discovering models with the saved credential; no key replacement or inference is requested.")?;
+                let discovered = peritus_provider_onboarding::discover_direct_models(profile);
+                let (model, protocol) = super::models::choose_direct_with_default(
+                    terminal,
+                    profile.kind(),
+                    discovered,
+                    Some(profile),
+                )?;
+                return Ok(DirectProviderProfile::new(
+                    profile.kind(),
+                    profile.credential_reference().to_owned(),
+                    profile.endpoint().map(str::to_owned),
+                    model,
+                    protocol.or(profile.compatible_protocol()),
+                    profile.credential_header().map(str::to_owned),
+                )?);
+            }
+            "t" => {
+                super::direct::ensure_runtime(terminal, profile.kind())?;
+                test(terminal, profile)?;
+            }
+            _ => terminal.line("Press Enter, m, r, or t.")?,
         }
     }
 }

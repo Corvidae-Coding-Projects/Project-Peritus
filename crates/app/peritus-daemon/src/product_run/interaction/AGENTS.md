@@ -10,7 +10,7 @@ Live conversation/control/provider selection projected into role execution; this
 | --- | --- |
 | [inputs.rs](inputs.rs) | Durable public projection of accepted ledger input, separate from inference admission. |
 | [live.rs](live.rs) | Live D0 input, provider selection, admission and typed activity adapter. |
-| [models.rs](models.rs) | Durable model selection, independent of user-input admission and task ownership. |
+| [models.rs](models.rs) | Authorized, concurrent-update-fenced and durable future-turn model/provider selection, independent of input admission or execution restart. |
 | [narration.rs](narration.rs) | Public host observations. Never infer success, reveal arguments, or impersonate model reasoning. |
 | [presentation.rs](presentation.rs) | Human-readable projections of completed pipeline response envelopes. |
 | [tool_activity.rs](tool_activity.rs) | Bounded observations of actual tool calls, not model prose or raw provider events. |

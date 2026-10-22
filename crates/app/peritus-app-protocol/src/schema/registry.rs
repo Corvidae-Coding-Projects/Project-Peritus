@@ -92,6 +92,7 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 46, name: "continue-workbench-message" },
     AppPayloadDescriptor { tag: 45, name: "query-interaction-binding" },
     AppPayloadDescriptor { tag: 60, name: "query-workbench-goal" },
+    AppPayloadDescriptor { tag: 61, name: "update-provider-selection" },
     AppPayloadDescriptor { tag: 80, name: "query-workbench-review" },
     AppPayloadDescriptor { tag: 100, name: "query-workbench-result" },
     AppPayloadDescriptor { tag: 101, name: "query-workbench-preview" },

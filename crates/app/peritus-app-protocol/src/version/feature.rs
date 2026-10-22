@@ -8,6 +8,8 @@ use peritus_types::CapabilityName;
 pub struct ProtocolFeatureName(CapabilityName);
 
 impl ProtocolFeatureName {
+    /// Durable explicit provider/model replacement on an existing run.
+    pub const PROVIDER_SELECTION: &'static str = "app.provider-selection";
     /// Evidence-backed suggestion collection and explicit patch evaluation.
     pub const HARNESS_IMPROVEMENTS: &'static str = "app.harness-improvements";
     /// Version-one event subscription feature name.
@@ -122,6 +124,8 @@ impl ProtocolFeatureName {
 /// Closed list of well-known application-protocol version-one features.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum WellKnownProtocolFeature {
+    /// Explicit provider/model replacement for subsequent run turns.
+    ProviderSelection,
     /// Evidence-backed suggestion inbox and explicit evaluation.
     HarnessImprovements,
     /// Replayable event subscriptions.
@@ -205,6 +209,7 @@ impl WellKnownProtocolFeature {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::ProviderSelection => ProtocolFeatureName::PROVIDER_SELECTION,
             Self::HarnessImprovements => ProtocolFeatureName::HARNESS_IMPROVEMENTS,
             Self::EventSubscriptions => ProtocolFeatureName::EVENT_SUBSCRIPTIONS,
             Self::ArtifactTransfer => ProtocolFeatureName::ARTIFACT_TRANSFER,

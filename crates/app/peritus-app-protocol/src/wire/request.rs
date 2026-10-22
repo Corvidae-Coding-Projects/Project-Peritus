@@ -213,7 +213,9 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::QueryInteraction(_) => 23,
         AppRequestPayload::QueryModels(_) => 24,
         AppRequestPayload::UpdateModels(value) => {
-            if value.models().has_effort() {
+            if value.providers().is_some() {
+                61
+            } else if value.models().has_effort() {
                 27
             } else {
                 25
@@ -324,6 +326,7 @@ fn read_payload(
             AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, false)?)
         }
         27 => AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, true)?),
+        61 => AppRequestPayload::UpdateModels(super::interaction::read_provider_update(reader)?),
         28 => AppRequestPayload::Doctor(super::doctor::read_query(reader)?),
         60 => AppRequestPayload::QueryWorkbenchGoal(super::workbench::read_query(reader)?),
         29 => AppRequestPayload::WorkbenchCommand(super::workbench::read_command(reader)?),

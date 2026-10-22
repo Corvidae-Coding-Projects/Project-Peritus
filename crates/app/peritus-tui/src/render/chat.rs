@@ -19,6 +19,7 @@ mod memory;
 mod modules;
 mod permissions;
 mod progress;
+mod providers;
 mod queue;
 mod status;
 mod transcript;
@@ -76,6 +77,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         doctor::draw(frame, regions[1], model);
     } else if model.chat.workbench.open {
         workbench::draw(frame, regions[1], model);
+    } else if model.chat.provider_picker() {
+        providers::draw(frame, regions[1], model);
     } else if model.chat.effort_picker() {
         effort::draw(frame, regions[1], model);
     } else if model.chat.model_picker() {
@@ -161,6 +164,7 @@ fn draw_composer(
     );
     frame.render_widget(composer, area);
     if !model.chat.model_picker()
+        && !model.chat.provider_picker()
         && !model.chat.effort_picker()
         && model.chat.doctor.is_none()
         && model.chat.module_menu.is_none()

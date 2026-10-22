@@ -12,7 +12,7 @@ Implementation pieces for `configuration.rs`: Strict immutable daemon configurat
 | [compatibility.rs](compatibility.rs) | Narrow byte compatibility for immutable configuration generations from prior releases. |
 | [folder.rs](folder.rs) | Direct-folder configuration, independent of canonical Git registrations. |
 | [folder_catalog.rs](folder_catalog.rs) | Reconcile only durable direct-folder declarations into a new immutable generation. |
-| [hosted.rs](hosted.rs) | Named hosted provider route rendering from a selected protocol. |
+| [hosted.rs](hosted.rs) | Named hosted provider route rendering and durable OpenCode transport selection migration; shared format compatibility lives in compatibility.rs. |
 
 Owning module: [configuration.rs](../configuration.rs). Inspect that parent before changing the local pieces.
 

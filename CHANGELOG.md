@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.1.10
+
+### Fixed
+
+- Migrate older generated hosted-provider configurations without a generation-content collision at launch. Preserve prior files and saved choices, and recover interrupted publication on retry.
+- Retain actionable provider failures during admission, retry, and handoff recovery instead of replacing them with misleading identifier or empty-reply errors.
+- Allow retained runs to select replacement providers through `/provider`, including after their original route was removed. Save role providers and models together without losing history or queued input.
+- Let `peritus providers` change a model using the saved credential reference, with a manual fallback when discovery is unavailable. Keep runtime installation checks on operations that require the runtime.
+- Recover long OpenCode planning replies containing literal control characters, an omitted optional empty tool-call array, or an exact duplicated trailing fragment. Restricted plain-text normalization remains inert; malformed or undeclared tool requests still fail closed.
+- Show saved-context entry text and metadata, fragmented and unfamiliar entry data, and accurate null-query labels while preserving ordinary directory listings.
+- Preview long file, skill, and saved-context reads with visible `/details` expansion. Handle long individual lines, preserve complete model/durable results, and restore a usable viewport when collapsing a scrolled result. Errors, commands, and edits remain fully visible.
+
+### Real testing
+
+- Reuse the completed generated-configuration campaign's 43 scenarios and the October 22 actual daemon, provider-settings, retained-run recovery, native TUI, and public-interface campaigns.
+- Exercise 96 generated control-character/Unicode parser cases, six strict rejection boundaries, 140 saved-context entry shapes, and real official Codex requests. Three fresh retained-run provider-replacement campaigns recovered on the same run IDs after daemon restart; model-only settings worked across six provider families without reentering keys.
+- Native long-read expansion/collapse passed at 80, 120, and 160 columns. Further actual-provider reads covered Markdown, Unicode long lines, short files, and missing-file errors.
+- Evidence and explicit coverage boundaries are in `docs/testing/configuration-upgrade-real-2026-10-21.md` and `docs/testing/open-items-real-2026-10-22.md`. No unit, mock, formal-verification, or repository qualification suites were run for this campaign. New paid Zen/Go inference was not exercised.
+
 ## 0.1.9
 
 ### Fixed

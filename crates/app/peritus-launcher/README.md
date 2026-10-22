@@ -41,7 +41,18 @@ configuration. With two or more selected routes it offers a plain-language autom
 choice, preserves that choice during ordinary repair, and writes it into the immutable daemon
 configuration; older and single-provider state remain failover-disabled.
 
+Known generated-format upgrades advance the product-state generation before publishing new
+configuration. This includes hosted model-limit discovery, older OpenCode capability lists,
+and the retired provider timeout, including combinations from skipped releases. Earlier files,
+provider/model choices, credential references, identities, and workspace trust stay intact.
+Unrecognized configuration differences still fail without overwriting the existing file.
+An interrupted publication resumes from the committed generation on the next launch.
+
 First-run setup and `peritus providers` also offer a review provider/model choice.
+For an existing direct or hosted route, `m` changes its model using the saved credential;
+`r` replaces the key/settings and `t` explicitly tests the connection. Model-only changes
+never ask for another key. If discovery is unavailable, keep the current model or enter
+`manual MODEL_ID`; a manual edit does not require installing the provider runtime.
 Choose `0` to follow the ordinary default, or select an enabled provider and a
 discovered or explicitly entered model for independent review. The saved choice
 initializes new terminal conversations without changing the writer or fixer.

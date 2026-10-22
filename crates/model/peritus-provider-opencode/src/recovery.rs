@@ -35,7 +35,9 @@ impl TurnRejection {
     const fn explanation(self) -> &'static str {
         match self {
             Self::Json => "the reply was not one complete valid JSON object",
-            Self::Envelope => "the object must have exactly content and tool_calls",
+            Self::Envelope => {
+                "the object may contain only content and tool_calls, and content is required"
+            }
             Self::Content => {
                 "content must be a string or report object; an empty string needs tool calls"
             }

@@ -290,7 +290,12 @@ impl ProductRunService {
                 .providers
                 .get(&profile)
                 .cloned()
-                .ok_or(ProductRunServiceError::ProviderUnavailable)
+                .ok_or_else(|| {
+                    ProductRunServiceError::ProviderUnavailable(
+                        "The selected provider profile is not configured. Open provider settings and configure it before starting this run."
+                            .to_owned(),
+                    )
+                })
         };
         Ok(RoleProviders {
             writer: get(selected.writer())?,

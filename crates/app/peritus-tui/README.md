@@ -138,11 +138,14 @@ Tool calls remain visible without enabling diagnostics. Successful patches show 
 affected line, and colored removed/added text; full-file writes preview the contents written.
 Rejected edits, nonzero command exits, and timeouts show failure. No-op writes say unchanged.
 Reads show returned source bodies, searches show matching paths/lines/text, and listings show
-actual entries. Returned tool bodies and edit hunks remain in the scrollable transcript with the
-normal terminal foreground, without a seven-line or middle-of-diff display cut. Large results
-are split into protocol-sized continuation entries. A tool's own partial-page result is labeled.
-`/details` exposes additional assistant-envelope details and diagnostics; it is not needed to see
-ordinary tool output. Published provider summaries and host request status appear in the transcript.
+actual entries. Successful read cards longer than 16 lines show their first eight lines and a
+visible count of the remaining lines. Long individual lines also receive a width-dependent
+preview with the total line count. `/details` expands them in full; use `/details` again or
+Esc to return to compact reads. Commands, failures, and edit hunks remain fully visible with the
+normal terminal foreground. This preview never truncates model evidence or durable results.
+Large results join their protocol-sized continuation entries before previewing, and a tool's own
+partial-page result remains labeled. `/details` also exposes assistant-envelope details and
+diagnostics. Published provider summaries and host request status appear in the transcript.
 The timer stops on disconnect or idle/terminal phases; it never claims provider progress.
 
 Assistant messages, read Markdown documents, and skill output render headings, emphasis, lists,
@@ -152,6 +155,14 @@ commands, and diffs keep their literal content. `/details` shows raw document ou
 User input remains literal. Formatting never opens links or fetches images, and terminal
 controls remain inert even when introduced by Markdown character references. Unchanged message
 formatting is cached only within the retained activity window. Resizing reflows the presentation.
+
+`/provider` opens the configured provider picker for this conversation, including retained runs
+whose earlier provider is no longer configured. Arrows select, Enter saves, Tab changes the
+target role, and Esc cancels. `/provider NUMBER` selects all roles; `/provider reviewer NUMBER`
+(or `writer`/`fixer`) changes one. Changed roles use the replacement provider's configured model;
+unchanged roles keep their model/effort choice. Saved history and pending instructions stay on
+the same run. Selection does not start work; use `/retry` for a stopped run. Existing turns
+finish with their captured selection, and subsequent turns use the acknowledged replacement.
 
 `/effort` opens the reasoning-effort picker without requiring model discovery. Use arrows and
 Enter, Tab to change roles, or `/effort [writer|reviewer|fixer] LEVEL`. Levels are `default`,

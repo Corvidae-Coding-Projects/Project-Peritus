@@ -290,6 +290,7 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchInit,
         WellKnownProtocolFeature::WorkbenchInitArtifacts,
         WellKnownProtocolFeature::GracefulShutdown,
+        WellKnownProtocolFeature::ProviderSelection,
     ]
     .into_iter()
     .map(ProtocolFeatureName::well_known)

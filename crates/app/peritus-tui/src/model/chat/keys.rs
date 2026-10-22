@@ -43,6 +43,7 @@ impl AppModel {
         if self.chat.workbench.open
             || self.chat.doctor.is_some()
             || self.chat.model_picker()
+            || self.chat.provider_picker()
             || self.chat.effort_picker()
         {
             return Vec::new();
@@ -103,6 +104,9 @@ impl AppModel {
         }
         if self.chat.effort_picker() {
             return self.effort_picker_key(key);
+        }
+        if self.chat.provider_picker() {
+            return self.provider_picker_key(key);
         }
         if self.chat.model_picker() {
             return self.model_picker_key(key);
@@ -175,6 +179,9 @@ impl AppModel {
             KeyCode::Esc if self.cancel_history_recall() => {}
             KeyCode::Esc => {
                 self.chat.workbench.snapshot_refresh_command = None;
+                if self.chat.expanded {
+                    self.chat.scroll = 0;
+                }
                 self.chat.expanded = false;
                 self.chat.command_selection = 0;
             }

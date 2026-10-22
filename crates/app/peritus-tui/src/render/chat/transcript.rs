@@ -135,6 +135,33 @@ fn tool_rows(
         .ok()
         .map(|value| peritus_product_state::tool_output::render(&value))
         .unwrap_or(detail);
+    let rendered = crate::sanitize::sanitize_display_text(&rendered);
+    let completed_read = text.starts_with("Read document from saved context")
+        || ["Called workspace_read ", "Called skill_read ", "Called context_read"]
+            .iter()
+            .any(|prefix| text.starts_with(prefix));
+    let preview_chars = width.saturating_sub(4).clamp(1, 106) * 8;
+    let compact_read = completed_read && !model.chat.expanded;
+    let line_count = if compact_read { rendered.lines().count() } else { 0 };
+    // Fold only the human read card, after continuation chunks have been joined.
+    // Commands, failures, changes and the authoritative tool result stay intact.
+    let (rendered, footer) =
+        if compact_read && (line_count > 16 || rendered.chars().nth(preview_chars * 2).is_some()) {
+            let preview = rendered.lines().take(8).collect::<Vec<_>>().join("\n");
+            let clipped = preview.chars().nth(preview_chars).is_some();
+            let label = if clipped {
+                format!("more text ({line_count} lines total)")
+            } else {
+                format!("{} more lines", line_count.saturating_sub(8))
+            };
+            let footer = Line::styled(
+                format!("  … {label} · /details expands"),
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            );
+            (preview.chars().take(preview_chars).collect::<String>(), Some(footer))
+        } else {
+            (rendered, None)
+        };
     let document = text.starts_with("Read document from saved context")
         || ((text.contains("workspace_read ") || text.contains("skill_read "))
             && text.split_whitespace().any(|token| {
@@ -157,6 +184,9 @@ fn tool_rows(
         let readable_width = width.min(110);
         tool.push(Line::from(""));
         tool.extend(super::markdown::cached(model, activity.sequence(), &prose, readable_width));
+        if let Some(footer) = footer {
+            tool.push(footer);
+        }
         let mut rows = wrapped_rows(tool, readable_width);
         rows.push(OutputRow { line: Line::from(""), hard_break: true });
         return rows;
@@ -189,6 +219,9 @@ fn tool_rows(
         }
         styled
     }));
+    if let Some(footer) = footer {
+        tool.push(footer);
+    }
     let mut rows = wrapped_rows(tool, width);
     rows.push(OutputRow { line: Line::from(""), hard_break: true });
     rows
@@ -220,6 +253,12 @@ fn cached_source(
 }
 
 fn tool_label(text: &str) -> String {
+    if text == "Called context_read" {
+        return "Read saved context".to_owned();
+    }
+    if text == "Calling context_read" {
+        return "Reading saved context".to_owned();
+    }
     let prefixes = [
         ("Called workspace_read ", "Read "),
         ("Calling workspace_read ", "Reading "),
@@ -235,6 +274,13 @@ fn tool_label(text: &str) -> String {
     ];
     for (prefix, replacement) in prefixes {
         if let Some(rest) = text.strip_prefix(prefix) {
+            let rest = if prefix.contains("context_read") {
+                rest.strip_prefix("query=null")
+                    .filter(|tail| tail.is_empty() || tail.starts_with(char::is_whitespace))
+                    .map_or(rest, str::trim_start)
+            } else {
+                rest
+            };
             return format!(
                 "{replacement}{}",
                 rest.replace("path=", "")

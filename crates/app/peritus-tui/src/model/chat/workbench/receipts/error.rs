@@ -1,14 +1,15 @@
 //! Presentation-state recovery for rejected or uncertain workbench requests.
 
 use super::{AppModel, PendingRequest, WorkbenchCommand, WorkbenchIntent, preview_intent};
-use peritus_app_protocol::AppErrorCode;
+use peritus_app_protocol::{AppErrorCode, AppProtocolError};
 
 impl AppModel {
     pub(in crate::model) fn workbench_error(
         &mut self,
         pending: Option<&PendingRequest>,
-        code: AppErrorCode,
+        error: &AppProtocolError,
     ) {
+        let code = error.code();
         let Some(pending) = pending else { return };
         if matches!(
             pending,
@@ -21,13 +22,13 @@ impl AppModel {
         if let PendingRequest::WorkbenchControl(command)
         | PendingRequest::WorkbenchReceipt(command) = pending
         {
-            self.workbench_control_error(command, pending, code);
+            self.workbench_control_error(command, pending, error);
             return;
         }
-        self.workbench_primary_inspection_error(pending, code.as_str());
+        self.workbench_primary_inspection_error(pending, &error.actionable_message());
         self.workbench_secondary_inspection_error(
             pending,
-            code.as_str(),
+            &error.actionable_message(),
             code == AppErrorCode::InvalidIdentifier,
         );
     }
@@ -208,8 +209,9 @@ impl AppModel {
         &mut self,
         command: &WorkbenchCommand,
         pending: &PendingRequest,
-        code: AppErrorCode,
+        error: &AppProtocolError,
     ) {
+        let code = error.code();
         if !self.chat.workbench.unresolved.as_ref().is_some_and(|(expected, _)| expected == command)
         {
             return;
@@ -222,6 +224,7 @@ impl AppModel {
                     | AppErrorCode::MalformedFrame
                     | AppErrorCode::SessionMismatch
                     | AppErrorCode::MissingRequiredFeature
+                    | AppErrorCode::NotReady
                     | AppErrorCode::ReadOnly
                     | AppErrorCode::InvalidIdentifier
                     | AppErrorCode::LimitExceeded
@@ -229,7 +232,7 @@ impl AppModel {
         if !terminal_rejection {
             self.chat.workbench.message = format!(
                 "No receipt confirmed: {}. /sessions retry uses the same operation ID; draft retained.",
-                code.as_str()
+                error.actionable_message()
             );
             return;
         }
@@ -276,8 +279,10 @@ impl AppModel {
         if matches!(command.intent(), WorkbenchIntent::AttachImage { .. }) {
             self.chat.workbench.images.discard_preview();
         }
-        self.chat.workbench.message =
-            format!("Rejected: {}. Refresh before a new edit; draft retained.", code.as_str());
+        self.chat.workbench.message = format!(
+            "Rejected: {}. Refresh before a new edit; draft retained.",
+            error.actionable_message()
+        );
         if let Some((target, draft)) = review_draft {
             self.restore_editor(crate::model::Editor {
                 kind: crate::model::EditorKind::ReviewFeedback(Box::new(target)),

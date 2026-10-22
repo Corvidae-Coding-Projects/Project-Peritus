@@ -8,7 +8,7 @@ Implementation pieces for `bootstrap.rs`: Resumable protected local bootstrap.
 
 | File | Role |
 | --- | --- |
-| [configuration.rs](configuration.rs) | Strict immutable daemon configuration generated from durable product state. |
+| [configuration.rs](configuration.rs) | Strict immutable daemon configuration generated from durable product state; known renderer upgrades reserve a new generation before publication. |
 
 ## Child areas
 

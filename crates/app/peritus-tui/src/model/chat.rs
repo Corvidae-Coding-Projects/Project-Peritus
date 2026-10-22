@@ -11,6 +11,7 @@ mod models;
 mod modules;
 mod navigation;
 mod picker;
+mod providers;
 
 mod workbench;
 mod working;
@@ -52,6 +53,7 @@ pub struct ChatUi {
     pub(crate) effort_selection: usize,
     pub(crate) model_selection: usize,
     pub(crate) model_role: models::ModelRole,
+    pub(crate) provider_role: Option<models::ModelRole>,
     pub(crate) doctor: Option<doctor::DoctorPanel>,
     pub(crate) module_menu: Option<modules::ModuleMenu>,
     module_generation: u64,
@@ -94,6 +96,7 @@ impl Default for ChatUi {
             effort_selection: 0,
             model_selection: 0,
             model_role: models::ModelRole::Writer,
+            provider_role: None,
             doctor: None,
             module_menu: None,
             module_generation: 0,
