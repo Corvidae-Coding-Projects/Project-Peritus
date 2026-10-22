@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [open-items-real-2026-10-22.md](open-items-real-2026-10-22.md) | Sequential issue/PR integration, released-versus-fixed IPC behavior and native TUI evidence; macOS campaign excluded. |
 | [configuration-upgrade-real-2026-10-21.md](configuration-upgrade-real-2026-10-21.md) | Released CLI collision, shared generated-format migration, actual bootstrap/terminal restart, concurrency and recovery evidence. |
 | [configuration-upgrade-evidence.json](configuration-upgrade-evidence.json) | Binary/source identities and concrete outcomes for 43 generated-configuration upgrade scenarios. |
 | [model-capacities-real-2026-10-21.md](model-capacities-real-2026-10-21.md) | Route/model capacity resolution, shared output headroom, configured overrides, real catalogs, and live inference evidence. |
