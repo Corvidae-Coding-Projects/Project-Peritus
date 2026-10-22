@@ -1,6 +1,7 @@
 """Observe and operate an actual native application PTY, with independent terminal emulation."""
 import codecs, fcntl, os, pty, select, struct, subprocess, termios, time
 import pyte
+from wcwidth import wcwidth
 
 class Terminal:
     def __init__(self, command, env, output, width=160, height=48):
@@ -10,7 +11,20 @@ class Terminal:
         os.close(slave)
         self.screen=pyte.Screen(width,height);self.stream=pyte.Stream(self.screen);self.decoder=codecs.getincrementaldecoder('utf-8')('replace')
     @property
-    def text(self):return '\n'.join(self.screen.display)
+    def text(self):
+        try:return '\n'.join(self.screen.display)
+        except IndexError:
+            # pyte can retain an empty wide-cell stub after an incremental redraw.
+            # Render that orphan as a blank instead of crashing the observer.
+            lines=[]
+            for y in range(self.screen.lines):
+                parts=[];skip=False
+                for x in range(self.screen.columns):
+                    if skip:skip=False;continue
+                    data=self.screen.buffer[y][x].data or ' '
+                    parts.append(data);skip=wcwidth(data[0])==2
+                lines.append(''.join(parts))
+            return '\n'.join(lines)
     def send(self,value):os.write(self.master,value.encode() if isinstance(value,str) else value)
     def command(self,value):self.send(value+'\r')
     def pump(self,seconds=.1):

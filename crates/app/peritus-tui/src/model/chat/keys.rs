@@ -179,6 +179,9 @@ impl AppModel {
             KeyCode::Esc if self.cancel_history_recall() => {}
             KeyCode::Esc => {
                 self.chat.workbench.snapshot_refresh_command = None;
+                if self.chat.expanded {
+                    self.chat.scroll = 0;
+                }
                 self.chat.expanded = false;
                 self.chat.command_selection = 0;
             }

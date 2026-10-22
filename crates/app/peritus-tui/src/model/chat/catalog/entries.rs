@@ -154,7 +154,7 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         command: Command::Details,
         name: "/details",
-        description: "Show or hide harness diagnostics",
+        description: "Expand or collapse long reads and diagnostics",
         arguments: Arguments::None,
     },
     CommandSpec {

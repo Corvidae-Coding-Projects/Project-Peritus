@@ -127,7 +127,10 @@ impl AppModel {
             Command::Trace => self.view = View::Trace,
             Command::Terminal => self.view = View::Terminal,
             Command::Approvals => self.view = View::Approvals,
-            Command::Details => self.chat.expanded = !self.chat.expanded,
+            Command::Details => {
+                self.chat.expanded = !self.chat.expanded;
+                self.chat.scroll = 0;
+            }
             Command::Stop => return self.chat_control(Control::Cancel),
             Command::Retry => return self.chat_control(Control::Retry),
             Command::Accept => return self.chat_control(Control::Accept),

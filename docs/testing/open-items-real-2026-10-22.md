@@ -147,3 +147,44 @@ attempt) and `issue145-native-valid` under the campaign cache. The valid fixture
 `issue145-native-valid/fixture.json`; its actual terminal/daemon were closed and its owned source
 and state are retained temporarily for the next display replay. The source fixture's optional
 `PERITUS_FIXTURE_WORKSPACE` puts it outside the application's protected cache/state directories.
+
+## Issue #147: compact long reads with explicit expansion
+
+Completed workspace, skill and context reads now show an eight-line preview when their body
+exceeds 16 lines. Very long individual lines also receive a width-dependent character preview.
+A visible footer states the omitted line count, or total line count for a clipped long line,
+and names `/details` to expand. That existing command expands the complete literal result;
+repeating it or pressing Esc collapses it. Toggling resets the transcript scroll offset so an
+expanded view's offset cannot leave the compact transcript blank. The command catalog describes
+this behavior. The existing Ctrl-O filename-picker shortcut retains its original purpose.
+
+The preview is applied after continuation chunks join and before syntax/Markdown formatting.
+The footer is outside the Markdown body, including when a preview ends inside a code fence.
+Failed/pending calls, commands, changes and assistant messages are not folded. No tool result,
+model evidence, durable activity or source byte is removed by presentation folding.
+
+The native replay reopened the actual 301-line source/context run from #145 at 80, 120 and
+160 columns. The earlier TUI filled the default viewport with file tails at all three widths.
+The changed TUI showed initial text and expansion guidance, exposed the complete tail under
+`/details`, collapsed again, and recovered the compact viewport with Esc after scrolling an
+expanded result. Public IPC snapshots before/after those display actions had identical durable
+activities and phases; source hashes also matched. No inference was requested by those actions.
+
+The first newline-only preview implementation failed on the actual archived context's very
+long JSON line. Its native failure artifacts are retained; the final implementation also bounds
+that preview by terminal width. A further real official-account request read Markdown with a
+code fence spanning the preview boundary, a long Unicode line, a complete three-line file,
+and an intentionally missing file. Native compact/expanded paging verified the Markdown/code
+preview and footer, full Unicode/document tails on expansion, every short-file line by default,
+and the missing-file failure. The replay's pyte observer initially crashed on an orphaned
+wide-character stub; its screen reader now handles that observer condition. Reopening the
+already-recorded results completed the checks without repeating provider inference.
+
+Artifacts: `issue147-before`, `issue147-initial-long-line-failure`, `issue147-after`,
+`issue147-variants` and `issue147-variants-final` under the campaign cache. Build with the same
+bounded production command above and link `ui.rs` from `issue147-build.jsonl`. Run
+`read-preview.py` using the guide's arguments and the retained `fixture.json`; the before case
+uses `ui145`, and the final case uses `ui147 --fixed`. The optional `--variants` performs the
+four real-provider reads; `--variants --variants-only` reuses completed evidence. All owned
+fixture clients/daemons were closed. This does not claim Windows/macOS or live paid Zen/Go
+inference. Issue #125 remains outside this campaign.

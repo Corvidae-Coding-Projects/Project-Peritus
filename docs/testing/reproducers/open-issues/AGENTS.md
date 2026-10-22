@@ -15,4 +15,5 @@ Real application interface consumers for the October 22 issue/PR campaign.
 | [model-key-reuse.py](model-key-reuse.py) | Actual model-only settings edits across six provider families without key entry or reference replacement. |
 | [tool-output.rs](tool-output.rs) | Actual shared presentation API for 140 working-entry shapes, directories, empty state, JSON fragments and unfamiliar record preservation. |
 | [context-display.py](context-display.py) | Real official-account workspace read, exact archived-source retrieval and native context-read label display; retains its owned fixture for display replay. |
+| [read-preview.py](read-preview.py) | Reopens actual long reads at three terminal widths and verifies expansion without source/history changes; optional real-provider Markdown, Unicode, short-read and missing-file journeys. |
 | [README.md](README.md) | Execution instructions and scope boundaries. |
