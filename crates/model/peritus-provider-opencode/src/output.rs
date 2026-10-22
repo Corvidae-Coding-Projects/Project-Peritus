@@ -2,8 +2,8 @@
 
 use super::recovery::TurnRejection;
 use peritus_model_protocol::{
-    CanonicalJson, FailureCategory, JsonBounds, ModelEvent, ModelRequest, ProtocolLimits,
-    ToolChoice, UsageCounters,
+    CanonicalJson, ExtensionName, FailureCategory, JsonBounds, ModelEvent, ModelRequest,
+    ProtocolLimits, ProviderExtension, ToolChoice, UsageCounters,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -121,7 +121,7 @@ fn decode_turn(
                 usage,
                 vec![turn.audit],
             ),
-            None => Err(TurnRejection::Json),
+            None => plain_text_turn(result, request, runtime, usage),
         },
         Err(reason) => Err(reason),
     }
@@ -143,7 +143,10 @@ fn json_turn(
     let value: Value =
         serde_json::from_slice(json.canonical_bytes()).map_err(|_| TurnRejection::Json)?;
     let object = value.as_object().ok_or(TurnRejection::Envelope)?;
-    if object.len() != 2 {
+    if object.len() > 2
+        || !object.contains_key("content")
+        || object.keys().any(|key| !matches!(key.as_str(), "content" | "tool_calls"))
+    {
         return Err(TurnRejection::Envelope);
     }
     let content = match object.get("content") {
@@ -156,7 +159,12 @@ fn json_turn(
         }
         _ => return Err(TurnRejection::Content),
     };
-    let calls = object.get("tool_calls").and_then(Value::as_array).ok_or(TurnRejection::Tools)?;
+    // The empty array is optional: a content-only reply has exactly the same meaning. Selection
+    // requirements are still enforced by `finish_turn`, so this cannot bypass a required tool.
+    let calls: &[Value] = match object.get("tool_calls") {
+        Some(value) => value.as_array().ok_or(TurnRejection::Tools)?,
+        None => &[],
+    };
     let mut tool_calls = Vec::new();
     for call in calls {
         let call = call.as_object().ok_or(TurnRejection::Arguments)?;
@@ -172,6 +180,57 @@ fn json_turn(
         tool_calls.push(RuntimeToolCall { name: name.to_owned(), arguments });
     }
     finish_turn(content, tool_calls, request, runtime, usage, repairs.into_iter().collect())
+}
+
+fn plain_text_turn(
+    result: &str,
+    request: &ModelRequest,
+    runtime: &super::request::RuntimeRequest,
+    usage: UsageCounters,
+) -> Result<RuntimeTurn, TurnRejection> {
+    // A long planning answer can ignore the transport prompt even after correction. Preserve it as
+    // inert content when it is unambiguously prose, never when it resembles JSON or tool markup.
+    if !unambiguous_prose(result) {
+        return Err(TurnRejection::Json);
+    }
+    let audit = plain_text_audit(result.len())?;
+    finish_turn(result.to_owned(), Vec::new(), request, runtime, usage, vec![audit])
+}
+
+fn unambiguous_prose(input: &str) -> bool {
+    let text = input.trim();
+    !text.is_empty()
+        && !text.starts_with(['{', '['])
+        && !text.contains("tool_calls")
+        && !text.contains('｜')
+        && !text.contains("<|")
+        && !has_tag_marker(text)
+}
+
+fn has_tag_marker(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    (0..bytes.len()).any(|offset| {
+        bytes[offset] == b'<'
+            && (bytes.get(offset + 1).is_some_and(u8::is_ascii_alphabetic)
+                || bytes.get(offset + 1) == Some(&b'/')
+                    && bytes.get(offset + 2).is_some_and(u8::is_ascii_alphabetic))
+    })
+}
+
+fn plain_text_audit(original_bytes: usize) -> Result<ModelEvent, TurnRejection> {
+    let value = serde_json::json!({
+        "policy": "plain-text-v1",
+        "target": "opencode.turn",
+        "tool_calls": 0,
+        "original_bytes": original_bytes,
+        "tools_executed": false,
+    });
+    let value =
+        CanonicalJson::parse(&value.to_string(), JsonBounds::value(ProtocolLimits::PRODUCTION))
+            .map_err(|_| TurnRejection::Json)?;
+    let name = ExtensionName::new("peritus.opencode_turn_normalization".to_owned())
+        .map_err(|_| TurnRejection::Json)?;
+    Ok(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)))
 }
 
 fn finish_turn(

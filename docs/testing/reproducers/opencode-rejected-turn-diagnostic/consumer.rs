@@ -13,6 +13,8 @@ use serde_json::json;
 use std::{error::Error, path::Path, sync::Arc};
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
+const PLAIN_PROSE: &str = "Here is the plan.\n\n1. Finish the mechanical survey work.\n2. Bring the product decisions back for review.\n\nNo tool call is needed.";
+
 struct LocalCredential;
 
 impl CredentialSource for LocalCredential {
@@ -198,6 +200,36 @@ fn check_healing(healings: &[serde_json::Value]) -> Result<()> {
     Ok(())
 }
 
+fn check_text(reducer: &ResponseReducer, expected: &str) -> Result<()> {
+    let mut text = String::new();
+    for item in reducer.completed_items() {
+        if let ReducedItem::Text { text: value, .. } = item {
+            text.push_str(value.expose_for_wire());
+        }
+    }
+    if text != expected {
+        return Err(format!("unexpected recovered content: {text:?}").into());
+    }
+    Ok(())
+}
+
+fn check_plain_text_normalization(normalizations: &[serde_json::Value]) -> Result<()> {
+    if normalizations.len() != 1 {
+        return Err(
+            format!("expected one plain-text normalization, saw {}", normalizations.len()).into()
+        );
+    }
+    let value = &normalizations[0];
+    if value["policy"].as_str() != Some("plain-text-v1")
+        || value["target"].as_str() != Some("opencode.turn")
+        || value["tool_calls"].as_u64() != Some(0)
+        || value["tools_executed"].as_bool() != Some(false)
+    {
+        return Err(format!("plain-text normalization has unexpected fields: {value}").into());
+    }
+    Ok(())
+}
+
 fn check_normalization(
     reducer: &ResponseReducer,
     normalizations: &[serde_json::Value],
@@ -294,7 +326,17 @@ async fn main() -> Result<()> {
     route["profile"]["capabilities"] =
         json!(["parallel-tool-calls", "streaming", "tool-calls", "usage-detail"]);
     let provider = provider(route)?;
-    let request = if expectation == "dsml" || expectation.starts_with("dsml_") {
+    let request = if matches!(
+        expectation.as_str(),
+        "raw_newlines"
+            | "missing_tool_calls"
+            | "trailing_tool_calls_fragment"
+            | "plain_prose"
+            | "plain_tool_markup"
+            | "dsml"
+            | "dsml_unknown_tool"
+            | "dsml_malformed"
+    ) {
         request_with_tools(provider.as_ref())?
     } else {
         request(provider.as_ref())?
@@ -341,6 +383,56 @@ async fn main() -> Result<()> {
                 return Err(format!("expected no refusal, saw {}", corrections.len()).into());
             }
             check_healing(&healings)?;
+        }
+        "raw_newlines" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the raw-newline envelope did not complete the turn".into());
+            }
+            if !corrections.is_empty() {
+                return Err(format!("expected no refusal, saw {}", corrections.len()).into());
+            }
+            check_healing(&healings)?;
+            check_text(
+                &reducer,
+                "First planning step.\n\nSecond step.\tEvidence is in `PROJECT_PLAN.md`.",
+            )?;
+        }
+        "missing_tool_calls" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the content-only envelope did not complete the turn".into());
+            }
+            if !corrections.is_empty() || !healings.is_empty() {
+                return Err("the content-only envelope was needlessly refused or repaired".into());
+            }
+            check_text(&reducer, "Plan with omitted empty tool calls.")?;
+        }
+        "trailing_tool_calls_fragment" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err(
+                    "the duplicated trailing tool-call fragment did not complete the turn".into()
+                );
+            }
+            if !corrections.is_empty() {
+                return Err(format!("expected no refusal, saw {}", corrections.len()).into());
+            }
+            check_healing(&healings)?;
+            check_text(&reducer, "Plan with a duplicated trailing empty tool-call fragment.")?;
+        }
+        "plain_prose" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the unenveloped prose turn did not complete".into());
+            }
+            if !corrections.is_empty() || !healings.is_empty() {
+                return Err("the unenveloped prose turn was needlessly refused or repaired".into());
+            }
+            check_plain_text_normalization(&normalizations)?;
+            check_text(&reducer, PLAIN_PROSE)?;
+        }
+        "plain_tool_markup" => {
+            if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+                return Err("the corrected pseudo-tool prose did not complete".into());
+            }
+            check_single_rejection(&corrections, "opencode.runtime.invalid_turn_json")?;
         }
         "dsml" => {
             if !matches!(reducer.terminal(), Some(TerminalOutcome::RequiresAction { .. })) {

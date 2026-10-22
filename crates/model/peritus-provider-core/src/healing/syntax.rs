@@ -1,9 +1,11 @@
 //! Conservative byte scanner: strings are opaque and only complete containers are extracted.
 
-pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<&str> {
+use std::borrow::Cow;
+
+pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<Cow<'_, str>> {
     let text = input.trim();
     if let Some(fenced) = text.strip_prefix("```json").or_else(|| text.strip_prefix("```")) {
-        return fenced.strip_suffix("```").map(str::trim);
+        return fenced.strip_suffix("```").map(|value| Cow::Borrowed(value.trim()));
     }
     let start = text.find(['{', '['])?;
     let bytes = text.as_bytes();
@@ -32,6 +34,19 @@ pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<&str> {
     let mut prelude = &text[..start];
     let tail = text[end..].trim();
     if !tail.is_empty() {
+        // DeepSeek sometimes closes the envelope after `content` and then appends the intended
+        // empty tool-call field as if the object were still open. Accept only that exact fragment;
+        // the canonical duplicate-key and envelope checks still run on the reconstructed object.
+        if allow_plain_prelude
+            && tail == ",\"tool_calls\":[]}"
+            && text[start..end].ends_with('}')
+            && valid_prelude(prelude, allow_plain_prelude, start)
+        {
+            let mut joined = String::with_capacity(text.len());
+            joined.push_str(&text[start..end - 1]);
+            joined.push_str(tail);
+            return Some(Cow::Owned(joined));
+        }
         // One object wrapped in a Markdown fence that follows the prelude is formatting, not a
         // second candidate. The fence must open immediately before the object and close the
         // payload, so the object stays the sole structured candidate.
@@ -43,19 +58,22 @@ pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<&str> {
             .strip_suffix("```json")
             .or_else(|| prelude.trim_end().strip_suffix("```"))?;
     }
+    if !valid_prelude(prelude, allow_plain_prelude, start) {
+        return None;
+    }
+    Some(Cow::Borrowed(&text[start..end]))
+}
+
+fn valid_prelude(prelude: &str, allow_plain_prelude: bool, start: usize) -> bool {
     // A second structured candidate is ambiguous, not explanatory prose. Inline code spans and
     // quoted prose are ordinary text; the private envelope may also carry one final fenced object.
     let separated = prelude.trim_end_matches([' ', '\t']);
     let plain_prelude =
         allow_plain_prelude && (separated.ends_with("\n\n") || separated.ends_with("\r\n\r\n"));
-    if prelude.contains(['[', ']', '{', '}'])
-        || prelude.contains("```")
-        || (!allow_plain_prelude && prelude.contains(['`', '"']))
-        || start > 0 && !prelude.trim_end().ends_with(':') && !plain_prelude
-    {
-        return None;
-    }
-    Some(&text[start..end])
+    !prelude.contains(['[', ']', '{', '}'])
+        && !prelude.contains("```")
+        && (allow_plain_prelude || !prelude.contains(['`', '"']))
+        && (start == 0 || prelude.trim_end().ends_with(':') || plain_prelude)
 }
 
 pub(super) fn normalize(input: &str) -> Option<String> {
@@ -67,7 +85,49 @@ pub(super) fn normalize(input: &str) -> Option<String> {
         let byte = bytes[cursor];
         if byte == b'"' {
             let end = string_end(bytes, cursor)?;
-            output.extend_from_slice(&bytes[cursor..=end]);
+            output.push(b'"');
+            let mut string = cursor + 1;
+            while string < end {
+                match bytes[string] {
+                    b'\\' => {
+                        output.push(b'\\');
+                        output.push(*bytes.get(string + 1)?);
+                        string += 2;
+                    }
+                    b'\n' => {
+                        output.extend_from_slice(b"\\n");
+                        string += 1;
+                    }
+                    b'\r' => {
+                        output.extend_from_slice(b"\\r");
+                        string += 1;
+                    }
+                    b'\t' => {
+                        output.extend_from_slice(b"\\t");
+                        string += 1;
+                    }
+                    b'\x08' => {
+                        output.extend_from_slice(b"\\b");
+                        string += 1;
+                    }
+                    b'\x0c' => {
+                        output.extend_from_slice(b"\\f");
+                        string += 1;
+                    }
+                    control @ 0x00..=0x1f => {
+                        const HEX: &[u8; 16] = b"0123456789abcdef";
+                        output.extend_from_slice(b"\\u00");
+                        output.push(HEX[usize::from(control >> 4)]);
+                        output.push(HEX[usize::from(control & 0x0f)]);
+                        string += 1;
+                    }
+                    _ => {
+                        output.push(bytes[string]);
+                        string += 1;
+                    }
+                }
+            }
+            output.push(b'"');
             previous = Some(b'"');
             cursor = end + 1;
             continue;

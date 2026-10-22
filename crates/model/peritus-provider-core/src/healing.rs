@@ -99,7 +99,7 @@ fn parse(
     let extracted =
         syntax::extract(decoded.as_deref().unwrap_or(input), context == Context::PrivateEnvelope)
             .ok_or_else(invalid)?;
-    let repaired = syntax::normalize(extracted).ok_or_else(invalid)?;
+    let repaired = syntax::normalize(extracted.as_ref()).ok_or_else(invalid)?;
     let value = CanonicalJson::parse(&repaired, bounds).map_err(|_| invalid())?;
     if object_required && !value.is_object() {
         return Err(invalid());
