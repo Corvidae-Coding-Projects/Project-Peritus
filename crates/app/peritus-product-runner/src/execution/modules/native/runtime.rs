@@ -19,7 +19,6 @@ struct LiveAuthority {
     view: Arc<dyn crate::ConversationView>,
     id: String,
     digest: String,
-    revision: u64,
 }
 impl AuthorityMediator for LiveAuthority {
     fn authorize<'a>(
@@ -31,7 +30,7 @@ impl AuthorityMediator for LiveAuthority {
                 .and_then(|r| r.load(&self.id, true))
                 .is_ok_and(|d| d.digest == self.digest);
             let allowed = enabled
-                && self.view.revision() == self.revision
+                && self.view.revision() == request.subject().authority_generation()
                 && request.plugin_id().as_str() == self.id
                 && request.capability().name() == "module.workflow"
                 && self
@@ -52,7 +51,7 @@ impl AuthorityMediator for LiveAuthority {
 pub(super) struct Runtime {
     host: Arc<PluginHost>,
     id: PluginId,
-    subject: InvocationSubject,
+    session_id: String,
     sequence: AtomicU64,
     pub(super) state: PathBuf,
     pub(super) host_state: PathBuf,
@@ -155,7 +154,6 @@ impl Runtime {
                 view: Arc::clone(&input.conversation),
                 id: definition.manifest.id.clone(),
                 digest: definition.digest.clone(),
-                revision: input.conversation.revision(),
             }),
             Arc::new(trust),
         ));
@@ -167,11 +165,7 @@ impl Runtime {
         Ok(Self {
             host,
             id,
-            subject: InvocationSubject::new(
-                hex(input.run_id.as_bytes()),
-                "interactive-module-user",
-                input.conversation.revision(),
-            ),
+            session_id: hex(input.run_id.as_bytes()),
             sequence: AtomicU64::new(0),
             state,
             host_state,
@@ -185,6 +179,7 @@ impl Runtime {
         input: &ProductRunInput,
         method: &str,
         mut params: Value,
+        revision: u64,
     ) -> Result<Value, ProductRunnerError> {
         params["state_directory"] = json!(self.state);
         params["host_profile"] = serde_json::to_value(host_profile(input)).map_err(error)?;
@@ -208,17 +203,18 @@ impl Runtime {
         let cancellation = HostCancellation::new();
         let sequence = self.sequence.fetch_add(1, Ordering::Relaxed);
         let request = RequestId::new(format!("module-native-{sequence}")).map_err(error)?;
+        let subject = InvocationSubject::new(&self.session_id, "interactive-module-user", revision);
         let invocation = self.host.invoke(
             &self.id,
             request,
             "module.workflow",
             payload,
-            &self.subject,
+            &subject,
             &cancellation,
         );
         tokio::pin!(invocation);
         let result = loop {
-            tokio::select! {result=&mut invocation=>break result.map_err(error)?,()=tokio::time::sleep(Duration::from_millis(100))=>{if input.provider_cancellation.is_cancelled()||input.cancelled.load(Ordering::Acquire)||input.conversation.revision()!=self.subject.authority_generation(){let _=cancellation.cancel();}}}
+            tokio::select! {result=&mut invocation=>break result.map_err(error)?,()=tokio::time::sleep(Duration::from_millis(100))=>{if input.provider_cancellation.is_cancelled()||input.cancelled.load(Ordering::Acquire)||input.conversation.revision()!=revision{let _=cancellation.cancel();}}}
         };
         match result {
             PluginInvocationResult::Succeeded { output, .. } => serde_json::from_str(
@@ -325,12 +321,13 @@ impl Runtime {
         input: &ProductRunInput,
         method: &str,
         params: Value,
+        revision: u64,
     ) -> Result<Value, ProductRunnerError> {
         let handle = tokio::runtime::Handle::try_current().map_err(error)?;
         let operation = || {
             std::thread::scope(|scope| {
                 scope
-                    .spawn(|| handle.block_on(self.call(input, method, params)))
+                    .spawn(|| handle.block_on(self.call(input, method, params, revision)))
                     .join()
                     .map_err(|_| error("native plugin invocation worker failed"))?
             })

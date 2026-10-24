@@ -4,6 +4,20 @@ use peritus_model_protocol::*;
 
 impl LiveConversation {
     pub(super) fn admit_module_command(&self) -> Result<Option<String>, DeveloperLoopError> {
+        self.admit_module_command_for(None)
+    }
+
+    pub(super) fn admit_active_module_command(
+        &self,
+        module_id: &str,
+    ) -> Result<Option<String>, DeveloperLoopError> {
+        self.admit_module_command_for(Some(module_id))
+    }
+
+    fn admit_module_command_for(
+        &self,
+        active_module: Option<&str>,
+    ) -> Result<Option<String>, DeveloperLoopError> {
         let mut records = self
             .service
             .inner
@@ -33,6 +47,14 @@ impl LiveConversation {
                 {
                     return Ok(None);
                 }
+                let admitted = if let Some(module_id) = active_module {
+                    let Some(control) = active_control(command, module_id) else {
+                        return Ok(None);
+                    };
+                    control
+                } else {
+                    command.to_owned()
+                };
                 let captured = store.capture_execution(&record.interaction.workbench)?;
                 if captured.inputs().included().last() != Some(selected) {
                     return Err(peritus_product_runner::control::ControlError::StaleRevision.into());
@@ -100,7 +122,7 @@ impl LiveConversation {
                 {
                     return Ok(None);
                 }
-                Ok(Some((command.to_owned(), captured.inputs().generation())))
+                Ok(Some((admitted, captured.inputs().generation())))
             })
             .map_err(|e| port_error("persist local module command admission", e.into()))?;
         let Some((command, revision)) = result else { return Ok(None) };
@@ -121,6 +143,19 @@ impl LiveConversation {
         *record = next;
         Ok(Some(command))
     }
+}
+
+fn active_control(command: &str, module_id: &str) -> Option<String> {
+    let arguments = command.strip_prefix("/module")?.trim();
+    let (selected, task) = arguments.split_once(char::is_whitespace)?;
+    let task = task.trim();
+    if selected != module_id
+        || !(matches!(task, "pause" | "resume")
+            || task.strip_prefix("steer ").is_some_and(|value| !value.trim().is_empty()))
+    {
+        return None;
+    }
+    Some(task.to_owned())
 }
 
 fn storage_error(error: impl std::fmt::Display) -> crate::product_control::ControlStoreError {

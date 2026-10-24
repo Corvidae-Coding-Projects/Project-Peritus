@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "PASS",
+  "platform": "x86_64-unknown-linux-gnu",
+  "project_base": "bfe3189e20ace3bdfa36b0922f999a6c75ba56ee",
+  "market_base": "dedb2155a0d937e559746591ae4bd66d55ca6e6f",
+  "clean_market_commit": "5b4cfb53942cebd5b528653008c52b50afc74900",
+  "source_digest": "7527a08982f92b0d6083dfbe332586b808cc6bdacd705c4e7190beeb7fc5e92e",
+  "source_build": {
+    "job_id": "7b4a1aec1c2b3dc55d085442e0ce148eb33a5ebe406e026b7e95fc67964b5202",
+    "recipe_digest": "4ed48693ff81dec1da0583e8aa8f36c73a810b723bb67d607483f2c073147e7b",
+    "executable_digest": "227cce268d7db5f2d1a6bd20860987160853280bc2be80ae08431bb5c55f82e1",
+    "package_digest": "367476aa3d8a083759db37c5041b48690892582c729bbc9485884bfa46c30cf5",
+    "installed_disabled_then_enabled": true
+  },
+  "host_binaries": {
+    "peritus": "66f5ceb191a79b80528affa5abd7d2ab9adc8f2bd8597aee9f3c293e1e37241b",
+    "peritusd": "cd84cf91129e9d8645b8606eb6128499de9306d0d9ed66da73c3bd0566aa21bc",
+    "peritus_tui": "3fb66c0826fa5d09c40f1205b798ee8673ed38688dca268a8f4433ea680455c5",
+    "peritus_web": "ea46054ca77b1e0fc70f70302e72fdcfb40d54772d950de5bfbdc550f2452fe5",
+    "linux_helper": "c64d43021c3625fa7611d7ac9288c3f63bff9c443583cff11c3486fb05ee2bda"
+  },
+  "tui": {
+    "run_id": "0bd1b663311a319a48749b7c463975f1",
+    "action_count": 17,
+    "restart_reopened_same_records": true,
+    "export": {
+      "kind": "markdown",
+      "bytes": 34488,
+      "sha256": "1257e0e60f14dd682089dc245c1417240d640383f27e0f4c5cd427e295ba0a6f"
+    }
+  },
+  "webui": {
+    "run_id": "6a80cfd18b729c08ce3348106d36f6c9",
+    "action_count": 17,
+    "restart_reopened_same_records": true,
+    "findings": 6,
+    "patch_revisions": 10,
+    "patch_replay_receipts": 8,
+    "export": {
+      "kind": "json",
+      "bytes": 339829,
+      "sha256": "146615933e5b79938a2d254efad9aa14fdbee6a7bc6186ca5b176bcdae0280ed"
+    }
+  },
+  "failure_paths": [
+    {
+      "name": "old-host",
+      "status": "PASS",
+      "observation": "The host does not advertise the versioned native-module contract; update Peritus before selecting source."
+    },
+    {
+      "name": "missing-source",
+      "status": "PASS",
+      "observation": "Select the explicit application source with scope before starting investigation."
+    },
+    {
+      "name": "blocked-isolation",
+      "status": "PASS",
+      "observation": "PERITUS-SANDBOX-BACKEND-001: backend lacks required features; payload not run."
+    },
+    {
+      "name": "provider-interruption-and-pause",
+      "status": "PASS",
+      "observation": "Retained Phase 6 actual-provider job resumed once after pause and process restart without losing or duplicating pending work."
+    },
+    {
+      "name": "report-now",
+      "status": "PASS",
+      "observation": "Partial Markdown and JSON reports exported through the real human interfaces."
+    },
+    {
+      "name": "failed-patch-iteration",
+      "status": "PASS",
+      "observation": "A dependency-invalid patch commit was rejected before host effect; eight superseded copy-only revisions were retained and only two patches qualified after recorded replay and independent review."
+    }
+  ],
+  "original_verification": {
+    "files": 12,
+    "unchanged": true,
+    "changed": []
+  },
+  "checks": {
+    "project_focused_format": "PASS",
+    "project_focused_cargo_check": "PASS",
+    "market_format": "PASS",
+    "market_strict_package_clippy": "PASS",
+    "web_svelte_check": "PASS: 0 errors and 0 warnings",
+    "web_production_build": "PASS",
+    "unit_tests": "NOT RUN",
+    "formal_verification": "NOT RUN"
+  },
+  "raw_evidence_sha256": {
+    "tui_scenarios": "9a7c0bc17005f4c8415ba229282504a5bc10c7bc9d20263890e3584fe0e8c19a",
+    "webui_state_after_source_build": "23bd68bb21fcc169a6c6952e78f41052232a42463f20e3f7be631ad4e3ba9433",
+    "source_build_record": "f331435d1692239173b4a8f7dacf6e27d5b29f4c21991624dd1e2c59225fbb7d",
+    "source_build_log": "bfcbb3676b8b58d171ae2f969e276402eae803f1e9f3f7da04482602c62187a6",
+    "original_manifest": "44f0c53ebd513872f508d221550ed421d965c41acba5c715ea62b7f9e062a0cc",
+    "blocked_isolation_webui": "4a4f01553afa5443360ca990218bcb4aa55834c2fce76d30f6f64a1beae308f6",
+    "provider_and_failed_patch_tui": "7151d5f0866f23fd38d85ad6a83daf2115bc8c7125067b90454a7339caa94e5e"
+  },
+  "limits": [
+    "bounded selected corpus and declared cases",
+    "Linux host adapter only",
+    "Phase 7 reuses the Phase 6 actual-provider campaign and does not claim a second independent inference run",
+    "not a clean-codebase or arbitrary-application security claim",
+    "no unit tests or formal verification"
+  ]
+}

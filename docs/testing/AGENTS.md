@@ -8,6 +8,13 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [red-team-phase8-real-2026-10-24.md](red-team-phase8-real-2026-10-24.md) | Final adversarial containment, corruption recovery, actual-provider brownfield repair, clean source-build/install/launch, and source-publication campaign. |
+| [red-team-phase8-evidence.json](red-team-phase8-evidence.json) | Exact Phase 8 market, source-build, hostile replay, state recovery, brownfield, artifact, original-preservation, and check identities. |
+| [red-team-phase8-acceptance-ledger.md](red-team-phase8-acceptance-ledger.md) | Bounded A1–A14 final-program mapping with explicit platform, adapter, coverage, and claim limits. |
+| [red-team-phase7-real-2026-10-24.md](red-team-phase7-real-2026-10-24.md) | Complete TUI/WebUI campaign projection, source build/install/enable journey, restart recovery, failure-path UX, stable exports, and unchanged-original proof. |
+| [red-team-phase7-evidence.json](red-team-phase7-evidence.json) | Exact Phase 7 host, source, package, run, export, restart, failure-path, and original-preservation identities. |
+| [red-team-phase6-real-2026-10-23.md](red-team-phase6-real-2026-10-23.md) | Copy-only remediation, four-category replay, independent patch review, live control recovery, original-byte proof, delivery artifacts, and source-market build campaign. |
+| [red-team-phase6-evidence.json](red-team-phase6-evidence.json) | Exact Phase 6 candidate, patch, replay, recovery, source-build, report, bundle, and unchanged-original identities. |
 | [red-team-phase5-real-2026-10-23.md](red-team-phase5-real-2026-10-23.md) | Autonomous security-family routing, known and unknown disclosure discovery, host-canary probes, independent skeptical adjudication, context renewal, and report publication campaign. |
 | [red-team-phase5-evidence.json](red-team-phase5-evidence.json) | Exact Phase 5 provider, package, run, report, classification, reuse, and 25 observed scenario records. |
 | [red-team-phase4-real-2026-10-23.md](red-team-phase4-real-2026-10-23.md) | Source catalog, bounded local build, disabled installation, TUI/WebUI actions, compatibility, cancellation, failure and restart recovery campaign. |

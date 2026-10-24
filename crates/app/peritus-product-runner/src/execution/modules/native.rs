@@ -47,28 +47,55 @@ async fn drive(
     observe: &RunObserver,
     runtime: &runtime::Runtime,
 ) -> Result<String, ProductRunnerError> {
-    let revision = input.conversation.revision();
-    let mut action =
-        runtime.call(input, "command", json!({"text":command,"revision":revision})).await?;
+    let mut revision = input.conversation.revision();
+    let mut action = runtime
+        .call(input, "command", json!({"text":command,"revision":revision}), revision)
+        .await?;
     let mut accounting = input.accounting()?;
     crate::trace::prepare(&input.trace_path)?;
-    loop {
+    'drive: loop {
         super::super::check_cancelled(input)?;
         if input.conversation.revision() != revision {
-            return Ok("Native module paused for new user input. Its private state and completed work remain retained. Use /module resume to continue it.".into());
+            if let Some(control) = active_control(input, definition, runtime, &mut revision).await?
+            {
+                action = control;
+                continue;
+            }
+            return paused(
+                input,
+                definition,
+                "Native module paused for new user input. Its private state and completed work remain retained. Use /module resume to continue it.",
+            );
         }
         if let Some(detail) = action.get("error") {
-            return Ok(format!(
+            let message = format!(
                 "Native plugin operation could not complete: {detail}. Private module state was retained."
-            ));
+            );
+            publication::progress(input, definition, json!({"state":"failed","summary":message}))?;
+            return Ok(message);
         }
         let parsed: ModuleAction = serde_json::from_value(action).map_err(error)?;
         match parsed {
             ModuleAction::Reply { text, actions, attachment } => {
-                publication::menu(input, definition, &actions)?;
-                if let Some(attachment) = attachment {
-                    super::artifacts::attach(input, &runtime.state, &attachment)?;
+                let published = attachment
+                    .as_ref()
+                    .map(|attachment| super::artifacts::attach(input, &runtime.state, attachment))
+                    .transpose()?;
+                let mut text = text;
+                if let Some(artifact) = &published {
+                    text.push_str(&format!(
+                        "\n\nExported **{}** ({} bytes, SHA-256 `{}`) to `{}`.",
+                        artifact.name, artifact.bytes, artifact.sha256, artifact.export_path
+                    ));
                 }
+                publication::menu(
+                    input,
+                    definition,
+                    &actions,
+                    &text,
+                    published.as_ref(),
+                    "waiting_for_user",
+                )?;
                 // Preserve module-owned page boundaries and their continuation controls.
                 // A second 32 KiB truncation used to cut off the paging footer itself.
                 if text.len() > MAX_REPLY_SNAPSHOT_BYTES {
@@ -81,16 +108,52 @@ async fn drive(
                 if !valid_key(&key) || text.trim().is_empty() || text.contains('\0') {
                     return Err(error("native plugin returned an invalid publication checkpoint"));
                 }
-                publication::menu(input, definition, &actions)?;
+                publication::menu(input, definition, &actions, &text, None, "checkpoint")?;
                 input.conversation.present_host_reply(&text).map_err(error)?;
                 super::super::check_cancelled(input)?;
                 if input.conversation.revision() != revision {
-                    return Ok("Native module paused for new user input after retaining its report checkpoint.".into());
+                    if let Some(control) =
+                        active_control(input, definition, runtime, &mut revision).await?
+                    {
+                        action = control;
+                        continue 'drive;
+                    }
+                    return paused(
+                        input,
+                        definition,
+                        "Native module paused for new user input after retaining its report checkpoint.",
+                    );
                 }
-                action = runtime.call(input, "checkpoint_ack", json!({"key":key})).await?;
+                match runtime.call(input, "checkpoint_ack", json!({"key":key}), revision).await {
+                    Ok(next) => action = next,
+                    Err(_) if input.conversation.revision() != revision => {
+                        if let Some(control) =
+                            active_control(input, definition, runtime, &mut revision).await?
+                        {
+                            action = control;
+                            continue 'drive;
+                        }
+                        return paused(
+                            input,
+                            definition,
+                            "Native module paused for new user input after retaining its report checkpoint.",
+                        );
+                    }
+                    Err(failure) => return Err(failure),
+                }
             }
             ModuleAction::Model { request } => {
                 validate_request(&request)?;
+                publication::progress(
+                    input,
+                    definition,
+                    json!({
+                        "state":"requesting_model",
+                        "summary":request.status,
+                        "role":request.role,
+                        "key":request.key,
+                    }),
+                )?;
                 let role = if request.role == "reviewer" {
                     DeveloperModelRole::Reviewer
                 } else {
@@ -111,7 +174,7 @@ async fn drive(
                 loop {
                     super::super::check_cancelled(input)?;
                     accounting.check()?;
-                    let mut executor = tools::NativeTools::new(runtime, input, &request);
+                    let mut executor = tools::NativeTools::new(runtime, input, &request, revision);
                     let update = ProductRunUpdate {
                         phase: ProductRunPhase::Writing,
                         cycle: 1,
@@ -185,15 +248,45 @@ async fn drive(
                     match result {
                         Ok(result) => {
                             if input.conversation.revision() != revision {
-                                return Ok("Native module paused because new user input superseded this agent request. Retained work remains available to resume.".into());
+                                if let Some(control) =
+                                    active_control(input, definition, runtime, &mut revision)
+                                        .await?
+                                {
+                                    action = control;
+                                    break;
+                                }
+                                return paused(
+                                    input,
+                                    definition,
+                                    "Native module paused because new user input superseded this agent request. Retained work remains available to resume.",
+                                );
                             }
-                            action = runtime
+                            let continuation = runtime
                                 .call(
                                     input,
                                     "model_result",
                                     json!({"key":request.key,"text":result.text}),
+                                    revision,
                                 )
-                                .await?;
+                                .await;
+                            match continuation {
+                                Ok(next) => action = next,
+                                Err(_) if input.conversation.revision() != revision => {
+                                    if let Some(control) =
+                                        active_control(input, definition, runtime, &mut revision)
+                                            .await?
+                                    {
+                                        action = control;
+                                    } else {
+                                        return paused(
+                                            input,
+                                            definition,
+                                            "Native module paused because new user input superseded this agent request. Retained work remains available to resume.",
+                                        );
+                                    }
+                                }
+                                Err(failure) => return Err(failure),
+                            }
                             break;
                         }
                         Err(DeveloperLoopError::SegmentExhausted) => {
@@ -201,9 +294,16 @@ async fn drive(
                             continuation = true;
                         }
                         Err(_) if input.conversation.revision() != revision => {
-                            return Ok(
-                                "Native module paused for new user input; saved work was retained."
-                                    .into(),
+                            if let Some(control) =
+                                active_control(input, definition, runtime, &mut revision).await?
+                            {
+                                action = control;
+                                break;
+                            }
+                            return paused(
+                                input,
+                                definition,
+                                "Native module paused for new user input; saved work was retained.",
                             );
                         }
                         Err(e) => return Err(crate::turn::developer_error(&e)),
@@ -212,15 +312,81 @@ async fn drive(
             }
             ModuleAction::HostService { request } => {
                 request.validate().map_err(error)?;
+                publication::progress(
+                    input,
+                    definition,
+                    json!({
+                        "state":"host_operation",
+                        "summary":format!("{}@{} · {}",request.capability,request.version,request.operation),
+                        "capability":request.capability,
+                        "version":request.version,
+                        "operation":request.operation,
+                        "key":request.key,
+                        "target":request.input.get("target_path").or_else(||request.input.get("job_id")),
+                    }),
+                )?;
                 super::super::check_cancelled(input)?;
                 if input.conversation.revision() != revision {
-                    return Ok("Native module paused before a host service request. Its private state and completed work remain retained. Use /module resume to continue it.".into());
+                    if let Some(control) =
+                        active_control(input, definition, runtime, &mut revision).await?
+                    {
+                        action = control;
+                        continue 'drive;
+                    }
+                    return paused(
+                        input,
+                        definition,
+                        "Native module paused before a host service request. Its private state and completed work remain retained. Use /module resume to continue it.",
+                    );
                 }
                 let result = runtime.host_service(input, &request)?;
-                action = runtime.call(input, "host_result", json!({"result":result})).await?;
+                match runtime.call(input, "host_result", json!({"result":result}), revision).await {
+                    Ok(next) => action = next,
+                    Err(_) if input.conversation.revision() != revision => {
+                        if let Some(control) =
+                            active_control(input, definition, runtime, &mut revision).await?
+                        {
+                            action = control;
+                            continue 'drive;
+                        }
+                        return paused(
+                            input,
+                            definition,
+                            "Native module paused after retaining the host result because new user input arrived.",
+                        );
+                    }
+                    Err(failure) => return Err(failure),
+                }
             }
         }
     }
+}
+
+fn paused(
+    input: &ProductRunInput,
+    definition: &Definition,
+    message: &str,
+) -> Result<String, ProductRunnerError> {
+    publication::progress(input, definition, json!({"state":"paused","summary":message}))?;
+    Ok(message.into())
+}
+
+async fn active_control(
+    input: &ProductRunInput,
+    definition: &Definition,
+    runtime: &runtime::Runtime,
+    revision: &mut u64,
+) -> Result<Option<serde_json::Value>, ProductRunnerError> {
+    let Some(command) =
+        input.conversation.take_active_module_command(&definition.manifest.id).map_err(error)?
+    else {
+        return Ok(None);
+    };
+    *revision = input.conversation.incorporated_revision();
+    runtime
+        .call(input, "command", json!({"text":command,"revision":*revision}), *revision)
+        .await
+        .map(Some)
 }
 fn valid_key(key: &str) -> bool {
     !key.is_empty()

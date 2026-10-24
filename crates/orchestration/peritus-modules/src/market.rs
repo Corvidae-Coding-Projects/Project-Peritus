@@ -276,6 +276,46 @@ impl Registry {
             &serde_json::to_vec(&json!({"schema":1,"module":id,"digest":digest,"view":view}))?,
         )
     }
+    /// Updates the host-observed progress for one exact native-module run while retaining the
+    /// module's most recently published actions, summary, and export. A package change starts a
+    /// new view rather than carrying controls across package authority.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the identities or progress document are invalid, the retained view
+    /// cannot be decoded, or the durable session projection cannot be published atomically.
+    pub fn publish_session_progress(
+        &self,
+        run: &str,
+        id: &str,
+        digest: &str,
+        progress: &Value,
+    ) -> Result<(), Error> {
+        if !hex(run, 32)
+            || !crate::definition::identifier(id)
+            || !hex(digest, 64)
+            || !progress.is_object()
+            || serde_json::to_vec(progress)?.len() > 64 * 1024
+        {
+            return Err(invalid("invalid plugin progress publication"));
+        }
+        let path = self.root().join("sessions").join(format!("{run}.json"));
+        let mut session = match fs::read(&path) {
+            Ok(bytes) => serde_json::from_slice::<Value>(&bytes)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                json!({"schema":1,"module":id,"digest":digest,"view":{"actions":[]}})
+            }
+            Err(error) => return Err(error.into()),
+        };
+        if session["schema"] != 1 || session["module"] != id || session["digest"] != digest {
+            session = json!({"schema":1,"module":id,"digest":digest,"view":{"actions":[]}});
+        }
+        let view = session["view"]
+            .as_object_mut()
+            .ok_or_else(|| invalid("invalid retained plugin session view"))?;
+        view.insert("progress".into(), progress.clone());
+        publish(&path, &serde_json::to_vec(&session)?)
+    }
     /// Reads cached discovery and the selected run's plugin-supplied action menu.
     pub fn market_for_session(&self, run: Option<&str>) -> Result<Value, Error> {
         let mut view = self.market()?;

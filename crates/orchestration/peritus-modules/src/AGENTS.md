@@ -6,7 +6,7 @@ Strict module metadata, atomic registry and digest-bound durable jobs.
 
 | File | Role |
 | --- | --- |
-| [market.rs](market.rs) | Legacy executable catalog, additive source discovery, inert refresh and shared menu operations. |
+| [market.rs](market.rs) | Legacy executable catalog, additive source discovery, inert refresh, shared menu operations, and exact-run native-module presentation/progress state. |
 | [market](market/AGENTS.md) | Versioned source-catalog snapshot and compatibility contract. |
 | [lib.rs](lib.rs) | Public exports, typed errors and synced state publication. |
 | [definition.rs](definition.rs) | Manifest/dependency validation, declared resources and package hashing. |

@@ -312,6 +312,36 @@ pub struct ScopedSourceRevocation {
     pub newly_revoked: bool,
 }
 
+/// Request for an exact byte comparison between a retained snapshot and the selected workspace.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScopedSourceVerifyRequest {
+    /// Contract schema, currently one.
+    pub schema: u16,
+    /// Exact retained authority whose manifest is the comparison baseline.
+    pub authority: ScopedSourceAuthority,
+}
+
+/// Host-observed before/after proof for the selected original workspace.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScopedSourceVerification {
+    /// Contract schema, currently one.
+    pub schema: u16,
+    /// Retained source snapshot used as the baseline.
+    pub snapshot_digest: String,
+    /// Content identity of the newly observed path/digest/mode manifest.
+    pub observed_manifest_digest: String,
+    /// Whether every included original-project byte and executable bit is unchanged.
+    pub unchanged: bool,
+    /// Included paths whose bytes or executable bit changed.
+    pub changed_paths: Vec<String>,
+    /// Newly present, non-excluded regular-file paths.
+    pub added_paths: Vec<String>,
+    /// Baseline paths no longer present as regular files.
+    pub removed_paths: Vec<String>,
+}
+
 /// Requested maximum resources for a host-owned job; the host may only narrow them.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -402,6 +432,37 @@ pub enum ModuleJobVerdict {
     Indeterminate,
 }
 
+/// Host-authored identity and exact diff for a copy-only target patch.
+///
+/// The host constructs this receipt from the immutable source artifact and replacement bytes. A
+/// module cannot use it to write the selected source checkout.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModulePatchReceipt {
+    /// Content identity of the patch, independent of any individual replay case.
+    pub patch_digest: String,
+    /// Canonical source-relative path changed in the disposable copy.
+    pub source_path: String,
+    /// Digest of the immutable source file before the patch.
+    pub original_digest: String,
+    /// Digest of the replacement bytes executed by the host.
+    pub patched_digest: String,
+    /// Content identity of the exact unified diff.
+    pub diff_artifact: String,
+    /// Exact bounded unified diff bytes retained for export and independent review.
+    pub diff_bytes: Vec<u8>,
+    /// Stable module-owned replay case identity.
+    pub case_id: String,
+    /// Finding identities the patch claims to address.
+    pub findings: Vec<String>,
+    /// Declared prerequisites bound into the patch identity.
+    pub prerequisites: Vec<String>,
+    /// Application order within a multi-patch plan.
+    pub order: u32,
+    /// Earlier patch identities required by this patch.
+    pub dependencies: Vec<String>,
+}
+
 /// Poll request for one exact opaque job identity.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -488,6 +549,9 @@ pub struct ModuleJobReceipt {
     pub network_policy: String,
     /// Dependency-preparation provenance, absent for proof execution jobs.
     pub preparation: Option<ModulePreparationReceipt>,
+    /// Copy-only patch identity and diff, present only for a patched replay adapter.
+    #[serde(default)]
+    pub patch: Option<ModulePatchReceipt>,
 }
 
 /// Host-authored provenance for one constrained dependency retrieval.

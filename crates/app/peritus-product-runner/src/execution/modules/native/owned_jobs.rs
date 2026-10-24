@@ -13,8 +13,8 @@ use peritus_modules::Registry;
 use peritus_plugin_sdk::{
     ModuleHostOutcome, ModuleJobCancelRequest, ModuleJobHandle, ModuleJobLimits, ModuleJobLogPage,
     ModuleJobLogRequest, ModuleJobPhase, ModuleJobReceipt, ModuleJobRequest, ModuleJobStatus,
-    ModuleJobStatusRequest, ModuleJobStream, ModuleJobVerdict, ModulePreparationReceipt,
-    ScopedSourceAuthority,
+    ModuleJobStatusRequest, ModuleJobStream, ModuleJobVerdict, ModulePatchReceipt,
+    ModulePreparationReceipt, ScopedSourceAuthority,
 };
 use peritus_process::{
     CancellationReason, CommandSpec, DeadlinePolicy, EnvironmentPlan, ExecutionPlan,
@@ -52,9 +52,12 @@ use std::{
 
 const SCHEMA: u16 = 1;
 const PROOF_OPERATION: &str = "linux.canary-disclosure.v1";
+const PATCHED_PROOF_OPERATION: &str = "linux.patched-canary-replay.v1";
 const PREPARATION_OPERATION: &str = "https.dependency-fetch.v1";
 const OUTPUT_BYTES: u64 = 4 * 1024 * 1024;
 const PREPARATION_BYTES: u64 = 64 * 1024 * 1024;
+const PATCH_SOURCE_BYTES: u64 = 1024 * 1024;
+const PATCH_SOURCE_LENGTH: usize = 1024 * 1024;
 const MAX_LOG_PAGE: u64 = 1024 * 1024;
 const MAX_ACTIVE_JOBS: usize = 4;
 
@@ -63,6 +66,21 @@ const MAX_ACTIVE_JOBS: usize = 4;
 struct CanaryDisclosureSpec {
     target_path: String,
     attacker_input: String,
+    #[serde(default)]
+    patch: Option<CopyPatchSpec>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+struct CopyPatchSpec {
+    expected_source_digest: String,
+    replacement: String,
+    case_id: String,
+    expected_stdout_fragment: String,
+    findings: Vec<String>,
+    prerequisites: Vec<String>,
+    order: u32,
+    dependencies: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -92,6 +110,10 @@ struct StoredJob {
     action: [u8; 16],
     process: [u8; 16],
     scratch: PathBuf,
+    #[serde(default)]
+    expected_stdout_fragment: Option<String>,
+    #[serde(default)]
+    patch: Option<ModulePatchReceipt>,
 }
 
 enum ActiveControl {
@@ -198,13 +220,20 @@ impl<'a> Broker<'a> {
         if request.operation == PREPARATION_OPERATION {
             return self.submit_preparation(key, request);
         }
-        if request.operation != PROOF_OPERATION {
+        if !matches!(request.operation.as_str(), PROOF_OPERATION | PATCHED_PROOF_OPERATION) {
             return Err(rejected(
                 "invalid_job_request",
                 "the requested stable operation adapter is unavailable",
             ));
         }
         let specification: CanaryDisclosureSpec = decode(request.specification.clone())?;
+        let patched = request.operation == PATCHED_PROOF_OPERATION;
+        if patched != specification.patch.is_some() {
+            return Err(rejected(
+                "invalid_job_request",
+                "patched replay requires exactly one copy-only patch specification",
+            ));
+        }
         validate_target_path(&specification.target_path)?;
         if specification.attacker_input.len() > 4096
             || specification.attacker_input.contains('\0')
@@ -222,7 +251,7 @@ impl<'a> Broker<'a> {
             self.module_digest,
             &request.source_handle,
             &request.scope_revision,
-            PROOF_OPERATION,
+            request.operation.as_str(),
             &specification,
             &limits,
         ))
@@ -276,9 +305,30 @@ impl<'a> Broker<'a> {
             handle: request.source_handle.clone(),
             scope_revision: request.scope_revision.clone(),
         };
-        let target = scoped_source::Broker::new(self.input, self.source_state, self.module_digest)
-            .materialize_file(&authority, &specification.target_path, &inputs.join("target"))
+        let source = scoped_source::Broker::new(self.input, self.source_state, self.module_digest)
+            .materialize_file(&authority, &specification.target_path, &inputs.join("original"))
             .map_err(source_error)?;
+        let (target, patch, expected_stdout_fragment) = if let Some(patch) = &specification.patch {
+            let (target, receipt) = prepare_copy_patch(
+                &source,
+                &inputs.join("target"),
+                &specification.target_path,
+                patch,
+            )?;
+            (target, Some(receipt), Some(patch.expected_stdout_fragment.clone()))
+        } else {
+            let target_path = inputs.join("target");
+            fs::rename(&source.path, &target_path).map_err(io_error)?;
+            (
+                scoped_source::MaterializedSourceFile {
+                    snapshot_digest: source.snapshot_digest,
+                    path: target_path,
+                    digest: source.digest,
+                },
+                None,
+                None,
+            )
+        };
         let canary = random_canary()?;
         let canary_path = inputs.join("canary");
         write_private(&canary_path, &canary)?;
@@ -307,7 +357,7 @@ impl<'a> Broker<'a> {
             schema: SCHEMA,
             job_id: job_id.clone(),
             phase: ModuleJobPhase::Queued,
-            operation: PROOF_OPERATION.into(),
+            operation: request.operation.clone(),
             request_digest: request_digest.clone(),
             limits: limits.clone(),
             receipt: None,
@@ -327,6 +377,8 @@ impl<'a> Broker<'a> {
                 action: identity.action_id().into_bytes(),
                 process: identity.process_id().into_bytes(),
                 scratch: scratch.clone(),
+                expected_stdout_fragment,
+                patch,
             },
         );
         save_index(&self.root, &index)?;
@@ -371,6 +423,10 @@ impl<'a> Broker<'a> {
             process,
             control,
             canary,
+            expected_stdout_fragment: index
+                .jobs
+                .get(&job_id)
+                .and_then(|job| job.expected_stdout_fragment.clone()),
             source_state: self.source_state.to_path_buf(),
             authority,
             module_id: self.module_id.to_owned(),
@@ -483,6 +539,8 @@ impl<'a> Broker<'a> {
                 action: [0; 16],
                 process: [0; 16],
                 scratch,
+                expected_stdout_fragment: None,
+                patch: None,
             },
         );
         save_index(&self.root, &index)?;
@@ -945,6 +1003,7 @@ struct OwnerInput {
     process: peritus_process::OwnedProcess,
     control: ProcessControl,
     canary: Vec<u8>,
+    expected_stdout_fragment: Option<String>,
     source_state: PathBuf,
     authority: ScopedSourceAuthority,
     module_id: String,
@@ -1026,9 +1085,13 @@ fn finish_owner(input: OwnerInput) {
                             matches!(terminal.disposition(), TerminalDisposition::Exited)
                                 && matches!(terminal.os_exit(), OsExitObservation::Code(0));
                         let leaked = contains(&stdout, &input.canary);
+                        let expected_output_observed = input
+                            .expected_stdout_fragment
+                            .as_ref()
+                            .is_none_or(|expected| contains(&stdout, expected.as_bytes()));
                         let verdict = if clean_exit && leaked {
                             ModuleJobVerdict::ViolationObserved
-                        } else if clean_exit {
+                        } else if clean_exit && expected_output_observed {
                             ModuleJobVerdict::PropertyHeldForCase
                         } else {
                             ModuleJobVerdict::Indeterminate
@@ -1036,7 +1099,7 @@ fn finish_owner(input: OwnerInput) {
                         let receipt = ModuleJobReceipt {
                             schema: SCHEMA,
                             job_id: input.job_id.clone(),
-                            operation: PROOF_OPERATION.into(),
+                            operation: job.status.operation.clone(),
                             request_digest: job.status.request_digest.clone(),
                             module_digest: input.module_digest,
                             source_handle: job.source_handle.clone(),
@@ -1063,6 +1126,7 @@ fn finish_owner(input: OwnerInput) {
                             cleanup_complete: cleanup,
                             network_policy: "deny_all".into(),
                             preparation: None,
+                            patch: job.patch.clone(),
                         };
                         job.status.phase = match terminal.disposition() {
                             TerminalDisposition::Cancelled => ModuleJobPhase::Cancelled,
@@ -1073,9 +1137,10 @@ fn finish_owner(input: OwnerInput) {
                             _ => ModuleJobPhase::Failed,
                         };
                         job.status.detail = format!(
-                            "native owner reached {:?}; oracle {:?}; cleanup complete: {}",
+                            "native owner reached {:?}; oracle {:?}; expected output observed: {}; cleanup complete: {}",
                             terminal.disposition(),
                             verdict,
+                            expected_output_observed,
                             cleanup
                         );
                         job.status.receipt = Some(receipt);
@@ -1222,6 +1287,7 @@ fn finish_preparation_record(
                         cleanup_complete: cleanup,
                         network_policy: "declared_https_public_only_then_disconnected".into(),
                         preparation: Some(preparation),
+                        patch: None,
                     });
                     job.status.phase =
                         if cleanup { ModuleJobPhase::Completed } else { ModuleJobPhase::Failed };
@@ -1332,6 +1398,7 @@ fn validate_target_path(path: &str) -> Result<(), JobError> {
     if path.is_empty()
         || path.contains('\0')
         || path.contains('\\')
+        || path.chars().any(char::is_control)
         || Path::new(path).is_absolute()
         || !Path::new(path).components().all(|part| matches!(part, Component::Normal(_)))
     {
@@ -1341,6 +1408,143 @@ fn validate_target_path(path: &str) -> Result<(), JobError> {
         ));
     }
     Ok(())
+}
+
+fn prepare_copy_patch(
+    source: &scoped_source::MaterializedSourceFile,
+    destination: &Path,
+    source_path: &str,
+    patch: &CopyPatchSpec,
+) -> Result<(scoped_source::MaterializedSourceFile, ModulePatchReceipt), JobError> {
+    if patch.expected_source_digest != source.digest {
+        return Err(rejected(
+            "patch_preimage_mismatch",
+            "the proposed patch does not name the immutable target preimage digest",
+        ));
+    }
+    if patch.replacement.len() > PATCH_SOURCE_LENGTH
+        || patch.case_id.is_empty()
+        || patch.case_id.len() > 128
+        || !patch
+            .case_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+        || patch.expected_stdout_fragment.is_empty()
+        || patch.expected_stdout_fragment.len() > 4096
+        || patch.expected_stdout_fragment.contains('\0')
+        || patch.findings.is_empty()
+        || patch.findings.len() > 128
+        || patch.prerequisites.len() > 128
+        || patch.dependencies.len() > 128
+        || patch
+            .findings
+            .iter()
+            .chain(&patch.prerequisites)
+            .chain(&patch.dependencies)
+            .any(|value| value.is_empty() || value.len() > 4096 || value.contains('\0'))
+    {
+        return Err(rejected(
+            "invalid_copy_patch",
+            "copy patches require bounded replacement bytes, a stable case, expected output, findings, prerequisites and dependencies",
+        ));
+    }
+    if fs::metadata(&source.path).map_err(io_error)?.len() > PATCH_SOURCE_BYTES {
+        return Err(rejected(
+            "patch_source_too_large",
+            "phase-six copy patches currently require a source file no larger than 1 MiB",
+        ));
+    }
+    let original = fs::read(&source.path).map_err(io_error)?;
+    if digest(&original) != source.digest {
+        return Err(failed(
+            "patch_preimage_integrity",
+            "materialized patch preimage no longer matches its immutable digest",
+            false,
+        ));
+    }
+    let replacement = patch.replacement.as_bytes();
+    let patched_digest = digest(replacement);
+    let diff_bytes = unified_diff(source_path, &original, replacement)?;
+    let diff_artifact = digest(&diff_bytes);
+    let patch_identity = serde_json::to_vec(&(
+        "peritus-copy-patch-v1",
+        &source.snapshot_digest,
+        source_path,
+        &source.digest,
+        &patched_digest,
+        &patch.findings,
+        &patch.prerequisites,
+        patch.order,
+        &patch.dependencies,
+    ))
+    .map_err(json_error)?;
+    let patch_digest = digest(&patch_identity);
+    write_private(destination, replacement)?;
+    let receipt = ModulePatchReceipt {
+        patch_digest,
+        source_path: source_path.into(),
+        original_digest: source.digest.clone(),
+        patched_digest: patched_digest.clone(),
+        diff_artifact,
+        diff_bytes,
+        case_id: patch.case_id.clone(),
+        findings: patch.findings.clone(),
+        prerequisites: patch.prerequisites.clone(),
+        order: patch.order,
+        dependencies: patch.dependencies.clone(),
+    };
+    Ok((
+        scoped_source::MaterializedSourceFile {
+            snapshot_digest: source.snapshot_digest.clone(),
+            path: destination.to_path_buf(),
+            digest: patched_digest,
+        },
+        receipt,
+    ))
+}
+
+fn unified_diff(path: &str, original: &[u8], replacement: &[u8]) -> Result<Vec<u8>, JobError> {
+    let original = std::str::from_utf8(original).map_err(|_| {
+        rejected("binary_patch_unsupported", "phase-six copy patches require UTF-8 source text")
+    })?;
+    let replacement = std::str::from_utf8(replacement).map_err(|_| {
+        rejected(
+            "binary_patch_unsupported",
+            "phase-six copy patches require UTF-8 replacement text",
+        )
+    })?;
+    let original_lines = line_count(original);
+    let replacement_lines = line_count(replacement);
+    let original_range = hunk_range(original_lines);
+    let replacement_range = hunk_range(replacement_lines);
+    let mut diff = format!(
+        "diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n@@ -{original_range} +{replacement_range} @@\n"
+    );
+    append_diff_lines(&mut diff, '-', original);
+    append_diff_lines(&mut diff, '+', replacement);
+    Ok(diff.into_bytes())
+}
+
+fn line_count(text: &str) -> usize {
+    if text.is_empty() { 0 } else { text.split_inclusive('\n').count() }
+}
+
+fn hunk_range(lines: usize) -> String {
+    if lines == 0 { "0,0".into() } else { format!("1,{lines}") }
+}
+
+fn append_diff_lines(diff: &mut String, prefix: char, text: &str) {
+    for line in text.split_inclusive('\n') {
+        diff.push(prefix);
+        if let Some(content) = line.strip_suffix('\n') {
+            diff.push_str(content);
+            diff.push('\n');
+        } else {
+            diff.push_str(line);
+            diff.push('\n');
+            diff.push_str("\\ No newline at end of file\n");
+        }
+    }
 }
 
 fn random_canary() -> Result<Vec<u8>, JobError> {

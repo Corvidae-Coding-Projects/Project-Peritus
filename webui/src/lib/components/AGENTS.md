@@ -8,7 +8,7 @@ Reusable Svelte presentation components for navigation, conversations, files, di
 
 | File | Role |
 | --- | --- |
-| [Modules.svelte](Modules.svelte) | Searchable catalog, explicit install/enable/use and research controls. |
+| [Modules.svelte](Modules.svelte) | Searchable catalog, explicit install/enable/use, durable campaign progress, complete module actions, and user-visible exports. |
 | [Attachments.svelte](Attachments.svelte) | Selected immutable file/image attachments and their presentation. |
 | [Console.svelte](Console.svelte) | Browser UI component for Console. |
 | [Explorer.svelte](Explorer.svelte) | Project file tree and explicit file selection. |

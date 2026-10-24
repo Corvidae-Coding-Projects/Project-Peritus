@@ -9,6 +9,7 @@ use std::fmt::Write as _;
 pub struct ModuleMenu {
     pub(crate) rows: Vec<Value>,
     pub(crate) selected: usize,
+    pub(crate) selected_action: usize,
     pub(crate) busy: bool,
     pub(crate) status: String,
     pub(crate) session: Value,
@@ -87,6 +88,9 @@ impl AppModel {
         }
         menu.rows = rows.into_values().collect();
         menu.selected = menu.selected.min(menu.rows.len().saturating_sub(1));
+        menu.selected_action = menu
+            .selected_action
+            .min(menu.session["view"]["actions"].as_array().map_or(0, Vec::len).saturating_sub(1));
         menu.status = value["notice"]
             .as_str()
             .unwrap_or("Packages install disabled. Enable explicitly, then Enter to select.")
@@ -134,6 +138,16 @@ impl AppModel {
             }
             KeyCode::Home => menu.selected = 0,
             KeyCode::End => menu.selected = menu.rows.len().saturating_sub(1),
+            KeyCode::Left | KeyCode::BackTab => {
+                menu.selected_action = menu.selected_action.saturating_sub(1);
+            }
+            KeyCode::Right | KeyCode::Tab => {
+                let last = menu.session["view"]["actions"]
+                    .as_array()
+                    .map_or(0, Vec::len)
+                    .saturating_sub(1);
+                menu.selected_action = (menu.selected_action + 1).min(last);
+            }
             KeyCode::Char('r') => return self.module_operation(ModuleOperation::Refresh),
             _ => {}
         }
@@ -143,11 +157,14 @@ impl AppModel {
             && row["error"].is_null()
             && menu.session["module"] == id
             && menu.session["digest"] == row["digest"]
-            && let KeyCode::Char(number @ '1'..='9') = key.code
-            && let Some(action) = menu.session["view"]["actions"]
-                .as_array()
-                .and_then(|actions| actions.get(number as usize - '1' as usize))
-                .cloned()
+            && let Some(action) = menu.session["view"]["actions"].as_array().and_then(|actions| {
+                let selected = match key.code {
+                    KeyCode::Char(number @ '1'..='9') => number as usize - '1' as usize,
+                    KeyCode::Enter => menu.selected_action,
+                    _ => return None,
+                };
+                actions.get(selected).cloned()
+            })
         {
             if self.chat_work_active() {
                 return Vec::new();

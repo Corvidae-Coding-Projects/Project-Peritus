@@ -121,6 +121,9 @@ impl ConversationView for LiveConversation {
     fn take_module_command(&self) -> Result<Option<String>, String> {
         self.admit_module_command().map_err(|e| e.to_string())
     }
+    fn take_active_module_command(&self, module_id: &str) -> Result<Option<String>, String> {
+        self.admit_active_module_command(module_id).map_err(|e| e.to_string())
+    }
     fn present_host_reply(&self, text: &str) -> Result<(), String> {
         self.update(|options, _| {
             let mut remaining = text;

@@ -31,11 +31,11 @@ pub use module_host::{
     MODULE_HOST_CONTRACT_VERSION, ModuleHostCapability, ModuleHostOutcome, ModuleHostProfile,
     ModuleHostRequest, ModuleHostResult, ModuleJobCancelRequest, ModuleJobHandle, ModuleJobLimits,
     ModuleJobLogPage, ModuleJobLogRequest, ModuleJobPhase, ModuleJobReceipt, ModuleJobRequest,
-    ModuleJobStatus, ModuleJobStatusRequest, ModuleJobStream, ModuleJobVerdict,
+    ModuleJobStatus, ModuleJobStatusRequest, ModuleJobStream, ModuleJobVerdict, ModulePatchReceipt,
     ModulePreparationReceipt, ScopedSourceAuthority, ScopedSourceEntry, ScopedSourceHandle,
     ScopedSourceManifestPage, ScopedSourceManifestRequest, ScopedSourceReadRequest,
     ScopedSourceReadResult, ScopedSourceRequest, ScopedSourceRevocation, ScopedSourceRevokeRequest,
-    SourcePackageRequest,
+    ScopedSourceVerification, ScopedSourceVerifyRequest, SourcePackageRequest,
 };
 pub use payload::{JsonBounds, JsonPayload};
 pub use protocol::{

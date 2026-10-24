@@ -12,6 +12,7 @@ pub(super) struct NativeTools<'a> {
     runtime: &'a Runtime,
     input: &'a ProductRunInput,
     request: &'a ModuleAgentRequest,
+    revision: u64,
     workspace: WorkspaceDeveloperTools,
     completed: bool,
 }
@@ -20,11 +21,13 @@ impl<'a> NativeTools<'a> {
         runtime: &'a Runtime,
         input: &'a ProductRunInput,
         request: &'a ModuleAgentRequest,
+        revision: u64,
     ) -> Self {
         Self {
             runtime,
             input,
             request,
+            revision,
             workspace: input.configure_tools(
                 WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
                     .with_task_contract(&request.prompt),
@@ -124,6 +127,7 @@ impl NativeTools<'_> {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         if self.input.provider_cancellation.is_cancelled()
             || self.input.cancelled.load(std::sync::atomic::Ordering::Acquire)
+            || self.input.conversation.revision() != self.revision
         {
             return Err(DeveloperLoopError::Tool("native module tool cancelled".into()));
         }
@@ -148,7 +152,7 @@ impl NativeTools<'_> {
         }
         let name = call.name().as_str();
         if self.request.functions.iter().any(|f| f.name == name) {
-            let result=self.runtime.call_sync(self.input,"tool",json!({"key":self.request.key,"name":name,"arguments_json":std::str::from_utf8(call.arguments().canonical_bytes()).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?})).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?;
+            let result=self.runtime.call_sync(self.input,"tool",json!({"key":self.request.key,"name":name,"arguments_json":std::str::from_utf8(call.arguments().canonical_bytes()).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?}),self.revision).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?;
             let is_error = result.get("error").is_some();
             // Only a successful plugin-defined operation may commit its own stage.
             // Host web results cannot request this handoff. The coordinator still
@@ -172,7 +176,7 @@ impl NativeTools<'_> {
         };
         let result: Value = serde_json::from_slice(observation.output.canonical_bytes())
             .map_err(|e| DeveloperLoopError::Tool(e.to_string()))?;
-        let retained=self.runtime.call_sync(self.input,"observe",json!({"key":self.request.key,"name":name,"arguments_json":std::str::from_utf8(call.arguments().canonical_bytes()).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?,"result_json":result.to_string(),"is_error":observation.is_error})).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?;
+        let retained=self.runtime.call_sync(self.input,"observe",json!({"key":self.request.key,"name":name,"arguments_json":std::str::from_utf8(call.arguments().canonical_bytes()).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?,"result_json":result.to_string(),"is_error":observation.is_error}),self.revision).map_err(|e|DeveloperLoopError::Tool(e.to_string()))?;
         if let Some(error) = retained.get("error") {
             return crate::developer_tools::module_observation(
                 &json!({"error":format!("The host operation completed but the plugin did not retain its observation: {error}. Retry the retained source read; do not claim this evidence was saved."),"source":result["source"]}),

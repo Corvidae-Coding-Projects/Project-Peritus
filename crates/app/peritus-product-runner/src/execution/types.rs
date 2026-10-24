@@ -131,6 +131,11 @@ pub trait ConversationView: Send + Sync {
     fn take_module_command(&self) -> Result<Option<String>, String> {
         Ok(None)
     }
+    /// Durably admits a pause, resume, or steer command for the named module while that module's
+    /// agent role is active. Other input remains pending for ordinary supersession handling.
+    fn take_active_module_command(&self, _module_id: &str) -> Result<Option<String>, String> {
+        Ok(None)
+    }
     /// Publishes a local command result through the same human conversation activity stream.
     fn present_host_reply(&self, _text: &str) -> Result<(), String> {
         Ok(())

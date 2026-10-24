@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "PASS",
+  "platform": "x86_64-unknown-linux-gnu",
+  "project_base": "bfe3189e20ace3bdfa36b0922f999a6c75ba56ee",
+  "market_commit": "84948422ef3135ed720fc44f03ce3008a588578c",
+  "module_version": "0.2.0",
+  "source_digest": "26e58208f4ce9c75d83cf727c5ee9d9310bf991bdb7ca910df480c08395cc9d6",
+  "lockfile_digest": "8ad72c65bb0bc20f31fd1f12637f28b107cdb970fd32d5b56600a8e00207beff",
+  "source_build": {
+    "job_id": "229caf6eeb3177796f48d0992de59329437adbeaa746d938fa4bbba873bff33a",
+    "recipe_digest": "d9634bfafc9f24f556cbb2e402523d64f4598ed48611cd80b9f322c18154d457",
+    "executable_digest": "c9731d9cf8f9db0c367ce6f5609ebd0033645be41c26c7356cdc493265a9e45f",
+    "package_digest": "f681de96fd44c6fae96c780960fa4183c9724d76d8b36e2fec17bf3bfce1b6a0",
+    "installed_disabled_then_enabled": true,
+    "launched_from_tui": true,
+    "evidence_sha256": "156a5de9cdd6619cffbfeab45a5441eb0c7c50640dd07232fc55e69d9830519d"
+  },
+  "hostile_replay": {
+    "status": "PASS",
+    "scenarios": 15,
+    "evidence_sha256": "7f5bbe40df5c6d62bafe8649292d4872ab91ee99bff883f25612c1431bd3daf9",
+    "terminal_sha256": "d9c4e8ad36b7c0394aa55d4b4148d1e6d34f323e61d3d909d20c388e58ac3af7"
+  },
+  "durable_state_replay": {
+    "status": "PASS",
+    "scenarios": 4,
+    "evidence_sha256": "0bafa1c49d1343629685b8ed1aa4a42642b0e166a5cebf1d37bc97e3569d0759"
+  },
+  "brownfield": {
+    "status": "PASS",
+    "run_id": "cd32a9d462f7a768a55d31e54e497f89",
+    "provider": "openai",
+    "model": "gpt-daybreak-blue-latest",
+    "manifest_files": 127,
+    "source_observations": 31,
+    "hypotheses": 14,
+    "jobs": 22,
+    "trusted_receipts": 22,
+    "findings": {
+      "confirmed": 2,
+      "not_reproduced": 7,
+      "refuted": 4,
+      "inconclusive": 1
+    },
+    "coverage": {
+      "examined": 14,
+      "unexamined": 1,
+      "unexamined_family": "cryptography_and_key_lifecycle"
+    },
+    "patch_revisions": 10,
+    "patch_replay_receipts": 8,
+    "validated_patches": 2,
+    "original_unchanged": true,
+    "original_manifest_sha256": "967029bd95d00285b721e17ee4d95ed8cc8cd8c49b54b3bf7153d24ffcdc175f",
+    "evidence_sha256": "902eabe5f0dcfe03d59ed3b94a37ce904df8153125b0c42f3ef97febca9c4fc4",
+    "terminal_sha256": "8d30ba11d15baae08f910afdf3b07d4843dd3862dd2485f867133f042572e4e3",
+    "state_sha256": "c8749b30a36d1cf93a18b2fbe779e3628cdf1b1fce48bc8358177e5c705eee58"
+  },
+  "initial_failure": {
+    "cause": "discovery encoded argv and the host canary path instead of one literal attacker input",
+    "evidence_sha256": "35f31482c0e3c6f16c6c7b7d256d5d526b688dd54d057a20def9f911ee1ee35e",
+    "terminal_sha256": "0434e3950c3c816315920cccb81893d66423f4869017a4cc3f7fd54a8348f876",
+    "replayed_after_fix": true
+  },
+  "artifacts": {
+    "markdown": "60816bf6a3d303d95330cabd3c9212481a9d1c0900c82cb9886c1a78fba72bd7",
+    "json": "a900c8c17a299c05612203e87ec1bcc51eb1aa215949f65bf51fe39ce53590ce",
+    "patches": [
+      "433d59a2cb0ec2451e1f41a6fa2135f9042c6e6da509ca5f2ca94ee4caed8daf",
+      "7176f76d09489d0ca51ea06f00937b71f32369203c8f8c132588a18c8b8a7a35"
+    ],
+    "reproduction_bundle": "941838d3b135980ff671f4b17fccd6c86e73542a66c5b4cf83304c3e0b160ff1"
+  },
+  "source_only_git": true,
+  "acceptance": {
+    "A1": "PASS",
+    "A2": "PASS",
+    "A3": "PASS",
+    "A4": "PASS",
+    "A5": "PASS",
+    "A6": "PASS",
+    "A7": "PASS",
+    "A8": "PASS",
+    "A9": "PASS",
+    "A10": "PASS",
+    "A11": "PASS",
+    "A12": "PASS",
+    "A13": "PASS",
+    "A14": "PASS"
+  },
+  "checks": {
+    "market_format": "PASS",
+    "market_locked_check": "PASS",
+    "market_strict_package_clippy": "PASS",
+    "market_release_build": "PASS",
+    "project_focused_format": "PASS",
+    "project_focused_locked_check": "PASS",
+    "web_svelte_check": "PASS: 0 errors and 0 warnings",
+    "web_production_build": "PASS",
+    "unit_tests": "NOT RUN",
+    "formal_verification": "NOT RUN"
+  },
+  "limits": [
+    "bounded selected corpus and copied browser repository",
+    "Linux x86-64 GNU host adapter only",
+    "cryptography and key lifecycle deliberately unexamined without a suitable runtime adapter",
+    "not a whole-application or arbitrary-application security certification",
+    "no unit tests or formal verification"
+  ]
+}

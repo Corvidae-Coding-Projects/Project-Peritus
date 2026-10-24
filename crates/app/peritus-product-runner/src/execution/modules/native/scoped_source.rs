@@ -9,6 +9,7 @@ use peritus_plugin_sdk::{
     ModuleHostOutcome, ScopedSourceAuthority, ScopedSourceEntry, ScopedSourceHandle,
     ScopedSourceManifestPage, ScopedSourceManifestRequest, ScopedSourceReadRequest,
     ScopedSourceReadResult, ScopedSourceRequest, ScopedSourceRevocation, ScopedSourceRevokeRequest,
+    ScopedSourceVerification, ScopedSourceVerifyRequest,
 };
 use peritus_types::{EventId, Sha256Digest};
 use peritus_workspace::{FolderIdentity, FolderInspection};
@@ -139,6 +140,7 @@ impl<'a> Broker<'a> {
             "capture" => decode(input).and_then(|request| self.capture(request)),
             "manifest" => decode(input).and_then(|request| self.manifest(request)),
             "read" => decode(input).and_then(|request| self.read(request)),
+            "verify" => decode(input).and_then(|request| self.verify(request)),
             "revoke" => decode(input).and_then(|request| self.revoke(request)),
             _ => {
                 return ModuleHostOutcome::Unsupported {
@@ -623,6 +625,108 @@ impl<'a> Broker<'a> {
             handle: request.authority.handle,
             scope_revision: request.authority.scope_revision,
             newly_revoked,
+        })
+        .map_err(json_failure)
+    }
+
+    fn verify(&self, request: ScopedSourceVerifyRequest) -> Result<serde_json::Value, BrokerError> {
+        if request.schema != SCHEMA {
+            return Err(rejected(
+                "invalid_verify_request",
+                "source verification requires schema 1",
+            ));
+        }
+        let index = self.load_index()?;
+        let scope = self.require_scope(&index, &request.authority)?;
+        let baseline = self.load_manifest(scope)?;
+        let source_root = self.source_root()?;
+        let before = inventory(&source_root, &scope.exclusions, || self.cancelled())?;
+        let identity = FolderIdentity::observe(&source_root).map_err(|_| {
+            failed("source_unavailable", "source root identity is unavailable", true)
+        })?;
+        let inspection = FolderInspection::open(&identity).map_err(|_| {
+            failed(
+                "source_unavailable",
+                "source root cannot be opened without following links",
+                true,
+            )
+        })?;
+        let mut observed = Vec::with_capacity(before.files.len());
+        for (path, version) in &before.files {
+            if self.cancelled() {
+                return Err(failed("source_cancelled", "source verification was cancelled", true));
+            }
+            let workspace_path = WorkspacePath::new(path.clone()).map_err(|_| {
+                rejected("unsafe_source_path", "source inventory produced a noncanonical path")
+            })?;
+            let (bytes, digest) = inspection
+                .scan_file_chunks(&workspace_path, || self.cancelled(), |_, _| {})
+                .map_err(|_| {
+                    failed(
+                        "mixed_source_revision",
+                        "source identity or bytes changed during no-follow verification",
+                        true,
+                    )
+                })?
+                .ok_or_else(|| {
+                    failed("source_cancelled", "source verification was cancelled", true)
+                })?;
+            observed.push(ScopedSourceEntry {
+                path: path.clone(),
+                digest: encode_hex(digest.as_bytes()),
+                bytes,
+                executable: version.mode.is_some_and(|mode| mode & 0o111 != 0),
+            });
+        }
+        let after = inventory(&source_root, &scope.exclusions, || self.cancelled())?;
+        if before != after {
+            return Err(failed(
+                "mixed_source_revision",
+                "source entries changed during verification; no before/after proof was published",
+                true,
+            ));
+        }
+        let baseline_by_path = baseline
+            .entries
+            .iter()
+            .map(|entry| (entry.path.as_str(), entry))
+            .collect::<BTreeMap<_, _>>();
+        let observed_by_path =
+            observed.iter().map(|entry| (entry.path.as_str(), entry)).collect::<BTreeMap<_, _>>();
+        let changed_paths = observed_by_path
+            .iter()
+            .filter(|(path, current)| {
+                baseline_by_path.get(**path).is_some_and(|prior| {
+                    prior.digest != current.digest
+                        || prior.bytes != current.bytes
+                        || prior.executable != current.executable
+                })
+            })
+            .map(|(path, _)| (*path).to_owned())
+            .collect::<Vec<_>>();
+        let added_paths = observed_by_path
+            .keys()
+            .filter(|path| !baseline_by_path.contains_key(**path))
+            .map(|path| (*path).to_owned())
+            .collect::<Vec<_>>();
+        let removed_paths = baseline_by_path
+            .keys()
+            .filter(|path| !observed_by_path.contains_key(**path))
+            .map(|path| (*path).to_owned())
+            .collect::<Vec<_>>();
+        let observed_manifest_digest = sha256_hex(
+            &serde_json::to_vec(&(SCHEMA, &scope.exclusions, &observed)).map_err(json_failure)?,
+        );
+        serde_json::to_value(ScopedSourceVerification {
+            schema: SCHEMA,
+            snapshot_digest: scope.snapshot_digest.clone(),
+            observed_manifest_digest,
+            unchanged: changed_paths.is_empty()
+                && added_paths.is_empty()
+                && removed_paths.is_empty(),
+            changed_paths,
+            added_paths,
+            removed_paths,
         })
         .map_err(json_failure)
     }
