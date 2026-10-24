@@ -358,6 +358,7 @@ async fn run_developer_invocation(
             request_prefix,
             system,
             prompt,
+            cyber_access_program: None,
             attachments,
             tools: definitions,
             limits: DeveloperLoopLimits::new(48, 512).map_err(|error| developer_error(&error))?,

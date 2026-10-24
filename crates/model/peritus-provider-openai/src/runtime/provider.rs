@@ -166,10 +166,9 @@ impl CodexRuntimeProvider {
         progress: std::sync::Arc<super::live::Progress>,
     ) -> Result<OwnedModelStream, ProviderCoreError> {
         let working_directory = self.working_directory()?;
-        let cache_anchor = if matches!(
-            request.options().cache(),
-            peritus_model_protocol::CachePolicy::Automatic
-        ) {
+        let cache_anchor = if runtime.cyber_access_program().is_none()
+            && matches!(request.options().cache(), peritus_model_protocol::CachePolicy::Automatic)
+        {
             if self.cache_anchor.get().is_none() {
                 let anchor = invocation::create_cache_anchor(
                     &self.config,

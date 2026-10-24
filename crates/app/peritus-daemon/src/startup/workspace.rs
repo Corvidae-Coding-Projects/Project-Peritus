@@ -43,6 +43,16 @@ impl WorkspaceCatalog {
             .collect()
     }
 
+    pub(crate) fn source_roots(&self) -> BTreeMap<WorkspaceId, std::path::PathBuf> {
+        self.registrations
+            .iter()
+            .map(|(workspace_id, registration)| {
+                (*workspace_id, registration.repository_root().to_owned())
+            })
+            .chain(self.folders.iter().map(|(id, folder)| (*id, folder.root().to_owned())))
+            .collect()
+    }
+
     pub(crate) const fn folders(&self) -> &BTreeMap<WorkspaceId, crate::config::FolderDeclaration> {
         &self.folders
     }

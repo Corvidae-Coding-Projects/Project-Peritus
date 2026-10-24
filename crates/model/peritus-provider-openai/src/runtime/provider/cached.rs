@@ -37,6 +37,7 @@ impl Observed {
         // Raw vendor text stays inside the bounded decoder input. Only existing
         // redaction-safe failure categories can leave the adapter.
         let code = match error["codexErrorInfo"].as_str() {
+            Some("cyberPolicy") => Some("cyber_policy"),
             Some("contextWindowExceeded") => Some("context_length_exceeded"),
             Some("usageLimitExceeded") => Some("insufficient_quota"),
             Some("unauthorized") => Some("unauthorized"),

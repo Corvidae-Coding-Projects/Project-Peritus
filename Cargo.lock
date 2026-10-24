@@ -1226,6 +1226,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "filetime"
+version = "0.2.29"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c287a33c7f0a620c38e641e7f60827713987b3c0f26e8ddc9462cc69cf75759"
+dependencies = [
+ "cfg-if",
+ "libc",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3105,14 +3115,19 @@ dependencies = [
 name = "peritus-modules"
 version = "0.1.10"
 dependencies = [
+ "flate2",
  "fs4",
+ "peritus-network",
+ "peritus-plugin-sdk",
  "reqwest 0.13.4",
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tar",
  "tempfile",
  "thiserror 2.0.20",
  "toml",
+ "url",
 ]
 
 [[package]]
@@ -3258,6 +3273,7 @@ dependencies = [
  "peritus-leases",
  "peritus-model-protocol",
  "peritus-modules",
+ "peritus-network",
  "peritus-obligations",
  "peritus-orchestrator",
  "peritus-patch",
@@ -3285,6 +3301,7 @@ dependencies = [
  "peritus-trace",
  "peritus-types",
  "peritus-workspace",
+ "reqwest 0.13.4",
  "rusqlite",
  "serde",
  "serde_json",
@@ -3292,6 +3309,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml",
+ "url",
  "yaml-rust2",
 ]
 
@@ -5210,6 +5228,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
 
 [[package]]
+name = "tar"
+version = "0.4.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d863878d212c87a19c1a610eb53bb01fe12951c0501cf5a0d65f724914a667a"
+dependencies = [
+ "filetime",
+ "libc",
+ "xattr",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6197,6 +6226,16 @@ name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
+
+[[package]]
+name = "xattr"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32e45ad4206f6d2479085147f02bc2ef834ac85886624a23575ae137c8aa8156"
+dependencies = [
+ "libc",
+ "rustix",
+]
 
 [[package]]
 name = "xml5ever"

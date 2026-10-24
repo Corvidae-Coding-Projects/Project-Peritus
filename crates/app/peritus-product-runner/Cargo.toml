@@ -61,7 +61,10 @@ toml.workspace = true
 yaml-rust2.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
+peritus-network = { version = "=0.1.10", path = "../../runtime/peritus-network" }
 peritus-sandbox-linux = { version = "=0.1.10", path = "../../runtime/peritus-sandbox-linux" }
+reqwest = { workspace = true, features = ["blocking"] }
+url.workspace = true
 
 [build-dependencies]
 yaml-rust2.workspace = true

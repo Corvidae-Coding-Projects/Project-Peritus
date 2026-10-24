@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "campaign": "red-team-phase3-real-2026-10-23",
+  "date": "2026-10-23",
+  "scope": "Phase 3 contained Linux jobs and dependency preparation",
+  "source_revisions": {
+    "project_peritus_base": "8933e81370a86b02009471eb517c1bc30bdd815f",
+    "module_market_base": "6b2cca73161b3f0e4ab004f9a124e4e01e84ca89"
+  },
+  "identities": {
+    "module_host_contract_sha256": "2f2a79f4b28d83dc1c23022fe93d804b98edc81bbc1e29f2f4ebd8558a65c363",
+    "phase3_state_fixture_sha256": "1aae27bfa39977af2a6ffbbf27b30b1ceaab3bdc6622730ad1a88eac6942196c",
+    "red_team_release_executable_sha256": "5a262cc3846a12e8d3de85826f0fc69d1c6221c01d8c2b2f02f139a065b60ee0",
+    "disposable_package_digest": "2d115df08be4dc76d058e4f69eef4edba329c6cbfefdba463194e2a0d3422c42",
+    "peritus_release_sha256": "f6396d217c1f54aa9d39de9f756548e11e4dcf8adbb28d2ba5f4ce761b55eaf1",
+    "peritusd_release_sha256": "225f58f880db0b52c631d36be36dd9bcde123a878551eaa10c96c821d375da9e",
+    "linux_sandbox_helper_release_sha256": "d94bf6ed74ba06ae1bfbf83c27c08efec702be154a9cb6676bd3747bd4bf85fa"
+  },
+  "primary_run": {
+    "run_id": "4349c756e91edce6481ad6a638ca0124",
+    "scope_revision": "scope-2-4d0b34125b63d4ab",
+    "snapshot_digest": "4d0b34125b63d4ab7ade1df2a514f99fa8c2cae2b98c5244016cd16048521efc",
+    "manifest_artifact": "4d0b34125b63d4ab7ade1df2a514f99fa8c2cae2b98c5244016cd16048521efc",
+    "host_owned_jobs": 13,
+    "trusted_receipts": 11,
+    "security_families_unexamined": 15,
+    "findings_claimed": 0
+  },
+  "resource_policy": {
+    "memory_bytes": 134217728,
+    "storage_bytes": 67108864,
+    "cpu_millis": 30000,
+    "wall_millis": 30000,
+    "processes": 4,
+    "proof_network": "deny_all"
+  },
+  "trusted_receipts": [
+    {"job_id":"6c4a7762322138425bddadee4991217c280dbdb51cfbfdc5ae210a2f80ed62c2","case":"vulnerable","verdict":"violation_observed","terminal":"exited","target":"093eb7ebbf5e72d3fa8d5448c4a8438933ccbe9c98aabc1178daf63fe2de43d2","plan":"fe1fc2a178f09383f68b7689acc225f12090f865eff87a61421ad623fc179c79","oracle":"624f378993873b3ec1b4c438f86e4fba807015e6182055eb9e17bb3b69fd94b5","cleanup_complete":true},
+    {"job_id":"d79f48e51575d0851f02ddac25aa220c3d0214de41fdc1813249cfe02ec7980f","case":"safe","verdict":"property_held_for_case","terminal":"exited","target":"b0eac7642b40fe0dd1a404af417f1eabcf4127927866d696b912b4dc98b68c30","plan":"7cdedce87203d2c2d58e6ac8b4e24b2cadd92c76fd13e5eef7d90a6eda53aa16","oracle":"85fb256e41c05539a40e3ccb355a93893e61f51ad3ed222f8e588bd7cf274d8e","cleanup_complete":true},
+    {"job_id":"d869ce24adc2c716d1fd0450602dee120cb9a13e977944a4fcea2f505feea95a","case":"forged_output","verdict":"property_held_for_case","terminal":"exited","target":"9ed1652d4b7487abc9080aa42f700a93068f7850ada38ca75bd6fd4a081b3923","plan":"f673fff2060be71f2c2725dd113fd27f3c300d0a86c23839c4d15f82880a09ec","oracle":"50c4a534b451ae32cc62ff43a4cf0b11de25b81e2932c7dc74455e24b77e3405","cleanup_complete":true},
+    {"job_id":"34269a6b53741e279bbec983867c4ca6f0c3631796cf0ac1e9fe373cc88579a9","case":"boundary","verdict":"property_held_for_case","terminal":"exited","target":"a0b1110e1405e41b8ceb8d81a34df34be77958358e56d186747b102a578ec77a","plan":"91450267576e6fc9212973b63c290fc91d865f6344589b70a77cfde0b1e831ed","oracle":"8a8054df1edf4b582a3b180ee9de609006340145a315268f8e558a1d86049944","cleanup_complete":true},
+    {"job_id":"6a35de26b16cc865a9dc43361b4af20cd47f4dae5ee5064aad7ba07e08ecddd0","case":"descendant_cancel","verdict":"indeterminate","terminal":"cancelled","target":"e5686f16f2121c96be1e835dccb626421ef9b265d2bea5411fbfd20731d94f92","plan":"a52d404374c44420462ccba4e2535da89d719018d0866b79e60289e6677ab451","oracle":"aa8714c9ba987668c9d2a7a819de48637f3de0673a06b14ac50fad7d50459072","cleanup_complete":true},
+    {"job_id":"b9ead3c5bb583ba5e6a03b93e43842b57c50b674fb79f163f9f59f0dc32bc42e","case":"timeout","verdict":"indeterminate","terminal":"timedout","target":"3c21c9caea9db38d9f3ae6ba736b375513e304e4a6411eb2dae019b8b508973d","plan":"ecfeec64ef0b23d71f9e48c1449abb356f8dbd41e1a2fbf131f637f596e773ac","oracle":"5c4720e6355db2adfd987d53298866b1e527f8a24182e1cec9e9eea9f8a7349b","cleanup_complete":true},
+    {"job_id":"e483da7002f133a22b963bbf166dc1b8bd60e2f21c87ede3edc987896795dfda","case":"memory_pressure","verdict":"indeterminate","terminal":"exited","exit_code":2,"target":"ca7b9031e38e8977674eb6c3a09d4a2fd6781b0c2dcf92640fa7733dbb414dcf","plan":"1c27594f804acc41f735f491ec4171cf8acd3d9861042ce2522c0eaf0375a17d","oracle":"d85f3dafb3e7541a19f985a2528edfe9162a92b80f76624c7cba7dd22be19307","cleanup_complete":true},
+    {"job_id":"273c7d55aa7fe7259661c85736fd1491d79784f26982d90d8951d55cf6765593","case":"storage_pressure","verdict":"indeterminate","terminal":"exited","exit_code":153,"target":"8fb23ed88e854f18e507d0184347435c2c6b09265c6e8bf58c7cc369f95bb45a","plan":"be04630dcde1aa0fb0a53669eb30e7e8a1595e2ddcba8d9ebb2fde07e15ebfdf","oracle":"4557eb383ea81dc63158ae05b4c7cd63026379a981cf1c6efce479ab1173ffdb","cleanup_complete":true},
+    {"job_id":"cdd2b4ccc2815e30a4e9d8971acc04d39dd026e6411d52c4d4bade55c9dfabfd","case":"process_pressure_cancel","verdict":"indeterminate","terminal":"cancelled","target":"11e944522dc555a1cb7804e8dcaa0646c4ace11d471e82583989f085a4013a08","plan":"ef7c75d28c1916b3a5a81d569091dcea3f9cb4313d693c07456d37f297fa4c4f","oracle":"86ce0c73f2cd6590ef3bf40c9f2e0c8d90528739da41a6a0f74147fed98acb55","cleanup_complete":true},
+    {"job_id":"7de7a7c20521e82747cff90f1466b038eb62f48d1e3dbdf3367d0b7e9cf49afb","case":"dependency_preparation","verdict":"property_held_for_case","terminal":"completed","artifact":"0f0d7a250d44e4f69929d45a1128d7ec341a4291ffc0c0a9686344cc46d8dedf","bytes":3138,"network_policy":"declared_https_public_only_then_disconnected","cleanup_complete":true},
+    {"job_id":"dff242b9b0f6fb545df4d350f27bd8b2d0990520e453ba82fc0328556d5264a6","case":"authority_revoke","verdict":"indeterminate","terminal":"cancelled","target":"3c21c9caea9db38d9f3ae6ba736b375513e304e4a6411eb2dae019b8b508973d","plan":"8f3ccec70f3d2a6ae52c3e8c003580ab41c185f525b518fa27759ac2c6c0daf8","oracle":"77e42615e8f4a1dc7e1f0383384d84c095121af4aecac3ded38a7ecda294200a","cleanup_complete":true}
+  ],
+  "recovery_job": {
+    "job_id": "60c3af33c15e3344b0432f8c9f4cf4ca19be6abd5c7189f36b10ceb918eb0559",
+    "state": "indeterminate",
+    "receipt": null,
+    "side_effect_relaunched": false
+  },
+  "scenarios": [
+    {"id":"P3-01","outcome":"pass","observation":"The real TUI negotiated module.owned-jobs@1 and captured an explicit source scope."},
+    {"id":"P3-02","outcome":"pass","observation":"The trusted host oracle distinguished a real hidden-canary leak."},
+    {"id":"P3-03","outcome":"pass","observation":"Safe output and forged success text could not manufacture a violation receipt."},
+    {"id":"P3-04","outcome":"pass","observation":"Host filesystem, network, HOME and credential access were blocked in proof execution."},
+    {"id":"P3-05","outcome":"pass","observation":"Explicit cancellation stopped a live descendant tree and retained complete cleanup."},
+    {"id":"P3-06","outcome":"pass","observation":"The native deadline retained a timed-out result without relaunch."},
+    {"id":"P3-07","outcome":"pass","observation":"Memory pressure remained within the 128 MiB job ceiling and was retained honestly."},
+    {"id":"P3-08","outcome":"pass","observation":"The 64 MiB file-size ceiling terminated storage pressure and cleanup completed."},
+    {"id":"P3-09","outcome":"pass","observation":"Process fan-out was bounded, cancelled and reaped."},
+    {"id":"P3-10","outcome":"pass","observation":"A public HTTPS dependency was accepted only after exact digest and byte-bound verification."},
+    {"id":"P3-11","outcome":"pass","observation":"Private-address and credential-bearing dependency requests were rejected."},
+    {"id":"P3-12","outcome":"pass","observation":"Live source-authority revocation cancelled owned proof work."},
+    {"id":"P3-13","outcome":"pass","observation":"Daemon loss recovered a durable indeterminate job without repeating its side effect."}
+  ],
+  "not_run": ["unit tests", "formal verification"],
+  "known_external_blockers": [
+    "Workspace-wide cargo fmt encounters pre-existing deleted shell-tool fixture files.",
+    "Workspace-wide strict Clippy encounters the existing unrelated lint backlog."
+  ]
+}

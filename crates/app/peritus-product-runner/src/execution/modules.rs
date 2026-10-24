@@ -242,6 +242,7 @@ async fn run(
                     role.instructions
                 ),
                 prompt,
+                cyber_access_program: None,
                 attachments: vec![],
                 tools: executor.definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)

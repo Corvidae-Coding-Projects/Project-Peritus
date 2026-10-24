@@ -106,6 +106,7 @@ pub async fn create(
                 )?,
                 system: system_prompt(accounting.remaining()) + input.delivery_instructions(),
                 prompt,
+                cyber_access_program: None,
                 attachments,
                 tools: read_only_definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)

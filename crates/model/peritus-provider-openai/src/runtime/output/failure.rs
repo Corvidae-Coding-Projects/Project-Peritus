@@ -27,6 +27,7 @@ pub(super) fn reported_failure(event: &Value) -> DecodeFailure {
     let code = event
         .pointer("/error/code")
         .or_else(|| event.pointer("/error/type"))
+        .or_else(|| event.pointer("/error/codexErrorInfo"))
         .or_else(|| event.get("code"))
         .and_then(Value::as_str);
     if matches!(code, Some("authentication_error" | "unauthorized" | "invalid_api_key")) {
@@ -38,8 +39,10 @@ pub(super) fn reported_failure(event: &Value) -> DecodeFailure {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_ascii_lowercase();
-    if matches!(code, Some("cyber_policy" | "misalignment_policy_violation" | "content_policy"))
-        || message.contains("cyber policy")
+    if matches!(
+        code,
+        Some("cyberPolicy" | "cyber_policy" | "misalignment_policy_violation" | "content_policy")
+    ) || message.contains("cyber policy")
         || message.contains("misalignment policy")
         || message.contains("content policy")
         || message.contains("safety policy")

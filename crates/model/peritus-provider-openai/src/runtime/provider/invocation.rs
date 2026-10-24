@@ -118,6 +118,7 @@ pub(super) async fn run_turn(
     let arguments = arguments(
         request.model().as_str(),
         runtime.reasoning_effort(),
+        runtime.cyber_access_program(),
         schema_path,
         path_argument(&final_path)?,
         &image_paths,
@@ -286,6 +287,7 @@ pub(super) fn cached_arguments() -> Vec<String> {
 fn arguments(
     model: &str,
     reasoning_effort: &str,
+    cyber_access_program: Option<&str>,
     schema_path: String,
     final_path: String,
     image_paths: &[String],
@@ -317,6 +319,10 @@ fn arguments(
     for feature in DISABLED_NATIVE_FEATURES {
         values.push("--disable".to_owned());
         values.push((*feature).to_owned());
+    }
+    if let Some(program) = cyber_access_program {
+        values.push("--cyber-access-program".to_owned());
+        values.push(program.to_owned());
     }
     for path in image_paths {
         values.push("--image".to_owned());

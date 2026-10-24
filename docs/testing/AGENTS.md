@@ -8,6 +8,14 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [red-team-phase5-real-2026-10-23.md](red-team-phase5-real-2026-10-23.md) | Autonomous security-family routing, known and unknown disclosure discovery, host-canary probes, independent skeptical adjudication, context renewal, and report publication campaign. |
+| [red-team-phase5-evidence.json](red-team-phase5-evidence.json) | Exact Phase 5 provider, package, run, report, classification, reuse, and 25 observed scenario records. |
+| [red-team-phase4-real-2026-10-23.md](red-team-phase4-real-2026-10-23.md) | Source catalog, bounded local build, disabled installation, TUI/WebUI actions, compatibility, cancellation, failure and restart recovery campaign. |
+| [red-team-phase4-evidence.json](red-team-phase4-evidence.json) | Exact Phase 4 source/build/package identities, interface receipts, recovery records and 19 observed scenarios. |
+| [red-team-phase3-real-2026-10-23.md](red-team-phase3-real-2026-10-23.md) | Contained Linux jobs, trusted canary oracle, resource enforcement, dependency preparation, cancellation and recovery real-interface campaign. |
+| [red-team-phase3-evidence.json](red-team-phase3-evidence.json) | Exact Phase 3 candidate identities, resource policy, job receipts and 13 observed scenarios. |
+| [red-team-phase2-real-2026-10-23.md](red-team-phase2-real-2026-10-23.md) | Scoped source, durable evidence, recovery, selective invalidation, and honest partial-report real-interface campaign. |
+| [red-team-phase2-evidence.json](red-team-phase2-evidence.json) | Exact candidate identities and 24 observed Phase 2 source/evidence scenarios. |
 | [open-items-real-2026-10-22.md](open-items-real-2026-10-22.md) | Sequential issue/PR integration, released-versus-fixed IPC behavior and native TUI evidence; macOS campaign excluded. |
 | [configuration-upgrade-real-2026-10-21.md](configuration-upgrade-real-2026-10-21.md) | Released CLI collision, shared generated-format migration, actual bootstrap/terminal restart, concurrency and recovery evidence. |
 | [configuration-upgrade-evidence.json](configuration-upgrade-evidence.json) | Binary/source identities and concrete outcomes for 43 generated-configuration upgrade scenarios. |

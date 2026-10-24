@@ -16,7 +16,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         Constraint::Length(2),
     ])
     .split(area);
-    frame.render_widget(Paragraph::new("Module market · native Rust plugins and workflows\n↑↓ select · r refresh · i install/update · e enable/disable · d remove · Enter use"), regions[0]);
+    frame.render_widget(Paragraph::new("Module market · native Rust plugins and workflows\n↑↓ select · r refresh · i install binary · b Build and install source · x cancel build · e enable/disable · d remove · Enter use"), regions[0]);
     let items: Vec<_> = menu
         .rows
         .iter()
@@ -30,6 +30,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                         row["version"].as_str().unwrap_or("?"),
                         row["market_version"].as_str().unwrap_or("—")
                     )
+                } else if row["source"] == true {
+                    format!("source {}", row["version"].as_str().unwrap_or("?"))
                 } else {
                     format!("available {}", row["version"].as_str().unwrap_or("?"))
                 },
@@ -62,8 +64,11 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                 "{}\n{}\nInstalled/selected digest: {}\nAvailable digest: {}\n{}",
                 row["id"].as_str().unwrap_or_default(),
                 row["description"].as_str().unwrap_or_default(),
-                row["digest"].as_str().unwrap_or_default(),
-                row["market_digest"].as_str().unwrap_or("same as selected"),
+                row["digest"].as_str().unwrap_or("not installed"),
+                row["market_digest"]
+                    .as_str()
+                    .or_else(|| row["source_digest"].as_str())
+                    .unwrap_or("same as selected"),
                 if menu.session["module"] == row["id"] && menu.session["digest"] == row["digest"] {
                     menu.session["view"]["actions"]
                         .as_array()
@@ -77,7 +82,15 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                         .collect::<Vec<_>>()
                         .join(" · ")
                 } else {
-                    "Enter to prepare this module's task.".into()
+                    row["source_build"]["phase"].as_str().map_or_else(
+                        || "Enter to prepare this module's task.".into(),
+                        |phase| {
+                            format!(
+                                "Source build: {phase} — {}",
+                                row["source_build"]["detail"].as_str().unwrap_or("no detail")
+                            )
+                        },
+                    )
                 }
             )))
             .wrap(Wrap { trim: false }),

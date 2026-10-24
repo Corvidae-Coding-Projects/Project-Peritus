@@ -48,3 +48,10 @@ New user input or cancellation prevents acknowledgement. A crash in between may 
 publication, so this is at-least-once delivery. Existing Reply/Model actions are unchanged;
 plugins using Checkpoint require a host with this service, rather than assuming older hosts
 will understand a new enum variant.
+
+Updated module calls also carry a version-one `host_profile`, and native coordinators may return
+`ModuleAction::HostService`. Peritus validates the request and returns the exact result through
+`host_result`. The SDK includes capability and identity contracts for scoped source, owned jobs,
+preparation receipts, and source-built packages; those contracts convey no authority. Linux hosts
+advertise owned jobs only when their native isolation backend is configured, and source build
+remains unadvertised until implemented. Existing Reply/Model/Checkpoint modules remain compatible.

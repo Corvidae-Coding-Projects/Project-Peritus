@@ -106,6 +106,7 @@ pub async fn complete(
                 )?,
                 system: request.system,
                 prompt,
+                cyber_access_program: None,
                 attachments,
                 tools: request.tools,
                 limits: reviewer_limits()?,

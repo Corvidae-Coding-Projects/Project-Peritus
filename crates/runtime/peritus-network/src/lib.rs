@@ -26,7 +26,9 @@ pub use credential::{
     CredentialLease, CredentialProvider, ProxyCredential, RoutingToken, ScopedCredential,
 };
 pub use error::{NetworkError, NetworkErrorKind, NetworkOperation, RecoveryClass};
-pub use matcher::{AddressClass, DestinationDecision, DestinationRequest, ResolvedDestination};
+pub use matcher::{
+    AddressClass, DestinationDecision, DestinationRequest, ResolvedDestination, classify,
+};
 pub use observation::{ConnectionDecision, NetworkObservation, NetworkObservationKind};
 pub use plan::{
     DnsMode, NetworkBounds, NetworkPlan, ProxyMode, RedirectMode, RuntimeNetworkOptions,

@@ -49,22 +49,17 @@ pub(super) fn import_published_failure_trace(
         .map_err(owner_error)?
         .ok_or_else(|| incomplete("native error has no actual E3 owner"))?;
     if state.phase() != EvaluationPhase::Published || state.profile_digest() != profile.digest() {
-        return Err(incomplete(
-            "native error observation requires exact published E3 inputs",
-        ));
+        return Err(incomplete("native error observation requires exact published E3 inputs"));
     }
     let terminal = match state.rollout(spec.id()).map(|value| value.status()) {
         Some(RolloutStatus::Settled(terminal)) => terminal,
         _ => return Err(incomplete("native error has no actual settled terminal")),
     };
-    let bytes = artifacts
-        .read(terminal.artifact(), terminal.artifact_bytes())
-        .map_err(owner_error)?;
+    let bytes =
+        artifacts.read(terminal.artifact(), terminal.artifact_bytes()).map_err(owner_error)?;
     let actual = RolloutRecord::from_canonical_bytes(&bytes).map_err(owner_error)?;
     if actual != *record || actual.digest() != terminal.record_digest() {
-        return Err(incomplete(
-            "native error differs from its actual protected terminal record",
-        ));
+        return Err(incomplete("native error differs from its actual protected terminal record"));
     }
     let error = terminal.artifact();
     let event = replay.events().iter().rev().find(|event| matches!(event.kind(),
@@ -93,13 +88,9 @@ pub(super) fn import_published_failure_trace(
         .with_attempt(AttemptId::new(*spec.id().as_bytes()).map_err(owner_error)?)
         .map_err(owner_error)?;
     let recovered = peritus_trace::recover_trace(journal, trace).map_err(owner_error)?;
-    let previous = recovered
-        .trace()
-        .map_or(0, |value| value.observations().len());
+    let previous = recovered.trace().map_or(0, |value| value.observations().len());
     if previous > 3 {
-        return Err(incomplete(
-            "native failure observation trace has unexpected extra events",
-        ));
+        return Err(incomplete("native failure observation trace has unexpected extra events"));
     }
     let clock = Instant::now();
     let base = recovered
@@ -153,10 +144,7 @@ pub(super) fn import_published_failure_trace(
             continue;
         }
         let unix = u64::try_from(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(owner_error)?
-                .as_nanos(),
+            SystemTime::now().duration_since(UNIX_EPOCH).map_err(owner_error)?.as_nanos(),
         )
         .map_err(owner_error)?;
         let tick = base
@@ -184,9 +172,8 @@ pub(super) fn import_published_failure_trace(
         )
         .map_err(owner_error)?;
         let command = CommandId::new(identity(&event_key)).map_err(owner_error)?;
-        let batch = JournalTraceStore::new(journal)
-            .record(command, observation)
-            .map_err(owner_error)?;
+        let batch =
+            JournalTraceStore::new(journal).record(command, observation).map_err(owner_error)?;
         positions.push(batch.global_position());
         events.push(*event.as_bytes());
     }

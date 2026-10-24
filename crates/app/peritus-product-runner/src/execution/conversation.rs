@@ -281,6 +281,7 @@ fn request(
         ),
         system: policy,
         prompt,
+        cyber_access_program: None,
         attachments,
         tools: definitions,
         limits: DeveloperLoopLimits::new(48, 512)

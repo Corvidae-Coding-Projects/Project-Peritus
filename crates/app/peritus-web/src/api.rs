@@ -268,6 +268,18 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
                 match operation.as_str() {
                     "refresh" => registry.refresh_market(),
                     "install" => registry.install_market(&module, &digest),
+                    #[cfg(target_os = "linux")]
+                    "build-install" => registry.start_source_build(&module, &digest),
+                    #[cfg(not(target_os = "linux"))]
+                    "build-install" => Err(peritus_modules::Error::Invalid(
+                        "source-built module installation currently requires Linux".into(),
+                    )),
+                    #[cfg(target_os = "linux")]
+                    "cancel-build" => registry.cancel_source_build(&module),
+                    #[cfg(not(target_os = "linux"))]
+                    "cancel-build" => Err(peritus_modules::Error::Invalid(
+                        "source-built module installation currently requires Linux".into(),
+                    )),
                     "enable" => registry.enable(&module, true),
                     "disable" => registry.enable(&module, false),
                     "remove" => registry.remove(&module),

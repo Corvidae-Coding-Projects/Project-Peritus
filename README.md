@@ -322,7 +322,7 @@ Start with the [repository agent map](AGENTS.md) to choose an implementation own
 ### Native Rust plugins and modules
 
 Open **Modules** in the browser or `/modules` in the terminal to discover, install,
-enable, and select native Rust plugins from the official market:
+build source-listed modules, enable, and select native Rust plugins from the official market:
 https://github.com/Corvidae-Coding-Projects/Peritus-Module-Market
 
 Plugins contain independently compiled Rust code and can add their own commands,
@@ -337,9 +337,11 @@ continues research with visible checked-report checkpoints and explicit steer, p
 and normal-mode controls. It has no cumulative token/time/round budget. The v1.4 plugin
 requires the host's continuing-checkpoint service; ordinary research remains the default.
 
-Use `/module ID COMMAND_OR_TOPIC`. Updates install disabled. Native code runs under
-your OS account; agent access to host tools follows current permissions. Local
-packages remain installable with `peritus modules install DIRECTORY`. Existing
-bundled Source brief and declarative workflows remain available. See the
+Use `/module ID COMMAND_OR_TOPIC`. Updates and locally built packages install disabled.
+Source building is an explicit Linux-only action: Peritus pins the clean source and lockfile,
+prepares public dependencies without credentials, compiles offline in a bounded scope, and never
+publishes a partial package. Native code runs under your OS account; agent access to host tools
+follows current permissions. Local packages remain installable with `peritus modules install
+DIRECTORY`. Existing bundled Source brief and declarative workflows remain available. See the
 [module guide](crates/orchestration/peritus-modules/README.md) for controls and the
 initial platform boundary.

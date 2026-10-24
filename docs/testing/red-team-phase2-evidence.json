@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "campaign": "red-team-phase2-real-2026-10-23",
+  "date": "2026-10-23",
+  "scope": "Phase 2 scoped source and durable evidence foundation",
+  "source_revisions": {
+    "project_peritus_base": "8933e81370a86b02009471eb517c1bc30bdd815f",
+    "module_market_base": "6b2cca73161b3f0e4ab004f9a124e4e01e84ca89"
+  },
+  "identities": {
+    "module_host_contract_sha256": "799905d01c48760230ac45bc32cb5960c7d41b34c6bb660a593f95ae800ce891",
+    "phase2_state_fixture_sha256": "52787ad320cef6512a34ef946e7882d69d136e7d74ba9ea17c530670d54500ff",
+    "red_team_release_executable_sha256": "da47f9b02898e56a09635802e746d326e15f20ccb988f39553984a95e240b0a8",
+    "disposable_package_digest": "23e1986b4b0c190c63e9656e136b729ff6ebbf4ef1dc14bee0b7c3d767014e0f",
+    "peritus_debug_sha256": "7c8d9c4f4533ea06588d56e11ea064628051715dc40e9a6f2b6a0bc41c7f8c83",
+    "peritusd_debug_sha256": "10d03d6af0a99f2abea7df05c76f90f9b3830c9edd118d51091119a8204548ed",
+    "peritus_tui_debug_sha256": "593b1c0895a27a8fa66db24cc173bab1212f96e40807e8d7f86c2370a423a785",
+    "peritus_web_debug_sha256": "29720e066a6ca28b60a20750330cf9de7305cee8f7da3d422051c6f04510f0ce"
+  },
+  "primary_run": {
+    "run_id": "53ef6fe64abec64b5c5aa8cbf31c3e1c",
+    "scope_revision": "scope-6-aab3f1a62244e3cb",
+    "snapshot_digest": "aab3f1a62244e3cb2b315485d4dc17accb8189b2871c5ae63dbb753d29c40d39",
+    "manifest_artifact": "aab3f1a62244e3cb2b315485d4dc17accb8189b2871c5ae63dbb753d29c40d39",
+    "files": 4,
+    "bytes": 183,
+    "unchanged_refresh_reuse": {
+      "files": 4,
+      "bytes": 183
+    },
+    "current_observations": 2,
+    "invalidated_observations": 2,
+    "security_families_unexamined": 15,
+    "findings_claimed": 0
+  },
+  "corruption_run": {
+    "run_id": "506dcf2d600050c9c7618c1ec805fc96",
+    "result": "artifact_recovery",
+    "retryable": false,
+    "incomplete_artifact_admitted": false
+  },
+  "scenarios": [
+    {"id": "P2-01", "outcome": "pass", "observation": "Browser capture included tracked and untracked source while excluding .git and the user exclusion."},
+    {"id": "P2-02", "outcome": "pass", "observation": "A fresh process reopened the exact retained snapshot and manifest identity."},
+    {"id": "P2-03", "outcome": "pass", "observation": "A repeated byte-range read reused the durable identical artifact."},
+    {"id": "P2-04", "outcome": "pass", "observation": "Excluded paths and traversal requests were rejected."},
+    {"id": "P2-05", "outcome": "pass", "observation": "A changed file invalidated only dependent observations; unrelated evidence remained current."},
+    {"id": "P2-06", "outcome": "pass", "observation": "Markdown and JSON reports retained all 15 security families as unexamined and claimed no finding."},
+    {"id": "P2-07", "outcome": "pass", "observation": "Revocation prevented subsequent manifest and source access through the handle."},
+    {"id": "P2-08", "outcome": "pass", "observation": "A source symlink to /etc/passwd was rejected without following it."},
+    {"id": "P2-09", "outcome": "pass", "observation": "A FIFO special file was rejected without opening it."},
+    {"id": "P2-10", "outcome": "pass", "observation": "Independent sha256sum values matched ordinary-file manifest identities."},
+    {"id": "P2-11", "outcome": "pass", "observation": "Killing the daemon during a 1 GiB sparse-file capture admitted no scope; resume reissued the retained request and recovery removed private stale staging."},
+    {"id": "P2-12", "outcome": "pass", "observation": "A damaged copied artifact was quarantined, admitted no partial result, and returned actionable fail-closed recovery guidance."},
+    {"id": "P2-13", "outcome": "pass", "observation": "Touching a 512 MiB source during capture caused mixed_source_revision and published neither index nor staging."},
+    {"id": "P2-14", "outcome": "pass", "observation": "A source root overlapping private module state was rejected before that private state was created."},
+    {"id": "P2-15", "outcome": "pass", "observation": "A 109-file manifest was retrieved across two browser-visible pages."},
+    {"id": "P2-16", "outcome": "pass", "observation": "A source path containing spaces captured and read successfully."},
+    {"id": "P2-17", "outcome": "pass", "observation": "An EOF range at offset 40 of a 40-byte file returned 40..40 and the SHA-256 identity of empty bytes."},
+    {"id": "P2-18", "outcome": "pass", "observation": "A zero-byte source file captured and read with the SHA-256 identity of empty bytes."},
+    {"id": "P2-19", "outcome": "pass", "observation": "A range beginning beyond EOF was rejected as source_range."},
+    {"id": "P2-20", "outcome": "pass", "observation": "Zero-byte requested length and a request above 1 MiB were rejected as invalid_read_request."},
+    {"id": "P2-21", "outcome": "pass", "observation": "An exclusion containing ../outside was rejected as unsafe_source_path."},
+    {"id": "P2-22", "outcome": "pass", "observation": "Removing one observed file invalidated only that path's observation."},
+    {"id": "P2-23", "outcome": "pass", "observation": "A fully unchanged refresh reused all four files and all 183 bytes."},
+    {"id": "P2-24", "outcome": "pass", "observation": "The final foundation checkpoint was published and durably acknowledged."}
+  ],
+  "build_observations": {
+    "module_market": [
+      "cargo check --offline -p peritus-red-team",
+      "cargo clippy --offline -p peritus-red-team --all-targets -- -D warnings",
+      "cargo build --offline --release -p peritus-red-team"
+    ],
+    "project_peritus": [
+      "cargo check -p peritus-product-runner -p peritus-daemon",
+      "cargo build -p peritus-cli -p peritus-daemon -p peritus-tui -p peritus-web",
+      "cargo build -p peritus-daemon"
+    ],
+    "not_run": [
+      "unit tests",
+      "formal verification"
+    ],
+    "known_external_blockers": [
+      "Workspace-wide cargo fmt --check encounters pre-existing deleted shell-tool fixture files.",
+      "Workspace-wide strict Clippy encounters the existing unrelated lint backlog."
+    ]
+  }
+}

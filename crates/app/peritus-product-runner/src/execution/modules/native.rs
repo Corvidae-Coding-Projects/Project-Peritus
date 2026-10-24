@@ -1,12 +1,18 @@
 //! Generic integration for separately compiled native Rust modules.
+#[cfg(target_os = "linux")]
+mod dependency_preparation;
+#[cfg(target_os = "linux")]
+mod owned_jobs;
 mod publication;
 mod runtime;
+mod scoped_source;
 mod tools;
 use super::{
     ProductRunInput, ProductRunPhase, ProductRunUpdate, ProductRunnerError, RunObserver, error,
 };
 use peritus_agent::{
-    DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopRequest, DeveloperModelRole,
+    DeveloperCyberAccessProgram, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopRequest,
+    DeveloperModelRole,
 };
 use peritus_modules::Definition;
 use peritus_plugin_sdk::{ModuleAction, ModuleAgentRequest};
@@ -139,6 +145,13 @@ async fn drive(
                                 ""
                             }
                         ),
+                        cyber_access_program: request.cyber_access_program.map(|program| {
+                            match program {
+                                peritus_plugin_sdk::ModuleCyberAccessProgram::DaybreakBlue => {
+                                    DeveloperCyberAccessProgram::DaybreakBlue
+                                }
+                            }
+                        }),
                         attachments: vec![],
                         tools: executor.definitions(
                             &definition
@@ -196,6 +209,15 @@ async fn drive(
                         Err(e) => return Err(crate::turn::developer_error(&e)),
                     }
                 }
+            }
+            ModuleAction::HostService { request } => {
+                request.validate().map_err(error)?;
+                super::super::check_cancelled(input)?;
+                if input.conversation.revision() != revision {
+                    return Ok("Native module paused before a host service request. Its private state and completed work remain retained. Use /module resume to continue it.".into());
+                }
+                let result = runtime.host_service(input, &request)?;
+                action = runtime.call(input, "host_result", json!({"result":result})).await?;
             }
         }
     }

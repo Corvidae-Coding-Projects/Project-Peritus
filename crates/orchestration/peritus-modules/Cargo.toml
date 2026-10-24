@@ -19,6 +19,13 @@ tempfile.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 
+[target.'cfg(target_os = "linux")'.dependencies]
+flate2.workspace = true
+peritus-network = { version = "=0.1.10", path = "../../runtime/peritus-network" }
+peritus-plugin-sdk = { version = "=0.1.10", path = "../../foundation/peritus-plugin-sdk" }
+tar.workspace = true
+url.workspace = true
+
 [package.metadata.peritus]
 owner = "E1"
 layer = "orchestration"

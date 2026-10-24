@@ -55,6 +55,7 @@ pub(super) struct Runtime {
     subject: InvocationSubject,
     sequence: AtomicU64,
     pub(super) state: PathBuf,
+    pub(super) host_state: PathBuf,
     pub(super) module_id: String,
     pub(super) module_digest: String,
     _owner: fs::File,
@@ -73,6 +74,15 @@ impl Runtime {
         let source = definition.resource(artifact).map_err(error)?;
         let base = super::super::root(input)
             .join(format!("native-{}-{}", definition.manifest.id, definition.digest));
+        if base.starts_with(&input.workspace_root)
+            || input.workspace_root.starts_with(&base)
+            || base.starts_with(&input.source_root)
+            || input.source_root.starts_with(&base)
+        {
+            return Err(error(
+                "native plugin private state overlaps the selected workspace; no module state or source operation was started",
+            ));
+        }
         fs::create_dir_all(&base).map_err(error)?;
         let owner = fs::OpenOptions::new()
             .read(true)
@@ -152,6 +162,8 @@ impl Runtime {
         host.start(&id, version).await.map_err(error)?;
         let state = base.join("state");
         fs::create_dir_all(&state).map_err(error)?;
+        let host_state = base.join("host-state");
+        fs::create_dir_all(&host_state).map_err(error)?;
         Ok(Self {
             host,
             id,
@@ -162,6 +174,7 @@ impl Runtime {
             ),
             sequence: AtomicU64::new(0),
             state,
+            host_state,
             module_id: definition.manifest.id.clone(),
             module_digest: definition.digest.clone(),
             _owner: owner,
@@ -174,6 +187,19 @@ impl Runtime {
         mut params: Value,
     ) -> Result<Value, ProductRunnerError> {
         params["state_directory"] = json!(self.state);
+        params["host_profile"] = serde_json::to_value(host_profile(input)).map_err(error)?;
+        params["provider_routes"] = json!([
+            {
+                "role":"writer",
+                "provider":input.providers.writer.profile().provider().as_str(),
+                "model":input.providers.writer.profile().model().as_str(),
+            },
+            {
+                "role":"reviewer",
+                "provider":input.providers.reviewer.profile().provider().as_str(),
+                "model":input.providers.reviewer.profile().model().as_str(),
+            },
+        ]);
         let payload = JsonPayload::new(
             json!({"method":method,"params_json":params.to_string()}),
             JsonBounds::PRODUCTION,
@@ -209,6 +235,91 @@ impl Runtime {
             }
         }
     }
+    pub(super) fn host_service(
+        &self,
+        input: &ProductRunInput,
+        request: &ModuleHostRequest,
+    ) -> Result<ModuleHostResult, ProductRunnerError> {
+        let outcome = if request.capability == HOST_CAPABILITY_PROFILE
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+            && request.operation == "inspect"
+        {
+            ModuleHostOutcome::Success {
+                output: serde_json::to_value(host_profile(input)).map_err(error)?,
+            }
+        } else if request.capability == HOST_CAPABILITY_SCOPED_SOURCE
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+        {
+            if !input
+                .conversation
+                .effective_permissions()
+                .allows(crate::control::PermissionCapability::Read)
+            {
+                ModuleHostOutcome::Rejected {
+                    code: "source_read_permission".into(),
+                    detail: "current conversation authority does not permit source reads".into(),
+                }
+            } else {
+                super::scoped_source::Broker::new(input, &self.state, &self.module_digest)
+                    .dispatch(&request.operation, request.input.clone())
+            }
+        } else if request.capability == HOST_CAPABILITY_OWNED_JOBS
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+        {
+            #[cfg(target_os = "linux")]
+            {
+                super::owned_jobs::Broker::new(
+                    input,
+                    &self.host_state,
+                    &self.state,
+                    &self.module_id,
+                    &self.module_digest,
+                )
+                .dispatch(&request.key, &request.operation, request.input.clone())
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                ModuleHostOutcome::Unsupported {
+                    detail: "host-owned native module jobs currently require Linux".into(),
+                }
+            }
+        } else if request.capability == HOST_CAPABILITY_SOURCE_BUILD
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+            && request.operation == "inspect"
+        {
+            #[cfg(target_os = "linux")]
+            {
+                match Registry::for_user()
+                    .and_then(|registry| registry.source_build_status(&self.module_id))
+                {
+                    Ok(output) => ModuleHostOutcome::Success { output },
+                    Err(error) => ModuleHostOutcome::Rejected {
+                        code: "source_build_record".into(),
+                        detail: error.to_string(),
+                    },
+                }
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                ModuleHostOutcome::Unsupported {
+                    detail: "source-built module installation currently requires Linux".into(),
+                }
+            }
+        } else {
+            ModuleHostOutcome::Unsupported {
+                detail: format!(
+                    "host capability {} version {} operation {} is unavailable in this Peritus build",
+                    request.capability, request.version, request.operation
+                ),
+            }
+        };
+        Ok(ModuleHostResult {
+            key: request.key.clone(),
+            capability: request.capability.clone(),
+            version: request.version,
+            outcome,
+        })
+    }
     pub(super) fn call_sync(
         &self,
         input: &ProductRunInput,
@@ -233,6 +344,30 @@ impl Runtime {
     pub(super) async fn stop(&self) -> Result<(), ProductRunnerError> {
         self.host.stop(&self.id).await.map_err(error)
     }
+}
+fn host_profile(input: &ProductRunInput) -> ModuleHostProfile {
+    let mut capabilities = vec![
+        ModuleHostCapability { name: HOST_CAPABILITY_ATTACHMENT.into(), version: 1 },
+        ModuleHostCapability { name: HOST_CAPABILITY_CHECKPOINT.into(), version: 1 },
+        ModuleHostCapability { name: HOST_CAPABILITY_MODEL.into(), version: 1 },
+        ModuleHostCapability { name: HOST_CAPABILITY_PRIVATE_STATE.into(), version: 1 },
+        ModuleHostCapability { name: HOST_CAPABILITY_SCOPED_SOURCE.into(), version: 1 },
+        ModuleHostCapability {
+            name: HOST_CAPABILITY_PROFILE.into(),
+            version: MODULE_HOST_CONTRACT_VERSION,
+        },
+    ];
+    if cfg!(target_os = "linux") && input.module_jobs.is_some() {
+        capabilities
+            .push(ModuleHostCapability { name: HOST_CAPABILITY_OWNED_JOBS.into(), version: 1 });
+    }
+    if cfg!(target_os = "linux") {
+        capabilities.push(ModuleHostCapability {
+            name: HOST_CAPABILITY_SOURCE_BUILD.into(),
+            version: MODULE_HOST_CONTRACT_VERSION,
+        });
+    }
+    ModuleHostProfile { schema: MODULE_HOST_CONTRACT_VERSION, capabilities }
 }
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()

@@ -5,7 +5,7 @@ use provider_turn::{RetryContext, complete_turn};
 
 use peritus_model_protocol::{
     BoundedText, CanonicalJson, Capability, ContentBlock, JsonBounds, Message, ProtocolLimits,
-    RequestedCapabilities, Role, ToolResult, negotiate,
+    RequestedCapabilities, Role, ToolResult, WireDialect, negotiate,
 };
 use peritus_provider_core::ModelProvider;
 
@@ -15,10 +15,10 @@ use super::model_request::ModelTurnKind;
 use super::observation::model_visible_tool_output;
 use super::semantic::SemanticCompaction;
 use super::{
-    DeveloperAccountingEvent, DeveloperActivity, DeveloperContextEvent, DeveloperInteraction,
-    DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
-    DeveloperUsage,
+    DeveloperAccountingEvent, DeveloperActivity, DeveloperContextEvent,
+    DeveloperCyberAccessProgram, DeveloperInteraction, DeveloperLoop, DeveloperLoopError,
+    DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor, DeveloperToolObservation,
+    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
 };
 
 impl DeveloperLoop {
@@ -69,6 +69,11 @@ impl DeveloperLoop {
             // A terminal-only phase still carries completed tool exchanges in its history.
             // Keep their capability negotiated even though no new tools are advertised.
             let mut required_capabilities = vec![Capability::ToolCalls];
+            if request.cyber_access_program == Some(DeveloperCyberAccessProgram::DaybreakBlue)
+                && profile.dialect() == WireDialect::OpenAiCodexRuntime
+            {
+                required_capabilities.push(Capability::ProviderExtensions);
+            }
             if !request.attachments.is_empty()
                 || input.as_ref().is_some_and(|input| !input.images.is_empty())
                 || messages

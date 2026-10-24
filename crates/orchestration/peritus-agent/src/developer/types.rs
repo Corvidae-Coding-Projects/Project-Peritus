@@ -104,6 +104,8 @@ pub struct DeveloperLoopRequest {
     pub system: String,
     /// Current task, conversation, and prior findings.
     pub prompt: String,
+    /// Optional provider access program for an explicitly scoped defensive-security role.
+    pub cyber_access_program: Option<DeveloperCyberAccessProgram>,
     /// Bounded media attached to the initial user turn in prompt-described order.
     pub attachments: Vec<MediaInput>,
     /// Provider-visible application tools.
@@ -112,6 +114,13 @@ pub struct DeveloperLoopRequest {
     pub limits: DeveloperLoopLimits,
     /// Shared provider cancellation.
     pub cancellation: CancellationToken,
+}
+
+/// Provider access programs that may be projected by compatible model adapters.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperCyberAccessProgram {
+    /// `OpenAI` Daybreak Blue for legitimate defensive-security work.
+    DaybreakBlue,
 }
 
 /// Bounded application observation returned to the model.

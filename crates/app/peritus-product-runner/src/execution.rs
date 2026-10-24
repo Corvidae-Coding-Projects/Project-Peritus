@@ -25,9 +25,9 @@ pub use checkpoint::CandidateRecorder;
 pub use resume::ProductRunResume;
 pub use turn_result::{AppliedTurn, AppliedWrite, HostTurnEvidence};
 pub use types::{
-    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunQuestion, ProductRunUpdate, ProductRunner, RoleProviders,
-    RunObserver, WorkspaceMutationKind,
+    ConversationView, NativeModuleJobConfiguration, ProductDeliveryScope, ProductRunInput,
+    ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunQuestion, ProductRunUpdate,
+    ProductRunner, RoleProviders, RunObserver, WorkspaceMutationKind,
 };
 
 use peritus_obligations::FailureDisposition;

@@ -9,9 +9,10 @@ The official market is https://github.com/Corvidae-Coding-Projects/Peritus-Modul
 Open `/modules` in the TUI or **Modules** in the GUI. Refresh, install, explicitly enable,
 and select Use module. The executable supplies its own action menus. Native packages
 include a `[code]` ABI/target artifact/tool declaration instead of roles/stages. The
-market contains the Rust SDK, full Deep Research source, and a native code template.
-The initial prebuilt research artifact is Linux x86-64 GNU; other platforms need native
-artifacts and are not established by Linux testing.
+market contains the Rust SDK, full Deep Research source, a native code template, and an
+additive source catalog for modules that are built locally rather than committed as executables.
+The initial prebuilt research artifact and the first source-build recipe target Linux x86-64
+GNU; other platforms need native artifacts or a separately established recipe.
 
 Installation runs no code, binds all declared resources by digest, and starts disabled.
 Updates also start disabled. Native code executes as the current OS account; agent
@@ -23,9 +24,17 @@ while retaining them for diagnosis. Removing a selection keeps immutable history
 peritus modules refresh
 peritus modules market
 peritus modules install-market peritus.deep-research EXACT_DIGEST
+peritus modules build-install-market peritus.red-team EXACT_SOURCE_DIGEST
 peritus modules enable peritus.deep-research
 peritus modules show peritus.deep-research
 ```
+
+Source refresh is inert. An explicit source build revalidates the pinned clean commit, source
+tree, lockfile, toolchain and target; prepares locked public dependencies without credentials;
+then compiles offline in a bounded Linux scope. Only a fully validated package is atomically
+installed outside Git, and it remains disabled until the user enables it. Failure, cancellation
+or host loss never replaces a prior installed selection. Build records and logs are retained for
+inspection and explicit retry.
 
 ```text
 /modules

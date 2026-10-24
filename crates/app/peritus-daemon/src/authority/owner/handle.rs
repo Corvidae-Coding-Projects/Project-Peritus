@@ -3,8 +3,8 @@
 mod application;
 mod artifact;
 mod orchestrator;
-mod rsi;
 mod prompt;
+mod rsi;
 
 use peritus_app_protocol::DaemonStatus;
 use peritus_journal::{

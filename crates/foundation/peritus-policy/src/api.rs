@@ -21,15 +21,13 @@ pub use crate::failure::{
 pub use crate::independence::{IndependenceRequirement, IndependenceSet};
 pub use crate::layer::{PolicyTier, RestrictionLayer};
 pub use crate::operation::{OperationDescriptor, OperationRegistry};
-pub use crate::risk::{RiskClass, RiskSet};
 pub use crate::restriction_rule::RestrictionRule;
+pub use crate::risk::{RiskClass, RiskSet};
 pub use crate::role::{ActorRole, OperationClass};
 pub use crate::rule::{ApprovalRequirement, AuthorityTier};
 pub use crate::scope::{Permission, PermissionSet};
 pub use crate::scope_selector::ScopeSelector;
-pub use crate::selector::{
-    ActorSelector, EnvironmentSelector, PermissionSelector, RoleSelector,
-};
+pub use crate::selector::{ActorSelector, EnvironmentSelector, PermissionSelector, RoleSelector};
 pub use crate::time::{AuthorityTimeFailure, AuthorityTimeState};
 pub use crate::use_limit::UseLimit;
 pub use crate::validity::{AuthorityInstant, ValidityWindow};

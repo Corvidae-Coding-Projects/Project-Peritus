@@ -3,14 +3,20 @@
 mod definition;
 mod jobs;
 mod market;
+#[cfg(target_os = "linux")]
+pub mod preparation;
 mod registry;
+#[cfg(target_os = "linux")]
+mod source_build;
 
 pub use definition::{Code, Definition, Manifest, Role, Stage};
 pub use jobs::{Job, JobState, StageOutput};
-pub use market::{Catalog, MARKET_REPOSITORY, MarketEntry, ModuleOperation};
+pub use market::{
+    Catalog, MARKET_REPOSITORY, MarketEntry, ModuleOperation, SourceCatalog, SourceEntry,
+};
 pub use registry::{Registry, data_root};
 use sha2::{Digest, Sha256};
-use std::{fs, io::Write, path::Path};
+use std::{fmt::Write as _, fs, io::Write as _, path::Path};
 
 /// A module operation that could not be completed.
 #[derive(Debug, thiserror::Error)]
@@ -34,8 +40,16 @@ pub enum Error {
 fn invalid(message: impl Into<String>) -> Error {
     Error::Invalid(message.into())
 }
-fn digest(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+pub(crate) fn digest(bytes: &[u8]) -> String {
+    hex(&Sha256::digest(bytes))
+}
+
+pub(crate) fn hex(bytes: &[u8]) -> String {
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(&mut encoded, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    encoded
 }
 fn publish(path: &Path, bytes: &[u8]) -> Result<(), Error> {
     let parent = path.parent().ok_or_else(|| invalid("state path has no parent"))?;

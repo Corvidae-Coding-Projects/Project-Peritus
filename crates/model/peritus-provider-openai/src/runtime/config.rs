@@ -78,6 +78,7 @@ fn validate(profile: &ProviderProfile) -> Result<(), ProviderCoreError> {
                         | Capability::ReasoningSummaries
                         | Capability::Streaming
                         | Capability::UsageDetail
+                        | Capability::ProviderExtensions
                 ))
     });
     if profile.provider().as_str() != "openai"

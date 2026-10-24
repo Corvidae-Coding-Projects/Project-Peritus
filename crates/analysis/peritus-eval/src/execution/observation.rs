@@ -258,8 +258,13 @@ impl ExecutedRollout {
         {
             return Err(invalid("recovered candidate and evaluator stage bindings differ"));
         }
-        Self::terminal(candidate.attempt(), evaluator.result_digest(),
-            outcome_from_verdict(evaluator.verdict(), evaluator.result_digest()), Some(candidate), Some(evaluator))
+        Self::terminal(
+            candidate.attempt(),
+            evaluator.result_digest(),
+            outcome_from_verdict(evaluator.verdict(), evaluator.result_digest()),
+            Some(candidate),
+            Some(evaluator),
+        )
     }
     #[allow(
         clippy::large_types_passed_by_value,

@@ -152,6 +152,11 @@ impl ProductRunService {
             .workspaces
             .get(&request.workspace_id())
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+        let source_root = self
+            .inner
+            .workspaces
+            .source_root(&request.workspace_id())
+            .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
         let snapshot = initial_snapshot(&request)?;
         let cancelled = Arc::new(AtomicBool::new(false));
         let provider_cancellation = CancellationToken::new();
@@ -228,6 +233,7 @@ impl ProductRunService {
         self.spawn(
             request,
             workspace_root,
+            source_root,
             providers,
             cancelled,
             provider_cancellation,

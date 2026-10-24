@@ -25,9 +25,9 @@ pub use crate::discard_recovery::DiscardTransactionState;
 pub use crate::error::{ProductRunnerError, ProductRunnerErrorKind};
 
 pub use crate::execution::{
-    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner,
-    RoleProviders, RunObserver, WorkspaceMutationKind,
+    ConversationView, NativeModuleJobConfiguration, ProductDeliveryScope, ProductRunInput,
+    ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunQuestion, ProductRunResume,
+    ProductRunUpdate, ProductRunner, RoleProviders, RunObserver, WorkspaceMutationKind,
 };
 
 pub use crate::local_context::{LocalContextHandle, MemoryTools, inspect_local_context};
