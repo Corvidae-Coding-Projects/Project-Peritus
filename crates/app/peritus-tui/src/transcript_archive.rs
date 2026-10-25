@@ -599,19 +599,18 @@ fn check_owner(metadata: &fs::Metadata, private: bool) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(windows)]
+fn is_reparse(metadata: &fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt as _;
+    metadata.file_attributes()
+        & windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT
+        != 0
+}
+
+#[cfg(not(windows))]
 const fn is_reparse(metadata: &fs::Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt as _;
-        metadata.file_attributes()
-            & windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT
-            != 0
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = metadata;
-        false
-    }
+    let _ = metadata;
+    false
 }
 
 fn atomic_write(directory: &Path, name: &str, bytes: &[u8]) -> Result<(), String> {
