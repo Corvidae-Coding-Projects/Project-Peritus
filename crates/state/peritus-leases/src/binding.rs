@@ -5,7 +5,7 @@ mod duplication;
 mod permission;
 mod use_projection;
 
-pub use command::{LeaseCommandBinding, LeaseCommandBindingKind};
 pub use command::LeaseCommandBindingData;
+pub use command::{LeaseCommandBinding, LeaseCommandBindingKind};
 pub use permission::LeasePermissionBinding;
 pub use use_projection::LeaseUseCommandBinding;

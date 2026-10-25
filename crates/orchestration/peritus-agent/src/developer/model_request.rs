@@ -1,17 +1,36 @@
 //! Provider request construction for developer and semantic-checkpoint turns.
 
 use peritus_model_protocol::{
-    CachePolicy, Capability, GenerationConfig, Message, ModelRequest, ParallelToolPolicy,
-    PersistencePolicy, ProtocolLimits, ReasoningEffort, ReasoningPolicy, RequestId, RequestOptions,
-    StructuredOutput, SummaryPolicy, ToolChoice,
+    CachePolicy, CanonicalJson, Capability, ExtensionName, GenerationConfig, JsonBounds, Message,
+    ModelRequest, ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ProviderExtension,
+    ReasoningEffort, ReasoningPolicy, RequestId, RequestOptions, StructuredOutput, SummaryPolicy,
+    ToolChoice, WireDialect,
 };
 
-use super::{DeveloperLoopError, DeveloperLoopRequest};
+use super::{DeveloperCyberAccessProgram, DeveloperLoopError, DeveloperLoopRequest};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ModelTurnKind {
     Developer,
     SemanticCompaction,
+}
+
+fn extensions(
+    request: &DeveloperLoopRequest,
+    profile: &peritus_model_protocol::ProviderProfile,
+) -> Result<Vec<ProviderExtension>, DeveloperLoopError> {
+    match (request.cyber_access_program, profile.dialect()) {
+        (Some(DeveloperCyberAccessProgram::DaybreakBlue), WireDialect::OpenAiCodexRuntime) => {
+            Ok(vec![ProviderExtension::new(
+                ExtensionName::new("openai.cyber_access_program".to_owned())?,
+                CanonicalJson::parse(
+                    "\"daybreak_blue\"",
+                    JsonBounds::value(ProtocolLimits::PRODUCTION),
+                )?,
+            )])
+        }
+        _ => Ok(Vec::new()),
+    }
 }
 
 #[allow(
@@ -91,6 +110,7 @@ pub(super) fn build_model_request(
             output_tokens,
         )
         .map_err(|error| DeveloperLoopError::Model(crate::ModelDriveError::Provider(error)))?;
+    let extensions = extensions(request, profile)?;
     Ok(ModelRequest::new(
         profile,
         negotiated,
@@ -116,7 +136,7 @@ pub(super) fn build_model_request(
             },
             PersistencePolicy::LOCAL_FIRST,
             None,
-            Vec::new(),
+            extensions,
         ),
         protocol_limits,
     )?)

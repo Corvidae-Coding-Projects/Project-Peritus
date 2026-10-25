@@ -1,6 +1,6 @@
-//! Exact managed-browser AppArmor permissions without disabling Chromium's sandbox.
+//! Exact managed-browser `AppArmor` permissions without disabling Chromium's sandbox.
 
-use std::{fs, io::Write as _, path::Path, process::Command};
+use std::{fmt::Write as _, fs, io::Write as _, path::Path, process::Command};
 
 use serde::Deserialize;
 use sha2::{Digest as _, Sha256};
@@ -72,14 +72,20 @@ print(json.dumps({'root': str(root), 'executables': executables, 'uid': os.getui
     let mut hasher = Sha256::new();
     hasher.update(browsers.root.as_os_str().as_encoded_bytes());
     hasher.update(browsers.uid.to_le_bytes());
-    let identity = hasher.finalize().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let mut identity = String::with_capacity(64);
+    for byte in hasher.finalize() {
+        let _ = write!(identity, "{byte:02x}");
+    }
     for (index, executable) in browsers.executables.iter().enumerate() {
         if !executable.starts_with(&browsers.root) || !executable.is_file() {
             return Err("refusing an AppArmor attachment outside the managed browser cache".into());
         }
         let path = executable.to_str().ok_or("AppArmor browser paths must be valid UTF-8")?;
         let quoted = literal_path(path)?;
-        policy.push_str(&format!("profile peritus-chromium-{identity}-{index} \"{quoted}\" flags=(unconfined) {{\n  userns,\n}}\n\n"));
+        let _ = writeln!(
+            policy,
+            "profile peritus-chromium-{identity}-{index} \"{quoted}\" flags=(unconfined) {{\n  userns,\n}}\n"
+        );
     }
     let destination = format!("/etc/apparmor.d/peritus-chromium-{identity}");
     let mut source = tempfile::NamedTempFile::new_in(installation)

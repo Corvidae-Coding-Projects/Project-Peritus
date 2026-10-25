@@ -274,12 +274,23 @@ pub async fn run_with_state(
         }
     };
 
+    finish_run(config, state, &mut input, &mut reads, &mut connection, model, result).await
+}
+
+async fn finish_run(
+    config: TuiConfig,
+    state: &mut TuiState,
+    input: &mut InputPump,
+    reads: &mut LocalReads,
+    connection: &mut Connection,
+    mut model: Box<AppModel>,
+    result: Result<ExitReason, TuiError>,
+) -> Result<ExitReason, TuiError> {
     input.stop()?;
     // Preserve the last public page before normal process exit. Archive work has one
     // writer and one coalesced pending page, independent of daemon cleanup.
     let _ = tokio::time::timeout(Duration::from_secs(2), reads.archive.finish()).await;
-    let cleanup = model.cleanup_messages();
-    let cleanup_result = connection.close(cleanup).await;
+    let cleanup_result = connection.close(model.cleanup_messages()).await;
     if matches!(
         result,
         Ok(ExitReason::RecoverDaemon
@@ -445,7 +456,7 @@ async fn next_effects(
             },
             event = events.recv() => match event {
                 Some(event) => match client_action(event, model.protocol_context()) {
-                    Some(Action::Disconnected(error)) => return Ok(connection.disconnected("read/write", error, model)),
+                    Some(Action::Disconnected(error)) => return Ok(connection.disconnected("read/write", &error, model)),
                     Some(action) => action,
                     None => continue,
                 },
@@ -484,7 +495,7 @@ async fn background_effects(
         let action = tokio::select! {
             event = events.recv() => match event {
                 Some(event) => match client_action(event, model.protocol_context()) {
-                    Some(Action::Disconnected(error)) => return connection.disconnected("read/write", error, model),
+                    Some(Action::Disconnected(error)) => return connection.disconnected("read/write", &error, model),
                     Some(action) => action,
                     None => continue,
                 },

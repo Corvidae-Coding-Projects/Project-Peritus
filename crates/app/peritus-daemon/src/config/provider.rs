@@ -2,7 +2,7 @@
 use std::path::PathBuf;
 
 use peritus_model_protocol::{
-    CancellationKind, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
+    CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
 };
 use peritus_provider_anthropic::{AnthropicBeta, AnthropicConfig};
@@ -54,7 +54,7 @@ pub enum ProviderRouteKind {
     CodexRuntime,
     /// Official credential-owning Claude executable route.
     ClaudeRuntime,
-    /// Tool-disabled official OpenCode executable for a hosted Zen or Go route.
+    /// Tool-disabled official `OpenCode` executable for a hosted Zen or Go route.
     OpenCodeRuntime,
 }
 
@@ -320,9 +320,13 @@ impl ProviderProfileDeclaration {
             return Err(invalid("provider profile capabilities are duplicate or oversized"));
         }
         if kind == ProviderRouteKind::OpenCodeRuntime {
-            capabilities.retain(|capability| {
-                *capability != peritus_model_protocol::Capability::ReasoningReplay
-            });
+            capabilities.retain(|capability| *capability != Capability::ReasoningReplay);
+        }
+        if kind == ProviderRouteKind::CodexRuntime
+            && !capabilities.contains(&Capability::ProviderExtensions)
+        {
+            capabilities.push(Capability::ProviderExtensions);
+            capabilities.sort_unstable();
         }
         let matrix = CapabilityMatrix::new(&capabilities, &[]).map_err(protocol_error)?;
         let limits = ModelLimits::new(

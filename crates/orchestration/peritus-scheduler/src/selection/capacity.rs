@@ -42,8 +42,7 @@ fn global_fits_with_aggregate(
     request: &ResourceVector,
     usage: &aggregate::Aggregate,
 ) -> bool {
-    let result = aggregate_fits_from(usage, request.entries(), 0, state.binding().capacity());
-    result
+    aggregate_fits_from(usage, request.entries(), 0, state.binding().capacity())
 }
 fn worker_fits_with_aggregate(
     _state: &SchedulerState,
@@ -52,8 +51,7 @@ fn worker_fits_with_aggregate(
     request: &ResourceVector,
     usage: &aggregate::Aggregate,
 ) -> bool {
-    let result = aggregate_fits_from(usage, request.entries(), 0, capacity);
-    result
+    aggregate_fits_from(usage, request.entries(), 0, capacity)
 }
 fn global_fits_with_fallback(
     state: &SchedulerState,
@@ -63,8 +61,8 @@ fn global_fits_with_fallback(
     match usage {
         aggregate::Aggregate::Failed => {
             let entries = request.entries();
-            let result = fallback::global_fits_from(state, entries, 0);
-            result
+
+            fallback::global_fits_from(state, entries, 0)
         }
         aggregate::Aggregate::Empty | aggregate::Aggregate::Value(_) => {
             global_fits_with_aggregate(state, request, usage)
@@ -81,8 +79,8 @@ fn worker_fits_with_fallback(
     match usage {
         aggregate::Aggregate::Failed => {
             let entries = request.entries();
-            let result = fallback::worker_fits_from(state, worker, capacity, entries, 0);
-            result
+
+            fallback::worker_fits_from(state, worker, capacity, entries, 0)
         }
         aggregate::Aggregate::Empty | aggregate::Aggregate::Value(_) => {
             worker_fits_with_aggregate(state, worker, capacity, request, usage)
@@ -111,6 +109,5 @@ pub(super) fn worker_fits_after(
     }
 }
 pub fn worker_reservation_count(state: &SchedulerState, worker: crate::WorkerId) -> usize {
-    let result = worker_count_from(state.reservations(), 0, worker);
-    result
+    worker_count_from(state.reservations(), 0, worker)
 }

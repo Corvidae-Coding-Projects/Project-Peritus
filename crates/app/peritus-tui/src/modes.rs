@@ -2,7 +2,7 @@
 
 use peritus_app_protocol::ProductInteractionMode as Mode;
 
-pub(crate) const fn description(mode: Mode) -> &'static str {
+pub const fn description(mode: Mode) -> &'static str {
     match mode {
         Mode::Chat => {
             "Discuss and inspect; explicitly authorized changes go through the build pipeline, within workspace permissions."
@@ -22,12 +22,7 @@ pub(crate) const fn description(mode: Mode) -> &'static str {
     }
 }
 
-pub(crate) fn composer_title(
-    mode: Mode,
-    direct_folder: Option<bool>,
-    active: bool,
-    width: u16,
-) -> String {
+pub fn composer_title(mode: Mode, direct_folder: Option<bool>, active: bool, width: u16) -> String {
     let hint = if direct_folder == Some(false) {
         "read-only folder"
     } else {
@@ -41,11 +36,10 @@ pub(crate) fn composer_title(
             }
             Mode::Plan | Mode::Review if width < 60 => "read-only · /build",
             Mode::Plan | Mode::Review => "read-only · /build to implement",
-            Mode::Chat if active => "steer active work",
+            Mode::Chat | Mode::Build if active => "steer active work",
             Mode::Design if active => "shaping your design",
             Mode::Design => "answer or revise · /design show",
             Mode::Chat => "authorized work via pipeline",
-            Mode::Build if active => "steer active work",
             Mode::Build => "delivery pipeline",
         }
     };

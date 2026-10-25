@@ -2,6 +2,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::ModuleHostRequest;
+
 /// Response from an independently implemented native module coordinator.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -32,6 +34,11 @@ pub enum ModuleAction {
     Model {
         /// Durable module-owned request identity and instructions.
         request: ModuleAgentRequest,
+    },
+    /// Ask the host to perform one explicitly versioned service operation.
+    HostService {
+        /// Durable request envelope. Its contents do not grant authority.
+        request: ModuleHostRequest,
     },
 }
 /// User-visible action supplied by executable module code.
@@ -68,11 +75,22 @@ pub struct ModuleAgentRequest {
     pub system: String,
     /// Focused task context. Further evidence is retrieved through tools.
     pub prompt: String,
+    /// Optional provider access program required by this bounded model role.
+    /// Hosts may honor this only through a compatible provider transport.
+    #[serde(default)]
+    pub cyber_access_program: Option<ModuleCyberAccessProgram>,
     /// Native host tool names, intersected with the installed package declaration.
     pub tools: Vec<String>,
     /// Additional functions implemented by this native Rust plugin.
     #[serde(default)]
     pub functions: Vec<ModuleFunction>,
+}
+/// Defensive-security access programs a native module may explicitly request.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleCyberAccessProgram {
+    /// `OpenAI` Daybreak Blue for legitimate defensive-security work.
+    DaybreakBlue,
 }
 /// A model-callable function exported by a native Rust plugin.
 #[derive(Clone, Debug, Serialize, Deserialize)]

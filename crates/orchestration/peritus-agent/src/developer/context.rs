@@ -45,7 +45,7 @@ pub(super) fn prepare_messages(
     limits: ProtocolLimits,
     protected_prefix: usize,
 ) -> Result<Vec<DeveloperContextCompaction>, DeveloperLoopError> {
-    let (_, trigger) = context_thresholds(profile, reserved_output_tokens)?;
+    let (_, trigger) = context_thresholds(profile, reserved_output_tokens);
     let mut records = Vec::new();
     while estimated_request_tokens(messages, tools) > trigger {
         let Some(record) =
@@ -98,12 +98,12 @@ fn compact_once(
 pub(super) fn context_thresholds(
     profile: &ProviderProfile,
     _reserved_output_tokens: u64,
-) -> Result<(u64, u64), DeveloperLoopError> {
+) -> (u64, u64) {
     // Input capacity is already separate from the provider's output limit. Compaction is
     // advisory and must not manufacture a context-window overflow from an uncapped output.
     let usable = profile.limits().max_input_tokens();
     let trigger = (usable.saturating_mul(COMPACTION_TRIGGER_PERCENT) / 100).max(1);
-    Ok((usable, trigger))
+    (usable, trigger)
 }
 
 pub(super) fn compaction_candidate(

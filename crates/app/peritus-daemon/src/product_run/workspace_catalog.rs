@@ -28,6 +28,7 @@ pub(super) struct LiveWorkspaces {
 
 struct View {
     roots: BTreeMap<WorkspaceId, PathBuf>,
+    source_roots: BTreeMap<WorkspaceId, PathBuf>,
     folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
     permissions: HostPermissionCatalog,
     config: DaemonConfig,
@@ -54,6 +55,9 @@ impl LiveWorkspaces {
     pub(super) fn roots(&self) -> BTreeMap<WorkspaceId, PathBuf> {
         self.view.read().map(|view| view.roots.clone()).unwrap_or_default()
     }
+    pub(super) fn source_root(&self, id: &WorkspaceId) -> Option<PathBuf> {
+        self.view.read().ok()?.source_roots.get(id).cloned()
+    }
     pub(super) fn contains_key(&self, id: &WorkspaceId) -> bool {
         self.view.read().is_ok_and(|view| view.roots.contains_key(id))
     }
@@ -62,6 +66,17 @@ impl LiveWorkspaces {
     }
     pub(super) fn is_direct(&self, id: &WorkspaceId) -> bool {
         self.view.read().is_ok_and(|view| view.folders.contains_key(id))
+    }
+    pub(super) fn module_jobs(
+        &self,
+    ) -> Option<peritus_product_runner::NativeModuleJobConfiguration> {
+        let view = self.view.read().ok()?;
+        let config = view.config.rsi()?;
+        Some(peritus_product_runner::NativeModuleJobConfiguration {
+            bubblewrap: config.bubblewrap.clone(),
+            linux_helper: config.linux_helper.clone(),
+            cgroup_root: config.cgroup_root.clone(),
+        })
     }
     pub(super) fn permissions(
         &self,
@@ -88,6 +103,7 @@ impl View {
     ) -> Self {
         Self {
             roots: catalog.roots(),
+            source_roots: catalog.source_roots(),
             folders: catalog.folders().clone(),
             permissions: HostPermissionCatalog::for_network(network, catalog),
             config,

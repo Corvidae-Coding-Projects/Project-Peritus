@@ -39,24 +39,37 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             .block(Block::default().borders(Borders::ALL).title(title)),
         sections[0],
     );
+    draw_content(frame, sections[1], model, panel);
+    let footer = footer(model, panel);
+    frame.render_widget(
+        Paragraph::new(crate::sanitize::sanitize_display_text(&footer)).wrap(Wrap { trim: false }),
+        sections[2],
+    );
+}
+
+fn draw_content(frame: &mut Frame<'_>, area: Rect, model: &AppModel, panel: Panel) {
+    let ui = &model.chat.convenience;
     if let Some(preview) = &ui.preview {
         let lines = super::wrapped_lines(
             preview.lines().map(|l| Line::raw(crate::sanitize::sanitize_display_text(l))).collect(),
-            usize::from(sections[1].width.saturating_sub(2)),
+            usize::from(area.width.saturating_sub(2)),
         );
-        let max = lines.len().saturating_sub(usize::from(sections[1].height.saturating_sub(2)));
+        let max = lines.len().saturating_sub(usize::from(area.height.saturating_sub(2)));
         frame.render_widget(
             Paragraph::new(lines.into_iter().skip(ui.scroll.min(max)).collect::<Vec<_>>())
                 .block(Block::default().borders(Borders::ALL).title("Full result · c copies")),
-            sections[1],
+            area,
         );
     } else if panel == Panel::Theme {
-        let parts =
-            Layout::horizontal([Constraint::Length(18), Constraint::Min(1)]).split(sections[1]);
+        let parts = Layout::horizontal([Constraint::Length(18), Constraint::Min(1)]).split(area);
         list(frame, parts[0], vec!["dark".into(), "light".into(), "plain".into()], ui.selected);
         let theme = [Theme::Dark, Theme::Light, Theme::Plain][ui.selected.min(2)];
         let mut lines = crate::highlight::code(
-            "// Syntax preview\nfn main() {\n    let message = \"Hello, Peritus\";\n    println!(\"{message}\");\n}",
+            concat!(
+                "// Syntax preview\nfn main() {\n",
+                "    let message = \"Hello, Peritus\";\n",
+                "    println!(\"{message}\");\n}"
+            ),
             "rust",
             theme,
         );
@@ -117,13 +130,17 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             frame.render_widget(
                 Paragraph::new(crate::sanitize::sanitize_display_text(message))
                     .wrap(Wrap { trim: false }),
-                sections[1],
+                area,
             );
         } else {
-            list(frame, sections[1], items, ui.selected);
+            list(frame, area, items, ui.selected);
         }
     }
-    let footer = if !ui.error.is_empty() {
+}
+
+fn footer(model: &AppModel, panel: Panel) -> String {
+    let ui = &model.chat.convenience;
+    if !ui.error.is_empty() {
         ui.error.clone()
     } else if ui.preview.is_some() {
         "↑↓/PgUp/PgDn scroll · c copy · Esc returns to results".into()
@@ -155,11 +172,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             Panel::Theme => "↑↓ preview · Enter saves · Esc back · dark/light/plain".into(),
             Panel::Code => "↑↓ select · Enter copies · Tab previews full block · Esc back".into(),
         }
-    };
-    frame.render_widget(
-        Paragraph::new(crate::sanitize::sanitize_display_text(&footer)).wrap(Wrap { trim: false }),
-        sections[2],
-    );
+    }
 }
 
 fn list(frame: &mut Frame<'_>, area: Rect, items: Vec<String>, selected: usize) {
@@ -169,10 +182,7 @@ fn list(frame: &mut Frame<'_>, area: Rect, items: Vec<String>, selected: usize) 
     }
     frame.render_stateful_widget(
         List::new(
-            items
-                .into_iter()
-                .map(|s| ListItem::new(crate::sanitize::sanitize_display_text(&s)))
-                .collect::<Vec<_>>(),
+            items.into_iter().map(|s| ListItem::new(crate::sanitize::sanitize_display_text(&s))),
         )
         .highlight_symbol("▸ ")
         .highlight_style(

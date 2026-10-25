@@ -22,12 +22,12 @@ fn passing_attempts_within_limit(
 ) -> bool {
     let mut index = 0;
     while index < values.len() {
-        if crate::revision::revision_matches(values[index].revision(), requested) {
-            if values[index].passed() {
-                let attempt = values[index].attempt().get();
-                if attempt > maximum {
-                    return false;
-                }
+        if crate::revision::revision_matches(values[index].revision(), requested)
+            && values[index].passed()
+        {
+            let attempt = values[index].attempt().get();
+            if attempt > maximum {
+                return false;
             }
         }
         index += 1;

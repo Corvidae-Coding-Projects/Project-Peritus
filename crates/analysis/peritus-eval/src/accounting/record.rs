@@ -415,9 +415,15 @@ impl RolloutRecord {
         if self.rollout_id.as_bytes() != &rollout_id || self.work_id.as_bytes() != &work_id {
             return Err(corrupt("rollout record derived identities differ"));
         }
-        if self.candidate_output.is_some() != self.candidate_resources.is_some()
-            || self.evaluator_resources.is_some() && self.candidate_output.is_none()
-            || self.outcome().evaluated() != self.evaluator_resources.is_some()
+        let candidate_stage_is_consistent =
+            self.candidate_output.is_some() == self.candidate_resources.is_some();
+        let evaluator_requires_candidate =
+            self.evaluator_resources.is_none() || self.candidate_output.is_some();
+        let evaluator_stage_is_consistent =
+            self.outcome().evaluated() == self.evaluator_resources.is_some();
+        if !candidate_stage_is_consistent
+            || !evaluator_requires_candidate
+            || !evaluator_stage_is_consistent
         {
             return Err(corrupt("rollout record terminal stage observations are inconsistent"));
         }

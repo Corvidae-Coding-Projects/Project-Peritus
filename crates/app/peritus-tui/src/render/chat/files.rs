@@ -77,7 +77,11 @@ pub(super) fn content_lines(model: &AppModel) -> Vec<String> {
             format!("Range: {}", if file.range.is_empty() { "all" } else { &file.range }),
             format!(
                 "Mode: {}",
-                if file.refresh { "refresh on each request" } else { "immutable snapshot" }
+                if file.refresh_enabled() {
+                    "refresh on each request"
+                } else {
+                    "immutable snapshot"
+                }
             ),
             format!("Caption: {}", file.caption),
         ]);

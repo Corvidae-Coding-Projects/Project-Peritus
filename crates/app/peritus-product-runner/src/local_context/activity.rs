@@ -14,7 +14,7 @@ pub(super) struct Activity {
     context_reads: BTreeMap<[u8; 32], Value>,
 }
 
-pub(crate) fn inspection(name: &str) -> bool {
+pub fn inspection(name: &str) -> bool {
     matches!(
         name,
         "workspace_list"
@@ -37,7 +37,7 @@ pub(crate) fn inspection(name: &str) -> bool {
     )
 }
 
-pub(crate) fn identity(name: &str, value: &Value) -> [u8; 32] {
+pub fn identity(name: &str, value: &Value) -> [u8; 32] {
     let mut value = value.clone();
     if let Some(object) = value.as_object_mut() {
         for key in ["local_context", "execution_resources", "base_revision"] {
@@ -210,7 +210,7 @@ impl Activity {
             .cloned()
     }
 
-    pub(super) fn feedback(&mut self) -> Option<String> {
+    pub(super) const fn feedback(&mut self) -> Option<String> {
         self.feedback.take()
     }
 }

@@ -2,7 +2,7 @@
 
 use std::{
     env, fs,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     net::{IpAddr, TcpStream},
     path::{Path, PathBuf},
     process::Command,
@@ -21,6 +21,10 @@ pub const MAX_REQUEST_BYTES: usize = 128 * 1024;
 
 /// Resolves Playwright's user installation cache before the command sandbox changes HOME.
 /// This contains browser executables, never personal browsing profiles or credentials.
+///
+/// # Errors
+///
+/// Returns an error when the configured cache is relative or no user cache root is available.
 pub fn browser_cache() -> Result<PathBuf, String> {
     if let Some(path) = env::var_os("PLAYWRIGHT_BROWSERS_PATH") {
         let path = PathBuf::from(path);
@@ -43,6 +47,10 @@ pub fn browser_cache() -> Result<PathBuf, String> {
 }
 
 /// Optional per-user automation installation root.
+///
+/// # Errors
+///
+/// Returns an error when no per-user application data directory can be resolved.
 pub fn installation_root() -> Result<PathBuf, String> {
     let root = if cfg!(windows) {
         env::var_os("LOCALAPPDATA").map(|path| PathBuf::from(path).join("Peritus"))
@@ -60,6 +68,10 @@ pub fn installation_root() -> Result<PathBuf, String> {
 }
 
 /// Resolves the explicitly selected or installed Python runtime.
+///
+/// # Errors
+///
+/// Returns an error when an override is invalid or no usable Python executable is available.
 pub fn python() -> Result<PathBuf, String> {
     if let Some(path) = env::var_os("PERITUS_AUTOMATION_PYTHON") {
         let path = PathBuf::from(path);
@@ -69,7 +81,7 @@ pub fn python() -> Result<PathBuf, String> {
         return Ok(path);
     }
     let root = installation_root()?;
-    if let Some(python) = setup::selected_python(&root)? {
+    if let Some(python) = setup::selected_python(&root) {
         return Ok(python);
     }
     let installed =
@@ -90,6 +102,10 @@ pub fn python() -> Result<PathBuf, String> {
 }
 
 /// Publishes the bundled driver below an application-owned runtime directory.
+///
+/// # Errors
+///
+/// Returns an error when the destination is unsafe or driver files cannot be published.
 pub fn prepare_driver(directory: &Path) -> Result<PathBuf, String> {
     fs::create_dir_all(directory).map_err(|error| error.to_string())?;
     #[cfg(unix)]
@@ -113,6 +129,10 @@ pub fn prepare_driver(directory: &Path) -> Result<PathBuf, String> {
 }
 
 /// Reports available real runtime dependencies without making provider requests.
+///
+/// # Errors
+///
+/// Returns an error when the driver cannot be prepared, launched, or decoded.
 pub fn status() -> Result<Value, String> {
     let script = prepare_driver(&installation_root()?.join("driver"))?;
     let output = Command::new(python()?)
@@ -136,6 +156,10 @@ fn require_success(command: &mut Command, operation: &str) -> Result<(), String>
 }
 
 /// Sends one authenticated request to an already owned driver.
+///
+/// # Errors
+///
+/// Returns an error when readiness is invalid, transport fails, or the response is malformed.
 pub fn request(directory: &Path, id: &str, method: &str, params: &Value) -> Result<Value, String> {
     let ready_path = directory.join("ready.json");
     if ready_path.is_symlink() {
@@ -165,7 +189,6 @@ pub fn request(directory: &Path, id: &str, method: &str, params: &Value) -> Resu
     stream.set_write_timeout(Some(Duration::from_secs(5))).map_err(|error| error.to_string())?;
     stream.write_all(&encoded).map_err(|error| error.to_string())?;
     let mut line = String::new();
-    use std::io::Read;
     BufReader::new(stream)
         .take(MAX_RESPONSE_BYTES + 1)
         .read_line(&mut line)

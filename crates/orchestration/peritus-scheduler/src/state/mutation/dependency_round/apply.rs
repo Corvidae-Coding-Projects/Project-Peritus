@@ -9,17 +9,13 @@ use super::{DependencyAction, DependencyChange};
 fn apply_one(state: &mut SchedulerState, change: DependencyChange) -> bool {
     match change.action() {
         DependencyAction::Ready => {
-            let applied = mutation::set_work_phase(state, change.work_id(), WorkPhase::Queued);
-            applied
+            mutation::set_work_phase(state, change.work_id(), WorkPhase::Queued)
         }
-        DependencyAction::Failed { dependency } => {
-            let applied = mutation::terminalize_work(
-                state,
-                change.work_id(),
-                WorkTerminal::DependencyFailed { dependency },
-            );
-            applied
-        }
+        DependencyAction::Failed { dependency } => mutation::terminalize_work(
+            state,
+            change.work_id(),
+            WorkTerminal::DependencyFailed { dependency },
+        ),
         DependencyAction::NoChange => false,
     }
 }

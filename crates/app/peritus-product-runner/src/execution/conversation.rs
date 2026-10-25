@@ -218,8 +218,7 @@ pub(super) fn system(mode: ConversationMode) -> String {
     };
     let cues = crate::engineering_workflow::vitamins::conversation(match mode {
         ConversationMode::Chat => "chat",
-        ConversationMode::Plan => "plan",
-        ConversationMode::Design => "plan",
+        ConversationMode::Plan | ConversationMode::Design => "plan",
         ConversationMode::Review => "review",
     });
     format!(
@@ -281,6 +280,7 @@ fn request(
         ),
         system: policy,
         prompt,
+        cyber_access_program: None,
         attachments,
         tools: definitions,
         limits: DeveloperLoopLimits::new(48, 512)

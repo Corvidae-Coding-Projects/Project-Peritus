@@ -29,8 +29,7 @@ impl ApprovalAggregate {
     #[doc = " Creates a pending aggregate from one checked request."]
     #[must_use]
     pub const fn new(request: crate::ApprovalRequest) -> Self {
-        let aggregate = Self { request, state: ApprovalState::Pending };
-        aggregate
+        Self { request, state: ApprovalState::Pending }
     }
 }
 #[allow(
@@ -59,8 +58,7 @@ impl ApprovalAggregate {
         observation: crate::AuthenticatedApprovalObservation,
         registry: &crate::CredentialRegistrySnapshot,
     ) -> Result<ApprovalTransitionOutcome, crate::ApprovalTransitionFailure> {
-        let result = self.resolve_checked(observation, registry);
-        result
+        self.resolve_checked(observation, registry)
     }
     #[allow(
         clippy::result_large_err,
@@ -177,8 +175,7 @@ impl ApprovalAggregate {
         reason = "explicit state matching exposes the pending refinement fact to pinned Verus"
     )]
     pub fn cancel(self) -> Result<ApprovalTransitionOutcome, crate::ApprovalTransitionFailure> {
-        let result = self.cancel_checked();
-        result
+        self.cancel_checked()
     }
     #[allow(
         clippy::result_large_err,

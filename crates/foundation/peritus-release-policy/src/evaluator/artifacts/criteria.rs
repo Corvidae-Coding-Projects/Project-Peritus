@@ -5,7 +5,7 @@ use crate::{AcceptanceCriterion, CriterionAssessment, EvidenceAssessment};
 pub(in crate::evaluator) const fn assess_all_criteria(
     assessments: &[EvidenceAssessment; 44],
 ) -> [CriterionAssessment; 25] {
-    let criteria = [
+    [
         assess_criterion(AcceptanceCriterion::CleanTierOneSuite, assessments),
         assess_criterion(AcceptanceCriterion::VerifiedWorkspaceBuild, assessments),
         assess_criterion(AcceptanceCriterion::ProofObligationInventory, assessments),
@@ -31,8 +31,7 @@ pub(in crate::evaluator) const fn assess_all_criteria(
         assess_criterion(AcceptanceCriterion::RepresentativeCampaign, assessments),
         assess_criterion(AcceptanceCriterion::ReleaseArtifacts, assessments),
         assess_criterion(AcceptanceCriterion::NoReleaseDebt, assessments),
-    ];
-    criteria
+    ]
 }
 pub(super) const fn assess_criterion(
     criterion: AcceptanceCriterion,
@@ -97,6 +96,6 @@ pub(super) const fn assess_criterion(
                 && assessments[43].is_satisfied()
         }
     };
-    let assessment = CriterionAssessment::new(criterion, satisfied);
-    assessment
+
+    CriterionAssessment::new(criterion, satisfied)
 }

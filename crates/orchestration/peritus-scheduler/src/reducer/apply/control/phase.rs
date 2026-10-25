@@ -16,7 +16,8 @@ pub(super) const fn apply_phase_event(
     command: &SchedulerCommandKind,
 ) -> Result<SchedulerEventKind, PhaseControlRejection> {
     let outcome = mutation::apply_phase_command(state, command);
-    let result = match outcome {
+
+    match outcome {
         mutation::PhaseCommandOutcome::Applied => match command {
             SchedulerCommandKind::PauseScheduler => Ok(SchedulerEventKind::SchedulerPaused),
             SchedulerCommandKind::ResumeScheduler => Ok(SchedulerEventKind::SchedulerResumed),
@@ -29,6 +30,5 @@ pub(super) const fn apply_phase_event(
         mutation::PhaseCommandOutcome::NotPhaseCommand => {
             Err(PhaseControlRejection::NotPhaseCommand)
         }
-    };
-    result
+    }
 }

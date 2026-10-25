@@ -23,7 +23,6 @@ pub(super) fn categories(values: &[ReviewCategory]) -> Result<(), EvidenceError>
         let previous = values[index - 1].digest().into_bytes();
         let current = values[index].digest().into_bytes();
         let comparison = order::compare(previous.as_slice(), current.as_slice());
-        if !matches!(comparison, Ordering::Less) {}
         match comparison {
             Ordering::Equal => {
                 return Err(EvidenceError::new(
@@ -67,7 +66,6 @@ pub(super) fn findings(
             let previous = values[index - 1].finding_id().into_bytes();
             let current = values[index].finding_id().into_bytes();
             let comparison = order::compare(previous.as_slice(), current.as_slice());
-            if !matches!(comparison, Ordering::Less) {}
             match comparison {
                 Ordering::Equal => {
                     return Err(EvidenceError::new(

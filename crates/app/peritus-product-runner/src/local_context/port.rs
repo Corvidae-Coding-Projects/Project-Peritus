@@ -123,7 +123,7 @@ impl LocalContextHandle {
             role,
             input.conversation.revision(),
         );
-        let namespace = hash.as_bytes().iter().map(|b| format!("{b:02x}")).collect::<String>();
+        let namespace = crate::encode_hex(hash.as_bytes());
         let root = input.trace_path.with_extension("context").join("modules").join(namespace);
         let protected =
             input.workspace_kind.is_in_place().then(|| input.workspace_kind.protected_paths());

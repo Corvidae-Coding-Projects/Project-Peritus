@@ -36,14 +36,14 @@ impl LeaseAggregate {
             );
         }
         let binding = crate::LeaseCommandBinding::expire(command);
-        let result = fence(
+
+        fence(
             self,
             command.command_id(),
             command.observed_at(),
             Some(FenceCause::Expired),
             LeaseTransitionKind::Expired,
             binding,
-        );
-        result
+        )
     }
 }

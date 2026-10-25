@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct ToolImageObservation {
+pub struct ToolImageObservation {
     call_id: String,
     tool: String,
     media_type: String,

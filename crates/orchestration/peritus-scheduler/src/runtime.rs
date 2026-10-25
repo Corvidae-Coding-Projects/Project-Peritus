@@ -36,10 +36,7 @@ fn directive_for(
     state: &SchedulerState,
     reservation: &SchedulerReservation,
 ) -> Option<SchedulerDirective> {
-    let found = state.work_item(reservation.work_id());
-    let Some(record) = found else {
-        return None;
-    };
+    let record = state.work_item(reservation.work_id())?;
     let phase = record.phase();
     if phase.same(WorkPhase::Reserved) && !reservation.started() {
         let directive = SchedulerDirective::Dispatch(reservation.clone());

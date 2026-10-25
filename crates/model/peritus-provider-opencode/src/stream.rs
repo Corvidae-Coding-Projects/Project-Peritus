@@ -1,4 +1,4 @@
-//! Buffered normalized events from one final OpenCode structured result.
+//! Buffered normalized events from one final `OpenCode` structured result.
 
 use core::fmt::Write as _;
 use std::collections::VecDeque;
@@ -15,7 +15,7 @@ use super::output::RuntimeTurn;
 
 const NORMALIZED_FRAGMENT_BYTES: usize = 4 * 1024;
 
-pub(super) struct OpenCodeRuntimeStream {
+pub struct OpenCodeRuntimeStream {
     pending: VecDeque<EventEnvelope>,
 }
 

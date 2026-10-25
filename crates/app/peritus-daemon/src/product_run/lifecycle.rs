@@ -148,7 +148,17 @@ impl ProductRunService {
             .request
             .workspace_id();
         let _admission = self.inner.admissions.enter(workspace);
-        let (request, root, providers, cancelled, token, finding_state, resume, snapshot) = {
+        let (
+            request,
+            root,
+            source_root,
+            providers,
+            cancelled,
+            token,
+            finding_state,
+            resume,
+            snapshot,
+        ) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
             let workspace_id = records
@@ -218,6 +228,11 @@ impl ProductRunService {
                 .workspaces
                 .get(&record.request.workspace_id())
                 .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+            let source_root = self
+                .inner
+                .workspaces
+                .source_root(&record.request.workspace_id())
+                .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
             let cancelled = Arc::new(AtomicBool::new(false));
             let token = CancellationToken::new();
             let previous = record.clone();
@@ -243,6 +258,7 @@ impl ProductRunService {
             (
                 record.request.clone(),
                 root,
+                source_root,
                 providers,
                 cancelled,
                 token,
@@ -251,7 +267,8 @@ impl ProductRunService {
                 record.snapshot.clone(),
             )
         };
-        self.spawn(request, root, providers, cancelled, token, finding_state, resume).await;
+        self.spawn(request, root, source_root, providers, cancelled, token, finding_state, resume)
+            .await;
         Ok(snapshot)
     }
 }

@@ -10,10 +10,10 @@ use peritus_provider_core::ProviderCoreError;
 ///
 /// The complete reply is available while decoding, but the durable private trace keeps only a
 /// bounded prefix so one runaway vendor answer cannot grow a run record without limit.
-pub(super) const MAX_RETAINED_REJECTED_BYTES: usize = 16 * 1024;
+pub const MAX_RETAINED_REJECTED_BYTES: usize = 16 * 1024;
 
 #[derive(Clone, Copy)]
-pub(super) enum TurnRejection {
+pub enum TurnRejection {
     Json,
     Envelope,
     Content,
@@ -92,7 +92,7 @@ fn retained_prefix(text: &str) -> (&str, bool) {
     (&text[..end], true)
 }
 
-pub(super) fn combined_usage(
+pub fn combined_usage(
     previous: UsageCounters,
     current: UsageCounters,
 ) -> Result<UsageCounters, ProviderCoreError> {

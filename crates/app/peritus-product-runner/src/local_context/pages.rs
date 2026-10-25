@@ -22,7 +22,7 @@ struct PageManifest {
 }
 
 pub(super) fn store(
-    store: &mut LocalStore,
+    store: &LocalStore,
     state: &WorkingState,
     sources: &[ArchivedObservation],
 ) -> Result<(StoredArtifact, StoredArtifact, Vec<peritus_types::Sha256Digest>), DeveloperLoopError>

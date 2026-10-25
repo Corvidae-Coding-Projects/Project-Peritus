@@ -5,7 +5,7 @@
 
 mod activation;
 mod debugger_publication;
-mod evidence;
+pub mod evidence;
 mod local_diagnosis;
 mod local_failure_trace;
 mod local_trace;

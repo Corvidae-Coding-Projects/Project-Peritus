@@ -4,10 +4,10 @@ use peritus_modules::Registry;
 use serde_json::{Value, json};
 use std::path::Path;
 
-pub(crate) fn execute(arguments: &[String]) -> Result<Value, CliError> {
+pub fn execute(arguments: &[String]) -> Result<Value, CliError> {
     let usage = || {
         CliError::usage(
-            "usage: peritus modules <list|market|refresh|show ID|install DIRECTORY|install-market ID DIGEST|enable ID|disable ID|remove ID>",
+            "usage: peritus modules <list|market|refresh|show ID|install DIRECTORY|install-market ID DIGEST|build-install-market ID SOURCE_DIGEST|cancel-build ID|enable ID|disable ID|remove ID>",
         )
     };
     let registry = Registry::for_user()
@@ -17,7 +17,15 @@ pub(crate) fn execute(arguments: &[String]) -> Result<Value, CliError> {
         ["market"]=>registry.market(),
         ["refresh"]=>registry.refresh_market(),
         ["install-market",id,digest]=>registry.install_market(id,digest),
-        ["show",id]=>registry.load(id,false).and_then(|d|Ok(json!({"manifest":d.manifest,"digest":d.digest,"bundled":d.bundled,"directory":d.root}))),
+        #[cfg(target_os="linux")]
+        ["build-install-market",id,digest]=>registry.start_source_build(id,digest).and_then(|_|registry.wait_source_build(id)),
+        #[cfg(not(target_os="linux"))]
+        ["build-install-market",_,_]=>Err(peritus_modules::Error::Invalid("source-built module installation currently requires Linux".into())),
+        #[cfg(target_os="linux")]
+        ["cancel-build",id]=>registry.cancel_source_build(id),
+        #[cfg(not(target_os="linux"))]
+        ["cancel-build",_]=>Err(peritus_modules::Error::Invalid("source-built module installation currently requires Linux".into())),
+        ["show",id]=>registry.load(id,false).map(|d|json!({"manifest":d.manifest,"digest":d.digest,"bundled":d.bundled,"directory":d.root})),
         ["install",directory]=>registry.install(Path::new(directory)),
         ["enable",id]=>registry.enable(id,true),
         ["disable",id]=>registry.enable(id,false),

@@ -1,7 +1,7 @@
 //! Exact host-owned C1 authority for an actually committed E1 materialization.
 //!
 //! This seam cannot publish, approve, or activate F0 candidates. The authenticated host owns the
-//! admitted parent operation and actual registered C1 target; the supplied opaque CommittedPlan
+//! admitted parent operation and actual registered C1 target; the supplied opaque `CommittedPlan`
 //! proves that E1 has committed its exact materialization before these effect grants are callable.
 
 use std::path::PathBuf;
@@ -102,8 +102,8 @@ impl MaterializationAuthorityContext {
     /// # Errors
     /// Rejects missing/corrupt actual artifacts, wrong action identities, or any durable commitment.
     pub fn authorize(
-        self,
-        request: MaterializationAuthorityRequest<'_>,
+        &self,
+        request: &MaterializationAuthorityRequest<'_>,
     ) -> Result<OwnedMaterializationAuthority, ProductRunnerError> {
         if request.actions.patch() == request.actions.candidate() {
             return Err(invalid("materialization patch and candidate actions must be distinct"));
@@ -120,9 +120,9 @@ impl MaterializationAuthorityContext {
             .ordinal
             .checked_mul(2)
             .ok_or_else(|| invalid("materialization ordinal overflowed"))?;
-        let patch = self.commit(&request, &payloads, first, false)?;
+        let patch = self.commit(request, &payloads, first, false)?;
         let candidate = self.commit(
-            &request,
+            request,
             &payloads,
             first.checked_add(1).ok_or_else(|| invalid("materialization ordinal overflowed"))?,
             true,

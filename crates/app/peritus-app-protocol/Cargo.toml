@@ -12,10 +12,10 @@ keywords = ["agents", "protocol", "ipc", "formal-verification"]
 categories = ["development-tools"]
 
 [dependencies]
-peritus-codec = { version = "=0.1.10", path = "../../foundation/peritus-codec" }
-peritus-protocol = { version = "=0.1.10", path = "../../foundation/peritus-protocol" }
-peritus-run-settlement = { version = "=0.1.10", path = "../../orchestration/peritus-run-settlement" }
-peritus-types = { version = "=0.1.10", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.1.11", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.1.11", path = "../../foundation/peritus-protocol" }
+peritus-run-settlement = { version = "=0.1.11", path = "../../orchestration/peritus-run-settlement" }
+peritus-types = { version = "=0.1.11", path = "../../foundation/peritus-types" }
 sha2.workspace = true
 
 [package.metadata.peritus]

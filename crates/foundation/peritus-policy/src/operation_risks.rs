@@ -89,8 +89,8 @@ impl OperationRegistry {
         let permissions = scope.permissions();
         let first = &permissions.as_slice()[0];
         let descriptor = self.admitted_descriptor(first, scope.role());
-        let risk = descriptor.authenticated_mandatory_risk();
-        risk
+
+        descriptor.authenticated_mandatory_risk()
     }
     pub(crate) fn risks_for_scope(&self, scope: &CapabilityScope) -> RiskSet {
         let permissions = scope.permissions();

@@ -7,7 +7,7 @@ fn main() -> ExitCode {
         eprintln!("usage: macos-command-path-consumer APPLICATION");
         return ExitCode::from(2);
     };
-    match SiblingBinaries::from_application(PathBuf::from(path)) {
+    match SiblingBinaries::from_application(&PathBuf::from(path)) {
         Ok(pair) => {
             println!("{}", pair.application().display());
             println!("{}", pair.daemon().display());

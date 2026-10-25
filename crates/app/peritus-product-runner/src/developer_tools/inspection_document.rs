@@ -90,7 +90,7 @@ pub(super) fn reader(
         return Ok((Box::new(BufReader::new(file)), 1));
     }
     let mut bytes = Vec::new();
-    let mut buffer = [0; 64 * 1024];
+    let mut buffer = vec![0; 64 * 1024];
     loop {
         cancellation.check()?;
         let count = file.read(&mut buffer).map_err(|error| tool(error.to_string()))?;

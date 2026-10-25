@@ -11,9 +11,8 @@ pub(super) fn requirement_is_conflicted_checked(
         IndependenceRequirement::NotRequester => {
             let responder_bytes = *responder.as_bytes();
             let requester_bytes = *request.requester.as_bytes();
-            let is_conflicted =
-                super::exact::identifier_bytes_equal(responder_bytes, requester_bytes);
-            is_conflicted
+
+            super::exact::identifier_bytes_equal(responder_bytes, requester_bytes)
         }
         IndependenceRequirement::NotActionActor => super::exact::identifier_bytes_equal(
             *responder.as_bytes(),

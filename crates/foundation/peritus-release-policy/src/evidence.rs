@@ -69,26 +69,23 @@ impl EvidenceBinding {
     #[doc = " Returns whether this binding is exact and current for an evaluation."]
     #[must_use]
     pub const fn is_current_for(&self, candidate: ReleaseCandidate, evaluated_at: u64) -> bool {
-        let current = crate::candidate::candidate_matches(&self.candidate(), &candidate)
+        crate::candidate::candidate_matches(&self.candidate(), &candidate)
             && self.source_revision() == candidate.source_revision()
             && self.observed_at() <= evaluated_at
-            && evaluated_at <= self.expires_at();
-        current
+            && evaluated_at <= self.expires_at()
     }
     #[doc = " Returns whether candidate or producing-revision identity differs."]
     #[must_use]
     pub const fn is_mismatched(&self, candidate: ReleaseCandidate) -> bool {
-        let mismatched = !crate::candidate::candidate_matches(&self.candidate(), &candidate)
-            || self.source_revision() != candidate.source_revision();
-        mismatched
+        !crate::candidate::candidate_matches(&self.candidate(), &candidate)
+            || self.source_revision() != candidate.source_revision()
     }
     #[doc = " Returns whether only the time window makes the otherwise exact binding stale."]
     #[must_use]
     pub const fn is_stale_at(&self, candidate: ReleaseCandidate, evaluated_at: u64) -> bool {
-        let stale = crate::candidate::candidate_matches(&self.candidate(), &candidate)
+        crate::candidate::candidate_matches(&self.candidate(), &candidate)
             && self.source_revision() == candidate.source_revision()
-            && (evaluated_at < self.observed_at || evaluated_at > self.expires_at);
-        stale
+            && (evaluated_at < self.observed_at || evaluated_at > self.expires_at)
     }
 }
 #[doc = " Executable equality of every field in two evidence bindings."]

@@ -105,14 +105,14 @@ impl AuthorityBoundary {
         let revision_matches = revision_values_equal(self.revision, revision);
         let validity_contained = scope.validity().is_within(self.validity);
         let use_limit_contained = scope.use_limit().is_within(self.use_limit);
-        let contained = actor_contained
+
+        actor_contained
             && role_contained
             && environment_contained
             && permissions_contained
             && revision_matches
             && validity_contained
-            && use_limit_contained;
-        contained
+            && use_limit_contained
     }
     pub(crate) fn rebind_revision(&self, revision: RevisionTuple) -> Self {
         let mut actors = Vec::new();
@@ -133,7 +133,8 @@ impl AuthorityBoundary {
             environments.push(self.environments[index]);
             index += 1;
         }
-        let rebound = Self {
+
+        Self {
             actors,
             roles,
             environments,
@@ -141,7 +142,6 @@ impl AuthorityBoundary {
             revision,
             validity: self.validity,
             use_limit: self.use_limit,
-        };
-        rebound
+        }
     }
 }

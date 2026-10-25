@@ -14,14 +14,14 @@ const PREVIEW_BYTES: usize = 16 * 1024;
 const CACHE_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Clone)]
-pub(crate) struct ContentObservation {
+pub struct ContentObservation {
     pub(crate) digest: [u8; 32],
     pub(crate) bytes: u64,
     pub(crate) preview: Vec<u8>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
-pub(crate) struct Fingerprint(Vec<u64>);
+pub struct Fingerprint(Vec<u64>);
 
 struct Cached {
     fingerprint: Fingerprint,
@@ -43,7 +43,7 @@ fn cache() -> &'static Mutex<Cache> {
 
 /// Metadata reuse includes inode identity, nanosecond change time, size and mode on Unix.
 /// Other platforms conservatively read content until an equivalent change token is available.
-pub(crate) fn fingerprint(metadata: &Metadata) -> Option<Fingerprint> {
+pub fn fingerprint(metadata: &Metadata) -> Option<Fingerprint> {
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return None;
     }
@@ -59,10 +59,10 @@ pub(crate) fn fingerprint(metadata: &Metadata) -> Option<Fingerprint> {
             metadata.ino(),
             metadata.len(),
             u64::from(metadata.mode()),
-            metadata.mtime() as u64,
-            metadata.mtime_nsec() as u64,
-            metadata.ctime() as u64,
-            metadata.ctime_nsec() as u64,
+            metadata.mtime().cast_unsigned(),
+            metadata.mtime_nsec().cast_unsigned(),
+            metadata.ctime().cast_unsigned(),
+            metadata.ctime_nsec().cast_unsigned(),
         ]))
     }
     #[cfg(not(unix))]
@@ -71,7 +71,7 @@ pub(crate) fn fingerprint(metadata: &Metadata) -> Option<Fingerprint> {
 
 /// Reads a file, reusing a verified content observation only while its change token matches.
 /// Fresh reads at settlement/review boundaries bypass the optimization entirely.
-pub(crate) fn read(path: &Path, fresh: bool) -> std::io::Result<Arc<ContentObservation>> {
+pub fn read(path: &Path, fresh: bool) -> std::io::Result<Arc<ContentObservation>> {
     let before = fs::symlink_metadata(path)?;
     if !before.is_file() || before.file_type().is_symlink() {
         return Err(std::io::Error::other("content observation requires a regular file"));
@@ -95,7 +95,7 @@ pub(crate) fn read(path: &Path, fresh: bool) -> std::io::Result<Arc<ContentObser
     let mut hasher = Sha256::new();
     let mut preview = Vec::new();
     let mut bytes = 0_u64;
-    let mut buffer = [0; 64 * 1024];
+    let mut buffer = vec![0; 64 * 1024];
     loop {
         let count = file.read(&mut buffer)?;
         if count == 0 {

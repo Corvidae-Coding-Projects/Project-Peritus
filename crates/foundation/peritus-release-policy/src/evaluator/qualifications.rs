@@ -11,13 +11,12 @@ pub(super) fn assess_all(
     evaluated_at: u64,
     evidence: &ReleaseEvidence,
 ) -> [QualificationAssessment; 4] {
-    let assessments = [
+    [
         assess(QualificationSlice::H0Security, *candidate, evaluated_at, evidence),
         assess(QualificationSlice::H1Resilience, *candidate, evaluated_at, evidence),
         assess(QualificationSlice::H2Platform, *candidate, evaluated_at, evidence),
         assess(QualificationSlice::H3Performance, *candidate, evaluated_at, evidence),
-    ];
-    assessments
+    ]
 }
 const fn slices_equal(left: QualificationSlice, right: QualificationSlice) -> bool {
     matches!(
@@ -57,7 +56,8 @@ const fn finish_reduction(
         && counts.3 == 0
         && counts.4 == 0
         && !conflicting;
-    let assessment = QualificationAssessment::new(
+
+    QualificationAssessment::new(
         slice,
         satisfied,
         counts.0,
@@ -67,8 +67,7 @@ const fn finish_reduction(
         counts.4,
         conflicting,
         Sha256Digest::new(aggregate),
-    );
-    assessment
+    )
 }
 #[allow(
     clippy::large_types_passed_by_value,

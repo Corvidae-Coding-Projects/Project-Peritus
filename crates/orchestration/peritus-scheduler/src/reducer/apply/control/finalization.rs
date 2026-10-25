@@ -41,8 +41,8 @@ pub(super) fn prepare(state: &SchedulerState) -> Result<FinalizationPlan, Finali
     }
     let terminal =
         SchedulerTerminal::evaluate_with_digest(state.work(), Sha256Digest::new([0; 32]));
-    let result = Ok(FinalizationPlan { terminal });
-    result
+
+    Ok(FinalizationPlan { terminal })
 }
 #[doc = " Commits one prepared summary after ordinary code supplies its canonical digest."]
 pub(super) fn commit(
@@ -53,6 +53,6 @@ pub(super) fn commit(
     let terminal = plan.finish(supplied_digest);
     let stored = terminal.clone();
     crate::state::mutation::set_terminal(state, stored);
-    let event = SchedulerEventKind::SchedulerFinalized { terminal };
-    event
+
+    SchedulerEventKind::SchedulerFinalized { terminal }
 }

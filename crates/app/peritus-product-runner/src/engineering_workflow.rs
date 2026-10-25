@@ -1,7 +1,7 @@
 //! Core role policy; detailed skill instructions come from the generated canonical bundle.
 
-pub(crate) mod rust_reliability;
-pub(crate) mod vitamins;
+pub mod rust_reliability;
+pub mod vitamins;
 
 pub fn architect() -> String {
     format!(

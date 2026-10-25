@@ -55,7 +55,6 @@ impl DesignDocument {
     }
 }
 
-/// Inspects the repository with read-only tools, writes the detailed design, and returns it.
 pub async fn create(
     input: &ProductRunInput,
     primary: &Arc<dyn ModelProvider>,
@@ -66,8 +65,9 @@ pub async fn create(
     if let Some(document) = reuse::load(input)? {
         return Ok(document);
     }
-    let scope = design_scope(&input.workspace_root);
-    if scope == DesignScope::Artifact && !input.workspace_kind.is_in_place() {
+    if design_scope(&input.workspace_root) == DesignScope::Artifact
+        && !input.workspace_kind.is_in_place()
+    {
         return artifact::create(input);
     }
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
@@ -90,10 +90,8 @@ pub async fn create(
             }
             Err(error) => return Err(error),
         };
-        let mut stable_context = input.conversation.stable_request_context();
-        stable_context.push_str(&crate::guided_design::implementation_context(input)?);
-        let (prompt, attachments) =
-            media.into_parts(user_prompt(&stable_context, correction.as_deref()));
+        let prompt = invocation_prompt(input, correction.as_deref())?;
+        let (prompt, attachments) = media.into_parts(prompt);
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
@@ -106,6 +104,7 @@ pub async fn create(
                 )?,
                 system: system_prompt(accounting.remaining()) + input.delivery_instructions(),
                 prompt,
+                cyber_access_program: None,
                 attachments,
                 tools: read_only_definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)
@@ -122,8 +121,7 @@ pub async fn create(
             peritus_agent::DeveloperModelRole::Writer,
         )
         .await;
-        accounting.check()?;
-        let result = match result {
+        let result = match checked_invocation(accounting, result)? {
             Ok(result) => result,
             Err(peritus_agent::DeveloperLoopError::SegmentExhausted) => {
                 accounting.record_role_retry()?;
@@ -160,14 +158,42 @@ pub async fn create(
                 continue;
             }
         };
-        let path = input.trace_path.with_extension("design.md");
-        publish(&path, markdown.as_bytes())?;
-        let document = DesignDocument { path, markdown, conversation_revision: revision };
-        if let Err(error) = reuse::save(input, &document) {
-            eprintln!("peritus: design reuse receipt unavailable: {error}");
-        }
-        return Ok(document);
+        return publish_design(input, markdown, revision);
     }
+}
+
+fn checked_invocation(
+    accounting: &mut RunAccounting,
+    result: Result<peritus_agent::DeveloperLoopOutcome, peritus_agent::DeveloperLoopError>,
+) -> Result<
+    Result<peritus_agent::DeveloperLoopOutcome, peritus_agent::DeveloperLoopError>,
+    ProductRunnerError,
+> {
+    accounting.check()?;
+    Ok(result)
+}
+
+fn invocation_prompt(
+    input: &ProductRunInput,
+    correction: Option<&str>,
+) -> Result<String, ProductRunnerError> {
+    let mut stable_context = input.conversation.stable_request_context();
+    stable_context.push_str(&crate::guided_design::implementation_context(input)?);
+    Ok(user_prompt(&stable_context, correction))
+}
+
+fn publish_design(
+    input: &ProductRunInput,
+    markdown: String,
+    conversation_revision: u64,
+) -> Result<DesignDocument, ProductRunnerError> {
+    let path = input.trace_path.with_extension("design.md");
+    publish(&path, markdown.as_bytes())?;
+    let document = DesignDocument { path, markdown, conversation_revision };
+    if let Err(error) = reuse::save(input, &document) {
+        eprintln!("peritus: design reuse receipt unavailable: {error}");
+    }
+    Ok(document)
 }
 
 fn grounded_markdown(

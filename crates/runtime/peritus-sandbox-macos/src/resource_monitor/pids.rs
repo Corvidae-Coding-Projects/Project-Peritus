@@ -34,6 +34,7 @@ fn observe_group(capacity: usize, query: impl FnOnce() -> i32) -> Result<usize, 
     observed_count(count, error, capacity)
 }
 
+#[cfg(target_os = "macos")]
 fn observed_count(count: i32, error: i32, capacity: usize) -> Result<usize, MacosError> {
     if count < 0 || (count == 0 && error != 0) {
         return Err(sample_error());

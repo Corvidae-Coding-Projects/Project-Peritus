@@ -19,7 +19,7 @@ fn lower_bound(values: &[WorkId], id: WorkId) -> usize {
 }
 pub(super) fn contains(values: &[WorkId], id: WorkId) -> bool {
     let at = lower_bound(values, id);
-    if at < values.len() && values[at].same(&id) { true } else { false }
+    at < values.len() && values[at].same(&id)
 }
 pub(super) fn insert(values: &mut Vec<WorkId>, id: WorkId) -> bool {
     let at = lower_bound(values, id);

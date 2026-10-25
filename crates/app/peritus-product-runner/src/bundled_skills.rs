@@ -73,6 +73,7 @@ pub fn resource(skill: &str, path: &str) -> Option<&'static [u8]> {
 }
 
 /// Reads an exact resource page through the same reader used by the model's `skill_read` tool.
+///
 /// Text offsets must be UTF-8 boundaries; binary pages use hexadecimal with original byte offsets.
 /// `max_bytes` includes the serialized response metadata.
 ///

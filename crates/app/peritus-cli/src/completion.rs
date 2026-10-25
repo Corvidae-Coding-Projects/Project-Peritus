@@ -34,7 +34,7 @@ const BASH: &str = r#"_peritus() {
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   case "$prev" in
     peritus) COMPREPLY=( $(compgen -W "open resume update providers automation web modules workspaces improvements runs status shutdown command events artifact prompt terminal completions help" -- "$cur") ) ;;
-    modules) COMPREPLY=( $(compgen -W "list market refresh show install install-market enable disable remove" -- "$cur") ) ;;
+    modules) COMPREPLY=( $(compgen -W "list market refresh show install install-market build-install-market cancel-build enable disable remove" -- "$cur") ) ;;
     web) COMPREPLY=( $(compgen -W "setup status stop search open read find" -- "$cur") ) ;;
     command) COMPREPLY=( $(compgen -W "submit" -- "$cur") ) ;;
     events) COMPREPLY=( $(compgen -W "watch" -- "$cur") ) ;;

@@ -44,14 +44,8 @@ fn count(work: &[WorkRecord], measure: Measure) -> usize {
 #[doc = " Counts precisely the work reserving a slot for the next admission decision."]
 pub fn admission_count(state: &SchedulerState) -> usize {
     match state.binding().semantics() {
-        SchedulerSemantics::LegacyQueueV1 => {
-            let result = count(state.work(), Measure::Waiting);
-            result
-        }
-        SchedulerSemantics::StrictRecoveryQueueV2 => {
-            let result = count(state.work(), Measure::RecoveryPressure);
-            result
-        }
+        SchedulerSemantics::LegacyQueueV1 => count(state.work(), Measure::Waiting),
+        SchedulerSemantics::StrictRecoveryQueueV2 => count(state.work(), Measure::RecoveryPressure),
     }
 }
 #[doc = " Checks the selected finite bound without trusting decoded constructor invariants."]

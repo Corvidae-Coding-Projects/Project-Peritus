@@ -122,6 +122,5 @@ fn transition_verified(before: LeaseAggregate, plan: TransitionPlan) -> LeaseTra
     LeaseTransitionOutcome::Accepted(accepted)
 }
 pub(super) const fn rejection(before: LeaseAggregate, error: LeaseError) -> LeaseTransitionFailure {
-    let failure = LeaseTransitionFailure::new(error, before);
-    failure
+    LeaseTransitionFailure::new(error, before)
 }

@@ -21,7 +21,7 @@ pub struct WorkspaceCheckpoint {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct CheckpointEntry {
+pub struct CheckpointEntry {
     path: PathBuf,
     digest: Option<[u8; 32]>,
     permissions: Option<u32>,
@@ -29,7 +29,7 @@ pub(crate) struct CheckpointEntry {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum ContentKind {
+pub enum ContentKind {
     File = 1,
     Symlink = 2,
     Repository = 3,

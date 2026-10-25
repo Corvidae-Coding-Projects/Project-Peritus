@@ -67,8 +67,8 @@ pub(super) fn current_waiver_is_valid(
     )]
     if let Some(index) = current_waiver(evidence, finding.finding_id(), requested) {
         let waiver = &evidence.waivers()[index];
-        let valid = waiver_failure(contract, requested, evidence, finding, waiver).is_none();
-        valid
+
+        waiver_failure(contract, requested, evidence, finding, waiver).is_none()
     } else {
         false
     }
@@ -84,8 +84,8 @@ pub(super) fn supplied_failure(
         None => Some(InvalidWaiverReason::UnknownFinding),
         Some((review, index)) => {
             let finding = &evidence.reviews()[review].findings()[index];
-            let result = waiver_failure(contract, requested, evidence, finding, waiver);
-            result
+
+            waiver_failure(contract, requested, evidence, finding, waiver)
         }
     }
 }

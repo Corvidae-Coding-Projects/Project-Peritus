@@ -42,7 +42,8 @@ impl RenderSegment {
             content.push(content_bytes[content_index]);
             content_index += 1;
         }
-        let result = Self {
+
+        Self {
             source_id: node.id(),
             context_class: node.context_class(),
             message_role: role_for_authority(node.authority()),
@@ -52,8 +53,7 @@ impl RenderSegment {
             digest: node.digest(),
             content_kind: node.content_kind(),
             content,
-        };
-        result
+        }
     }
     #[doc = " Returns the exact source node."]
     #[must_use]

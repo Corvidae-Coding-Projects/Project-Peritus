@@ -75,8 +75,7 @@ impl ProductRunService {
             .inner
             .workspaces
             .get(&request.query().workspace())
-            .ok_or(ControlError::ScopeMismatch)?
-            .clone();
+            .ok_or(ControlError::ScopeMismatch)?;
         let archive = self
             .inner
             .directory

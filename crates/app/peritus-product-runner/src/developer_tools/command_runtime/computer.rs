@@ -34,13 +34,15 @@ impl CommandRuntime {
         &self,
         result: &Value,
     ) -> Result<String, DeveloperLoopError> {
-        let driver =
-            self.inner.web_reader.lock().map_err(|_| tool("web reader state is poisoned"))?;
-        let owned = driver.as_ref().ok_or_else(|| tool("web document has no controller"))?;
+        let directory = {
+            let driver =
+                self.inner.web_reader.lock().map_err(|_| tool("web reader state is poisoned"))?;
+            driver.as_ref().ok_or_else(|| tool("web document has no controller"))?.directory.clone()
+        };
         let path = PathBuf::from(
             result["path"].as_str().ok_or_else(|| tool("web document path is missing"))?,
         );
-        let expected = owned.directory.join("web-readings");
+        let expected = directory.join("web-readings");
         if path.is_symlink() || path.parent() != Some(expected.as_path()) {
             return Err(tool("web document is outside its owning controller"));
         }
@@ -48,7 +50,7 @@ impl CommandRuntime {
             return Err(tool("web document exceeds its resource bound"));
         }
         let bytes = fs::read(&path).map_err(|e| tool(e.to_string()))?;
-        let digest = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect::<String>();
+        let digest = crate::encode_hex(&Sha256::digest(&bytes));
         if result["sha256"].as_str() != Some(digest.as_str())
             || result["bytes"].as_u64() != Some(bytes.len() as u64)
         {
@@ -98,80 +100,7 @@ impl CommandRuntime {
                     "No live computer session exists in this run; the writer must open or attach first",
                 ));
             }
-            let mut nonce = [0_u8; 16];
-            getrandom::fill(&mut nonce).map_err(|error| tool(error.to_string()))?;
-            let name = nonce.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
-            let directory = self
-                .inner
-                .state_root
-                .join(if method == "web" { "web-reader" } else { "computer" })
-                .join(name);
-            let script = peritus_tools_computer::prepare_driver(&directory).map_err(tool)?;
-            let python = peritus_tools_computer::python().map_err(tool)?;
-            let python =
-                python.to_str().ok_or_else(|| tool("automation Python path is not UTF-8"))?;
-            let arguments = vec![
-                "-u".into(),
-                script.to_string_lossy().into_owned(),
-                "serve".into(),
-                "--state".into(),
-                directory.to_string_lossy().into_owned(),
-                "--workspace".into(),
-                self.inner.workspace_root.to_string_lossy().into_owned(),
-                "--owner-pid".into(),
-                std::process::id().to_string(),
-            ];
-            let mut environment: Vec<(String, String)> = [
-                "DISPLAY",
-                "WAYLAND_DISPLAY",
-                "XDG_RUNTIME_DIR",
-                "XDG_SESSION_TYPE",
-                "XDG_CURRENT_DESKTOP",
-                "DBUS_SESSION_BUS_ADDRESS",
-                "AT_SPI_BUS_ADDRESS",
-                "GTK_MODULES",
-                "NO_AT_BRIDGE",
-            ]
-            .into_iter()
-            .filter_map(|key| std::env::var(key).ok().map(|value| (key.to_owned(), value)))
-            .collect();
-            environment.push((
-                "PLAYWRIGHT_BROWSERS_PATH".into(),
-                peritus_tools_computer::browser_cache()
-                    .map_err(tool)?
-                    .to_string_lossy()
-                    .into_owned(),
-            ));
-            let started = self.start(StartCommand {
-                program: python,
-                arguments: &arguments,
-                cwd: &self.inner.workspace_root,
-                timeout: None,
-                interactive: false,
-                rows: 24,
-                columns: 80,
-                idempotency_key: &format!("computer-controller-{id}"),
-                environment,
-                owner_registered: None,
-            })?;
-            let handle = started["handle"]
-                .as_str()
-                .ok_or_else(|| tool("computer controller has no native command handle"))?
-                .to_owned();
-            let started_at = Instant::now();
-            while !directory.join("ready.json").is_file() {
-                let state = self.poll(&handle)?;
-                if state["state"].as_str() != Some("running")
-                    || started_at.elapsed() > Duration::from_secs(20)
-                {
-                    let _ = self.cancel(&handle);
-                    return Err(tool(format!(
-                        "computer controller could not start: {state}; run peritus automation setup"
-                    )));
-                }
-                thread::sleep(Duration::from_millis(40));
-            }
-            *driver = Some(ComputerDriver { directory, handle });
+            *driver = Some(self.start_computer_driver(id, method)?);
         }
         let owned = driver.as_ref().ok_or_else(|| tool("computer controller is unavailable"))?;
         if self.poll(&owned.handle)?["state"].as_str() != Some("running") {
@@ -179,7 +108,7 @@ impl CommandRuntime {
                 "Computer controller stopped; its GUI sessions were lost. Start a new run and observe fresh state.",
             ));
         }
-        match peritus_tools_computer::request(&owned.directory, id, method, params) {
+        let result = match peritus_tools_computer::request(&owned.directory, id, method, params) {
             Err(error) if method == "web" => {
                 // End a wedged read's owned process tree without affecting interactive GUI sessions.
                 let mut cancelled = self.cancel(&owned.handle)?;
@@ -199,19 +128,90 @@ impl CommandRuntime {
                 )))
             }
             result => result.map_err(tool),
+        };
+        drop(driver);
+        result
+    }
+
+    fn start_computer_driver(
+        &self,
+        id: &str,
+        method: &str,
+    ) -> Result<ComputerDriver, DeveloperLoopError> {
+        let mut nonce = [0_u8; 16];
+        getrandom::fill(&mut nonce).map_err(|error| tool(error.to_string()))?;
+        let directory = self
+            .inner
+            .state_root
+            .join(if method == "web" { "web-reader" } else { "computer" })
+            .join(crate::encode_hex(&nonce));
+        let script = peritus_tools_computer::prepare_driver(&directory).map_err(tool)?;
+        let python = peritus_tools_computer::python().map_err(tool)?;
+        let python = python.to_str().ok_or_else(|| tool("automation Python path is not UTF-8"))?;
+        let arguments = vec![
+            "-u".into(),
+            script.to_string_lossy().into_owned(),
+            "serve".into(),
+            "--state".into(),
+            directory.to_string_lossy().into_owned(),
+            "--workspace".into(),
+            self.inner.workspace_root.to_string_lossy().into_owned(),
+            "--owner-pid".into(),
+            std::process::id().to_string(),
+        ];
+        let mut environment = desktop_environment();
+        environment.push((
+            "PLAYWRIGHT_BROWSERS_PATH".into(),
+            peritus_tools_computer::browser_cache().map_err(tool)?.to_string_lossy().into_owned(),
+        ));
+        let started = self.start(StartCommand {
+            program: python,
+            arguments: &arguments,
+            cwd: &self.inner.workspace_root,
+            timeout: None,
+            interactive: false,
+            rows: 24,
+            columns: 80,
+            idempotency_key: &format!("computer-controller-{id}"),
+            environment,
+            owner_registered: None,
+        })?;
+        let handle = started["handle"]
+            .as_str()
+            .ok_or_else(|| tool("computer controller has no native command handle"))?
+            .to_owned();
+        let started_at = Instant::now();
+        while !directory.join("ready.json").is_file() {
+            let state = self.poll(&handle)?;
+            if state["state"].as_str() != Some("running")
+                || started_at.elapsed() > Duration::from_secs(20)
+            {
+                let _ = self.cancel(&handle);
+                return Err(tool(format!(
+                    "computer controller could not start: {state}; run peritus automation setup"
+                )));
+            }
+            thread::sleep(Duration::from_millis(40));
         }
+        Ok(ComputerDriver { directory, handle })
     }
 
     pub(in crate::developer_tools) fn computer_image(
         &self,
         image: &Value,
     ) -> Result<Vec<u8>, DeveloperLoopError> {
-        let driver = self
-            .inner
-            .computer
-            .lock()
-            .map_err(|_| tool("computer controller state is poisoned"))?;
-        let owned = driver.as_ref().ok_or_else(|| tool("screenshot has no owning controller"))?;
+        let directory = {
+            let driver = self
+                .inner
+                .computer
+                .lock()
+                .map_err(|_| tool("computer controller state is poisoned"))?;
+            driver
+                .as_ref()
+                .ok_or_else(|| tool("screenshot has no owning controller"))?
+                .directory
+                .clone()
+        };
         let path = PathBuf::from(
             image["path"].as_str().ok_or_else(|| tool("screenshot path is missing"))?,
         );
@@ -219,7 +219,7 @@ impl CommandRuntime {
             || !path
                 .canonicalize()
                 .map_err(|error| tool(error.to_string()))?
-                .starts_with(&owned.directory)
+                .starts_with(&directory)
         {
             return Err(tool("screenshot is outside its owning controller"));
         }
@@ -228,8 +228,7 @@ impl CommandRuntime {
             return Err(tool("screenshot exceeds its file bound"));
         }
         let bytes = fs::read(path).map_err(|error| tool(error.to_string()))?;
-        let digest =
-            Sha256::digest(&bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+        let digest = crate::encode_hex(&Sha256::digest(&bytes));
         if image["sha256"].as_str() != Some(digest.as_str())
             || image["bytes"].as_u64() != Some(bytes.len() as u64)
         {
@@ -237,4 +236,21 @@ impl CommandRuntime {
         }
         Ok(bytes)
     }
+}
+
+fn desktop_environment() -> Vec<(String, String)> {
+    [
+        "DISPLAY",
+        "WAYLAND_DISPLAY",
+        "XDG_RUNTIME_DIR",
+        "XDG_SESSION_TYPE",
+        "XDG_CURRENT_DESKTOP",
+        "DBUS_SESSION_BUS_ADDRESS",
+        "AT_SPI_BUS_ADDRESS",
+        "GTK_MODULES",
+        "NO_AT_BRIDGE",
+    ]
+    .into_iter()
+    .filter_map(|key| std::env::var(key).ok().map(|value| (key.to_owned(), value)))
+    .collect()
 }

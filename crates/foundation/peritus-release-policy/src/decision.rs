@@ -94,7 +94,8 @@ impl ReleaseDecision {
             reviews,
             findings,
         );
-        let decision = Self {
+
+        Self {
             candidate,
             evaluated_at,
             verdict,
@@ -105,8 +106,7 @@ impl ReleaseDecision {
             reviews,
             findings,
             diagnostics,
-        };
-        decision
+        }
     }
     #[doc = " Returns the exact evaluated candidate."]
     #[must_use]
@@ -126,14 +126,13 @@ impl ReleaseDecision {
     #[doc = " Returns `true` exactly for [`ReleaseVerdict::Ready`]."]
     #[must_use]
     pub const fn is_ready(&self) -> bool {
-        let ready = matches!(self.verdict, ReleaseVerdict::Ready)
+        (matches!(self.verdict, ReleaseVerdict::Ready)
             && criteria_complete(&self.criteria)
             && evidence_complete(&self.evidence)
             && qualifications_complete(&self.qualifications)
             && self.reviews.is_satisfied()
             && self.findings.is_satisfied()
-            && self.diagnostics.is_empty();
-        ready
+            && self.diagnostics.is_empty())
     }
     #[doc = " Returns the stable deterministic decision fingerprint."]
     #[must_use]

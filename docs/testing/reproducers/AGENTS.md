@@ -12,7 +12,16 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | File | Role |
 | --- | --- |
+| [red-team-phase20.py](red-team-phase20.py) | Drives the source-market-installed Red Team module through the actual TUI/daemon complete journey, real Chromium, pause/steering, client and daemon restart, terminal exports, abort cleanup, corrupt-state rejection, revocation, and source-preservation oracles. |
+| [red-team-phase19.py](red-team-phase19.py) | Drives the actual Peritus TUI, daemon, installed Red Team module, copied HTTP laboratories, isolated browser, three-family attack graph, counterfactual, skeptical rejection, repair replays, exports, reattachment, source preservation, and cleanup checks for Phase 19. |
+| [red-team-phase18.py](red-team-phase18.py) | Drives the actual Peritus TUI, daemon, Red Team module, copied boundary twins, private protocol/TLS/policy/authority oracles, rejection probes, restart replay, exports, source preservation, and cleanup checks for Phase 18. |
+| [red-team-phase17.py](red-team-phase17.py) | Drives the actual Peritus TUI, daemon, Red Team module, copied workflow twins, rejection probes, restart replay, export, source-preservation, and cleanup checks for Phase 17. |
+| [red-team-phase15.py](red-team-phase15.py) | Real TUI/daemon/plugin identity and access-control replay over vulnerable and safe multi-user services, including host-private credential checks, role/tenant/session oracles, invalid setup, restart/disconnect recovery, exports, source preservation, and cleanup. |
+| [red-team-phase16.py](red-team-phase16.py) | Real TUI/daemon/plugin file/archive/parser/native-fault replay over vulnerable and safe services, including private canaries, minimized inputs, behavioral coverage, resource facts, restart replay, exports, source preservation, and cleanup. |
+| [red-team-phase14.py](red-team-phase14.py) | Real TUI/daemon/plugin isolated-browser replay over vulnerable and safe services, including browser/server oracles, artifacts, reset/reconnect reuse, rejection paths, source preservation, and process cleanup. |
+| [red-team-phase13.py](red-team-phase13.py) | Real TUI/daemon/plugin HTTP/API replay over vulnerable and safe services, including schema and route discovery, five protocols, exact fresh-laboratory replay, redaction, rejection paths, source preservation, and cgroup cleanup. |
 | [trace-streaming.py](trace-streaming.py) | Actual before/after trace CLI output, errors, torn tails, peak RSS and sparse-payload filtering replay. |
+| [red-team-phase12.py](red-team-phase12.py) | Real TUI/daemon/plugin static-analysis replay over vulnerable, safe, mixed-adversarial, and brownfield source copies, including restart, revocation, redaction, and adapter removal. |
 | [trace-reader.rs](trace-reader.rs) | Public reader consumer operating actual append, snapshot, rewind and fresh-process-equivalent reopen behavior. |
 | [tui-markdown-documents.py](tui-markdown-documents.py) | Signed-in read-only provider journey for long Markdown, cross-chunk code fences, tables, literal Python, genuine hash text and raw numbered details. |
 | [tui-formatting-recall.py](tui-formatting-recall.py) | Actual terminal replay of Markdown tool output, durable recall/search, paused-daemon draft fences, paging, queue inspection, Unicode editing, reconnect and sizes. |

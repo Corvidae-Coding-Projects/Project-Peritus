@@ -3,13 +3,18 @@
 mod tokio_transport;
 
 use core::fmt;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, atomic::AtomicBool};
 use std::time::Duration;
 
 use zeroize::Zeroizing;
 
 use crate::{BoxFuture, CancellationToken, ProviderCoreError};
+
+type ErrorObserver = fn(&[u8]) -> Option<ProviderCoreError>;
+type OutputObserver = dyn Fn(&[u8]) + Send + Sync;
+type InputQueue = Mutex<VecDeque<Vec<u8>>>;
 
 pub use tokio_transport::TokioProcessTransport;
 
@@ -175,10 +180,10 @@ pub struct ProcessRequest {
     current_dir: Option<PathBuf>,
     environment_removals: Vec<EnvironmentName>,
     environment_overrides: Vec<(EnvironmentName, std::ffi::OsString)>,
-    stderr_observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
-    stdout_observer: Option<std::sync::Arc<dyn Fn(&[u8]) + Send + Sync>>,
-    stdin_close_signal: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
-    stdin_messages: Option<std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>>>,
+    stderr_observer: Option<ErrorObserver>,
+    stdout_observer: Option<Arc<OutputObserver>>,
+    stdin_close_signal: Option<Arc<AtomicBool>>,
+    stdin_messages: Option<Arc<InputQueue>>,
     limits: ProcessLimits,
 }
 
@@ -274,30 +279,24 @@ impl ProcessRequest {
     /// Used by executable adapters to recognize terminal failures before a vendor's internal
     /// retry loop. Observers must return fixed redaction-safe errors, never child text.
     #[must_use]
-    pub fn with_stderr_observer(
-        mut self,
-        observer: fn(&[u8]) -> Option<ProviderCoreError>,
-    ) -> Self {
+    pub fn with_stderr_observer(mut self, observer: ErrorObserver) -> Self {
         self.stderr_observer = Some(observer);
         self
     }
 
-    pub(crate) const fn stderr_observer(&self) -> Option<fn(&[u8]) -> Option<ProviderCoreError>> {
+    pub(crate) const fn stderr_observer(&self) -> Option<ErrorObserver> {
         self.stderr_observer
     }
 
     /// Observes the bounded stdout collected so far while the owned process is running.
     /// Adapters may expose only validated public observations; this grants no tool authority.
     #[must_use]
-    pub fn with_stdout_observer(
-        mut self,
-        observer: std::sync::Arc<dyn Fn(&[u8]) + Send + Sync>,
-    ) -> Self {
+    pub fn with_stdout_observer(mut self, observer: Arc<OutputObserver>) -> Self {
         self.stdout_observer = Some(observer);
         self
     }
 
-    pub(crate) fn stdout_observer(&self) -> Option<&(dyn Fn(&[u8]) + Send + Sync)> {
+    pub(crate) fn stdout_observer(&self) -> Option<&OutputObserver> {
         self.stdout_observer.as_deref()
     }
 
@@ -305,32 +304,24 @@ impl ProcessRequest {
     /// completion. This supports finite JSON-RPC handshakes without an unowned helper.
     /// The ordinary cancellation token, output ceilings and deadline remain authoritative.
     #[must_use]
-    pub fn with_stdin_close_signal(
-        mut self,
-        signal: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    ) -> Self {
+    pub fn with_stdin_close_signal(mut self, signal: Arc<AtomicBool>) -> Self {
         self.stdin_close_signal = Some(signal);
         self
     }
 
-    pub(crate) fn stdin_close_signal(&self) -> Option<&std::sync::atomic::AtomicBool> {
+    pub(crate) fn stdin_close_signal(&self) -> Option<&AtomicBool> {
         self.stdin_close_signal.as_deref()
     }
 
     /// Supplies follow-up protocol messages from the stdout observer. The process transport
     /// enforces the same cumulative stdin ceiling, cancellation and deadline for these bytes.
     #[must_use]
-    pub fn with_stdin_messages(
-        mut self,
-        messages: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>>,
-    ) -> Self {
+    pub fn with_stdin_messages(mut self, messages: Arc<InputQueue>) -> Self {
         self.stdin_messages = Some(messages);
         self
     }
 
-    pub(crate) fn stdin_messages(
-        &self,
-    ) -> Option<&std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>> {
+    pub(crate) fn stdin_messages(&self) -> Option<&InputQueue> {
         self.stdin_messages.as_deref()
     }
 
@@ -382,6 +373,9 @@ impl fmt::Debug for ProcessRequest {
             .field("environment_removals", &self.environment_removals)
             .field("environment_overrides", &"[redacted]")
             .field("stderr_observer", &self.stderr_observer.map(|_| "[private]"))
+            .field("stdout_observer", &self.stdout_observer.as_ref().map(|_| "[private]"))
+            .field("stdin_close_signal", &self.stdin_close_signal.as_ref().map(|_| "[private]"))
+            .field("stdin_messages", &self.stdin_messages.as_ref().map(|_| "[private]"))
             .field("limits", &self.limits)
             .finish()
     }

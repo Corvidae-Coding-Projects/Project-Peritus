@@ -1,4 +1,4 @@
-//! CommonMark presentation stays terminal-inert and never fetches linked resources.
+//! `CommonMark` presentation stays terminal-inert and never fetches linked resources.
 
 use crate::highlight::{self, Theme};
 use crate::model::AppModel;
@@ -21,10 +21,10 @@ impl tui_markdown::StyleSheet for Styles {
         let style = Style::default().fg(super::ACCENT).add_modifier(ratatui::style::Modifier::BOLD);
         if level == 1 { style.add_modifier(ratatui::style::Modifier::UNDERLINED) } else { style }
     }
-    fn heading_marker(&self, _level: u8) -> &str {
+    fn heading_marker(&self, _level: u8) -> &'static str {
         ""
     }
-    fn code_block_fence(&self) -> &str {
+    fn code_block_fence(&self) -> &'static str {
         "──"
     }
     fn link(&self) -> Style {

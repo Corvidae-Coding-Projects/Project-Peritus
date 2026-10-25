@@ -41,7 +41,7 @@ struct Browse {
 }
 
 #[derive(Debug)]
-pub(crate) struct Search {
+pub struct Search {
     pub(crate) query: String,
     pub(crate) selected: usize,
     original: Draft,
@@ -56,7 +56,7 @@ enum Target {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct ComposerHistory {
+pub struct ComposerHistory {
     pub(crate) rows: BTreeMap<u32, String>,
     pub(crate) search: Option<Search>,
     pub(crate) loading: Option<WorkbenchQueueQuery>,
@@ -70,7 +70,7 @@ pub(crate) struct ComposerHistory {
 }
 
 impl ComposerHistory {
-    pub(crate) fn invalidate(&mut self) {
+    pub(crate) const fn invalidate(&mut self) {
         self.stale = true;
     }
     pub(crate) fn submitted(&mut self) {
@@ -85,10 +85,10 @@ impl ComposerHistory {
         self.pending_draft = None;
         self.awaiting_binding = None;
     }
-    pub(crate) fn is_loading(&self) -> bool {
+    pub(crate) const fn is_loading(&self) -> bool {
         self.loading.is_some() || self.awaiting_binding.is_some()
     }
-    pub(crate) fn browsing(&self) -> bool {
+    pub(crate) const fn browsing(&self) -> bool {
         self.browse.is_some()
     }
     pub(crate) fn hint(&self) -> Option<String> {
@@ -231,7 +231,7 @@ impl AppModel {
                 let oldest =
                     self.chat.history.rows.first_key_value().map_or(0, |(index, _)| *index);
                 if (found == 0 || selected >= found) && oldest > 0 {
-                    let offset = oldest.saturating_sub(MAX_WORKBENCH_INPUT_PAGE as u32);
+                    let offset = oldest.saturating_sub(history_page_size());
                     return self.query_composer_history(self.chat.history.revision, offset);
                 }
                 if let Some(search) = &mut self.chat.history.search {
@@ -264,7 +264,7 @@ impl AppModel {
             self.chat.history.target = None;
             Vec::new()
         } else {
-            let size = MAX_WORKBENCH_INPUT_PAGE as u32;
+            let size = history_page_size();
             self.query_composer_history(self.chat.history.revision, index / size * size)
         }
     }
@@ -349,18 +349,18 @@ impl AppModel {
         }
         if self.chat.history.target.is_some()
             && query.revision() == 0
-            && page.total() as usize > MAX_WORKBENCH_INPUT_PAGE
+            && page.total() > history_page_size()
         {
             self.chat.history.rows.clear();
-            let size = MAX_WORKBENCH_INPUT_PAGE as u32;
+            let size = history_page_size();
             return self
                 .query_composer_history(page.query().revision(), (page.total() - 1) / size * size);
         }
         for (offset, row) in page.rows().iter().enumerate() {
-            self.chat
-                .history
-                .rows
-                .insert(query.offset() + offset as u32, row.text().as_str().to_owned());
+            self.chat.history.rows.insert(
+                query.offset() + u32::try_from(offset).expect("history page length is bounded"),
+                row.text().as_str().to_owned(),
+            );
         }
         self.resolve_history()
     }
@@ -469,4 +469,8 @@ impl AppModel {
         self.chat.history.target = Some(Target::Search);
         self.resolve_history()
     }
+}
+
+fn history_page_size() -> u32 {
+    u32::try_from(MAX_WORKBENCH_INPUT_PAGE).expect("history page size fits the wire offset")
 }

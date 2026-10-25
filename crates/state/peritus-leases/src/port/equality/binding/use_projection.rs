@@ -80,7 +80,8 @@ pub(super) fn use_bindings_equal(
         }
         index += 1;
     }
-    let trailing_fields_equal = revisions_equal(left.revision, right.revision)
+
+    revisions_equal(left.revision, right.revision)
         && validities_equal(left.validity, right.validity)
         && use_limits_equal(left.scope_use_limit, right.scope_use_limit)
         && instants_equal(left.used_at, right.used_at)
@@ -97,6 +98,5 @@ pub(super) fn use_bindings_equal(
         && bytes16_equal(
             *left.successor_issuance_command_id.as_bytes(),
             *right.successor_issuance_command_id.as_bytes(),
-        );
-    trailing_fields_equal
+        )
 }

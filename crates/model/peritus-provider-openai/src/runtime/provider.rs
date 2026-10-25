@@ -53,7 +53,7 @@ impl CodexRuntimeProvider {
     }
 
     fn working_directory(&self) -> Result<std::sync::Arc<tempfile::TempDir>, ProviderCoreError> {
-        let mut directory = self.working_directory.lock().map_err(|_| {
+        let directory = self.working_directory.lock().map_err(|_| {
             ProviderCoreError::configuration(
                 "codex_runtime_directory",
                 "runtime directory lock poisoned",
@@ -62,14 +62,20 @@ impl CodexRuntimeProvider {
         if let Some(directory) = directory.as_ref() {
             return Ok(directory.clone());
         }
+        drop(directory);
         let created = std::sync::Arc::new(tempfile::tempdir().map_err(|_| {
             ProviderCoreError::configuration(
                 "codex_runtime_directory",
                 "private runtime directory unavailable",
             )
         })?);
-        *directory = Some(created.clone());
-        Ok(created)
+        let mut directory = self.working_directory.lock().map_err(|_| {
+            ProviderCoreError::configuration(
+                "codex_runtime_directory",
+                "runtime directory lock poisoned",
+            )
+        })?;
+        Ok(directory.get_or_insert(created).clone())
     }
 
     /// Delegates login-state inspection to `codex login status`.
@@ -166,41 +172,20 @@ impl CodexRuntimeProvider {
         progress: std::sync::Arc<super::live::Progress>,
     ) -> Result<OwnedModelStream, ProviderCoreError> {
         let working_directory = self.working_directory()?;
-        let cache_anchor = if matches!(
-            request.options().cache(),
-            peritus_model_protocol::CachePolicy::Automatic
-        ) {
-            if self.cache_anchor.get().is_none() {
-                let anchor = invocation::create_cache_anchor(
-                    &self.config,
-                    self.transport.as_ref(),
-                    working_directory.path(),
-                    &cancellation,
-                )
-                .await;
-                if anchor.is_err() {
-                    eprintln!(
-                        "peritus: Codex cache routing setup unavailable; using isolated uncached turns"
-                    );
-                }
-                let _ = self.cache_anchor.set(anchor.ok());
-            }
-            self.cache_anchor
-                .get()
-                .and_then(|anchor| anchor.as_ref())
-                .filter(|anchor| anchor.available.load(Ordering::Acquire))
-        } else {
-            None
-        };
+        let cache_anchor = self
+            .ready_cache_anchor(&request, &runtime, working_directory.path(), &cancellation)
+            .await;
         let output = match invocation::run_turn(
-            &self.config,
-            self.transport.as_ref(),
+            invocation::TurnContext {
+                config: &self.config,
+                transport: self.transport.as_ref(),
+                working_directory: working_directory.path(),
+                cache_anchor,
+                cancellation: &cancellation,
+                progress,
+            },
             &request,
             &runtime,
-            working_directory.path(),
-            cache_anchor,
-            &cancellation,
-            progress,
         )
         .await
         {
@@ -264,6 +249,39 @@ impl CodexRuntimeProvider {
         };
         let stream = CodexRuntimeStream::completed(&request, turn, output.process.stdout())?;
         Ok(OwnedModelStream::new(stream, cancellation))
+    }
+
+    async fn ready_cache_anchor<'a>(
+        &'a self,
+        request: &ModelRequest,
+        runtime: &super::request::RuntimeRequest,
+        working_directory: &std::path::Path,
+        cancellation: &CancellationToken,
+    ) -> Option<&'a invocation::CacheAnchor> {
+        if runtime.cyber_access_program().is_some()
+            || !matches!(request.options().cache(), peritus_model_protocol::CachePolicy::Automatic)
+        {
+            return None;
+        }
+        if self.cache_anchor.get().is_none() {
+            let anchor = invocation::create_cache_anchor(
+                &self.config,
+                self.transport.as_ref(),
+                working_directory,
+                cancellation,
+            )
+            .await;
+            if anchor.is_err() {
+                eprintln!(
+                    "peritus: Codex cache routing setup unavailable; using isolated uncached turns"
+                );
+            }
+            let _ = self.cache_anchor.set(anchor.ok());
+        }
+        self.cache_anchor
+            .get()
+            .and_then(|anchor| anchor.as_ref())
+            .filter(|anchor| anchor.available.load(Ordering::Acquire))
     }
 
     fn failed_process(
@@ -393,6 +411,8 @@ impl fmt::Debug for CodexRuntimeProvider {
             .field("config", &self.config)
             .field("authenticated", &self.authenticated.load(Ordering::Acquire))
             .field("transport", &"[private owned process transport]")
+            .field("working_directory", &"[private lazy directory]")
+            .field("cache_anchor", &self.cache_anchor.get().is_some())
             .finish()
     }
 }

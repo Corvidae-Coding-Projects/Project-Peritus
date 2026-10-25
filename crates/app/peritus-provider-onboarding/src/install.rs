@@ -130,7 +130,7 @@ fn run_command(
     if status.success() { Ok(()) } else { Err(installation_error(kind, stage, &status)) }
 }
 
-/// Whether the official OpenCode executable can be pinned without opening a login session.
+/// Whether the official `OpenCode` executable can be pinned without opening a login session.
 #[must_use]
 pub fn opencode_runtime_installed() -> bool {
     crate::models::run(async {
@@ -143,10 +143,10 @@ pub fn opencode_runtime_installed() -> bool {
     .is_ok()
 }
 
-/// Installs the official OpenCode 1.19.0 CLI after foreground download approval.
+/// Installs the official `OpenCode` 1.19.0 CLI after foreground download approval.
 ///
 /// API credentials are supplied separately from Peritus's OS credential store. This never
-/// starts a login flow or changes the user's existing OpenCode configuration.
+/// starts a login flow or changes the user's existing `OpenCode` configuration.
 ///
 /// # Errors
 /// Returns download, installer, or executable-discovery failures.

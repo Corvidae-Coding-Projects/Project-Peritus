@@ -110,7 +110,7 @@ pub(super) fn reference_not_found() -> DeveloperLoopError {
 }
 
 /// Revalidates reference authority using the current literal user contract, never archived text.
-pub(crate) fn authorized_file(
+pub fn authorized_file(
     workspace: &Path,
     contract: &str,
     raw: &str,

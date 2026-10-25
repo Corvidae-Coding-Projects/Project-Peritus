@@ -1,5 +1,7 @@
 //! Product dashboard keyboard routing.
 
+use std::fmt::Write as _;
+
 use crossterm::event::{KeyCode, KeyEvent};
 use peritus_app_protocol::ProductRunControlAction;
 
@@ -98,8 +100,13 @@ impl AppModel {
             self.notice(NoticeLevel::Info, "Select a coding run before copying its identity.");
             return Vec::new();
         };
-        let identity: String =
-            run.run_id().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+        let identity = run.run_id().as_bytes().iter().fold(
+            String::with_capacity(run.run_id().as_bytes().len() * 2),
+            |mut identity, byte| {
+                write!(identity, "{byte:02x}").expect("writing to a String cannot fail");
+                identity
+            },
+        );
         self.notice(NoticeLevel::Info, format!("Run identity: {identity}"));
         self.copy_text(identity)
     }

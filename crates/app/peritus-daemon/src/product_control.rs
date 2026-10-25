@@ -6,7 +6,7 @@ mod error;
 mod goal;
 pub mod guidance;
 mod init;
-mod inputs;
+pub mod inputs;
 mod replies;
 mod storage;
 
@@ -16,5 +16,5 @@ pub use init::{
 };
 
 pub use error::ControlStoreError;
-pub(crate) use inputs::ToolImageObservation;
+pub use inputs::ToolImageObservation;
 pub use storage::ControlStore;

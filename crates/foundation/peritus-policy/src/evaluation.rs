@@ -75,7 +75,8 @@ fn evaluate_with_constraints(
             return exact_requested_denial(policy, request, time_state, observed_at, reason);
         }
     }
-    let result = finalize_decision(
+
+    finalize_decision(
         policy,
         request.into_scope(),
         constraints.validity,
@@ -83,8 +84,7 @@ fn evaluate_with_constraints(
         approval,
         time_state,
         observed_at,
-    );
-    result
+    )
 }
 pub fn evaluate_definition(
     policy: &PolicyDefinition,

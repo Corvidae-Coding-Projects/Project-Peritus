@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
-pub(crate) enum LocalOperation {
+pub enum LocalOperation {
     FindFiles { root: PathBuf, query: String },
     SearchTranscript { scope: String, query: String },
     ReadClipboardImage,
@@ -11,7 +11,7 @@ pub(crate) enum LocalOperation {
 }
 
 #[derive(Debug)]
-pub(crate) enum LocalReply {
+pub enum LocalReply {
     Files(Vec<PathBuf>),
     Transcript(crate::transcript_archive::SearchPage),
     ClipboardImage(PathBuf),

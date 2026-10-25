@@ -121,7 +121,7 @@ impl Connection {
                 }));
                 effects
             }
-            Err(error) => self.disconnected("connect", error.to_string(), model),
+            Err(error) => self.disconnected("connect", &error.to_string(), model),
         }
     }
 
@@ -183,14 +183,14 @@ impl Connection {
                 }
                 Vec::new()
             }
-            Err(error) => self.disconnected("enqueue", error.to_string(), model),
+            Err(error) => self.disconnected("enqueue", &error.to_string(), model),
         }
     }
 
     pub(super) fn disconnected(
         &mut self,
         stage: &'static str,
-        error: String,
+        error: &str,
         model: &mut AppModel,
     ) -> Vec<Effect> {
         // Both stream owners can report one broken connection. Schedule recovery
@@ -210,7 +210,7 @@ impl Connection {
         let delay = self.retry_delay;
         self.retry_at = Some(Instant::now() + delay);
         self.retry_delay = (delay * 2).min(Duration::from_secs(8));
-        super::diagnostics::record(self.diagnostic_log.as_deref(), stage, self.generation, &error);
+        super::diagnostics::record(self.diagnostic_log.as_deref(), stage, self.generation, error);
         // This invalidates old transport requests but retains the selected run,
         // unsent draft and revisioned operations whose receipts need reconciliation.
         // No Retry, message or control action is resubmitted by this connection owner.

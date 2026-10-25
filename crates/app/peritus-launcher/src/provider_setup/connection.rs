@@ -26,7 +26,7 @@ pub(super) fn existing(
                     profile.credential_reference().to_owned(),
                     profile.endpoint().map(str::to_owned),
                     model,
-                    protocol.or(profile.compatible_protocol()),
+                    protocol.or_else(|| profile.compatible_protocol()),
                     profile.credential_header().map(str::to_owned),
                 )?);
             }

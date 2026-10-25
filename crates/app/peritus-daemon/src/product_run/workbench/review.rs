@@ -209,6 +209,11 @@ pub(super) async fn resume_feedback(
             .workspaces
             .get(&workspace)
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+        let source_root = service
+            .inner
+            .workspaces
+            .source_root(&workspace)
+            .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
         options.mode = mode;
         options.append(
             peritus_app_protocol::ProductActivityKind::User,
@@ -250,6 +255,7 @@ pub(super) async fn resume_feedback(
         (
             record.request.clone(),
             root,
+            source_root,
             providers,
             cancelled,
             token,
@@ -257,7 +263,9 @@ pub(super) async fn resume_feedback(
             record.resume.as_deref().cloned(),
         )
     };
-    service.spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6).await;
+    service
+        .spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6, launch.7)
+        .await;
     Ok(())
 }
 

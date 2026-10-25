@@ -15,7 +15,7 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-pub(crate) fn event(trace: &Path, mut value: Value) {
+pub fn event(trace: &Path, mut value: Value) {
     value["schema"] = json!(1);
     value["at_unix_ms"] = json!(now());
     let path = trace.with_extension("efficiency.jsonl");
@@ -59,7 +59,7 @@ struct State {
     repeated_calls: u64,
 }
 
-pub(crate) struct MeasuredTools<'a> {
+pub struct MeasuredTools<'a> {
     base: &'a mut dyn DeveloperToolExecutor,
     trace: PathBuf,
     prefix: String,
@@ -238,7 +238,7 @@ impl MeasuredTools<'_> {
             event(
                 &self.trace,
                 json!({"event":"first-useful-action", "invocation":self.prefix,"tool":name,
-                "wall_millis_since_first_invocation":elapsed,"invocation_elapsed_millis":self.started.elapsed().as_millis() as u64,"attempt_elapsed_millis":self.elapsed_before.saturating_add(self.started.elapsed().as_millis() as u64),
+                "wall_millis_since_first_invocation":elapsed,"invocation_elapsed_millis":u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX),"attempt_elapsed_millis":self.elapsed_before.saturating_add(u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX)),
                 "semantics":"first changed workspace file or successful completed declared external operation; attempt_elapsed_millis is monotonic; wall time includes pauses"}),
             );
             self.save();

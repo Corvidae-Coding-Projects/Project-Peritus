@@ -27,6 +27,10 @@ pub struct Registry {
     root: PathBuf,
 }
 /// Per-user module storage, independent of project files and provider credentials.
+///
+/// # Errors
+///
+/// Returns an error when no absolute per-user data directory is available.
 pub fn data_root() -> Result<PathBuf, Error> {
     let root = if cfg!(windows) {
         absolute_environment("LOCALAPPDATA").map(|p| p.join("Peritus"))
@@ -44,14 +48,20 @@ fn absolute_environment(name: &str) -> Option<PathBuf> {
 }
 impl Registry {
     /// Uses the current user's private module directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the per-user data directory cannot be resolved.
     pub fn for_user() -> Result<Self, Error> {
         Ok(Self::new(data_root()?))
     }
     /// Uses an explicit registry root, useful for embedders and disposable operation.
-    pub fn new(root: PathBuf) -> Self {
+    #[must_use]
+    pub const fn new(root: PathBuf) -> Self {
         Self { root }
     }
     /// Registry directory, never a workspace write destination.
+    #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -80,12 +90,16 @@ impl Registry {
         Ok(vec![Definition::bundled(include_str!("../bundled/source-brief/module.toml"))?])
     }
     /// Lists all selected installed/bundled modules and reports corrupt packages individually.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when registry settings or package directories cannot be read.
     pub fn list(&self) -> Result<Value, Error> {
         let settings = self.settings()?;
         let mut entries = BTreeMap::new();
         for definition in Self::bundled()? {
             let id = definition.manifest.id.clone();
-            let enabled = settings.modules.get(&id).map_or(true, |s| s.enabled);
+            let enabled = settings.modules.get(&id).is_none_or(|s| s.enabled);
             entries.insert(id,json!({"id":definition.manifest.id,"name":definition.manifest.name,"version":definition.manifest.version,"description":definition.manifest.description,"digest":definition.digest,"bundled":true,"enabled":enabled}));
         }
         for (id, selection) in &settings.modules {
@@ -107,6 +121,10 @@ impl Registry {
         )
     }
     /// Loads a selected exact package and verifies its complete declared resource identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when selection, enablement, package identity, or resources are invalid.
     pub fn load(&self, id: &str, require_enabled: bool) -> Result<Definition, Error> {
         if !crate::definition::identifier(id) {
             return Err(invalid("invalid module identifier"));
@@ -135,6 +153,10 @@ impl Registry {
             .ok_or_else(|| invalid("module is not installed or bundled"))
     }
     /// Installs an inert local package, initially disabled. Updates never reuse old enablement.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when validation, locking, copying, or atomic publication fails.
     pub fn install(&self, source: &Path) -> Result<Value, Error> {
         let original = Definition::from_directory(source)?;
         if Self::bundled()?.iter().any(|d| d.manifest.id == original.manifest.id) {
@@ -200,13 +222,11 @@ impl Registry {
             fs::rename(&destination, &retained)?;
             quarantine = Some(retained);
         }
-        if !valid_existing {
-            if let Err(failure) = fs::rename(temp.path(), &destination) {
-                if let Some(retained) = &quarantine {
-                    fs::rename(retained, &destination).map_err(|rollback| invalid(format!("package publication failed: {failure}; damaged package restoration failed: {rollback}; retained at {}",retained.display())))?;
-                }
-                return Err(failure.into());
+        if !valid_existing && let Err(failure) = fs::rename(temp.path(), &destination) {
+            if let Some(retained) = &quarantine {
+                fs::rename(retained, &destination).map_err(|rollback| invalid(format!("package publication failed: {failure}; damaged package restoration failed: {rollback}; retained at {}",retained.display())))?;
             }
+            return Err(failure.into());
         }
         #[cfg(unix)]
         {
@@ -228,6 +248,10 @@ impl Registry {
         )
     }
     /// Selects enablement without granting additional tool permissions.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the package is unknown or registry state cannot be published.
     pub fn enable(&self, id: &str, enabled: bool) -> Result<Value, Error> {
         let _lock = self.lock()?;
         let d = self.load(id, false)?;
@@ -242,6 +266,10 @@ impl Registry {
         )
     }
     /// Removes an installed selection. Immutable bytes remain for pinned historical jobs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the identity is invalid or registry state cannot be published.
     pub fn remove(&self, id: &str) -> Result<Value, Error> {
         let _lock = self.lock()?;
         let mut settings = self.settings()?;

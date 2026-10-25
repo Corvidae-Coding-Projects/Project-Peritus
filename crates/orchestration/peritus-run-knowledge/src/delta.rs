@@ -31,9 +31,7 @@ pub fn plan_delta_packet(
         let error = KnowledgeError::plain(KnowledgeErrorKind::CurrentSnapshotStale);
         return Err(error);
     }
-    if let Err(error) = validate_current_snapshot(current, request) {
-        return Err(error);
-    }
+    validate_current_snapshot(current, request)?;
     let prior_plan = match plan_invalidation(previous, request) {
         Err(error) => {
             return Err(error);
@@ -100,8 +98,8 @@ fn build_delta_packet(
         navigation_sections,
         prior_plan.accounting().invalidated(),
     );
-    let packet = DeltaPacket::new(current.role(), *current.candidate(), entries, accounting);
-    packet
+
+    DeltaPacket::new(current.role(), *current.candidate(), entries, accounting)
 }
 fn classify_delivery(
     previous: &RunKnowledgeSnapshot,

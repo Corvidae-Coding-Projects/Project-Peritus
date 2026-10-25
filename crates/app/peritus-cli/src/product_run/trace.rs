@@ -5,6 +5,7 @@
 
 use std::{
     ffi::OsStr,
+    fmt::Write as _,
     fs, io,
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
@@ -23,7 +24,7 @@ enum Described {
     Human(String),
 }
 
-pub(crate) fn execute(
+pub fn execute(
     run_id: Option<RunId>,
     extensions_only: bool,
     output: &Output,
@@ -150,12 +151,8 @@ fn list(root: &Path, output: &Output) -> Result<(), CliError> {
     let json = runs
         .iter()
         .map(|run| {
-            human.push_str(&format!(
-                "{}  {} bytes  {}\n",
-                run.identity,
-                run.bytes,
-                run.path.display()
-            ));
+            writeln!(human, "{}  {} bytes  {}", run.identity, run.bytes, run.path.display())
+                .expect("writing to a String cannot fail");
             serde_json::json!({
                 "run_id": run.identity,
                 "bytes": run.bytes,

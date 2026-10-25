@@ -259,31 +259,10 @@ async fn mutation_guard(app: &Arc<App>, input: &Value) -> Result<tokio::sync::Ow
 async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
     let string = |key: &str| input[key].as_str().unwrap_or("");
     match string("command") {
-        "modules" => {
-            let operation = string("action").to_owned();
-            let module = string("module").to_owned();
-            let digest = string("digest").to_owned();
-            tokio::task::spawn_blocking(move || {
-                let registry = peritus_modules::Registry::for_user()?;
-                match operation.as_str() {
-                    "refresh" => registry.refresh_market(),
-                    "install" => registry.install_market(&module, &digest),
-                    "enable" => registry.enable(&module, true),
-                    "disable" => registry.enable(&module, false),
-                    "remove" => registry.remove(&module),
-                    _ => Err(peritus_modules::Error::Invalid("Unknown module action".into())),
-                }
-            })
-            .await
-            .map_err(problem)?
-            .map_err(problem)
-        }
+        "modules" => modules(input).await,
         "improvements" => daemon::improvements::action(app, input).await,
         "open-project" => Ok(json!(app.open_project(std::path::Path::new(string("root")))?)),
-        "close-project" => {
-            app.close_project(string("project"))?;
-            Ok(json!({"closed":true}))
-        }
+        "close-project" => close_project(app, string("project")),
         "new-session" => {
             let session = Session {
                 settings: crate::sessions::Settings::default(),
@@ -374,6 +353,43 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         "close-console" => crate::consoles::close(app, string("id")),
         _ => Err(problem("Unknown command")),
     }
+}
+
+fn close_project(app: &App, project: &str) -> Result<Value> {
+    app.close_project(project)?;
+    Ok(json!({"closed":true}))
+}
+
+async fn modules(input: &Value) -> Result<Value> {
+    let operation = input["action"].as_str().unwrap_or("").to_owned();
+    let module = input["module"].as_str().unwrap_or("").to_owned();
+    let digest = input["digest"].as_str().unwrap_or("").to_owned();
+    tokio::task::spawn_blocking(move || {
+        let registry = peritus_modules::Registry::for_user()?;
+        match operation.as_str() {
+            "refresh" => registry.refresh_market(),
+            "install" => registry.install_market(&module, &digest),
+            #[cfg(target_os = "linux")]
+            "build-install" => registry.start_source_build(&module, &digest),
+            #[cfg(not(target_os = "linux"))]
+            "build-install" => Err(peritus_modules::Error::Invalid(
+                "source-built module installation currently requires Linux".into(),
+            )),
+            #[cfg(target_os = "linux")]
+            "cancel-build" => registry.cancel_source_build(&module),
+            #[cfg(not(target_os = "linux"))]
+            "cancel-build" => Err(peritus_modules::Error::Invalid(
+                "source-built module installation currently requires Linux".into(),
+            )),
+            "enable" => registry.enable(&module, true),
+            "disable" => registry.enable(&module, false),
+            "remove" => registry.remove(&module),
+            _ => Err(peritus_modules::Error::Invalid("Unknown module action".into())),
+        }
+    })
+    .await
+    .map_err(problem)?
+    .map_err(problem)
 }
 fn cancel_operation(app: &App, original: &str) -> Result<Value> {
     let record = app

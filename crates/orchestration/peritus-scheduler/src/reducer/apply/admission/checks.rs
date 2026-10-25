@@ -3,8 +3,7 @@
 use crate::{SchedulerState, WorkId, WorkSpec, WorkerPhase, WorkerRecord};
 
 pub fn contains_work(state: &SchedulerState, id: WorkId) -> bool {
-    let found = state.work_item(id).is_some();
-    found
+    state.work_item(id).is_some()
 }
 pub fn all_dependencies_retained(state: &SchedulerState, spec: &WorkSpec) -> bool {
     let dependencies = spec.dependencies();

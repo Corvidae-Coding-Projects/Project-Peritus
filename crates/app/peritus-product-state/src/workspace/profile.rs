@@ -117,6 +117,10 @@ impl WorkspaceProfile {
 
     /// Refreshes a folder's observed identity while retaining its conversation lineage.
     /// Effect authority is revoked; the caller must verify or reacquire trust separately.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a profile that is not an in-place folder or has malformed retained facts.
     pub fn refresh_folder_identity(mut self, identity: String) -> Result<Self, ProductStateError> {
         if !self.direct_folder {
             return Err(invalid("only a direct folder can refresh its directory identity"));

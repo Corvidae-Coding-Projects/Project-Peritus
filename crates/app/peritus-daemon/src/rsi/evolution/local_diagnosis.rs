@@ -50,28 +50,21 @@ pub fn local_diagnostic_report(
     let mut ordinary = Vec::new();
     let mut associations = Vec::new();
     for record in ledger.records() {
-        let terminal = match state
-            .rollout(record.rollout_id())
-            .map(|value| value.status())
-        {
-            Some(peritus_eval::RolloutStatus::Settled(terminal)) => terminal,
-            _ => {
-                return Err(incomplete(
-                    "native source terminal has no settled C0 reference",
-                ));
-            }
-        };
+        let terminal =
+            match state.rollout(record.rollout_id()).map(peritus_eval::RolloutProgress::status) {
+                Some(peritus_eval::RolloutStatus::Settled(terminal)) => terminal,
+                _ => {
+                    return Err(incomplete("native source terminal has no settled C0 reference"));
+                }
+            };
         let terminal_metadata = artifacts.verify(terminal.artifact()).map_err(owner_error)?;
         ordinary
             .push(SelectedArtifact::from_metadata(&terminal_metadata, None).map_err(owner_error)?);
         let Some(manifest) = record.trace_root() else {
-            let spec = plan
-                .specs()
-                .iter()
-                .find(|value| value.id() == record.rollout_id())
-                .ok_or_else(|| {
-                    incomplete("native failure is absent from its actual frozen plan")
-                })?;
+            let spec =
+                plan.specs().iter().find(|value| value.id() == record.rollout_id()).ok_or_else(
+                    || incomplete("native failure is absent from its actual frozen plan"),
+                )?;
             let observed = super::local_failure_trace::import_published_failure_trace(
                 journal, artifacts, &profile, spec, &record,
             )?;
@@ -96,23 +89,21 @@ pub fn local_diagnostic_report(
             continue;
         };
         let metadata = artifacts.verify(manifest).map_err(owner_error)?;
-        let bytes = artifacts
-            .read(manifest, metadata.size())
-            .map_err(owner_error)?;
+        let bytes = artifacts.read(manifest, metadata.size()).map_err(owner_error)?;
         let document: serde_json::Value = serde_json::from_slice(&bytes).map_err(owner_error)?;
         for role in ["candidate", "evaluator"] {
-            let stage = document
+            let stage_record = document
                 .get(role)
                 .ok_or_else(|| incomplete("native C7 manifest omits an actual process role"))?;
             let trace: [u8; 16] = serde_json::from_value(
-                stage
+                stage_record
                     .get("trace_id")
                     .cloned()
                     .ok_or_else(|| incomplete("native C7 trace identity absent"))?,
             )
             .map_err(owner_error)?;
             let environment: [u8; 16] = serde_json::from_value(
-                stage
+                stage_record
                     .get("environment_id")
                     .cloned()
                     .ok_or_else(|| incomplete("native C7 environment absent"))?,
@@ -181,21 +172,9 @@ pub fn local_diagnostic_report(
     }
     claims.sort_unstable_by_key(ReportClaim::id);
     let health = summarize_health(&selection, &[], &[], &[], &[], limits).map_err(owner_error)?;
-    let validated = DebuggerReport::new(
-        &selection,
-        None,
-        timelines,
-        vec![],
-        vec![],
-        vec![],
-        health,
-        claims,
-    )
-    .validate(&selection, limits)
-    .map_err(owner_error)?;
-    Ok(NativeDiagnosticReport {
-        query,
-        selection,
-        report: validated,
-    })
+    let validated =
+        DebuggerReport::new(&selection, None, timelines, vec![], vec![], vec![], health, claims)
+            .validate(&selection, limits)
+            .map_err(owner_error)?;
+    Ok(NativeDiagnosticReport { query, selection, report: validated })
 }

@@ -10,10 +10,8 @@ pub(in crate::product_run::workbench::checkpoints) fn checkpoint_revision(
     record: &ConversationRecord,
     checkpoint: &UserCheckpoint,
 ) -> Result<u64, Error> {
-    let mut recoveries = record
-        .restores()
-        .iter()
-        .filter(|restore| restore.recovery_checkpoint() == checkpoint.id());
+    let mut recoveries =
+        record.restores().iter().filter(|restore| restore.recovery_checkpoint() == checkpoint.id());
     let operation = if let Some(restore) = recoveries.next() {
         if recoveries.next().is_some() {
             return Err(Error::Corrupt("checkpoint has multiple recovery origins"));
@@ -65,8 +63,7 @@ pub(in crate::product_run::workbench::checkpoints) fn checkpoint_revision(
     }
     // Resolve the original immutable operation, rather than minting a checkpoint
     // operation or substituting the current/settlement revision for capture time.
-    let receipt = store
-        .resolve(&operation)?
-        .ok_or(Error::Corrupt("checkpoint origin receipt missing"))?;
+    let receipt =
+        store.resolve(&operation)?.ok_or(Error::Corrupt("checkpoint origin receipt missing"))?;
     Ok(receipt.accepted_revision())
 }

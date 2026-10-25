@@ -135,7 +135,7 @@ pub enum WireDialect {
     OpenAiCodexRuntime,
     /// Account-backed Anthropic Claude executable runtime.
     AnthropicClaudeRuntime,
-    /// Official OpenCode executable using a Peritus-owned Zen or Go API credential.
+    /// Official `OpenCode` executable using a Peritus-owned Zen or Go API credential.
     OpenCodeRuntime,
 }
 

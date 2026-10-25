@@ -3,6 +3,7 @@
 use std::{
     collections::{BinaryHeap, VecDeque},
     ffi::OsStr,
+    fmt::Write as _,
     io,
     path::{Path, PathBuf},
     process::Stdio,
@@ -117,7 +118,13 @@ impl TranscriptWrites {
         let (Some(run), Some(snapshot)) = (model.chat.run_id, model.chat.snapshot.as_ref()) else {
             return;
         };
-        let scope: String = run.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+        let scope = run.as_bytes().iter().fold(
+            String::with_capacity(run.as_bytes().len() * 2),
+            |mut scope, byte| {
+                write!(scope, "{byte:02x}").expect("writing to a String cannot fail");
+                scope
+            },
+        );
         let activities = snapshot.activities();
         if self.observed.as_ref().is_some_and(|(previous_scope, previous)| {
             previous_scope == &scope && previous.as_ref() == activities
@@ -131,11 +138,11 @@ impl TranscriptWrites {
     }
 
     fn start_pending(&mut self) {
-        if self.jobs.is_empty() {
-            if let Some((scope, activities)) = self.pending.take() {
-                self.jobs
-                    .spawn_blocking(move || crate::transcript_archive::record(&scope, &activities));
-            }
+        if self.jobs.is_empty()
+            && let Some((scope, activities)) = self.pending.take()
+        {
+            self.jobs
+                .spawn_blocking(move || crate::transcript_archive::record(&scope, &activities));
         }
     }
 
@@ -529,7 +536,7 @@ fn prune_abandoned(root: &Path) {
                 .modified()
                 .ok()
                 .and_then(|time| SystemTime::now().duration_since(time).ok())
-                .is_some_and(|age| age >= Duration::from_secs(24 * 60 * 60))
+                .is_some_and(|age| age >= Duration::from_hours(24))
         {
             let _ = std::fs::remove_dir_all(entry.path());
         }

@@ -2,10 +2,15 @@
 
 use crate::highlight::Theme;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use std::{collections::BTreeMap, fs, io::Read, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::{Read, Write},
+    path::PathBuf,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Shortcut {
+pub enum Shortcut {
     Find,
     Files,
     Queue,
@@ -58,7 +63,7 @@ impl Shortcut {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct Preferences {
+pub struct Preferences {
     pub(crate) theme: Theme,
     bindings: BTreeMap<String, String>,
 }
@@ -98,7 +103,7 @@ impl Preferences {
     }
 
     pub(crate) fn binding(&self, action: Shortcut) -> &str {
-        self.bindings.get(action.name()).map_or(action.default_key(), String::as_str)
+        self.bindings.get(action.name()).map_or_else(|| action.default_key(), String::as_str)
     }
 
     pub(crate) fn action(&self, event: KeyEvent) -> Option<Shortcut> {
@@ -160,7 +165,6 @@ impl Preferences {
         let parent = path.parent().ok_or("TUI preferences have no parent")?;
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         let mut file = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
-        use std::io::Write;
         let value =
             serde_json::json!({"version":1, "theme":self.theme.name(), "bindings":self.bindings});
         file.write_all(serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?.as_bytes())
@@ -171,7 +175,7 @@ impl Preferences {
     }
 }
 
-pub(crate) fn key_name(key: KeyEvent) -> Option<String> {
+pub fn key_name(key: KeyEvent) -> Option<String> {
     let code = match key.code {
         KeyCode::Char(c) => c.to_ascii_lowercase().to_string(),
         KeyCode::F(n) => format!("f{n}"),
@@ -204,23 +208,23 @@ fn parse_key(value: &str) -> Result<KeyEvent, String> {
                 _ => return Err("Use ctrl-, alt-, shift-, or F1–F12".into()),
             };
         } else {
-            code = if let Some(number) = part
+            code = part
                 .strip_prefix('f')
                 .and_then(|n| n.parse::<u8>().ok())
                 .filter(|n| (1..=12).contains(n))
-            {
-                Some(KeyCode::F(number))
-            } else if part.len() == 1 && part.as_bytes()[0].is_ascii_alphanumeric() {
-                Some(KeyCode::Char(char::from(part.as_bytes()[0])))
-            } else {
-                None
-            };
+                .map_or_else(
+                    || {
+                        (part.len() == 1 && part.as_bytes()[0].is_ascii_alphanumeric())
+                            .then(|| KeyCode::Char(char::from(part.as_bytes()[0])))
+                    },
+                    |number| Some(KeyCode::F(number)),
+                );
         }
     }
     let key = KeyEvent::new(code.ok_or("Unsupported shortcut key")?, modifiers);
     let reserved = matches!(key.code, KeyCode::Char('c' | 'q' | 'r'))
         && modifiers.contains(KeyModifiers::CONTROL)
-        || matches!(key.code, KeyCode::F(2) | KeyCode::F(3))
+        || matches!(key.code, KeyCode::F(2 | 3))
         || (matches!(key.code, KeyCode::Char(_))
             && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT));
     if reserved {

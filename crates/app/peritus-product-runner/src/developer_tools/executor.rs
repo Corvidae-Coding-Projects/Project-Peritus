@@ -1,6 +1,10 @@
 //! Concrete bounded filesystem and structured-command developer tools.
 
-use std::{fmt::Write as _, fs, path::PathBuf};
+use std::{
+    fmt::Write as _,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use peritus_agent::{
     DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
@@ -80,7 +84,7 @@ pub struct WorkspaceDeveloperTools {
 impl WorkspaceDeveloperTools {
     /// The designer hands off after the run's one grounding check. Source-specific questions
     /// belong to implementation; independent review keeps its ordinary read-only tools.
-    pub(crate) fn for_design(mut self) -> Self {
+    pub(crate) const fn for_design(mut self) -> Self {
         self.design_grounding_only = true;
         self
     }
@@ -91,7 +95,7 @@ impl WorkspaceDeveloperTools {
     #[must_use]
     pub fn with_observation_receipts(
         mut self,
-        trace: PathBuf,
+        trace: &Path,
         run: peritus_types::RunId,
         workspace: peritus_types::WorkspaceId,
     ) -> Self {
@@ -106,7 +110,7 @@ impl WorkspaceDeveloperTools {
             policy.authorize("workspace_read", &serde_json::json!({"path": relative})).is_ok()
         });
         crate::efficiency::event(
-            &trace,
+            trace,
             serde_json::json!({"event":"grounding-reuse", "files_revalidated":self.grounding.reused_count(),"file_hash_validation_bytes":self.grounding.validation_bytes(),"semantics":"hash checks perform local IO; reuse reduces model-visible rediscovery, not all file reads"}),
         );
         self
@@ -336,22 +340,21 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         | "skill_read"
         | "skill_list"
         | "view_image"
-        | "command_output" => Some(&[Read]),
+        | "computer_snapshot"
+        | "command_output"
+        | "web_read"
+        | "web_find" => Some(&[Read]),
         "web_search" | "web_open" => Some(&[Read, Network]),
-        "web_read" | "web_find" => Some(&[Read]),
         "computer_status" => Some(&[Read, Process]),
-        "computer_snapshot" => Some(&[Read]),
         "browser_control" => Some(&[Read, Write, Process, Network]),
         "desktop_control" => Some(&[Read, Write, Process]),
-        "computer_close" => Some(&[]),
+        "computer_close" | "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
         "run_command" | "command_start" | "command_stdin" | "command_resize" | "command_signal" => {
             Some(&[Read, Write, Process])
         }
-        // Observation and cleanup of an already-owned process remain available after revocation.
-        "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
         _ => None,
     }
 }
@@ -467,7 +470,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             return Some(
                 self.rust_reliability
                     .refresh()
-                    .map_or(feedback.clone(), |refresh| format!("{feedback}\n{refresh}")),
+                    .map_or_else(|| feedback.clone(), |refresh| format!("{feedback}\n{refresh}")),
             );
         }
         if !std::mem::take(&mut self.progress_feedback_pending) {
@@ -536,6 +539,15 @@ impl WorkspaceDeveloperTools {
         if let Err(error) = super::arguments::validate(call.name().as_str(), &arguments) {
             return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
         }
+        self.execute_authorized(call, &arguments, reused)
+    }
+
+    fn execute_authorized(
+        &mut self,
+        call: &CompletedToolCall,
+        arguments: &Value,
+        reused: Option<&DeveloperToolObservation>,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let effect = matches!(
             call.name().as_str(),
             "workspace_write"
@@ -551,24 +563,24 @@ impl WorkspaceDeveloperTools {
                 | "desktop_control"
                 | "computer_close"
         ) && self.mode == WorkspaceToolMode::ReadWrite;
-        if effect && let Some(observation) = self.replay_effect(call, &arguments)? {
+        if effect && let Some(observation) = self.replay_effect(call, arguments)? {
             return Ok(observation);
         }
-        if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
+        if let Err(error) = self.prepare_in_place(call.name().as_str(), arguments) {
             return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
         }
         if effect {
-            if let Err(error) = self.prepare_effect_checkpoint(call.name().as_str(), &arguments) {
+            if let Err(error) = self.prepare_effect_checkpoint(call.name().as_str(), arguments) {
                 return observation(
                     &object(vec![("error", Value::String(error.to_string()))]),
                     true,
                 );
             }
-            if let Some(observation) = self.begin_effect(call, &arguments)? {
+            if let Some(observation) = self.begin_effect(call, arguments)? {
                 return Ok(observation);
             }
         }
-        let result = self.dispatch_reusing_read(call, &arguments, reused);
+        let result = self.dispatch_reusing_read(call, arguments, reused);
         let (mut value, is_error, accepted) = match result {
             Ok(value) => {
                 let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
@@ -593,7 +605,7 @@ impl WorkspaceDeveloperTools {
                     .as_mut()
                     .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
                     .applied(&value, is_error)?;
-                self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
+                self.record_checkpoint(call.name().as_str(), arguments, &value)?;
                 self.receipts
                     .as_mut()
                     .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
@@ -605,6 +617,6 @@ impl WorkspaceDeveloperTools {
                     .complete(&value, is_error)?;
             }
         }
-        self.finish_observation(call, &arguments, &value, is_error, accepted, effect && accepted)
+        self.finish_observation(call, arguments, &value, is_error, accepted, effect && accepted)
     }
 }

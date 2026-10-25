@@ -11,12 +11,12 @@ use activity::is_active;
 #[doc = " Applies the reservation-sensitive lifecycle mutation for one selected identity."]
 fn update_one(state: &mut SchedulerState, id: WorkId) -> bool {
     let active = is_active(state.reservations(), id);
-    let updated = if active {
+
+    if active {
         mutation::set_work_phase(state, id, WorkPhase::Cancelling)
     } else {
         mutation::terminalize_work(state, id, WorkTerminal::Cancelled)
-    };
-    updated
+    }
 }
 #[doc = " Applies cancellation to each already-selected identity in order."]
 #[doc = ""]

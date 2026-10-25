@@ -9,6 +9,6 @@ pub fn begin_work_attempt_at(
     if index >= state.work.len() {
         return None;
     }
-    let result = state.work[index].try_begin_attempt();
-    result
+
+    state.work[index].try_begin_attempt()
 }

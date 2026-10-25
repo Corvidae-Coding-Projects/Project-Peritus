@@ -82,7 +82,7 @@ impl RestrictionLayer {
             rules.push(self.rules[index].rebind_revision(revision));
             index += 1;
         }
-        let rebound = Self { tier: self.tier, rules };
-        rebound
+
+        Self { tier: self.tier, rules }
     }
 }

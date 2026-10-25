@@ -16,7 +16,8 @@ const fn finish_evidence(
         && counts.4 == 0
         && counts.5 == 0
         && !conflicting;
-    let assessment = EvidenceAssessment::new(
+
+    EvidenceAssessment::new(
         requirement,
         satisfied,
         counts.0,
@@ -27,8 +28,7 @@ const fn finish_evidence(
         counts.5,
         conflicting,
         aggregate_digest,
-    );
-    assessment
+    )
 }
 const fn record_digest(
     first_digest: &mut Option<Sha256Digest>,
@@ -53,8 +53,8 @@ const fn finish_reduction(
     aggregate: [u8; 32],
 ) -> EvidenceAssessment {
     let aggregate_digest = Sha256Digest::new(aggregate);
-    let assessment = finish_evidence(requirement, counts, conflicting, aggregate_digest);
-    assessment
+
+    finish_evidence(requirement, counts, conflicting, aggregate_digest)
 }
 #[allow(
     clippy::large_types_passed_by_value,

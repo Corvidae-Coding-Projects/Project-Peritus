@@ -1,7 +1,7 @@
-//! Unmodified OpenCode CLI as a tool-disabled Zen/Go inference transport.
+//! Unmodified `OpenCode` CLI as a tool-disabled Zen/Go inference transport.
 //!
 //! Peritus owns credentials, conversation replay, and host tools. Each invocation uses a private
-//! disposable configuration; OpenCode owns provider SDK selection and gateway request headers.
+//! disposable configuration; `OpenCode` owns provider SDK selection and gateway request headers.
 
 mod catalog;
 mod dsml;
@@ -19,7 +19,7 @@ pub use provider::OpenCodeRuntimeProvider;
 
 use peritus_provider_core::{ProviderCoreError, hosted::HostedService};
 
-fn service_id(service: HostedService) -> Result<&'static str, ProviderCoreError> {
+const fn service_id(service: HostedService) -> Result<&'static str, ProviderCoreError> {
     match service {
         HostedService::OpenCodeZen => Ok("opencode"),
         HostedService::OpenCodeGo => Ok("opencode-go"),
@@ -30,7 +30,7 @@ fn service_id(service: HostedService) -> Result<&'static str, ProviderCoreError>
     }
 }
 
-fn malformed() -> ProviderCoreError {
+const fn malformed() -> ProviderCoreError {
     ProviderCoreError::malformed_stream(
         "opencode_runtime_output",
         "OpenCode did not return a complete inert Peritus turn",

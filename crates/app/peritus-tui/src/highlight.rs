@@ -14,7 +14,7 @@ use syntect::{
 
 /// Syntax colors for a dark terminal, a light terminal, or the terminal's own foreground.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) enum Theme {
+pub enum Theme {
     #[default]
     Dark,
     Light,
@@ -54,7 +54,7 @@ static THEMES: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
 
 /// Highlight literal source without Markdown interpretation or terminal escape sequences.
 /// Unknown languages and grammar errors retain their original display-safe content.
-pub(crate) fn code(source: &str, language: &str, theme: Theme) -> Vec<Line<'static>> {
+pub fn code(source: &str, language: &str, theme: Theme) -> Vec<Line<'static>> {
     let safe = crate::sanitize::sanitize_display_text(source);
     let Some(theme) = theme.syntax_theme() else {
         return literal(&safe);
@@ -114,7 +114,7 @@ pub(crate) fn code(source: &str, language: &str, theme: Theme) -> Vec<Line<'stat
 }
 
 /// Highlight the standard diff grammar while preserving every hunk and literal line.
-pub(crate) fn diff(source: &str, theme: Theme) -> Vec<Line<'static>> {
+pub fn diff(source: &str, theme: Theme) -> Vec<Line<'static>> {
     code(source, "diff", theme)
 }
 

@@ -28,8 +28,8 @@ pub(in crate::local_context) fn observe_view(
     messages: &[Message],
 ) -> Result<(), DeveloperLoopError> {
     let mut index = std::mem::take(&mut memory.read_reuse);
-    let result = (|| {
-        index.refresh(memory)?;
+    let result = {
+        index.refresh(memory);
         index.visible.clear();
         index.pending.clear();
         for message in messages {
@@ -54,7 +54,7 @@ pub(in crate::local_context) fn observe_view(
             }
         }
         Ok(())
-    })();
+    };
     memory.read_reuse = index;
     result
 }
@@ -66,17 +66,15 @@ fn credit_result(memory: &LocalMemory, index: &mut ReadReuse, value: &Value) {
     }
     if let Some(handle) =
         value.get("local_context").and_then(|value| value.get("handle")).and_then(Value::as_str)
-    {
-        if let Some(page) =
+        && let Some(page) =
             super::super::tools::sequence(memory, handle).ok().and_then(|id| index.pages.get(&id))
-        {
-            let mut raw = value.clone();
-            raw.as_object_mut().map(|object| object.remove("local_context"));
-            if memory.archived(page.id).is_ok_and(|source| {
-                source.artifact.digest == peritus_codec::sha256(raw.to_string().as_bytes())
-            }) {
-                index.visible.entry(page.id).or_default().push(page.span);
-            }
+    {
+        let mut raw = value.clone();
+        raw.as_object_mut().map(|object| object.remove("local_context"));
+        if memory.archived(page.id).is_ok_and(|source| {
+            source.artifact.digest == peritus_codec::sha256(raw.to_string().as_bytes())
+        }) {
+            index.visible.entry(page.id).or_default().push(page.span);
         }
     }
     // A complete context_read fragment can restore an exact archived page. Partial raw

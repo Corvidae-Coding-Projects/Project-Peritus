@@ -1,7 +1,14 @@
 //! Startup recovery from real C0 attempt admission and exact C2 child ownership.
 
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
-use peritus_eval::*;
+use peritus_eval::{
+    CandidateObservation, EXECUTION_DESTINATION, EvaluationArm, EvaluationCommandKind,
+    EvaluationDirectiveClaim, EvaluationEventKind, EvaluationExecutionMode, EvaluationPhase,
+    EvaluationPlan, EvaluatorObservation, EvaluatorVerdict, ExecutedRollout,
+    ExecutionDirectiveClaim, ExecutionDirectiveKind, ExecutionFailure, FrozenEvaluationProfile,
+    InfrastructureFailureClass, RolloutRecord, RolloutSpec, RolloutStatus, TaskFailureClass,
+    commit_evaluation_settlement, decide, load_evaluation_replay,
+};
 use peritus_journal::{OutboxId, SqliteJournal};
 use peritus_process::{
     NativeProcessProbe, OsExitObservation, OutputStream, ProcessStore, RecoveryDisposition,
@@ -11,6 +18,7 @@ use peritus_product_runner::RestrictedProcessContext;
 use peritus_types::{ActionId, EventId, ProcessId, RunId, Sha256Digest};
 use rusqlite::{Connection, OpenFlags, params};
 use std::{
+    fmt::Write as _,
     fs,
     time::{Duration, Instant},
 };
@@ -22,6 +30,14 @@ use super::{
     scheduling,
 };
 use crate::{DaemonConfig, DaemonError};
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Verdict {
+    passed: bool,
+    #[serde(default)]
+    class: Option<String>,
+}
 
 /// Reconciles only RSI attempts with real current claimed C0 execution messages.
 ///
@@ -132,7 +148,7 @@ pub(crate) fn recover_claim(
     let mut receipts_seen = false;
     for (role, program) in [("candidate", candidate_program), ("evaluator", catalog.evaluator())] {
         let receipt = read_receipt(config, spec, attempt, role)?;
-        let stage = if let Some(receipt) = receipt {
+        let recovered_stage = if let Some(receipt) = receipt {
             receipts_seen = true;
             validate_receipt(
                 &receipt,
@@ -156,7 +172,7 @@ pub(crate) fn recover_claim(
             observed.push(serde_json::json!({"role":role,"owner_receipt":"absent-before-effect","reason":"native gateway requires durable child receipt before any process launch"}));
             None
         };
-        stages.push(stage);
+        stages.push(recovered_stage);
     }
     let bytes=serde_json::to_vec(&serde_json::json!({"version":1,"campaign":state.campaign_id().as_bytes(),"rollout":spec.id().as_bytes(),"attempt":attempt,"actual_start_event":start.id().as_bytes(),"diagnostic":diagnostic.map(ArtifactDigest::to_hex),"observations":observed})).map_err(e::error)?;
     let trace = e::save(store, &bytes, start.id())?;
@@ -323,7 +339,8 @@ fn validate_receipt(
     let mut suffix = vec![0, 1]; // no C4 caller binding, Restricted execution
     suffix.extend_from_slice(&receipt.sandbox);
     for token in ["peritus-linux", "1"] {
-        suffix.extend_from_slice(&(token.len() as u32).to_be_bytes());
+        let token_length = u32::try_from(token.len()).map_err(e::error)?;
+        suffix.extend_from_slice(&token_length.to_be_bytes());
         suffix.extend_from_slice(token.as_bytes());
     }
     suffix.push(1); // native backend
@@ -350,7 +367,10 @@ fn recover_child(
     let run = RunId::new(receipt.execution_run).map_err(e::error)?;
     let action = ActionId::new(receipt.action).map_err(e::error)?;
     let process = ProcessId::new(receipt.process).map_err(e::error)?;
-    let name: String = receipt.process.iter().map(|b| format!("{b:02x}")).collect();
+    let mut name = String::with_capacity(receipt.process.len() * 2);
+    for byte in receipt.process {
+        write!(name, "{byte:02x}").expect("writing to a String cannot fail");
+    }
     let absent = |path: &std::path::Path| -> Result<bool, DaemonError> {
         match fs::symlink_metadata(path) {
             Ok(_) => Ok(false),
@@ -429,7 +449,7 @@ fn cleanup_private(receipt: &ChildReceipt, config: &DaemonConfig) -> Result<(), 
     // Only this exact private scratch owner is retired after native absence and cgroup drain.
     match fs::symlink_metadata(&receipt.scratch) {
         Ok(m) if m.file_type().is_dir() && !m.file_type().is_symlink() => {
-            fs::remove_dir_all(&receipt.scratch).map_err(e::error)?
+            fs::remove_dir_all(&receipt.scratch).map_err(e::error)?;
         }
         Ok(_) => {
             return Err(e::invalid("native child scratch owner changed identity during recovery"));
@@ -516,13 +536,6 @@ fn completed_record(
     {
         return RolloutRecord::from_interruption(spec, attempt, trace.sha256(), false)
             .map_err(e::error);
-    }
-    #[derive(serde::Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct Verdict {
-        passed: bool,
-        #[serde(default)]
-        class: Option<String>,
     }
     let verdict: Verdict = match serde_json::from_slice(&evaluator.stdout) {
         Ok(v) => v,

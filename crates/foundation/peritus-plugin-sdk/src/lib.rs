@@ -9,6 +9,7 @@ mod framing;
 mod identity;
 mod manifest;
 mod module;
+mod module_host;
 mod payload;
 mod protocol;
 
@@ -20,7 +21,24 @@ pub use manifest::{
     PluginOperation, PluginQuotas, ProtocolRange, SignatureDeclaration, TrustMaterial,
 };
 pub use module::{
-    ModuleAction, ModuleAgentRequest, ModuleAttachment, ModuleFunction, ModuleMenuAction,
+    ModuleAction, ModuleAgentRequest, ModuleAttachment, ModuleCyberAccessProgram, ModuleFunction,
+    ModuleMenuAction,
+};
+pub use module_host::{
+    HOST_CAPABILITY_APPLICATION_LABORATORY, HOST_CAPABILITY_ATTACHMENT, HOST_CAPABILITY_CHECKPOINT,
+    HOST_CAPABILITY_MODEL, HOST_CAPABILITY_PRIVATE_STATE, HOST_CAPABILITY_PROFILE,
+    HOST_CAPABILITY_SCOPED_SOURCE, HOST_CAPABILITY_SOURCE_BUILD, HOST_CAPABILITY_WORKER,
+    LocalPackageIdentity, MODULE_HOST_CONTRACT_VERSION, MODULE_WORKER_FEATURE_BROWSER_AUTOMATION,
+    ModuleHostCapability, ModuleHostOutcome, ModuleHostPlatform, ModuleHostProfile,
+    ModuleHostRequest, ModuleHostResult, ModuleLaboratoryCatalog, ModuleLaboratoryHandle,
+    ModuleLaboratoryInvokeRequest, ModuleLaboratoryLifecycleRequest, ModuleLaboratoryPhase,
+    ModuleLaboratoryProcessInput, ModuleLaboratoryReceipt, ModuleLaboratoryRecipe,
+    ModuleLaboratoryResult, ModuleLaboratorySourceCreateRequest, ModuleLaboratoryStatus,
+    ModuleLaboratoryTelemetry, ModuleWorkerLimits, ModuleWorkerRequest, ModuleWorkerResult,
+    ScopedSourceAuthority, ScopedSourceEntry, ScopedSourceHandle, ScopedSourceManifestPage,
+    ScopedSourceManifestRequest, ScopedSourceReadRequest, ScopedSourceReadResult,
+    ScopedSourceRequest, ScopedSourceRevocation, ScopedSourceRevokeRequest,
+    ScopedSourceVerification, ScopedSourceVerifyRequest, SourcePackageRequest,
 };
 pub use payload::{JsonBounds, JsonPayload};
 pub use protocol::{

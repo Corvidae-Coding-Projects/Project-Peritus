@@ -91,6 +91,11 @@ impl DaemonRuntime {
             &mut indeterminate_effects,
             self.terminals.shutdown().map(|_| ()).map_err(terminal_shutdown_error),
         )?;
+        retain_cleanup_failure(
+            &mut coordinator,
+            &mut indeterminate_effects,
+            wait_for_process_settlement(&self.processes, timeout).await,
+        )?;
         let process_reconciliation = match reconcile_processes(&self.processes, &[]) {
             Ok(None) => Ok(()),
             Ok(Some(_)) => Err(DaemonError::new(
@@ -190,6 +195,26 @@ impl DaemonRuntime {
             .with_outbox(outbox)
             .with_indeterminate_effects(indeterminate_effects)
     }
+}
+
+async fn wait_for_process_settlement(
+    processes: &peritus_process::ProcessStore,
+    timeout: Duration,
+) -> Result<(), DaemonError> {
+    tokio::time::timeout(timeout, async {
+        while processes.unsettled_ownership_count() != 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .map_err(|_| {
+        DaemonError::new(
+            DaemonErrorCode::UncleanShutdown,
+            DaemonRecovery::Reconcile,
+            "settle cancelled process owners",
+            "owned process terminal publication exceeded the configured shutdown bound",
+        )
+    })
 }
 
 async fn record_stage(

@@ -95,7 +95,7 @@ fn waiver_approval_expected(
         {
             found = true;
         }
-        if !found {}
+
         waiver_index += 1;
     }
     found

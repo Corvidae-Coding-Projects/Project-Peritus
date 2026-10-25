@@ -71,6 +71,17 @@ pub struct ProductRunUpdate {
 /// Observer invoked synchronously after each daemon-visible boundary.
 pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
 
+/// Host-installed components for fail-closed native module jobs.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeModuleJobConfiguration {
+    /// Absolute path to the host-owned bubblewrap executable.
+    pub bubblewrap: PathBuf,
+    /// Absolute path to the matching Peritus Linux isolation helper.
+    pub linux_helper: PathBuf,
+    /// Writable delegated cgroup-v2 parent.
+    pub cgroup_root: PathBuf,
+}
+
 /// Exact workspace object kind presented to a host checkpoint boundary before mutation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WorkspaceMutationKind {
@@ -117,10 +128,24 @@ pub trait ConversationView: Send + Sync {
     }
     /// Durably admits an eligible explicit module command without sending an inference request.
     /// Returns none for ordinary input. Held, withdrawn and blocked input cannot be selected.
+    ///
+    /// # Errors
+    /// Returns an error when durable input state cannot be inspected or advanced.
     fn take_module_command(&self) -> Result<Option<String>, String> {
         Ok(None)
     }
+    /// Durably admits a pause, resume, or steer command for the named module while that module's
+    /// agent role is active. Other input remains pending for ordinary supersession handling.
+    ///
+    /// # Errors
+    /// Returns an error when active module input cannot be inspected or advanced.
+    fn take_active_module_command(&self, _module_id: &str) -> Result<Option<String>, String> {
+        Ok(None)
+    }
     /// Publishes a local command result through the same human conversation activity stream.
+    ///
+    /// # Errors
+    /// Returns an error when the host cannot persist or publish the reply.
     fn present_host_reply(&self, _text: &str) -> Result<(), String> {
         Ok(())
     }
@@ -229,10 +254,14 @@ pub struct ProductRunInput {
     pub workspace_id: WorkspaceId,
     /// Canonical managed-worktree root.
     pub workspace_root: PathBuf,
+    /// Canonical user-selected source root, separate from a managed editing worktree.
+    pub source_root: PathBuf,
     /// Durable D0 trace path owned by the daemon.
     pub trace_path: PathBuf,
     /// Run-owned command router backed by the daemon's durable process registry.
     pub command_runtime: crate::CommandRuntime,
+    /// Explicit native isolation configuration for host-owned module jobs.
+    pub module_jobs: Option<NativeModuleJobConfiguration>,
     /// Durable D2 finding ledger restored by the daemon.
     pub finding_state: String,
     /// Natural-language coding task.

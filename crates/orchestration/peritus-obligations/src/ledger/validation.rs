@@ -66,13 +66,9 @@ pub(super) fn validate_drafts(
     let mut index = 0;
     while index < drafts.len() {
         if index > 0 {
-            if let Err(error) = validate_pair(source, drafts, index, limits) {
-                return Err(error);
-            }
+            validate_pair(source, drafts, index, limits)?;
         }
-        if let Err(error) = validate_draft(source, drafts, index, limits) {
-            return Err(error);
-        }
+        validate_draft(source, drafts, index, limits)?;
         index += 1;
     }
     validate_alternatives(drafts)?;
@@ -96,7 +92,7 @@ fn validate_alternatives(drafts: &[RequirementDraft]) -> Result<(), ObligationEr
                 }
                 other += 1;
             }
-            if found {}
+
             if !found {
                 return Err(ObligationError::plain(ObligationErrorKind::InvalidAlternative));
             }

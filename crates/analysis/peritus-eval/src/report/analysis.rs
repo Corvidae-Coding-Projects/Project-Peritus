@@ -28,7 +28,10 @@ impl EvaluationAnalysis {
     ///
     /// # Errors
     /// Rejects canonical encoding beyond production bounds.
-    pub fn canonical_bytes(&self, profile: crate::ProfileDigest) -> Result<Vec<u8>, EvaluationError> {
+    pub fn canonical_bytes(
+        &self,
+        profile: crate::ProfileDigest,
+    ) -> Result<Vec<u8>, EvaluationError> {
         super::canonical::analysis_bytes(profile, self)
     }
     /// Baseline correctness evidence.

@@ -4,6 +4,7 @@ use super::super::{
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
     DeveloperRetryRecord, DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent,
     DeveloperUsage,
+    context_port::DeveloperContextPreparation,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
 };
@@ -66,13 +67,15 @@ impl RetryContext<'_, '_> {
         messages[0] = policy.combined()?;
         let count = if self.context.is_local() {
             u16::from(self.context.prepare(
-                provider,
                 &mut messages,
-                &request.tools,
-                profile,
-                &policy.system,
-                Some(&policy.state),
-                self.governing_input,
+                &DeveloperContextPreparation {
+                    provider,
+                    tools: &request.tools,
+                    profile,
+                    invocation_policy: &policy.system,
+                    invocation_state: Some(&policy.state),
+                    governing_input: self.governing_input,
+                },
             )?)
         } else {
             let records = prepare_messages(

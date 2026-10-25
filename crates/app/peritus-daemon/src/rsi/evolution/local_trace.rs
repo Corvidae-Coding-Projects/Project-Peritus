@@ -189,16 +189,17 @@ fn stage(
     let status = if record.outcome().passed() { StatusCode::Success } else { StatusCode::Failure };
     let mut observation_ids = Vec::new();
     let mut positions = Vec::new();
-    for sequence in 1..=3_u64 {
+    for sequence_index in 0..3_usize {
+        let sequence = u64::try_from(sequence_index + 1).map_err(owner_error)?;
         let mut event_key = key.clone();
         event_key.extend_from_slice(&sequence.to_be_bytes());
         let event = EventId::new(identity(&event_key)).map_err(owner_error)?;
         observation_ids.push(*event.as_bytes());
-        if (sequence as usize) <= previous {
+        if sequence_index < previous {
             let row = &existing
                 .trace()
                 .ok_or_else(|| incomplete("native imported trace vanished"))?
-                .observations()[sequence as usize - 1];
+                .observations()[sequence_index];
             if row.observation().event_id() != event || row.observation().binding() != binding {
                 return Err(incomplete(
                     "native imported trace differs from its exact source owner",
@@ -280,10 +281,10 @@ fn stage(
             }
         }
         attrs.sort_unstable_by_key(|attribute| attribute.key());
-        let causal = if sequence == 1 {
+        let causal = if sequence_index == 0 {
             vec![]
         } else {
-            vec![EventId::new(observation_ids[(sequence - 2) as usize]).map_err(owner_error)?]
+            vec![EventId::new(observation_ids[sequence_index - 1]).map_err(owner_error)?]
         };
         let observation = Observation::new(
             event,
@@ -308,7 +309,7 @@ fn stage(
     Ok((
         trace_id,
         actual.environment_id(),
-        serde_json::json!({"trace_id":trace_id.as_bytes(),"environment_id":actual.environment_id().as_bytes(),"session_id":actual.session_id().as_bytes(),"child_receipt":child,"child_receipt_sha256":peritus_codec::sha256(&bytes).as_bytes(),"observations":observation_ids,"positions":positions,"terminal":{"process_id":terminal.process_id().as_bytes(),"plan_digest":terminal.plan_digest().as_bytes(),"disposition":format!("{:?}",terminal.disposition()),"started_tick_millis":terminal.started_at().map(|tick|tick.millis()),"ended_tick_millis":terminal.ended_at().millis(),"os_exit":format!("{:?}",terminal.os_exit()),"output_complete":terminal.output().is_complete(),"publication_complete":terminal.artifact_publication_complete(),"tree_cleanup_complete":terminal.tree_cleanup_complete(),"support_tasks_joined":terminal.support_tasks_joined(),"outputs":outputs}}),
+        serde_json::json!({"trace_id":trace_id.as_bytes(),"environment_id":actual.environment_id().as_bytes(),"session_id":actual.session_id().as_bytes(),"child_receipt":child,"child_receipt_sha256":peritus_codec::sha256(&bytes).as_bytes(),"observations":observation_ids,"positions":positions,"terminal":{"process_id":terminal.process_id().as_bytes(),"plan_digest":terminal.plan_digest().as_bytes(),"disposition":format!("{:?}",terminal.disposition()),"started_tick_millis":terminal.started_at().map(peritus_process::ProcessInstant::millis),"ended_tick_millis":terminal.ended_at().millis(),"os_exit":format!("{:?}",terminal.os_exit()),"output_complete":terminal.output().is_complete(),"publication_complete":terminal.artifact_publication_complete(),"tree_cleanup_complete":terminal.tree_cleanup_complete(),"support_tasks_joined":terminal.support_tasks_joined(),"outputs":outputs}}),
     ))
 }
 

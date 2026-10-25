@@ -32,7 +32,8 @@ pub fn evaluate_release(
     diagnostics::emission::push_qualifications(&qualifications, &mut diagnostics);
     diagnostics::emission::push_reviews(reviews, &mut diagnostics);
     diagnostics::emission::push_findings(findings, &mut diagnostics);
-    let decision = ReleaseDecision::from_evaluation(
+
+    ReleaseDecision::from_evaluation(
         candidate,
         evaluated_at,
         criteria,
@@ -41,8 +42,7 @@ pub fn evaluate_release(
         reviews,
         findings,
         diagnostics,
-    );
-    decision
+    )
 }
 const fn increment(value: &mut u16) {
     *value = (*value).saturating_add(1);

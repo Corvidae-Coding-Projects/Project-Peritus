@@ -84,32 +84,29 @@ pub(crate) const fn candidate_matches(
 ) -> bool {
     let left = observed.revision();
     let right = requested.revision();
-    let matches =
-        bytes_16_equal(
-            *left.acceptance_spec_id().as_bytes(),
-            *right.acceptance_spec_id().as_bytes(),
-        ) && bytes_16_equal(*left.harness_id().as_bytes(), *right.harness_id().as_bytes())
-            && bytes_16_equal(*left.workspace_id().as_bytes(), *right.workspace_id().as_bytes())
-            && left.workspace_generation().get() == right.workspace_generation().get()
-            && left.workspace_revision().get() == right.workspace_revision().get()
-            && bytes_16_equal(*left.policy_id().as_bytes(), *right.policy_id().as_bytes())
-            && bytes_16_equal(
-                *left.provider_profile_id().as_bytes(),
-                *right.provider_profile_id().as_bytes(),
-            )
-            && bytes_32_equal(
-                *observed.source_digest().as_bytes(),
-                *requested.source_digest().as_bytes(),
-            )
-            && bytes_32_equal(
-                *observed.release_manifest_digest().as_bytes(),
-                *requested.release_manifest_digest().as_bytes(),
-            )
-            && bytes_32_equal(
-                *observed.qualification_plan_digest().as_bytes(),
-                *requested.qualification_plan_digest().as_bytes(),
-            );
-    matches
+
+    bytes_16_equal(*left.acceptance_spec_id().as_bytes(), *right.acceptance_spec_id().as_bytes())
+        && bytes_16_equal(*left.harness_id().as_bytes(), *right.harness_id().as_bytes())
+        && bytes_16_equal(*left.workspace_id().as_bytes(), *right.workspace_id().as_bytes())
+        && left.workspace_generation().get() == right.workspace_generation().get()
+        && left.workspace_revision().get() == right.workspace_revision().get()
+        && bytes_16_equal(*left.policy_id().as_bytes(), *right.policy_id().as_bytes())
+        && bytes_16_equal(
+            *left.provider_profile_id().as_bytes(),
+            *right.provider_profile_id().as_bytes(),
+        )
+        && bytes_32_equal(
+            *observed.source_digest().as_bytes(),
+            *requested.source_digest().as_bytes(),
+        )
+        && bytes_32_equal(
+            *observed.release_manifest_digest().as_bytes(),
+            *requested.release_manifest_digest().as_bytes(),
+        )
+        && bytes_32_equal(
+            *observed.qualification_plan_digest().as_bytes(),
+            *requested.qualification_plan_digest().as_bytes(),
+        )
 }
 const fn digest_bytes_present_exec(bytes: [u8; 32], index: usize) -> bool {
     if index == 32 {

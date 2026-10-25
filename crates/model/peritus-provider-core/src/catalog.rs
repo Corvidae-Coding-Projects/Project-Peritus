@@ -74,9 +74,9 @@ pub fn profile_with_model_limits(
     requested_output: u64,
 ) -> Result<ProviderProfile, ProviderCoreError> {
     let fallback = profile.limits();
-    let output = model.output_tokens.unwrap_or(fallback.max_output_tokens());
+    let output = model.output_tokens.unwrap_or_else(|| fallback.max_output_tokens());
     let mut input =
-        model.input_tokens.or(model.context_tokens).unwrap_or(fallback.max_input_tokens());
+        model.input_tokens.or(model.context_tokens).unwrap_or_else(|| fallback.max_input_tokens());
     if let Some(context) = model.context_tokens {
         let available = context
             .checked_sub(if requested_output == u64::MAX {
@@ -124,7 +124,7 @@ pub fn output_tokens_for_input(
     requested: u64,
 ) -> Result<u64, ProviderCoreError> {
     let mut output =
-        requested.min(model.output_tokens.unwrap_or(profile.limits().max_output_tokens()));
+        requested.min(model.output_tokens.unwrap_or_else(|| profile.limits().max_output_tokens()));
     if let Some(context) = model.context_tokens {
         output = output.min(context.saturating_sub(input));
     }

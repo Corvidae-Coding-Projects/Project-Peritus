@@ -17,8 +17,7 @@ fn compare_from(left: &[u8], right: &[u8], index: usize) -> Ordering {
 }
 #[doc = " Compares complete identities without depending on unrefined derived ordering methods."]
 pub fn compare(left: &[u8], right: &[u8]) -> Ordering {
-    let result = compare_from(left, right, 0);
-    result
+    compare_from(left, right, 0)
 }
 #[doc = " Preserves the constructor\'s duplicate-before-descending error classification."]
 pub fn require_ascending(

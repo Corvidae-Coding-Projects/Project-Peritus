@@ -33,16 +33,16 @@ impl SemanticCompaction {
         limits: ProtocolLimits,
         protected_prefix: usize,
     ) -> Result<Option<Self>, DeveloperLoopError> {
-        let (_, trigger) = context_thresholds(profile, reserved_output_tokens)?;
+        let (_, trigger) = context_thresholds(profile, reserved_output_tokens);
         let estimated = estimated_request_tokens(messages, tools);
         if estimated <= trigger {
             return Ok(None);
         }
-        let candidate =
-            match compaction_candidate(messages, RETAIN_RECENT_MESSAGES, protected_prefix)? {
-                Some(candidate) => candidate,
-                None => return Ok(None),
-            };
+        let Some(candidate) =
+            compaction_candidate(messages, RETAIN_RECENT_MESSAGES, protected_prefix)?
+        else {
+            return Ok(None);
+        };
         let mut request_messages =
             messages.iter().take(protected_prefix).cloned().collect::<Vec<_>>();
         request_messages.extend_from_slice(candidate.source());

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "status": "PASS",
+  "platform": "x86_64-unknown-linux-gnu",
+  "project_base": "bfe3189e20ace3bdfa36b0922f999a6c75ba56ee",
+  "market_base": "dedb2155a0d937e559746591ae4bd66d55ca6e6f",
+  "clean_market_commit": "2d41e3013649e31842903d007721f2ced63777f4",
+  "source_digest": "cdc8da373ebd443b68c6758eeaa7c04cf9de2fed0dba28475971e4b8f2cc0804",
+  "final_source_digest": "0096577874648126f287fb1f5ec4566aabac95f7cd81b61ccb194aef3e956adb",
+  "source_digest_delta": "Phase 6 implementation record only; module code, SDK, resources, lockfile, and package inputs unchanged",
+  "source_built_executable": "63b94b7874ba43910e1c02a886b270fa10fe5f9d2ae6efd48b22c22494eca966",
+  "source_built_package": "f95e1789c9072c45f0496bafc03aeeaced3de651722275041c6098e253b67d90",
+  "run_id": "0bd1b663311a319a48749b7c463975f1",
+  "job_receipts": 14,
+  "patch_replay_receipts": 8,
+  "validated_patches": [
+    "da40c56cedd2e7f36a90af29c0f9734012a396d286fbaea86186e25748ae691c",
+    "daa86d6f367fc45be04f1af56923f74d79b3745c021fc855a92b64975efb5ea4"
+  ],
+  "delivery": {
+    "markdown": "1257e0e60f14dd682089dc245c1417240d640383f27e0f4c5cd427e295ba0a6f",
+    "json": "146615933e5b79938a2d254efad9aa14fdbee6a7bc6186ca5b176bcdae0280ed",
+    "bundle": "e8bc62adf778066094dac13d82f9b3262e7f7f4eabcb7644820740a641190dfe"
+  },
+  "original_verification": {
+    "files": 12,
+    "unchanged": true,
+    "added": [],
+    "changed": [],
+    "removed": [],
+    "manifest_digest": "46c298d635a8e8687e29b65467d668422fbbf98771192846428b439c604dae72"
+  },
+  "scenarios": [
+    "real source scope and bounded inventory",
+    "six contained investigation probes",
+    "two confirmed disclosures retained",
+    "exact-preimage copy-only patch materialization",
+    "four replay categories for each patch",
+    "independent review for each exact diff",
+    "client detach and exact-run reattach during repair",
+    "pause with a host replay request pending",
+    "first resume clears durable pause and reissues pending work",
+    "fresh daemon and plugin process completes retained repair",
+    "final live byte and executable-mode comparison",
+    "Markdown, JSON, exact patch and bundle export",
+    "clean source-market build, enable, select and launch",
+    "real WebUI CRLF and no-final-newline patch replay with independent git apply"
+  ],
+  "raw_evidence_sha256": {
+    "completed_campaign": "43251d27d5d8268ca99a712100c214ac8e452d5a36c759fa760a55b58c9d6c10",
+    "rebuilt_module_resume": "8c292ec7d67856c0c20608dbded9585d749c212ea6ac537ffbebe34e5f80b015",
+    "source_market": "36a44829d14e963b5e316c7289ce0f26e0f153fa717c4d59a30a3d3f2d3ea660",
+    "source_built_status_screen": "13a13d0ee0a62d107a700751b030679ca7bca3eee037db7cfa59d1da7875d1d6",
+    "exact_patch_edge_replay": "4a4f01553afa5443360ca990218bcb4aa55834c2fce76d30f6f64a1beae308f6"
+  },
+  "limits": [
+    "bounded selected corpus and declared cases",
+    "Linux host adapter only",
+    "not a clean-codebase claim",
+    "no unit tests or formal verification"
+  ]
+}

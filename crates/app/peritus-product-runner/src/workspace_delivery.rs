@@ -75,7 +75,7 @@ impl ProductRunInput {
             .with_protected_paths(self.workspace_kind.protected_paths())
             .with_protection_view(std::sync::Arc::clone(&self.conversation))
             .with_in_place_scope(self.in_place_scope())
-            .with_observation_receipts(self.trace_path.clone(), self.run_id, self.workspace_id)
+            .with_observation_receipts(&self.trace_path, self.run_id, self.workspace_id)
     }
 
     /// Creates read-only workspace tools with this run's current authority and verified facts.

@@ -4,7 +4,7 @@ mod presentation;
 mod trace;
 
 /// Reads one run's durable private trace, or lists retained traces, without a daemon session.
-pub(crate) fn trace(
+pub fn trace(
     run_id: Option<RunId>,
     extensions_only: bool,
     output: &Output,

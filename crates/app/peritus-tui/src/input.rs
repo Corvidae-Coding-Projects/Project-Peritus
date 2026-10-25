@@ -69,7 +69,7 @@ pub fn edit_text(buffer: &mut String, cursor: &mut usize, key: KeyEvent) -> bool
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum TextMotion {
+pub enum TextMotion {
     Left,
     Right,
     WordLeft,
@@ -82,7 +82,7 @@ pub(super) enum TextMotion {
     Down,
 }
 
-pub(super) fn text_motion(key: KeyEvent) -> Option<TextMotion> {
+pub fn text_motion(key: KeyEvent) -> Option<TextMotion> {
     let word = key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
     let line = key.modifiers.contains(KeyModifiers::SUPER);
     let control = key.modifiers.contains(KeyModifiers::CONTROL) && !line;
@@ -116,7 +116,7 @@ pub(super) fn text_motion(key: KeyEvent) -> Option<TextMotion> {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum TextDeletion {
+pub enum TextDeletion {
     Backward,
     Forward,
     WordBackward,
@@ -125,7 +125,7 @@ pub(super) enum TextDeletion {
     LineEnd,
 }
 
-pub(super) fn text_deletion(key: KeyEvent) -> Option<TextDeletion> {
+pub const fn text_deletion(key: KeyEvent) -> Option<TextDeletion> {
     let control = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
     let super_key = key.modifiers.contains(KeyModifiers::SUPER);
@@ -146,7 +146,7 @@ pub(super) fn text_deletion(key: KeyEvent) -> Option<TextDeletion> {
     }
 }
 
-pub(crate) fn vertical_direction(key: KeyEvent) -> Option<bool> {
+pub fn vertical_direction(key: KeyEvent) -> Option<bool> {
     match text_motion(key) {
         Some(TextMotion::Up) => Some(false),
         Some(TextMotion::Down) => Some(true),

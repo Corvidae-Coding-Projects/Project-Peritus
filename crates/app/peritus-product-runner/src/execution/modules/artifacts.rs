@@ -1,6 +1,7 @@
 //! Generic versioned native-plugin artifact attachment, independent of feature semantics.
 use super::{ProductRunInput, ProductRunnerError, error};
 use peritus_plugin_sdk::ModuleAttachment;
+use serde::Serialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
@@ -9,11 +10,20 @@ use std::{
     path::{Component, Path},
 };
 
+/// Host-owned identity and stable local export for one user-requested module artifact.
+#[derive(Clone, Debug, Serialize)]
+pub(super) struct PublishedArtifact {
+    pub(super) name: String,
+    pub(super) sha256: String,
+    pub(super) bytes: usize,
+    pub(super) export_path: String,
+}
+
 pub(super) fn attach(
     input: &ProductRunInput,
     root: &Path,
     attachment: &ModuleAttachment,
-) -> Result<(), ProductRunnerError> {
+) -> Result<PublishedArtifact, ProductRunnerError> {
     if attachment.name.trim().is_empty()
         || attachment.name.chars().any(char::is_control)
         || attachment.path.is_empty()
@@ -38,24 +48,51 @@ pub(super) fn attach(
         ));
     }
     let text = fs::read_to_string(&path).map_err(error)?;
-    let digest =
-        Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let digest = crate::encode_hex(&Sha256::digest(text.as_bytes()));
     let directory = input.trace_path.with_extension("module-attachments");
     fs::create_dir_all(&directory).map_err(error)?;
     let mut temp = tempfile::NamedTempFile::new_in(&directory).map_err(error)?;
     temp.write_all(text.as_bytes()).map_err(error)?;
     temp.as_file().sync_all().map_err(error)?;
     temp.persist(directory.join(format!("{digest}.md"))).map_err(|e| error(e.error))?;
-    let value = json!({"schema":1,"name":attachment.name,"sha256":digest,"bytes":text.len()});
+    let extension = Path::new(&attachment.path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .filter(|value| matches!(*value, "json" | "md" | "patch" | "sarif" | "txt"))
+        .unwrap_or("txt");
+    let run = crate::encode_hex(input.run_id.as_bytes());
+    let export_directory = input
+        .trace_path
+        .parent()
+        .ok_or_else(|| error("run trace directory missing"))?
+        .join("module-exports")
+        .join(run);
+    fs::create_dir_all(&export_directory).map_err(error)?;
+    let export_path = export_directory.join(format!("{digest}.{extension}"));
+    let mut exported = tempfile::NamedTempFile::new_in(&export_directory).map_err(error)?;
+    exported.write_all(text.as_bytes()).map_err(error)?;
+    exported.as_file().sync_all().map_err(error)?;
+    exported.persist(&export_path).map_err(|e| error(e.error))?;
+    let export_path = export_path
+        .to_str()
+        .ok_or_else(|| error("module export path is not valid UTF-8"))?
+        .to_owned();
+    let published = PublishedArtifact {
+        name: attachment.name.clone(),
+        sha256: digest.clone(),
+        bytes: text.len(),
+        export_path,
+    };
+    let value = json!({"schema":1,"name":attachment.name,"sha256":digest,"bytes":text.len(),"export_path":published.export_path});
     let parent = input.trace_path.parent().ok_or_else(|| error("run trace directory missing"))?;
     let mut temp = tempfile::NamedTempFile::new_in(parent).map_err(error)?;
     temp.write_all(&serde_json::to_vec(&value).map_err(error)?).map_err(error)?;
     temp.as_file().sync_all().map_err(error)?;
     temp.persist(input.trace_path.with_extension("module-attachment.json"))
         .map_err(|e| error(e.error))?;
-    Ok(())
+    Ok(published)
 }
-pub(crate) fn page(
+pub fn page(
     input: &ProductRunInput,
     offset: u64,
     maximum: usize,
@@ -83,7 +120,7 @@ pub(crate) fn page(
     .map_err(error)?;
     let total = file.metadata().map_err(error)?.len();
     let mut hash = Sha256::new();
-    let mut buffer = [0; 32768];
+    let mut buffer = vec![0; 32_768];
     loop {
         let n = file.read(&mut buffer).map_err(error)?;
         if n == 0 {
@@ -91,7 +128,7 @@ pub(crate) fn page(
         }
         hash.update(&buffer[..n]);
     }
-    let actual = hash.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let actual = crate::encode_hex(&hash.finalize());
     if actual != digest || meta["bytes"].as_u64() != Some(total) {
         return Err(error("attached module artifact integrity mismatch"));
     }
@@ -99,7 +136,8 @@ pub(crate) fn page(
         return Err(error("module attachment offset exceeds retained text"));
     }
     file.seek(SeekFrom::Start(offset)).map_err(error)?;
-    let mut bytes = vec![0; maximum.clamp(4, 1024 * 1024).min((total - offset) as usize)];
+    let remaining = usize::try_from(total - offset).unwrap_or(usize::MAX);
+    let mut bytes = vec![0; maximum.clamp(4, 1024 * 1024).min(remaining)];
     file.read_exact(&mut bytes).map_err(error)?;
     let text = match std::str::from_utf8(&bytes) {
         Ok(s) => s,
@@ -115,7 +153,7 @@ pub(crate) fn page(
         json!({"available":true,"name":meta["name"],"sha256":digest,"offset":offset,"total_bytes":total,"text":text,"next_offset":(next<total).then_some(next)}),
     )
 }
-pub(crate) fn context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
+pub fn context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
     let value = page(input, 0, 16384)?;
     if value["available"] == false {
         return Ok(String::new());

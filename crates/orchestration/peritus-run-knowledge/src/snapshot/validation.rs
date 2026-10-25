@@ -15,9 +15,7 @@ pub(super) fn validate_sections(
     let mut index = 0;
     while index < sections.len() {
         let section = &sections[index];
-        if let Err(error) = validate_order(sections, index) {
-            return Err(error);
-        }
+        validate_order(sections, index)?;
         if !section.binding().candidate().same_lineage(candidate) {
             let error =
                 KnowledgeError::section(KnowledgeErrorKind::CandidateLineageMismatch, section.id());
@@ -31,9 +29,7 @@ pub(super) fn validate_sections(
             let error = KnowledgeError::section(KnowledgeErrorKind::FutureKnowledge, section.id());
             return Err(error);
         }
-        if let Err(error) = validate_dependencies(sections, index) {
-            return Err(error);
-        }
+        validate_dependencies(sections, index)?;
         index += 1;
     }
     Ok(())

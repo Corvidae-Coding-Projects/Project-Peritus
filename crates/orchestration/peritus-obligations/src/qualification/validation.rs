@@ -49,7 +49,9 @@ fn validate_evidence(
             evidence.len() as u64,
         ));
     }
-    if evidence.len() < 2 {}
+    if evidence.len() < 2 {
+        return validate_known_requirements(ledger, evidence);
+    }
     let mut index = 1;
     while index < evidence.len() {
         let order = crate::order::compare(
@@ -67,7 +69,14 @@ fn validate_evidence(
         }
         index += 1;
     }
-    index = 0;
+    validate_known_requirements(ledger, evidence)
+}
+
+fn validate_known_requirements(
+    ledger: &RequirementLedger,
+    evidence: &[RequirementEvidence],
+) -> Result<(), ObligationError> {
+    let mut index = 0;
     while index < evidence.len() {
         let id = evidence[index].requirement_id();
         match ledger.entry(id) {

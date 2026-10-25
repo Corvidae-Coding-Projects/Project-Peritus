@@ -84,21 +84,19 @@ impl AmendmentIdentity {
         let successor_policy_id = candidate.successor_policy_id();
         let tier = candidate.tier();
         let amendment_digest = candidate.amendment_digest();
-        let result = identifier_values_equal_from(
-            *self.base_policy_id.as_bytes(),
-            *base_policy_id.as_bytes(),
-            0,
-        ) && identifier_values_equal_from(
-            *self.successor_policy_id.as_bytes(),
-            *successor_policy_id.as_bytes(),
-            0,
-        ) && tier_rank(self.tier) == tier_rank(tier)
+
+        identifier_values_equal_from(*self.base_policy_id.as_bytes(), *base_policy_id.as_bytes(), 0)
+            && identifier_values_equal_from(
+                *self.successor_policy_id.as_bytes(),
+                *successor_policy_id.as_bytes(),
+                0,
+            )
+            && tier_rank(self.tier) == tier_rank(tier)
             && digest_values_equal_from(
                 *self.amendment_digest.as_bytes(),
                 *amendment_digest.as_bytes(),
                 0,
-            );
-        result
+            )
     }
 }
 #[doc = " Opaque logical authorization for one exact previewed successor."]

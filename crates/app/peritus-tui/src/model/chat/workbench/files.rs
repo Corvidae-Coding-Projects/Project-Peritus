@@ -22,7 +22,7 @@ pub struct FileUi {
     pub(crate) path: String,
     pub(crate) range: String,
     pub(crate) caption: String,
-    pub(crate) refresh: bool,
+    refresh: RefreshMode,
     pub(crate) preview: Option<WorkbenchFilePreview>,
     pub(crate) import_preview: Option<WorkbenchFileImportPreview>,
     pub(crate) page: Option<WorkbenchFilePage>,
@@ -36,7 +36,24 @@ pub struct FileUi {
     pending_preview: Option<(WorkbenchQuery, String, String, bool)>,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum RefreshMode {
+    #[default]
+    Cached,
+    Refresh,
+}
+
+impl RefreshMode {
+    const fn enabled(self) -> bool {
+        matches!(self, Self::Refresh)
+    }
+}
+
 impl FileUi {
+    pub(crate) const fn refresh_enabled(&self) -> bool {
+        self.refresh.enabled()
+    }
+
     pub(super) fn upload_binding(
         &self,
     ) -> Option<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)> {
@@ -174,7 +191,8 @@ impl AppModel {
         let Some(query) = self.chat.workbench.selected else { return Vec::new() };
         let file = &mut self.chat.workbench.files;
         file.discard_preview();
-        file.pending_preview = Some((query, file.path.clone(), file.range.clone(), file.refresh));
+        file.pending_preview =
+            Some((query, file.path.clone(), file.range.clone(), file.refresh.enabled()));
         self.refresh_selected_snapshot()
     }
 
@@ -186,7 +204,7 @@ impl AppModel {
             || self.chat.workbench.selected != Some(query)
             || file.path != path
             || file.range != range
-            || file.refresh != refresh
+            || file.refresh.enabled() != refresh
         {
             return Some(Vec::new());
         }
@@ -214,7 +232,7 @@ impl AppModel {
         if std::path::Path::new(&file.path).is_absolute() {
             return self.begin_file_import(range);
         }
-        let mode = if file.refresh {
+        let mode = if file.refresh.enabled() {
             WorkbenchFileMode::RefreshOnRequest
         } else {
             WorkbenchFileMode::Snapshot
@@ -251,7 +269,7 @@ impl AppModel {
             && self.chat.workbench.files.open
             && self.chat.workbench.files.path == request.path()
             && parse_range(&self.chat.workbench.files.range) == Some(request.range())
-            && self.chat.workbench.files.refresh
+            && self.chat.workbench.files.refresh.enabled()
                 == (request.mode() == WorkbenchFileMode::RefreshOnRequest)
             && self.chat.workbench.snapshot.as_ref().is_some_and(|snapshot| {
                 snapshot.query() == request.query() && snapshot.revision() == request.revision()

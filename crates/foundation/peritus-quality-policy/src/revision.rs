@@ -60,8 +60,7 @@ pub const fn reviewer_actor_matches(
     reason = "verified sibling evaluators require the executable identity refinement"
 )]
 pub(crate) const fn acceptance_id_matches(left: AcceptanceSpecId, right: AcceptanceSpecId) -> bool {
-    let matches = identifier_values_equal(*left.as_bytes(), *right.as_bytes());
-    matches
+    identifier_values_equal(*left.as_bytes(), *right.as_bytes())
 }
 #[allow(
     clippy::redundant_pub_crate,

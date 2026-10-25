@@ -30,7 +30,7 @@ impl AppModel {
     pub(super) fn begin_message_upload(&mut self, snapshot: &WorkbenchSnapshot) -> Vec<Effect> {
         let Some(submission) = self.chat.workbench.submission.as_ref() else { return Vec::new() };
         let Some(text) = submission.message.as_ref() else { return Vec::new() };
-        if !self.referenced_messages_available() || submission.stopped {
+        if !self.referenced_messages_available() || submission.progress.stopped {
             return Vec::new();
         }
         let setup = (|| {
@@ -102,7 +102,7 @@ impl AppModel {
         else {
             return Vec::new();
         };
-        if submission.stopped {
+        if submission.progress.stopped {
             self.chat.workbench.submission = None;
             self.notice(
                 NoticeLevel::Info,
@@ -172,7 +172,7 @@ impl AppModel {
         preview: WorkbenchFileImportPreview,
     ) -> Vec<Effect> {
         let Some(submission) = self.chat.workbench.submission.as_ref() else { return Vec::new() };
-        if submission.stopped
+        if submission.progress.stopped
             || preview.request() != request
             || submission.upload.as_ref().is_none_or(|upload| &upload.request != request)
             || self.chat.workbench.selected != Some(request.selection().query())
@@ -196,7 +196,7 @@ impl AppModel {
             .workbench
             .submission
             .as_ref()
-            .is_some_and(|submission| !submission.queued && submission.message.is_some())
+            .is_some_and(|submission| !submission.progress.queued && submission.message.is_some())
         {
             self.chat.workbench.submission = None;
             self.notice(

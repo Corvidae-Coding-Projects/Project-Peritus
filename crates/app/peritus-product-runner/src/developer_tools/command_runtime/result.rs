@@ -324,10 +324,11 @@ fn output_prefix(
         .map_or_else(Vec::new, |chunk| chunk.bytes().to_vec());
     let mut output = output_text(&bytes, incomplete);
     if size > bytes.len() as u64 {
-        output.push_str(&format!(
+        std::fmt::Write::write_fmt(&mut output, format_args!(
             "\n[Peritus retained {size} bytes; displayed the first {} bytes. Retrieve exact remaining bytes with command_output handle={handle} stream={stream} offset={}.]",
             bytes.len(), bytes.len()
-        ));
+        ))
+        .expect("writing to a String cannot fail");
     }
     Ok(output)
 }

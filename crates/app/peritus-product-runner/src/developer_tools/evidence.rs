@@ -17,6 +17,7 @@ pub struct ReviewerEvidenceSources {
 
 impl ReviewerEvidenceSources {
     /// Retains exact immutable sections for one developer or reviewer invocation.
+    #[must_use]
     pub const fn new(
         transcript: String,
         diff: String,

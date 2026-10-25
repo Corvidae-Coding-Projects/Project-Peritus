@@ -129,12 +129,11 @@ pub(super) fn store_resume(
     };
     let mut cache =
         record.continuation_cache.0.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
-    if let Some(saved) = &*cache {
-        if saved.source.upgrade().is_some_and(|source| std::sync::Arc::ptr_eq(&source, resume))
-            && stamp(&artifact_path(runs, &saved.artifact.digest)?) == Some(saved.stamp.clone())
-        {
-            return Ok(Some(saved.artifact.clone()));
-        }
+    if let Some(saved) = &*cache
+        && saved.source.upgrade().is_some_and(|source| std::sync::Arc::ptr_eq(&source, resume))
+        && stamp(&artifact_path(runs, &saved.artifact.digest)?) == Some(saved.stamp.clone())
+    {
+        return Ok(Some(saved.artifact.clone()));
     }
     let bytes = resume.encode_durable().map_err(|_| ProductRunServiceError::Unavailable)?;
     let artifact = store(runs, &bytes)?;

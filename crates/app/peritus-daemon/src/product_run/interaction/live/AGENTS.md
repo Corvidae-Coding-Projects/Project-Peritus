@@ -8,7 +8,7 @@ Implementation pieces for `live.rs`: Live D0 input, provider selection, admissio
 
 | File | Role |
 | --- | --- |
-| [modules.rs](modules.rs) | Durable local module-command admission without an inference send or usage charge. |
+| [modules.rs](modules.rs) | Durable local module-command admission without an inference send or usage charge, including narrowly parsed same-module pause/resume/steer controls during active roles. |
 | [request.rs](request.rs) | Durable provider request admission and workbench observation helpers. |
 | [review.rs](review.rs) | Read-only review-state access shared by both compilation configurations. |
 

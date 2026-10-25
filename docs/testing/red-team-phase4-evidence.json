@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "campaign": "red-team-phase4-real-2026-10-23",
+  "date": "2026-10-23",
+  "scope": "Phase 4 source discovery, local build, installation, compatibility, and recovery",
+  "source_revisions": {
+    "project_peritus_base": "8933e81370a86b02009471eb517c1bc30bdd815f",
+    "module_market_base": "6b2cca73161b3f0e4ab004f9a124e4e01e84ca89",
+    "clean_catalog_fixture": "14abf974c1427267b7d8cf7a622647398f2e5812"
+  },
+  "source_identity": {
+    "source_digest": "145350c7c6f3c54546c6925d9e415184ac6f63d161e1cdd8794c3890e14880db",
+    "lockfile_digest": "6ec951fa0a297c76e8bcd8d2aa1763668dc28e2582ff29cb7b99179455fe5faa",
+    "toolchain": "1.97.1-x86_64-unknown-linux-gnu",
+    "target": "x86_64-unknown-linux-gnu",
+    "recipe": "cargo-release-v1",
+    "recipe_digest": "4ed48693ff81dec1da0583e8aa8f36c73a810b723bb67d607483f2c073147e7b",
+    "executable_digest": "f7d8085a685ae2466bd419ac3efc455f72f14b02c3433db90cd6b01341d83219",
+    "package_digest": "fea1db7063faad66b1a8a0cab10df61ad17c2231f1c22f0dbefceeed46192c74"
+  },
+  "host_executables": {
+    "peritus": "a2cde3a63b737b56ec16c9236d2635e310b15a1f9ccce461ad2eef48b5f06364",
+    "peritus_tui": "6651b90072d6be3e521d29a5cab4880dd66632473b547dca9420e0b3c0fef63d",
+    "peritus_web": "5497b391d695015d0067937206146d51393211968b4838185499cd5bb60f4110",
+    "peritusd": "e9e00349f588f8f649845c5784b11914c3662914c909ac35bd1de50260cf183a"
+  },
+  "interfaces": {
+    "tui_evidence_sha256": "df9d01b117ebd559ca13adc7e6b6981d1ea90766e8ca6cdcb073fbc8e87bd717",
+    "tui_screen_sha256": "817e5541b53af09cd8976159afd29cf5174c9b7afe1476ce93146e8b78b558de",
+    "web_evidence_sha256": "0c353934716c97fa027e8f2667d1cce0ea36109b073b678e7bee24f7e714aea1",
+    "web_screenshot_sha256": "ea907db607f41ce8c60cd2431eae2fcdd60528de970a4351e430900ae3233b32"
+  },
+  "recovery_records": {
+    "cancelled_sha256": "149d7a691c47185002178625e36065b49c322542807644265da98a50b529f06b",
+    "interrupted_sha256": "18762f5db8a71a71d79eda480f86a59b1f456551734016dc5b3192859993bf87",
+    "installed_retry_sha256": "678c6056fdfadef249d8a8e0d9d9a6f75d0e32a078fa1cc332bf9e782cf11ca1"
+  },
+  "compatibility": {
+    "legacy_catalog_schema": 1,
+    "deep_research_digest": "bc47f1367b75158c1817b78d2aec7026da9a891e8673da82c5c0afb16092ed1a",
+    "old_client_version": "0.1.10",
+    "old_client_sha256": "e90120b2c451cf753b3b8b8c20dda0f6195c5b6fc144c373a082b49394dee309",
+    "old_client_ignored_source_catalog": true
+  },
+  "scenarios": [
+    {"id":"P4-01","outcome":"pass","observation":"A clean exact checkout exposed the additive source catalog without altering schema-one market.toml."},
+    {"id":"P4-02","outcome":"pass","observation":"Refresh cached metadata without starting Cargo, installing a package, or executing module code."},
+    {"id":"P4-03","outcome":"pass","observation":"The CLI built the pinned source with locked preparation and offline bounded compilation."},
+    {"id":"P4-04","outcome":"pass","observation":"Atomic publication installed the validated package outside Git and disabled."},
+    {"id":"P4-05","outcome":"pass","observation":"The TUI Build and install action observed completion for the exact final catalog identity."},
+    {"id":"P4-06","outcome":"pass","observation":"The TUI required explicit enablement and then prepared the selected module command."},
+    {"id":"P4-07","outcome":"pass","observation":"The TUI launched the built executable through the native module host and observed its status."},
+    {"id":"P4-08","outcome":"pass","observation":"Real Chromium observed source, preparation, compilation, packaging, and installed phases."},
+    {"id":"P4-09","outcome":"pass","observation":"The WebUI observed disabled installation, explicit enablement, and the module draft."},
+    {"id":"P4-10","outcome":"pass","observation":"A second process recognized the exact live PID and birth-token owner without false interruption."},
+    {"id":"P4-11","outcome":"pass","observation":"Cross-process cancellation stopped the exact compile scope and retained no install identity."},
+    {"id":"P4-12","outcome":"pass","observation":"Abrupt owner loss during dependency preparation reconciled to interrupted and stopped the orphan scope."},
+    {"id":"P4-13","outcome":"pass","observation":"A fresh explicit retry installed successfully after cancellation and owner loss."},
+    {"id":"P4-14","outcome":"pass","observation":"An unapproved lockfile dependency source failed before compilation while the prior package remained selected."},
+    {"id":"P4-15","outcome":"pass","observation":"A deliberate Rust compile error failed inside the offline scope while the prior package remained selected."},
+    {"id":"P4-16","outcome":"pass","observation":"The existing schema-one Deep Research package remained loadable at its original digest."},
+    {"id":"P4-17","outcome":"pass","observation":"The released old client read catalog.json and installed identities while ignoring source-only data."},
+    {"id":"P4-18","outcome":"pass","observation":"The clean market checkout retained no Red Team binary, package, cache, build, or campaign output."},
+    {"id":"P4-19","outcome":"pass","observation":"All named build scopes were absent after terminal and recovered attempts."}
+  ],
+  "not_run": [
+    "unit tests",
+    "formal verification",
+    "macOS source build",
+    "Windows source build",
+    "remote source archive build from an unpublished catalog commit"
+  ],
+  "known_external_blockers": [
+    "Strict workspace and host-package Clippy still encounter the pre-existing repository lint backlog outside the Phase 4 files."
+  ]
+}

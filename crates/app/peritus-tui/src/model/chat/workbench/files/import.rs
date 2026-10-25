@@ -45,8 +45,8 @@ impl AppModel {
             return Vec::new();
         };
         let file = &mut self.chat.workbench.files;
-        if file.refresh {
-            file.refresh = false;
+        if file.refresh.enabled() {
+            file.refresh = super::RefreshMode::Cached;
         }
         "Reading only the selected external file as an immutable snapshot. Nothing is sent to a provider."
             .clone_into(&mut self.chat.workbench.message);
@@ -236,7 +236,7 @@ impl AppModel {
                 .as_ref()
                 .is_none_or(|snapshot| snapshot.revision() != request.selection().revision())
             || super::parse_range(&file.range) != Some(request.selection().range())
-            || file.refresh
+            || file.refresh.enabled()
             || self.chat.workbench.selected != Some(request.selection().query())
             || active_provider != Some(request.selection().provider())
             || self.chat.models.writer() != request.selection().model()

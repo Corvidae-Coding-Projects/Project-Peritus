@@ -8,25 +8,25 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
-pub(super) struct RuntimeTurn {
+pub struct RuntimeTurn {
     pub content: String,
     pub tool_calls: Vec<RuntimeToolCall>,
     pub usage: UsageCounters,
     pub repairs: Vec<ModelEvent>,
 }
 
-pub(super) struct RuntimeToolCall {
+pub struct RuntimeToolCall {
     pub name: String,
     pub arguments: Map<String, Value>,
 }
 
-pub(super) struct NativeFailure {
+pub struct NativeFailure {
     pub category: FailureCategory,
     pub status: Option<u16>,
     pub code: &'static str,
 }
 
-pub(super) enum Decoded {
+pub enum Decoded {
     Turn(RuntimeTurn),
     Failure(NativeFailure),
     Rejected {
@@ -37,7 +37,7 @@ pub(super) enum Decoded {
     },
 }
 
-pub(super) fn decode(
+pub fn decode(
     bytes: &[u8],
     request: &ModelRequest,
     runtime: &super::request::RuntimeRequest,
@@ -360,7 +360,7 @@ fn classify(event: &Value) -> NativeFailure {
     NativeFailure { category, status, code }
 }
 
-pub(super) fn observe_stderr(bytes: &[u8]) -> Option<ProviderCoreError> {
+pub fn observe_stderr(bytes: &[u8]) -> Option<ProviderCoreError> {
     // v1.19.0 incorrectly retries a 403 when its body says server_error. Observe only
     // recognized SDK error diagnostics; model text on stdout never enters this decision.
     let text = String::from_utf8_lossy(bytes);
@@ -385,7 +385,7 @@ pub(super) fn observe_stderr(bytes: &[u8]) -> Option<ProviderCoreError> {
     ))
 }
 
-pub(super) fn observed_failure(error: &ProviderCoreError) -> Option<NativeFailure> {
+pub fn observed_failure(error: &ProviderCoreError) -> Option<NativeFailure> {
     let code = match error.operation() {
         "opencode.runtime.go_subscription_required" => "opencode.runtime.go_subscription_required",
         "opencode.runtime.model_access_disabled" => "opencode.runtime.model_access_disabled",

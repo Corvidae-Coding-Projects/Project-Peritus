@@ -169,7 +169,8 @@ fn restricted_policy(role: ActorRole) -> ContextPolicy {
         ],
         _ => vec![ContextClass::ImmutablePolicy, ContextClass::WorkspaceState],
     };
-    let policy = ContextPolicy {
+
+    ContextPolicy {
         required: ContextClassSet::from_canonical(required),
         visible: ContextClassSet::from_canonical(visible),
         contributable: ContextClassSet::from_canonical(vec![ContextClass::AgentProgress]),
@@ -178,8 +179,7 @@ fn restricted_policy(role: ActorRole) -> ContextPolicy {
         reasoning_visibility: ReasoningVisibility::Excluded,
         allow_producer_ancestry: false,
         presentation: PresentationProfile::new(PresentationStyle::Restricted),
-    };
-    policy
+    }
 }
 fn base_required() -> ContextClassSet {
     ContextClassSet::from_canonical(vec![

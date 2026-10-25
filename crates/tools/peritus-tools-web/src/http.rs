@@ -1,13 +1,13 @@
-//! Bounded GET requests and keyless SearXNG JSON transport.
+//! Bounded GET requests and keyless `SearXNG` JSON transport.
 
 use crate::{Error, checked_url, invalid};
 use reqwest::{blocking::Client, redirect::Policy};
 use serde_json::{Value, json};
 use std::{io::Read, time::Duration};
 
-pub(crate) const MAX_BODY: usize = 64 * 1024 * 1024;
+pub const MAX_BODY: usize = 64 * 1024 * 1024;
 
-pub(crate) struct Download {
+pub struct Download {
     pub url: String,
     pub content_type: String,
     pub bytes: Vec<u8>,
@@ -15,7 +15,7 @@ pub(crate) struct Download {
     pub status: u16,
 }
 
-pub(crate) fn client() -> Result<Client, Error> {
+pub fn client() -> Result<Client, Error> {
     Ok(Client::builder()
         .user_agent(concat!("Peritus/", env!("CARGO_PKG_VERSION"), " (web reader)"))
         .connect_timeout(Duration::from_secs(5))
@@ -32,7 +32,7 @@ pub(crate) fn client() -> Result<Client, Error> {
         .build()?)
 }
 
-pub(crate) fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, Error> {
+pub fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, Error> {
     if cancelled() {
         return Err(invalid("web request cancelled"));
     }
@@ -63,7 +63,7 @@ pub(crate) fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, E
     }
     let final_url = response.url().to_string();
     let mut bytes = Vec::new();
-    let mut chunk = [0_u8; 32 * 1024];
+    let mut chunk = vec![0_u8; 32 * 1024];
     loop {
         if cancelled() {
             return Err(invalid("web request cancelled"));
@@ -120,7 +120,7 @@ pub(crate) fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, E
     })
 }
 
-pub(crate) fn search(
+pub fn search(
     endpoint: &str,
     arguments: &Value,
     cancelled: &dyn Fn() -> bool,

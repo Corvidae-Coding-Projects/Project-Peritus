@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 0.1.11
+
+### Changed
+
+- Replace Red Team-specific host adapters with a generic source-built module interface. Peritus now supplies scoped source access, disposable application laboratories, opaque module workers, runtime features, resource enforcement, cancellation, and lifecycle handling; installed modules own their commands, schemas, security logic, evidence semantics, and reports.
+- Let source modules request bounded browser automation without embedding their campaign implementation in Peritus. Module workers receive explicit runtime features and resource ceilings through the shared SDK.
+- Improve long-running work through reusable context observations, retained task state, more compact tool evidence, provider recovery, and clearer terminal feedback for steering and active operations.
+- Keep module-market refresh, source build, installation, enablement, and removal on the generic module path so separately maintained Rust modules can evolve without product-specific host dispatch.
+
+### Fixed
+
+- Correct module-worker process and open-handle limit ordering, use cgroup memory enforcement without an incompatible virtual-address ceiling, and shorten private worker paths so browser subprocess sockets remain valid.
+- Preserve fresh sandbox `/proc` and `/dev` mounts while admitting the bounded Linux syscalls needed by real Chromium workers. Browser-enabled modules retain deny-by-default filesystem, network, process, and seccomp boundaries.
+- Remove the obsolete host-owned dependency-preparation and job implementation that duplicated module responsibilities.
+
+### Real testing
+
+- Built and installed the final Red Team module from the public Module Market source, then exercised it through the actual Peritus TUI and generic module worker against a disposable vulnerable application.
+- The final browser campaign completed 28 actions and observed 28 requests, retaining seven findings. Stop and teardown succeeded, and an independent digest comparison confirmed the original application files were byte-for-byte unchanged.
+- Replayed the final package after moving all specialized adapters into the module. Formatting, strict Clippy, and native release builds passed for the Chrome-extension-free release candidate. No unit, mock, formal-verification, or repository qualification suites were run.
+
 ## 0.1.10
 
 ### Fixed

@@ -481,7 +481,9 @@ impl AppModel {
                     self.connection = ConnectionStatus::Connecting;
                     vec![Effect::Reconnect]
                 } else if self.tick_count.is_multiple_of(4) {
-                    self.poll_product_runs()
+                    let mut effects = self.poll_product_runs();
+                    effects.extend(self.module_menu_tick());
+                    effects
                 } else {
                     Vec::new()
                 }

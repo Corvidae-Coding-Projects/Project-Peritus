@@ -1,19 +1,19 @@
 //! Owned vendor inference and one bounded format correction, with no native agent authority.
 
 use peritus_model_protocol::{
-    FailureCategory, ModelFailure, ModelName, ModelRequest, OutcomeCertainty,
+    FailureCategory, ModelEvent, ModelFailure, ModelName, ModelRequest, OutcomeCertainty,
     OutputLimitEnforcement, ProviderProfile, RedactedDiagnostic, ResumeKind, Retryability,
-    StateMode, TransportPhase, WireDialect,
+    StateMode, TransportPhase, UsageCounters, WireDialect,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, CredentialReference, CredentialSource, ModelProvider,
-    OwnedModelStream, ProcessLimits, ProcessTransport, ProviderAvailability, ProviderCoreError,
-    ProviderCoreErrorKind, TokioProcessTransport, catalog::DiscoveredModel, hosted::HostedService,
-    validate_request_profile,
+    OwnedModelStream, ProcessLimits, ProcessOutput, ProcessTransport, ProviderAvailability,
+    ProviderCoreError, ProviderCoreErrorKind, TokioProcessTransport, catalog::DiscoveredModel,
+    hosted::HostedService, validate_request_profile,
 };
 use std::sync::{Arc, Mutex};
 
-/// Official OpenCode as an inert Zen/Go router using the Peritus credential broker.
+/// Official `OpenCode` as an inert Zen/Go router using the Peritus credential broker.
 pub struct OpenCodeRuntimeProvider {
     executable_path: Option<std::path::PathBuf>,
     service: HostedService,
@@ -25,13 +25,24 @@ pub struct OpenCodeRuntimeProvider {
     catalog_loading: tokio::sync::Mutex<()>,
 }
 
+struct TurnState {
+    corrections: Vec<ModelEvent>,
+    rejected_usage: Option<UsageCounters>,
+    prompt: Vec<u8>,
+}
+
+enum OutputDisposition {
+    Retry,
+    Complete(OwnedModelStream),
+}
+
 impl OpenCodeRuntimeProvider {
     /// Constructs an explicitly selected, pinned executable route.
     ///
     /// # Errors
     /// Rejects non-OpenCode services and profiles claiming provider state or exact token control.
     pub fn new(
-        executable: super::OpenCodeExecutable,
+        executable: &super::OpenCodeExecutable,
         service: HostedService,
         credential: CredentialReference,
         credentials: Arc<dyn CredentialSource>,
@@ -177,12 +188,19 @@ impl OpenCodeRuntimeProvider {
             "--model".into(),
             format!("{service}/{model}"),
         ];
-        let mut corrections = Vec::new();
-        let mut rejected_usage = None;
-        let mut prompt = runtime.prompt.clone();
+        let mut state = TurnState {
+            corrections: Vec::new(),
+            rejected_usage: None,
+            prompt: runtime.prompt.clone(),
+        };
         loop {
             let process = private
-                .process(&executable, args.clone(), prompt, ProcessLimits::PRODUCTION)?
+                .process(
+                    &executable,
+                    args.clone(),
+                    state.prompt.clone(),
+                    ProcessLimits::PRODUCTION,
+                )?
                 .with_stderr_observer(super::output::observe_stderr);
             let output = match TokioProcessTransport.run(process, &cancellation).await {
                 Ok(output) => output,
@@ -199,9 +217,9 @@ impl OpenCodeRuntimeProvider {
                     return self.failed(
                         &request,
                         cancellation,
-                        failure,
+                        &failure,
                         OutcomeCertainty::Terminal,
-                        corrections,
+                        state.corrections,
                     );
                 }
                 Err(error) => {
@@ -213,87 +231,102 @@ impl OpenCodeRuntimeProvider {
                     return self.failed(
                         &request,
                         cancellation,
-                        super::output::NativeFailure { category, status: None, code },
+                        &super::output::NativeFailure { category, status: None, code },
                         OutcomeCertainty::MaybeAccepted,
-                        corrections,
+                        state.corrections,
                     );
                 }
             };
-            // Native framing and failures stay authoritative. Only a completed, successful,
-            // tool-disabled inference with a rejected model envelope can be regenerated.
-            match super::output::decode(output.stdout(), &request, &runtime) {
-                Ok(super::output::Decoded::Rejected { reason, usage, rejected })
-                    if output.exit().success() =>
-                {
-                    corrections.push(
-                        reason.audit(if rejected_usage.is_some() { 2 } else { 1 }, &rejected)?,
-                    );
-                    if rejected_usage.is_none() {
-                        rejected_usage = Some(usage);
-                        prompt = reason.correction(&runtime.prompt);
-                        continue;
-                    }
-                    return self.failed(
-                        &request,
-                        cancellation,
-                        super::output::NativeFailure {
-                            category: FailureCategory::MalformedPayload,
-                            status: None,
-                            code: reason.code(),
-                        },
-                        OutcomeCertainty::Terminal,
-                        corrections,
-                    );
-                }
-                Ok(super::output::Decoded::Failure(error)) => {
-                    return self.failed(
-                        &request,
-                        cancellation,
-                        error,
-                        OutcomeCertainty::Terminal,
-                        corrections,
-                    );
-                }
-                Ok(super::output::Decoded::Turn(mut turn)) if output.exit().success() => {
-                    if let Some(previous) = rejected_usage {
-                        turn.usage = super::recovery::combined_usage(previous, turn.usage)?;
-                    }
-                    corrections.append(&mut turn.repairs);
-                    turn.repairs = corrections;
-                    let stream = super::stream::OpenCodeRuntimeStream::completed(
-                        &request,
-                        turn,
-                        output.stdout(),
-                    )?;
-                    return Ok(OwnedModelStream::new(stream, cancellation));
-                }
-                Ok(super::output::Decoded::Turn(_)) => {
-                    return self.failed(
-                        &request,
-                        cancellation,
-                        super::output::NativeFailure {
-                            category: FailureCategory::IncompleteStream,
-                            status: None,
-                            code: "opencode.runtime.incomplete_exit",
-                        },
-                        OutcomeCertainty::MaybeAccepted,
-                        corrections,
-                    );
-                }
-                Ok(super::output::Decoded::Rejected { .. }) | Err(_) => {
-                    return self.failed(
-                        &request,
-                        cancellation,
-                        super::output::NativeFailure {
-                            category: FailureCategory::MalformedPayload,
-                            status: None,
-                            code: "opencode.runtime.malformed_output",
-                        },
-                        OutcomeCertainty::MaybeAccepted,
-                        corrections,
-                    );
-                }
+            match self.accept_output(&request, &runtime, &output, &cancellation, &mut state)? {
+                OutputDisposition::Retry => {}
+                OutputDisposition::Complete(stream) => return Ok(stream),
             }
+        }
+    }
+
+    fn accept_output(
+        &self,
+        request: &ModelRequest,
+        runtime: &super::request::RuntimeRequest,
+        output: &ProcessOutput,
+        cancellation: &CancellationToken,
+        state: &mut TurnState,
+    ) -> Result<OutputDisposition, ProviderCoreError> {
+        // Native framing and failures stay authoritative. Only a completed, successful,
+        // tool-disabled inference with a rejected model envelope can be regenerated.
+        match super::output::decode(output.stdout(), request, runtime) {
+            Ok(super::output::Decoded::Rejected { reason, usage, rejected })
+                if output.exit().success() =>
+            {
+                state.corrections.push(
+                    reason.audit(if state.rejected_usage.is_some() { 2 } else { 1 }, &rejected)?,
+                );
+                if state.rejected_usage.is_none() {
+                    state.rejected_usage = Some(usage);
+                    state.prompt = reason.correction(&runtime.prompt);
+                    return Ok(OutputDisposition::Retry);
+                }
+                self.failed(
+                    request,
+                    cancellation.clone(),
+                    &super::output::NativeFailure {
+                        category: FailureCategory::MalformedPayload,
+                        status: None,
+                        code: reason.code(),
+                    },
+                    OutcomeCertainty::Terminal,
+                    std::mem::take(&mut state.corrections),
+                )
+                .map(OutputDisposition::Complete)
+            }
+            Ok(super::output::Decoded::Failure(error)) => self
+                .failed(
+                    request,
+                    cancellation.clone(),
+                    &error,
+                    OutcomeCertainty::Terminal,
+                    std::mem::take(&mut state.corrections),
+                )
+                .map(OutputDisposition::Complete),
+            Ok(super::output::Decoded::Turn(mut turn)) if output.exit().success() => {
+                if let Some(previous) = state.rejected_usage {
+                    turn.usage = super::recovery::combined_usage(previous, turn.usage)?;
+                }
+                state.corrections.append(&mut turn.repairs);
+                turn.repairs = std::mem::take(&mut state.corrections);
+                let stream = super::stream::OpenCodeRuntimeStream::completed(
+                    request,
+                    turn,
+                    output.stdout(),
+                )?;
+                Ok(OutputDisposition::Complete(OwnedModelStream::new(stream, cancellation.clone())))
+            }
+            Ok(super::output::Decoded::Turn(_)) => self
+                .failed(
+                    request,
+                    cancellation.clone(),
+                    &super::output::NativeFailure {
+                        category: FailureCategory::IncompleteStream,
+                        status: None,
+                        code: "opencode.runtime.incomplete_exit",
+                    },
+                    OutcomeCertainty::MaybeAccepted,
+                    std::mem::take(&mut state.corrections),
+                )
+                .map(OutputDisposition::Complete),
+            Ok(super::output::Decoded::Rejected { .. }) | Err(_) => self
+                .failed(
+                    request,
+                    cancellation.clone(),
+                    &super::output::NativeFailure {
+                        category: FailureCategory::MalformedPayload,
+                        status: None,
+                        code: "opencode.runtime.malformed_output",
+                    },
+                    OutcomeCertainty::MaybeAccepted,
+                    std::mem::take(&mut state.corrections),
+                )
+                .map(OutputDisposition::Complete),
         }
     }
 
@@ -301,11 +334,11 @@ impl OpenCodeRuntimeProvider {
         &self,
         request: &ModelRequest,
         cancellation: CancellationToken,
-        native: super::output::NativeFailure,
+        native: &super::output::NativeFailure,
         certainty: OutcomeCertainty,
-        corrections: Vec<peritus_model_protocol::ModelEvent>,
+        corrections: Vec<ModelEvent>,
     ) -> Result<OwnedModelStream, ProviderCoreError> {
-        let super::output::NativeFailure { category, status, code } = native;
+        let &super::output::NativeFailure { category, status, code } = native;
         let retryability = if certainty == OutcomeCertainty::MaybeAccepted {
             Retryability::CallerDecision
         } else if matches!(
@@ -412,7 +445,8 @@ impl ModelProvider for OpenCodeRuntimeProvider {
             let models =
                 super::discover_models(&executable, self.service, &credential, cancellation)
                     .await?;
-            *self.catalog.lock().map_err(|_| catalog_error())? = models.clone();
+            let mut catalog = self.catalog.lock().map_err(|_| catalog_error())?;
+            models.clone_into(&mut catalog);
             Ok(models)
         })
     }
@@ -441,8 +475,11 @@ impl ModelProvider for OpenCodeRuntimeProvider {
             profile,
         )?
         .with_discovered_limits(self.discover_limits);
-        *selected.catalog.lock().map_err(|_| catalog_error())? =
-            self.catalog.lock().map_err(|_| catalog_error())?.clone();
+        let models = self.catalog.lock().map_err(|_| catalog_error())?;
+        let mut catalog = selected.catalog.lock().map_err(|_| catalog_error())?;
+        catalog.extend(models.iter().cloned());
+        drop(catalog);
+        drop(models);
         Ok(Arc::new(selected))
     }
 
@@ -470,6 +507,6 @@ fn model_id<'a>(model: &'a ModelName, service: &str) -> Result<&'a str, Provider
     }
 }
 
-fn catalog_error() -> ProviderCoreError {
+const fn catalog_error() -> ProviderCoreError {
     peritus_provider_core::catalog::unavailable("OpenCode catalog state is unavailable")
 }

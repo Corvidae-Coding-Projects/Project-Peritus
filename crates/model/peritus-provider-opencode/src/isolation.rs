@@ -7,9 +7,16 @@ use serde_json::json;
 use std::{ffi::OsString, fs::OpenOptions, io::Write as _, path::Path};
 use zeroize::Zeroizing;
 
-pub(super) struct Isolation {
-    directory: tempfile::TempDir,
+pub struct Isolation {
+    _directory: tempfile::TempDir,
     root: std::path::PathBuf,
+}
+
+#[derive(serde::Serialize)]
+struct ApiKey<'a> {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    key: &'a str,
 }
 
 impl Isolation {
@@ -45,12 +52,6 @@ impl Isolation {
                 let key = std::str::from_utf8(bytes).map_err(|_| {
                     ProviderCoreError::credential("OpenCode requires a UTF-8 API key")
                 })?;
-                #[derive(serde::Serialize)]
-                struct ApiKey<'a> {
-                    #[serde(rename = "type")]
-                    kind: &'static str,
-                    key: &'a str,
-                }
                 let auth =
                     std::collections::BTreeMap::from([(service, ApiKey { kind: "api", key })]);
                 let auth = Zeroizing::new(serde_json::to_vec(&auth).map_err(|_| private_error())?);
@@ -71,7 +72,7 @@ impl Isolation {
             &root.join("config/opencode/opencode.json"),
             &serde_json::to_vec(&config).map_err(|_| private_error())?,
         )?;
-        Ok(Self { directory, root })
+        Ok(Self { _directory: directory, root })
     }
 
     pub(super) fn process(
@@ -81,8 +82,6 @@ impl Isolation {
         input: Vec<u8>,
         limits: ProcessLimits,
     ) -> Result<ProcessRequest, ProviderCoreError> {
-        // Keep the TempDir owner alive until the entire owned process invocation ends.
-        let _owner = &self.directory;
         let root = &self.root;
         let mut removals = Vec::new();
         for (name, _) in std::env::vars_os() {
@@ -179,7 +178,7 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), ProviderCoreError> {
     file.flush().map_err(|_| private_error())
 }
 
-fn private_error() -> ProviderCoreError {
+const fn private_error() -> ProviderCoreError {
     ProviderCoreError::configuration(
         "opencode_runtime_storage",
         "private disposable OpenCode state could not be created",

@@ -15,7 +15,7 @@ struct Page {
     bytes: String,
 }
 
-pub(super) fn coverage(memory: &LocalMemory) -> Result<String, DeveloperLoopError> {
+pub(super) fn coverage(memory: &LocalMemory) -> String {
     let mut sections = BTreeMap::<(String, String, u64), Vec<(u64, u64)>>::new();
     for page in &memory.transcript.delivered_evidence {
         sections
@@ -24,7 +24,7 @@ pub(super) fn coverage(memory: &LocalMemory) -> Result<String, DeveloperLoopErro
             .push((page.start, page.end));
     }
     if sections.is_empty() {
-        return Ok(String::new());
+        return String::new();
     }
     let mut output = String::from(
         "\nHistorical review evidence already delivered in this logical role task (host receipt ranges only, not correctness or acceptance):\n",
@@ -48,7 +48,7 @@ pub(super) fn coverage(memory: &LocalMemory) -> Result<String, DeveloperLoopErro
         );
     }
     output.push_str("These facts record delivery of the immutable source bytes, not a review verdict. Matching initial source markers remain in the pinned prompt after retrieval; do not reread delivered ranges solely because those markers remain or their receipt exchanges were omitted. Retrieve a relevant range again when you need its content, and independently inspect current workspace state.\n");
-    Ok(output)
+    output
 }
 
 /// Record actual submitted pages, not oversized raw results or undelivered archive entries.

@@ -76,13 +76,12 @@ impl ScopeSelector {
         self.permissions.contains(permission)
     }
     pub(crate) fn rebind_revision(&self, revision: RevisionTuple) -> Self {
-        let rebound = Self {
+        Self {
             actors: self.actors.duplicate(),
             roles: self.roles.duplicate(),
             environments: self.environments.duplicate(),
             permissions: self.permissions.duplicate(),
             revision,
-        };
-        rebound
+        }
     }
 }

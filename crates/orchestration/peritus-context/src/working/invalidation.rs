@@ -42,7 +42,6 @@ pub(super) fn invalidate_entries(
                     result[index].clone().with_host_status(WorkingEntryStatus::Stale, through);
                 result[index] = replacement;
                 newly_stale = true;
-            } else {
             }
             if newly_stale {
                 changed = true;

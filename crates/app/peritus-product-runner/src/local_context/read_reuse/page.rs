@@ -3,6 +3,15 @@
 use super::{LocalMemory, Page, Position, Span};
 use peritus_agent::DeveloperLoopError;
 use serde_json::{Value, json};
+use std::fmt::Write as _;
+
+struct Segment {
+    line: u64,
+    offset: u64,
+    begin: usize,
+    end: usize,
+    complete: bool,
+}
 
 pub(super) fn valid_offset(
     memory: &LocalMemory,
@@ -13,10 +22,11 @@ pub(super) fn valid_offset(
         .map_err(|_| super::super::error("invalid archived read"))?;
     Ok(parts(&value, page).is_some_and(|parts| {
         parts.iter().any(|part| {
+            let Some(relative) = at.byte.checked_sub(part.offset) else { return false };
+            let Ok(relative) = usize::try_from(relative) else { return false };
             part.line == at.line
-                && at.byte >= part.offset
-                && at.byte <= part.offset.saturating_add(part.text.len() as u64)
-                && part.text.is_char_boundary((at.byte - part.offset) as usize)
+                && relative <= part.text.len()
+                && part.text.is_char_boundary(relative)
         })
     }))
 }
@@ -53,7 +63,7 @@ pub(super) fn slice(
 ) -> Result<Option<Value>, DeveloperLoopError> {
     let value: Value = serde_json::from_slice(&memory.artifact(page.id)?)
         .map_err(|_| super::super::error("invalid archived read"))?;
-    slice_value(&value, page, requested, maximum)
+    Ok(slice_value(&value, page, requested, maximum))
 }
 
 pub(super) fn slice_value(
@@ -61,9 +71,9 @@ pub(super) fn slice_value(
     page: &Page,
     requested: Span,
     maximum: usize,
-) -> Result<Option<Value>, DeveloperLoopError> {
-    let Some(span) = page.span.intersect(requested) else { return Ok(None) };
-    let Some(parts) = parts(value, page) else { return Ok(None) };
+) -> Option<Value> {
+    let span = page.span.intersect(requested)?;
+    let parts = parts(value, page)?;
     let mut output = value.clone();
     if let Some(object) = output.as_object_mut() {
         object.remove("local_context");
@@ -71,13 +81,6 @@ pub(super) fn slice_value(
     }
     output["start_line"] = json!(span.start.line);
     output["start_line_byte_offset"] = json!(span.start.byte);
-    struct Segment {
-        line: u64,
-        offset: u64,
-        begin: usize,
-        end: usize,
-        complete: bool,
-    }
     let mut content = String::new();
     let mut segments = Vec::new();
     for part in parts {
@@ -98,13 +101,12 @@ pub(super) fn slice_value(
             part.text.len() as u64
         };
         let (Ok(begin), Ok(end)) = (usize::try_from(begin), usize::try_from(end)) else {
-            return Ok(None);
+            return None;
         };
-        let Some(text) = part.text.get(begin..end) else { return Ok(None) };
+        let text = part.text.get(begin..end)?;
         if !content.is_empty() {
             content.push('\n');
         }
-        use std::fmt::Write as _;
         let _ = write!(content, "{}: ", part.line);
         let text_begin = content.len();
         content.push_str(text);
@@ -117,7 +119,7 @@ pub(super) fn slice_value(
         });
     }
     if segments.is_empty() {
-        return Ok(None);
+        return None;
     }
     // One source pass and logarithmic serialization fits avoid quadratic large-page work.
     let render = |output: &mut Value, limit: usize| -> bool {
@@ -144,7 +146,7 @@ pub(super) fn slice_value(
         end > span.start
     };
     if render(&mut output, content.len()) && output.to_string().len() <= maximum {
-        return Ok(Some(output));
+        return Some(output);
     }
     let mut lower = 0;
     let mut upper = content.len();
@@ -165,10 +167,8 @@ pub(super) fn slice_value(
             upper = middle - 1;
         }
     }
-    if let Some(best) = best {
+    best.map(|best| {
         render(&mut output, best);
-        Ok(Some(output))
-    } else {
-        Ok(None)
-    }
+        output
+    })
 }

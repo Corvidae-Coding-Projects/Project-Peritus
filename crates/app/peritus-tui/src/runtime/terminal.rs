@@ -31,11 +31,21 @@ const INPUT_POLL: Duration = Duration::from_millis(100);
 
 pub(super) struct TerminalOwner {
     terminal: Terminal<CrosstermBackend<Stdout>>,
+    screen: ScreenState,
+    keyboard: KeyboardState,
+    title: TerminalTitle,
+}
+
+#[derive(Default)]
+struct ScreenState {
     active: bool,
     selecting_output: bool,
-    keyboard_supported: bool,
-    keyboard_active: bool,
-    title: TerminalTitle,
+}
+
+#[derive(Default)]
+struct KeyboardState {
+    supported: bool,
+    active: bool,
 }
 
 impl TerminalOwner {
@@ -44,17 +54,15 @@ impl TerminalOwner {
         let terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
         let mut owner = Self {
             terminal,
-            active: false,
-            selecting_output: false,
-            keyboard_supported: false,
-            keyboard_active: false,
+            screen: ScreenState::default(),
+            keyboard: KeyboardState::default(),
             title,
         };
         enable_raw_mode()?;
-        owner.active = true;
+        owner.screen.active = true;
         // Negotiate before InputPump starts reading. A legacy terminal or a timed-out
         // capability query keeps legacy input; keyboard enhancements are optional.
-        owner.keyboard_supported = supports_keyboard_enhancement().unwrap_or(false);
+        owner.keyboard.supported = supports_keyboard_enhancement().unwrap_or(false);
         owner.enter_screen()?;
         Ok(owner)
     }
@@ -67,26 +75,26 @@ impl TerminalOwner {
             EnableMouseCapture,
             Hide
         )?;
-        if self.keyboard_supported {
+        if self.keyboard.supported {
             // Own the attempted push too, so a partial write is cleaned up on failure.
-            self.keyboard_active = true;
+            self.keyboard.active = true;
             execute!(
                 self.terminal.backend_mut(),
                 PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
             )?;
         }
-        self.selecting_output = false;
+        self.screen.selecting_output = false;
         self.terminal.clear()?;
         Ok(())
     }
 
     pub(super) fn draw(&mut self, model: &mut AppModel) -> Result<(), TuiError> {
-        if self.selecting_output && model.chat.selecting_output() {
+        if self.screen.selecting_output && model.chat.selecting_output() {
             return Ok(());
         }
-        if self.selecting_output {
+        if self.screen.selecting_output {
             execute!(self.terminal.backend_mut(), EnableMouseCapture)?;
-            self.selecting_output = false;
+            self.screen.selecting_output = false;
             self.terminal.clear()?;
         }
         self.terminal.draw(|frame| {
@@ -95,7 +103,7 @@ impl TerminalOwner {
         })?;
         if model.chat.selecting_output() {
             execute!(self.terminal.backend_mut(), DisableMouseCapture, Hide)?;
-            self.selecting_output = true;
+            self.screen.selecting_output = true;
         }
         Ok(())
     }
@@ -108,14 +116,14 @@ impl TerminalOwner {
     pub(super) fn resume(&mut self) -> Result<(), TuiError> {
         self.title.activate()?;
         enable_raw_mode()?;
-        self.active = true;
+        self.screen.active = true;
         self.enter_screen()
     }
 
     fn restore(&mut self) -> io::Result<()> {
         // Pop while still on the alternate screen: terminals keep separate keyboard
         // stacks for each screen. Also restore before handing a terminal to a child.
-        let keyboard = if std::mem::take(&mut self.keyboard_active) {
+        let keyboard = if std::mem::take(&mut self.keyboard.active) {
             execute!(self.terminal.backend_mut(), PopKeyboardEnhancementFlags)
         } else {
             Ok(())
@@ -132,14 +140,14 @@ impl TerminalOwner {
         // Preserve the owner's final best-effort cleanup attempt if suspension fails.
         // The keyboard pop was already attempted on the alternate screen, so Drop
         // must not pop again after a successful LeaveAlternateScreen.
-        self.active = restored.is_err();
+        self.screen.active = restored.is_err();
         restored
     }
 }
 
 impl Drop for TerminalOwner {
     fn drop(&mut self) {
-        if self.active {
+        if self.screen.active {
             let _ = self.restore();
         }
     }

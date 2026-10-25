@@ -59,7 +59,6 @@ pub(super) fn insert_canonical(values: &mut Vec<ContextNodeId>, value: ContextNo
     }
     if position == values.len() || !values[position].matches(&value) {
         values.insert(position, value);
-    } else {
     }
 }
 pub(super) fn contains(values: &[ContextNodeId], target: ContextNodeId) -> bool {

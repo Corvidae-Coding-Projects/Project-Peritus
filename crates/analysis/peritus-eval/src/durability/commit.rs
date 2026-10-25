@@ -113,28 +113,7 @@ fn commit(
     )? {
         return Ok(batch);
     }
-    if let CommitMode::Claimed(claim) = &mode {
-        let message = journal
-            .outbox_message(claim.id()?)
-            .map_err(journal_error)?
-            .ok_or_else(|| binding::binding("claimed evaluation row is absent"))?;
-        let current = match claim {
-            EvaluationDirectiveClaim::Schedule(value) => {
-                crate::ScheduleDirectiveClaim::from_message(&message)? == *value
-            }
-            EvaluationDirectiveClaim::Execution(value) => {
-                crate::ExecutionDirectiveClaim::from_message(&message)? == *value
-            }
-            EvaluationDirectiveClaim::Publication(value) => {
-                crate::PublicationDirectiveClaim::from_message(&message)? == *value
-            }
-        };
-        if !current {
-            return Err(binding::binding(
-                "evaluation claim is no longer the exact current native delivery",
-            ));
-        }
-    }
+    validate_claim_current(journal, &mode)?;
     let head = journal.head(aggregate).map_err(journal_error)?;
     let current =
         journal.state_record(EVALUATION_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
@@ -187,6 +166,36 @@ fn commit(
         request
     };
     journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+}
+
+fn validate_claim_current(
+    journal: &SqliteJournal,
+    mode: &CommitMode,
+) -> Result<(), EvaluationError> {
+    let CommitMode::Claimed(claim) = mode else {
+        return Ok(());
+    };
+    let message = journal
+        .outbox_message(claim.id()?)
+        .map_err(journal_error)?
+        .ok_or_else(|| binding::binding("claimed evaluation row is absent"))?;
+    let current = match claim {
+        EvaluationDirectiveClaim::Schedule(value) => {
+            crate::ScheduleDirectiveClaim::from_message(&message)? == *value
+        }
+        EvaluationDirectiveClaim::Execution(value) => {
+            crate::ExecutionDirectiveClaim::from_message(&message)? == *value
+        }
+        EvaluationDirectiveClaim::Publication(value) => {
+            crate::PublicationDirectiveClaim::from_message(&message)? == *value
+        }
+    };
+    if !current {
+        return Err(binding::binding(
+            "evaluation claim is no longer the exact current native delivery",
+        ));
+    }
+    Ok(())
 }
 
 fn transition_outbox(

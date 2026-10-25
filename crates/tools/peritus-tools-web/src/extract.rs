@@ -4,18 +4,18 @@ use html5ever::{parse_document, tendril::TendrilSink};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use serde_json::{Value, json};
 
-pub(crate) struct Extracted {
+pub struct Extracted {
     pub title: String,
     pub text: String,
     pub links: Vec<Value>,
     pub scripts: bool,
 }
 
-pub(crate) fn html(input: &str, final_url: &url::Url) -> Extracted {
+pub fn html(input: &str, final_url: &url::Url) -> Extracted {
     let dom = parse_document(RcDom::default(), html5ever::ParseOpts::default()).one(input);
     let mut result =
         Extracted { title: String::new(), text: String::new(), links: Vec::new(), scripts: false };
-    let mut stack: Vec<(Handle, bool, bool)> = vec![(dom.document.clone(), false, false)];
+    let mut stack: Vec<(Handle, bool, bool)> = vec![(dom.document, false, false)];
     let mut base = final_url.clone();
     while let Some((node, exiting, title)) = stack.pop() {
         match &node.data {
@@ -73,18 +73,18 @@ pub(crate) fn html(input: &str, final_url: &url::Url) -> Extracted {
                     continue;
                 }
                 for attr in attrs.borrow().iter() {
-                    if attr.name.local.as_ref() == "href" {
-                        if let Ok(target) = base.join(&attr.value) {
-                            if name == "base" && matches!(target.scheme(), "http" | "https") {
-                                base = target;
-                            } else if name == "a"
-                                && matches!(target.scheme(), "http" | "https")
-                                && result.links.len() < 500
-                            {
-                                result
-                                    .links
-                                    .push(json!({"url": target.as_str(), "text": label(&node)}));
-                            }
+                    if attr.name.local.as_ref() == "href"
+                        && let Ok(target) = base.join(&attr.value)
+                    {
+                        if name == "base" && matches!(target.scheme(), "http" | "https") {
+                            base = target;
+                        } else if name == "a"
+                            && matches!(target.scheme(), "http" | "https")
+                            && result.links.len() < 500
+                        {
+                            result
+                                .links
+                                .push(json!({"url": target.as_str(), "text": label(&node)}));
                         }
                     }
                 }
@@ -101,6 +101,11 @@ pub(crate) fn html(input: &str, final_url: &url::Url) -> Extracted {
             _ => {}
         }
     }
+    normalize(&mut result);
+    result
+}
+
+fn normalize(result: &mut Extracted) {
     // Preserve preformatted indentation and line content; remove only excess blank lines.
     let mut text = String::new();
     let mut blank = true;
@@ -116,9 +121,8 @@ pub(crate) fn html(input: &str, final_url: &url::Url) -> Extracted {
             blank = false;
         }
     }
-    result.text = text.trim_matches('\n').to_owned();
+    text.trim_matches('\n').clone_into(&mut result.text);
     result.title = result.title.split_whitespace().collect::<Vec<_>>().join(" ");
-    result
 }
 
 fn label(node: &Handle) -> String {

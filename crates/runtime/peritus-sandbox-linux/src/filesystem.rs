@@ -322,12 +322,23 @@ impl MountPlan {
             MountAction::Tmpfs { target: PathBuf::from("/tmp") },
         ];
         for path in readable.difference(&writable) {
+            // `/proc` is already a fresh procfs mounted inside the target PID namespace above.
+            // A read-only bind here would replace that isolated view with the host procfs.
+            if path == Path::new("/proc") || path.starts_with("/dev") {
+                continue;
+            }
             actions.push(MountAction::ReadOnlyBind { source: path.clone(), target: path.clone() });
         }
         if let Some(helper) = &policy.private_helper {
             private::bootstrap(&mut actions, plan, helper)?;
         }
         for path in writable {
+            // The private filesystem already materializes the kernel-provided device namespace.
+            // Keep the checked contract's exact /dev/null access in Landlock without attempting
+            // to turn that device into a host writable bind outside the workspace.
+            if path == Path::new("/dev/null") {
+                continue;
+            }
             if !path.starts_with(policy.workspace_root()) {
                 return Err(filesystem_error("writable mount is outside the resolved workspace"));
             }

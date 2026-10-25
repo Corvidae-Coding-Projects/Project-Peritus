@@ -18,11 +18,11 @@ pub(super) struct ExportContext {
 }
 
 impl ExportContext {
-    pub(super) fn new(origin: SnapshotOrigin) -> Self {
+    pub(super) const fn new(origin: SnapshotOrigin) -> Self {
         Self { origin, roots: BTreeSet::new(), paths: BTreeSet::new() }
     }
 
-    pub(super) fn origin(&self) -> SnapshotOrigin {
+    pub(super) const fn origin(&self) -> SnapshotOrigin {
         self.origin
     }
 

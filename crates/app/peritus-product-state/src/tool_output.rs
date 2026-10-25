@@ -1,4 +1,5 @@
 //! Human-readable tool observations shared by terminal and daemon presentation.
+//!
 //! This projection never changes the tool result supplied to the model or the private trace.
 
 use serde_json::Value;
@@ -20,12 +21,13 @@ fn markdown_source(value: &Value, depth: u8) -> bool {
         && value["sources"].as_array().is_some_and(|sources| {
             !sources.is_empty()
                 && sources.iter().all(|source| {
-                    if let Some(data) = source["data"].as_str() {
-                        serde_json::from_str::<Value>(data)
-                            .is_ok_and(|value| markdown_source(&value, depth + 1))
-                    } else {
-                        markdown_source(&source["data"], depth + 1)
-                    }
+                    source["data"].as_str().map_or_else(
+                        || markdown_source(&source["data"], depth + 1),
+                        |data| {
+                            serde_json::from_str::<Value>(data)
+                                .is_ok_and(|value| markdown_source(&value, depth + 1))
+                        },
+                    )
                 })
         })
 }
@@ -54,15 +56,16 @@ fn render_value(value: &Value, depth: u8, markdown: bool) -> String {
                 .or_else(|| source["source"].as_str())
                 .unwrap_or("retained source");
             let _ = writeln!(text, "{handle}");
-            if let Some(data) = source["data"].as_str() {
-                if let Ok(decoded) = serde_json::from_str::<Value>(data) {
-                    text.push_str(&render_value(&decoded, depth + 1, markdown));
-                } else {
-                    text.push_str(data);
-                }
-            } else {
-                text.push_str(&render_value(&source["data"], depth + 1, markdown));
-            }
+            let rendered = source["data"].as_str().map_or_else(
+                || render_value(&source["data"], depth + 1, markdown),
+                |data| {
+                    serde_json::from_str::<Value>(data).map_or_else(
+                        |_| data.to_owned(),
+                        |decoded| render_value(&decoded, depth + 1, markdown),
+                    )
+                },
+            );
+            text.push_str(&rendered);
             text.push('\n');
         }
     } else if let Some(content) = value["content"].as_str().or_else(|| value["bytes"].as_str()) {

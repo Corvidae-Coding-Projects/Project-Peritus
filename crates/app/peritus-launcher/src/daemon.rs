@@ -29,7 +29,8 @@ impl SiblingBinaries {
     ///
     /// Returns an actionable packaging error if the executable is absent or version-mismatched.
     pub fn discover() -> Result<Self, LauncherError> {
-        Self::from_application(running_application()?)
+        let application = running_application()?;
+        Self::from_application(&application)
     }
 
     /// Resolves a packaged application's real location and validates its sibling daemon.
@@ -41,7 +42,7 @@ impl SiblingBinaries {
     /// # Errors
     /// Returns an actionable packaging error for an unavailable application or a missing,
     /// non-file, or version-mismatched sibling daemon.
-    pub fn from_application(application: PathBuf) -> Result<Self, LauncherError> {
+    pub fn from_application(application: &Path) -> Result<Self, LauncherError> {
         let application = canonical_application(application)?;
         let directory = application
             .parent()
@@ -59,7 +60,8 @@ impl SiblingBinaries {
     ///
     /// Returns an actionable packaging error for a missing, non-file, or mismatched executable.
     pub fn from_daemon(daemon: PathBuf) -> Result<Self, LauncherError> {
-        let application = canonical_application(running_application()?)?;
+        let running = running_application()?;
+        let application = canonical_application(&running)?;
         Self::from_paths(application, daemon)
     }
 
@@ -115,8 +117,8 @@ fn running_application() -> Result<PathBuf, LauncherError> {
     })
 }
 
-fn canonical_application(application: PathBuf) -> Result<PathBuf, LauncherError> {
-    let resolved = fs::canonicalize(&application).map_err(|error| {
+fn canonical_application(application: &Path) -> Result<PathBuf, LauncherError> {
+    let resolved = fs::canonicalize(application).map_err(|error| {
         LauncherError::DaemonBinary(format!(
             "cannot resolve packaged application {}: {error}",
             application.display()

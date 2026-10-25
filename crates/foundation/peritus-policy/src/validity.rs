@@ -115,10 +115,7 @@ impl ValidityWindow {
             other.expires_at
         };
         let result = Self::new(not_before, expires_at);
-        match &result {
-            Ok(_value) => {}
-            Err(_) => {}
-        }
+        if let Ok(_value) = &result {}
         result
     }
 }

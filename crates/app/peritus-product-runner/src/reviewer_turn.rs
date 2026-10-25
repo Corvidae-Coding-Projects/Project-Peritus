@@ -91,26 +91,12 @@ pub async fn complete(
             }
             Err(error) => return Err(error),
         };
-        let (prompt, attachments) = media.into_parts(request.prompt);
-        let mut tools =
-            input.read_only_workspace_tools().with_reviewer_evidence_sources(request.archive);
+        let ReviewRequest { system, prompt, tools: definitions, archive } = request;
+        let (prompt, attachments) = media.into_parts(prompt);
+        let mut tools = input.read_only_workspace_tools().with_reviewer_evidence_sources(archive);
         let result = crate::local_context::run_live_invocation(
             providers.current(),
-            DeveloperLoopRequest {
-                request_prefix: turn::fresh_request_prefix(
-                    input.run_id,
-                    "reviewer",
-                    cycle,
-                    input.conversation.revision(),
-                    invocation,
-                )?,
-                system: request.system,
-                prompt,
-                attachments,
-                tools: request.tools,
-                limits: reviewer_limits()?,
-                cancellation: input.provider_cancellation.clone(),
-            },
+            reviewer_request(input, cycle, invocation, system, prompt, attachments, definitions)?,
             &mut tools,
             crate::local_context::InvocationAccounting {
                 trace_path: &input.trace_path,
@@ -121,8 +107,7 @@ pub async fn complete(
             peritus_agent::DeveloperModelRole::Reviewer,
         )
         .await;
-        accounting.check()?;
-        let result = match result {
+        let result = match checked_invocation(accounting, result)? {
             Ok(result) => result,
             Err(peritus_agent::DeveloperLoopError::SegmentExhausted) => {
                 accounting.record_role_retry()?;
@@ -147,14 +132,82 @@ pub async fn complete(
         };
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         check_cancelled(input)?;
-        let submission = grounded_submission(&tools, &result.text, review_cycle);
-        match submission {
-            Ok(submission) => return Ok(submission),
-            Err(rejected) => {
-                rejected_reviews = rejected_reviews.saturating_add(1);
-                correction =
-                    Some(record_rejected_review(input, rejected_reviews, &rejected, accounting)?);
-            }
+        if let Some(submission) = accept_submission(
+            input,
+            &tools,
+            &result.text,
+            review_cycle,
+            &mut rejected_reviews,
+            &mut correction,
+            accounting,
+        )? {
+            return Ok(submission);
+        }
+    }
+}
+
+fn checked_invocation(
+    accounting: &mut RunAccounting,
+    result: Result<peritus_agent::DeveloperLoopOutcome, peritus_agent::DeveloperLoopError>,
+) -> Result<
+    Result<peritus_agent::DeveloperLoopOutcome, peritus_agent::DeveloperLoopError>,
+    ProductRunnerError,
+> {
+    accounting.check()?;
+    Ok(result)
+}
+
+fn reviewer_request(
+    input: &ProductRunInput,
+    cycle: u32,
+    invocation: u32,
+    system: String,
+    prompt: String,
+    attachments: Vec<peritus_model_protocol::MediaInput>,
+    tools: Vec<peritus_model_protocol::ToolDefinition>,
+) -> Result<DeveloperLoopRequest, ProductRunnerError> {
+    Ok(DeveloperLoopRequest {
+        request_prefix: reviewer_request_name(input, cycle, invocation)?,
+        system,
+        prompt,
+        cyber_access_program: None,
+        attachments,
+        tools,
+        limits: reviewer_limits()?,
+        cancellation: input.provider_cancellation.clone(),
+    })
+}
+
+fn reviewer_request_name(
+    input: &ProductRunInput,
+    cycle: u32,
+    invocation: u32,
+) -> Result<String, ProductRunnerError> {
+    turn::fresh_request_prefix(
+        input.run_id,
+        "reviewer",
+        cycle,
+        input.conversation.revision(),
+        invocation,
+    )
+}
+
+fn accept_submission(
+    input: &ProductRunInput,
+    tools: &WorkspaceDeveloperTools,
+    text: &str,
+    review_cycle: u32,
+    rejected_reviews: &mut u64,
+    correction: &mut Option<String>,
+    accounting: &mut RunAccounting,
+) -> Result<Option<ProductReviewSubmission>, ProductRunnerError> {
+    match grounded_submission(tools, text, review_cycle) {
+        Ok(submission) => Ok(Some(submission)),
+        Err(rejected) => {
+            *rejected_reviews = rejected_reviews.saturating_add(1);
+            *correction =
+                Some(record_rejected_review(input, *rejected_reviews, &rejected, accounting)?);
+            Ok(None)
         }
     }
 }

@@ -28,10 +28,8 @@ pub(super) fn validate(ledger: &BudgetLedger) -> Result<(), BudgetError> {
         if !direct_operation_reserved.equals(account.operation_reserved) {
             return Err(crate::model::corrupt(account.id));
         }
-        if account.phase.is_closed() {
-            if has_live_work(ledger, account.id) {
-                return Err(crate::model::corrupt(account.id));
-            }
+        if account.phase.is_closed() && has_live_work(ledger, account.id) {
+            return Err(crate::model::corrupt(account.id));
         }
         index += 1;
     }

@@ -131,7 +131,6 @@ pub fn validate_compaction(
                 || selected_as_required(plan, range.source_id());
             let source_node = source.clone();
             sources.push(ValidatedSource { node: source_node, required });
-        } else {
         }
         range_index += 1;
     }

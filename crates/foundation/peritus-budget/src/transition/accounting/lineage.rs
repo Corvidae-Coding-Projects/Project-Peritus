@@ -65,8 +65,7 @@ pub(in crate::transition) const fn outstanding(
             }
         }
     } else {
-        let zero = BudgetAmounts::zero();
-        zero
+        BudgetAmounts::zero()
     };
     Ok(amount)
 }

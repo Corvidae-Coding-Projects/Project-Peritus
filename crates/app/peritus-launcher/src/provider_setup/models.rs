@@ -56,7 +56,7 @@ pub(super) fn choose_direct_with_default(
         Some(WireDialect::AnthropicMessages) => CompatibleProtocol::AnthropicMessages,
         Some(WireDialect::GeminiGenerateContentV1) => CompatibleProtocol::GoogleGenerateContent,
         _ => existing
-            .and_then(|profile| profile.compatible_protocol())
+            .and_then(peritus_product_state::DirectProviderProfile::compatible_protocol)
             .unwrap_or(CompatibleProtocol::ChatCompletions),
     };
     Ok((model, Some(protocol)))

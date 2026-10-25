@@ -57,10 +57,12 @@ impl LocalProgram {
         Ok(value)
     }
     /// Exact executable artifact, which must also be declared by the corresponding E1 arm.
+    #[must_use]
     pub const fn artifact(&self) -> ArtifactDigest {
         ArtifactDigest::new(self.artifact)
     }
     /// Declared immutable executable byte count.
+    #[must_use]
     pub const fn size(&self) -> u64 {
         self.size
     }
@@ -190,7 +192,7 @@ impl LocalProcessBackend {
     }
 }
 
-/// Canonical image manifest for an explicit LocalProcess evaluation campaign.
+/// Canonical image manifest for an explicit `LocalProcess` evaluation campaign.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LocalProcessCatalog {
@@ -226,14 +228,17 @@ impl LocalProcessCatalog {
         Ok(value)
     }
     /// Baseline executable descriptor.
+    #[must_use]
     pub const fn baseline(&self) -> &LocalProgram {
         &self.baseline
     }
     /// Candidate executable descriptor.
+    #[must_use]
     pub const fn candidate(&self) -> &LocalProgram {
         &self.candidate
     }
     /// Independent verifier descriptor.
+    #[must_use]
     pub const fn evaluator(&self) -> &LocalProgram {
         &self.evaluator
     }
@@ -271,7 +276,7 @@ impl LocalProcessCatalog {
         self.limits.native().resources()?;
         Ok(())
     }
-    pub(super) fn limits(&self) -> LocalProcessLimits {
+    pub(super) const fn limits(&self) -> LocalProcessLimits {
         self.limits.native()
     }
     /// Digest of the fixed private-filesystem, denied-network/secret, finite resource template.
@@ -281,6 +286,7 @@ impl LocalProcessCatalog {
         Ok(peritus_codec::sha256(&bytes))
     }
     /// Exact cleared environment template. Actual plan variables must remain empty at launch.
+    #[must_use]
     pub fn environment_digest(&self) -> Sha256Digest {
         peritus_codec::sha256(b"peritus.rsi.local-environment.v1\0cleared\0no-literals\0")
     }
@@ -310,7 +316,7 @@ impl LocalProcessCatalog {
         }
         Ok(())
     }
-    /// Builds a frozen LocalProcess binding from a real native backend probe, not caller facts.
+    /// Builds a frozen `LocalProcess` binding from a real native backend probe, not caller facts.
     /// Dynamic per-child sandbox/preparation digests are retained in actual process receipts;
     /// frozen fields identify this exact policy template and probed native descriptor.
     pub fn execution_binding(

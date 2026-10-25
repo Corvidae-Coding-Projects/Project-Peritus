@@ -51,11 +51,11 @@ const fn finish(
         && !flags.0
         && !flags.1
         && !flags.2;
-    let assessment = ReviewAssessment::new(
+
+    ReviewAssessment::new(
         satisfied, counts.0, counts.1, counts.2, counts.3, counts.4, counts.5, flags.0, flags.1,
         flags.2,
-    );
-    assessment
+    )
 }
 #[allow(
     clippy::large_types_passed_by_value,
@@ -113,7 +113,8 @@ pub(super) fn assess(
         }
         right += 1;
     }
-    let assessment = finish(
+
+    finish(
         (
             approved_count,
             stale_count,
@@ -123,6 +124,5 @@ pub(super) fn assess(
             non_independent_count,
         ),
         (duplicate_reviewer, shared_context, conflicting_review),
-    );
-    assessment
+    )
 }

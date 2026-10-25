@@ -52,6 +52,6 @@ pub(super) const fn decision_digest(
     bytes[3] ^= low_u16_byte(findings.open_count());
     bytes[4] ^= low_u16_byte(findings.release_blocking_count());
     bytes[5] ^= bool_byte(findings.is_satisfied());
-    let digest = DecisionDigest::new(bytes);
-    digest
+
+    DecisionDigest::new(bytes)
 }

@@ -1,11 +1,16 @@
 //! GitHub-backed catalog. Install only declared inert files at an immutable commit.
+pub mod source;
+
 use crate::{Definition, Error, Registry, invalid, publish};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+pub use source::{SourceCatalog, SourceEntry};
 use std::{
     collections::BTreeSet,
     fs,
     io::Read,
+    path::{Path, PathBuf},
+    process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -35,6 +40,18 @@ pub enum ModuleOperation {
         /// Expected package digest.
         digest: String,
     },
+    /// Start or explicitly retry a pinned local source build and disabled installation.
+    BuildInstall {
+        /// Module identity selected from the source catalog.
+        id: String,
+        /// Exact source digest displayed by the menu.
+        source_digest: String,
+    },
+    /// Cancel the exact active source build for a module.
+    CancelBuild {
+        /// Module identity selected from the source catalog.
+        id: String,
+    },
     /// Change enablement without widening permissions.
     Enable {
         /// Module identity.
@@ -50,6 +67,10 @@ pub enum ModuleOperation {
 }
 impl ModuleOperation {
     /// Runs a local management operation outside UI/async executor threads.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the requested registry or market operation cannot complete.
     pub fn execute(self) -> Result<Value, Error> {
         let registry = Registry::for_user()?;
         let result = match self {
@@ -57,6 +78,20 @@ impl ModuleOperation {
             Self::Session { run } => return registry.market_for_session(Some(&run)),
             Self::Refresh => return registry.refresh_market(),
             Self::Install { id, digest } => registry.install_market(&id, &digest),
+            #[cfg(target_os = "linux")]
+            Self::BuildInstall { id, source_digest } => {
+                registry.start_source_build(&id, &source_digest)
+            }
+            #[cfg(not(target_os = "linux"))]
+            Self::BuildInstall { .. } => {
+                Err(invalid("source-built module installation currently requires Linux"))
+            }
+            #[cfg(target_os = "linux")]
+            Self::CancelBuild { id } => registry.cancel_source_build(&id),
+            #[cfg(not(target_os = "linux"))]
+            Self::CancelBuild { .. } => {
+                Err(invalid("source-built module installation currently requires Linux"))
+            }
             Self::Enable { id, enabled } => registry.enable(&id, enabled),
             Self::Remove { id } => registry.remove(&id),
         }?;
@@ -99,6 +134,10 @@ pub struct Catalog {
 }
 impl Catalog {
     /// Validates a catalog independently of network and local registry state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the catalog is oversized, malformed, noncanonical, or unsafe.
     pub fn parse(text: &str) -> Result<Self, Error> {
         if text.len() > 4 * 1024 * 1024 {
             return Err(invalid("market catalog exceeds 4 MiB"));
@@ -175,8 +214,65 @@ fn download(url: &str, maximum: u64) -> Result<Vec<u8>, Error> {
     }
     Ok(bytes)
 }
+
+fn local_checkout() -> Result<Option<PathBuf>, Error> {
+    let Some(value) = std::env::var_os("PERITUS_MODULE_MARKET_CHECKOUT") else {
+        return Ok(None);
+    };
+    let path = PathBuf::from(value);
+    if !path.is_absolute() {
+        return Err(invalid("PERITUS_MODULE_MARKET_CHECKOUT must be absolute"));
+    }
+    let path = path.canonicalize()?;
+    let status = Command::new("git")
+        .args(["status", "--porcelain", "--untracked-files=all"])
+        .current_dir(&path)
+        .output()?;
+    if !status.status.success() || !status.stdout.is_empty() {
+        return Err(invalid("local module-market checkout must be a clean Git worktree"));
+    }
+    Ok(Some(path))
+}
+
+fn checkout_commit(path: &Path) -> Result<String, Error> {
+    let output = Command::new("git").args(["rev-parse", "HEAD"]).current_dir(path).output()?;
+    let commit = std::str::from_utf8(&output.stdout)
+        .map_err(|_| invalid("local module-market commit is not UTF-8"))?
+        .trim();
+    if !output.status.success() || !hex(commit, 40) {
+        return Err(invalid("local module-market HEAD is not an immutable Git commit"));
+    }
+    Ok(commit.into())
+}
+
+fn optional_remote_source(commit: &str) -> Result<Option<Vec<u8>>, Error> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent(concat!("Peritus/", env!("CARGO_PKG_VERSION"), " module-market"))
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
+    let mut response = client.get(format!("{RAW}/{commit}/sources.toml")).send()?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    response = response.error_for_status()?;
+    if response.content_length().is_some_and(|bytes| bytes > 4 * 1024 * 1024) {
+        return Err(invalid("source catalog exceeds 4 MiB"));
+    }
+    let mut bytes = Vec::new();
+    response.by_ref().take(4 * 1024 * 1024 + 1).read_to_end(&mut bytes)?;
+    if bytes.len() > 4 * 1024 * 1024 {
+        return Err(invalid("source catalog exceeds 4 MiB"));
+    }
+    Ok(Some(bytes))
+}
 impl Registry {
     /// Saves only generic UI actions from a native plugin, bound to its exact package and run.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when identities, actions, or durable publication are invalid.
     pub fn publish_session_view(
         &self,
         run: &str,
@@ -192,7 +288,51 @@ impl Registry {
             &serde_json::to_vec(&json!({"schema":1,"module":id,"digest":digest,"view":view}))?,
         )
     }
+    /// Updates the host-observed progress for one exact native-module run while retaining the
+    /// module's most recently published actions, summary, and export. A package change starts a
+    /// new view rather than carrying controls across package authority.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the identities or progress document are invalid, the retained view
+    /// cannot be decoded, or the durable session projection cannot be published atomically.
+    pub fn publish_session_progress(
+        &self,
+        run: &str,
+        id: &str,
+        digest: &str,
+        progress: &Value,
+    ) -> Result<(), Error> {
+        if !hex(run, 32)
+            || !crate::definition::identifier(id)
+            || !hex(digest, 64)
+            || !progress.is_object()
+            || serde_json::to_vec(progress)?.len() > 64 * 1024
+        {
+            return Err(invalid("invalid plugin progress publication"));
+        }
+        let path = self.root().join("sessions").join(format!("{run}.json"));
+        let mut session = match fs::read(&path) {
+            Ok(bytes) => serde_json::from_slice::<Value>(&bytes)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                json!({"schema":1,"module":id,"digest":digest,"view":{"actions":[]}})
+            }
+            Err(error) => return Err(error.into()),
+        };
+        if session["schema"] != 1 || session["module"] != id || session["digest"] != digest {
+            session = json!({"schema":1,"module":id,"digest":digest,"view":{"actions":[]}});
+        }
+        let view = session["view"]
+            .as_object_mut()
+            .ok_or_else(|| invalid("invalid retained plugin session view"))?;
+        view.insert("progress".into(), progress.clone());
+        publish(&path, &serde_json::to_vec(&session)?)
+    }
     /// Reads cached discovery and the selected run's plugin-supplied action menu.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when market or retained session state cannot be read safely.
     pub fn market_for_session(&self, run: Option<&str>) -> Result<Value, Error> {
         let mut view = self.market()?;
         if let Some(run) = run {
@@ -224,34 +364,72 @@ impl Registry {
     }
     /// Refreshes explicitly from main, resolving it once to an immutable Git commit.
     /// On network/validation failure the last usable snapshot and selections remain intact.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the source cannot be resolved, fetched, validated, or published.
     pub fn refresh_market(&self) -> Result<Value, Error> {
-        let reference: Value =
-            serde_json::from_slice(&download(&format!("{API}/git/ref/heads/main"), 65536)?)?;
-        let commit = reference["object"]["sha"]
-            .as_str()
-            .filter(|s| hex(s, 40))
-            .ok_or_else(|| invalid("market main did not resolve to a Git commit"))?;
-        let bytes = download(&format!("{RAW}/{commit}/market.toml"), 4 * 1024 * 1024)?;
+        let checkout = local_checkout()?;
+        let (commit, bytes, source_bytes) = if let Some(path) = &checkout {
+            (
+                checkout_commit(path)?,
+                fs::read(path.join("market.toml"))?,
+                match fs::read(path.join("sources.toml")) {
+                    Ok(bytes) => Some(bytes),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                    Err(error) => return Err(error.into()),
+                },
+            )
+        } else {
+            let reference: Value =
+                serde_json::from_slice(&download(&format!("{API}/git/ref/heads/main"), 65536)?)?;
+            let commit = reference["object"]["sha"]
+                .as_str()
+                .filter(|value| hex(value, 40))
+                .ok_or_else(|| invalid("market main did not resolve to a Git commit"))?
+                .to_owned();
+            let bytes = download(&format!("{RAW}/{commit}/market.toml"), 4 * 1024 * 1024)?;
+            let source = optional_remote_source(&commit)?;
+            (commit, bytes, source)
+        };
         let catalog = Catalog::parse(
             std::str::from_utf8(&bytes).map_err(|_| invalid("market catalog must be UTF-8"))?,
         )?;
+        let fetched_at_unix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| invalid(error.to_string()))?
+            .as_secs();
         let snapshot = Snapshot {
             schema: 1,
-            commit: commit.into(),
-            fetched_at_unix: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|e| invalid(e.to_string()))?
-                .as_secs(),
-            catalog,
+            commit: commit.clone(),
+            fetched_at_unix,
+            catalog: catalog.clone(),
         };
+        let source = source_bytes
+            .map(|bytes| {
+                SourceCatalog::parse(
+                    std::str::from_utf8(&bytes)
+                        .map_err(|_| invalid("source catalog must be UTF-8"))?,
+                )
+            })
+            .transpose()?;
+        let catalog_set =
+            source::CatalogSet::new(commit, fetched_at_unix, catalog, source, checkout)?;
+        // Preserve the exact schema-one snapshot for older clients, then atomically publish the
+        // richer current-client snapshot. A crash can leave the old client stale, never invalid.
         publish(&self.root().join("market/catalog.json"), &serde_json::to_vec_pretty(&snapshot)?)?;
+        catalog_set.publish(self.root())?;
         self.market()
     }
     /// Cached discovery plus installed state; opening this view never requires network access.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when installed or cached market state cannot be read.
     pub fn market(&self) -> Result<Value, Error> {
         let installed = self.list()?;
         let snapshot = self.market_snapshot();
-        let mut view = json!({"repository":MARKET_REPOSITORY,"installed":installed["modules"],"modules":[],"commit":null,"fetched_at_unix":null});
+        let mut view = json!({"repository":MARKET_REPOSITORY,"installed":installed["modules"],"modules":[],"sources":[],"source_builds":[],"commit":null,"source_commit":null,"fetched_at_unix":null});
         match snapshot {
             Ok(s) => {
                 view["modules"] = json!(s.catalog.modules);
@@ -267,10 +445,25 @@ impl Registry {
                 ));
             }
         }
+        if let Ok(set) = source::CatalogSet::load(self.root()) {
+            view["modules"] = json!(set.executable.modules);
+            view["sources"] = json!(set.source.map_or_else(Vec::new, |catalog| catalog.modules));
+            view["commit"] = json!(set.commit);
+            view["source_commit"] = view["commit"].clone();
+            view["fetched_at_unix"] = json!(set.fetched_at_unix);
+        }
+        #[cfg(target_os = "linux")]
+        {
+            view["source_builds"] = json!(self.source_build_records()?);
+        }
         Ok(view)
     }
     /// Installs the selected catalog version at its pinned commit, disabled pending enablement.
     /// The caller supplies the digest it displayed to prevent silently installing an updated row.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when selection, source identity, download, or installation validation fails.
     pub fn install_market(&self, id: &str, expected_digest: &str) -> Result<Value, Error> {
         let snapshot = self.market_snapshot()?;
         let entry = snapshot.catalog.modules.iter().find(|m| m.id == id).ok_or_else(|| {

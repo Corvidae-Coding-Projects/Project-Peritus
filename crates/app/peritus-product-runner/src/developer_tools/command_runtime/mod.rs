@@ -13,6 +13,8 @@ mod journal;
 mod kernel;
 mod lease;
 mod materialization_authority;
+#[cfg(target_os = "linux")]
+mod module_job;
 mod ordinal;
 mod output;
 mod plan;

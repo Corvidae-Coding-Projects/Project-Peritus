@@ -7,6 +7,7 @@ use peritus_app_protocol::{MAX_PRODUCT_ACTIVITY_BYTES, ProductActivity, ProductA
 use regex::{Regex, RegexBuilder};
 use sha2::{Digest as _, Sha256};
 use std::{
+    fmt::Write as _,
     fs::{self, File, OpenOptions},
     io::{BufRead as _, BufReader, Read as _, Write as _},
     path::{Component, Path, PathBuf},
@@ -26,7 +27,7 @@ static TEMPORARY_ID: AtomicU64 = AtomicU64::new(0);
 
 /// One complete captured public activity; bodies remain exact until presentation sanitizes them.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct SearchHit {
+pub struct SearchHit {
     pub(crate) sequence: u64,
     pub(crate) kind: String,
     pub(crate) title: String,
@@ -35,7 +36,7 @@ pub(crate) struct SearchHit {
 
 /// Bounded local matches, including the beginning of the actually captured history.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct SearchPage {
+pub struct SearchPage {
     pub(crate) hits: Vec<SearchHit>,
     pub(crate) truncated: bool,
     pub(crate) first_sequence: Option<u64>,
@@ -45,7 +46,7 @@ pub(crate) struct SearchPage {
 ///
 /// Same-sequence streaming updates replace one record atomically. Unchanged content performs no
 /// writes, and neither startup nor recording enumerates the complete run archive.
-pub(crate) fn record(scope: &str, activities: &[ProductActivity]) -> Result<(), String> {
+pub fn record(scope: &str, activities: &[ProductActivity]) -> Result<(), String> {
     validate_scope(scope)?;
     if activities.is_empty() {
         return Ok(());
@@ -83,7 +84,7 @@ pub(crate) fn record(scope: &str, activities: &[ProductActivity]) -> Result<(), 
 }
 
 /// Searches only this run's captured public transcript, without any daemon/provider operation.
-pub(crate) async fn search(scope: &str, query: &str) -> Result<SearchPage, String> {
+pub async fn search(scope: &str, query: &str) -> Result<SearchPage, String> {
     validate_scope(scope)?;
     if query.is_empty() || query.len() > MAX_QUERY_BYTES {
         return Err(format!("Enter a search between 1 and {MAX_QUERY_BYTES} bytes."));
@@ -382,7 +383,10 @@ fn digest(kind: u16, title_bytes: usize, body: &str) -> String {
     hash.update(kind.to_be_bytes());
     hash.update((title_bytes as u64).to_be_bytes());
     hash.update(body.as_bytes());
-    hash.finalize().iter().map(|byte| format!("{byte:02x}")).collect()
+    hash.finalize().iter().fold(String::with_capacity(64), |mut digest, byte| {
+        write!(digest, "{byte:02x}").expect("writing to a String cannot fail");
+        digest
+    })
 }
 
 fn read_header_if_present(path: &Path) -> Result<Option<String>, String> {
@@ -595,7 +599,7 @@ fn check_owner(metadata: &fs::Metadata, private: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn is_reparse(metadata: &fs::Metadata) -> bool {
+const fn is_reparse(metadata: &fs::Metadata) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt as _;

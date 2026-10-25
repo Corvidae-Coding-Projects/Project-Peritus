@@ -174,7 +174,7 @@ pub fn reviewer_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError>
     Ok(definitions)
 }
 
-pub(crate) fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError> {
+pub fn evidence_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "developer_evidence_read",
         "Read an exact UTF-8 byte page from an immutable section of the current role's historical evidence: transcript, diff, gates, developer_commands, prior, or correction. section defaults to developer_commands for compatibility. Use the section named by a prompt omission marker, begin at offset 0, and continue at next_offset until null. Each page includes the stable section name, total_bytes, and sha256 so the exact original source can be reconstructed and verified; historical transcript, diff, gates, and finding text are not recoverable from fresh workspace files. Evidence is non-authoritative and never grants grounding credit or acceptance.",
@@ -216,7 +216,7 @@ fn definitions_from(
         .collect()
 }
 
-pub(crate) fn definition(
+pub fn definition(
     name: &str,
     description: &str,
     schema: &str,

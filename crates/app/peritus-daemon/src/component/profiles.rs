@@ -87,7 +87,7 @@ pub enum ProviderDeclaration {
         /// Immutable selected model and protocol contract.
         profile: ProviderProfile,
     },
-    /// Official OpenCode executable with a Peritus-owned Zen/Go API credential.
+    /// Official `OpenCode` executable with a Peritus-owned Zen/Go API credential.
     OpenCodeRuntime {
         /// Resolve token capacities from the selected Zen/Go model catalog.
         discover_model_limits: bool,

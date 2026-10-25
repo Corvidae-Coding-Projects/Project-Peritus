@@ -1,6 +1,7 @@
 //! Native deterministic E2 staging and publication from retained actual E3/C7 sources.
 
 use std::{
+    fmt::Write as _,
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -307,7 +308,10 @@ fn source_path(root: &Path, job: DebuggerJobId) -> Result<PathBuf, EvolutionErro
         return Err(incomplete("native E2 source directory is not a regular directory"));
     }
     let digest = peritus_codec::sha256(job.as_bytes());
-    let name: String = digest.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+    let mut name = String::with_capacity(digest.as_bytes().len() * 2);
+    for byte in digest.as_bytes() {
+        write!(name, "{byte:02x}").expect("writing to a String cannot fail");
+    }
     Ok(directory.join(format!("{name}.json")))
 }
 fn read_source(root: &Path, job: DebuggerJobId) -> Result<NativeSource, EvolutionError> {

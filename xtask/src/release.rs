@@ -1,8 +1,8 @@
 //! Tag-bound GitHub release staging behind direct reviewed Cargo commands.
 
 mod publication;
-pub(crate) mod rebuild;
-pub(crate) use publication::stage_draft;
+pub mod rebuild;
+pub use publication::stage_draft;
 
 use std::{
     env, fs,
@@ -18,7 +18,7 @@ use sha2::{Digest as _, Sha256};
 
 use crate::XtaskError;
 
-pub(crate) fn create(root: &Path) -> Result<(), XtaskError> {
+pub fn create(root: &Path) -> Result<(), XtaskError> {
     let tag = environment("GITHUB_REF_NAME")?;
     let sha = environment("GITHUB_SHA")?;
     let expected = format!("v{}", workspace_version(root)?);
@@ -64,13 +64,13 @@ pub(crate) fn create(root: &Path) -> Result<(), XtaskError> {
     Ok(())
 }
 
-pub(crate) fn package_stage(root: &Path) -> Result<(), XtaskError> {
+pub fn package_stage(root: &Path) -> Result<(), XtaskError> {
     let build_started_unix = unix_seconds()?;
     let package = crate::product_package::build(root)?;
     write_package_stage(root, &package, build_started_unix)
 }
 
-pub(crate) fn package_assemble(root: &Path) -> Result<(), XtaskError> {
+pub fn package_assemble(root: &Path) -> Result<(), XtaskError> {
     let build_started_unix = unix_seconds()?;
     let package = crate::product_package::build_from_release_artifacts(root)?;
     write_package_stage(root, &package, build_started_unix)

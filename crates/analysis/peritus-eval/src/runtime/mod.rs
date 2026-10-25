@@ -107,7 +107,8 @@ impl<'a> EvaluationRuntime<'a> {
         transition: &EvaluationTransition,
         claim: impl Into<crate::EvaluationDirectiveClaim>,
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
-        let batch = crate::commit_evaluation_claimed_transition(self.journal, command, transition, claim)?;
+        let batch =
+            crate::commit_evaluation_claimed_transition(self.journal, command, transition, claim)?;
         Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
     }
 

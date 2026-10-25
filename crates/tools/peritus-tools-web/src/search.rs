@@ -13,10 +13,10 @@ use std::{
     time::Duration,
 };
 
-pub(crate) const ENGINES: [&str; 4] = ["yahoo", "duckduckgo", "brave", "startpage"];
+pub const ENGINES: [&str; 4] = ["yahoo", "duckduckgo", "brave", "startpage"];
 static SEARCH: Mutex<()> = Mutex::new(());
 
-pub(crate) fn search(arguments: &Value, cancelled: &dyn Fn() -> bool) -> Result<Value, Error> {
+pub fn search(arguments: &Value, cancelled: &dyn Fn() -> bool) -> Result<Value, Error> {
     let query = arguments["query"]
         .as_str()
         .filter(|q| !q.trim().is_empty())
@@ -36,8 +36,7 @@ pub(crate) fn search(arguments: &Value, cancelled: &dyn Fn() -> bool) -> Result<
     let selected: Vec<_> = arguments["engines"]
         .as_str()
         .filter(|s| !s.trim().is_empty())
-        .map(|s| s.split(',').map(str::trim).collect())
-        .unwrap_or_else(|| ENGINES.to_vec());
+        .map_or_else(|| ENGINES.to_vec(), |s| s.split(',').map(str::trim).collect());
     if selected.iter().any(|name| !ENGINES.contains(name)) {
         return Err(invalid(format!(
             "unknown built-in engine; choose from {}",

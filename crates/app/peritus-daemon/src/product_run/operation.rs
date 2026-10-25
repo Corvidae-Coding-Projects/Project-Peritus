@@ -77,17 +77,15 @@ impl super::ProductRunService {
             if !receipts.exists() {
                 continue;
             }
-            let pending = uncertain_effects(&receipts)
-                .map(|effects| {
-                    effects.iter().any(|effect| effect.state() != UncertainEffectState::Reviewed)
-                })
-                .unwrap_or(true);
+            let pending = uncertain_effects(&receipts).map_or(true, |effects| {
+                effects.iter().any(|effect| effect.state() != UncertainEffectState::Reviewed)
+            });
             if !pending {
                 continue;
             }
             let Ok(view) = self.inner.records.read() else { continue };
             let Some(record) = view.get(&record.request.run_id()) else { continue };
-            if let Err(error) = self.reconcile_command_receipts(&record) {
+            if let Err(error) = self.reconcile_command_receipts(record) {
                 diagnostic::report(&format!(
                     "peritusd: native command receipt recovery remains unresolved for run {}: {error}",
                     deliverable::run_hex(record.request.run_id())

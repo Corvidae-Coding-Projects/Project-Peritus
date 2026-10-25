@@ -39,7 +39,6 @@ pub(in crate::transition::validation) fn direct_operation_reserved(
                 }
             };
             total = next;
-        } else {
         }
         index += 1;
     }

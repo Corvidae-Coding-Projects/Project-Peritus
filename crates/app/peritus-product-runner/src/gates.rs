@@ -5,7 +5,9 @@ use std::{
     process::Command,
 };
 
-use peritus_gates::{GateExecutionRecord, GateObservation, TargetGatePlan, TargetGateReport};
+use peritus_gates::{
+    GateCommandSpec, GateExecutionRecord, GateObservation, TargetGatePlan, TargetGateReport,
+};
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
@@ -165,53 +167,14 @@ fn execute_plan(
             continue;
         }
         if specification.program() == "peritus-internal" {
-            let outcome = match specification.arguments().first().map(String::as_str) {
-                Some("source-readability") => GateOutcome::Required(source_layout::run(
-                    root,
-                    specification.project().root(),
-                    plan.changed_paths(),
-                    specification.project().kind(),
-                    specification.display(),
-                    ownership,
-                    cancellation,
-                )),
-                Some("artifact-csv-structure") => artifact_csv::run(
-                    root,
-                    specification.project().root(),
-                    plan.changed_paths(),
-                    specification.display(),
-                    request_context,
-                    cancellation,
-                ),
-                Some("json-structure") => GateOutcome::Required(json_structure::run(
-                    root,
-                    specification.project().root(),
-                    plan.changed_paths(),
-                    specification.display(),
-                    cancellation,
-                )),
-                Some("sqlite-migration") => sqlite_migration::run(
-                    root,
-                    specification.project().root(),
-                    plan.changed_paths(),
-                    specification.display(),
-                    request_context,
-                    cancellation,
-                ),
-                Some("yaml-structure") => GateOutcome::Required(yaml_structure::run(
-                    root,
-                    specification.project().root(),
-                    plan.changed_paths(),
-                    specification.display(),
-                    cancellation,
-                )),
-                _ => GateOutcome::Required(GateExecutionRecord {
-                    command: specification.display(),
-                    label: specification.label().to_owned(),
-                    exit_code: None,
-                    output: "unknown internal exact-target gate".to_owned(),
-                }),
-            };
+            let outcome = execute_internal(
+                root,
+                plan,
+                specification,
+                ownership,
+                request_context,
+                cancellation,
+            );
             match outcome {
                 GateOutcome::Required(record) => records.push(record),
                 GateOutcome::Optional(observation) => observations.push(observation),
@@ -251,6 +214,63 @@ fn execute_plan(
         records.push(record);
     }
     (records, observations)
+}
+
+fn execute_internal(
+    root: &Path,
+    plan: &TargetGatePlan,
+    specification: &GateCommandSpec,
+    ownership: Option<&WorkspaceOwnership>,
+    request_context: &str,
+    cancellation: &GateCancellation,
+) -> GateOutcome {
+    match specification.arguments().first().map(String::as_str) {
+        Some("source-readability") => GateOutcome::Required(source_layout::run(
+            root,
+            specification.project().root(),
+            plan.changed_paths(),
+            specification.project().kind(),
+            specification.display(),
+            ownership,
+            cancellation,
+        )),
+        Some("artifact-csv-structure") => artifact_csv::run(
+            root,
+            specification.project().root(),
+            plan.changed_paths(),
+            specification.display(),
+            request_context,
+            cancellation,
+        ),
+        Some("json-structure") => GateOutcome::Required(json_structure::run(
+            root,
+            specification.project().root(),
+            plan.changed_paths(),
+            specification.display(),
+            cancellation,
+        )),
+        Some("sqlite-migration") => sqlite_migration::run(
+            root,
+            specification.project().root(),
+            plan.changed_paths(),
+            specification.display(),
+            request_context,
+            cancellation,
+        ),
+        Some("yaml-structure") => GateOutcome::Required(yaml_structure::run(
+            root,
+            specification.project().root(),
+            plan.changed_paths(),
+            specification.display(),
+            cancellation,
+        )),
+        _ => GateOutcome::Required(GateExecutionRecord {
+            command: specification.display(),
+            label: specification.label().to_owned(),
+            exit_code: None,
+            output: "unknown internal exact-target gate".to_owned(),
+        }),
+    }
 }
 
 fn execution_context(root: &Path, plan: &TargetGatePlan, request_context: &str) -> Sha256Digest {

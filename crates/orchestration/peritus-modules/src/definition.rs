@@ -86,6 +86,10 @@ pub struct Definition {
 }
 impl Manifest {
     /// Parses and validates a module without executing it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the manifest is oversized, malformed, or violates the schema.
     pub fn parse(text: &str) -> Result<Self, Error> {
         if text.len() > 256 * 1024 {
             return Err(invalid("module manifest exceeds 256 KiB"));
@@ -95,6 +99,10 @@ impl Manifest {
         Ok(value)
     }
     /// Checks identities, model selection and stage dependency routing.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when an identity, dependency, resource, role, or code declaration is invalid.
     pub fn validate(&self) -> Result<(), Error> {
         if self.schema != 1
             || !identifier(&self.id)
@@ -176,6 +184,10 @@ impl Manifest {
 }
 impl Definition {
     /// Loads a local package. All resources must be regular files without symlink traversal.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the package is unsafe, unreadable, malformed, or incomplete.
     pub fn from_directory(root: &Path) -> Result<Self, Error> {
         if fs::symlink_metadata(root)?.file_type().is_symlink() {
             return Err(invalid("module root cannot be a symlink"));
@@ -208,7 +220,7 @@ impl Definition {
             let mut file = fs::File::open(path)?;
             let size = file.metadata()?.len();
             hash.update(size.to_be_bytes());
-            let mut buffer = [0u8; 32768];
+            let mut buffer = vec![0u8; 32768];
             loop {
                 let count = file.read(&mut buffer)?;
                 if count == 0 {
@@ -217,10 +229,14 @@ impl Definition {
                 hash.update(&buffer[..count]);
             }
         }
-        let digest = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
+        let digest = crate::hex(&hash.finalize());
         Ok(Self { manifest, digest, root, bundled })
     }
     /// Resolves an explicitly declared resource for a paged host read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the resource is undeclared, unsafe, missing, or not a regular file.
     pub fn resource(&self, name: &str) -> Result<PathBuf, Error> {
         if !self.manifest.resources.iter().any(|r| r == name) {
             return Err(invalid("resource is not declared by this module"));
@@ -231,7 +247,7 @@ impl Definition {
         )
     }
 }
-pub(crate) fn identifier(value: &str) -> bool {
+pub fn identifier(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 96
         && value.as_bytes()[0].is_ascii_lowercase()
@@ -246,7 +262,7 @@ fn tool_name(value: &str) -> bool {
         && value.len() <= 128
         && value.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
-pub(crate) fn version(value: &str) -> bool {
+pub fn version(value: &str) -> bool {
     let parts: Vec<_> = value.split('.').collect();
     parts.len() == 3
         && parts.iter().all(|p| {
@@ -265,7 +281,7 @@ fn safe_relative(value: &str) -> Result<(), Error> {
     }
     Ok(())
 }
-pub(crate) fn checked_file(root: &Path, name: &str) -> Result<PathBuf, Error> {
+pub fn checked_file(root: &Path, name: &str) -> Result<PathBuf, Error> {
     safe_relative(name)?;
     let mut path = root.to_path_buf();
     for part in Path::new(name).components() {

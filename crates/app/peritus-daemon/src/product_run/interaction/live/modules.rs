@@ -1,9 +1,28 @@
 //! Local commands share durable input admission, without claiming a provider send or usage.
 use super::{DeveloperLoopError, LiveConversation, ProductActivityKind, port_error};
-use peritus_model_protocol::*;
+use peritus_model_protocol::{
+    BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
+    ParallelToolPolicy, PersistencePolicy, ProtocolError, ProtocolLimits, ReasoningPolicy,
+    RequestId, RequestOptions, RequestedCapabilities, Role, StructuredOutput, ToolChoice,
+    negotiate,
+};
 
 impl LiveConversation {
     pub(super) fn admit_module_command(&self) -> Result<Option<String>, DeveloperLoopError> {
+        self.admit_module_command_for(None)
+    }
+
+    pub(super) fn admit_active_module_command(
+        &self,
+        module_id: &str,
+    ) -> Result<Option<String>, DeveloperLoopError> {
+        self.admit_module_command_for(Some(module_id))
+    }
+
+    fn admit_module_command_for(
+        &self,
+        active_module: Option<&str>,
+    ) -> Result<Option<String>, DeveloperLoopError> {
         let mut records = self
             .service
             .inner
@@ -20,19 +39,27 @@ impl LiveConversation {
                 // Ordinary chat does not need an extra expansion of attachments and replies.
                 let inputs = control.inputs().capture()?;
                 let Some(selected) = inputs.included().last() else { return Ok(None) };
-                let input = control
+                let selected_input = control
                     .inputs()
                     .revisions()
                     .iter()
                     .find(|i| i.selection() == *selected)
                     .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
-                let command = input.text().trim();
+                let command = selected_input.text().trim();
                 if !(command == "/modules"
                     || command == "/module"
                     || command.starts_with("/module "))
                 {
                     return Ok(None);
                 }
+                let admitted = if let Some(module_id) = active_module {
+                    let Some(control) = active_control(command, module_id) else {
+                        return Ok(None);
+                    };
+                    control
+                } else {
+                    command.to_owned()
+                };
                 let captured = store.capture_execution(&record.interaction.workbench)?;
                 if captured.inputs().included().last() != Some(selected) {
                     return Err(peritus_product_runner::control::ControlError::StaleRevision.into());
@@ -58,21 +85,17 @@ impl LiveConversation {
                             profile.limits(),
                         )?,
                     )?;
-                    let mut content = vec![ContentBlock::Text(BoundedText::new(context, limits)?)];
-                    content.extend(captured.images().iter().cloned().map(ContentBlock::Image));
+                    let mut blocks = vec![ContentBlock::Text(BoundedText::new(context, limits)?)];
+                    blocks.extend(captured.images().iter().cloned().map(ContentBlock::Image));
                     let request = ModelRequest::new(
                         profile,
                         negotiated,
                         RequestId::new(format!(
                             "host-module-command-{}-{}",
-                            self.run_id
-                                .as_bytes()
-                                .iter()
-                                .map(|b| format!("{b:02x}"))
-                                .collect::<String>(),
+                            crate::product_run::deliverable::run_hex(self.run_id),
                             captured.revision()
                         ))?,
-                        vec![Message::new(Role::User, content, limits)?],
+                        vec![Message::new(Role::User, blocks, limits)?],
                         vec![],
                         ToolChoice::None,
                         ParallelToolPolicy::Disabled,
@@ -100,7 +123,7 @@ impl LiveConversation {
                 {
                     return Ok(None);
                 }
-                Ok(Some((command.to_owned(), captured.inputs().generation())))
+                Ok(Some((admitted, captured.inputs().generation())))
             })
             .map_err(|e| port_error("persist local module command admission", e.into()))?;
         let Some((command, revision)) = result else { return Ok(None) };
@@ -121,6 +144,19 @@ impl LiveConversation {
         *record = next;
         Ok(Some(command))
     }
+}
+
+fn active_control(command: &str, module_id: &str) -> Option<String> {
+    let arguments = command.strip_prefix("/module")?.trim();
+    let (selected, task) = arguments.split_once(char::is_whitespace)?;
+    let task = task.trim();
+    if selected != module_id
+        || !(matches!(task, "pause" | "resume")
+            || task.strip_prefix("steer ").is_some_and(|value| !value.trim().is_empty()))
+    {
+        return None;
+    }
+    Some(task.to_owned())
 }
 
 fn storage_error(error: impl std::fmt::Display) -> crate::product_control::ControlStoreError {

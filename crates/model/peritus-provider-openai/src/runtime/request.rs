@@ -46,6 +46,7 @@ pub struct RuntimeRequest {
     pub min_calls: usize,
     images: Vec<RuntimeImage>,
     effort: &'static str,
+    cyber_access_program: Option<&'static str>,
 }
 
 pub(super) struct RuntimeImage {
@@ -61,10 +62,15 @@ impl RuntimeRequest {
     pub(crate) const fn reasoning_effort(&self) -> &'static str {
         self.effort
     }
+
+    pub(crate) const fn cyber_access_program(&self) -> Option<&'static str> {
+        self.cyber_access_program
+    }
 }
 
 pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
     let effort = validate_controls(request)?;
+    let cyber_access_program = cyber_access_program(request)?;
     let mut images = Vec::new();
     let messages = request
         .messages()
@@ -95,7 +101,21 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
         min_calls: contract.min_calls,
         images,
         effort,
+        cyber_access_program,
     })
+}
+
+fn cyber_access_program(request: &ModelRequest) -> Result<Option<&'static str>, ProviderCoreError> {
+    match request.options().extensions() {
+        [] => Ok(None),
+        [extension]
+            if extension.name().as_str() == "openai.cyber_access_program"
+                && extension.value().to_wire_string() == "\"daybreak_blue\"" =>
+        {
+            Ok(Some("daybreak_blue"))
+        }
+        _ => Err(invalid("Codex runtime received an unsupported provider access program")),
+    }
 }
 
 fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCoreError> {
@@ -106,7 +126,6 @@ fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCor
         || request.options().persistence().store()
         || request.options().persistence().background()
         || request.options().continuation().is_some()
-        || !request.options().extensions().is_empty()
         || !generation.stop_sequences().is_empty()
         || generation.seed().is_some()
         || generation.temperature_millionths().is_some()

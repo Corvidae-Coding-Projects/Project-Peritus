@@ -3,6 +3,7 @@
 use std::path::{Component, Path};
 
 /// Reports whether a relative source path belongs to generated dependency/build output.
+#[must_use]
 pub fn generated(path: &Path) -> bool {
     path.components().any(|component| {
         let Component::Normal(name) = component else {

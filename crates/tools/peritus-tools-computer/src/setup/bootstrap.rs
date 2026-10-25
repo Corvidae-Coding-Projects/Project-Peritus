@@ -2,6 +2,7 @@
 
 use sha2::{Digest, Sha256};
 use std::{
+    fmt::Write as _,
     fs,
     io::Write,
     path::{Path, PathBuf},
@@ -105,7 +106,7 @@ async fn download(url: &str, target: &Path, expected: &str) -> Result<(), String
     let client = reqwest::Client::builder()
         .https_only(true)
         .connect_timeout(Duration::from_secs(20))
-        .timeout(Duration::from_secs(240))
+        .timeout(Duration::from_mins(4))
         .build()
         .map_err(|e| e.to_string())?;
     let mut response = client
@@ -127,7 +128,10 @@ async fn download(url: &str, target: &Path, expected: &str) -> Result<(), String
         digest.update(&chunk);
         file.write_all(&chunk).map_err(|e| e.to_string())?;
     }
-    let actual = digest.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let mut actual = String::with_capacity(64);
+    for byte in digest.finalize() {
+        let _ = write!(actual, "{byte:02x}");
+    }
     if actual != expected {
         return Err("Python installer checksum mismatch; nothing was executed".into());
     }

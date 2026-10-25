@@ -106,7 +106,7 @@ impl ModelProvider for HostedProvider {
                 // Catalog failure must not disable an otherwise working explicit API route,
                 // or turn every model/tool turn into another failed metadata request.
                 *attempted = true;
-                let _metadata = result;
+                drop(result);
             }
             self.adapter.prepare_context(cancellation).await
         })

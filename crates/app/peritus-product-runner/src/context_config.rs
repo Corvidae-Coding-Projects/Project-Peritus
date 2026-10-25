@@ -126,7 +126,7 @@ impl LocalContextConfig {
     /// # Errors
     /// Rejects zero/excessive bounds, inconsistent backend configuration, or ambient paths.
     pub fn validate(&self) -> Result<(), ProductRunnerError> {
-        self.working_limits()?;
+        let _ = Self::working_limits();
         if !(1..=100).contains(&self.trigger_percent)
             || !(256..=65_536).contains(&self.max_read_bytes)
         {
@@ -139,8 +139,8 @@ impl LocalContextConfig {
         }
     }
 
-    pub(crate) fn working_limits(&self) -> Result<WorkingLimits, ProductRunnerError> {
-        Ok(WorkingLimits::standard())
+    pub(crate) const fn working_limits() -> WorkingLimits {
+        WorkingLimits::standard()
     }
 }
 

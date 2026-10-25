@@ -156,7 +156,7 @@ fn draw_editor(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     ]), sections[2]);
 }
 
-fn state_label(state: WorkbenchInputState) -> &'static str {
+const fn state_label(state: WorkbenchInputState) -> &'static str {
     match state {
         WorkbenchInputState::Queued => "queued (dependencies may delay)",
         WorkbenchInputState::Held => "held",

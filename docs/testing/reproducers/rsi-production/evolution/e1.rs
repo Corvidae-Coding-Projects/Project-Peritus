@@ -268,7 +268,7 @@ fn materialize(
         parent,
         if label == "baseline" { 1 } else { 2 },
     )?
-    .authorize(MaterializationAuthorityRequest::new(
+    .authorize(&MaterializationAuthorityRequest::new(
         &committed,
         store,
         actor,

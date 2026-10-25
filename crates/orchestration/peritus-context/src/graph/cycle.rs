@@ -47,9 +47,7 @@ pub(super) fn cycle_member(nodes: &[ContextNode]) -> Option<ContextNodeId> {
         }
     }
     let first = first_unremoved(removed.as_slice());
-    if first.is_none() {
-        return None;
-    }
+    first?;
     let index = first.unwrap();
     Some(nodes[index].id())
 }

@@ -93,7 +93,7 @@ impl LocalMemory {
         provider: Option<&dyn peritus_provider_core::ModelProvider>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
         let assembly_started = std::time::Instant::now();
-        super::read_reuse::refresh(self)?;
+        super::read_reuse::refresh(self);
         self.read_reuse.clear_rendered();
         let decoded_hits = self.decoded_hits.get();
         let decoded_misses = self.decoded_misses.get();
@@ -145,14 +145,14 @@ impl LocalMemory {
         let historical = messages.split_off(current_end);
         messages.splice(historical_position..historical_position, historical);
         cache_order(&mut messages, protected_prefix);
-        if let Some(provider) = provider {
-            if transport::fit(self, &mut messages, tools, provider)? {
-                working = self
-                    .state
-                    .entries(self.state.binding())
-                    .map_err(|_| error("working view accounting scope"))?
-                    .len();
-            }
+        if let Some(provider) = provider
+            && transport::fit(self, &mut messages, tools, provider)?
+        {
+            working = self
+                .state
+                .entries(self.state.binding())
+                .map_err(|_| error("working view accounting scope"))?
+                .len();
         }
         let estimated = estimate_developer_request_tokens(&messages, tools);
         selected.sort_unstable();
@@ -319,7 +319,7 @@ impl LocalMemory {
                 "Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.{}",
                 super::tools::hex(self.store.scope_digest().as_bytes()),
                 self.model_revision,
-                format!("{}{}", retrieval::coverage(self)?, super::read_reuse::progress(self)),
+                format_args!("{}{}", retrieval::coverage(self), super::read_reuse::progress(self)),
             ),
         )
     }

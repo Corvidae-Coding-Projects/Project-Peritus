@@ -23,83 +23,12 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
     let mut lines = vec![panel.message.clone()];
     draft_lines(&mut lines, model);
     if let Some(goal) = &panel.goal {
-        lines.extend([
-            format!(
-                "Goal {} · run {}",
-                format_id(goal.goal().as_bytes()),
-                format_id(goal.run().as_bytes())
-            ),
-            format!(
-                "State {} · attempt {} · user rev {} · aggregate rev {}",
-                state_label(goal.state()),
-                goal.attempt(),
-                goal.user_revision(),
-                goal.aggregate_revision(),
-            ),
-            format!("Objective: {}", goal.objective().as_str()),
-            format!("Reason: {}", goal.reason()),
-            format!(
-                "Recovery: {}{}",
-                if goal.restart_eligible() {
-                    "eligible after revalidation"
-                } else {
-                    "explicit action required"
-                },
-                goal.pause_mode()
-                    .map_or_else(String::new, |mode| format!(" · pending {}", pause_label(mode))),
-            ),
-        ]);
-        for criterion in goal.criteria() {
-            lines.push(format!(
-                "Criterion: {} · {} · {} · evidence {}",
-                if criterion.definition().mandatory() { "mandatory" } else { "optional" },
-                criterion_kind(criterion.definition().kind()),
-                criterion_state(criterion.state()),
-                criterion
-                    .evidence_revision()
-                    .map_or_else(|| "none".to_owned(), |revision| revision.to_string()),
-            ));
-            lines.push(format!("  {}", criterion.definition().description().as_str()));
-        }
-        let usage = goal.usage();
-        lines.extend([
-            format!(
-                "Usage: active {} ms · wall {} ms · requests {} · tools {}",
-                usage.active_millis(),
-                usage.wall_millis(),
-                usage.requests(),
-                usage.tool_calls(),
-            ),
-            format!(
-                "Totals: tokens {} · provider cost {} microunits · retries {} · failovers {} · compactions {}",
-                known(usage.total_tokens()),
-                known(usage.provider_cost_microunits()),
-                usage.retries(),
-                usage.provider_failovers(),
-                usage.compactions(),
-            ),
-            format!(
-                "Resources: workspace {} B · growth {} B · peak RSS {} B",
-                usage.workspace_bytes(),
-                usage.workspace_growth_bytes(),
-                usage.peak_rss_bytes(),
-            ),
-        ]);
-        for role in usage.roles() {
-            lines.push(format!(
-                "{}: requests {}/{} complete · tools {} · tokens {} · cost {} microunits",
-                role_label(role.role()),
-                role.completed_requests(),
-                role.requests(),
-                role.tool_calls(),
-                known(role.total_tokens()),
-                known(role.provider_cost_microunits()),
-            ));
-        }
+        append_goal(&mut lines, goal);
     } else if panel.goal_draft.is_none() {
         lines.push(String::from("No durable goal is currently loaded."));
     }
-    let controls = match panel.goal.as_ref().map(|goal| goal.state()) {
+    let controls = match panel.goal.as_ref().map(peritus_app_protocol::WorkbenchGoalSnapshot::state)
+    {
         Some(WorkbenchGoalState::Cancelled) => {
             "This goal is cancelled and cannot resume. Completed effects and history remain retained."
         }
@@ -122,6 +51,82 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
         String::from("Unknown token or cost observations remain unknown, not zero."),
     ]);
     lines
+}
+
+fn append_goal(lines: &mut Vec<String>, goal: &peritus_app_protocol::WorkbenchGoalSnapshot) {
+    lines.extend([
+        format!(
+            "Goal {} · run {}",
+            format_id(goal.goal().as_bytes()),
+            format_id(goal.run().as_bytes())
+        ),
+        format!(
+            "State {} · attempt {} · user rev {} · aggregate rev {}",
+            state_label(goal.state()),
+            goal.attempt(),
+            goal.user_revision(),
+            goal.aggregate_revision(),
+        ),
+        format!("Objective: {}", goal.objective().as_str()),
+        format!("Reason: {}", goal.reason()),
+        format!(
+            "Recovery: {}{}",
+            if goal.restart_eligible() {
+                "eligible after revalidation"
+            } else {
+                "explicit action required"
+            },
+            goal.pause_mode()
+                .map_or_else(String::new, |mode| format!(" · pending {}", pause_label(mode))),
+        ),
+    ]);
+    for criterion in goal.criteria() {
+        lines.push(format!(
+            "Criterion: {} · {} · {} · evidence {}",
+            if criterion.definition().mandatory() { "mandatory" } else { "optional" },
+            criterion_kind(criterion.definition().kind()),
+            criterion_state(criterion.state()),
+            criterion
+                .evidence_revision()
+                .map_or_else(|| "none".to_owned(), |revision| revision.to_string()),
+        ));
+        lines.push(format!("  {}", criterion.definition().description().as_str()));
+    }
+    let usage = goal.usage();
+    lines.extend([
+        format!(
+            "Usage: active {} ms · wall {} ms · requests {} · tools {}",
+            usage.active_millis(),
+            usage.wall_millis(),
+            usage.requests(),
+            usage.tool_calls(),
+        ),
+        format!(
+            "Totals: tokens {} · provider cost {} microunits · retries {} · failovers {} · compactions {}",
+            known(usage.total_tokens()),
+            known(usage.provider_cost_microunits()),
+            usage.retries(),
+            usage.provider_failovers(),
+            usage.compactions(),
+        ),
+        format!(
+            "Resources: workspace {} B · growth {} B · peak RSS {} B",
+            usage.workspace_bytes(),
+            usage.workspace_growth_bytes(),
+            usage.peak_rss_bytes(),
+        ),
+    ]);
+    for role in usage.roles() {
+        lines.push(format!(
+            "{}: requests {}/{} complete · tools {} · tokens {} · cost {} microunits",
+            role_label(role.role()),
+            role.completed_requests(),
+            role.requests(),
+            role.tool_calls(),
+            known(role.total_tokens()),
+            known(role.provider_cost_microunits()),
+        ));
+    }
 }
 
 fn draft_lines(lines: &mut Vec<String>, model: &AppModel) {

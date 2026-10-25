@@ -22,7 +22,7 @@ fn digest(bytes: &[u8]) -> String {
 }
 
 fn request(input: &ProductRunInput) -> String {
-    digest(format!("{}\0{}", input.workspace_root.display(), input.task,).as_bytes())
+    digest(format!("{}\0{}", input.workspace_root.display(), input.task).as_bytes())
 }
 
 pub(super) fn load(input: &ProductRunInput) -> Result<Option<DesignDocument>, ProductRunnerError> {

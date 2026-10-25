@@ -5,7 +5,7 @@ use std::{path::Path, process::Command};
 use crate::XtaskError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Operation {
+pub enum Operation {
     Image,
     ImageSave,
     ImageRestore,
@@ -51,7 +51,7 @@ impl Operation {
     }
 }
 
-pub(crate) fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
+pub fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
     let status = Command::new("python3")
         .current_dir(root)
         .arg(root.join("packaging/distro/main.py"))

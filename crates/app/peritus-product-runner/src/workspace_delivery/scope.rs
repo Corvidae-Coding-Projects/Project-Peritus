@@ -75,7 +75,7 @@ impl FileObservation {
     }
 }
 
-pub(crate) struct ScopedCandidateObservation {
+pub struct ScopedCandidateObservation {
     pub(crate) has_changes: bool,
     pub(crate) content: peritus_types::Sha256Digest,
     pub(crate) repository: peritus_types::Sha256Digest,
@@ -89,6 +89,7 @@ struct EnrolledPaths {
 impl ScopedBaseline {
     /// Binds task evidence to a workspace, durable journal, protected paths and revision.
     /// The journal must live outside the declared task subtrees.
+    #[must_use]
     pub const fn new(
         root: PathBuf,
         journal: PathBuf,
@@ -119,12 +120,12 @@ impl ScopedBaseline {
         entries
             .iter()
             .filter(|(path, _)| declarations.contains(*path))
-            .filter_map(|(path, before)| match self.observed_kind(&path) {
+            .filter_map(|(path, before)| match self.observed_kind(path) {
                 Ok(current)
                     if matches!(before.kind.as_str(), "file" | "absent")
                         && matches!(current.as_str(), "file" | "absent") =>
                 {
-                    match self.observed_path(&path) {
+                    match self.observed_path(path) {
                         Ok(Some(_)) => Some(Ok(PathBuf::from(path))),
                         Ok(None) => None,
                         Err(error) => Some(Err(error)),
@@ -364,10 +365,10 @@ impl ScopedBaseline {
                     metadata.dev(),
                     metadata.ino(),
                     metadata.rdev(),
-                    metadata.mtime() as u64,
-                    metadata.mtime_nsec() as u64,
-                    metadata.ctime() as u64,
-                    metadata.ctime_nsec() as u64,
+                    metadata.mtime().cast_unsigned(),
+                    metadata.mtime_nsec().cast_unsigned(),
+                    metadata.ctime().cast_unsigned(),
+                    metadata.ctime_nsec().cast_unsigned(),
                 ] {
                     digest.update(value.to_le_bytes());
                 }

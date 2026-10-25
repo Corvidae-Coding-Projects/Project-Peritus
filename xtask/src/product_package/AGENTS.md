@@ -8,7 +8,6 @@ Implementation pieces for `product_package.rs`: Product package build and instal
 
 | File | Role |
 | --- | --- |
-| [host_version.rs](host_version.rs) | Native host-version detection and H2 contract normalization. |
 
 Owning module: [product_package.rs](../product_package.rs). Inspect that parent before changing the local pieces.
 

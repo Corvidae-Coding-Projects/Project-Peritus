@@ -16,7 +16,7 @@ use std::{
 /// Verified prefix cursor. A changed/truncated trace falls back to ordered streaming recovery.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct TraceCursor {
+pub struct TraceCursor {
     offset: u64,
     anchor: [u8; 32],
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -40,7 +40,8 @@ fn identity(file: &File) -> Result<Option<[u64; 2]>, DeveloperLoopError> {
 fn anchor(file: &mut File, offset: u64) -> Result<[u8; 32], DeveloperLoopError> {
     let start = offset.saturating_sub(4096);
     file.seek(std::io::SeekFrom::Start(start)).map_err(|_| failure("seek trace cursor"))?;
-    let mut bytes = vec![0; (offset - start) as usize];
+    let length = usize::try_from(offset - start).map_err(|_| failure("trace anchor too large"))?;
+    let mut bytes = vec![0; length];
     file.read_exact(&mut bytes).map_err(|_| failure("read trace cursor anchor"))?;
     Ok(peritus_codec::sha256(&bytes).into_bytes())
 }
@@ -112,15 +113,15 @@ pub fn observations(
         Err(_) => return Err(failure("open scoped observation trace")),
     };
     let length = file.metadata().map_err(|_| failure("inspect trace length"))?.len();
-    let mut position = 0_u64;
-    if let Some(cursor) = cursor {
-        if cursor.offset <= length
-            && cursor.identity == identity(&file)?
-            && anchor(&mut file, cursor.offset)? == cursor.anchor
-        {
-            position = cursor.offset;
-        }
-    }
+    let mut position = if let Some(cursor) = cursor
+        && cursor.offset <= length
+        && cursor.identity == identity(&file)?
+        && anchor(&mut file, cursor.offset)? == cursor.anchor
+    {
+        cursor.offset
+    } else {
+        0_u64
+    };
     file.seek(std::io::SeekFrom::Start(position))
         .map_err(|_| failure("seek observation suffix"))?;
     while position < length {
