@@ -16,6 +16,7 @@ Release-specific human notes; each version records changes and delivery context,
 | [0.1.8.md](0.1.8.md) | Repeated-read recovery, retained role progress, scoped archive admission, reviewer delivery, and typed document transport with real-interface evidence. |
 | [0.1.9.md](0.1.9.md) | Route-specific token capacities, shared-context output headroom, explicit overrides, and real provider evidence. |
 | [0.1.10.md](0.1.10.md) | Hosted-configuration upgrade, retained-run provider recovery, OpenCode planning normalization and expandable TUI reads, with real-interface evidence boundaries. |
+| [0.1.11.md](0.1.11.md) | Generic source-built module workers, Red Team module separation, persistent-run improvements, and final real-interface browser/laboratory evidence. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
