@@ -9,7 +9,7 @@ use peritus_model_protocol::{CompletedToolCall, ToolDefinition};
 use serde_json::{Value, json};
 
 pub(super) fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-    let page = json!({"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":4,"maximum":1048576,"default":32768},"include_links":{"type":"boolean"}});
+    let page = json!({"offset":{"type":"integer","minimum":0,"default":0},"max_bytes":{"type":"integer","minimum":4,"maximum":1_048_576,"default":32_768},"include_links":{"type":"boolean"}});
     let mut open = page.clone();
     open["url"] = json!({"type":"string","minLength":1});
     open["refresh"] = json!({"type":"boolean","default":false});
@@ -89,7 +89,7 @@ impl WorkspaceDeveloperTools {
         }
         self.inspection_cancellation.check()?;
         let html = runtime.computer_document(&result)?;
-        return peritus_tools_web::Store::for_user()
+        peritus_tools_web::Store::for_user()
             .and_then(|store| {
                 store.rendered(
                     arguments["url"].as_str().unwrap_or_default(),
@@ -99,7 +99,7 @@ impl WorkspaceDeveloperTools {
                     arguments,
                 )
             })
-            .map_err(|e| tool(e.to_string()));
+            .map_err(|e| tool(e.to_string()))
     }
 
     fn native_web(

@@ -71,7 +71,7 @@ impl LocalMemory {
             super::super::pages::restore(manifest, self.binding, self.limits, |artifact| {
                 self.store.read(artifact)
             })?;
-        self.trace_cursor = manifest.trace_cursor.clone();
+        self.trace_cursor.clone_from(&manifest.trace_cursor);
         self.transcript = decode(&self.store.read(manifest.transcript_manifest)?)?;
         let view_bytes = self.store.read(manifest.view)?;
         self.last_view = decode_messages(&view_bytes, ProtocolLimits::PRODUCTION)?;

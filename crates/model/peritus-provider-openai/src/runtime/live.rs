@@ -180,15 +180,19 @@ impl ModelStream for LiveRuntimeStream {
                                 Err(error) => return Poll::Ready(Err(error)),
                             }
                         }
-                        let mut observed = self.progress.0.lock().map_err(|_| malformed())?;
-                        if !observed.pending.is_empty() && !self.started {
-                            self.started = true;
-                            return Poll::Ready(Ok(Some(ModelEvent::ResponseStarted {
-                                response_id: None,
-                                model: Some(self.model.clone()),
-                            })));
-                        }
-                        if let Some(event) = observed.pending.pop_front() {
+                        let event = {
+                            let mut observed = self.progress.0.lock().map_err(|_| malformed())?;
+                            if !observed.pending.is_empty() && !self.started {
+                                self.started = true;
+                                Some(ModelEvent::ResponseStarted {
+                                    response_id: None,
+                                    model: Some(self.model.clone()),
+                                })
+                            } else {
+                                observed.pending.pop_front()
+                            }
+                        };
+                        if let Some(event) = event {
                             return Poll::Ready(Ok(Some(event)));
                         }
                         if self.operation.is_none() { Poll::Ready(Ok(None)) } else { Poll::Pending }

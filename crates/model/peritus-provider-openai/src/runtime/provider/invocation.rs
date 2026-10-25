@@ -27,6 +27,15 @@ pub(super) struct TurnOutput {
     pub(super) final_message: Result<String, DecodeFailure>,
 }
 
+pub(super) struct TurnContext<'a> {
+    pub(super) config: &'a CodexRuntimeConfig,
+    pub(super) transport: &'a dyn ProcessTransport,
+    pub(super) working_directory: &'a Path,
+    pub(super) cache_anchor: Option<&'a CacheAnchor>,
+    pub(super) cancellation: &'a CancellationToken,
+    pub(super) progress: std::sync::Arc<super::super::live::Progress>,
+}
+
 pub(super) const DISABLED_NATIVE_FEATURES: &[&str] = &[
     "shell_tool",
     "unified_exec",
@@ -75,27 +84,22 @@ pub(super) fn require_authenticated<'a>(
 }
 
 pub(super) async fn run_turn(
-    config: &CodexRuntimeConfig,
-    transport: &dyn ProcessTransport,
+    context: TurnContext<'_>,
     request: &ModelRequest,
     runtime: &RuntimeRequest,
-    working_directory: &Path,
-    cache_anchor: Option<&CacheAnchor>,
-    cancellation: &CancellationToken,
-    progress: std::sync::Arc<super::super::live::Progress>,
 ) -> Result<TurnOutput, ProviderCoreError> {
     // Keep the native environment prefix stable across requests. The previous fresh cwd
     // changed Codex's environment instructions ahead of the entire reusable host prompt.
     // Artifacts remain private and per-turn; native tools and session persistence stay off.
-    if let Some(anchor) = cache_anchor {
+    if let Some(anchor) = context.cache_anchor {
         if let Some(output) = super::cached::run_turn(
-            config,
-            transport,
+            context.config,
+            context.transport,
             runtime,
-            working_directory,
+            context.working_directory,
             anchor,
-            cancellation,
-            progress.clone(),
+            context.cancellation,
+            context.progress.clone(),
         )
         .await?
         {
@@ -105,9 +109,10 @@ pub(super) async fn run_turn(
         // not strand otherwise usable account requests or replay accepted work.
         anchor.available.store(false, std::sync::atomic::Ordering::Release);
         eprintln!("peritus: Codex cache routing unavailable; using isolated turns");
-        progress.begin_transport();
+        context.progress.begin_transport();
     }
-    let directory = tempfile::tempdir_in(working_directory).map_err(|_| temporary_failure())?;
+    let directory =
+        tempfile::tempdir_in(context.working_directory).map_err(|_| temporary_failure())?;
     let mut schema =
         tempfile::NamedTempFile::new_in(directory.path()).map_err(|_| temporary_failure())?;
     schema.write_all(&runtime.schema).map_err(|_| temporary_failure())?;
@@ -124,15 +129,15 @@ pub(super) async fn run_turn(
         &image_paths,
     );
     let process = ProcessRequest::new(
-        config.executable().process_executable().clone(),
+        context.config.executable().process_executable().clone(),
         arguments,
         runtime.prompt.clone(),
-        Some(working_directory.to_path_buf()),
+        Some(context.working_directory.to_path_buf()),
         isolated_environment()?,
-        config.process_limits(),
+        context.config.process_limits(),
     )?
-    .with_stdout_observer(std::sync::Arc::new(move |bytes| progress.observe(bytes)));
-    let process = transport.run(process, cancellation).await?;
+    .with_stdout_observer(std::sync::Arc::new(move |bytes| context.progress.observe(bytes)));
+    let process = context.transport.run(process, context.cancellation).await?;
     let final_message = read_final(&final_path);
     Ok(TurnOutput { process, final_message })
 }

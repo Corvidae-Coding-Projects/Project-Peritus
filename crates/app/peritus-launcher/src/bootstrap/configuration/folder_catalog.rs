@@ -61,10 +61,8 @@ pub(in crate::bootstrap) fn refresh(
 }
 
 fn split_catalog(text: &str) -> (&str, Option<&str>) {
-    match text.find(FOLDER_BOUNDARY) {
-        Some(offset) => (&text[..offset], Some(&text[offset + 1..])),
-        None => (text, None),
-    }
+    text.find(FOLDER_BOUNDARY)
+        .map_or((text, None), |offset| (&text[..offset], Some(&text[offset + 1..])))
 }
 
 fn matches_durable_catalog(

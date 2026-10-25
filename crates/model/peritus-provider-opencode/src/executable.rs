@@ -1,14 +1,14 @@
-//! Explicit discovery and pinning of the official OpenCode executable.
+//! Explicit discovery and pinning of the official `OpenCode` executable.
 
 use peritus_provider_core::{ProcessExecutable, ProviderCoreError};
 use std::path::Path;
 
-/// Pinned official OpenCode executable, tested with version 1.19.0.
+/// Pinned official `OpenCode` executable, tested with version 1.19.0.
 #[derive(Clone, Debug)]
 pub struct OpenCodeExecutable(pub(crate) ProcessExecutable);
 
 impl OpenCodeExecutable {
-    /// Finds OpenCode on PATH or in the vendor's per-user installation directory.
+    /// Finds `OpenCode` on PATH or in the vendor's per-user installation directory.
     ///
     /// # Errors
     /// Returns an actionable installation error if no executable can be pinned.
@@ -113,7 +113,7 @@ fn directories() -> Vec<std::path::PathBuf> {
     directories
 }
 
-fn unavailable() -> ProviderCoreError {
+const fn unavailable() -> ProviderCoreError {
     ProviderCoreError::configuration(
         "opencode_runtime_executable",
         "supported OpenCode 1.19.0 executable not found; install the official pinned CLI for this system, then retry provider setup",

@@ -89,8 +89,7 @@ pub(super) const fn transition_failure(
     aggregate: super::ApprovalAggregate,
     observation: Option<crate::AuthenticatedApprovalObservation>,
 ) -> crate::ApprovalTransitionFailure {
-    let failure = crate::ApprovalTransitionFailure::new(error, aggregate, observation);
-    failure
+    crate::ApprovalTransitionFailure::new(error, aggregate, observation)
 }
 pub(super) const fn existing_resolution(state: ApprovalState) -> Option<Resolution> {
     match state {

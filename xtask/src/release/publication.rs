@@ -42,7 +42,7 @@ struct Asset {
     state: String,
 }
 
-pub(crate) fn stage_draft(root: &Path) -> Result<(), XtaskError> {
+pub fn stage_draft(root: &Path) -> Result<(), XtaskError> {
     let tag = super::environment("GITHUB_REF_NAME")?;
     let expected_tag = format!("v{}", super::workspace_version(root)?);
     if tag != expected_tag {

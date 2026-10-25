@@ -18,6 +18,20 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     ])
     .split(area);
     frame.render_widget(Paragraph::new("Module market · native Rust plugins and workflows\n↑↓ package · ←→/Tab action · 1–9 shortcut · Enter run/use · r refresh · b build · x cancel · e enable · d remove"), regions[0]);
+    draw_rows(frame, regions[1], model);
+    draw_detail(frame, regions[2], regions[3], model);
+    frame.render_widget(
+        Paragraph::new(crate::sanitize::sanitize_display_text(&format!(
+            "{} · Esc back",
+            menu.status
+        )))
+        .wrap(Wrap { trim: false }),
+        regions[4],
+    );
+}
+
+fn draw_rows(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
+    let Some(menu) = &model.chat.module_menu else { return };
     let items: Vec<_> = menu
         .rows
         .iter()
@@ -56,9 +70,13 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         List::new(items)
             .highlight_style(Style::default().fg(super::ACCENT).add_modifier(Modifier::BOLD))
             .highlight_symbol("› "),
-        regions[1],
+        area,
         &mut state,
     );
+}
+
+fn draw_detail(frame: &mut Frame<'_>, summary_area: Rect, detail_area: Rect, model: &AppModel) {
+    let Some(menu) = &model.chat.module_menu else { return };
     if let Some(row) = menu.rows.get(menu.selected) {
         frame.render_widget(
             Paragraph::new(crate::sanitize::sanitize_display_text(&format!(
@@ -72,15 +90,15 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                     .unwrap_or("same as selected"),
             )))
             .wrap(Wrap { trim: false }),
-            regions[2],
+            summary_area,
         );
         let session = &menu.session;
         let details = if session["module"] == row["id"] && session["digest"] == row["digest"] {
             let view = &session["view"];
             let actions = view["actions"].as_array();
-            let action = actions
-                .and_then(|actions| actions.get(menu.selected_action))
-                .map(|action| {
+            let action = actions.and_then(|actions| actions.get(menu.selected_action)).map_or_else(
+                || "No module actions have been published yet.".into(),
+                |action| {
                     format!(
                         "Action {}/{}: {} → /module {} {}",
                         menu.selected_action + 1,
@@ -89,8 +107,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                         row["id"].as_str().unwrap_or_default(),
                         action["arguments"].as_str().unwrap_or_default(),
                     )
-                })
-                .unwrap_or_else(|| "No module actions have been published yet.".into());
+                },
+            );
             let progress = format!(
                 "Progress: {} — {}",
                 view["progress"]["state"].as_str().unwrap_or("unknown"),
@@ -127,15 +145,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         frame.render_widget(
             Paragraph::new(crate::sanitize::sanitize_display_text(&details))
                 .wrap(Wrap { trim: false }),
-            regions[3],
+            detail_area,
         );
     }
-    frame.render_widget(
-        Paragraph::new(crate::sanitize::sanitize_display_text(&format!(
-            "{} · Esc back",
-            menu.status
-        )))
-        .wrap(Wrap { trim: false }),
-        regions[4],
-    );
 }

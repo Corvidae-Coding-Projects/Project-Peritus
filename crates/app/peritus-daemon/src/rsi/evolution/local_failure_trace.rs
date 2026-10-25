@@ -51,7 +51,7 @@ pub(super) fn import_published_failure_trace(
     if state.phase() != EvaluationPhase::Published || state.profile_digest() != profile.digest() {
         return Err(incomplete("native error observation requires exact published E3 inputs"));
     }
-    let terminal = match state.rollout(spec.id()).map(|value| value.status()) {
+    let terminal = match state.rollout(spec.id()).map(peritus_eval::RolloutProgress::status) {
         Some(RolloutStatus::Settled(terminal)) => terminal,
         _ => return Err(incomplete("native error has no actual settled terminal")),
     };
@@ -97,7 +97,6 @@ pub(super) fn import_published_failure_trace(
         .trace()
         .and_then(|value| value.observations().last())
         .map_or(0, |row| row.observation().time().monotonic_tick());
-    let mut positions = Vec::new();
     let mut events = Vec::new();
     for number in 1u64..=3 {
         let mut event_key = key.clone();
@@ -125,11 +124,12 @@ pub(super) fn import_published_failure_trace(
             ),
         ];
         attributes.sort_unstable_by_key(|value| value.key());
-        if number as usize <= previous {
+        let observation_index = usize::try_from(number - 1).map_err(owner_error)?;
+        if observation_index < previous {
             let row = &recovered
                 .trace()
                 .ok_or_else(|| incomplete("native failure trace disappeared"))?
-                .observations()[number as usize - 1];
+                .observations()[observation_index];
             if row.observation().event_id() != event
                 || row.observation().binding() != binding
                 || row.observation().kind() != kind
@@ -139,7 +139,6 @@ pub(super) fn import_published_failure_trace(
                     "native failure C7 observations differ from actual retained error",
                 ));
             }
-            positions.push(row.journal_position());
             events.push(*event.as_bytes());
             continue;
         }
@@ -172,9 +171,7 @@ pub(super) fn import_published_failure_trace(
         )
         .map_err(owner_error)?;
         let command = CommandId::new(identity(&event_key)).map_err(owner_error)?;
-        let batch =
-            JournalTraceStore::new(journal).record(command, observation).map_err(owner_error)?;
-        positions.push(batch.global_position());
+        JournalTraceStore::new(journal).record(command, observation).map_err(owner_error)?;
         events.push(*event.as_bytes());
     }
     Ok(LocalFailureObservation { trace, environment })

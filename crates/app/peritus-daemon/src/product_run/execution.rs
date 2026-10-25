@@ -364,8 +364,11 @@ impl ProductRunService {
     fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
         let result = self.with_controls(false, |store| {
             let execution = store.execution_record(&record.interaction.workbench)?;
-            let Some(invocation) =
-                execution.inputs().invocations().last().map(|value| value.invocation())
+            let Some(invocation) = execution
+                .inputs()
+                .invocations()
+                .last()
+                .map(peritus_product_runner::control::InvocationInputs::invocation)
             else {
                 // A pre-admission refusal has no provider invocation to bind a reply to.
                 // Its original diagnostic is retained by the run's terminal activity/state;

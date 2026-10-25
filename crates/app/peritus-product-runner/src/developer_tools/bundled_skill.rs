@@ -10,7 +10,7 @@ use super::{
     wire::required_string,
 };
 
-pub(crate) fn read(arguments: &Value) -> Result<Value, DeveloperLoopError> {
+pub fn read(arguments: &Value) -> Result<Value, DeveloperLoopError> {
     let skill = required_string(arguments, "skill")?;
     let path = required_string(arguments, "path")?;
     let bytes = crate::bundled_skills::resource(skill, path).ok_or_else(|| {
@@ -33,7 +33,7 @@ pub(crate) fn read(arguments: &Value) -> Result<Value, DeveloperLoopError> {
     binary_page(path, bytes, start, maximum)
 }
 
-pub(crate) fn list(arguments: &Value) -> Result<Value, DeveloperLoopError> {
+pub fn list(arguments: &Value) -> Result<Value, DeveloperLoopError> {
     let selected = arguments.get("skill").and_then(Value::as_str);
     let catalog = crate::bundled_skills::catalog();
     let value = if let Some(name) = selected {
@@ -125,7 +125,7 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// Archived guidance is reused only for the currently bundled resource version.
-pub(crate) fn is_current(value: &Value) -> bool {
+pub fn is_current(value: &Value) -> bool {
     let (Some(skill), Some(path), Some(digest)) =
         (value["skill"].as_str(), value["section"].as_str(), value["sha256"].as_str())
     else {

@@ -3283,7 +3283,9 @@ dependencies = [
  "peritus-process",
  "peritus-product-state",
  "peritus-protocol",
+ "peritus-provider-anthropic",
  "peritus-provider-core",
+ "peritus-provider-openai",
  "peritus-review",
  "peritus-role",
  "peritus-run-knowledge",
@@ -3731,7 +3733,6 @@ name = "peritus-tools-shell"
 version = "0.1.10"
 dependencies = [
  "peritus-artifact-store",
- "peritus-codec",
  "peritus-policy",
  "peritus-process",
  "peritus-sandbox",

@@ -24,11 +24,7 @@ impl CapabilityView {
         }
         let mut index = 0;
         while index < operations.len() {
-            if let Err(error) =
-                validation::validate_operation_at(role, operations.as_slice(), index)
-            {
-                return Err(error);
-            }
+            validation::validate_operation_at(role, operations.as_slice(), index)?;
             index += 1;
         }
         let view = Self { role, operations };
@@ -64,8 +60,8 @@ impl CapabilityView {
             ],
             ActorRole::ProviderToolWorker => vec![OperationClass::Inspection],
         };
-        let result = Self { role, operations };
-        result
+
+        Self { role, operations }
     }
     #[doc = " Returns the underlying canonical B1 role."]
     #[must_use]

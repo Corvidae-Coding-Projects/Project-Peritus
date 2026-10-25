@@ -65,12 +65,10 @@ impl EvolutionOperator<'_> {
             return Err(incomplete("pointer does not contain this exact prepared promotion"));
         }
         self.bound_revision(proposal.candidate())?;
-        if let Some(review) = proposal.review() {
-            if self.review(review.run_id(), proposal.candidate())? != review {
-                return Err(incomplete(
-                    "promotion independent review no longer matches owning state",
-                ));
-            }
+        if let Some(review) = proposal.review()
+            && self.review(review.run_id(), proposal.candidate())? != review
+        {
+            return Err(incomplete("promotion independent review no longer matches owning state"));
         }
         let authorization = self
             .activation_authority(
@@ -138,10 +136,10 @@ impl EvolutionOperator<'_> {
             .find(|value| value.id() == target_activation)
             .ok_or_else(|| incomplete("rollback target activation is not retained"))?
             .successor();
-        if let Some(PendingActivation::Rollback(proposal)) = pointer.pending() {
-            if proposal.target_activation() == target_activation {
-                return Ok(proposal.clone());
-            }
+        if let Some(PendingActivation::Rollback(proposal)) = pointer.pending()
+            && proposal.target_activation() == target_activation
+        {
+            return Ok(proposal.clone());
         }
         if pointer.pending().is_some() {
             return Err(incomplete("pointer already has a pending action"));

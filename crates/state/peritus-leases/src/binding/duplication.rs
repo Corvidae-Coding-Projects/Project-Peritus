@@ -16,7 +16,8 @@ impl LeaseUseCommandBinding {
             scope_permissions.push(self.scope_permissions[index].duplicate());
             index += 1;
         }
-        let duplicate = Self {
+
+        Self {
             command_id: self.command_id,
             claim: self.claim,
             observed_at: self.observed_at,
@@ -39,8 +40,7 @@ impl LeaseUseCommandBinding {
             successor_issued_at: self.successor_issued_at,
             successor_issuance_digest: self.successor_issuance_digest,
             successor_issuance_command_id: self.successor_issuance_command_id,
-        };
-        duplicate
+        }
     }
 }
 impl LeaseCommandBinding {
@@ -71,7 +71,7 @@ impl LeaseCommandBinding {
                 LeaseCommandBindingData::Reconcile(Box::new(**command))
             }
         };
-        let duplicate = Self { data };
-        duplicate
+
+        Self { data }
     }
 }

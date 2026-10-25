@@ -93,14 +93,14 @@ pub async fn serve(
                         let connection_stop = stop.clone();
                         connections.spawn(async move {
                             let _permit = permit;
-                            let result = run_connection(
+                            let result = Box::pin(run_connection(
                                 connection,
                                 authority,
                                 terminals,
                                 product_runs,
                                 shutdown_request,
                                 connection_stop,
-                            )
+                            ))
                             .await;
                             if let Err(error) = &result {
                                 report_connection_event(

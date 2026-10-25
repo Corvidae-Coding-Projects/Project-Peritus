@@ -109,27 +109,7 @@ fn tool_rows(
     let failed = text.starts_with("Failed ");
     let pending = text.starts_with("Calling ");
     let changed = ["Updated ", "Wrote ", "Removed "].iter().any(|prefix| text.starts_with(prefix));
-    let color = if failed {
-        BAD
-    } else if changed {
-        GOOD
-    } else {
-        Color::White
-    };
-    let mut tool = vec![Line::styled(
-        format!(
-            "{} {}",
-            if failed {
-                "!"
-            } else if pending {
-                "▶"
-            } else {
-                "✓"
-            },
-            tool_label(&text),
-        ),
-        Style::default().fg(color).add_modifier(Modifier::BOLD),
-    )];
+    let mut tool = vec![tool_heading(&text, failed, pending, changed)];
     let detail = crate::sanitize::sanitize_display_text(body);
     let rendered = serde_json::from_str::<serde_json::Value>(&detail)
         .ok()
@@ -168,28 +148,15 @@ fn tool_rows(
                 token.trim_matches(['\'', '"']).to_ascii_lowercase().ends_with(".md")
             }));
     if document && !model.chat.expanded {
-        let prose = rendered
-            .lines()
-            .map(|line| {
-                if text.contains("workspace_read ") {
-                    line.split_once(": ")
-                        .filter(|(number, _)| number.chars().all(|ch| ch.is_ascii_digit()))
-                        .map_or(line, |(_, body)| body)
-                } else {
-                    line
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        let readable_width = width.min(110);
-        tool.push(Line::from(""));
-        tool.extend(super::markdown::cached(model, activity.sequence(), &prose, readable_width));
-        if let Some(footer) = footer {
-            tool.push(footer);
-        }
-        let mut rows = wrapped_rows(tool, readable_width);
-        rows.push(OutputRow { line: Line::from(""), hard_break: true });
-        return rows;
+        return document_tool_rows(
+            model,
+            activity.sequence(),
+            &text,
+            &rendered,
+            footer,
+            tool,
+            width,
+        );
     }
     let source_path = text
         .split("path=")
@@ -223,6 +190,60 @@ fn tool_rows(
         tool.push(footer);
     }
     let mut rows = wrapped_rows(tool, width);
+    rows.push(OutputRow { line: Line::from(""), hard_break: true });
+    rows
+}
+
+fn tool_heading(text: &str, failed: bool, pending: bool, changed: bool) -> Line<'static> {
+    let color = if failed {
+        BAD
+    } else if changed {
+        GOOD
+    } else {
+        Color::White
+    };
+    let symbol = if failed {
+        "!"
+    } else if pending {
+        "▶"
+    } else {
+        "✓"
+    };
+    Line::styled(
+        format!("{symbol} {}", tool_label(text)),
+        Style::default().fg(color).add_modifier(Modifier::BOLD),
+    )
+}
+
+fn document_tool_rows(
+    model: &AppModel,
+    sequence: u64,
+    label: &str,
+    rendered: &str,
+    footer: Option<Line<'static>>,
+    mut tool: Vec<Line<'static>>,
+    width: usize,
+) -> Vec<OutputRow> {
+    let prose = rendered
+        .lines()
+        .map(|line| {
+            if label.contains("workspace_read ") {
+                line.split_once(": ")
+                    .filter(|(number, _)| number.chars().all(|ch| ch.is_ascii_digit()))
+                    .map_or(line, |(_, body)| body)
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let readable_width = width.min(110);
+    tool.push(Line::from(""));
+    tool.extend(super::markdown::cached(model, sequence, &prose, readable_width));
+    if let Some(footer) = footer {
+        tool.push(footer);
+    }
+    let mut rows = wrapped_rows(tool, readable_width);
     rows.push(OutputRow { line: Line::from(""), hard_break: true });
     rows
 }

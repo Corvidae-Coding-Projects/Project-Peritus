@@ -69,6 +69,15 @@ pub struct DeveloperContextAssembly<'a> {
     pub profile: &'a ProviderProfile,
 }
 
+pub(super) struct DeveloperContextPreparation<'a> {
+    pub(super) provider: &'a dyn peritus_provider_core::ModelProvider,
+    pub(super) tools: &'a [ToolDefinition],
+    pub(super) profile: &'a ProviderProfile,
+    pub(super) invocation_policy: &'a Message,
+    pub(super) invocation_state: Option<&'a Message>,
+    pub(super) governing_input: Option<&'a Message>,
+}
+
 /// Authorized visible events supplied to local memory in execution order.
 ///
 /// Observing a proposal does not authorize it or establish that it executed. Tool output is
@@ -233,42 +242,37 @@ impl ContextSession<'_> {
 
     pub(super) fn prepare(
         &mut self,
-        provider: &dyn peritus_provider_core::ModelProvider,
         messages: &mut Vec<Message>,
-        tools: &[ToolDefinition],
-        profile: &ProviderProfile,
-        invocation_policy: &Message,
-        invocation_state: Option<&Message>,
-        governing_input: Option<&Message>,
+        preparation: &DeveloperContextPreparation<'_>,
     ) -> Result<bool, DeveloperLoopError> {
         if let Some(port) = &mut self.0 {
-            let prior = estimated_request_tokens(messages, tools);
+            let prior = estimated_request_tokens(messages, preparation.tools);
             let prior_units = transcript_units(messages);
             let candidate = port.assemble(DeveloperContextAssembly {
-                provider,
-                governing_input,
-                invocation_policy,
-                invocation_state,
+                provider: preparation.provider,
+                governing_input: preparation.governing_input,
+                invocation_policy: preparation.invocation_policy,
+                invocation_state: preparation.invocation_state,
                 messages,
-                tools,
-                profile,
+                tools: preparation.tools,
+                profile: preparation.profile,
             })?;
-            if candidate.first() != Some(invocation_policy) {
+            if candidate.first() != Some(preparation.invocation_policy) {
                 return Err(DeveloperLoopError::Context(
                     "local view did not preserve current host invocation policy".to_owned(),
                 ));
             }
-            if invocation_state.is_some_and(|state| !candidate.contains(state)) {
+            if preparation.invocation_state.is_some_and(|state| !candidate.contains(state)) {
                 return Err(DeveloperLoopError::Context(
                     "local view did not preserve current executor state".to_owned(),
                 ));
             }
-            if governing_input.is_some_and(|input| !candidate.contains(input)) {
+            if preparation.governing_input.is_some_and(|input| !candidate.contains(input)) {
                 return Err(DeveloperLoopError::Context(
                     "local view did not preserve current governing user input".to_owned(),
                 ));
             }
-            let estimated = estimated_request_tokens(&candidate, tools);
+            let estimated = estimated_request_tokens(&candidate, preparation.tools);
             port.checkpoint(&candidate)?;
             let reduced_units = transcript_units(&candidate) < prior_units;
             *messages = candidate;

@@ -56,7 +56,7 @@ fn clone_terminal(value: Option<&SchedulerTerminal>) -> Option<SchedulerTerminal
 }
 impl Clone for SchedulerState {
     fn clone(&self) -> Self {
-        let result = Self {
+        Self {
             binding: self.binding.clone(),
             phase: self.phase,
             sequence: self.sequence,
@@ -70,7 +70,6 @@ impl Clone for SchedulerState {
             dispatch_ordinal: self.dispatch_ordinal,
             used_commands: clone_command_ids(&self.used_commands),
             terminal: clone_terminal(self.terminal.as_ref()),
-        };
-        result
+        }
     }
 }

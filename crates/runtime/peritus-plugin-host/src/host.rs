@@ -306,43 +306,7 @@ impl PluginHost {
                 return Err(error);
             }
         };
-        match response.response {
-            PluginResponse::Success { output, rendering } => {
-                let output_size = output.canonical_bytes().len() as u64
-                    + rendering.as_ref().map_or(0, |text| text.len() as u64);
-                if output_size > instance.quotas.limits().output_bytes {
-                    instance.fail_if_ready().await;
-                    instance.connection.terminate().await?;
-                    return Err(HostError::new(
-                        HostFailureClass::Quota,
-                        RecoveryDisposition::RestartPlugin,
-                        "accept plugin result",
-                        "plugin result exceeds its output quota",
-                    ));
-                }
-                Ok(PluginInvocationResult::Succeeded { output, rendering })
-            }
-            PluginResponse::Failure(failure) => {
-                if failure.class == FailureClass::Cancelled {
-                    Ok(PluginInvocationResult::Cancelled)
-                } else {
-                    Ok(PluginInvocationResult::Failed(failure))
-                }
-            }
-            PluginResponse::Status { status: PluginStatus::Cancelled } => {
-                Ok(PluginInvocationResult::Cancelled)
-            }
-            PluginResponse::Status { .. } => {
-                instance.fail_if_ready().await;
-                instance.connection.terminate().await?;
-                Err(HostError::new(
-                    HostFailureClass::Protocol,
-                    RecoveryDisposition::RestartPlugin,
-                    "accept plugin result",
-                    "plugin returned a lifecycle status for an invocation",
-                ))
-            }
-        }
+        accept_invocation_response(&instance, response.response).await
     }
 
     /// Gracefully shuts down one owned plugin and always terminates the child afterward.
@@ -453,6 +417,49 @@ impl PluginHost {
                 arguments,
                 working_directory: plugin.root().to_path_buf(),
             },
+        }
+    }
+}
+
+async fn accept_invocation_response(
+    instance: &PluginInstance,
+    response: PluginResponse,
+) -> Result<PluginInvocationResult, HostError> {
+    match response {
+        PluginResponse::Success { output, rendering } => {
+            let output_size = output.canonical_bytes().len() as u64
+                + rendering.as_ref().map_or(0, |text| text.len() as u64);
+            if output_size > instance.quotas.limits().output_bytes {
+                instance.fail_if_ready().await;
+                instance.connection.terminate().await?;
+                return Err(HostError::new(
+                    HostFailureClass::Quota,
+                    RecoveryDisposition::RestartPlugin,
+                    "accept plugin result",
+                    "plugin result exceeds its output quota",
+                ));
+            }
+            Ok(PluginInvocationResult::Succeeded { output, rendering })
+        }
+        PluginResponse::Failure(failure) => {
+            if failure.class == FailureClass::Cancelled {
+                Ok(PluginInvocationResult::Cancelled)
+            } else {
+                Ok(PluginInvocationResult::Failed(failure))
+            }
+        }
+        PluginResponse::Status { status: PluginStatus::Cancelled } => {
+            Ok(PluginInvocationResult::Cancelled)
+        }
+        PluginResponse::Status { .. } => {
+            instance.fail_if_ready().await;
+            instance.connection.terminate().await?;
+            Err(HostError::new(
+                HostFailureClass::Protocol,
+                RecoveryDisposition::RestartPlugin,
+                "accept plugin result",
+                "plugin returned a lifecycle status for an invocation",
+            ))
         }
     }
 }

@@ -36,6 +36,6 @@ pub fn evaluate_security_readiness(
         CheckResult::from_bool(blockers_clear),
         CheckResult::from_bool(evidence_complete),
     );
-    let decision = SecurityDecision::from_evaluation(unmet, checks);
-    decision
+
+    SecurityDecision::from_evaluation(unmet, checks)
 }

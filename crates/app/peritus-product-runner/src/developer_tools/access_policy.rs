@@ -10,7 +10,7 @@ use serde_json::Value;
 use super::executor::WorkspaceDeveloperTools;
 
 /// Reapply the same current read policy before presenting an archived source page.
-pub(crate) fn may_reuse_read(
+pub fn may_reuse_read(
     root: &Path,
     path: &str,
     protected: &[PathBuf],

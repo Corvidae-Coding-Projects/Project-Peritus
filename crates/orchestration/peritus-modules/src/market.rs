@@ -67,6 +67,10 @@ pub enum ModuleOperation {
 }
 impl ModuleOperation {
     /// Runs a local management operation outside UI/async executor threads.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the requested registry or market operation cannot complete.
     pub fn execute(self) -> Result<Value, Error> {
         let registry = Registry::for_user()?;
         let result = match self {
@@ -130,6 +134,10 @@ pub struct Catalog {
 }
 impl Catalog {
     /// Validates a catalog independently of network and local registry state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the catalog is oversized, malformed, noncanonical, or unsafe.
     pub fn parse(text: &str) -> Result<Self, Error> {
         if text.len() > 4 * 1024 * 1024 {
             return Err(invalid("market catalog exceeds 4 MiB"));
@@ -261,6 +269,10 @@ fn optional_remote_source(commit: &str) -> Result<Option<Vec<u8>>, Error> {
 }
 impl Registry {
     /// Saves only generic UI actions from a native plugin, bound to its exact package and run.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when identities, actions, or durable publication are invalid.
     pub fn publish_session_view(
         &self,
         run: &str,
@@ -317,6 +329,10 @@ impl Registry {
         publish(&path, &serde_json::to_vec(&session)?)
     }
     /// Reads cached discovery and the selected run's plugin-supplied action menu.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when market or retained session state cannot be read safely.
     pub fn market_for_session(&self, run: Option<&str>) -> Result<Value, Error> {
         let mut view = self.market()?;
         if let Some(run) = run {
@@ -348,6 +364,10 @@ impl Registry {
     }
     /// Refreshes explicitly from main, resolving it once to an immutable Git commit.
     /// On network/validation failure the last usable snapshot and selections remain intact.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the source cannot be resolved, fetched, validated, or published.
     pub fn refresh_market(&self) -> Result<Value, Error> {
         let checkout = local_checkout()?;
         let (commit, bytes, source_bytes) = if let Some(path) = &checkout {
@@ -402,6 +422,10 @@ impl Registry {
         self.market()
     }
     /// Cached discovery plus installed state; opening this view never requires network access.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when installed or cached market state cannot be read.
     pub fn market(&self) -> Result<Value, Error> {
         let installed = self.list()?;
         let snapshot = self.market_snapshot();
@@ -436,6 +460,10 @@ impl Registry {
     }
     /// Installs the selected catalog version at its pinned commit, disabled pending enablement.
     /// The caller supplies the digest it displayed to prevent silently installing an updated row.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when selection, source identity, download, or installation validation fails.
     pub fn install_market(&self, id: &str, expected_digest: &str) -> Result<Value, Error> {
         let snapshot = self.market_snapshot()?;
         let entry = snapshot.catalog.modules.iter().find(|m| m.id == id).ok_or_else(|| {

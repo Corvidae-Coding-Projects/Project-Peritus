@@ -103,6 +103,12 @@ struct Inventory {
     directories: Vec<DirectoryEntry>,
 }
 
+struct CapturedManifest {
+    manifest: SourceManifest,
+    reused_files: u64,
+    reused_bytes: u64,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct ReadReceipt {
@@ -117,10 +123,11 @@ struct ReadReceipt {
     range_artifact: String,
 }
 
-pub(super) struct MaterializedSourceFile {
+/// Complete source snapshot copied into a host-owned disposable directory.
+pub(super) struct MaterializedSourceTree {
     pub(super) snapshot_digest: String,
-    pub(super) path: PathBuf,
-    pub(super) digest: String,
+    pub(super) file_count: u64,
+    pub(super) total_bytes: u64,
 }
 
 pub(super) struct Broker<'a> {
@@ -138,9 +145,9 @@ impl<'a> Broker<'a> {
     pub(super) fn dispatch(&self, operation: &str, input: serde_json::Value) -> ModuleHostOutcome {
         let result = match operation {
             "capture" => decode(input).and_then(|request| self.capture(request)),
-            "manifest" => decode(input).and_then(|request| self.manifest(request)),
-            "read" => decode(input).and_then(|request| self.read(request)),
-            "verify" => decode(input).and_then(|request| self.verify(request)),
+            "manifest" => decode(input).and_then(|request| self.manifest(&request)),
+            "read" => decode(input).and_then(|request| self.read(&request)),
+            "verify" => decode(input).and_then(|request| self.verify(&request)),
             "revoke" => decode(input).and_then(|request| self.revoke(request)),
             _ => {
                 return ModuleHostOutcome::Unsupported {
@@ -161,79 +168,106 @@ impl<'a> Broker<'a> {
         }
     }
 
-    pub(super) fn materialize_file(
+    /// Materialize every regular file in the selected immutable snapshot as a private writable
+    /// execution copy. Artifact bytes and the original source stay immutable; callers may let the
+    /// target modify this destination and later replace it from the same snapshot during reset.
+    ///
+    /// This is intentionally a host-only primitive. Native modules receive only the resulting
+    /// identity and counts; they never receive a resolved host path. Callers must provide a fresh
+    /// private destination and bounded limits appropriate to the owned sandbox operation.
+    pub(super) fn materialize_tree(
         &self,
         authority: &ScopedSourceAuthority,
-        source_path: &str,
         destination: &Path,
-    ) -> Result<MaterializedSourceFile, BrokerError> {
-        validate_relative_path(source_path)?;
-        let index = self.load_index()?;
-        let scope = self.require_scope(&index, authority)?;
-        let manifest = self.load_manifest(scope)?;
-        let entry = manifest
-            .entries
-            .binary_search_by(|entry| entry.path.as_str().cmp(source_path))
-            .ok()
-            .map(|index| &manifest.entries[index])
-            .ok_or_else(|| {
-                rejected(
-                    "source_not_in_snapshot",
-                    "the requested target is not an included regular file in this snapshot",
-                )
-            })?;
-        let parent = destination.parent().ok_or_else(|| {
-            failed("job_materialization", "target destination has no parent", false)
-        })?;
-        fs::create_dir_all(parent).map_err(|_| {
-            failed("job_materialization", "target directory could not be created", true)
-        })?;
-        let store = self.artifacts()?;
-        let digest = parse_digest(&entry.digest)?;
-        let mut reader = store.open_read(digest).map_err(|_| {
-            failed(
-                "artifact_integrity",
-                "the immutable target artifact is absent, quarantined, or corrupt",
-                false,
-            )
-        })?;
-        let mut options = fs::OpenOptions::new();
-        options.create_new(true).write(true);
-        #[cfg(unix)]
+        maximum_files: u64,
+        maximum_total_bytes: u64,
+    ) -> Result<MaterializedSourceTree, BrokerError> {
+        if maximum_files == 0
+            || maximum_files > 100_000
+            || maximum_total_bytes == 0
+            || maximum_total_bytes > 2 * 1024 * 1024 * 1024
         {
-            use std::os::unix::fs::OpenOptionsExt as _;
-            options.mode(0o400);
+            return Err(rejected(
+                "source_materialization_limits",
+                "source-tree materialization requires 1..=100000 files and 1..=2 GiB total",
+            ));
         }
-        let mut output = options
-            .open(destination)
-            .map_err(|_| failed("job_materialization", "target file could not be created", true))?;
-        let mut observed = 0_u64;
-        let mut hasher = Sha256::new();
-        while let Some(chunk) = reader.read_chunk(64 * 1024).map_err(|_| {
-            failed("artifact_integrity", "target artifact verification failed", false)
-        })? {
-            output.write_all(chunk.bytes()).map_err(|_| {
-                failed("job_materialization", "target bytes could not be written", true)
-            })?;
-            observed = observed
-                .checked_add(u64::try_from(chunk.bytes().len()).map_err(|_| overflow())?)
-                .ok_or_else(overflow)?;
-            hasher.update(chunk.bytes());
-        }
-        output.sync_all().map_err(|_| {
-            failed("job_materialization", "target bytes could not be synchronized", true)
-        })?;
-        if observed != entry.bytes || encode_hex(&hasher.finalize()) != entry.digest {
+        if fs::symlink_metadata(destination).is_ok() {
             return Err(failed(
-                "artifact_integrity",
-                "materialized target differs from its immutable source identity",
+                "job_materialization",
+                "source-tree destination already exists",
                 false,
             ));
         }
-        Ok(MaterializedSourceFile {
+        let index = self.load_index()?;
+        let scope = Self::require_scope(&index, authority)?;
+        let manifest = self.load_manifest(scope)?;
+        let file_count = u64::try_from(manifest.entries.len()).map_err(|_| overflow())?;
+        if file_count > maximum_files || manifest.total_bytes > maximum_total_bytes {
+            return Err(rejected(
+                "source_materialization_limits",
+                "the immutable source snapshot exceeds the admitted disposable-copy limits",
+            ));
+        }
+        fs::create_dir_all(destination).map_err(|_| {
+            failed("job_materialization", "source-tree root could not be created", true)
+        })?;
+        let store = self.artifacts()?;
+        for entry in &manifest.entries {
+            validate_relative_path(&entry.path)?;
+            let target = destination.join(&entry.path);
+            let parent = target.parent().ok_or_else(|| {
+                failed("job_materialization", "source-tree file has no parent", false)
+            })?;
+            fs::create_dir_all(parent).map_err(|_| {
+                failed("job_materialization", "source-tree parent could not be created", true)
+            })?;
+            let digest = parse_digest(&entry.digest)?;
+            let mut reader = store.open_read(digest).map_err(|_| {
+                failed(
+                    "artifact_integrity",
+                    "an immutable source artifact required by the disposable tree is absent or corrupt",
+                    false,
+                )
+            })?;
+            let mut options = fs::OpenOptions::new();
+            options.create_new(true).write(true);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt as _;
+                options.mode(if entry.executable { 0o700 } else { 0o600 });
+            }
+            let mut output = options.open(&target).map_err(|_| {
+                failed("job_materialization", "source-tree file could not be created", true)
+            })?;
+            let mut observed = 0_u64;
+            let mut hasher = Sha256::new();
+            while let Some(chunk) = reader.read_chunk(64 * 1024).map_err(|_| {
+                failed("artifact_integrity", "source-tree artifact verification failed", false)
+            })? {
+                output.write_all(chunk.bytes()).map_err(|_| {
+                    failed("job_materialization", "source-tree bytes could not be written", true)
+                })?;
+                observed = observed
+                    .checked_add(u64::try_from(chunk.bytes().len()).map_err(|_| overflow())?)
+                    .ok_or_else(overflow)?;
+                hasher.update(chunk.bytes());
+            }
+            output.sync_all().map_err(|_| {
+                failed("job_materialization", "source-tree bytes could not be synchronized", true)
+            })?;
+            if observed != entry.bytes || encode_hex(&hasher.finalize()) != entry.digest {
+                return Err(failed(
+                    "artifact_integrity",
+                    "materialized source-tree bytes differ from the immutable manifest",
+                    false,
+                ));
+            }
+        }
+        Ok(MaterializedSourceTree {
             snapshot_digest: scope.snapshot_digest.clone(),
-            path: destination.to_path_buf(),
-            digest: entry.digest.clone(),
+            file_count,
+            total_bytes: manifest.total_bytes,
         })
     }
 
@@ -242,121 +276,32 @@ impl<'a> Broker<'a> {
         authority: &ScopedSourceAuthority,
     ) -> Result<String, BrokerError> {
         let index = self.load_index()?;
-        let scope = self.require_scope(&index, authority)?;
+        let scope = Self::require_scope(&index, authority)?;
         Ok(scope.snapshot_digest.clone())
     }
 
     fn capture(&self, request: ScopedSourceRequest) -> Result<serde_json::Value, BrokerError> {
-        if request.schema != SCHEMA
-            || !request.immutable_snapshot
-            || request.purpose.trim().is_empty()
-            || request.purpose.len() > 1024
-            || request.purpose.chars().any(char::is_control)
-        {
-            return Err(rejected(
-                "invalid_source_request",
-                "source capture requires schema 1, an immutable snapshot, and a plain purpose",
-            ));
-        }
+        validate_capture_request(&request)?;
         let source_root = self.source_root()?;
         let exclusions = self.effective_exclusions(request.exclusions, &source_root)?;
-        let root_identity = FolderIdentity::observe(&source_root).map_err(|_| {
-            failed("source_unavailable", "source root identity is unavailable", true)
-        })?;
-        let inspection = FolderInspection::open(&root_identity).map_err(|_| {
-            failed(
-                "source_unavailable",
-                "source root cannot be opened without following links",
-                true,
-            )
-        })?;
         let mut index = self.load_index()?;
         let previous = match request.refresh.as_ref() {
-            Some(authority) => Some(self.require_scope(&index, authority)?.clone()),
+            Some(authority) => Some(Self::require_scope(&index, authority)?.clone()),
             None => None,
         };
         let previous_manifest =
             previous.as_ref().map(|scope| self.load_manifest(scope)).transpose()?;
-        let before = inventory(&source_root, &exclusions, || self.cancelled())?;
+        let captured =
+            self.capture_manifest(&source_root, &exclusions, previous_manifest.as_ref())?;
+        let manifest = captured.manifest;
+        let reused_files = captured.reused_files;
+        let reused_bytes = captured.reused_bytes;
+        let total_bytes = manifest.total_bytes;
+        let display_name = manifest.source_label.clone();
         let store = self.artifacts()?;
-        let temporary_root = self.recover_temporary_root()?;
-        let prior_entries = previous_manifest
-            .as_ref()
-            .map(|manifest| {
-                manifest
-                    .entries
-                    .iter()
-                    .map(|entry| (entry.path.as_str(), entry))
-                    .collect::<BTreeMap<_, _>>()
-            })
-            .unwrap_or_default();
-        let mut entries = Vec::with_capacity(before.files.len());
-        let mut reused_files = 0_u64;
-        let mut reused_bytes = 0_u64;
-        let mut total_bytes = 0_u64;
-        for (path, version) in &before.files {
-            if self.cancelled() {
-                return Err(failed("source_cancelled", "source capture was cancelled", true));
-            }
-            let prior = prior_entries.get(path.as_str()).copied();
-            let (digest, reused) =
-                if let Some(prior) = prior.filter(|entry| entry.version == *version) {
-                    let digest = parse_digest(&prior.digest)?;
-                    store.verify(digest).map_err(|_| {
-                        failed(
-                            "artifact_integrity",
-                            "an unchanged source artifact failed digest verification",
-                            false,
-                        )
-                    })?;
-                    (prior.digest.clone(), true)
-                } else {
-                    (self.capture_file(&inspection, path, &temporary_root, &store)?, false)
-                };
-            if reused {
-                reused_files = reused_files.checked_add(1).ok_or_else(overflow)?;
-                reused_bytes = reused_bytes.checked_add(version.bytes).ok_or_else(overflow)?;
-            }
-            total_bytes = total_bytes.checked_add(version.bytes).ok_or_else(overflow)?;
-            entries.push(ManifestEntry {
-                path: path.clone(),
-                digest,
-                bytes: version.bytes,
-                executable: version.mode.is_some_and(|mode| mode & 0o111 != 0),
-                version: version.clone(),
-            });
-        }
-        let after = inventory(&source_root, &exclusions, || self.cancelled())?;
-        if before != after {
-            return Err(failed(
-                "mixed_source_revision",
-                "source entries changed during capture; no source handle was published",
-                true,
-            ));
-        }
-        if self.cancelled() {
-            return Err(failed(
-                "source_cancelled",
-                "source capture authority changed before publication",
-                true,
-            ));
-        }
-        let display_name = source_root
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("selected-workspace")
-            .to_owned();
-        let manifest = SourceManifest {
-            schema: SCHEMA,
-            source_label: display_name.clone(),
-            exclusions: exclusions.clone(),
-            entries,
-            directories: before.directories,
-            total_bytes,
-        };
         let manifest_bytes = serde_json::to_vec(&manifest).map_err(json_failure)?;
         let manifest_digest = sha256_hex(&manifest_bytes);
-        self.publish_artifact(
+        Self::publish_artifact(
             &store,
             &manifest_bytes,
             "application/vnd.peritus.scoped-source-manifest.v1+json",
@@ -388,7 +333,7 @@ impl<'a> Broker<'a> {
             .collect::<Vec<_>>();
         let revision = index.next_revision;
         index.next_revision = revision.checked_add(1).ok_or_else(overflow)?;
-        let scope_revision = format!("scope-{revision}-{:.16}", manifest_digest);
+        let scope_revision = format!("scope-{revision}-{manifest_digest:.16}");
         let handle = sha256_hex(
             format!(
                 "scoped-source-v1\0{}\0{}\0{}\0{}",
@@ -436,9 +381,105 @@ impl<'a> Broker<'a> {
         .map_err(json_failure)
     }
 
+    fn capture_manifest(
+        &self,
+        source_root: &Path,
+        exclusions: &[String],
+        previous: Option<&SourceManifest>,
+    ) -> Result<CapturedManifest, BrokerError> {
+        let identity = FolderIdentity::observe(source_root).map_err(|_| {
+            failed("source_unavailable", "source root identity is unavailable", true)
+        })?;
+        let inspection = FolderInspection::open(&identity).map_err(|_| {
+            failed(
+                "source_unavailable",
+                "source root cannot be opened without following links",
+                true,
+            )
+        })?;
+        let before = inventory(source_root, exclusions, || self.cancelled())?;
+        let store = self.artifacts()?;
+        let temporary_root = self.recover_temporary_root()?;
+        let prior = previous
+            .map(|manifest| {
+                manifest
+                    .entries
+                    .iter()
+                    .map(|entry| (entry.path.as_str(), entry))
+                    .collect::<BTreeMap<_, _>>()
+            })
+            .unwrap_or_default();
+        let mut entries = Vec::with_capacity(before.files.len());
+        let mut reused_files = 0_u64;
+        let mut reused_bytes = 0_u64;
+        let mut total_bytes = 0_u64;
+        for (path, version) in &before.files {
+            if self.cancelled() {
+                return Err(failed("source_cancelled", "source capture was cancelled", true));
+            }
+            let prior = prior.get(path.as_str()).copied();
+            let (digest, reused) =
+                if let Some(prior) = prior.filter(|entry| entry.version == *version) {
+                    store.verify(parse_digest(&prior.digest)?).map_err(|_| {
+                        failed(
+                            "artifact_integrity",
+                            "an unchanged source artifact failed digest verification",
+                            false,
+                        )
+                    })?;
+                    (prior.digest.clone(), true)
+                } else {
+                    (self.capture_file(&inspection, path, &temporary_root, &store)?, false)
+                };
+            if reused {
+                reused_files = reused_files.checked_add(1).ok_or_else(overflow)?;
+                reused_bytes = reused_bytes.checked_add(version.bytes).ok_or_else(overflow)?;
+            }
+            total_bytes = total_bytes.checked_add(version.bytes).ok_or_else(overflow)?;
+            entries.push(ManifestEntry {
+                path: path.clone(),
+                digest,
+                bytes: version.bytes,
+                executable: version.mode.is_some_and(|mode| mode & 0o111 != 0),
+                version: version.clone(),
+            });
+        }
+        if before != inventory(source_root, exclusions, || self.cancelled())? {
+            return Err(failed(
+                "mixed_source_revision",
+                "source entries changed during capture; no source handle was published",
+                true,
+            ));
+        }
+        if self.cancelled() {
+            return Err(failed(
+                "source_cancelled",
+                "source capture authority changed before publication",
+                true,
+            ));
+        }
+        let source_label = source_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("selected-workspace")
+            .to_owned();
+        Ok(CapturedManifest {
+            manifest: SourceManifest {
+                schema: SCHEMA,
+                source_label,
+                exclusions: exclusions.to_vec(),
+                entries,
+                directories: before.directories,
+                total_bytes,
+            },
+            reused_files,
+            reused_bytes,
+        })
+    }
+
     fn manifest(
         &self,
-        request: ScopedSourceManifestRequest,
+        request: &ScopedSourceManifestRequest,
     ) -> Result<serde_json::Value, BrokerError> {
         if request.schema != SCHEMA || request.maximum_entries == 0 {
             return Err(rejected(
@@ -450,7 +491,7 @@ impl<'a> Broker<'a> {
             validate_relative_path(after)?;
         }
         let index = self.load_index()?;
-        let scope = self.require_scope(&index, &request.authority)?;
+        let scope = Self::require_scope(&index, &request.authority)?;
         let manifest = self.load_manifest(scope)?;
         let maximum = usize::from(request.maximum_entries.min(MAX_MANIFEST_ENTRIES));
         let start = request.after.as_ref().map_or(0, |after| {
@@ -479,37 +520,13 @@ impl<'a> Broker<'a> {
         .map_err(json_failure)
     }
 
-    fn read(&self, request: ScopedSourceReadRequest) -> Result<serde_json::Value, BrokerError> {
-        if request.schema != SCHEMA
-            || request.maximum_bytes == 0
-            || request.maximum_bytes > MAX_RANGE_BYTES
-        {
-            return Err(rejected(
-                "invalid_read_request",
-                "source reads require schema 1 and 1..=1048576 returned bytes",
-            ));
-        }
+    fn read(&self, request: &ScopedSourceReadRequest) -> Result<serde_json::Value, BrokerError> {
+        validate_read_request(request)?;
         validate_relative_path(&request.path)?;
         let index = self.load_index()?;
-        let scope = self.require_scope(&index, &request.authority)?;
-        if excluded(&request.path, &scope.exclusions) {
-            return Err(rejected(
-                "excluded_source",
-                "the requested source path is excluded from this scope revision",
-            ));
-        }
+        let scope = Self::require_scope(&index, &request.authority)?;
         let manifest = self.load_manifest(scope)?;
-        let entry = manifest
-            .entries
-            .binary_search_by(|entry| entry.path.as_str().cmp(&request.path))
-            .ok()
-            .map(|index| &manifest.entries[index])
-            .ok_or_else(|| {
-                rejected(
-                    "source_not_in_snapshot",
-                    "the requested path is not an included regular file in this snapshot",
-                )
-            })?;
+        let entry = source_entry(scope, &manifest, &request.path)?;
         if request.offset > entry.bytes {
             return Err(rejected(
                 "source_range",
@@ -550,7 +567,7 @@ impl<'a> Broker<'a> {
             selected.extend_from_slice(&chunk.bytes()[start_in_chunk..end_in_chunk]);
         }
         let range_artifact =
-            self.publish_artifact(&store, &selected, "application/vnd.peritus.source-range.v1")?;
+            Self::publish_artifact(&store, &selected, "application/vnd.peritus.source-range.v1")?;
         let receipt = ReadReceipt {
             schema: SCHEMA,
             handle: scope.handle.clone(),
@@ -589,7 +606,7 @@ impl<'a> Broker<'a> {
         serde_json::to_value(ScopedSourceReadResult {
             schema: SCHEMA,
             snapshot_digest: scope.snapshot_digest.clone(),
-            path: request.path,
+            path: request.path.clone(),
             source_digest: entry.digest.clone(),
             source_bytes: entry.bytes,
             range_start: request.offset,
@@ -629,7 +646,10 @@ impl<'a> Broker<'a> {
         .map_err(json_failure)
     }
 
-    fn verify(&self, request: ScopedSourceVerifyRequest) -> Result<serde_json::Value, BrokerError> {
+    fn verify(
+        &self,
+        request: &ScopedSourceVerifyRequest,
+    ) -> Result<serde_json::Value, BrokerError> {
         if request.schema != SCHEMA {
             return Err(rejected(
                 "invalid_verify_request",
@@ -637,7 +657,7 @@ impl<'a> Broker<'a> {
             ));
         }
         let index = self.load_index()?;
-        let scope = self.require_scope(&index, &request.authority)?;
+        let scope = Self::require_scope(&index, &request.authority)?;
         let baseline = self.load_manifest(scope)?;
         let source_root = self.source_root()?;
         let before = inventory(&source_root, &scope.exclusions, || self.cancelled())?;
@@ -812,7 +832,6 @@ impl<'a> Broker<'a> {
     }
 
     fn publish_artifact(
-        &self,
         store: &ArtifactStore,
         bytes: &[u8],
         media_type: &str,
@@ -913,7 +932,6 @@ impl<'a> Broker<'a> {
     }
 
     fn require_scope<'index>(
-        &self,
         index: &'index BrokerIndex,
         authority: &ScopedSourceAuthority,
     ) -> Result<&'index ScopeRecord, BrokerError> {
@@ -1069,6 +1087,58 @@ impl<'a> Broker<'a> {
             || self.input.provider_cancellation.is_cancelled()
             || self.input.conversation.revision() != self.revision
     }
+}
+
+fn source_entry<'manifest>(
+    scope: &ScopeRecord,
+    manifest: &'manifest SourceManifest,
+    path: &str,
+) -> Result<&'manifest ManifestEntry, BrokerError> {
+    if excluded(path, &scope.exclusions) {
+        return Err(rejected(
+            "excluded_source",
+            "the requested source path is excluded from this scope revision",
+        ));
+    }
+    manifest
+        .entries
+        .binary_search_by(|entry| entry.path.as_str().cmp(path))
+        .ok()
+        .map(|index| &manifest.entries[index])
+        .ok_or_else(|| {
+            rejected(
+                "source_not_in_snapshot",
+                "the requested path is not an included regular file in this snapshot",
+            )
+        })
+}
+
+fn validate_capture_request(request: &ScopedSourceRequest) -> Result<(), BrokerError> {
+    if request.schema != SCHEMA
+        || !request.immutable_snapshot
+        || request.purpose.trim().is_empty()
+        || request.purpose.len() > 1024
+        || request.purpose.chars().any(char::is_control)
+    {
+        return Err(rejected(
+            "invalid_source_request",
+            "source capture requires schema 1, an immutable snapshot, and a plain purpose",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_read_request(request: &ScopedSourceReadRequest) -> Result<(), BrokerError> {
+    if request.schema != SCHEMA
+        || request.maximum_bytes == 0
+        || request.maximum_bytes > MAX_RANGE_BYTES
+    {
+        return Err(rejected(
+            "invalid_read_request",
+            "source reads require schema 1 and 1..=1048576 returned bytes",
+        ));
+    }
+    Ok(())
 }
 
 pub(super) fn authority_live(state: &Path, authority: &ScopedSourceAuthority) -> bool {

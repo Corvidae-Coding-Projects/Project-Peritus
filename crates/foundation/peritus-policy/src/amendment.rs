@@ -82,12 +82,11 @@ fn amended_layers_from(
         return layers;
     }
     if current[index].tier().rank() == target.rank() {
-        if !inserted {}
         let layers =
             amended_layers_from(current, target, replacement, revision, index + 1, inserted);
         return layers;
     }
-    if !inserted {}
+
     let mut layers =
         amended_layers_from(current, target, replacement, revision, index + 1, inserted);
     let rebound = current[index].rebind_revision(revision);

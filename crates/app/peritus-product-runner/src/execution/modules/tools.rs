@@ -44,7 +44,7 @@ struct Page {
     #[serde(default)]
     path: Option<String>,
 }
-fn default_bytes() -> usize {
+const fn default_bytes() -> usize {
     16384
 }
 impl<'a> ModuleTools<'a> {
@@ -54,8 +54,8 @@ impl<'a> ModuleTools<'a> {
         definition: &'a Definition,
         stage: &'a Stage,
         role: &'a Role,
-    ) -> Result<Self, ProductRunnerError> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             workspace: input.configure_tools(
                 WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
                     .with_task_contract(&job.state().task),
@@ -65,7 +65,7 @@ impl<'a> ModuleTools<'a> {
             definition,
             stage,
             role,
-        })
+        }
     }
     pub(super) fn definitions(&self) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         let mut definitions = crate::developer_tools::read_only_definitions()?
@@ -121,8 +121,8 @@ impl<'a> ModuleTools<'a> {
             return Err("offset is beyond the resource".into());
         }
         file.seek(SeekFrom::Start(page.offset)).map_err(|e| e.to_string())?;
-        let mut bytes =
-            vec![0; page.max_bytes.clamp(4, 1024 * 1024).min((total - page.offset) as usize)];
+        let remaining = usize::try_from(total - page.offset).unwrap_or(usize::MAX);
+        let mut bytes = vec![0; page.max_bytes.clamp(4, 1024 * 1024).min(remaining)];
         file.read_exact(&mut bytes).map_err(|e| e.to_string())?;
         let text = match std::str::from_utf8(&bytes) {
             Ok(s) => s,

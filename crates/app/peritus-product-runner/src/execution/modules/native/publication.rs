@@ -30,7 +30,7 @@ pub(super) fn menu(
     if current.digest != definition.digest {
         return Err(error("native plugin selection changed before result publication"));
     }
-    let run = input.run_id.as_bytes().iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let run = crate::encode_hex(input.run_id.as_bytes());
     let (summary, truncated) = summary(text);
     let progress = json!({
         "state":state,
@@ -46,7 +46,7 @@ pub(super) fn menu(
                 "actions":actions,
                 "summary":summary,
                 "summary_bytes":text.len(),
-                "summary_sha256":Sha256::digest(text.as_bytes()).iter().map(|byte|format!("{byte:02x}")).collect::<String>(),
+                "summary_sha256":crate::encode_hex(&Sha256::digest(text.as_bytes())),
                 "summary_truncated":truncated,
                 "progress":progress,
                 "artifact":artifact,
@@ -60,7 +60,8 @@ pub(super) fn progress(
     definition: &Definition,
     progress: Value,
 ) -> Result<(), ProductRunnerError> {
-    let run = input.run_id.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let run = crate::encode_hex(input.run_id.as_bytes());
+    let progress = Box::new(progress);
     Registry::for_user()
         .map_err(error)?
         .publish_session_progress(&run, &definition.manifest.id, &definition.digest, &progress)

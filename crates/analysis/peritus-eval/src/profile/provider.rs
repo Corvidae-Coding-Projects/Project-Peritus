@@ -49,7 +49,7 @@ pub struct FrozenProviderSnapshot {
 
 impl FrozenProviderSnapshot {
     // Recovery restores inert, artifact-bound facts, never provider execution authority.
-    pub(super) fn restore(
+    pub(super) const fn restore(
         profile_id: ProviderProfileId,
         revision: u64,
         digest: Sha256Digest,

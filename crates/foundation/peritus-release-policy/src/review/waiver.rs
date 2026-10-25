@@ -64,7 +64,6 @@ impl WaiverObservation {
     #[doc = " Returns whether the waiver is exact and current for the evaluation candidate."]
     #[must_use]
     pub const fn is_current_for(&self, candidate: ReleaseCandidate, evaluated_at: u64) -> bool {
-        let current = self.binding().is_current_for(candidate, evaluated_at);
-        current
+        self.binding().is_current_for(candidate, evaluated_at)
     }
 }

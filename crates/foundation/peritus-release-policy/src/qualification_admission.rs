@@ -25,8 +25,8 @@ impl ReleaseQualificationAdmission {
         checks: [ReleaseQualificationCheck; RELEASE_QUALIFICATION_CHECK_COUNT],
     ) -> Self {
         let ready = decision.is_ready() && release_qualification_checks_complete(checks);
-        let admission = Self { ready };
-        admission
+
+        Self { ready }
     }
     #[doc = " Reports whether every fixed H4 check and the verified policy decision passed."]
     #[must_use]

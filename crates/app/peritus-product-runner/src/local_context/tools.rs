@@ -51,7 +51,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         let mut memory = self.memory.lock()?;
         memory.activity.observe_view(messages);
         super::assembly::retrieval::observe_view(&mut memory, messages)?;
-        super::read_reuse::observe_view(&mut memory, messages)
+        let result = super::read_reuse::observe_view(&mut memory, messages);
+        drop(memory);
+        result
     }
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
@@ -75,6 +77,7 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         let mut activity = std::mem::take(&mut memory.activity);
         let result = activity.outcome(&memory, call, &output);
         memory.activity = activity;
+        drop(memory);
         if let Some(value) = result? {
             return Ok(DeveloperToolObservation {
                 output: CanonicalJson::parse(
@@ -113,7 +116,7 @@ impl MemoryTools<'_> {
         let name = call.name().as_str();
         if !self.base.tool_calls_allowed() || !matches!(name, "context_read" | "context_update") {
             let candidate = if self.base.tool_calls_allowed() && name == "workspace_read" {
-                super::read_reuse::plan(&mut *self.memory.lock()?, call)?
+                super::read_reuse::plan(&mut *self.memory.lock()?, call)
             } else {
                 None
             };
@@ -182,8 +185,7 @@ impl MemoryTools<'_> {
                 {
                     value
                 }
-                Some(_) => read::execute(&mut memory, call.arguments().canonical_bytes())?,
-                None => read::execute(&mut memory, call.arguments().canonical_bytes())?,
+                Some(_) | None => read::execute(&mut memory, call.arguments().canonical_bytes())?,
             },
             _ => update::execute(&mut memory, call.arguments().canonical_bytes())?,
         };

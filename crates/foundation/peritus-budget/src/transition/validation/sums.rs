@@ -49,7 +49,6 @@ pub(super) fn direct_child_remaining(
                 }
             };
             total = next;
-        } else {
         }
         index += 1;
     }

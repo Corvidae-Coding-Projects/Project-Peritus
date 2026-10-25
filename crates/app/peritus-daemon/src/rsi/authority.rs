@@ -1,7 +1,15 @@
 //! Serialized E3/F0 claim ownership. External processes run outside this owner.
 
 use peritus_artifact_store::ArtifactStore;
-use peritus_eval::*;
+use peritus_eval::{
+    CampaignFailure, CampaignFailureCode, CommittedEvaluationTransition, EvaluationCommandKind,
+    EvaluationDirectiveClaim, EvaluationLimits, EvaluationPhase, EvaluationPlan, EvaluationRuntime,
+    EvaluationState, ExecutionDirectiveClaim, ExecutionDirectiveKind, FrozenEvaluationProfile,
+    PublicationDirectiveClaim, RolloutId, RolloutOutcome, RolloutProgress, RolloutRecord,
+    RolloutSpec, RolloutStatus, RolloutTerminalClass, ScheduleDirectiveClaim,
+    ScheduleDirectiveKind, TerminalRecordRef, commit_evaluation_settlement, decide,
+    finalize_report_artifact, publish_claimed_report,
+};
 use peritus_evidence::{EvidenceStore, EvidenceStoreOptions};
 use peritus_journal::SqliteJournal;
 
@@ -282,22 +290,22 @@ pub(crate) fn fail(
     .map_err(e::error)?;
     let diagnostic = e::save(store, &bytes, e::ids(&state, "native-failure")?.event_id())?;
     let state = e::retain(journal, store, campaign, vec![diagnostic], Some(claim.clone()))?;
-    if let EvaluationDirectiveClaim::Execution(execution) = &claim {
-        if matches!(
+    if let EvaluationDirectiveClaim::Execution(execution) = &claim
+        && matches!(
             state.rollout(execution.directive().rollout_id()).map(RolloutProgress::status),
             Some(RolloutStatus::Running { .. })
-        ) {
-            // A started reservation cannot disappear into a campaign failure. Reconcile exact
-            // birth-bound children and settle actual infrastructure failure or ambiguity first.
-            return super::recovery::recover_claim(
-                journal,
-                store,
-                processes,
-                config,
-                execution,
-                Some(diagnostic),
-            );
-        }
+        )
+    {
+        // A started reservation cannot disappear into a campaign failure. Reconcile exact
+        // birth-bound children and settle actual infrastructure failure or ambiguity first.
+        return super::recovery::recover_claim(
+            journal,
+            store,
+            processes,
+            config,
+            execution,
+            Some(diagnostic),
+        );
     }
     if state.rollouts().all(|(_, p)| !matches!(p.status(), RolloutStatus::Running { .. })) {
         // No external work is owned at this boundary. Retire queued reservations honestly;

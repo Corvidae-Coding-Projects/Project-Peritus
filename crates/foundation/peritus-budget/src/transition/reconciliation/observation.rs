@@ -36,9 +36,7 @@ pub(in crate::transition) fn observe_validated(
         observation.verified_action_id(),
         observation.verified_action_digest(),
     );
-    if let Err(error) = binding {
-        return Err(error);
-    }
+    binding?;
     match ledger.reservations[reservation_index].phase {
         ReservationPhase::Active => {}
         _ => {

@@ -251,9 +251,11 @@ impl ExecutedRollout {
         candidate: CandidateObservation,
         evaluator: EvaluatorObservation,
     ) -> Result<Self, EvaluationError> {
+        let produced_output = candidate.output();
+        let evaluated_output = evaluator.candidate_output();
         if candidate.rollout_id() != evaluator.rollout_id()
             || candidate.attempt() != evaluator.attempt()
-            || candidate.output() != evaluator.candidate_output()
+            || produced_output != evaluated_output
             || candidate.observed_execution_digest() != evaluator.observed_execution_digest()
         {
             return Err(invalid("recovered candidate and evaluator stage bindings differ"));

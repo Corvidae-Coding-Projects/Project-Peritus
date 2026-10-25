@@ -7,8 +7,7 @@ const fn use_failure(
     error: crate::ApprovalError,
     aggregate: super::ApprovalAggregate,
 ) -> crate::ApprovalUseFailure {
-    let failure = crate::ApprovalUseFailure::new(error, aggregate);
-    failure
+    crate::ApprovalUseFailure::new(error, aggregate)
 }
 #[allow(
     non_shorthand_field_patterns,
@@ -30,8 +29,7 @@ impl super::ApprovalAggregate {
         action_digest: crate::ActionDigest,
         observed_at: AuthorityInstant,
     ) -> Result<crate::ApprovalUseOutcome, crate::ApprovalUseFailure> {
-        let result = self.consume_once_checked(action_id, action_digest, observed_at);
-        result
+        self.consume_once_checked(action_id, action_digest, observed_at)
     }
     #[allow(
         clippy::result_large_err,
@@ -108,8 +106,7 @@ impl super::ApprovalAggregate {
         candidate: &PolicyRevisionCandidate,
         observed_at: AuthorityInstant,
     ) -> Result<crate::ApprovalAmendmentOutcome, crate::ApprovalTransitionFailure> {
-        let result = self.consume_amendment_checked(candidate, observed_at);
-        result
+        self.consume_amendment_checked(candidate, observed_at)
     }
     #[allow(
         clippy::result_large_err,

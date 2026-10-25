@@ -16,9 +16,8 @@ impl RiskSet {
 impl OperationDescriptor {
     fn duplicate(&self) -> Self {
         let risks = self.risks.duplicate();
-        let duplicate =
-            Self { name: self.name.clone(), operation_class: self.operation_class, risks };
-        duplicate
+
+        Self { name: self.name.clone(), operation_class: self.operation_class, risks }
     }
 }
 impl OperationRegistry {
@@ -29,7 +28,7 @@ impl OperationRegistry {
             descriptors.push(self.descriptors[index].duplicate());
             index += 1;
         }
-        let duplicate = Self { descriptors };
-        duplicate
+
+        Self { descriptors }
     }
 }

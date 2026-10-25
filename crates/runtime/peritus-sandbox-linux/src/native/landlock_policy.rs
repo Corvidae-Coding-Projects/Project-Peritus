@@ -79,7 +79,14 @@ fn native_access(access: LandlockAccess, directory: bool) -> landlock::BitFlags<
             | AccessFs::MakeSym;
     }
     if bits & (1 << 5) != 0 {
-        native |= if directory { AccessFs::RemoveDir } else { AccessFs::RemoveFile };
+        // A path-beneath rule attached to a directory governs removal of both file and
+        // directory children. Granting only `RemoveDir` made ordinary cleanup such as
+        // unlinking a stale Unix socket fail with EPERM even when the checked contract
+        // explicitly allowed `FileOperation::Remove` for every descendant.
+        if directory {
+            native |= AccessFs::RemoveDir;
+        }
+        native |= AccessFs::RemoveFile;
     }
     if directory && bits & (1 << 6) != 0 {
         native |= AccessFs::Refer;

@@ -46,7 +46,7 @@ impl LocalMemory {
             self.limits,
         )?;
         let (working_state, source_index, mut roots) =
-            super::super::pages::store(&mut self.store, &self.state, &self.sources)?;
+            super::super::pages::store(&self.store, &self.state, &self.sources)?;
         let transcript_manifest = self.store.store(&encode(&self.transcript)?)?;
         let view_bytes = encode_messages(messages, ProtocolLimits::PRODUCTION)?;
         let view = self.store.store(&view_bytes)?;

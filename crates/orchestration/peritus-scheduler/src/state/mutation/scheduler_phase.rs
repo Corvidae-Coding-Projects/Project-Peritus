@@ -51,7 +51,7 @@ pub const fn apply_phase_command(
     state: &mut SchedulerState,
     command: &SchedulerCommandKind,
 ) -> PhaseCommandOutcome {
-    let outcome = match command {
+    match command {
         SchedulerCommandKind::PauseScheduler => {
             if pause_scheduler(state) {
                 PhaseCommandOutcome::Applied
@@ -74,6 +74,5 @@ pub const fn apply_phase_command(
             }
         }
         _ => PhaseCommandOutcome::NotPhaseCommand,
-    };
-    outcome
+    }
 }

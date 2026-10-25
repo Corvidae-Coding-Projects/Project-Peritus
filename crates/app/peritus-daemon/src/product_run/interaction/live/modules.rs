@@ -1,6 +1,11 @@
 //! Local commands share durable input admission, without claiming a provider send or usage.
 use super::{DeveloperLoopError, LiveConversation, ProductActivityKind, port_error};
-use peritus_model_protocol::*;
+use peritus_model_protocol::{
+    BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
+    ParallelToolPolicy, PersistencePolicy, ProtocolError, ProtocolLimits, ReasoningPolicy,
+    RequestId, RequestOptions, RequestedCapabilities, Role, StructuredOutput, ToolChoice,
+    negotiate,
+};
 
 impl LiveConversation {
     pub(super) fn admit_module_command(&self) -> Result<Option<String>, DeveloperLoopError> {
@@ -34,13 +39,13 @@ impl LiveConversation {
                 // Ordinary chat does not need an extra expansion of attachments and replies.
                 let inputs = control.inputs().capture()?;
                 let Some(selected) = inputs.included().last() else { return Ok(None) };
-                let input = control
+                let selected_input = control
                     .inputs()
                     .revisions()
                     .iter()
                     .find(|i| i.selection() == *selected)
                     .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
-                let command = input.text().trim();
+                let command = selected_input.text().trim();
                 if !(command == "/modules"
                     || command == "/module"
                     || command.starts_with("/module "))
@@ -80,21 +85,17 @@ impl LiveConversation {
                             profile.limits(),
                         )?,
                     )?;
-                    let mut content = vec![ContentBlock::Text(BoundedText::new(context, limits)?)];
-                    content.extend(captured.images().iter().cloned().map(ContentBlock::Image));
+                    let mut blocks = vec![ContentBlock::Text(BoundedText::new(context, limits)?)];
+                    blocks.extend(captured.images().iter().cloned().map(ContentBlock::Image));
                     let request = ModelRequest::new(
                         profile,
                         negotiated,
                         RequestId::new(format!(
                             "host-module-command-{}-{}",
-                            self.run_id
-                                .as_bytes()
-                                .iter()
-                                .map(|b| format!("{b:02x}"))
-                                .collect::<String>(),
+                            crate::product_run::deliverable::run_hex(self.run_id),
                             captured.revision()
                         ))?,
-                        vec![Message::new(Role::User, content, limits)?],
+                        vec![Message::new(Role::User, blocks, limits)?],
                         vec![],
                         ToolChoice::None,
                         ParallelToolPolicy::Disabled,

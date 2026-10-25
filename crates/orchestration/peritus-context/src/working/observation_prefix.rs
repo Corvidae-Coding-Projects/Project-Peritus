@@ -32,7 +32,7 @@ impl ObservationPrefix {
         Ok(())
     }
 
-    pub(super) fn iter(&self) -> ObservationIter<'_> {
+    pub(super) const fn iter(&self) -> ObservationIter<'_> {
         ObservationIter { prefix: self, index: 0 }
     }
 }

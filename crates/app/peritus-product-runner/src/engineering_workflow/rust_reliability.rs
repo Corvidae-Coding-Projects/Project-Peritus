@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 #[derive(Default)]
-pub(crate) struct Activation {
+pub struct Activation {
     active: bool,
     refreshes: u32,
     drifting: bool,
@@ -151,7 +151,7 @@ impl Activation {
         }
     }
 
-    pub(crate) fn refresh(&mut self) -> Option<&'static str> {
+    pub(crate) const fn refresh(&mut self) -> Option<&'static str> {
         if !self.active {
             return None;
         }

@@ -23,7 +23,7 @@ pub(super) fn reviewer() -> String {
     )
 }
 
-pub(crate) fn conversation(mode: &str) -> String {
+pub fn conversation(mode: &str) -> String {
     match mode {
         "plan" => designer(),
         "review" => reviewer(),

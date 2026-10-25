@@ -92,7 +92,7 @@ impl ReadReuse {
         }
     }
 
-    fn refresh(&mut self, memory: &LocalMemory) -> Result<(), DeveloperLoopError> {
+    fn refresh(&mut self, memory: &LocalMemory) {
         for source in &memory.sources[self.indexed..] {
             if source.kind != ArchiveKind::ToolOutput || source.is_error {
                 continue;
@@ -123,7 +123,6 @@ impl ReadReuse {
             self.pages.insert(page.id, page);
         }
         self.indexed = memory.sources.len();
-        Ok(())
     }
 
     fn plan(
@@ -131,7 +130,7 @@ impl ReadReuse {
         memory: &LocalMemory,
         arguments: &Value,
     ) -> Result<Option<Value>, DeveloperLoopError> {
-        self.refresh(memory)?;
+        self.refresh(memory);
         let Some(path) = arguments.get("path").and_then(Value::as_str) else { return Ok(None) };
         let Some(key) = path_key(path) else { return Ok(None) };
         if !super::assembly::evidence::may_reuse_read(memory, path) {
@@ -185,8 +184,6 @@ impl ReadReuse {
         if cursor < end {
             gaps.push(Span { start: cursor, end });
         }
-        // A nonzero offset must be validated against an actual line body, even if its
-        // logical line interval was seen. An invalid UTF-8/oversized offset falls back.
         if start.byte > 0
             && !pages.iter().any(|page| {
                 page.span.start <= start
@@ -196,12 +193,8 @@ impl ReadReuse {
         {
             return Ok(None);
         }
-        let maximum = arguments
-            .get("max_bytes")
-            .and_then(Value::as_u64)
-            .and_then(|v| usize::try_from(v).ok())
-            .unwrap_or(crate::developer_tools::DEFAULT_DOCUMENT_READ_BYTES);
-        let mut references = visible
+        let maximum = maximum_bytes(arguments);
+        let references = visible
             .iter()
             .map(|(_, id)| *id)
             .collect::<BTreeSet<_>>()
@@ -209,16 +202,9 @@ impl ReadReuse {
             .map(|id| source_handle(memory, id))
             .collect::<Vec<_>>();
         let Some(gap) = gaps.first().copied() else {
-            // No bytes are resent. The original pages are in this exact model view.
-            let mut value = json!({"path":path,"source_sha256":latest.digest,"read_reuse":{"state":"already_visible","requested":requested,"sources":references,"source_count":references.len()}});
-            while value.to_string().len() > maximum && references.pop().is_some() {
-                value["read_reuse"]["sources"] = json!(references);
-            }
-            return Ok((value.to_string().len() <= maximum).then_some(value));
+            return Ok(already_visible(path, &latest.digest, requested, references, maximum));
         };
         let resume = gaps.get(1).map(|span| span.start);
-        // Prefer the page that reaches furthest into the missing interval, independent
-        // of which overlapping read happened most recently.
         let stored = pages
             .iter()
             .filter(|page| page.span.start <= gap.start && gap.start < page.span.end)
@@ -229,7 +215,6 @@ impl ReadReuse {
             value["read_reuse"] = json!({"state":"restored","sources":[source_handle(memory,page.id)],"gap_end":gap.end,"resume":resume});
             value
         } else if !visible.is_empty() {
-            // Read only the next missing span. The normal executor admits and executes it.
             let end_line =
                 if gap.end.byte == 0 { gap.end.line.saturating_sub(1) } else { gap.end.line };
             let mut narrowed = json!({"start_line":gap.start.line,"line_byte_offset":gap.start.byte,"end_line":end_line});
@@ -245,46 +230,62 @@ impl ReadReuse {
     }
 }
 
-pub(super) fn refresh(memory: &mut LocalMemory) -> Result<(), DeveloperLoopError> {
+fn maximum_bytes(arguments: &Value) -> usize {
+    arguments
+        .get("max_bytes")
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok())
+        .unwrap_or(crate::developer_tools::DEFAULT_DOCUMENT_READ_BYTES)
+}
+
+fn already_visible(
+    path: &str,
+    digest: &str,
+    requested: Span,
+    mut references: Vec<String>,
+    maximum: usize,
+) -> Option<Value> {
+    let mut value = json!({"path":path,"source_sha256":digest,"read_reuse":{"state":"already_visible","requested":requested,"sources":references,"source_count":references.len()}});
+    while value.to_string().len() > maximum && references.pop().is_some() {
+        value["read_reuse"]["sources"] = json!(references);
+    }
+    (value.to_string().len() <= maximum).then_some(value)
+}
+
+pub(super) fn refresh(memory: &mut LocalMemory) {
     let mut index = std::mem::take(&mut memory.read_reuse);
-    let result = index.refresh(memory);
+    index.refresh(memory);
     memory.read_reuse = index;
-    result
 }
 
 pub(super) fn plan(
     memory: &mut LocalMemory,
     call: &CompletedToolCall,
-) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+) -> Option<DeveloperToolObservation> {
     let Ok(arguments) = serde_json::from_slice::<Value>(call.arguments().canonical_bytes()) else {
-        return Ok(None);
+        return None;
     };
     let mut index = std::mem::take(&mut memory.read_reuse);
     let result = index.plan(memory, &arguments);
     memory.read_reuse = index;
-    let Some(value) = result.unwrap_or_else(|_| {
+    let value = result.unwrap_or_else(|_| {
         crate::efficiency::event(
             &memory.trace_path,
             json!({"event":"read-reuse-unavailable","action":"ordinary-read"}),
         );
         None
-    }) else {
-        return Ok(None);
-    };
+    })?;
     crate::efficiency::event(
         &memory.trace_path,
         json!({"event":"read-reuse","state":value["read_reuse"]["state"],"invocation":memory.transcript.request_prefix,"semantics":"candidate; workspace executor independently admits permissions and freshness"}),
     );
-    Ok(CanonicalJson::parse(&value.to_string(), JsonBounds::value(ProtocolLimits::PRODUCTION))
+    CanonicalJson::parse(&value.to_string(), JsonBounds::value(ProtocolLimits::PRODUCTION))
         .ok()
-        .map(|output| DeveloperToolObservation { output, is_error: false }))
+        .map(|output| DeveloperToolObservation { output, is_error: false })
 }
 
 /// Fit the actual reused response, including its receipt, before returning it to the model.
-pub(crate) fn fit_response(
-    mut value: Value,
-    arguments: &Value,
-) -> Result<Option<Value>, DeveloperLoopError> {
+pub fn fit_response(mut value: Value, arguments: &Value) -> Option<Value> {
     let maximum = arguments
         .get("max_bytes")
         .and_then(Value::as_u64)
@@ -301,18 +302,15 @@ pub(crate) fn fit_response(
         let mut sized = value.clone();
         sized["read_reuse"] = receipt.clone();
         if sized.to_string().len() > maximum {
-            let Some(mut fitted) =
-                page::slice_value(&value, &page, page.span, maximum.saturating_sub(reserve))?
-            else {
-                return Ok(None);
-            };
+            let mut fitted =
+                page::slice_value(&value, &page, page.span, maximum.saturating_sub(reserve))?;
             fitted["read_reuse"] = value["read_reuse"].clone();
             value = fitted;
         }
         resume_page(&mut value);
     }
     value["read_reuse"] = receipt;
-    Ok((value.to_string().len() <= maximum).then_some(value))
+    (value.to_string().len() <= maximum).then_some(value)
 }
 
 fn resume_page(value: &mut Value) {
@@ -345,7 +343,7 @@ fn path_key(path: &str) -> Option<String> {
             Component::Normal(part) => normalized.push(part),
             Component::CurDir => {}
             Component::RootDir | Component::Prefix(_) => normalized.push(component.as_os_str()),
-            _ => return None,
+            Component::ParentDir => return None,
         }
     }
     normalized.to_str().filter(|path| !path.is_empty()).map(str::to_owned)
@@ -363,11 +361,11 @@ pub(in crate::local_context) fn provider_page(
     id: u64,
     value: &Value,
     maximum: usize,
-) -> Result<Option<Value>, DeveloperLoopError> {
-    let Some(page) = Page::from_value(id, value) else { return Ok(None) };
-    if let Some(mut value) = page::slice_value(value, &page, page.span, maximum)? {
+) -> Option<Value> {
+    let page = Page::from_value(id, value)?;
+    if let Some(mut value) = page::slice_value(value, &page, page.span, maximum) {
         value["local_context"] = json!({"handle":source_handle(memory,id)});
-        return Ok(Some(value));
+        return Some(value);
     }
     let mut empty = value.clone();
     empty["content"] = json!("");
@@ -377,5 +375,5 @@ pub(in crate::local_context) fn provider_page(
     empty["next_line_byte_offset"] = json!(page.span.start.byte);
     empty["eof"] = json!(false);
     empty["local_context"] = json!({"handle":source_handle(memory,id)});
-    Ok(Some(empty))
+    Some(empty)
 }

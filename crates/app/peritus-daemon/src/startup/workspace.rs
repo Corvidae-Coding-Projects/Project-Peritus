@@ -58,14 +58,14 @@ impl WorkspaceCatalog {
     }
 }
 
-pub(crate) fn install_and_reconcile(
+pub fn install_and_reconcile(
     journal: &mut SqliteJournal,
     config: &DaemonConfig,
 ) -> Result<WorkspaceCatalog, DaemonError> {
     install_with_admitted_folders(journal, config, &[])
 }
 
-pub(crate) fn install_with_admitted_folders(
+pub fn install_with_admitted_folders(
     journal: &mut SqliteJournal,
     config: &DaemonConfig,
     admitted: &[crate::config::FolderDeclaration],

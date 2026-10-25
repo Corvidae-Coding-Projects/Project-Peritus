@@ -32,14 +32,12 @@ pub(super) fn validate(values: &[ReviewObservation]) -> Result<(), EvidenceError
         if index > 0 {
             let previous = values[index - 1].cycle_id().into_bytes();
             let current = values[index].cycle_id().into_bytes();
-            if let Err(error) = order::require_ascending(
+            order::require_ascending(
                 previous.as_slice(),
                 current.as_slice(),
                 CanonicalEvidenceCollection::Reviews,
                 index,
-            ) {
-                return Err(error);
-            }
+            )?;
             let previous = values[index - 1].cycle_ordinal().get();
             let current = values[index].cycle_ordinal().get();
             if previous == current {

@@ -25,15 +25,7 @@ pub(super) fn state_page(
     if start.index > entries.len() {
         return Ok(rejected(memory, "entry cursor out of range"));
     }
-    let mut response = Value::from_iter([
-        ("base_revision", Value::from(memory.model_revision)),
-        ("generation", Value::from(memory.store.generation())),
-        ("observations", Value::from(memory.sources.len())),
-        ("pending_operations", Value::from(memory.transcript.pending.len())),
-        ("authority", Value::from("none")),
-        ("entries", Value::Array(vec![])),
-        ("cursor", Value::Null),
-    ]);
+    let mut response = state_response(memory);
     for (index, entry) in entries.iter().enumerate().skip(start.index) {
         let readable = entry
             .links()
@@ -46,8 +38,6 @@ pub(super) fn state_page(
             continue;
         }
         let item = entry_view(memory, entry);
-        // Text and link metadata can independently exceed a page. The JSON fragment mode
-        // makes the entire exact entry retrievable, including arbitrarily many references.
         let mut metadata = item.clone();
         metadata["text"] = Value::from("");
         if (index == start.index && start.json)
@@ -57,11 +47,11 @@ pub(super) fn state_page(
                 response["cursor"] = Value::from(cursor::json_entry_cursor(memory, index, 0));
                 return Ok(response);
             }
-            return json_page(
+            return Ok(json_page(
                 memory,
                 request,
-                response,
-                item,
+                &response,
+                &item,
                 index,
                 if index == start.index {
                     usize::try_from(start.offset).unwrap_or(usize::MAX)
@@ -69,14 +59,10 @@ pub(super) fn state_page(
                     0
                 },
                 entries.len(),
-            );
+            ));
         }
         let text = item["text"].as_str().unwrap_or_default().to_owned();
-        let text_offset = if index == start.index {
-            usize::try_from(start.offset).unwrap_or(usize::MAX)
-        } else {
-            0
-        };
+        let text_offset = entry_offset(index, start);
         if text_offset > text.len() || !text.is_char_boundary(text_offset) {
             return Ok(rejected(memory, "entry text cursor out of range"));
         }
@@ -125,6 +111,22 @@ pub(super) fn state_page(
     }
     response["cursor"] = Value::Null;
     Ok(response)
+}
+
+fn entry_offset(index: usize, start: CursorPosition) -> usize {
+    if index == start.index { usize::try_from(start.offset).unwrap_or(usize::MAX) } else { 0 }
+}
+
+fn state_response(memory: &LocalMemory) -> Value {
+    Value::from_iter([
+        ("base_revision", Value::from(memory.model_revision)),
+        ("generation", Value::from(memory.store.generation())),
+        ("observations", Value::from(memory.sources.len())),
+        ("pending_operations", Value::from(memory.transcript.pending.len())),
+        ("authority", Value::from("none")),
+        ("entries", Value::Array(vec![])),
+        ("cursor", Value::Null),
+    ])
 }
 
 fn partial_entry(
@@ -180,15 +182,15 @@ fn partial_entry(
 fn json_page(
     memory: &LocalMemory,
     request: &Read,
-    response: Value,
-    item: Value,
+    response: &Value,
+    item: &Value,
     index: usize,
     start: usize,
     total: usize,
-) -> Result<Value, DeveloperLoopError> {
+) -> Value {
     let exact = item.to_string();
     if start > exact.len() || !exact.is_char_boundary(start) {
-        return Ok(rejected(memory, "entry JSON cursor out of range"));
+        return rejected(memory, "entry JSON cursor out of range");
     }
     let mut low = start;
     let mut high = exact.len().min(start.saturating_add(request.max_bytes));
@@ -215,7 +217,7 @@ fn json_page(
         }
     }
     match best {
-        Some((page, end)) if end > start || start == exact.len() => Ok(page),
-        _ => Ok(rejected(memory, "max_bytes cannot fit entry page metadata; increase it")),
+        Some((page, end)) if end > start || start == exact.len() => page,
+        _ => rejected(memory, "max_bytes cannot fit entry page metadata; increase it"),
     }
 }

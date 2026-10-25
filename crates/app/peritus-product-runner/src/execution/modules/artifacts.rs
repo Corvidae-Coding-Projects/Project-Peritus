@@ -48,8 +48,7 @@ pub(super) fn attach(
         ));
     }
     let text = fs::read_to_string(&path).map_err(error)?;
-    let digest =
-        Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let digest = crate::encode_hex(&Sha256::digest(text.as_bytes()));
     let directory = input.trace_path.with_extension("module-attachments");
     fs::create_dir_all(&directory).map_err(error)?;
     let mut temp = tempfile::NamedTempFile::new_in(&directory).map_err(error)?;
@@ -59,9 +58,9 @@ pub(super) fn attach(
     let extension = Path::new(&attachment.path)
         .extension()
         .and_then(|value| value.to_str())
-        .filter(|value| matches!(*value, "json" | "md" | "patch" | "txt"))
+        .filter(|value| matches!(*value, "json" | "md" | "patch" | "sarif" | "txt"))
         .unwrap_or("txt");
-    let run = input.run_id.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let run = crate::encode_hex(input.run_id.as_bytes());
     let export_directory = input
         .trace_path
         .parent()
@@ -93,7 +92,7 @@ pub(super) fn attach(
         .map_err(|e| error(e.error))?;
     Ok(published)
 }
-pub(crate) fn page(
+pub fn page(
     input: &ProductRunInput,
     offset: u64,
     maximum: usize,
@@ -121,7 +120,7 @@ pub(crate) fn page(
     .map_err(error)?;
     let total = file.metadata().map_err(error)?.len();
     let mut hash = Sha256::new();
-    let mut buffer = [0; 32768];
+    let mut buffer = vec![0; 32_768];
     loop {
         let n = file.read(&mut buffer).map_err(error)?;
         if n == 0 {
@@ -129,7 +128,7 @@ pub(crate) fn page(
         }
         hash.update(&buffer[..n]);
     }
-    let actual = hash.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let actual = crate::encode_hex(&hash.finalize());
     if actual != digest || meta["bytes"].as_u64() != Some(total) {
         return Err(error("attached module artifact integrity mismatch"));
     }
@@ -137,7 +136,8 @@ pub(crate) fn page(
         return Err(error("module attachment offset exceeds retained text"));
     }
     file.seek(SeekFrom::Start(offset)).map_err(error)?;
-    let mut bytes = vec![0; maximum.clamp(4, 1024 * 1024).min((total - offset) as usize)];
+    let remaining = usize::try_from(total - offset).unwrap_or(usize::MAX);
+    let mut bytes = vec![0; maximum.clamp(4, 1024 * 1024).min(remaining)];
     file.read_exact(&mut bytes).map_err(error)?;
     let text = match std::str::from_utf8(&bytes) {
         Ok(s) => s,
@@ -153,7 +153,7 @@ pub(crate) fn page(
         json!({"available":true,"name":meta["name"],"sha256":digest,"offset":offset,"total_bytes":total,"text":text,"next_offset":(next<total).then_some(next)}),
     )
 }
-pub(crate) fn context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
+pub fn context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
     let value = page(input, 0, 16384)?;
     if value["available"] == false {
         return Ok(String::new());

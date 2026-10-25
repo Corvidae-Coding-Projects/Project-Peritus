@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
+    fmt::Write as _,
     fs,
     io::Write,
     path::PathBuf,
@@ -38,11 +39,19 @@ pub struct Store {
 
 impl Store {
     /// Uses the current user's web data directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the user data directory cannot be resolved or created.
     pub fn for_user() -> Result<Self, Error> {
         Self::new(data_root()?.join("sources"))
     }
 
     /// Uses an explicitly selected directory (e.g. an isolated application instance).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the directory cannot be created or secured.
     pub fn new(root: PathBuf) -> Result<Self, Error> {
         fs::create_dir_all(&root)?;
         #[cfg(unix)]
@@ -54,16 +63,20 @@ impl Store {
     }
 
     /// Reads an HTTP page, reusing a recent immutable snapshot unless refresh=true.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for cancellation, invalid URLs, failed downloads, or storage failures.
     pub fn open(&self, arguments: &Value, cancelled: &dyn Fn() -> bool) -> Result<Value, Error> {
         if cancelled() {
             return Err(invalid("web request cancelled"));
         }
         let _fetch = FETCH.lock().map_err(|_| invalid("web reader is unavailable"))?;
         let url = checked_url(required(arguments, "url")?)?.to_string();
-        if !arguments["refresh"].as_bool().unwrap_or(false) {
-            if let Some(reference) = self.cached(&format!("http:{url}"), 900)? {
-                return self.page(&reference, arguments, true);
-            }
+        if !arguments["refresh"].as_bool().unwrap_or(false)
+            && let Some(reference) = self.cached(&format!("http:{url}"), 900)?
+        {
+            return self.page(&reference, arguments, true);
         }
         let download = http::get(&url, cancelled)?;
         let extracted = if download.content_type.to_ascii_lowercase().contains("html") {
@@ -77,7 +90,7 @@ impl Store {
             }
         };
         self.retain(
-            Source {
+            &Source {
                 requested_url: url.clone(),
                 final_url: download.url,
                 fetched_at: now()?,
@@ -96,6 +109,10 @@ impl Store {
     }
 
     /// Retains full HTML from an independently owned, isolated browser observation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid URLs, unsuccessful status, oversized HTML, or storage failure.
     pub fn rendered(
         &self,
         requested_url: &str,
@@ -116,7 +133,7 @@ impl Store {
         }
         let extracted = extract::html(html, &final_url);
         self.retain(
-            Source {
+            &Source {
                 requested_url: requested_url.into(),
                 final_url: final_url.into(),
                 fetched_at: now()?,
@@ -135,6 +152,10 @@ impl Store {
     }
 
     /// Returns an exact page of a retained source. Offsets count UTF-8 bytes, not characters.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the source or requested byte boundary is invalid or unavailable.
     pub fn read(&self, arguments: &Value) -> Result<Value, Error> {
         let reference = required(arguments, "source")?;
         let mut page = arguments.clone();
@@ -145,6 +166,10 @@ impl Store {
     }
 
     /// Literal case-sensitive search of retained content; each match can be opened by offset.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the source, query, or requested byte boundary is invalid.
     pub fn find(&self, arguments: &Value) -> Result<Value, Error> {
         let reference = required(arguments, "source")?;
         let source = self.load(reference)?;
@@ -181,6 +206,10 @@ impl Store {
     }
 
     /// Searches with built-in Rust engines or an optional external endpoint; page reads stay independent.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for cancellation, search transport failure, or cache storage failure.
     pub fn search(&self, arguments: &Value, cancelled: &dyn Fn() -> bool) -> Result<Value, Error> {
         if cancelled() {
             return Err(invalid("web request cancelled"));
@@ -210,7 +239,7 @@ impl Store {
         Ok(result)
     }
 
-    fn retain(&self, source: Source, key: &str, arguments: &Value) -> Result<Value, Error> {
+    fn retain(&self, source: &Source, key: &str, arguments: &Value) -> Result<Value, Error> {
         let bytes = serde_json::to_vec(&source)?;
         let reference = digest(&bytes);
         self.publish(&self.root.join(format!("{reference}.json")), &bytes)?;
@@ -313,12 +342,21 @@ fn offset(arguments: &Value, text: &str) -> Result<usize, Error> {
     Ok(start)
 }
 
-pub(crate) fn required<'a>(value: &'a Value, name: &str) -> Result<&'a str, Error> {
+/// Returns one required string field.
+///
+/// # Errors
+///
+/// Returns an error when the field is absent or is not text.
+pub fn required<'a>(value: &'a Value, name: &str) -> Result<&'a str, Error> {
     value[name].as_str().ok_or_else(|| invalid(format!("missing text field {name}")))
 }
 
-pub(crate) fn digest(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+pub fn digest(bytes: &[u8]) -> String {
+    let mut encoded = String::with_capacity(64);
+    for byte in Sha256::digest(bytes) {
+        let _ = write!(encoded, "{byte:02x}");
+    }
+    encoded
 }
 fn now() -> Result<u64, Error> {
     SystemTime::now()

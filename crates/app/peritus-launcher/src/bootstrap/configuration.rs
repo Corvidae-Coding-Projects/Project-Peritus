@@ -16,6 +16,7 @@ mod compatibility;
 mod folder;
 pub(super) mod folder_catalog;
 pub(super) mod hosted;
+mod native;
 
 /// Imports the exact models from a pre-conversation immutable configuration. This migration
 /// never substitutes a newly chosen provider default or edits an old configuration generation.
@@ -147,6 +148,16 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         state.identity().actor_id(),
         state.providers().automatic_failover(),
     );
+    if let Some(runtime) = native::discover() {
+        writeln!(
+            text,
+            "\n[rsi]\nbubblewrap = {}\nlinux_helper = {}\ncgroup_root = {}",
+            toml_path(&runtime.bubblewrap)?,
+            toml_path(&runtime.linux_helper)?,
+            toml_path(&runtime.cgroup_root)?,
+        )
+        .expect("writing to String cannot fail");
+    }
     for provider in state.providers().enabled() {
         text.push_str(&render_provider(
             *provider,

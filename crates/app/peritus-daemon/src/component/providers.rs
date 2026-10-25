@@ -73,7 +73,7 @@ pub enum ProviderAdapterKind {
     CodexRuntime,
     /// Official Claude executable adapter.
     ClaudeRuntime,
-    /// Official tool-disabled OpenCode executable for Zen/Go.
+    /// Official tool-disabled `OpenCode` executable for Zen/Go.
     OpenCodeRuntime,
 }
 
@@ -90,9 +90,9 @@ pub struct ProviderRegistry {
 impl ProviderRegistry {
     /// Constructs every explicitly declared provider exactly once.
     ///
-    /// API-key routes require a credential broker. The broker remains behind C5's
+    /// API-key routes require a credential broker. The broker remains behind `C5`'s
     /// [`CredentialSource`] boundary and is invoked only immediately before request submission.
-    /// Codex/Claude own login state externally. OpenCode receives only a short-lived key in
+    /// `Codex`/`Claude` own login state externally. `OpenCode` receives only a short-lived key in
     /// disposable private storage; the broker retains the persisted credential.
     ///
     /// # Errors

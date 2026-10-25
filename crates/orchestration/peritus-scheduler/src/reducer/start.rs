@@ -12,8 +12,8 @@ pub(super) fn prepare_genesis(
     command_id: CommandId,
 ) -> SchedulerState {
     let owned_binding = binding.clone();
-    let state = SchedulerState::genesis(owned_binding, event_id, command_id);
-    state
+
+    SchedulerState::genesis(owned_binding, event_id, command_id)
 }
 pub(super) fn commit_genesis(
     command: &SchedulerCommand,
@@ -23,7 +23,8 @@ pub(super) fn commit_genesis(
 ) -> SchedulerEvent {
     crate::state::mutation::set_state_digest(state, digest);
     let emitted_binding = binding.clone();
-    let event = SchedulerEvent::from_wire(
+
+    SchedulerEvent::from_wire(
         command.semantics(),
         command.event_id(),
         command.command_id(),
@@ -34,6 +35,5 @@ pub(super) fn commit_genesis(
         Sha256Digest::new([0; 32]),
         digest,
         SchedulerEventKind::SchedulerStarted { binding: emitted_binding },
-    );
-    event
+    )
 }

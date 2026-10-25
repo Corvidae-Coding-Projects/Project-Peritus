@@ -11,8 +11,8 @@ pub(in crate::transition) fn charge_lineage(
     amount: BudgetAmounts,
 ) -> Result<(), BudgetError> {
     let account_count = ledger.accounts.len();
-    let result = charge_lineage_inner(ledger, budget_id, amount, false, account_count);
-    result
+
+    charge_lineage_inner(ledger, budget_id, amount, false, account_count)
 }
 fn charge_lineage_inner(
     ledger: &mut BudgetLedger,

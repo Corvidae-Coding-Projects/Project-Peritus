@@ -9,7 +9,7 @@ mod arguments;
 mod attachment_read;
 
 mod bundled_skill;
-pub(crate) use bundled_skill::{list as list_bundled_skills, read as read_bundled_skill};
+pub use bundled_skill::{list as list_bundled_skills, read as read_bundled_skill};
 mod catalog;
 
 mod command_budget;
@@ -43,9 +43,9 @@ mod inspection_search;
 mod ownership;
 
 mod path;
-pub(crate) use access_policy::may_reuse_read;
-pub(crate) use grounding::file_digest as source_digest;
-pub(crate) use path::ignored;
+pub use access_policy::may_reuse_read;
+pub use grounding::file_digest as source_digest;
+pub use path::ignored;
 mod preview;
 
 mod receipt;
@@ -62,11 +62,11 @@ mod resources;
 
 mod wire;
 
-pub(crate) use catalog::{definition as tool_definition, evidence_definition};
+pub use catalog::{definition as tool_definition, evidence_definition};
 pub use catalog::{
     definitions_for_attachments, in_place_definition, read_only_definitions, reviewer_definitions,
 };
-pub(crate) use wire::observation as module_observation;
+pub use wire::observation as module_observation;
 
 pub use command_runtime::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan,
@@ -109,7 +109,6 @@ pub fn merge_rendered(retained: &mut String, incoming: &str) {
 ///
 /// # Errors
 /// Rejects protected/opaque targets and paths that escape or traverse links.
-
 pub fn checked_protected_file(
     root: &std::path::Path,
     relative: &str,
@@ -141,7 +140,7 @@ pub fn checked_protected_file_for_developer(
     path::checked(root, relative, true)
 }
 
-pub(crate) fn checked_protected_observation(
+pub fn checked_protected_observation(
     root: &std::path::Path,
     relative: &str,
     protected: &[std::path::PathBuf],
@@ -154,6 +153,6 @@ pub(crate) fn checked_protected_observation(
     path::observed(root, relative)
 }
 
-pub(crate) use reference::authorized_file as authorized_reference_file;
+pub use reference::authorized_file as authorized_reference_file;
 
-pub(crate) use bundled_skill::is_current as bundled_skill_is_current;
+pub use bundled_skill::is_current as bundled_skill_is_current;

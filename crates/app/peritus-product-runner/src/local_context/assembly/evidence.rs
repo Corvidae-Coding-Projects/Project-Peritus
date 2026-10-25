@@ -14,67 +14,12 @@ pub(super) fn append(
     tools: &[ToolDefinition],
     target: u64,
 ) -> Result<(), DeveloperLoopError> {
-    index_inspections(memory)?;
-    super::super::read_reuse::observe_view(memory, messages)?;
-    if memory.conversation.as_ref().is_some_and(|view| {
-        !view.effective_permissions().allows(crate::control::PermissionCapability::Read)
-    }) {
+    if !prepare(memory, messages)? {
         return Ok(());
     }
-    let mut candidates: Vec<_> = memory
-        .state
-        .entries(memory.state.binding())
-        .map_err(|_| super::super::error("evidence scope mismatch"))?
-        .iter()
-        .flat_map(|entry| entry.links().supports().iter().chain(entry.links().contradicts()))
-        .map(|id| id.get())
-        .collect();
-    candidates.extend(
-        memory
-            .sources
-            .iter()
-            .rev()
-            .filter(|source| source.kind == ArchiveKind::ToolOutput && source.is_error)
-            .take(8)
-            .map(|source| source.sequence),
-    );
-    // Preserve useful exact source/skill pages across invocation recovery. Old assistant
-    // plans are still retrievable, but are not automatically replayed as new work.
-    candidates.extend(
-        memory
-            .sources
-            .iter()
-            .rev()
-            .filter(|source| {
-                source.kind == ArchiveKind::ToolOutput
-                    && !source.is_error
-                    && source.call.as_ref().is_some_and(|call| {
-                        matches!(call.name.as_str(), "workspace_read" | "skill_read")
-                    })
-            })
-            .map(|source| source.sequence),
-    );
-    candidates.sort_unstable_by_key(|id| {
-        let target = memory
-            .sources
-            .iter()
-            .find(|source| source.sequence == *id)
-            .and_then(|source| source.call.as_ref())
-            .and_then(|call| memory.inspection_targets.get(&call.id));
-        let focus = target.is_some_and(|path| memory.task_contract.contains(path));
-        let skill = target.is_some_and(|path| path.starts_with("skill:"));
-        (std::cmp::Reverse(focus), std::cmp::Reverse(skill), std::cmp::Reverse(*id))
-    });
-    candidates.dedup();
+    let candidates = candidate_ids(memory)?;
     let mut bytes_left = memory.config.max_read_bytes;
-    let mut seen_pages: std::collections::BTreeSet<_> = messages
-        .iter()
-        .flat_map(Message::content)
-        .filter_map(|block| match block {
-            ContentBlock::ToolResult(result) => Some(page_key(result.output().canonical_bytes())),
-            _ => None,
-        })
-        .collect();
+    let mut seen_pages = seen_pages(messages);
     for id in candidates {
         if bytes_left < 256 {
             break;
@@ -136,7 +81,8 @@ pub(super) fn append(
                 None
             };
             let rendered = preview.as_ref().map(serde_json::Value::to_string);
-            let prefix = rendered.as_deref().unwrap_or(&text[..text.floor_char_boundary(take)]);
+            let prefix =
+                rendered.as_deref().unwrap_or_else(|| &text[..text.floor_char_boundary(take)]);
             let body = format!(
                 "ARCHIVED OBSERVATION {} — {label}\nvisible preview bytes {}; archived source bytes {}; exact source remains available through context_read.\n{}",
                 super::super::tools::source_handle(memory, id),
@@ -167,6 +113,74 @@ pub(super) fn append(
         bytes_left = bytes_left.saturating_sub(added);
     }
     Ok(())
+}
+
+fn prepare(memory: &mut LocalMemory, messages: &[Message]) -> Result<bool, DeveloperLoopError> {
+    index_inspections(memory)?;
+    super::super::read_reuse::observe_view(memory, messages)?;
+    Ok(memory.conversation.as_ref().is_none_or(|view| {
+        view.effective_permissions().allows(crate::control::PermissionCapability::Read)
+    }))
+}
+
+fn seen_pages(messages: &[Message]) -> std::collections::BTreeSet<[u8; 32]> {
+    messages
+        .iter()
+        .flat_map(Message::content)
+        .filter_map(|block| match block {
+            ContentBlock::ToolResult(result) => Some(page_key(result.output().canonical_bytes())),
+            _ => None,
+        })
+        .collect()
+}
+
+fn candidate_ids(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
+    let mut candidates: Vec<_> = memory
+        .state
+        .entries(memory.state.binding())
+        .map_err(|_| super::super::error("evidence scope mismatch"))?
+        .iter()
+        .flat_map(|entry| entry.links().supports().iter().chain(entry.links().contradicts()))
+        .map(|id| id.get())
+        .collect();
+    candidates.extend(
+        memory
+            .sources
+            .iter()
+            .rev()
+            .filter(|source| source.kind == ArchiveKind::ToolOutput && source.is_error)
+            .take(8)
+            .map(|source| source.sequence),
+    );
+    // Preserve useful exact source/skill pages across invocation recovery. Old assistant
+    // plans are still retrievable, but are not automatically replayed as new work.
+    candidates.extend(
+        memory
+            .sources
+            .iter()
+            .rev()
+            .filter(|source| {
+                source.kind == ArchiveKind::ToolOutput
+                    && !source.is_error
+                    && source.call.as_ref().is_some_and(|call| {
+                        matches!(call.name.as_str(), "workspace_read" | "skill_read")
+                    })
+            })
+            .map(|source| source.sequence),
+    );
+    candidates.sort_unstable_by_key(|id| {
+        let target = memory
+            .sources
+            .iter()
+            .find(|source| source.sequence == *id)
+            .and_then(|source| source.call.as_ref())
+            .and_then(|call| memory.inspection_targets.get(&call.id));
+        let focus = target.is_some_and(|path| memory.task_contract.contains(path));
+        let skill = target.is_some_and(|path| path.starts_with("skill:"));
+        (std::cmp::Reverse(focus), std::cmp::Reverse(skill), std::cmp::Reverse(*id))
+    });
+    candidates.dedup();
+    Ok(candidates)
 }
 
 fn page_key(bytes: &[u8]) -> [u8; 32] {

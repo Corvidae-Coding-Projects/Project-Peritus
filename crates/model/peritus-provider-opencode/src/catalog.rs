@@ -98,7 +98,7 @@ fn parse(bytes: &[u8], service: &str) -> Result<Vec<DiscoveredModel>, ProviderCo
     Ok(models)
 }
 
-fn unavailable() -> ProviderCoreError {
+const fn unavailable() -> ProviderCoreError {
     peritus_provider_core::catalog::unavailable(
         "OpenCode did not return a complete service model catalog; install a supported official CLI and retry",
     )

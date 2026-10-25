@@ -63,11 +63,6 @@ pub fn evaluate_acceptance(
         CheckResult::from_bool(blockers_complete),
         CheckResult::from_bool(final_approval_complete && approvals_expected),
     );
-    let decision = AcceptanceDecision::from_evaluation(
-        unmet,
-        checks,
-        maximum_gate_attempts,
-        maximum_review_cycles,
-    );
-    decision
+
+    AcceptanceDecision::from_evaluation(unmet, checks, maximum_gate_attempts, maximum_review_cycles)
 }

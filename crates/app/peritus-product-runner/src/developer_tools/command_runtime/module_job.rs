@@ -9,9 +9,10 @@ use super::{CommandRuntime, ordinal};
 use crate::{ProductRunnerError, RestrictedProcessContext};
 
 impl CommandRuntime {
-    pub(crate) fn reserve_native_module_job_context(
+    pub(crate) fn reserve_native_module_job_context_with_environment(
         &self,
         source_run: RunId,
+        allowed_environment: impl IntoIterator<Item = String>,
     ) -> Result<RestrictedProcessContext, ProductRunnerError> {
         let mut state = self.inner.state.lock().map_err(|_| {
             ProductRunnerError::new(
@@ -30,7 +31,12 @@ impl CommandRuntime {
             })?;
         state.next_ordinal = ordinal;
         drop(state);
-        RestrictedProcessContext::new(&self.inner.state_root, source_run, ordinal)
+        RestrictedProcessContext::new_with_cleared_environment(
+            &self.inner.state_root,
+            source_run,
+            ordinal,
+            allowed_environment,
+        )
     }
 
     /// Commits exact C2 authority and launches one already-validated native module job.

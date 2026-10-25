@@ -72,7 +72,7 @@ fn child_process_path(path: PathBuf) -> PathBuf {
     ordinary
 }
 
-pub(crate) fn execute(
+pub fn execute(
     args: impl IntoIterator<Item = OsString>,
     root: &Path,
     output: &mut dyn Write,

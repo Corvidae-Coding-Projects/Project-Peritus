@@ -27,7 +27,7 @@ pub(crate) struct NativeRsiPort {
 }
 
 impl NativeRsiPort {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         authority: AuthorityHandle,
         config: DaemonConfig,
         processes: ProcessStore,
@@ -110,7 +110,12 @@ impl NativeRsiPort {
             let scratch = config.paths().workspace_root().join("rsi");
             std::fs::create_dir_all(&state_root).map_err(e::error)?;
             std::fs::create_dir_all(&scratch).map_err(e::error)?;
-            let attempt = match work.committed.state().rollout(work.spec.id()).map(|p| p.status()) {
+            let attempt = match work
+                .committed
+                .state()
+                .rollout(work.spec.id())
+                .map(peritus_eval::RolloutProgress::status)
+            {
                 Some(RolloutStatus::Running { attempt }) => attempt,
                 _ => return Err(e::invalid("native work has no exact committed attempt")),
             };

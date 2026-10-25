@@ -20,7 +20,8 @@ pub(super) const fn commit_event(
     digest: Sha256Digest,
 ) -> SchedulerEvent {
     crate::state::mutation::set_state_digest(state, digest);
-    let event = SchedulerEvent::from_wire(
+
+    SchedulerEvent::from_wire(
         command.semantics(),
         command.event_id(),
         command.command_id(),
@@ -31,6 +32,5 @@ pub(super) const fn commit_event(
         prior.state_digest(),
         digest,
         kind,
-    );
-    event
+    )
 }

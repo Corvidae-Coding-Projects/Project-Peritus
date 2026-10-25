@@ -49,6 +49,10 @@ struct Entry {
 
 impl ManagedBaseline {
     /// Fingerprints repository contents, permissions and nested HEADs without changing the real index.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when repository metadata or content cannot be observed canonically.
     pub fn repository_fingerprint(root: &Path) -> Result<[u8; 32], ProductRunnerError> {
         use sha2::{Digest as _, Sha256};
         let snapshot = Self::capture(root, false)?;

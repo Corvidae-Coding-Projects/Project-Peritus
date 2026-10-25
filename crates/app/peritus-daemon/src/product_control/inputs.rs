@@ -10,10 +10,10 @@ use peritus_types::{ActorId, WorkspaceId};
 mod archive;
 mod files;
 mod manifest;
-mod observation;
+pub mod observation;
 pub(super) use archive::inspect::inspect_manifest;
 pub(super) use archive::{RequestArchive, validate_archive, verify_manifest};
-pub(crate) use observation::ToolImageObservation;
+pub use observation::ToolImageObservation;
 
 /// Authenticated read-only input capture. Private fields prevent constructing a false view.
 #[derive(Clone, Debug)]

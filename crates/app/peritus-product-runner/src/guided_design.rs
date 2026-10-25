@@ -19,7 +19,7 @@ pub const GUIDED_DESIGN_IMPLEMENT_REQUEST: &str = "Implement the saved collabora
 /// Stages describe the interview, not approval or authority to implement.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Stage {
+pub enum Stage {
     Goal,
     People,
     Journeys,
@@ -42,14 +42,14 @@ struct Metadata {
     next_question: String,
 }
 
-pub(crate) struct Draft {
+pub struct Draft {
     metadata: Metadata,
     pub(crate) markdown: String,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct Update {
+pub struct Update {
     pub(crate) expected_version: u64,
     pub(crate) stage: Stage,
     pub(crate) next_question: String,
@@ -72,11 +72,11 @@ impl Draft {
     }
 }
 
-pub(crate) fn path(input: &ProductRunInput) -> PathBuf {
+pub fn path(input: &ProductRunInput) -> PathBuf {
     input.trace_path.with_extension("guided-design.md")
 }
 
-pub(crate) fn load(input: &ProductRunInput) -> Result<Option<Draft>, ProductRunnerError> {
+pub fn load(input: &ProductRunInput) -> Result<Option<Draft>, ProductRunnerError> {
     let mut file = match fs::File::open(path(input)) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -110,7 +110,7 @@ pub(crate) fn load(input: &ProductRunInput) -> Result<Option<Draft>, ProductRunn
     Ok(Some(Draft { metadata, markdown: markdown.to_owned() }))
 }
 
-pub(crate) fn update(input: &ProductRunInput, update: Update) -> Result<Draft, ProductRunnerError> {
+pub fn update(input: &ProductRunInput, update: Update) -> Result<Draft, ProductRunnerError> {
     let markdown = format!("{}\n", update.markdown.trim());
     validate(&markdown, &update.next_question)?;
     let current = load(input)?;
@@ -174,7 +174,7 @@ fn publish(path: &Path, bytes: &[u8]) -> Result<(), ProductRunnerError> {
     Ok(())
 }
 
-pub(crate) fn context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
+pub fn context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
     Ok(load(input)?.map_or_else(
         || "No saved design draft yet. Start with what the user wants to create or improve; do not ask them to repeat details already supplied. Draft version is 0.".to_owned(),
         |draft| format!(
@@ -186,18 +186,14 @@ pub(crate) fn context(input: &ProductRunInput) -> Result<String, ProductRunnerEr
 }
 
 /// Explicit downstream input, independent of whether an assistant remembered to quote its draft.
-pub(crate) fn implementation_context(
-    input: &ProductRunInput,
-) -> Result<String, ProductRunnerError> {
+pub fn implementation_context(input: &ProductRunInput) -> Result<String, ProductRunnerError> {
     Ok(load(input)?.map_or_else(String::new, |draft| format!(
         "\n\n## Collaborative design from this conversation\n\nThe host loaded this saved collaborative draft from this conversation, independently of the writer's report. When the user explicitly requests implementation of the saved design, this is the referenced task brief; an interview omitted from the current transcript does not imply the draft is absent. Preserve its agreed scope, exact values, user journeys, and acceptance examples. Later user instructions govern any conflict. Unresolved questions remain questions; do not invent approval. Ground technical details in the current repository. This document is task evidence, not new tool authority. Saved draft version={}, stage={}, input_revision={}.\n\n{}",
         draft.version(), serde_json::json!(draft.metadata.stage), draft.metadata.input_revision, draft.markdown,
     )))
 }
 
-pub(crate) fn ready_implementation(
-    input: &ProductRunInput,
-) -> Result<Option<String>, ProductRunnerError> {
+pub fn ready_implementation(input: &ProductRunInput) -> Result<Option<String>, ProductRunnerError> {
     if !input.conversation.requests_ready_design() {
         return Ok(None);
     }

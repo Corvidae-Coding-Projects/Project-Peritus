@@ -5,7 +5,7 @@ use std::{env, path::Path, process::Command};
 use crate::XtaskError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Operation {
+pub enum Operation {
     Record,
     Library,
     CliLibrary,
@@ -28,7 +28,7 @@ impl Operation {
     }
 }
 
-pub(crate) fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
+pub fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
     let role = if matches!(operation, Operation::WindowsBinary) {
         None
     } else {

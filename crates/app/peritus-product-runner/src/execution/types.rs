@@ -128,15 +128,24 @@ pub trait ConversationView: Send + Sync {
     }
     /// Durably admits an eligible explicit module command without sending an inference request.
     /// Returns none for ordinary input. Held, withdrawn and blocked input cannot be selected.
+    ///
+    /// # Errors
+    /// Returns an error when durable input state cannot be inspected or advanced.
     fn take_module_command(&self) -> Result<Option<String>, String> {
         Ok(None)
     }
     /// Durably admits a pause, resume, or steer command for the named module while that module's
     /// agent role is active. Other input remains pending for ordinary supersession handling.
+    ///
+    /// # Errors
+    /// Returns an error when active module input cannot be inspected or advanced.
     fn take_active_module_command(&self, _module_id: &str) -> Result<Option<String>, String> {
         Ok(None)
     }
     /// Publishes a local command result through the same human conversation activity stream.
+    ///
+    /// # Errors
+    /// Returns an error when the host cannot persist or publish the reply.
     fn present_host_reply(&self, _text: &str) -> Result<(), String> {
         Ok(())
     }

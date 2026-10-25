@@ -438,18 +438,7 @@ pub(crate) fn encode_kind(
             writer.write_fixed(profile_artifact.as_bytes()).map_err(codec)?;
         }
         EvaluationCommandKind::RecordPlanBatch { plan_id, plan_digest, batch } => {
-            writer.write_u8(2).map_err(codec)?;
-            writer.write_fixed(plan_id.as_bytes()).map_err(codec)?;
-            writer.write_fixed(plan_digest.as_bytes()).map_err(codec)?;
-            writer.write_u32(batch.ordinal()).map_err(codec)?;
-            writer.write_u32(batch.total_batches()).map_err(codec)?;
-            writer.write_fixed(batch.artifact().as_bytes()).map_err(codec)?;
-            writer.write_collection_len(batch.bindings().len()).map_err(codec)?;
-            for binding in batch.bindings() {
-                writer.write_fixed(binding.rollout_id().as_bytes()).map_err(codec)?;
-                writer.write_fixed(binding.work_id().as_bytes()).map_err(codec)?;
-                writer.write_fixed(binding.request_digest().as_bytes()).map_err(codec)?;
-            }
+            encode_plan_batch(writer, *plan_id, *plan_digest, batch)?;
         }
         EvaluationCommandKind::CompletePlan { plan } => {
             writer.write_u8(3).map_err(codec)?;
@@ -528,6 +517,27 @@ pub(crate) fn encode_kind(
                 writer.write_fixed(artifact.as_bytes()).map_err(codec)?;
             }
         }
+    }
+    Ok(())
+}
+
+fn encode_plan_batch(
+    writer: &mut CanonicalWriter,
+    plan_id: crate::EvaluationPlanId,
+    plan_digest: crate::PlanDigest,
+    batch: &crate::PlanBatch,
+) -> Result<(), EvaluationError> {
+    writer.write_u8(2).map_err(codec)?;
+    writer.write_fixed(plan_id.as_bytes()).map_err(codec)?;
+    writer.write_fixed(plan_digest.as_bytes()).map_err(codec)?;
+    writer.write_u32(batch.ordinal()).map_err(codec)?;
+    writer.write_u32(batch.total_batches()).map_err(codec)?;
+    writer.write_fixed(batch.artifact().as_bytes()).map_err(codec)?;
+    writer.write_collection_len(batch.bindings().len()).map_err(codec)?;
+    for binding in batch.bindings() {
+        writer.write_fixed(binding.rollout_id().as_bytes()).map_err(codec)?;
+        writer.write_fixed(binding.work_id().as_bytes()).map_err(codec)?;
+        writer.write_fixed(binding.request_digest().as_bytes()).map_err(codec)?;
     }
     Ok(())
 }

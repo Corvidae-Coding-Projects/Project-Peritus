@@ -126,8 +126,8 @@ impl SecurityDecision {
     ) -> Self {
         let ready = unmet.is_empty() && checks.is_complete();
         let verdict = if ready { SecurityVerdict::Ready } else { SecurityVerdict::NotReady };
-        let decision = Self { verdict, unmet, checks };
-        decision
+
+        Self { verdict, unmet, checks }
     }
     #[doc = " Returns the H0-only readiness disposition."]
     #[must_use]

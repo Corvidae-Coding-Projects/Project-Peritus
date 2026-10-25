@@ -21,6 +21,8 @@ struct Line {
     complete: bool,
 }
 
+type LineCursor = (usize, u64);
+
 pub(super) fn read(
     path: &Path,
     arguments: &Value,
@@ -108,7 +110,17 @@ pub(super) fn read(
     let eof =
         next.is_none() && reader.fill_buf().map_err(|error| tool(error.to_string()))?.is_empty();
     extra.push(("eof", Value::Bool(eof)));
-    let extra = extra.as_slice();
+    fit_response(extra.as_slice(), lines, start, next, max_bytes, cancellation)
+}
+
+fn fit_response(
+    extra: &[(&'static str, Value)],
+    mut lines: Vec<Line>,
+    start: usize,
+    mut next: Option<LineCursor>,
+    max_bytes: usize,
+    cancellation: &InspectionCancellation,
+) -> Result<Value, DeveloperLoopError> {
     let mut value = response(extra, &lines, start, next);
     let omitted = if encoded_len(&value)? > max_bytes {
         if lines.is_empty() {
@@ -163,7 +175,7 @@ fn fit_line_prefix(
     last: &Line,
     start: usize,
     max_bytes: usize,
-) -> Result<Option<(Line, (usize, u64))>, DeveloperLoopError> {
+) -> Result<Option<(Line, LineCursor)>, DeveloperLoopError> {
     let metadata = response(extra, preceding, start, Some((last.number, last.offset)));
     if encoded_len(&metadata)? > max_bytes {
         return Err(tool("response metadata exceeds max_bytes"));
@@ -283,7 +295,7 @@ fn response(
         ("next_line_byte_offset", next.map_or(Value::Null, |(_, offset)| Value::from(offset))),
         ("source_range", serde_json::json!({
             "start": {"line":start,"byte":extra.iter().find(|(key,_)| *key == "start_line_byte_offset").map_or(0,|(_,value)| value.as_u64().unwrap_or(0))},
-            "end": lines.last().map_or(serde_json::json!({"line":start,"byte":0}), |line| {
+            "end": lines.last().map_or_else(|| serde_json::json!({"line":start,"byte":0}), |line| {
                 if line.complete { serde_json::json!({"line":line.number.saturating_add(1),"byte":0}) }
                 else { serde_json::json!({"line":line.number,"byte":line.offset.saturating_add(line.text.len() as u64)}) }
             })

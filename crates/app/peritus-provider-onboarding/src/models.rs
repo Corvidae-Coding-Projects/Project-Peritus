@@ -56,64 +56,13 @@ pub fn direct(
             .await
         });
     }
-    let (endpoint, dialect, name, prefix) = match kind {
-        ProviderKind::OpenAiApi => (
-            "https://api.openai.com/v1/models".to_owned(),
-            CatalogDialect::OpenAi,
-            "authorization",
-            Some("Bearer "),
-        ),
-        ProviderKind::AnthropicApi => (
-            format!(
-                "{}/v1/models?limit=1000",
-                endpoint.ok_or(OnboardingError::ModelCatalog)?.trim_end_matches('/')
-            ),
-            CatalogDialect::Anthropic,
-            "x-api-key",
-            None,
-        ),
-        ProviderKind::GoogleGeminiApi => (
-            format!(
-                "{}/v1beta/models?pageSize=1000",
-                endpoint.ok_or(OnboardingError::ModelCatalog)?.trim_end_matches('/')
-            ),
-            CatalogDialect::Google,
-            "x-goog-api-key",
-            None,
-        ),
-        ProviderKind::CompatibleEndpoint => {
-            let endpoint = endpoint.ok_or(OnboardingError::ModelCatalog)?;
-            let root = endpoint
-                .strip_suffix("/responses")
-                .or_else(|| endpoint.strip_suffix("/chat/completions"))
-                .ok_or(OnboardingError::ModelCatalog)?;
-            (
-                format!("{root}/models"),
-                CatalogDialect::OpenAi,
-                header.unwrap_or("authorization"),
-                if header.is_none() { Some("Bearer ") } else { None },
-            )
-        }
-        _ => {
-            let service = kind
-                .hosted_service()
-                .and_then(peritus_provider_core::hosted::HostedService::parse)
-                .ok_or(OnboardingError::UnsupportedProvider)?;
-            (
-                service.models_endpoint().to_owned(),
-                CatalogDialect::OpenAi,
-                "authorization",
-                Some("Bearer "),
-            )
-        }
-    };
+    let (endpoint, dialect, name, prefix) = direct_endpoint(kind, endpoint, header)?;
     run(async {
         let endpoint = Endpoint::new(endpoint)?;
         let transport = ReqwestTransport::production()?;
         let headers = || {
             let credential = credential.expose(|bytes| Credential::new(bytes.to_vec()))?;
-            let mut headers =
-                vec![credential.into_header(HeaderName::new(name.to_owned())?, prefix)?];
+            let mut headers = vec![credential.into_header(HeaderName::new(name.clone())?, prefix)?];
             if dialect == CatalogDialect::Anthropic {
                 headers.push(Header::new(
                     HeaderName::new("anthropic-version".to_owned())?,
@@ -146,7 +95,65 @@ pub fn direct(
     })
 }
 
-pub(crate) fn run<T: Send>(
+fn direct_endpoint(
+    kind: ProviderKind,
+    endpoint: Option<&str>,
+    header: Option<&str>,
+) -> Result<(String, CatalogDialect, String, Option<&'static str>), OnboardingError> {
+    Ok(match kind {
+        ProviderKind::OpenAiApi => (
+            "https://api.openai.com/v1/models".to_owned(),
+            CatalogDialect::OpenAi,
+            "authorization".to_owned(),
+            Some("Bearer "),
+        ),
+        ProviderKind::AnthropicApi => (
+            format!(
+                "{}/v1/models?limit=1000",
+                endpoint.ok_or(OnboardingError::ModelCatalog)?.trim_end_matches('/')
+            ),
+            CatalogDialect::Anthropic,
+            "x-api-key".to_owned(),
+            None,
+        ),
+        ProviderKind::GoogleGeminiApi => (
+            format!(
+                "{}/v1beta/models?pageSize=1000",
+                endpoint.ok_or(OnboardingError::ModelCatalog)?.trim_end_matches('/')
+            ),
+            CatalogDialect::Google,
+            "x-goog-api-key".to_owned(),
+            None,
+        ),
+        ProviderKind::CompatibleEndpoint => {
+            let endpoint = endpoint.ok_or(OnboardingError::ModelCatalog)?;
+            let root = endpoint
+                .strip_suffix("/responses")
+                .or_else(|| endpoint.strip_suffix("/chat/completions"))
+                .ok_or(OnboardingError::ModelCatalog)?;
+            (
+                format!("{root}/models"),
+                CatalogDialect::OpenAi,
+                header.unwrap_or("authorization").to_owned(),
+                if header.is_none() { Some("Bearer ") } else { None },
+            )
+        }
+        _ => {
+            let service = kind
+                .hosted_service()
+                .and_then(peritus_provider_core::hosted::HostedService::parse)
+                .ok_or(OnboardingError::UnsupportedProvider)?;
+            (
+                service.models_endpoint().to_owned(),
+                CatalogDialect::OpenAi,
+                "authorization".to_owned(),
+                Some("Bearer "),
+            )
+        }
+    })
+}
+
+pub fn run<T: Send>(
     future: impl Future<Output = Result<T, peritus_provider_core::ProviderCoreError>> + Send,
 ) -> Result<T, OnboardingError> {
     std::thread::scope(|scope| {

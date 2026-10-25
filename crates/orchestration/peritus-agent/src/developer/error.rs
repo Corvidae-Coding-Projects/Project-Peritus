@@ -1,6 +1,7 @@
 //! Redaction-safe developer-loop failures.
 
 use core::fmt;
+use peritus_model_protocol::FailureCategory as Category;
 
 use crate::ModelDriveError;
 
@@ -113,7 +114,6 @@ fn failure_hint(
     {
         return "OpenCode returned an invalid Peritus turn after one automatic correction. No proposed tools from that reply were executed. Read the rejected reply with `peritus runs trace --run <run-id>`, then retry the run or choose another model.";
     }
-    use peritus_model_protocol::FailureCategory as Category;
     match category {
         Category::Authentication => {
             "Check or replace the API key in provider settings, then test the connection."

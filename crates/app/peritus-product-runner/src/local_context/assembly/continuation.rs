@@ -15,52 +15,11 @@ pub(super) fn append(
 ) -> Result<(), DeveloperLoopError> {
     // This is a view window, not a task or execution budget. Exact older text remains archived.
     let mut remaining = memory.config.max_read_bytes.min(8192);
-    let mut notes = Vec::new();
-    for source in memory
-        .sources
-        .iter()
-        .rev()
-        .filter(|source| {
-            source.kind == ArchiveKind::ToolOutput
-                && !source.is_error
-                && source.call.as_ref().is_some_and(|call| {
-                    !crate::local_context::activity::inspection(&call.name)
-                        && call.name != "context_update"
-                })
-        })
-        .take(8)
-    {
-        let Some(call) = &source.call else { continue };
-        let cached = memory.continuation_actions.borrow().get(&source.sequence).cloned();
-        let summary = if let Some(cached) = cached {
-            cached
-        } else {
-            let value: serde_json::Value =
-                serde_json::from_slice(&memory.artifact(source.sequence)?)
-                    .map_err(|_| super::super::error("decode settled action"))?;
-            let fields =
-                ["path", "changed", "sha256", "handle", "state", "exit_code", "success", "purpose"]
-                    .into_iter()
-                    .filter_map(|key| value.get(key).map(|value| (key, value)))
-                    .collect::<std::collections::BTreeMap<_, _>>();
-            let summary = format!(
-                "SETTLED {} {} {} — historical outcome, not work to repeat",
-                call.name,
-                source_handle(memory, source.sequence),
-                serde_json::to_string(&fields)
-                    .map_err(|_| super::super::error("encode action receipt"))?
-            );
-            memory.continuation_actions.borrow_mut().insert(source.sequence, summary.clone());
-            summary
-        };
-        if !selected.contains(&source.sequence) {
-            notes.push((source.sequence, summary));
-        }
-    }
+    let mut notes = settled_actions(memory, selected)?;
+    let actions = notes.len();
     while memory.continuation_actions.borrow().len() > 8 {
         memory.continuation_actions.borrow_mut().pop_first();
     }
-    let actions = notes.len();
     for source in memory.sources.iter().rev() {
         if selected.contains(&source.sequence) || source.kind != ArchiveKind::Assistant {
             continue;
@@ -120,4 +79,53 @@ pub(super) fn append(
         selected.extend(notes.into_iter().map(|(id, _)| id));
     }
     Ok(())
+}
+
+fn settled_actions(
+    memory: &LocalMemory,
+    selected: &[u64],
+) -> Result<Vec<(u64, String)>, DeveloperLoopError> {
+    let mut notes = Vec::new();
+    for source in memory
+        .sources
+        .iter()
+        .rev()
+        .filter(|source| {
+            source.kind == ArchiveKind::ToolOutput
+                && !source.is_error
+                && source.call.as_ref().is_some_and(|call| {
+                    !crate::local_context::activity::inspection(&call.name)
+                        && call.name != "context_update"
+                })
+        })
+        .take(8)
+    {
+        let Some(call) = &source.call else { continue };
+        let cached = memory.continuation_actions.borrow().get(&source.sequence).cloned();
+        let summary = if let Some(cached) = cached {
+            cached
+        } else {
+            let value: serde_json::Value =
+                serde_json::from_slice(&memory.artifact(source.sequence)?)
+                    .map_err(|_| super::super::error("decode settled action"))?;
+            let fields =
+                ["path", "changed", "sha256", "handle", "state", "exit_code", "success", "purpose"]
+                    .into_iter()
+                    .filter_map(|key| value.get(key).map(|value| (key, value)))
+                    .collect::<std::collections::BTreeMap<_, _>>();
+            let summary = format!(
+                "SETTLED {} {} {} — historical outcome, not work to repeat",
+                call.name,
+                source_handle(memory, source.sequence),
+                serde_json::to_string(&fields)
+                    .map_err(|_| super::super::error("encode action receipt"))?
+            );
+            memory.continuation_actions.borrow_mut().insert(source.sequence, summary.clone());
+            summary
+        };
+        if !selected.contains(&source.sequence) {
+            notes.push((source.sequence, summary));
+        }
+    }
+    Ok(notes)
 }

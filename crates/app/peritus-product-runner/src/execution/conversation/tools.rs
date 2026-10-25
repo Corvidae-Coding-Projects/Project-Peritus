@@ -102,7 +102,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
             let result = super::super::modules::artifacts::page(
                 self.input,
                 args["offset"].as_u64().unwrap_or(0),
-                args["max_bytes"].as_u64().unwrap_or(16384).min(1048576) as usize,
+                args["max_bytes"].as_u64().unwrap_or(16_384).min(1_048_576) as usize,
             );
             return match result {
                 Ok(v) => crate::developer_tools::module_observation(&v, false),

@@ -108,30 +108,7 @@ impl FrozenEvaluationProfile {
         let record = StoredProfile {
             version: 1,
             digest: *self.digest().as_bytes(),
-            dataset: StoredDataset {
-                id: *dataset.id().as_bytes(),
-                revision: dataset.revision(),
-                provenance: *dataset.provenance_digest().as_bytes(),
-                tasks: dataset
-                    .tasks()
-                    .iter()
-                    .map(|t| StoredTask {
-                        id: *t.id().as_bytes(),
-                        partition: t.partition().tag(),
-                        weight: t.weight(),
-                        public: (
-                            *t.candidate_input().artifact().as_bytes(),
-                            t.candidate_input().byte_length(),
-                        ),
-                        sealed: (
-                            *t.evaluator_input().artifact().as_bytes(),
-                            t.evaluator_input().byte_length(),
-                            *t.evaluator_input().verifier_digest().as_bytes(),
-                        ),
-                        resources: *t.resource_profile_digest().as_bytes(),
-                    })
-                    .collect(),
-            },
+            dataset: store_dataset(dataset),
             partitions: self.partitions().iter().map(|p| p.tag()).collect(),
             arms: [
                 store_arm(self.arm(EvaluationArm::Baseline)),
@@ -150,25 +127,7 @@ impl FrozenEvaluationProfile {
                 template: *m.request_template_digest().as_bytes(),
                 seed: m.seed_delivery().tag(),
             },
-            execution: StoredExecution {
-                digests: [
-                    *e.sandbox_plan_digest().as_bytes(),
-                    *e.backend_admission_digest().as_bytes(),
-                    *e.environment_digest().as_bytes(),
-                    *e.image_digest().as_bytes(),
-                ],
-                resources: e
-                    .resource_request()
-                    .entries()
-                    .iter()
-                    .map(|r| (r.kind().tag(), r.quantity().get()))
-                    .collect(),
-                deadline: e.deadline_micros(),
-                concurrency: e.concurrency(),
-                restricted: e.require_restricted_isolation(),
-                teardown: e.require_complete_teardown(),
-                local_process: e.mode() == EvaluationExecutionMode::LocalProcess,
-            },
+            execution: store_execution(e),
             retry: (
                 retry.maximum_attempts(),
                 retry.initial_backoff_micros(),
@@ -219,24 +178,7 @@ impl FrozenEvaluationProfile {
         }
         let l = s.limits;
         let limits = EvaluationLimits::new(l.0, l.1, l.2, l.3, l.4, l.5)?;
-        let mut tasks = Vec::with_capacity(s.dataset.tasks.len());
-        if s.dataset.tasks.len() > limits.tasks() as usize {
-            return Err(malformed("task storage limit"));
-        }
-        for t in s.dataset.tasks {
-            tasks.push(DatasetTask::new(
-                TaskId::new(t.id)?,
-                partition(t.partition)?,
-                t.weight,
-                CandidateTaskInput::new(artifact(t.public.0), t.public.1)?,
-                SealedEvaluatorInput::new(
-                    artifact(t.sealed.0),
-                    t.sealed.1,
-                    Sha256Digest::new(t.sealed.2),
-                )?,
-                Sha256Digest::new(t.resources),
-            )?);
-        }
+        let tasks = restore_tasks(&s.dataset, limits)?;
         let dataset = DatasetManifest::new(
             DatasetId::new(s.dataset.id)?,
             s.dataset.revision,
@@ -265,32 +207,7 @@ impl FrozenEvaluationProfile {
             seed,
             provider,
         )?;
-        let e = s.execution;
-        let resources = e
-            .resources
-            .into_iter()
-            .map(|(k, q)| {
-                Ok(ResourceEntry::new(
-                    ResourceKind::new(k).map_err(malformed)?,
-                    ResourceQuantity::new(q).map_err(malformed)?,
-                ))
-            })
-            .collect::<Result<Vec<_>, EvaluationError>>()?;
-        let resources = ResourceVector::new(resources, u16::MAX).map_err(malformed)?;
-        let mut execution = ExecutionBinding::new(
-            Sha256Digest::new(e.digests[0]),
-            Sha256Digest::new(e.digests[1]),
-            Sha256Digest::new(e.digests[2]),
-            Sha256Digest::new(e.digests[3]),
-            resources,
-            e.deadline,
-            e.concurrency,
-            e.restricted,
-            e.teardown,
-        )?;
-        if e.local_process {
-            execution = execution.with_local_process()?;
-        }
+        let execution = restore_execution(s.execution)?;
         let retry = EvaluationRetryPolicy::new(s.retry.0, s.retry.1, s.retry.2, limits)?;
         let metrics = MetricPolicy::new(
             s.metrics.0,
@@ -308,8 +225,8 @@ impl FrozenEvaluationProfile {
         let profile = Self::new(
             dataset,
             partitions,
-            restore_arm(baseline)?,
-            restore_arm(candidate)?,
+            restore_arm(&baseline)?,
+            restore_arm(&candidate)?,
             provider,
             model,
             execution,
@@ -327,7 +244,112 @@ impl FrozenEvaluationProfile {
     }
 }
 
-fn store_arm(arm: HarnessArmBinding) -> StoredArm {
+fn store_dataset(dataset: &DatasetManifest) -> StoredDataset {
+    StoredDataset {
+        id: *dataset.id().as_bytes(),
+        revision: dataset.revision(),
+        provenance: *dataset.provenance_digest().as_bytes(),
+        tasks: dataset
+            .tasks()
+            .iter()
+            .map(|task| StoredTask {
+                id: *task.id().as_bytes(),
+                partition: task.partition().tag(),
+                weight: task.weight(),
+                public: (
+                    *task.candidate_input().artifact().as_bytes(),
+                    task.candidate_input().byte_length(),
+                ),
+                sealed: (
+                    *task.evaluator_input().artifact().as_bytes(),
+                    task.evaluator_input().byte_length(),
+                    *task.evaluator_input().verifier_digest().as_bytes(),
+                ),
+                resources: *task.resource_profile_digest().as_bytes(),
+            })
+            .collect(),
+    }
+}
+
+fn store_execution(execution: &ExecutionBinding) -> StoredExecution {
+    StoredExecution {
+        digests: [
+            *execution.sandbox_plan_digest().as_bytes(),
+            *execution.backend_admission_digest().as_bytes(),
+            *execution.environment_digest().as_bytes(),
+            *execution.image_digest().as_bytes(),
+        ],
+        resources: execution
+            .resource_request()
+            .entries()
+            .iter()
+            .map(|entry| (entry.kind().tag(), entry.quantity().get()))
+            .collect(),
+        deadline: execution.deadline_micros(),
+        concurrency: execution.concurrency(),
+        restricted: execution.require_restricted_isolation(),
+        teardown: execution.require_complete_teardown(),
+        local_process: execution.mode() == EvaluationExecutionMode::LocalProcess,
+    }
+}
+
+fn restore_tasks(
+    dataset: &StoredDataset,
+    limits: EvaluationLimits,
+) -> Result<Vec<DatasetTask>, EvaluationError> {
+    if dataset.tasks.len() > limits.tasks() as usize {
+        return Err(malformed("task storage limit"));
+    }
+    dataset
+        .tasks
+        .iter()
+        .map(|task| {
+            DatasetTask::new(
+                TaskId::new(task.id)?,
+                partition(task.partition)?,
+                task.weight,
+                CandidateTaskInput::new(artifact(task.public.0), task.public.1)?,
+                SealedEvaluatorInput::new(
+                    artifact(task.sealed.0),
+                    task.sealed.1,
+                    Sha256Digest::new(task.sealed.2),
+                )?,
+                Sha256Digest::new(task.resources),
+            )
+        })
+        .collect()
+}
+
+fn restore_execution(stored: StoredExecution) -> Result<ExecutionBinding, EvaluationError> {
+    let resources = stored
+        .resources
+        .into_iter()
+        .map(|(kind, quantity)| {
+            Ok(ResourceEntry::new(
+                ResourceKind::new(kind).map_err(malformed)?,
+                ResourceQuantity::new(quantity).map_err(malformed)?,
+            ))
+        })
+        .collect::<Result<Vec<_>, EvaluationError>>()?;
+    let resources = ResourceVector::new(resources, u16::MAX).map_err(malformed)?;
+    let mut execution = ExecutionBinding::new(
+        Sha256Digest::new(stored.digests[0]),
+        Sha256Digest::new(stored.digests[1]),
+        Sha256Digest::new(stored.digests[2]),
+        Sha256Digest::new(stored.digests[3]),
+        resources,
+        stored.deadline,
+        stored.concurrency,
+        stored.restricted,
+        stored.teardown,
+    )?;
+    if stored.local_process {
+        execution = execution.with_local_process()?;
+    }
+    Ok(execution)
+}
+
+const fn store_arm(arm: HarnessArmBinding) -> StoredArm {
     let r = arm.revision();
     let h = arm.harness_revision();
     StoredArm {
@@ -344,7 +366,7 @@ fn store_arm(arm: HarnessArmBinding) -> StoredArm {
         receipt: *arm.receipt_digest().as_bytes(),
     }
 }
-fn restore_arm(s: StoredArm) -> Result<HarnessArmBinding, EvaluationError> {
+fn restore_arm(s: &StoredArm) -> Result<HarnessArmBinding, EvaluationError> {
     let r = RevisionTuple::new(
         AcceptanceSpecId::new(s.ids[0]).map_err(malformed)?,
         HarnessId::new(s.ids[1]).map_err(malformed)?,
@@ -361,7 +383,7 @@ fn restore_arm(s: StoredArm) -> Result<HarnessArmBinding, EvaluationError> {
     );
     Ok(HarnessArmBinding::new(r, h, Sha256Digest::new(s.receipt)))
 }
-fn artifact(bytes: [u8; 32]) -> ArtifactDigest {
+const fn artifact(bytes: [u8; 32]) -> ArtifactDigest {
     ArtifactDigest::from_sha256(Sha256Digest::new(bytes))
 }
 fn partition(tag: u8) -> Result<DatasetPartition, EvaluationError> {

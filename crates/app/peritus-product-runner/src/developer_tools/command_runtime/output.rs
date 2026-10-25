@@ -51,10 +51,8 @@ impl CommandRuntime {
             .map_err(|error| tool(format!("read retained command output: {error}")))?;
         let returned = bytes.len() as u64;
         let next = offset.checked_add(returned).ok_or_else(|| tool("output offset overflowed"))?;
-        let (encoding, data) = match std::str::from_utf8(&bytes) {
-            Ok(text) => ("utf8", text.to_owned()),
-            Err(_) => ("hex", hex(&bytes)),
-        };
+        let (encoding, data) = std::str::from_utf8(&bytes)
+            .map_or_else(|_| ("hex", hex(&bytes)), |text| ("utf8", text.to_owned()));
         Ok(object(vec![
             ("handle", Value::from(handle)),
             ("stream", Value::from(stream_name)),

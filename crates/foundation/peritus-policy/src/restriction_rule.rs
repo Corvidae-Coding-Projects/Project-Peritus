@@ -73,8 +73,7 @@ impl RestrictionRule {
                 RestrictionRuleKind::RequireApproval(requirement.duplicate())
             }
         };
-        let rebound =
-            Self { digest: self.digest, selector: self.selector.rebind_revision(revision), kind };
-        rebound
+
+        Self { digest: self.digest, selector: self.selector.rebind_revision(revision), kind }
     }
 }

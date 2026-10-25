@@ -199,7 +199,7 @@ impl ProductRunService {
                     checkpoint: None,
                     settlement: None,
                     resume: None,
-                    continuation_cache: Default::default(),
+                    continuation_cache: persistence::continuation::ResumeCache::default(),
                     remaining_work: Vec::new(),
                     interruption_cause: String::new(),
                     candidate_actionable: false,

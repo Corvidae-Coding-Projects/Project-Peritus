@@ -58,8 +58,7 @@ impl CapabilityUseRequest {
         crate::identity::revision_values_equal(self.revision, scope.revision())
     }
     pub(crate) fn permission_matches(&self, scope: &CapabilityScope) -> bool {
-        let result = scope.contains_permission_exact(&self.permission);
-        result
+        scope.contains_permission_exact(&self.permission)
     }
     pub(crate) fn scope_mismatch(&self, scope: &CapabilityScope) -> Option<ScopeDimension> {
         if !self.actor_matches(scope) {

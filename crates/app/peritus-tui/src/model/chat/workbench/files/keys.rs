@@ -68,7 +68,11 @@ impl AppModel {
                 file.cursor = count;
             }
             KeyCode::Char('m') => {
-                self.chat.workbench.files.refresh = !self.chat.workbench.files.refresh;
+                self.chat.workbench.files.refresh = if self.chat.workbench.files.refresh.enabled() {
+                    super::RefreshMode::Cached
+                } else {
+                    super::RefreshMode::Refresh
+                };
                 self.chat.workbench.files.discard_preview();
             }
             KeyCode::Char('p') => return Some(self.preview_file()),

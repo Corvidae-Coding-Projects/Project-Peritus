@@ -6,19 +6,33 @@ pub(super) fn matches_current_or_legacy_configuration(actual: &[u8], expected: &
     }
     // Recognize only exact earlier generated formats, including upgrades that skipped
     // releases. Never normalize arbitrary TOML, authority, paths, or provider choices.
-    for discovery in [true, false] {
-        let expected = if discovery {
-            expected.to_owned()
-        } else {
-            expected.replace("\ndiscover_model_limits = true\n", "\n")
-        };
-        if matches_timeout_variants(actual, &expected)
-            || matches_timeout_variants(actual, &legacy_opencode_capabilities(&expected))
-        {
-            return true;
+    for native_runtime in [true, false] {
+        let expected =
+            if native_runtime { expected.to_owned() } else { without_native_runtime(expected) };
+        for discovery in [true, false] {
+            let expected = if discovery {
+                expected.clone()
+            } else {
+                expected.replace("\ndiscover_model_limits = true\n", "\n")
+            };
+            if matches_timeout_variants(actual, &expected)
+                || matches_timeout_variants(actual, &legacy_opencode_capabilities(&expected))
+            {
+                return true;
+            }
         }
     }
     false
+}
+
+fn without_native_runtime(expected: &str) -> String {
+    let Some(start) = expected.find("\n[rsi]\n") else { return expected.to_owned() };
+    let body = &expected[start + 1..];
+    let end = body.find("\n[").map_or(expected.len(), |offset| start + 1 + offset);
+    let mut legacy = String::with_capacity(expected.len());
+    legacy.push_str(&expected[..start]);
+    legacy.push_str(&expected[end..]);
+    legacy
 }
 
 fn matches_timeout_variants(actual: &[u8], expected: &str) -> bool {

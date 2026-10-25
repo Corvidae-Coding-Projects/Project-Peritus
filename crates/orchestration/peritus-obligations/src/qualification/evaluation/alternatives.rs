@@ -73,7 +73,7 @@ fn any_branch_complete(
         match entries[index].specification().alternative() {
             Some((entry_group, branch)) if crate::matching::group_ids_match(entry_group, group) => {
                 let already_checked = checked_branch_present(checked_branches.as_slice(), branch);
-                if already_checked {}
+
                 if !already_checked {
                     let complete = branch_complete(ledger, candidate, evidence, group, branch);
                     if complete {

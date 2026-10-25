@@ -38,14 +38,12 @@ pub(super) fn validate_approvals(values: &[ApprovalObservation]) -> Result<(), E
         if index > 0 {
             let previous = values[index - 1].request_id().into_bytes();
             let current = values[index].request_id().into_bytes();
-            if let Err(error) = order::require_ascending(
+            order::require_ascending(
                 previous.as_slice(),
                 current.as_slice(),
                 CanonicalEvidenceCollection::Approvals,
                 index,
-            ) {
-                return Err(error);
-            }
+            )?;
         }
         if subject_seen_before(values, index, values[index].subject()) {
             return Err(EvidenceError::new(
@@ -87,14 +85,12 @@ pub(super) fn validate_waivers(
         if index > 0 {
             let previous = values[index - 1].finding_id().into_bytes();
             let current = values[index].finding_id().into_bytes();
-            if let Err(error) = order::require_ascending(
+            order::require_ascending(
                 previous.as_slice(),
                 current.as_slice(),
                 CanonicalEvidenceCollection::Waivers,
                 index,
-            ) {
-                return Err(error);
-            }
+            )?;
         }
         if !waiver_approval_consistent(&values[index], approvals) {
             return Err(EvidenceError::new(

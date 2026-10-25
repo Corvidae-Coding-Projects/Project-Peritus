@@ -6,7 +6,7 @@ Authorized structured argv and explicit script tools for Peritus.
 
 Package `peritus-tools-shell` is a member of the root Cargo workspace; architectural owner `C4` in `tools`.
 
-Local dependency waypoints: [peritus-artifact-store](../../state/peritus-artifact-store/AGENTS.md), [peritus-codec](../../foundation/peritus-codec/AGENTS.md), [peritus-policy](../../foundation/peritus-policy/AGENTS.md), [peritus-process](../../runtime/peritus-process/AGENTS.md), [peritus-sandbox](../../runtime/peritus-sandbox/AGENTS.md), [peritus-tool-protocol](../peritus-tool-protocol/AGENTS.md), [peritus-tool-router](../peritus-tool-router/AGENTS.md), [peritus-types](../../foundation/peritus-types/AGENTS.md).
+Local dependency waypoints: [peritus-artifact-store](../../state/peritus-artifact-store/AGENTS.md), [peritus-policy](../../foundation/peritus-policy/AGENTS.md), [peritus-process](../../runtime/peritus-process/AGENTS.md), [peritus-sandbox](../../runtime/peritus-sandbox/AGENTS.md), [peritus-tool-protocol](../peritus-tool-protocol/AGENTS.md), [peritus-tool-router](../peritus-tool-router/AGENTS.md), [peritus-types](../../foundation/peritus-types/AGENTS.md).
 
 ## Files in this folder
 

@@ -46,18 +46,16 @@ pub(crate) const fn optional_event_id_equal(left: Option<EventId>, right: Option
     reason = "Verus requires crate visibility for this cross-module executable contract"
 )]
 pub(crate) const fn revision_equal(left: RevisionTuple, right: RevisionTuple) -> bool {
-    let result =
-        bytes_equal(left.acceptance_spec_id().as_bytes(), right.acceptance_spec_id().as_bytes())
-            && bytes_equal(left.harness_id().as_bytes(), right.harness_id().as_bytes())
-            && bytes_equal(left.workspace_id().as_bytes(), right.workspace_id().as_bytes())
-            && left.workspace_generation().get() == right.workspace_generation().get()
-            && left.workspace_revision().get() == right.workspace_revision().get()
-            && bytes_equal(left.policy_id().as_bytes(), right.policy_id().as_bytes())
-            && bytes_equal(
-                left.provider_profile_id().as_bytes(),
-                right.provider_profile_id().as_bytes(),
-            );
-    result
+    bytes_equal(left.acceptance_spec_id().as_bytes(), right.acceptance_spec_id().as_bytes())
+        && bytes_equal(left.harness_id().as_bytes(), right.harness_id().as_bytes())
+        && bytes_equal(left.workspace_id().as_bytes(), right.workspace_id().as_bytes())
+        && left.workspace_generation().get() == right.workspace_generation().get()
+        && left.workspace_revision().get() == right.workspace_revision().get()
+        && bytes_equal(left.policy_id().as_bytes(), right.policy_id().as_bytes())
+        && bytes_equal(
+            left.provider_profile_id().as_bytes(),
+            right.provider_profile_id().as_bytes(),
+        )
 }
 const fn bytes_equal(left: &[u8; 16], right: &[u8; 16]) -> bool {
     left[0] == right[0]

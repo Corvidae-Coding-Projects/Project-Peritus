@@ -23,7 +23,7 @@ pub enum CompatibleProtocol {
     AnthropicMessages,
     /// Google Generate Content wire contract for a hosted service.
     GoogleGenerateContent,
-    /// Official tool-disabled OpenCode executable, which selects its own provider SDK.
+    /// Official tool-disabled `OpenCode` executable, which selects its own provider SDK.
     OpenCodeRuntime,
 }
 

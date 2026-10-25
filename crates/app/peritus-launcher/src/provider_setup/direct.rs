@@ -126,16 +126,16 @@ pub(super) fn ensure_runtime(
     terminal: &mut Terminal<'_>,
     kind: ProviderKind,
 ) -> Result<(), LauncherError> {
-    if matches!(kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo) {
-        if !peritus_provider_onboarding::opencode_runtime_installed() {
-            terminal.line("Zen and Go use the official OpenCode CLI as a model transport. Peritus disables its native tools and supplies your saved key; a separate OpenCode login is unnecessary.")?;
-            if !terminal.confirm("Install the official OpenCode CLI now? [Y/n]: ", true)? {
-                return Err(LauncherError::Interaction(
-                    "Install the official OpenCode CLI, then retry provider setup.".to_owned(),
-                ));
-            }
-            peritus_provider_onboarding::install_opencode_runtime()?;
+    if matches!(kind, ProviderKind::OpenCodeZen | ProviderKind::OpenCodeGo)
+        && !peritus_provider_onboarding::opencode_runtime_installed()
+    {
+        terminal.line("Zen and Go use the official OpenCode CLI as a model transport. Peritus disables its native tools and supplies your saved key; a separate OpenCode login is unnecessary.")?;
+        if !terminal.confirm("Install the official OpenCode CLI now? [Y/n]: ", true)? {
+            return Err(LauncherError::Interaction(
+                "Install the official OpenCode CLI, then retry provider setup.".to_owned(),
+            ));
         }
+        peritus_provider_onboarding::install_opencode_runtime()?;
     }
     Ok(())
 }

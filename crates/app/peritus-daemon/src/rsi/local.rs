@@ -26,6 +26,7 @@ use peritus_product_runner::RestrictedProcessContext;
 use peritus_types::{EventId, RunId, Sha256Digest};
 use serde::{Deserialize, Serialize};
 use std::{
+    fmt::Write as _,
     fs::OpenOptions,
     io::Write,
     path::{Path, PathBuf},
@@ -71,7 +72,7 @@ pub(crate) struct LocalProcessPort<'a> {
 }
 
 impl<'a> LocalProcessPort<'a> {
-    /// Checks actual C0 StartRollout admission and the immutable local image before preparing effects.
+    /// Checks actual `C0 StartRollout` admission and the immutable local image before preparing effects.
     #[allow(
         clippy::too_many_arguments,
         reason = "all admitted external owners and frozen bindings stay explicit"
@@ -372,7 +373,7 @@ impl<'a> LocalProcessPort<'a> {
         std::fs::create_dir_all(&directory).map_err(detail)?;
         let mut name =
             ArtifactDigest::from_sha256(peritus_codec::sha256(self.spec.id().as_bytes())).to_hex();
-        name.push_str(&format!("-{}-{role}.json", self.attempt));
+        write!(name, "-{}-{role}.json", self.attempt).expect("writing to a String cannot fail");
         let path = directory.join(name);
         let mut options = OpenOptions::new();
         options.create_new(true).write(true);
@@ -393,8 +394,7 @@ impl<'a> LocalProcessPort<'a> {
         );
         let digest = match bytes {
             Ok(bytes) => publish(self.artifacts, &bytes, self.start_event, "application/json")
-                .map(ArtifactDigest::sha256)
-                .unwrap_or_else(|_| peritus_codec::sha256(&bytes)),
+                .map_or_else(|_| peritus_codec::sha256(&bytes), ArtifactDigest::sha256),
             Err(_) => peritus_codec::sha256(b"local RSI failure serialization failed"),
         };
         ExecutionFailure::new(class, digest, false)

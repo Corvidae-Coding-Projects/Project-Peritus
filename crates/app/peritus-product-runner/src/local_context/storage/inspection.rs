@@ -72,7 +72,7 @@ pub(in crate::local_context) fn inspect(
     let validation_bytes = read(manifest.validation)?;
     let validation: ViewValidation = decode(&validation_bytes)?;
     let limits = WorkingLimits::standard();
-    let (state, sources) = super::super::pages::restore(&manifest, binding, limits, &read)?;
+    let (state, sources) = super::super::pages::restore(&manifest, binding, limits, read)?;
     let transcript: TranscriptManifest = decode(&read(manifest.transcript_manifest)?)?;
     checkpoint_validation::validate_checkpoint(
         manifest.schema_version,

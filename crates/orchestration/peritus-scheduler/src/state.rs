@@ -91,7 +91,8 @@ impl SchedulerState {
         command_id: CommandId,
     ) -> Self {
         let used_commands = vec![command_id];
-        let result = Self {
+
+        Self {
             binding,
             phase: SchedulerPhase::Active,
             sequence: EventSequence::first(),
@@ -105,8 +106,7 @@ impl SchedulerState {
             dispatch_ordinal: 0,
             used_commands,
             terminal: None,
-        };
-        result
+        }
     }
 }
 

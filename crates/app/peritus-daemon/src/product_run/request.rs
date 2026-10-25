@@ -53,7 +53,7 @@ impl ProductRunRequest {
         self.providers
     }
 
-    pub(super) fn set_providers(&mut self, providers: ProductProviderSelection) {
+    pub(super) const fn set_providers(&mut self, providers: ProductProviderSelection) {
         self.providers = providers;
     }
 

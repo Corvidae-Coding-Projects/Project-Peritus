@@ -6,7 +6,7 @@ use std::{
     process::Command,
 };
 
-pub(crate) use peritus_workspace::task_candidate::managed;
+pub use peritus_workspace::task_candidate::managed;
 
 use crate::workspace_filter;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};

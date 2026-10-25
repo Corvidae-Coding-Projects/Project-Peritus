@@ -17,28 +17,27 @@ pub(in crate::transition) fn settle_exact(
     ledger: &mut BudgetLedger,
     reference: ReservationReference,
 ) -> Result<BudgetReceipt, BudgetError> {
-    let result = finalize_full_ceiling(
+    finalize_full_ceiling(
         ledger,
         reference,
         BudgetOperation::SettleExact,
         ReservationPhase::SettledExact,
         crate::BudgetCommand::SettleExact(reference),
-    );
-    result
+    )
 }
 pub(in crate::transition) fn finalize_ambiguous(
     ledger: &mut BudgetLedger,
     finalization: AmbiguousFinalization,
 ) -> Result<BudgetReceipt, BudgetError> {
     let concrete_reference = finalization.verified_reference();
-    let result = finalize_full_ceiling(
+
+    finalize_full_ceiling(
         ledger,
         concrete_reference,
         BudgetOperation::FinalizeAmbiguous,
         ReservationPhase::SettledAmbiguous,
         crate::BudgetCommand::FinalizeAmbiguous(finalization),
-    );
-    result
+    )
 }
 fn finalize_full_ceiling(
     ledger: &mut BudgetLedger,

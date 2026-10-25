@@ -107,7 +107,7 @@ pub(super) fn summary(name: &str, arguments: &str) -> String {
                 } else {
                     quote(value.as_str().map_or_else(|| value.to_string(), str::to_owned).as_str())
                 };
-                parts.push(format!("{field}={}", display));
+                parts.push(format!("{field}={display}"));
             }
         }
         parts.join(" ")

@@ -1,9 +1,17 @@
 //! Real E3 campaign creation, full-record recovery, analysis, and claimed publication.
 
 use peritus_artifact_store::{
-    ArtifactDigest, ArtifactStore, EncryptionMetadata, MediaType, WriteRequest,
+    ArtifactDigest, ArtifactStore, EncryptionMetadata, FinalizedArtifact, MediaType, WriteRequest,
 };
-use peritus_eval::*;
+use peritus_eval::{
+    EvaluationArm, EvaluationCampaignId, EvaluationCommand, EvaluationCommandKind,
+    EvaluationDirectiveClaim, EvaluationEventKind, EvaluationExecutionMode, EvaluationLimits,
+    EvaluationPhase, EvaluationPlan, EvaluationReport, EvaluationState, FrozenEvaluationProfile,
+    PlanBatch, PlanRecord, PlannedRolloutBinding, RolloutLedger, RolloutProgress, RolloutRecord,
+    RolloutStatus, TransitionIds, ValidatedEvaluationReport, analyze_evaluation,
+    commit_evaluation_claimed_transition, commit_evaluation_transition, decide,
+    load_evaluation_replay, stage_and_commit_report,
+};
 use peritus_journal::SqliteJournal;
 use peritus_types::{CommandId, EventId, Sha256Digest};
 
@@ -33,47 +41,41 @@ impl<'a> EvaluationOperator<'a> {
     ) -> Result<EvaluationState, DaemonError> {
         validate_profile(self.journal, self.artifacts, profile)?;
         let plan = EvaluationPlan::build(campaign, profile).map_err(error)?;
-        let mut state = match load_optional(self.journal, campaign)? {
-            Some(state) => {
-                if state.profile_digest() != profile.digest()
-                    || state.dataset_digest() != profile.dataset().digest()
-                {
-                    return Err(invalid("campaign identity already binds different frozen inputs"));
-                }
-                state
+        let mut state = if let Some(state) = load_optional(self.journal, campaign)? {
+            if state.profile_digest() != profile.digest()
+                || state.dataset_digest() != profile.dataset().digest()
+            {
+                return Err(invalid("campaign identity already binds different frozen inputs"));
             }
-            None => {
-                let ids = initial_ids(campaign, "create")?;
-                let dataset_artifact = save(
-                    self.artifacts,
-                    &profile.dataset().canonical_bytes().map_err(error)?,
-                    ids.event_id(),
-                )?;
-                let profile_artifact = save(
-                    self.artifacts,
-                    &profile.canonical_bytes().map_err(error)?,
-                    ids.event_id(),
-                )?;
-                let command = EvaluationCommand::new(
-                    ids.command_id(),
-                    ids.event_id(),
-                    campaign,
-                    0,
-                    None,
-                    Sha256Digest::new([0; 32]),
-                    profile.digest(),
-                    EvaluationCommandKind::CreateCampaign {
-                        revision: profile.arm(EvaluationArm::Baseline).revision(),
-                        dataset_digest: profile.dataset().digest(),
-                        dataset_artifact,
-                        profile_artifact,
-                    },
-                )
-                .map_err(error)?;
-                let transition = decide(None, &command).map_err(error)?;
-                commit_evaluation_transition(self.journal, &command, &transition).map_err(error)?;
-                transition.state().clone()
-            }
+            state
+        } else {
+            let ids = initial_ids(campaign, "create")?;
+            let dataset_artifact = save(
+                self.artifacts,
+                &profile.dataset().canonical_bytes().map_err(error)?,
+                ids.event_id(),
+            )?;
+            let profile_artifact =
+                save(self.artifacts, &profile.canonical_bytes().map_err(error)?, ids.event_id())?;
+            let command = EvaluationCommand::new(
+                ids.command_id(),
+                ids.event_id(),
+                campaign,
+                0,
+                None,
+                Sha256Digest::new([0; 32]),
+                profile.digest(),
+                EvaluationCommandKind::CreateCampaign {
+                    revision: profile.arm(EvaluationArm::Baseline).revision(),
+                    dataset_digest: profile.dataset().digest(),
+                    dataset_artifact,
+                    profile_artifact,
+                },
+            )
+            .map_err(error)?;
+            let transition = decide(None, &command).map_err(error)?;
+            commit_evaluation_transition(self.journal, &command, &transition).map_err(error)?;
+            transition.state().clone()
         };
         if state.phase().terminal() || state.phase() == EvaluationPhase::Cancelling {
             return Ok(state);
@@ -133,9 +135,10 @@ impl<'a> EvaluationOperator<'a> {
                     "plan-batch",
                 )?;
             }
-            let root =
-                PlanRecord::new(plan.id(), plan.digest(), artifact, plan.specs().len() as u32, 1)
-                    .map_err(error)?;
+            let rollout_count = u32::try_from(plan.specs().len())
+                .map_err(|_| invalid("evaluation plan contains too many rollouts"))?;
+            let root = PlanRecord::new(plan.id(), plan.digest(), artifact, rollout_count, 1)
+                .map_err(error)?;
             state = ordinary(
                 self.journal,
                 &state,
@@ -419,7 +422,7 @@ pub(crate) fn report(
         analysis,
         None,
     )
-    .and_then(|report| report.validate())
+    .and_then(EvaluationReport::validate)
     .map_err(error)
 }
 
@@ -496,7 +499,7 @@ pub(crate) fn command(
 pub(crate) fn ids(state: &EvaluationState, label: &str) -> Result<TransitionIds, DaemonError> {
     let mut bytes = state.sequence().to_be_bytes().to_vec();
     bytes.extend_from_slice(label.as_bytes());
-    initial_ids(state.campaign_id(), &format!("{:?}", bytes))
+    initial_ids(state.campaign_id(), &format!("{bytes:?}"))
 }
 fn initial_ids(campaign: EvaluationCampaignId, label: &str) -> Result<TransitionIds, DaemonError> {
     let mut bytes = b"peritus.native.evaluation.command.v1\0".to_vec();
@@ -530,7 +533,7 @@ pub(crate) fn save(
         ))
         .map_err(error)?;
     writer.write_chunk(bytes).map_err(error)?;
-    writer.finalize().map(|a| a.digest()).map_err(error)
+    writer.finalize().map(FinalizedArtifact::digest).map_err(error)
 }
 pub(crate) fn read(
     store: &ArtifactStore,

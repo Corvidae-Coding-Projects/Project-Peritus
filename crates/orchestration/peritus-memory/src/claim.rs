@@ -256,7 +256,6 @@ impl MemoryMaterial {
     ///
     /// Returns a typed error for empty/oversized content, digest mismatch, or an invalid token
     /// estimate.
-
     pub fn new(
         claim_type: ClaimType,
         digest: Sha256Digest,

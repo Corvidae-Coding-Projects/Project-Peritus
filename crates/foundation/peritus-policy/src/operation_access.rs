@@ -13,10 +13,7 @@ fn descriptor_index_checked(
         None
     } else {
         match descriptors[index].name_cmp(name) {
-            Ordering::Less => {
-                let result = descriptor_index_checked(descriptors, name, index + 1);
-                result
-            }
+            Ordering::Less => descriptor_index_checked(descriptors, name, index + 1),
             Ordering::Equal => Some(index),
             Ordering::Greater => None,
         }

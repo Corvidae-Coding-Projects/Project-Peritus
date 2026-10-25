@@ -66,10 +66,7 @@ pub(super) fn file_review_evidence(value: &Value) -> Value {
         for field in ["content", "old", "new"] {
             let Some(text) = object.get(field).and_then(Value::as_str) else { continue };
             let bytes = text.len();
-            let digest = Sha256::digest(text.as_bytes())
-                .iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect::<String>();
+            let digest = crate::encode_hex(&Sha256::digest(text.as_bytes()));
             let preview = text.chars().take(512).collect::<String>();
             let omitted = preview.len() < bytes;
             object.remove(field);
@@ -110,7 +107,7 @@ pub(super) fn observer_definitions() -> Result<Vec<ToolDefinition>, ProductRunne
 
 impl WorkspaceDeveloperTools {
     pub(super) fn computer_tool(
-        &mut self,
+        &self,
         call: &CompletedToolCall,
         arguments: &Value,
     ) -> Result<Value, DeveloperLoopError> {
@@ -134,8 +131,7 @@ impl WorkspaceDeveloperTools {
                 image::ImageFormat::WebP => "image/webp",
                 _ => return Err(tool("use a PNG, JPEG or WebP image")),
             };
-            let digest =
-                Sha256::digest(&bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+            let digest = crate::encode_hex(&Sha256::digest(&bytes));
             return Ok(
                 json!({"success":true,"image":{"path":path,"sha256":digest,"bytes":bytes.len(),"media_type":mime,"width":picture.width(),"height":picture.height(),"scale":1}}),
             );
@@ -187,8 +183,7 @@ impl WorkspaceDeveloperTools {
                 .map_err(|error| tool(error.to_string()))?;
             let path = checked(&self.root, required_string(&arguments, "path")?, false)?;
             let bytes = std::fs::read(path).map_err(|error| tool(error.to_string()))?;
-            let digest =
-                Sha256::digest(&bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+            let digest = crate::encode_hex(&Sha256::digest(&bytes));
             if image["sha256"].as_str() != Some(digest.as_str()) {
                 return Err(tool("image changed after its observation"));
             }

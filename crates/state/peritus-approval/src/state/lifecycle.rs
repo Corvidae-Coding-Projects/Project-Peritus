@@ -21,14 +21,11 @@ const fn pending_expiry(
         return result;
     }
     if request_tick <= scope_tick && request_tick <= requirement_tick {
-        let result = Ok(request_expiry);
-        result
+        Ok(request_expiry)
     } else if scope_tick <= requirement_tick {
-        let result = Ok(scope_expiry);
-        result
+        Ok(scope_expiry)
     } else {
-        let result = Ok(requirement_expiry);
-        result
+        Ok(requirement_expiry)
     }
 }
 #[allow(
@@ -54,8 +51,7 @@ impl super::ApprovalAggregate {
         self,
         observed_at: AuthorityInstant,
     ) -> Result<super::ApprovalTransitionOutcome, crate::ApprovalTransitionFailure> {
-        let result = self.expire_checked(observed_at);
-        result
+        self.expire_checked(observed_at)
     }
     #[allow(
         clippy::manual_map,

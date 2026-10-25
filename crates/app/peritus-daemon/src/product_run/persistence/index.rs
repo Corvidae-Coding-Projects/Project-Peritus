@@ -76,7 +76,8 @@ fn compact(mut value: PersistedRecord) -> PersistedRecord {
     if let Some(deliverable) = &mut value.deliverable {
         deliverable.changed_paths.truncate(1);
         deliverable.successful_commands.clear();
-        deliverable.run_instructions = "Select the run to load its exact instructions".to_owned();
+        "Select the run to load its exact instructions"
+            .clone_into(&mut deliverable.run_instructions);
     }
     value
 }
@@ -111,12 +112,12 @@ fn hint(path: &Path) -> Option<RunRecord> {
     let index = location(path)
         .and_then(|index| fs::File::open(index).ok())
         .and_then(|file| serde_json::from_reader::<_, Index>(std::io::BufReader::new(file)).ok());
-    if let Some(index) = index {
-        if index.version == 1 && index.stamp == stamp {
-            if let Some(record) = checked_hint(path, index.hint) {
-                return Some(record);
-            }
-        }
+    if let Some(index) = index
+        && index.version == 1
+        && index.stamp == stamp
+        && let Some(record) = checked_hint(path, index.hint)
+    {
+        return Some(record);
     }
     // A disposable index can never cause an authoritative record to be quarantined. Rebuild
     // from the source if the cache is absent, stale, malformed, or semantically invalid.
@@ -141,9 +142,10 @@ pub(in crate::product_run) fn scan(root: &Path) -> Vec<(RunId, RunRecord, PathBu
     );
     paths
         .into_iter()
-        .filter_map(|path| match hint(&path) {
-            Some(record) => Some((record.request.run_id(), record, path)),
-            None => {
+        .filter_map(|path| {
+            if let Some(record) = hint(&path) {
+                Some((record.request.run_id(), record, path))
+            } else {
                 super::quarantine_record(
                     &path,
                     "run metadata could not be indexed; original retained for recovery",

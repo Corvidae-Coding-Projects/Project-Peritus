@@ -22,8 +22,13 @@ pub(super) struct Submission {
     queue_only: bool,
     draft: String,
     settings: WorkbenchExecutionSettings,
-    queued: bool,
+    progress: SubmissionProgress,
     queue_operation: Option<peritus_app_protocol::ControlOperationId>,
+}
+
+#[derive(Debug, Default)]
+struct SubmissionProgress {
+    queued: bool,
     stopped: bool,
     start_pending: bool,
 }
@@ -38,7 +43,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn stop_workbench_submission(&mut self) -> Option<Vec<Effect>> {
-        self.chat.workbench.submission.as_mut()?.stopped = true;
+        self.chat.workbench.submission.as_mut()?.progress.stopped = true;
         self.notice(
             NoticeLevel::Info,
             "Stop requested. Resolving any pending receipt without starting further work.",
@@ -86,10 +91,8 @@ impl AppModel {
                 self.chat.mode,
                 self.chat.models.clone(),
             ),
-            queued: true,
+            progress: SubmissionProgress { queued: true, stopped: false, start_pending: true },
             queue_operation: None,
-            stopped: false,
-            start_pending: true,
         });
         self.discover_workbench_execution()
     }
@@ -164,10 +167,8 @@ impl AppModel {
                 self.chat.mode,
                 self.chat.models.clone(),
             ),
-            queued: false,
+            progress: SubmissionProgress::default(),
             queue_operation: None,
-            stopped: false,
-            start_pending: false,
         });
         self.chat.selection_anchor = None;
         self.chat.mouse_anchor = None;
@@ -224,7 +225,13 @@ impl AppModel {
         if self.chat.workbench.submission.is_none() {
             self.complete_workbench_inspection();
         }
-        if self.chat.workbench.submission.as_ref().is_some_and(|submission| submission.stopped) {
+        if self
+            .chat
+            .workbench
+            .submission
+            .as_ref()
+            .is_some_and(|submission| submission.progress.stopped)
+        {
             self.chat.workbench.submission = None;
             self.notice(
                 NoticeLevel::Info,
@@ -241,7 +248,7 @@ impl AppModel {
                 );
                 return Vec::new();
             }
-            if !submission.queued {
+            if !submission.progress.queued {
                 let Some(input) = &submission.input else {
                     return self.begin_message_upload(state.snapshot());
                 };
@@ -318,7 +325,7 @@ impl AppModel {
             WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input))
                 if Some(input) == submission.input.as_ref() =>
             {
-                submission.queued = true;
+                submission.progress.queued = true;
                 submission.queue_operation = Some(command.operation());
                 "Input durably saved to this session; checking execution."
                     .clone_into(&mut self.chat.workbench.message);
@@ -331,14 +338,14 @@ impl AppModel {
                     .as_ref()
                     .is_some_and(|upload| &upload.request == preview.request()) =>
             {
-                submission.queued = true;
+                submission.progress.queued = true;
                 submission.queue_operation = Some(command.operation());
                 self.chat.workbench.open = false;
                 Some(self.discover_workbench_execution())
             }
             WorkbenchIntent::StartExecution(settings) if settings == &submission.settings => {
                 let run = settings.run();
-                let stopped = submission.stopped;
+                let stopped = submission.progress.stopped;
                 self.chat.workbench.submission = None;
                 "Session execution started from its durable inputs."
                     .clone_into(&mut self.chat.workbench.message);
@@ -369,7 +376,13 @@ impl AppModel {
         if self.chat.run_id != Some(run) {
             return Vec::new();
         }
-        if self.chat.workbench.submission.as_ref().is_some_and(|submission| submission.stopped) {
+        if self
+            .chat
+            .workbench
+            .submission
+            .as_ref()
+            .is_some_and(|submission| submission.progress.stopped)
+        {
             self.chat.workbench.submission = None;
             return self.cancel_workbench_run(run);
         }
@@ -398,7 +411,7 @@ impl AppModel {
                 .workbench
                 .submission
                 .as_ref()
-                .is_some_and(|submission| submission.start_pending)
+                .is_some_and(|submission| submission.progress.start_pending)
             {
                 peritus_app_protocol::WorkbenchContinuation::new(query, mode)
             } else {
@@ -433,7 +446,13 @@ impl AppModel {
     }
 
     pub(in crate::model) fn workbench_chat_started(&mut self, run: RunId) -> Vec<Effect> {
-        if self.chat.workbench.submission.take().is_some_and(|submission| submission.stopped) {
+        if self
+            .chat
+            .workbench
+            .submission
+            .take()
+            .is_some_and(|submission| submission.progress.stopped)
+        {
             return self.cancel_workbench_run(run);
         }
         Vec::new()

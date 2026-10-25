@@ -77,3 +77,13 @@ mod api;
 pub use api::*;
 
 pub use trace::{DeveloperTraceFrameKind, TraceFrame, TraceReadError, TraceReader, read_frames};
+
+pub(crate) fn encode_hex(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(encoded, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    encoded
+}

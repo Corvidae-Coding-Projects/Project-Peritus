@@ -3,7 +3,7 @@
 mod binding;
 mod catalog;
 mod commands;
-pub(crate) mod convenience;
+pub mod convenience;
 mod doctor;
 mod history;
 mod keys;
@@ -63,7 +63,7 @@ pub struct ChatUi {
 }
 
 #[derive(Debug)]
-pub(crate) struct FormattedMessage {
+pub struct FormattedMessage {
     pub(crate) source: String,
     pub(crate) width: usize,
     pub(crate) lines: Vec<ratatui::text::Line<'static>>,
@@ -192,18 +192,17 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if self.needs_chat_binding()
+        if (self.needs_chat_binding()
             || (self.chat.run_id.is_some()
                 && self
                     .pending
                     .values()
-                    .any(|pending| matches!(pending, PendingRequest::ChatBinding { .. })))
+                    .any(|pending| matches!(pending, PendingRequest::ChatBinding { .. }))))
+            && let Some(run) = self.chat.run_id
         {
-            if let Some(run) = self.chat.run_id {
-                // Bind the submitted message to this exact run, then send it once when the
-                // read-only binding arrives. Do not require a second Enter or replay a mutation.
-                return self.submit_bound_message(run, text, Some(self.chat.mode));
-            }
+            // Bind the submitted message to this exact run, then send it once when the
+            // read-only binding arrives. Do not require a second Enter or replay a mutation.
+            return self.submit_bound_message(run, text, Some(self.chat.mode));
         }
         if self.chat.run_id.is_some() && self.chat.workbench.selected.is_none() {
             self.chat.run_id = None;

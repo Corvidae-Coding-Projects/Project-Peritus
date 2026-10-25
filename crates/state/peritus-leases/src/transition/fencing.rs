@@ -32,15 +32,15 @@ impl LeaseAggregate {
             return super::fencing_rejections::holder_loss(self, command, error);
         }
         let binding = crate::LeaseCommandBinding::holder_loss(command);
-        let result = fence(
+
+        fence(
             self,
             command.command_id(),
             command.observed_at(),
             Some(FenceCause::HolderLost),
             LeaseTransitionKind::HolderLost,
             binding,
-        );
-        result
+        )
     }
     #[doc = " Explicitly fences after an epoch change or same-epoch regression."]
     #[doc = ""]
@@ -65,15 +65,15 @@ impl LeaseAggregate {
             );
         }
         let binding = crate::LeaseCommandBinding::clock_discontinuity(command);
-        let result = fence(
+
+        fence(
             self,
             command.command_id(),
             observed,
             Some(FenceCause::ClockDiscontinuity),
             LeaseTransitionKind::ClockDiscontinuity,
             binding,
-        );
-        result
+        )
     }
     #[doc = " Fences one exact active claim after a separately authorized revocation."]
     #[doc = ""]
@@ -88,14 +88,14 @@ impl LeaseAggregate {
         }
         let _evidence_id = command.evidence_id();
         let binding = crate::LeaseCommandBinding::revoke(command);
-        let result = fence(
+
+        fence(
             self,
             command.command_id(),
             command.observed_at(),
             Some(FenceCause::Revoked),
             LeaseTransitionKind::Revoked,
             binding,
-        );
-        result
+        )
     }
 }

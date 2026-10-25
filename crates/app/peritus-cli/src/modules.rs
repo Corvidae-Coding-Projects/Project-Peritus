@@ -4,7 +4,7 @@ use peritus_modules::Registry;
 use serde_json::{Value, json};
 use std::path::Path;
 
-pub(crate) fn execute(arguments: &[String]) -> Result<Value, CliError> {
+pub fn execute(arguments: &[String]) -> Result<Value, CliError> {
     let usage = || {
         CliError::usage(
             "usage: peritus modules <list|market|refresh|show ID|install DIRECTORY|install-market ID DIGEST|build-install-market ID SOURCE_DIGEST|cancel-build ID|enable ID|disable ID|remove ID>",
@@ -25,7 +25,7 @@ pub(crate) fn execute(arguments: &[String]) -> Result<Value, CliError> {
         ["cancel-build",id]=>registry.cancel_source_build(id),
         #[cfg(not(target_os="linux"))]
         ["cancel-build",_]=>Err(peritus_modules::Error::Invalid("source-built module installation currently requires Linux".into())),
-        ["show",id]=>registry.load(id,false).and_then(|d|Ok(json!({"manifest":d.manifest,"digest":d.digest,"bundled":d.bundled,"directory":d.root}))),
+        ["show",id]=>registry.load(id,false).map(|d|json!({"manifest":d.manifest,"digest":d.digest,"bundled":d.bundled,"directory":d.root})),
         ["install",directory]=>registry.install(Path::new(directory)),
         ["enable",id]=>registry.enable(id,true),
         ["disable",id]=>registry.enable(id,false),

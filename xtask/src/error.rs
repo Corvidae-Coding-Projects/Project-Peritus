@@ -58,18 +58,6 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    pub(crate) fn new(message: impl Into<String>, help: impl Into<String>) -> Self {
-        Self { path: None, message: message.into(), help: help.into() }
-    }
-
-    pub(crate) fn at(
-        path: impl Into<PathBuf>,
-        message: impl Into<String>,
-        help: impl Into<String>,
-    ) -> Self {
-        Self { path: Some(path.into()), message: message.into(), help: help.into() }
-    }
-
     /// Returns the repository-relative path associated with the violation.
     #[must_use]
     pub fn path(&self) -> Option<&Path> {
@@ -112,43 +100,8 @@ impl XtaskError {
         }
     }
 
-    pub(crate) fn parse_policy(path: &Path, source: toml::de::Error) -> Self {
-        Self {
-            code: ErrorCode::Policy,
-            message: format!("could not parse policy file {}", path.display()),
-            diagnostics: vec![Diagnostic::at(
-                path,
-                "the TOML policy is not valid for the current schema",
-                "correct the reported TOML error; do not weaken the schema to accept ambiguity",
-            )],
-            source: Some(Box::new(source)),
-        }
-    }
-
     pub(crate) fn metadata(message: impl Into<String>) -> Self {
         Self::plain(ErrorCode::Metadata, message)
-    }
-
-    pub(crate) fn formatting(message: impl Into<String>) -> Self {
-        Self::plain(ErrorCode::Formatting, message)
-    }
-
-    pub(crate) fn metadata_decode(source: serde_json::Error) -> Self {
-        Self {
-            code: ErrorCode::Metadata,
-            message: "Cargo returned metadata that xtask could not decode".to_owned(),
-            diagnostics: Vec::new(),
-            source: Some(Box::new(source)),
-        }
-    }
-
-    pub(crate) fn violations(code: ErrorCode, check: &str, diagnostics: Vec<Diagnostic>) -> Self {
-        Self {
-            code,
-            message: format!("{check} found {} violation(s)", diagnostics.len()),
-            diagnostics,
-            source: None,
-        }
     }
 
     fn plain(code: ErrorCode, message: impl Into<String>) -> Self {

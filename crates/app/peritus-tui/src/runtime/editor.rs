@@ -2,7 +2,7 @@
 
 use std::process::Stdio;
 
-use tokio::process::Command;
+use tokio::{io::AsyncReadExt as _, process::Command};
 
 use crate::local::LocalReply;
 
@@ -48,7 +48,6 @@ pub(super) async fn execute(text: String) -> Result<LocalReply, String> {
         .map_err(|error| format!("Cannot safely reopen edited draft: {error}"))?;
     let mut file = tokio::fs::File::from_std(file);
     let mut edited = String::new();
-    use tokio::io::AsyncReadExt as _;
     file.read_to_string(&mut edited).await.map_err(|error| {
         format!("Cannot read edited UTF-8 draft: {error}; original draft retained")
     })?;

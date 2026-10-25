@@ -8,12 +8,12 @@ use serde::Deserialize;
 pub struct ProductRunPolicy {
     automatic_provider_failover: bool,
     #[serde(default, rename = "provider_turn_timeout_seconds")]
-    _legacy_provider_turn_timeout_seconds: Option<u64>,
+    legacy_provider_turn_timeout_seconds: Option<u64>,
 }
 
 impl ProductRunPolicy {
     pub(super) const fn runtime_policy(mut self) -> Self {
-        self._legacy_provider_turn_timeout_seconds = None;
+        self.legacy_provider_turn_timeout_seconds = None;
         self
     }
 

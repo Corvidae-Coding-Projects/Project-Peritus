@@ -106,7 +106,8 @@ pub(in crate::evaluator) fn assess(
         && quarantined_count == 0
         && invalid_waiver_count == 0
         && !conflicting_finding;
-    let assessment = FindingAssessment::new(
+
+    FindingAssessment::new(
         satisfied,
         stale_count,
         mismatched_count,
@@ -116,6 +117,5 @@ pub(in crate::evaluator) fn assess(
         quarantined_count,
         invalid_waiver_count,
         conflicting_finding,
-    );
-    assessment
+    )
 }

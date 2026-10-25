@@ -29,89 +29,11 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         Ok(cli) => cli,
         Err(error) => return report_error(&error, requested_json),
     };
-    if let Command::Help { text } = &cli.command {
-        return write_stdout(text.as_bytes()).map_or_else(
-            |error| report_error(&CliError::output(error), cli.json),
-            |()| ExitCode::SUCCESS,
-        );
+    if let Some(exit) = run_informational_command(&cli) {
+        return exit;
     }
-    if matches!(&cli.command, Command::Version) {
-        let line = format!("peritus {}\n", env!("CARGO_PKG_VERSION"));
-        return write_stdout(line.as_bytes()).map_or_else(
-            |error| report_error(&CliError::output(error), cli.json),
-            |()| ExitCode::SUCCESS,
-        );
-    }
-    if let Command::Completions(shell) = &cli.command {
-        let script = completion::generate(*shell);
-        return write_stdout(script.as_bytes()).map_or_else(
-            |error| report_error(&CliError::output(error), cli.json),
-            |()| ExitCode::SUCCESS,
-        );
-    }
-    if let Command::Modules { arguments } = &cli.command {
-        return match crate::modules::execute(arguments) {
-            Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
-                |error| report_error(&CliError::output(error), cli.json),
-                |()| ExitCode::SUCCESS,
-            ),
-            Err(error) => report_error(&error, cli.json),
-        };
-    }
-    if let Command::Web { arguments } = &cli.command {
-        return match crate::web::execute(arguments) {
-            Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
-                |error| report_error(&CliError::output(error), cli.json),
-                |()| ExitCode::SUCCESS,
-            ),
-            Err(error) => report_error(&error, cli.json),
-        };
-    }
-    if let Command::ProductRunTrace { run_id, extensions_only } = &cli.command {
-        // The durable private trace is local daemon state; reading it needs no session.
-        let output = output::Output::new(cli.json);
-        return match product_run::trace(*run_id, *extensions_only, &output) {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(error) => report_error(&error, cli.json),
-        };
-    }
-    if let Command::Automation { setup } = &cli.command {
-        let result =
-            if *setup { peritus_tools_computer::setup() } else { peritus_tools_computer::status() };
-        return match result {
-            Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
-                |error| report_error(&CliError::output(error), cli.json),
-                |()| ExitCode::SUCCESS,
-            ),
-            Err(error) => {
-                report_error(&CliError::runtime("configure computer automation", error), cli.json)
-            }
-        };
-    }
-    if let Command::Update(arguments) = &cli.command {
-        return run_update(arguments.automatic_checks);
-    }
-    if matches!(&cli.command, Command::Providers) {
-        return run_provider_settings();
-    }
-    if matches!(&cli.command, Command::Workspaces) {
-        return run_workspace_settings();
-    }
-    if let Command::Open { path, run, conversation } = &cli.command {
-        return if let Some(conversation) = conversation {
-            run_interactive_target(
-                InteractiveLaunch::Conversation {
-                    repository: path.clone(),
-                    conversation: *conversation,
-                },
-                cli.endpoint.clone(),
-            )
-        } else {
-            run_interactive_at(path.clone(), *run, cli.endpoint.clone())
-        };
-    }
-    if matches!(&cli.command, Command::Resume) {
-        return run_interactive_resume(cli.endpoint);
+    if let Some(exit) = run_local_command(&cli) {
+        return exit;
     }
 
     let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
@@ -127,6 +49,77 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match runtime.block_on(execute(cli)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => report_error(&error, json),
+    }
+}
+
+fn run_informational_command(cli: &Cli) -> Option<ExitCode> {
+    let result = match &cli.command {
+        Command::Help { text } => {
+            write_stdout(text.as_bytes()).map_err(CliError::output).map(|()| ExitCode::SUCCESS)
+        }
+        Command::Version => {
+            let line = format!("peritus {}\n", env!("CARGO_PKG_VERSION"));
+            write_stdout(line.as_bytes()).map_err(CliError::output).map(|()| ExitCode::SUCCESS)
+        }
+        Command::Completions(shell) => {
+            let script = completion::generate(*shell);
+            write_stdout(script.as_bytes()).map_err(CliError::output).map(|()| ExitCode::SUCCESS)
+        }
+        Command::Modules { arguments } => crate::modules::execute(arguments).and_then(|value| {
+            write_stdout(format!("{value}\n").as_bytes())
+                .map_err(CliError::output)
+                .map(|()| ExitCode::SUCCESS)
+        }),
+        Command::Web { arguments } => crate::web::execute(arguments).and_then(|value| {
+            write_stdout(format!("{value}\n").as_bytes())
+                .map_err(CliError::output)
+                .map(|()| ExitCode::SUCCESS)
+        }),
+        Command::ProductRunTrace { run_id, extensions_only } => {
+            let output = output::Output::new(cli.json);
+            product_run::trace(*run_id, *extensions_only, &output).map(|()| ExitCode::SUCCESS)
+        }
+        _ => return None,
+    };
+    Some(result.unwrap_or_else(|error| report_error(&error, cli.json)))
+}
+
+fn run_local_command(cli: &Cli) -> Option<ExitCode> {
+    match &cli.command {
+        Command::Automation { setup } => {
+            let result = if *setup {
+                peritus_tools_computer::setup()
+            } else {
+                peritus_tools_computer::status()
+            };
+            Some(match result {
+                Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
+                    |error| report_error(&CliError::output(error), cli.json),
+                    |()| ExitCode::SUCCESS,
+                ),
+                Err(error) => report_error(
+                    &CliError::runtime("configure computer automation", error),
+                    cli.json,
+                ),
+            })
+        }
+        Command::Update(arguments) => Some(run_update(arguments.automatic_checks)),
+        Command::Providers => Some(run_provider_settings()),
+        Command::Workspaces => Some(run_workspace_settings()),
+        Command::Open { path, run, conversation } => Some(conversation.as_ref().map_or_else(
+            || run_interactive_at(path.clone(), *run, cli.endpoint.clone()),
+            |conversation| {
+                run_interactive_target(
+                    InteractiveLaunch::Conversation {
+                        repository: path.clone(),
+                        conversation: *conversation,
+                    },
+                    cli.endpoint.clone(),
+                )
+            },
+        )),
+        Command::Resume => Some(run_interactive_resume(cli.endpoint.clone())),
+        _ => None,
     }
 }
 

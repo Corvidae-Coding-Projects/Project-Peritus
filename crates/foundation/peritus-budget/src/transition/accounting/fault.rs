@@ -8,8 +8,8 @@ pub(in crate::transition) fn fault_lineage(
     budget_id: BudgetId,
 ) -> Result<(), BudgetError> {
     let account_count = ledger.accounts.len();
-    let result = fault_lineage_inner(ledger, budget_id, account_count);
-    result
+
+    fault_lineage_inner(ledger, budget_id, account_count)
 }
 fn fault_lineage_inner(
     ledger: &mut BudgetLedger,

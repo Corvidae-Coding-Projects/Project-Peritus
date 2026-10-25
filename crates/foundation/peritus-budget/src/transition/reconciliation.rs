@@ -28,9 +28,7 @@ pub(super) fn activate(
         activation.verified_action_id(),
         activation.verified_action_digest(),
     );
-    if let Err(error) = binding {
-        return Err(error);
-    }
+    binding?;
     let budget_id = ledger.reservations[reservation_index].request.budget_id();
     match ledger.reservations[reservation_index].phase {
         ReservationPhase::Held => {

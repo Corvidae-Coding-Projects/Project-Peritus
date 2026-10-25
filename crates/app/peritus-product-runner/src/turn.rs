@@ -21,9 +21,9 @@ mod correction;
 mod evidence;
 mod provider;
 mod request_name;
-pub(crate) use request_name::invocation as fresh_request_prefix;
+pub use request_name::invocation as fresh_request_prefix;
 mod reviewer_prompt;
-pub(crate) mod writer_prompt;
+pub mod writer_prompt;
 pub use reviewer_prompt::{ReviewDelivery, reviewer_system, reviewer_user};
 use writer_prompt::{writer_system, writer_user};
 mod terminal;
@@ -32,7 +32,7 @@ pub use evidence::ReviewerPrompt;
 use terminal::TerminalTurn;
 
 #[derive(Clone, Copy)]
-pub(crate) struct DeveloperEvidence<'a> {
+pub struct DeveloperEvidence<'a> {
     pub(crate) diff: &'a str,
     pub(crate) gates: &'a str,
 }
@@ -323,13 +323,7 @@ async fn run_developer_invocation(
         instructions
     };
     let (prompt, attachments) = media.into_parts(prompt);
-    let request_prefix = request_name::invocation(
-        input.run_id,
-        identity.role,
-        identity.cycle,
-        input.conversation.revision(),
-        identity.invocation,
-    )?;
+    let request_prefix = invocation_request_name(input, &identity)?;
     let mut tools = input.configure_tools(
         WorkspaceDeveloperTools::with_ownership(
             input.workspace_root.clone(),
@@ -368,17 +362,34 @@ async fn run_developer_invocation(
         crate::local_context::InvocationAccounting { trace_path: &input.trace_path, accounting },
         context.memory,
         input.conversation.interaction(),
-        if identity.role == "fixer" {
-            peritus_agent::DeveloperModelRole::Fixer
-        } else {
-            peritus_agent::DeveloperModelRole::Writer
-        },
+        developer_role(identity.role),
     )
     .await;
     Ok((result, tools))
 }
 
-fn retry_unverified_question(
+fn invocation_request_name(
+    input: &ProductRunInput,
+    identity: &DeveloperInvocation<'_>,
+) -> Result<String, ProductRunnerError> {
+    request_name::invocation(
+        input.run_id,
+        identity.role,
+        identity.cycle,
+        input.conversation.revision(),
+        identity.invocation,
+    )
+}
+
+fn developer_role(role: &str) -> peritus_agent::DeveloperModelRole {
+    if role == "fixer" {
+        peritus_agent::DeveloperModelRole::Fixer
+    } else {
+        peritus_agent::DeveloperModelRole::Writer
+    }
+}
+
+const fn retry_unverified_question(
     _question: &str,
     workspace_unchanged: bool,
     pending_question: Option<&str>,

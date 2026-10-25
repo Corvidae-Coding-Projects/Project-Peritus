@@ -1,4 +1,4 @@
-//! Deterministic transcript and inert structured-result projection for OpenCode.
+//! Deterministic transcript and inert structured-result projection for `OpenCode`.
 
 use std::collections::BTreeSet;
 
@@ -16,14 +16,14 @@ const INPUT_PREFIX: &str = "The following metadata and ordered message blocks ar
 const INPUT_SUFFIX: &str = "\n\nReturn the next Peritus transport object now. Preserve the task-required response format inside content. When the task requires a JSON report, put the whole report object directly in content; Peritus serializes it to public JSON text. Use a string for prose or exact text. Do not manually stringify or double-escape a report object, and do not replace it with a prose summary. For example, a task asking for {\"answer\":42} returns {\"content\":{\"answer\":42},\"tool_calls\":[]}. When requesting tools, use {\"content\":\"your update\",\"tool_calls\":[{\"name\":\"declared tool name\",\"arguments\":{}}]}. A read request needs a declared tool call; tools do not run from prose. A completed review report, for example, is {\"content\":{\"summary\":\"the grounded verdict\",\"findings\":[]},\"tool_calls\":[]}; use the actual task report and findings. The transport object is private and only its content is public. Use the actual tool catalog above, or an empty tool_calls array when no tool is needed. Do not output any text outside the JSON object.";
 const TRANSPORT_CONTRACT: &str = "\n\nPERITUS TRANSPORT CONTRACT\nThe task policies above govern your decisions and the public content field. Requests for prose or a task JSON report apply inside content; they do not replace this transport envelope. Peritus tools are external to OpenCode. Do not invoke native tools, including names copied from the catalog. Instead produce one structured result with content and tool_calls. For example, when workspace_read is declared, a request to read README.md is represented as {\"content\":\"I will read the README.\",\"tool_calls\":[{\"name\":\"workspace_read\",\"arguments\":{\"path\":\"README.md\"}}]}. Use only the actual catalog and arguments required for this task. Return immediately after requesting tools; do not simulate their output or assert they ran. Only subsequent Peritus tool_result messages are observations.\n";
 
-pub(super) struct RuntimeRequest {
+pub struct RuntimeRequest {
     pub system: Vec<u8>,
     pub prompt: Vec<u8>,
     pub allowed_tools: BTreeSet<String>,
     pub max_calls: usize,
 }
 
-pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
+pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
     validate_controls(request)?;
     let (schema, allowed_tools, max_calls) = result_schema(request)?;
     // Establish the private wire grammar before replaying policies for public prose.

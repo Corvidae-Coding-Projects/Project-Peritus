@@ -14,7 +14,7 @@ use peritus_app_protocol::{
 
 /// Local keyboard selection; identity and content revision never follow a changing row number.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct QueueTarget {
+pub struct QueueTarget {
     pub(crate) query: WorkbenchQuery,
     pub(crate) revision: u64,
     pub(crate) selected: WorkbenchInputSelection,
@@ -22,7 +22,7 @@ pub(crate) struct QueueTarget {
 
 /// A separate multiline draft. Saving is a typed queue operation, never model input.
 #[derive(Debug)]
-pub(crate) struct QueueEditor {
+pub struct QueueEditor {
     pub(crate) target: QueueTarget,
     pub(crate) text: String,
     pub(crate) cursor: usize,
@@ -81,22 +81,8 @@ impl AppModel {
             }
             return Vec::new();
         }
-        if text.is_empty() && matches!(action, "next" | "previous") {
-            let Ok(page_size) = u32::try_from(MAX_WORKBENCH_INPUT_PAGE) else { return Vec::new() };
-            let Some(page) = &self.chat.workbench.queue else {
-                return self.refresh_queue(0, 0, false);
-            };
-            let offset = if action == "next" {
-                let next = page.query().offset().saturating_add(page_size);
-                if next >= page.total() {
-                    self.clear_chat_command();
-                    return Vec::new();
-                }
-                next
-            } else {
-                page.query().offset().saturating_sub(page_size)
-            };
-            return self.refresh_queue(page.query().revision(), offset, page.query().history());
+        if let Some(effects) = self.queue_page_command(action, text) {
+            return effects;
         }
         if action == "add" && text.len() > peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES {
             return self.send_workbench_text(text.to_owned(), true);
@@ -137,6 +123,29 @@ impl AppModel {
         )
         .into_iter()
         .collect()
+    }
+
+    fn queue_page_command(&mut self, action: &str, text: &str) -> Option<Vec<Effect>> {
+        if !text.is_empty() || !matches!(action, "next" | "previous") {
+            return None;
+        }
+        let Ok(page_size) = u32::try_from(MAX_WORKBENCH_INPUT_PAGE) else {
+            return Some(Vec::new());
+        };
+        let Some(page) = &self.chat.workbench.queue else {
+            return Some(self.refresh_queue(0, 0, false));
+        };
+        let offset = if action == "next" {
+            let next = page.query().offset().saturating_add(page_size);
+            if next >= page.total() {
+                self.clear_chat_command();
+                return Some(Vec::new());
+            }
+            next
+        } else {
+            page.query().offset().saturating_sub(page_size)
+        };
+        Some(self.refresh_queue(page.query().revision(), offset, page.query().history()))
     }
 
     pub(in crate::model) fn accept_queue_command_snapshot(
@@ -329,7 +338,9 @@ impl AppModel {
                     page.rows().iter().position(|row| row.selected().id() == selected.id())
                 })
             })
-            .unwrap_or(self.chat.workbench.queue_selected.min(page.rows().len().saturating_sub(1)));
+            .unwrap_or_else(|| {
+                self.chat.workbench.queue_selected.min(page.rows().len().saturating_sub(1))
+            });
         self.chat.workbench.queue = Some(page);
         self.complete_workbench_inspection();
         self.chat.workbench.queue_detail = None;
@@ -629,7 +640,8 @@ impl AppModel {
         };
         let Some(page) = &self.chat.workbench.queue else {
             let effects = self.refresh_queue(0, 0, false);
-            self.chat.workbench.message = "Refreshing the queue. Inspect it, then press Enter again to save this exact input revision.".to_owned();
+            "Refreshing the queue. Inspect it, then press Enter again to save this exact input revision."
+                .clone_into(&mut self.chat.workbench.message);
             return effects;
         };
         if page.query().query() != query

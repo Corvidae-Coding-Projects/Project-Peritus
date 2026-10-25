@@ -67,7 +67,6 @@ impl ResourceVector {
     #[doc = " Returns whether every requested quantity is provided by `capacity`."]
     #[must_use]
     pub fn fits_within(&self, capacity: &Self) -> bool {
-        let result = fits_from(&self.0, 0, capacity);
-        result
+        fits_from(&self.0, 0, capacity)
     }
 }

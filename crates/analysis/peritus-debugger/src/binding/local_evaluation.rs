@@ -2,13 +2,14 @@
 
 use peritus_artifact_store::ArtifactStore;
 use peritus_eval::{
-    EvaluationCampaignId, EvaluationExecutionMode, EvaluationPhase, FrozenEvaluationProfile,
-    RolloutId, RolloutRecord, RolloutStatus, ValidatedEvaluationReport,
+    EvaluationCampaignId, EvaluationExecutionMode, EvaluationPhase, EvaluationState,
+    FrozenEvaluationProfile, RolloutId, RolloutRecord, RolloutStatus, TerminalRecordRef,
+    ValidatedEvaluationReport,
 };
 use peritus_harness::GoverningHarnessBinding;
 use peritus_journal::SqliteJournal;
 use peritus_trace::TraceId;
-use peritus_types::{AttemptId, EnvironmentId, EventId, RunId, Sha256Digest};
+use peritus_types::{AttemptId, EnvironmentId, EventId, RunId, SessionId, Sha256Digest};
 
 use super::{AnalysisSubject, AnalysisSubjectSource, SUBJECT_ID_DOMAIN, binding_error};
 use crate::{DebuggerError, SubjectId};
@@ -164,43 +165,9 @@ impl AnalysisSubject {
             ));
         }
         let campaign = report.report().campaign_id();
-        let state = peritus_eval::load_evaluation_replay(journal, campaign)
-            .map_err(native_error)?
-            .rebuild()
-            .map_err(native_error)?
-            .ok_or_else(|| binding_error("native evaluation is absent"))?;
+        let state = recover_published_state(journal, artifacts, profile, report, campaign)?;
         let publication =
             state.publication().ok_or_else(|| binding_error("native evaluation is unpublished"))?;
-        let durable_report =
-            state.report().ok_or_else(|| binding_error("native evaluation has no report"))?;
-        if state.phase() != EvaluationPhase::Published
-            || state.profile_digest() != profile.digest()
-            || state.dataset_digest() != profile.dataset().digest()
-            || durable_report.id() != report.id()
-            || durable_report.payload_digest() != report.digest()
-            || publication.report_id() != report.id()
-            || artifacts
-                .read(durable_report.artifact(), durable_report.size())
-                .map_err(native_error)?
-                != report.bytes()
-        {
-            return Err(binding_error(
-                "native subject profile/report differs from actual publication",
-            ));
-        }
-        let profile_bytes = profile.canonical_bytes().map_err(native_error)?;
-        if artifacts
-            .read(
-                state.profile_artifact(),
-                u64::try_from(profile_bytes.len()).map_err(native_error)?,
-            )
-            .map_err(native_error)?
-            != profile_bytes
-        {
-            return Err(binding_error(
-                "native subject profile differs from its actual frozen artifact",
-            ));
-        }
         let plan = peritus_eval::EvaluationPlan::build(campaign, profile).map_err(native_error)?;
         let spec = plan
             .specs()
@@ -242,105 +209,19 @@ impl AnalysisSubject {
             return Err(binding_error("native E1 revision identity differs"));
         }
         GoverningHarnessBinding::new(arm.revision(), revision, receipt).map_err(native_error)?;
-        let recovered = peritus_trace::recover_trace(journal, trace_id).map_err(native_error)?;
-        let trace = recovered.trace().ok_or_else(|| binding_error("native C7 trace is absent"))?;
-        let observed = trace
-            .observations()
-            .last()
-            .ok_or_else(|| binding_error("native C7 trace has no observations"))?;
-        let binding = observed.observation().binding();
-        let trace_manifest = if failure_observation {
-            if record.trace_root().is_some()
-                || !matches!(
-                    record.outcome(),
-                    peritus_eval::RolloutOutcome::InfrastructureFailed { .. }
-                        | peritus_eval::RolloutOutcome::Ambiguous { .. }
-                )
-            {
-                return Err(binding_error("native failure subject invents a process outcome"));
-            }
-            let replay =
-                peritus_eval::load_evaluation_replay(journal, campaign).map_err(native_error)?;
-            let settled = replay.events().iter().rev().find(|event| matches!(event.kind(),
-                peritus_eval::EvaluationEventKind::Accepted(peritus_eval::EvaluationCommandKind::SettleRollout {rollout_id, terminal})
-                    if *rollout_id == rollout && *terminal == reference))
-                .ok_or_else(|| binding_error("native failure lacks its actual C0 settlement"))?;
-            let mut key = b"PERITUS-RSI-ACTUAL-FAILURE-OBSERVATION-C7\0".to_vec();
-            key.extend_from_slice(rollout.as_bytes());
-            key.extend_from_slice(reference.artifact().as_bytes());
-            key.extend_from_slice(settled.id().as_bytes());
-            let expected_trace = TraceId::new(native_identity(&key)).map_err(native_error)?;
-            key.extend_from_slice(b"observer-session");
-            let expected_session =
-                peritus_types::SessionId::new(native_identity(&key)).map_err(native_error)?;
-            key.extend_from_slice(b"observer-environment");
-            let expected_environment =
-                EnvironmentId::new(native_identity(&key)).map_err(native_error)?;
-            if trace_id != expected_trace
-                || environment != expected_environment
-                || binding.session_id() != expected_session
-                || trace.observations().iter().any(|row| {
-                    !row.observation().attributes().iter().any(|attr| {
-                        attr.key() == peritus_trace::SafeAttributeKey::Recovery
-                            && attr.value()
-                                == peritus_trace::SafeAttributeValue::Digest(
-                                    reference.artifact().sha256(),
-                                )
-                    })
-                })
-            {
-                return Err(binding_error(
-                    "native failure C7 observer differs from actual C0 terminal source",
-                ));
-            }
-            reference.artifact()
-        } else {
-            let manifest_root = record
-                .trace_root()
-                .ok_or_else(|| binding_error("native process has no real C7 manifest"))?;
-            let bytes = artifacts.read(manifest_root, 16 * 1024 * 1024).map_err(native_error)?;
-            let manifest: serde_json::Value =
-                serde_json::from_slice(&bytes).map_err(native_error)?;
-            let expected_trace = serde_json::to_value(trace_id.as_bytes()).map_err(native_error)?;
-            let stage = ["candidate", "evaluator"]
-                .into_iter()
-                .filter_map(|key| manifest.get(key))
-                .find(|stage| stage.get("trace_id") == Some(&expected_trace))
-                .ok_or_else(|| {
-                    binding_error("native process trace is absent from its protected manifest")
-                })?;
-            if manifest.get("schema").and_then(serde_json::Value::as_str)
-                != Some("peritus.native-evaluation-trace.v1")
-                || manifest.get("campaign")
-                    != Some(&serde_json::to_value(campaign.as_bytes()).map_err(native_error)?)
-                || manifest.get("rollout")
-                    != Some(&serde_json::to_value(rollout.as_bytes()).map_err(native_error)?)
-                || stage.get("environment_id")
-                    != Some(&serde_json::to_value(environment.as_bytes()).map_err(native_error)?)
-                || stage.get("session_id")
-                    != Some(
-                        &serde_json::to_value(binding.session_id().as_bytes())
-                            .map_err(native_error)?,
-                    )
-            {
-                return Err(binding_error(
-                    "native process C7 manifest differs from its actual E3/C2 source",
-                ));
-            }
-            manifest_root
-        };
+        let trace = validate_trace(&TraceValidation {
+            journal,
+            artifacts,
+            campaign,
+            rollout,
+            trace_id,
+            environment,
+            record: &record,
+            terminal: &reference,
+            failure_observation,
+        })?;
         let run_id = RunId::new(*campaign.as_bytes()).map_err(native_error)?;
         let attempt_id = AttemptId::new(*rollout.as_bytes()).map_err(native_error)?;
-        if binding.run_id() != Some(run_id)
-            || binding.attempt_id() != Some(attempt_id)
-            || trace.observations().iter().any(|row| {
-                row.observation().binding().session_id() != binding.session_id()
-                    || row.observation().binding().run_id() != Some(run_id)
-                    || row.observation().binding().attempt_id() != Some(attempt_id)
-            })
-        {
-            return Err(binding_error("native C7 trace belongs to another evaluation/rollout"));
-        }
         let source = LocalEvaluationSource {
             campaign,
             rollout,
@@ -351,16 +232,16 @@ impl AnalysisSubject {
             state_digest: state.state_digest(),
             publication_event: state.last_event_id(),
             report_commit_position: publication.report_commit_position(),
-            trace_event: observed.observation().event_id(),
-            trace_position: observed.journal_position(),
-            trace_manifest: trace_manifest.sha256(),
+            trace_event: trace.event,
+            trace_position: trace.position,
+            trace_manifest: trace.manifest,
             failure_observation,
         };
         let mut subject = Self {
             id: SubjectId::new([1; 16])?,
             run_id,
             attempt_id,
-            session_id: binding.session_id(),
+            session_id: trace.session,
             environment_id: environment,
             revision: arm.revision(),
             harness_revision: arm.harness_revision(),
@@ -378,6 +259,184 @@ impl AnalysisSubject {
             AnalysisSubjectSource::ModelLoop(_) => None,
         }
     }
+}
+
+fn recover_published_state(
+    journal: &SqliteJournal,
+    artifacts: &ArtifactStore,
+    profile: &FrozenEvaluationProfile,
+    report: &ValidatedEvaluationReport,
+    campaign: EvaluationCampaignId,
+) -> Result<EvaluationState, DebuggerError> {
+    let state = peritus_eval::load_evaluation_replay(journal, campaign)
+        .map_err(native_error)?
+        .rebuild()
+        .map_err(native_error)?
+        .ok_or_else(|| binding_error("native evaluation is absent"))?;
+    let publication =
+        state.publication().ok_or_else(|| binding_error("native evaluation is unpublished"))?;
+    let durable_report =
+        state.report().ok_or_else(|| binding_error("native evaluation has no report"))?;
+    if state.phase() != EvaluationPhase::Published
+        || state.profile_digest() != profile.digest()
+        || state.dataset_digest() != profile.dataset().digest()
+        || durable_report.id() != report.id()
+        || durable_report.payload_digest() != report.digest()
+        || publication.report_id() != report.id()
+        || artifacts.read(durable_report.artifact(), durable_report.size()).map_err(native_error)?
+            != report.bytes()
+    {
+        return Err(binding_error("native subject profile/report differs from actual publication"));
+    }
+    let profile_bytes = profile.canonical_bytes().map_err(native_error)?;
+    if artifacts
+        .read(state.profile_artifact(), u64::try_from(profile_bytes.len()).map_err(native_error)?)
+        .map_err(native_error)?
+        != profile_bytes
+    {
+        return Err(binding_error(
+            "native subject profile differs from its actual frozen artifact",
+        ));
+    }
+    Ok(state)
+}
+
+struct TraceValidation<'a> {
+    journal: &'a SqliteJournal,
+    artifacts: &'a ArtifactStore,
+    campaign: EvaluationCampaignId,
+    rollout: RolloutId,
+    trace_id: TraceId,
+    environment: EnvironmentId,
+    record: &'a RolloutRecord,
+    terminal: &'a TerminalRecordRef,
+    failure_observation: bool,
+}
+
+struct TraceEvidence {
+    session: SessionId,
+    event: EventId,
+    position: u64,
+    manifest: Sha256Digest,
+}
+
+fn validate_trace(input: &TraceValidation<'_>) -> Result<TraceEvidence, DebuggerError> {
+    let recovered =
+        peritus_trace::recover_trace(input.journal, input.trace_id).map_err(native_error)?;
+    let trace = recovered.trace().ok_or_else(|| binding_error("native C7 trace is absent"))?;
+    let observed = trace
+        .observations()
+        .last()
+        .ok_or_else(|| binding_error("native C7 trace has no observations"))?;
+    let causal_binding = observed.observation().binding();
+    let manifest = if input.failure_observation {
+        validate_failure_trace(input, trace, causal_binding.session_id())?
+    } else {
+        validate_process_trace(input, causal_binding.session_id())?
+    };
+    let run_id = RunId::new(*input.campaign.as_bytes()).map_err(native_error)?;
+    let attempt_id = AttemptId::new(*input.rollout.as_bytes()).map_err(native_error)?;
+    if causal_binding.run_id() != Some(run_id)
+        || causal_binding.attempt_id() != Some(attempt_id)
+        || trace.observations().iter().any(|row| {
+            row.observation().binding().session_id() != causal_binding.session_id()
+                || row.observation().binding().run_id() != Some(run_id)
+                || row.observation().binding().attempt_id() != Some(attempt_id)
+        })
+    {
+        return Err(binding_error("native C7 trace belongs to another evaluation/rollout"));
+    }
+    Ok(TraceEvidence {
+        session: causal_binding.session_id(),
+        event: observed.observation().event_id(),
+        position: observed.journal_position(),
+        manifest,
+    })
+}
+
+fn validate_failure_trace(
+    input: &TraceValidation<'_>,
+    trace: &peritus_trace::TraceSnapshot,
+    session: SessionId,
+) -> Result<Sha256Digest, DebuggerError> {
+    if input.record.trace_root().is_some()
+        || !matches!(
+            input.record.outcome(),
+            peritus_eval::RolloutOutcome::InfrastructureFailed { .. }
+                | peritus_eval::RolloutOutcome::Ambiguous { .. }
+        )
+    {
+        return Err(binding_error("native failure subject invents a process outcome"));
+    }
+    let replay = peritus_eval::load_evaluation_replay(input.journal, input.campaign)
+        .map_err(native_error)?;
+    let settled = replay.events().iter().rev().find(|event| matches!(event.kind(),
+        peritus_eval::EvaluationEventKind::Accepted(peritus_eval::EvaluationCommandKind::SettleRollout {rollout_id, terminal})
+            if *rollout_id == input.rollout && terminal == input.terminal))
+        .ok_or_else(|| binding_error("native failure lacks its actual C0 settlement"))?;
+    let mut key = b"PERITUS-RSI-ACTUAL-FAILURE-OBSERVATION-C7\0".to_vec();
+    key.extend_from_slice(input.rollout.as_bytes());
+    key.extend_from_slice(input.terminal.artifact().as_bytes());
+    key.extend_from_slice(settled.id().as_bytes());
+    let expected_trace = TraceId::new(native_identity(&key)).map_err(native_error)?;
+    key.extend_from_slice(b"observer-session");
+    let expected_session = SessionId::new(native_identity(&key)).map_err(native_error)?;
+    key.extend_from_slice(b"observer-environment");
+    let expected_environment = EnvironmentId::new(native_identity(&key)).map_err(native_error)?;
+    if input.trace_id != expected_trace
+        || input.environment != expected_environment
+        || session != expected_session
+        || trace.observations().iter().any(|row| {
+            !row.observation().attributes().iter().any(|attribute| {
+                attribute.key() == peritus_trace::SafeAttributeKey::Recovery
+                    && attribute.value()
+                        == peritus_trace::SafeAttributeValue::Digest(
+                            input.terminal.artifact().sha256(),
+                        )
+            })
+        })
+    {
+        return Err(binding_error(
+            "native failure C7 observer differs from actual C0 terminal source",
+        ));
+    }
+    Ok(input.terminal.artifact().sha256())
+}
+
+fn validate_process_trace(
+    input: &TraceValidation<'_>,
+    session: SessionId,
+) -> Result<Sha256Digest, DebuggerError> {
+    let manifest_root = input
+        .record
+        .trace_root()
+        .ok_or_else(|| binding_error("native process has no real C7 manifest"))?;
+    let bytes = input.artifacts.read(manifest_root, 16 * 1024 * 1024).map_err(native_error)?;
+    let manifest: serde_json::Value = serde_json::from_slice(&bytes).map_err(native_error)?;
+    let expected_trace = serde_json::to_value(input.trace_id.as_bytes()).map_err(native_error)?;
+    let manifest_stage = ["candidate", "evaluator"]
+        .into_iter()
+        .filter_map(|key| manifest.get(key))
+        .find(|candidate| candidate.get("trace_id") == Some(&expected_trace))
+        .ok_or_else(|| {
+            binding_error("native process trace is absent from its protected manifest")
+        })?;
+    if manifest.get("schema").and_then(serde_json::Value::as_str)
+        != Some("peritus.native-evaluation-trace.v1")
+        || manifest.get("campaign")
+            != Some(&serde_json::to_value(input.campaign.as_bytes()).map_err(native_error)?)
+        || manifest.get("rollout")
+            != Some(&serde_json::to_value(input.rollout.as_bytes()).map_err(native_error)?)
+        || manifest_stage.get("environment_id")
+            != Some(&serde_json::to_value(input.environment.as_bytes()).map_err(native_error)?)
+        || manifest_stage.get("session_id")
+            != Some(&serde_json::to_value(session.as_bytes()).map_err(native_error)?)
+    {
+        return Err(binding_error(
+            "native process C7 manifest differs from its actual E3/C2 source",
+        ));
+    }
+    Ok(manifest_root.sha256())
 }
 
 fn native_error<T>(_: T) -> DebuggerError {

@@ -1,6 +1,6 @@
 //! Bounded macOS process-group and workspace resource sampling.
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 mod pids;
 
 use std::{
@@ -12,7 +12,7 @@ use std::{
 use std::time::Duration;
 
 use peritus_process::ProcessTreeIdentity;
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 use peritus_sandbox::SandboxResourceKind;
 
 use crate::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction, ResourceControlPlan};
@@ -114,7 +114,7 @@ impl ResourceUsage {
     }
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 const fn exceeds(usage: &ResourceUsage, controls: &ResourceControlPlan) -> bool {
     let cpu_nanos =
         controls.control(SandboxResourceKind::CpuTime).ceiling().saturating_mul(1_000_000);
@@ -157,7 +157,7 @@ fn disk_usage(root: &Path) -> Result<u64, MacosError> {
     Ok(total)
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 fn sample_error() -> MacosError {
     MacosError::new(
         MacosErrorKind::SupervisorFailure,

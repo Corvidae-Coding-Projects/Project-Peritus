@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 use super::output::RuntimeToolCall;
 use super::recovery::TurnRejection;
 
-pub(super) struct NormalizedTurn {
+pub struct NormalizedTurn {
     pub content: String,
     pub tool_calls: Vec<RuntimeToolCall>,
     pub audit: ModelEvent,
@@ -18,7 +18,7 @@ pub(super) struct NormalizedTurn {
 ///
 /// Returns `Ok(None)` when the reply does not contain the markup. Any recognized block that is
 /// incomplete, ambiguous, or not the final payload is refused rather than partially interpreted.
-pub(super) fn normalize(input: &str) -> Result<Option<NormalizedTurn>, TurnRejection> {
+pub fn normalize(input: &str) -> Result<Option<NormalizedTurn>, TurnRejection> {
     if input.len() > peritus_provider_core::healing::MAX_REPAIR_BYTES {
         return Err(TurnRejection::Json);
     }

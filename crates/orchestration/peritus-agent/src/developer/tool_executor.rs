@@ -67,6 +67,10 @@ pub trait DeveloperToolExecutor: Send {
     ///
     /// Implementations must authenticate and bound the bytes before supplying them. The loop
     /// retains these in its provider-neutral transcript rather than rendering base64 as text.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when image evidence cannot be authenticated, bounded, or retained.
     fn observation_images(
         &mut self,
         _call: &CompletedToolCall,

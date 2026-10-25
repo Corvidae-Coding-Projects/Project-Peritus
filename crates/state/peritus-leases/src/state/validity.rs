@@ -28,8 +28,8 @@ pub(super) const fn correlation_is_valid_runtime(
         crate::model::concrete::identity::lease_scopes_equal(correlation.scope(), aggregate.scope);
     let generation_matches =
         generations_are_successive(correlation.fenced_generation(), aggregate.generation);
-    let valid = scope_matches && generation_matches;
-    valid
+
+    scope_matches && generation_matches
 }
 pub(super) const fn validity_result(valid: bool) -> Result<(), LeaseError> {
     if valid { Ok(()) } else { Err(LeaseError::CorruptState) }

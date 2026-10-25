@@ -21,9 +21,8 @@ const fn finish_dependency_action(
     all_success: bool,
 ) -> DependencyAction {
     let waiting = record.phase().same(WorkPhase::WaitingDependencies);
-    let action =
-        if all_success && waiting { DependencyAction::Ready } else { DependencyAction::NoChange };
-    action
+
+    if all_success && waiting { DependencyAction::Ready } else { DependencyAction::NoChange }
 }
 #[doc = " Selects the exact action used by dependency propagation."]
 pub(super) fn dependency_action(state: &SchedulerState, record: &WorkRecord) -> DependencyAction {

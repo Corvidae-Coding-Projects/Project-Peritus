@@ -34,32 +34,26 @@ pub(in crate::transition) fn replay_final_observation_validated(
         return Err(error);
     }
     let replay_receipt = match record.phase {
-        ReservationPhase::SettledFinal => {
-            let receipt = BudgetReceipt::new(
-                BudgetOperation::ObserveUsage,
-                BudgetReceiptKind::Idempotent,
-                record.request.budget_id(),
-                Some(observation.verified_reservation_id()),
-                BudgetAmounts::zero(),
-                BudgetAmounts::zero(),
-                Some(observation.verified_cumulative()),
-                Some(observation.verified_evidence_digest()),
-            );
-            receipt
-        }
-        ReservationPhase::OverrunFaulted => {
-            let receipt = BudgetReceipt::new(
-                BudgetOperation::ObserveUsage,
-                BudgetReceiptKind::OverrunFaulted,
-                record.request.budget_id(),
-                Some(observation.verified_reservation_id()),
-                BudgetAmounts::zero(),
-                BudgetAmounts::zero(),
-                Some(observation.verified_cumulative()),
-                Some(observation.verified_evidence_digest()),
-            );
-            receipt
-        }
+        ReservationPhase::SettledFinal => BudgetReceipt::new(
+            BudgetOperation::ObserveUsage,
+            BudgetReceiptKind::Idempotent,
+            record.request.budget_id(),
+            Some(observation.verified_reservation_id()),
+            BudgetAmounts::zero(),
+            BudgetAmounts::zero(),
+            Some(observation.verified_cumulative()),
+            Some(observation.verified_evidence_digest()),
+        ),
+        ReservationPhase::OverrunFaulted => BudgetReceipt::new(
+            BudgetOperation::ObserveUsage,
+            BudgetReceiptKind::OverrunFaulted,
+            record.request.budget_id(),
+            Some(observation.verified_reservation_id()),
+            BudgetAmounts::zero(),
+            BudgetAmounts::zero(),
+            Some(observation.verified_cumulative()),
+            Some(observation.verified_evidence_digest()),
+        ),
         _ => {
             let error = BudgetError::reservation(
                 BudgetErrorKind::InvalidReservationPhase,

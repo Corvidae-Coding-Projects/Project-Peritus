@@ -40,7 +40,7 @@ impl LocalMemory {
         self.transcript.invocation = sequence;
         self.transcript.request_prefix.clone_from(&request.request_prefix);
         self.inline_epoch_start = None;
-        self.exchange_index = Default::default();
+        self.exchange_index = super::super::assembly::exchanges::ExchangeIndex::default();
         self.transcript.current_inputs.clear();
         self.transcript.message_ids.clear();
         for pending in &mut self.transcript.pending {
@@ -105,7 +105,7 @@ impl LocalMemory {
         message: &Message,
         origin: Option<ArchiveKind>,
     ) -> Result<u64, DeveloperLoopError> {
-        let kind = origin.unwrap_or(match message.role() {
+        let kind = origin.unwrap_or_else(|| match message.role() {
             Role::System | Role::Developer => ArchiveKind::Policy,
             Role::User => ArchiveKind::User,
             Role::Assistant => ArchiveKind::Assistant,

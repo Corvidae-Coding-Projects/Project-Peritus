@@ -93,13 +93,14 @@ pub(super) fn finalize(
 ) -> Result<ProductRunOutcome, ProductRunnerError> {
     let conversation_revision = request.input.conversation.revision();
     let mut cause = request.cause;
-    let mut detail = request.detail.take();
-    if cause == SettlementCause::NoChangeComplete
+    let mut detail = if cause == SettlementCause::NoChangeComplete
         && request.state.is_none_or(|state| state.conversation_revision != conversation_revision)
     {
         cause = SettlementCause::Review;
-        detail = Some("The public request changed after no-patch review; the investigation is not complete for the current request.".to_owned());
-    }
+        Some("The public request changed after no-patch review; the investigation is not complete for the current request.".to_owned())
+    } else {
+        request.detail.take()
+    };
     if let Err(error) = request.recorder.refresh(conversation_revision) {
         if fatal(&error) {
             return Err(error);

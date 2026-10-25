@@ -1,2 +1,2 @@
 //! Shared canonical workspace observations.
-pub(crate) use peritus_workspace::file_metadata::*;
+pub use peritus_workspace::file_metadata::*;

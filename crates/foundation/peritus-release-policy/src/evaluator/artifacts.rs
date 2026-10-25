@@ -13,7 +13,7 @@ pub(super) fn assess_all_evidence(
     evaluated_at: u64,
     evidence: &ReleaseEvidence,
 ) -> [EvidenceAssessment; 44] {
-    let assessments = [
+    [
         assessment::assess_evidence(EvidenceRequirement::GateA, *candidate, evaluated_at, evidence),
         assessment::assess_evidence(
             EvidenceRequirement::FoundationQualityMatrix,
@@ -268,6 +268,5 @@ pub(super) fn assess_all_evidence(
             evaluated_at,
             evidence,
         ),
-    ];
-    assessments
+    ]
 }

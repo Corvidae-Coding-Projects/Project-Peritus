@@ -29,7 +29,7 @@ struct Observed {
     output_bytes: u64,
 }
 impl Observed {
-    fn event(&mut self, value: Value) {
+    fn event(&mut self, value: &Value) {
         self.normalized.extend_from_slice(value.to_string().as_bytes());
         self.normalized.push(b'\n');
     }
@@ -49,7 +49,7 @@ impl Observed {
         if self.usage.is_object() {
             event["usage"] = self.usage.clone();
         }
-        self.event(event);
+        self.event(&event);
     }
 }
 
@@ -69,15 +69,7 @@ pub(super) async fn run_turn(
     let state = Arc::new(Mutex::new(Observed::default()));
     let observed = state.clone();
     let schema: Value = serde_json::from_slice(&runtime.schema).map_err(|_| malformed())?;
-    // This is an actual user/data message, not elevated native system instructions. Its
-    // immutable observation metadata belongs to the routing frame, not the varying request.
-    let mut content = vec![
-        json!({"type":"input_text","text":std::str::from_utf8(&runtime.prompt).map_err(|_| malformed())?}),
-    ];
-    for image in runtime.images() {
-        content.push(json!({"type":"input_image","image_url":format!("data:{};base64,{}",image.media_type,base64::engine::general_purpose::STANDARD.encode(&image.bytes))}));
-    }
-    let frame = json!({"type":"message","role":"user","id":format!("msg_peritus_frame_{}",anchor.thread),"content":content,"internal_chat_message_metadata_passthrough":{"turn_id":format!("peritus-cache-frame-{}",anchor.thread),"create_time":anchor.created_seconds,"content_item_kinds":["user.text"]}});
+    let frame = input_frame(runtime, anchor)?;
     let effort = runtime.reasoning_effort();
     let input = [
         json!({"id":1,"method":"initialize","params":{"clientInfo":{"name":"peritus-cache-router","version":env!("CARGO_PKG_VERSION")},"capabilities":{"experimentalApi":true}}}),
@@ -93,16 +85,16 @@ pub(super) async fn run_turn(
                 let start=state.offset; state.offset+=end+1;
                 let Ok(value)=serde_json::from_slice::<Value>(&bytes[start..state.offset]) else {continue};
                 let next = if value["id"]==2 && state.stage==0 {
-                    if let Some(thread)=value["result"]["thread"]["id"].as_str() {
-                        state.thread=thread.to_owned();state.stage=1;
-                        Some(json!({"id":3,"method":"thread/fork","params":{"threadId":thread,"ephemeral":true,"experimentalPredictionMode":true,"excludeTurns":true}}))
-                    } else {None}
+                    value["result"]["thread"]["id"].as_str().map(|thread| {
+                        thread.clone_into(&mut state.thread);state.stage=1;
+                        json!({"id":3,"method":"thread/fork","params":{"threadId":thread,"ephemeral":true,"experimentalPredictionMode":true,"excludeTurns":true}})
+                    })
                 } else if value["id"]==3 && state.stage==1 {
-                    if let Some(thread)=value["result"]["thread"]["id"].as_str() {
-                        state.thread=thread.to_owned();state.stage=2;
-                        state.event(json!({"type":"thread.started","thread_id":thread}));
-                        Some(json!({"id":4,"method":"thread/inject_items","params":{"threadId":thread,"items":[frame]}}))
-                    } else {None}
+                    value["result"]["thread"]["id"].as_str().map(|thread| {
+                        thread.clone_into(&mut state.thread);state.stage=2;
+                        state.event(&json!({"type":"thread.started","thread_id":thread}));
+                        json!({"id":4,"method":"thread/inject_items","params":{"threadId":thread,"items":[frame]}})
+                    })
                 } else if value["id"]==4 && value.get("result").is_some() && state.stage==2 {
                     state.stage=3;
                     Some(json!({"id":5,"method":"turn/start","params":{"threadId":state.thread,"input":[{"type":"text","text":"Continue the complete current Peritus request already supplied above. Return only its required output object; all native tools remain disabled.","text_elements":[]}],"effort":effort,"summary":"auto","outputSchema":schema}}))
@@ -133,15 +125,15 @@ pub(super) async fn run_turn(
                             Some("agentMessage")=>{
                                 if let Some(text)=item["text"].as_str() {
                                     state.final_message=Some(text.to_owned());
-                                    state.event(json!({"type":"item.completed","item":{"type":"agent_message","id":item["id"],"text":text}}));
+                                    state.event(&json!({"type":"item.completed","item":{"type":"agent_message","id":item["id"],"text":text}}));
                                 }
                             }
                             Some("reasoning")=>{
                                 let text=item["summary"].as_array().map(|s|s.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("\n")).unwrap_or_default();
-                                state.event(json!({"type":"item.completed","item":{"type":"reasoning","id":item["id"],"text":text}}));
+                                state.event(&json!({"type":"item.completed","item":{"type":"reasoning","id":item["id"],"text":text}}));
                             }
                             Some("userMessage")=>{},
-                            _=>{state.event(json!({"type":"item.completed","item":{"type":"command_execution"}}));done.store(true,Ordering::Release);}
+                            _=>{state.event(&json!({"type":"item.completed","item":{"type":"command_execution"}}));done.store(true,Ordering::Release);}
                         }
                     }
                     Some("thread/tokenUsage/updated")=>{
@@ -150,7 +142,7 @@ pub(super) async fn run_turn(
                     }
                     Some("turn/completed")=>{
                         if params["turn"]["status"]=="completed" {
-                            let usage=state.usage.clone();state.event(json!({"type":"turn.completed","usage":usage}));
+                            let usage=state.usage.clone();state.event(&json!({"type":"turn.completed","usage":usage}));
                         } else {state.failed(&params["turn"]["error"]);}
                         done.store(true,Ordering::Release);
                     }
@@ -165,20 +157,42 @@ pub(super) async fn run_turn(
             progress.observe(&state.normalized);
         }));
     let output = transport.run(process, cancellation).await?;
-    let mut state = state.lock().map_err(|_| malformed())?;
-    if state.setup_rejected {
+    finish(&output, &state, config.process_limits())
+}
+
+fn input_frame(runtime: &RuntimeRequest, anchor: &CacheAnchor) -> Result<Value, ProviderCoreError> {
+    // This is an actual user/data message, not elevated native system instructions. Its
+    // immutable observation metadata belongs to the routing frame, not the varying request.
+    let mut content = vec![
+        json!({"type":"input_text","text":std::str::from_utf8(&runtime.prompt).map_err(|_| malformed())?}),
+    ];
+    for image in runtime.images() {
+        content.push(json!({"type":"input_image","image_url":format!("data:{};base64,{}",image.media_type,base64::engine::general_purpose::STANDARD.encode(&image.bytes))}));
+    }
+    Ok(
+        json!({"type":"message","role":"user","id":format!("msg_peritus_frame_{}",anchor.thread),"content":content,"internal_chat_message_metadata_passthrough":{"turn_id":format!("peritus-cache-frame-{}",anchor.thread),"create_time":anchor.created_seconds,"content_item_kinds":["user.text"]}}),
+    )
+}
+
+fn finish(
+    output: &ProcessOutput,
+    state: &Mutex<Observed>,
+    limits: peritus_provider_core::ProcessLimits,
+) -> Result<Option<TurnOutput>, ProviderCoreError> {
+    let (setup_rejected, final_message, normalized) = {
+        let mut state = state.lock().map_err(|_| malformed())?;
+        (
+            state.setup_rejected,
+            state.final_message.take().ok_or(DecodeFailure::InvalidEnvelope),
+            std::mem::take(&mut state.normalized),
+        )
+    };
+    if setup_rejected {
         return Ok(None);
     }
-    let final_message = state.final_message.take().ok_or(DecodeFailure::InvalidEnvelope);
-    let normalized = std::mem::take(&mut state.normalized);
-    let process = ProcessOutput::new(
-        output.exit(),
-        normalized,
-        output.stderr().to_vec(),
-        config.process_limits(),
-    )?;
+    let process = ProcessOutput::new(output.exit(), normalized, output.stderr().to_vec(), limits)?;
     Ok(Some(TurnOutput { process, final_message }))
 }
-fn malformed() -> ProviderCoreError {
+const fn malformed() -> ProviderCoreError {
     ProviderCoreError::transport("codex_runtime_protocol", "invalid structured runtime observation")
 }

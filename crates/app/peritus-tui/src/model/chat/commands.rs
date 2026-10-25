@@ -64,24 +64,8 @@ impl AppModel {
         if let Some(effects) = self.workbench_slash_command(command, rest) {
             return effects;
         }
-        match command {
-            Command::Find => return self.convenience_command("find", rest),
-            Command::Pick => return self.convenience_command("pick", rest),
-            Command::Copy => return self.convenience_command("copy", rest),
-            Command::Editor => return self.convenience_command("editor", rest),
-            Command::PasteImage => return self.convenience_command("paste-image", rest),
-            Command::Keys => return self.convenience_command("keys", rest),
-            Command::Theme => return self.convenience_command("theme", rest),
-            Command::Modules => return self.module_menu_command(),
-            Command::Module => {
-                return self.chat_mode_command(Mode::Chat, &format!("/module {rest}"));
-            }
-            Command::Design => return self.design_command(rest),
-            Command::Model => return self.model_command(rest),
-            Command::Provider => return self.provider_command(rest),
-            Command::Effort => return self.effort_command(rest),
-            Command::Doctor => return self.doctor_command(),
-            _ => {}
+        if let Some(effects) = self.direct_slash_command(command, rest) {
+            return effects;
         }
         if self.direct_folder_chat().is_some()
             && matches!(
@@ -156,6 +140,26 @@ impl AppModel {
             _ => {}
         }
         Vec::new()
+    }
+
+    fn direct_slash_command(&mut self, command: Command, rest: &str) -> Option<Vec<Effect>> {
+        Some(match command {
+            Command::Find => self.convenience_command("find", rest),
+            Command::Pick => self.convenience_command("pick", rest),
+            Command::Copy => self.convenience_command("copy", rest),
+            Command::Editor => self.convenience_command("editor", rest),
+            Command::PasteImage => self.convenience_command("paste-image", rest),
+            Command::Keys => self.convenience_command("keys", rest),
+            Command::Theme => self.convenience_command("theme", rest),
+            Command::Modules => self.module_menu_command(),
+            Command::Module => self.chat_mode_command(Mode::Chat, &format!("/module {rest}")),
+            Command::Design => self.design_command(rest),
+            Command::Model => self.model_command(rest),
+            Command::Provider => self.provider_command(rest),
+            Command::Effort => self.effort_command(rest),
+            Command::Doctor => self.doctor_command(),
+            _ => return None,
+        })
     }
 
     fn open_new_chat(&mut self) {

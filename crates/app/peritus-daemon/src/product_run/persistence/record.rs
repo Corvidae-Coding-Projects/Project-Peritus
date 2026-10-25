@@ -211,7 +211,7 @@ impl PersistedRecord {
             checkpoint,
             settlement,
             resume: resume.map(Arc::new),
-            continuation_cache: Default::default(),
+            continuation_cache: super::continuation::ResumeCache::default(),
             remaining_work: self.remaining_work,
             interruption_cause: self.interruption_cause,
             candidate_actionable: self.candidate_actionable,

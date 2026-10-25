@@ -69,6 +69,10 @@ url.workspace = true
 [build-dependencies]
 yaml-rust2.workspace = true
 
+[dev-dependencies]
+peritus-provider-anthropic = { version = "=0.1.10", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.1.10", path = "../../model/peritus-provider-openai" }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 peritus-sandbox-macos = { version = "=0.1.10", path = "../../runtime/peritus-sandbox-macos" }
 

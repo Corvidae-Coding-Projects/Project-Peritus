@@ -2,6 +2,7 @@
 
 use std::{
     env, fs,
+    io::Write,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -22,15 +23,19 @@ fn ready(root: &Path) -> Option<Value> {
     (value["schema"] == 1 && value["runtime"] == RUNTIME).then_some(value)
 }
 
-pub(super) fn selected_python(root: &Path) -> Result<Option<PathBuf>, String> {
-    Ok(ready(root).and_then(|_| {
+pub fn selected_python(root: &Path) -> Option<PathBuf> {
+    ready(root).and_then(|_| {
         let path = root.join(RUNTIME).join(PYTHON);
         path.is_file().then_some(path)
-    }))
+    })
 }
 
 /// Provisions a missing runtime for portable/system-package first launches.
 /// Native installers call [`setup`] before publishing a successful installation.
+///
+/// # Errors
+///
+/// Returns an error when an explicit runtime is invalid or automatic setup cannot complete.
 pub fn ensure_setup() -> Result<(), String> {
     let root = installation_root()?;
     if env::var_os("PERITUS_AUTOMATION_PYTHON").is_some() {
@@ -41,13 +46,8 @@ pub fn ensure_setup() -> Result<(), String> {
     if let Some(value) = ready(&root)
         && root.join(RUNTIME).join(PYTHON).is_file()
         && value["browser_executable"].as_str().is_some_and(|p| Path::new(p).is_file())
+        && check_browser(&root.join(RUNTIME).join(PYTHON), &browser_cache()?).is_ok()
     {
-        #[cfg(target_os = "linux")]
-        if linux::restricted()
-            && check_browser(&root.join(RUNTIME).join(PYTHON), &browser_cache()?).is_err()
-        {
-            return setup().map(|_| ());
-        }
         return Ok(());
     }
     setup().map(|_| ())
@@ -55,6 +55,10 @@ pub fn ensure_setup() -> Result<(), String> {
 
 /// Installs and checks Python, Playwright, Pillow and Chromium in per-user storage.
 /// Downloads are pinned, concurrent installations serialize, and readiness is published last.
+///
+/// # Errors
+///
+/// Returns an error when a dependency cannot be downloaded, installed, or launched successfully.
 pub fn setup() -> Result<Value, String> {
     // Keep the synchronous API usable from callers which already own an async runtime.
     std::thread::spawn(setup_inner)
@@ -130,7 +134,6 @@ fn setup_inner() -> Result<Value, String> {
     let checked = prepare_browser(&python, &cache, &root)?;
     let receipt = json!({"schema":1,"runtime":RUNTIME,"browser_executable":checked["browser_executable"],"browser_version":checked["browser_version"]});
     let mut temporary = tempfile::NamedTempFile::new_in(&root).map_err(|e| e.to_string())?;
-    use std::io::Write;
     temporary
         .write_all(serde_json::to_string(&receipt).map_err(|e| e.to_string())?.as_bytes())
         .map_err(|e| e.to_string())?;
@@ -169,7 +172,7 @@ fn uv_command(uv: &Path, root: &Path) -> Command {
 
 fn check_browser(python: &Path, cache: &Path) -> Result<Value, String> {
     let output = Command::new(python).env("PLAYWRIGHT_BROWSERS_PATH", cache)
-        .args(["-c", r#"import json
+        .args(["-c", r"import json
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     with p.chromium.launch(headless=True, chromium_sandbox=True) as browser:
@@ -177,7 +180,7 @@ with sync_playwright() as p:
         if page.evaluate('1 + 1') != 2:
             raise RuntimeError('Chromium did not execute JavaScript correctly')
         print(json.dumps({'browser_executable': p.chromium.executable_path, 'browser_version': browser.version}))
-"#]).output().map_err(|e| format!("check automation browser: {e}"))?;
+"]).output().map_err(|e| format!("check automation browser: {e}"))?;
     if !output.status.success() {
         return Err(format!(
             "automation browser could not launch: {}",
@@ -220,6 +223,92 @@ fn missing_libraries(error: &str) -> bool {
         || error.contains("Missing libraries:")
 }
 
+const DNF_BROWSER_PACKAGES: &[&str] = &[
+    "install",
+    "--assumeyes",
+    "alsa-lib",
+    "at-spi2-atk",
+    "at-spi2-core",
+    "cairo",
+    "cups-libs",
+    "gtk3",
+    "libdrm",
+    "libX11",
+    "libxcb",
+    "libXcomposite",
+    "libXdamage",
+    "libXext",
+    "libXfixes",
+    "libXrandr",
+    "libxkbcommon",
+    "mesa-libgbm",
+    "nspr",
+    "nss",
+    "pango",
+];
+
+const PACMAN_BROWSER_PACKAGES: &[&str] = &[
+    "-S",
+    "--needed",
+    "--noconfirm",
+    "alsa-lib",
+    "at-spi2-core",
+    "cairo",
+    "cups",
+    "gtk3",
+    "libdrm",
+    "libx11",
+    "libxcb",
+    "libxcomposite",
+    "libxdamage",
+    "libxext",
+    "libxfixes",
+    "libxrandr",
+    "libxkbcommon",
+    "mesa",
+    "nss",
+    "nspr",
+    "pango",
+];
+
+const ZYPPER_BROWSER_PACKAGES: &[&str] = &[
+    "--non-interactive",
+    "install",
+    "alsa",
+    "libatk-1_0-0",
+    "at-spi2-core",
+    "libcairo2",
+    "libcups2",
+    "libgtk-3-0",
+    "libdrm2",
+    "libX11-6",
+    "libxcb1",
+    "libXcomposite1",
+    "libXdamage1",
+    "libXext6",
+    "libXfixes3",
+    "libXrandr2",
+    "libxkbcommon0",
+    "libgbm1",
+    "mozilla-nss",
+    "mozilla-nspr",
+    "libpango-1_0-0",
+];
+
+fn linux_package_manager(
+    have: impl Fn(&str) -> bool,
+) -> Option<(&'static str, &'static [&'static str])> {
+    if have("dnf") {
+        Some(("dnf", DNF_BROWSER_PACKAGES))
+    } else if have("pacman") {
+        Some(("pacman", PACMAN_BROWSER_PACKAGES))
+    } else if have("zypper") {
+        Some(("zypper", ZYPPER_BROWSER_PACKAGES))
+    } else {
+        None
+    }
+}
+
 fn install_linux_libraries(python: &Path) -> Result<(), String> {
     if env::var_os("PERITUS_INSTALL_DEPS").is_some_and(|v| v == "0") {
         return Err("Chromium system libraries are missing and PERITUS_INSTALL_DEPS=0 disables dependency installation".into());
@@ -233,90 +322,10 @@ fn install_linux_libraries(python: &Path) -> Result<(), String> {
             "install Chromium system libraries",
         );
     }
-    let (program, arguments): (&str, &[&str]) = if have("dnf") {
-        (
-            "dnf",
-            &[
-                "install",
-                "--assumeyes",
-                "alsa-lib",
-                "at-spi2-atk",
-                "at-spi2-core",
-                "cairo",
-                "cups-libs",
-                "gtk3",
-                "libdrm",
-                "libX11",
-                "libxcb",
-                "libXcomposite",
-                "libXdamage",
-                "libXext",
-                "libXfixes",
-                "libXrandr",
-                "libxkbcommon",
-                "mesa-libgbm",
-                "nspr",
-                "nss",
-                "pango",
-            ],
-        )
-    } else if have("pacman") {
-        (
-            "pacman",
-            &[
-                "-S",
-                "--needed",
-                "--noconfirm",
-                "alsa-lib",
-                "at-spi2-core",
-                "cairo",
-                "cups",
-                "gtk3",
-                "libdrm",
-                "libx11",
-                "libxcb",
-                "libxcomposite",
-                "libxdamage",
-                "libxext",
-                "libxfixes",
-                "libxrandr",
-                "libxkbcommon",
-                "mesa",
-                "nss",
-                "nspr",
-                "pango",
-            ],
-        )
-    } else if have("zypper") {
-        (
-            "zypper",
-            &[
-                "--non-interactive",
-                "install",
-                "alsa",
-                "libatk-1_0-0",
-                "at-spi2-core",
-                "libcairo2",
-                "libcups2",
-                "libgtk-3-0",
-                "libdrm2",
-                "libX11-6",
-                "libxcb1",
-                "libXcomposite1",
-                "libXdamage1",
-                "libXext6",
-                "libXfixes3",
-                "libXrandr2",
-                "libxkbcommon0",
-                "libgbm1",
-                "mozilla-nss",
-                "mozilla-nspr",
-                "libpango-1_0-0",
-            ],
-        )
-    } else {
-        return Err("Chromium system libraries are missing; no supported Linux package manager is available".into());
-    };
+    let (program, arguments) = linux_package_manager(have).ok_or_else(|| {
+        "Chromium system libraries are missing; no supported Linux package manager is available"
+            .to_owned()
+    })?;
     let root = Command::new("id").arg("-u").output().map_err(|e| e.to_string())?.stdout == b"0\n";
     let mut command = if root {
         Command::new(program)

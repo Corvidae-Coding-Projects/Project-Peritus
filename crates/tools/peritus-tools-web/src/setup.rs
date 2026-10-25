@@ -41,17 +41,18 @@ fn save(config: &Configuration) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn endpoint() -> Result<Option<String>, Error> {
+pub fn endpoint() -> Result<Option<String>, Error> {
     if let Ok(value) = env::var("PERITUS_WEB_SEARCH_URL") {
         return checked_url(&value).map(|url| Some(url.into()));
     }
     let config = load()?;
     // Old automatic container endpoints are implementation state, not a user's external choice.
     // Retain their identity for explicit cleanup, but never require or restart that service.
-    let legacy_endpoint = config.managed.as_ref().is_some_and(|managed| {
-        config.endpoint == managed.endpoint
-            || (managed.endpoint.is_empty() && config.endpoint.starts_with("http://127.0.0.1:"))
-    });
+    let legacy_endpoint =
+        config.managed.as_ref().is_some_and(|managed| match managed.endpoint.as_str() {
+            "" => config.endpoint.starts_with("http://127.0.0.1:"),
+            endpoint => config.endpoint == endpoint,
+        });
     if config.endpoint.is_empty() || (legacy_endpoint && !config.external) {
         Ok(None)
     } else {
@@ -59,7 +60,11 @@ pub(crate) fn endpoint() -> Result<Option<String>, Error> {
     }
 }
 
-/// Configures an existing SearXNG JSON search endpoint; does not modify external services.
+/// Configures an existing `SearXNG` JSON search endpoint; does not modify external services.
+///
+/// # Errors
+///
+/// Returns an error when the endpoint is invalid or configuration cannot be saved.
 pub fn configure(value: &str) -> Result<Value, Error> {
     let mut url = checked_url(value)?;
     if url.path() == "/" {
@@ -76,6 +81,10 @@ pub fn configure(value: &str) -> Result<Value, Error> {
 }
 
 /// Selects built-in Rust search. No service, download, or external runtime is needed.
+///
+/// # Errors
+///
+/// Returns an error when configuration cannot be loaded or saved.
 pub fn setup_local() -> Result<Value, Error> {
     let mut config = load()?;
     config.endpoint.clear();
@@ -85,6 +94,10 @@ pub fn setup_local() -> Result<Value, Error> {
 }
 
 /// Reports configured search readiness separately from browser-independent page reading.
+///
+/// # Errors
+///
+/// Returns an error when saved configuration or the data directory is unavailable.
 pub fn status() -> Result<Value, Error> {
     let config = load()?;
     let endpoint = endpoint()?;
@@ -103,6 +116,10 @@ pub fn status() -> Result<Value, Error> {
 }
 
 /// Stops only a container whose exact identity and owner label match this installation.
+///
+/// # Errors
+///
+/// Returns an error unless the retained legacy container is owned by this installation and stops.
 pub fn stop() -> Result<Value, Error> {
     let config = load()?;
     let managed = config.managed.as_ref().ok_or_else(|| {

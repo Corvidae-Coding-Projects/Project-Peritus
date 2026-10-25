@@ -6,7 +6,7 @@ use super::DecodeFailure;
 
 /// Codex can reject turn/start before emitting a JSONL error event. Read only the
 /// structured diagnostic code, never forwarding raw process stderr to the model.
-pub(crate) fn reported_process_failure(stderr: &[u8]) -> Option<DecodeFailure> {
+pub fn reported_process_failure(stderr: &[u8]) -> Option<DecodeFailure> {
     std::str::from_utf8(stderr).ok()?.lines().rev().find_map(|line| {
         let (_, data) = line.split_once("data: ")?;
         let value: Value = serde_json::from_str(data).ok()?;

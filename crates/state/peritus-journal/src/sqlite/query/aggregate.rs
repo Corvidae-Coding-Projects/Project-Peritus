@@ -30,8 +30,10 @@ impl SqliteJournal {
         let mut query = self.connection.prepare(
             "SELECT aggregate_id FROM aggregate_heads WHERE aggregate_kind=?1 ORDER BY aggregate_id LIMIT ?2"
         ).map_err(|error| JournalError::sqlite("prepare aggregate discovery", error))?;
+        let row_limit = i64::try_from(maximum + 1)
+            .map_err(|_| corrupt("aggregate discovery bound is not representable"))?;
         let rows = query
-            .query_map(params![kind.tag(), (maximum + 1) as i64], |row| row.get::<_, Vec<u8>>(0))
+            .query_map(params![kind.tag(), row_limit], |row| row.get::<_, Vec<u8>>(0))
             .map_err(|error| JournalError::sqlite("discover aggregate identities", error))?;
         let mut ids = Vec::new();
         for row in rows {

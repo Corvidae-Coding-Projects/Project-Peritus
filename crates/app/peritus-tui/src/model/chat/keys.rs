@@ -90,34 +90,7 @@ impl AppModel {
         if let Some(effects) = self.chat_control_key(key) {
             return effects;
         }
-        if self.chat.convenience.panel.is_some() {
-            return self.convenience_key(key);
-        }
-        if self.chat.module_menu.is_some() {
-            return self.module_menu_key(key);
-        }
-        if self.chat.doctor.is_some() {
-            return self.doctor_key(key);
-        }
-        if self.chat.workbench.open {
-            return self.workbench_key(key);
-        }
-        if self.chat.effort_picker() {
-            return self.effort_picker_key(key);
-        }
-        if self.chat.provider_picker() {
-            return self.provider_picker_key(key);
-        }
-        if self.chat.model_picker() {
-            return self.model_picker_key(key);
-        }
-        if self.chat.history.search.is_some() {
-            return self.history_search_key(key);
-        }
-        if key.code == KeyCode::F(3) {
-            return self.open_history_search();
-        }
-        if let Some(effects) = self.convenience_shortcut(key) {
+        if let Some(effects) = self.chat_overlay_key(key) {
             return effects;
         }
         if key.modifiers.contains(KeyModifiers::CONTROL)
@@ -185,61 +158,83 @@ impl AppModel {
                 self.chat.expanded = false;
                 self.chat.command_selection = 0;
             }
-            _ => {
-                let selected_bytes = self.chat.selection().map_or(0, |range| range.len());
-                let inserted_bytes = match key.code {
-                    KeyCode::Char(ch)
-                        if crate::input::text_motion(key).is_none()
-                            && !key
-                                .modifiers
-                                .intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER) =>
-                    {
-                        ch.len_utf8()
-                    }
-                    _ => 0,
-                };
-                if inserted_bytes == 0
-                    || self
-                        .chat
-                        .buffer
-                        .try_reserve(inserted_bytes.saturating_sub(selected_bytes))
-                        .is_ok()
-                {
-                    let killing = key.modifiers.contains(KeyModifiers::CONTROL)
-                        && matches!(key.code, KeyCode::Char('k' | 'K' | 'u' | 'U' | 'w' | 'W'));
-                    let before = killing.then(|| self.chat.buffer.clone());
-                    let _ = crate::input::selection::edit(
-                        &mut self.chat.buffer,
-                        &mut self.chat.cursor,
-                        &mut self.chat.selection_anchor,
-                        key,
-                    );
-                    if let Some(before) = before
-                        && before.len() > self.chat.buffer.len()
-                    {
-                        let removed = before.len() - self.chat.buffer.len();
-                        let start = self.chat.cursor;
-                        if before.is_char_boundary(start)
-                            && before.is_char_boundary(start + removed)
-                        {
-                            self.chat.kill_buffer = before[start..start + removed].to_owned();
-                        }
-                    }
-                    if self.chat.buffer.is_empty() {
-                        self.chat.pasted_command = false;
-                    }
-                } else {
-                    self.notice(
-                        NoticeLevel::Warning,
-                        "Unable to allocate the insertion; draft retained.",
-                    );
-                }
-            }
+            _ => self.edit_chat_text(key),
         }
         if self.chat.buffer == "@" && key.code == KeyCode::Char('@') {
             return self.open_file_picker();
         }
         Vec::new()
+    }
+
+    fn chat_overlay_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        if self.chat.convenience.panel.is_some() {
+            return Some(self.convenience_key(key));
+        }
+        if self.chat.module_menu.is_some() {
+            return Some(self.module_menu_key(key));
+        }
+        if self.chat.doctor.is_some() {
+            return Some(self.doctor_key(key));
+        }
+        if self.chat.workbench.open {
+            return Some(self.workbench_key(key));
+        }
+        if self.chat.effort_picker() {
+            return Some(self.effort_picker_key(key));
+        }
+        if self.chat.provider_picker() {
+            return Some(self.provider_picker_key(key));
+        }
+        if self.chat.model_picker() {
+            return Some(self.model_picker_key(key));
+        }
+        if self.chat.history.search.is_some() {
+            return Some(self.history_search_key(key));
+        }
+        if key.code == KeyCode::F(3) {
+            return Some(self.open_history_search());
+        }
+        self.convenience_shortcut(key)
+    }
+
+    fn edit_chat_text(&mut self, key: KeyEvent) {
+        let selected_bytes = self.chat.selection().map_or(0, |range| range.len());
+        let inserted_bytes = match key.code {
+            KeyCode::Char(ch)
+                if crate::input::text_motion(key).is_none()
+                    && !key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER) =>
+            {
+                ch.len_utf8()
+            }
+            _ => 0,
+        };
+        if inserted_bytes != 0
+            && self.chat.buffer.try_reserve(inserted_bytes.saturating_sub(selected_bytes)).is_err()
+        {
+            self.notice(NoticeLevel::Warning, "Unable to allocate the insertion; draft retained.");
+            return;
+        }
+        let killing = key.modifiers.contains(KeyModifiers::CONTROL)
+            && matches!(key.code, KeyCode::Char('k' | 'K' | 'u' | 'U' | 'w' | 'W'));
+        let before = killing.then(|| self.chat.buffer.clone());
+        let _ = crate::input::selection::edit(
+            &mut self.chat.buffer,
+            &mut self.chat.cursor,
+            &mut self.chat.selection_anchor,
+            key,
+        );
+        if let Some(before) = before
+            && before.len() > self.chat.buffer.len()
+        {
+            let removed = before.len() - self.chat.buffer.len();
+            let start = self.chat.cursor;
+            if before.is_char_boundary(start) && before.is_char_boundary(start + removed) {
+                before[start..start + removed].clone_into(&mut self.chat.kill_buffer);
+            }
+        }
+        if self.chat.buffer.is_empty() {
+            self.chat.pasted_command = false;
+        }
     }
 
     fn chat_control_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {

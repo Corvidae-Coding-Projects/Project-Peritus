@@ -66,13 +66,14 @@ fn reader_slot(key: String) -> Result<ReaderSlot> {
         return Ok(reader.clone());
     }
     // Bound retained indexes independently of the number of runs ever opened.
-    if readers.len() >= MAX_READERS {
-        if let Some(oldest) = readers.keys().next().cloned() {
-            readers.remove(&oldest);
-        }
+    if readers.len() >= MAX_READERS
+        && let Some(oldest) = readers.keys().next().cloned()
+    {
+        readers.remove(&oldest);
     }
     let slot = Arc::new(Mutex::new(None));
     readers.insert(key, slot.clone());
+    drop(readers);
     Ok(slot)
 }
 
@@ -100,37 +101,8 @@ impl ScopedBaseline {
 
     fn open_index(&self) -> Result<(Connection, IndexIdentity, u64)> {
         let database = self.database_path();
-        for suffix in ["", "-wal", "-shm", "-journal"] {
-            let mut path = database.as_os_str().to_os_string();
-            path.push(suffix);
-            match fs::symlink_metadata(&path) {
-                Ok(meta) if !meta.is_file() || meta.file_type().is_symlink() => {
-                    return Err(failure("scope index is not a regular private file"));
-                }
-                Ok(_) => (),
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
-                Err(error) => return Err(db_error(error)),
-            }
-        }
-        // The original journal is immutable after migration; reject a changed legacy prefix.
-        let legacy_bytes = match self.journal_size()? {
-            Some(bytes) => bytes,
-            None => {
-                let mut options = fs::OpenOptions::new();
-                options.create_new(true).write(true);
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::OpenOptionsExt as _;
-                    options.mode(0o600);
-                }
-                match options.open(&self.journal) {
-                    Ok(file) => file.sync_all().map_err(db_error)?,
-                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => (),
-                    Err(error) => return Err(db_error(error)),
-                }
-                self.journal_size()?.ok_or_else(|| failure("missing scope journal"))?
-            }
-        };
+        validate_database_files(&database)?;
+        let legacy_bytes = self.ensure_journal()?;
         let mut options = fs::OpenOptions::new();
         options.create(true).truncate(false).read(true).write(true);
         #[cfg(unix)]
@@ -207,19 +179,31 @@ impl ScopedBaseline {
                 .map_err(db_error)?;
         }
         transaction.commit().map_err(db_error)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt as _;
-            fs::set_permissions(&database, fs::Permissions::from_mode(0o600)).map_err(db_error)?;
-            if let Some(parent) = database.parent() {
-                fs::File::open(parent).and_then(|file| file.sync_all()).map_err(db_error)?;
-            }
-        }
+        secure_database(&database)?;
         let identity = identity_from_metadata(&database_file.metadata().map_err(db_error)?);
         if identity != index_identity(&database)? || self.journal_size()? != Some(legacy_bytes) {
             return Err(failure("scope index or legacy journal changed while opening"));
         }
         Ok((connection, identity, legacy_bytes))
+    }
+
+    fn ensure_journal(&self) -> Result<u64> {
+        if let Some(bytes) = self.journal_size()? {
+            return Ok(bytes);
+        }
+        let mut options = fs::OpenOptions::new();
+        options.create_new(true).write(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt as _;
+            options.mode(0o600);
+        }
+        match options.open(&self.journal) {
+            Ok(file) => file.sync_all().map_err(db_error)?,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => (),
+            Err(error) => return Err(db_error(error)),
+        }
+        self.journal_size()?.ok_or_else(|| failure("missing scope journal"))
     }
 
     pub(super) fn load_index(&self) -> Result<Arc<EnrolledPaths>> {
@@ -248,7 +232,9 @@ impl ScopedBaseline {
                 && index_identity(&database)? == cached.identity
                 && data_version(&cached.connection)? == cached.version
             {
-                return Ok(cached.paths.clone());
+                let paths = cached.paths.clone();
+                drop(reader);
+                return Ok(paths);
             }
         }
         // Open again on invalidation to revalidate the durable binding and legacy import.
@@ -272,7 +258,7 @@ impl ScopedBaseline {
                 // Older journals encoded NUL-filled database pages as large JSON strings.
                 // Their display projection is binary; the original digest stays untouched.
                 if stamp.preview.contains('\0') {
-                    stamp.preview = "[binary content]".to_owned();
+                    "[binary content]".clone_into(&mut stamp.preview);
                 }
                 retained_bytes =
                     retained_bytes.saturating_add(path.len() + stamp.preview.len() + 256);
@@ -306,6 +292,7 @@ impl ScopedBaseline {
                 paths: paths.clone(),
             });
         }
+        drop(reader);
         Ok(paths)
     }
 
@@ -370,6 +357,34 @@ impl ScopedBaseline {
         transaction.commit().map_err(db_error)?;
         Ok(())
     }
+}
+
+fn validate_database_files(database: &Path) -> Result<()> {
+    for suffix in ["", "-wal", "-shm", "-journal"] {
+        let mut path = database.as_os_str().to_os_string();
+        path.push(suffix);
+        match fs::symlink_metadata(&path) {
+            Ok(meta) if !meta.is_file() || meta.file_type().is_symlink() => {
+                return Err(failure("scope index is not a regular private file"));
+            }
+            Ok(_) => (),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(db_error(error)),
+        }
+    }
+    Ok(())
+}
+
+fn secure_database(database: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        fs::set_permissions(database, fs::Permissions::from_mode(0o600)).map_err(db_error)?;
+        if let Some(parent) = database.parent() {
+            fs::File::open(parent).and_then(|file| file.sync_all()).map_err(db_error)?;
+        }
+    }
+    Ok(())
 }
 
 fn insert(transaction: &Transaction<'_>, path: &str, stamp: &FileStamp) -> Result<()> {

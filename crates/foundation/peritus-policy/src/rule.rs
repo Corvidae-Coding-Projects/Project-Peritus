@@ -144,12 +144,12 @@ impl ApprovalRequirement {
             index += 1;
         }
         let independence = self.independence.duplicate();
-        let duplicate = Self {
+
+        Self {
             minimum_tier: self.minimum_tier,
             approver_roles,
             independence,
             validity: self.validity,
-        };
-        duplicate
+        }
     }
 }

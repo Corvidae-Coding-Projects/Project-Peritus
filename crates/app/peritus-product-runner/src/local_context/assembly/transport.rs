@@ -39,114 +39,118 @@ pub(super) fn fit(
     }
     for index in 0..messages.len() {
         for block in 0..messages[index].content().len() {
-            let ContentBlock::ToolResult(result) = &messages[index].content()[block] else {
-                continue;
-            };
-            if result.output().canonical_bytes().len() <= 4_096 {
-                continue;
+            if fit_result(memory, messages, tools, provider, index, block)? {
+                return Ok(collapsed);
             }
-            let Some(source) = memory.sources.iter().rev().find(|source| {
-                source.kind == ArchiveKind::ToolOutput
-                    && source
-                        .call
-                        .as_ref()
-                        .is_some_and(|call| call.id == result.call_id().expose_for_wire())
-            }) else {
-                return Err(error("oversized tool view has no durable exact source"));
-            };
-            let source_id = source.sequence;
-            let exact = memory.artifact(source_id)?;
-            let exact = std::str::from_utf8(&exact)
-                .map_err(|_| error("archived JSON observation is not UTF-8"))?;
-            let mut source_value: serde_json::Value = serde_json::from_str(exact)
-                .map_err(|_| error("decode archived transport source"))?;
-            // Preserve the temporal qualification of a read that preceded a settled edit.
-            // Fitting its archived body must not turn historical evidence into current state.
-            if let Ok(projected) =
-                serde_json::from_slice::<serde_json::Value>(result.output().canonical_bytes())
-                && projected.get("observation_time").is_some()
-            {
-                for key in [
-                    "cached_observation_stale",
-                    "observation_time",
-                    "reason",
-                    "original_observation",
-                ] {
-                    if let Some(value) = projected.get(key) {
-                        source_value[key] = value.clone();
-                    }
-                }
-            }
-            let original = result.clone();
-            let handle = source_handle(memory, source_id);
-            let mut content = messages[index].content().to_vec();
-            let role = messages[index].role();
-            let mut install = |end: usize,
-                               messages: &mut [Message]|
-             -> Result<(), DeveloperLoopError> {
-                let end = exact.floor_char_boundary(end);
-                let value = if let Some(page) =
-                    super::super::read_reuse::provider_page(memory, source_id, &source_value, end)?
-                {
-                    page
-                } else {
-                    serde_json::json!({
-                        "peritus_provider_view": {
-                            "truncated": true,
-                            "reason": "The full observation exceeds this provider's submitted-turn character capacity. It is durably retained, and this is a contiguous prefix of its JSON bytes, not a complete file-read result. Retrieve the remainder with context_read using the exact source handle and next_offset; do not repeat settled effects.",
-                            "source": handle,
-                            "original_bytes": exact.len(),
-                            "visible_bytes": end,
-                            "next_offset": end,
-                            "prefix": &exact[..end],
-                        }
-                    })
-                };
-                super::super::read_reuse::register_rendered(
-                    memory,
-                    &value.to_string(),
-                    source_id,
-                    &value,
-                );
-                let output = CanonicalJson::parse(
-                    &value.to_string(),
-                    JsonBounds::value(ProtocolLimits::PRODUCTION),
-                )?;
-                content[block] = ContentBlock::ToolResult(ToolResult::new(
-                    original.call_id().clone(),
-                    output,
-                    original.is_error(),
-                ));
-                messages[index] = Message::new(role, content.clone(), ProtocolLimits::PRODUCTION)?;
-                Ok(())
-            };
-            install(0, messages)?;
-            if !provider
-                .context_input_fits(messages, tools)
-                .map_err(|_| error("encode selected provider context projection"))?
-            {
-                // Other oversized results must also receive explicit retrievable views.
-                continue;
-            }
-            let mut low = 0;
-            let mut high = exact.len();
-            while low < high {
-                let middle = low + (high - low).div_ceil(2);
-                install(middle, messages)?;
-                if provider
-                    .context_input_fits(messages, tools)
-                    .map_err(|_| error("encode selected provider context projection"))?
-                {
-                    low = middle;
-                } else {
-                    high = middle - 1;
-                }
-            }
-            install(low, messages)?;
-            return Ok(collapsed);
         }
     }
     Err(error(
         "current required instructions exceed the selected provider's submitted-turn capacity; use a provider that accepts larger input",
     ))
+}
+
+fn fit_result(
+    memory: &mut LocalMemory,
+    messages: &mut [Message],
+    tools: &[ToolDefinition],
+    provider: &dyn ModelProvider,
+    index: usize,
+    block: usize,
+) -> Result<bool, DeveloperLoopError> {
+    let ContentBlock::ToolResult(result) = &messages[index].content()[block] else {
+        return Ok(false);
+    };
+    if result.output().canonical_bytes().len() <= 4_096 {
+        return Ok(false);
+    }
+    let original = result.clone();
+    let Some(source) = memory.sources.iter().rev().find(|source| {
+        source.kind == ArchiveKind::ToolOutput
+            && source
+                .call
+                .as_ref()
+                .is_some_and(|call| call.id == original.call_id().expose_for_wire())
+    }) else {
+        return Err(error("oversized tool view has no durable exact source"));
+    };
+    let source_id = source.sequence;
+    let exact_bytes = memory.artifact(source_id)?;
+    let exact = std::str::from_utf8(&exact_bytes)
+        .map_err(|_| error("archived JSON observation is not UTF-8"))?;
+    let mut source_value: serde_json::Value =
+        serde_json::from_str(exact).map_err(|_| error("decode archived transport source"))?;
+    preserve_temporal_fields(&original, &mut source_value);
+    let handle = source_handle(memory, source_id);
+    let mut content = messages[index].content().to_vec();
+    let role = messages[index].role();
+    let mut install = |end: usize, messages: &mut [Message]| -> Result<(), DeveloperLoopError> {
+        let end = exact.floor_char_boundary(end);
+        let value = super::super::read_reuse::provider_page(memory, source_id, &source_value, end)
+            .unwrap_or_else(|| fallback_view(&handle, exact, end));
+        super::super::read_reuse::register_rendered(memory, &value.to_string(), source_id, &value);
+        let output = CanonicalJson::parse(
+            &value.to_string(),
+            JsonBounds::value(ProtocolLimits::PRODUCTION),
+        )?;
+        content[block] = ContentBlock::ToolResult(ToolResult::new(
+            original.call_id().clone(),
+            output,
+            original.is_error(),
+        ));
+        messages[index] = Message::new(role, content.clone(), ProtocolLimits::PRODUCTION)?;
+        Ok(())
+    };
+    install(0, messages)?;
+    if !provider
+        .context_input_fits(messages, tools)
+        .map_err(|_| error("encode selected provider context projection"))?
+    {
+        return Ok(false);
+    }
+    let mut low = 0;
+    let mut high = exact.len();
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        install(middle, messages)?;
+        if provider
+            .context_input_fits(messages, tools)
+            .map_err(|_| error("encode selected provider context projection"))?
+        {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    install(low, messages)?;
+    Ok(true)
+}
+
+fn preserve_temporal_fields(original: &ToolResult, value: &mut serde_json::Value) {
+    let Ok(projected) =
+        serde_json::from_slice::<serde_json::Value>(original.output().canonical_bytes())
+    else {
+        return;
+    };
+    if projected.get("observation_time").is_none() {
+        return;
+    }
+    for key in ["cached_observation_stale", "observation_time", "reason", "original_observation"] {
+        if let Some(field) = projected.get(key) {
+            value[key] = field.clone();
+        }
+    }
+}
+
+fn fallback_view(handle: &str, exact: &str, end: usize) -> serde_json::Value {
+    serde_json::json!({
+        "peritus_provider_view": {
+            "truncated": true,
+            "reason": "The full observation exceeds this provider's submitted-turn character capacity. It is durably retained, and this is a contiguous prefix of its JSON bytes, not a complete file-read result. Retrieve the remainder with context_read using the exact source handle and next_offset; do not repeat settled effects.",
+            "source": handle,
+            "original_bytes": exact.len(),
+            "visible_bytes": end,
+            "next_offset": end,
+            "prefix": &exact[..end],
+        }
+    })
 }

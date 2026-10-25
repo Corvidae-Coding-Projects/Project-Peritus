@@ -9,7 +9,7 @@ Stable contracts for isolated Peritus plugins.
 | File | Role |
 | --- | --- |
 | [module.rs](module.rs) | Generic native Rust module actions, agent/function requests, menus and text artifact references. |
-| [module_host.rs](module_host.rs) | Versioned host-service discovery, request/result envelopes, scoped-source and live verification, owned-job and copy-patch receipts, and source-build identity contracts. |
+| [module_host.rs](module_host.rs) | Versioned generic host-service discovery, request/result envelopes, scoped-source and live verification, source-build identities, opaque module-worker execution with optional named runtime resources, and disposable-source laboratory contracts. Module-specific feature contracts do not belong here. |
 | [canonical.rs](canonical.rs) | Deterministic JSON rendering for manifest trust material. |
 | [error.rs](error.rs) | Stable SDK error categories. |
 | [framing.rs](framing.rs) | Four-byte big-endian length-delimited JSON framing. |

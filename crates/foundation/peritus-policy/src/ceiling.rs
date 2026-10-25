@@ -56,13 +56,12 @@ impl CeilingGrant {
         self.use_limit
     }
     fn rebind_revision(&self, revision: RevisionTuple) -> Self {
-        let rebound = Self {
+        Self {
             digest: self.digest,
             selector: self.selector.rebind_revision(revision),
             validity: self.validity,
             use_limit: self.use_limit,
-        };
-        rebound
+        }
     }
 }
 #[doc = " Protected upper bound, canonical grants, and immutable denials."]
@@ -99,8 +98,7 @@ impl AuthorityCeiling {
             immutable_denies.push(self.immutable_denies[index].rebind_revision(revision));
             index += 1;
         }
-        let rebound =
-            Self { boundary: self.boundary.rebind_revision(revision), grants, immutable_denies };
-        rebound
+
+        Self { boundary: self.boundary.rebind_revision(revision), grants, immutable_denies }
     }
 }

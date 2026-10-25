@@ -10,7 +10,9 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::time::Instant;
 
-use super::{ProcessExit, ProcessOutput, ProcessRequest, ProcessTransport};
+use super::{
+    ErrorObserver, OutputObserver, ProcessExit, ProcessOutput, ProcessRequest, ProcessTransport,
+};
 use crate::{BoxFuture, CancellationToken, ProviderCoreError};
 
 /// Production subprocess transport backed by Tokio.
@@ -46,7 +48,21 @@ async fn run(
     )
     .await?;
     let (stdout, stderr) = take_output(&mut child).await?;
-    collect(child, stdout, stderr, stdin, limits, cancellation, deadline, &request).await
+    collect(
+        child,
+        stdout,
+        stderr,
+        stdin,
+        CollectContext { limits, cancellation, deadline, request: &request },
+    )
+    .await
+}
+
+struct CollectContext<'a> {
+    limits: super::ProcessLimits,
+    cancellation: &'a CancellationToken,
+    deadline: Instant,
+    request: &'a ProcessRequest,
 }
 
 fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
@@ -131,14 +147,12 @@ async fn collect(
     stdout: ChildStdout,
     stderr: ChildStderr,
     stdin: Option<ChildStdin>,
-    limits: super::ProcessLimits,
-    cancellation: &CancellationToken,
-    deadline: Instant,
-    request: &ProcessRequest,
+    context: CollectContext<'_>,
 ) -> Result<ProcessOutput, ProviderCoreError> {
-    let operation = collect_output(&mut child, stdout, stderr, stdin, limits, request);
-    let timed = tokio::time::timeout_at(deadline, operation);
-    let outcome = crate::cancellation::first(cancellation, timed).await;
+    let operation =
+        collect_output(&mut child, stdout, stderr, stdin, context.limits, context.request);
+    let timed = tokio::time::timeout_at(context.deadline, operation);
+    let outcome = crate::cancellation::first(context.cancellation, timed).await;
     let result = match outcome {
         None => Err(ProviderCoreError::cancelled("process_run")),
         Some(Err(_)) => Err(timeout_error()),
@@ -147,7 +161,7 @@ async fn collect(
             ProcessExit::new(status.success(), status.code()),
             stdout,
             stderr,
-            limits,
+            context.limits,
         ),
     };
     if result.is_err() {
@@ -206,32 +220,15 @@ async fn collect_output(
                 Poll::Pending => {}
             }
         }
-        if pending_input.is_none()
-            && let Some(messages) = request.stdin_messages()
-        {
-            let next = messages
-                .lock()
-                .map_err(|_| {
-                    ProviderCoreError::transport("process_stdin", "protocol input queue poisoned")
-                })?
-                .pop_front();
-            if let Some(next) = next {
-                input_bytes = input_bytes.saturating_add(next.len());
-                if input_bytes > limits.max_stdin_bytes {
-                    return Poll::Ready(Err(ProviderCoreError::limit_exceeded(
-                        "process_stdin",
-                        "protocol input exceeded cumulative byte limit",
-                    )));
-                }
-                pending_input = Some((next, 0));
-            }
+        if pending_input.is_none() {
+            pending_input = dequeue_input(request, &mut input_bytes, limits.max_stdin_bytes)?;
         }
         if let Some((bytes, offset)) = &mut pending_input {
             let input = stdin.as_mut().ok_or_else(|| {
                 ProviderCoreError::transport("process_stdin", "protocol input already closed")
             })?;
             match Pin::new(input).poll_write(context, &bytes[*offset..]) {
-                Poll::Ready(Ok(0)) | Poll::Ready(Err(_)) => {
+                Poll::Ready(Ok(0) | Err(_)) => {
                     return Poll::Ready(Err(ProviderCoreError::transport(
                         "process_stdin",
                         "protocol write failed",
@@ -274,8 +271,8 @@ async fn read_bounded(
     mut input: impl AsyncRead + Unpin,
     limit: usize,
     operation: &'static str,
-    observer: Option<fn(&[u8]) -> Option<ProviderCoreError>>,
-    stdout_observer: Option<&(dyn Fn(&[u8]) + Send + Sync)>,
+    observer: Option<ErrorObserver>,
+    stdout_observer: Option<&OutputObserver>,
 ) -> Result<Vec<u8>, ProviderCoreError> {
     let mut output = Vec::new();
     let mut buffer = [0_u8; 8 * 1024];
@@ -306,6 +303,33 @@ async fn read_bounded(
             return Err(error);
         }
     }
+}
+
+fn dequeue_input(
+    request: &ProcessRequest,
+    input_bytes: &mut usize,
+    maximum: usize,
+) -> Result<Option<(Vec<u8>, usize)>, ProviderCoreError> {
+    let Some(messages) = request.stdin_messages() else {
+        return Ok(None);
+    };
+    let next = messages
+        .lock()
+        .map_err(|_| {
+            ProviderCoreError::transport("process_stdin", "protocol input queue poisoned")
+        })?
+        .pop_front();
+    let Some(next) = next else {
+        return Ok(None);
+    };
+    *input_bytes = input_bytes.saturating_add(next.len());
+    if *input_bytes > maximum {
+        return Err(ProviderCoreError::limit_exceeded(
+            "process_stdin",
+            "protocol input exceeded cumulative byte limit",
+        ));
+    }
+    Ok(Some((next, 0)))
 }
 
 const fn wait_error() -> ProviderCoreError {

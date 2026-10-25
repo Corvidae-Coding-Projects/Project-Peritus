@@ -15,6 +15,24 @@ pub(super) enum ModelTurnKind {
     SemanticCompaction,
 }
 
+fn extensions(
+    request: &DeveloperLoopRequest,
+    profile: &peritus_model_protocol::ProviderProfile,
+) -> Result<Vec<ProviderExtension>, DeveloperLoopError> {
+    match (request.cyber_access_program, profile.dialect()) {
+        (Some(DeveloperCyberAccessProgram::DaybreakBlue), WireDialect::OpenAiCodexRuntime) => {
+            Ok(vec![ProviderExtension::new(
+                ExtensionName::new("openai.cyber_access_program".to_owned())?,
+                CanonicalJson::parse(
+                    "\"daybreak_blue\"",
+                    JsonBounds::value(ProtocolLimits::PRODUCTION),
+                )?,
+            )])
+        }
+        _ => Ok(Vec::new()),
+    }
+}
+
 #[allow(
     clippy::too_many_arguments,
     reason = "one immutable provider request keeps its negotiated inputs explicit"
@@ -92,18 +110,7 @@ pub(super) fn build_model_request(
             output_tokens,
         )
         .map_err(|error| DeveloperLoopError::Model(crate::ModelDriveError::Provider(error)))?;
-    let extensions = match (request.cyber_access_program, profile.dialect()) {
-        (Some(DeveloperCyberAccessProgram::DaybreakBlue), WireDialect::OpenAiCodexRuntime) => {
-            vec![ProviderExtension::new(
-                ExtensionName::new("openai.cyber_access_program".to_owned())?,
-                CanonicalJson::parse(
-                    "\"daybreak_blue\"",
-                    JsonBounds::value(ProtocolLimits::PRODUCTION),
-                )?,
-            )]
-        }
-        _ => Vec::new(),
-    };
+    let extensions = extensions(request, profile)?;
     Ok(ModelRequest::new(
         profile,
         negotiated,

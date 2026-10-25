@@ -27,8 +27,8 @@ impl SecurityQualificationAdmission {
         outcomes: &[SecurityQualificationOutcome; SECURITY_QUALIFICATION_PROBE_COUNT],
     ) -> Self {
         let ready = decision.is_ready() && security_qualification_outcomes_complete(outcomes);
-        let admission = Self { ready };
-        admission
+
+        Self { ready }
     }
     #[doc = " Reports whether every native outcome and the verified security decision passed."]
     #[must_use]

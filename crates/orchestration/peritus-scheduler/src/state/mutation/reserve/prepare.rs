@@ -26,10 +26,7 @@ pub fn selected_reservation(
     let revision = work.spec().revision();
     let resources = work.spec().request().clone();
     let worker_id = state.workers()[worker_index].descriptor().id();
-    let attempt = super::super::begin_work_attempt_at(state, work_index);
-    let Some(attempt) = attempt else {
-        return None;
-    };
+    let attempt = super::super::begin_work_attempt_at(state, work_index)?;
     let incremented = super::super::increment_dispatch_ordinal(state);
     if !incremented {
         return None;

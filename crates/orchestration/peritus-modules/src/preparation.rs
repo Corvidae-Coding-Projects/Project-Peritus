@@ -59,6 +59,10 @@ pub enum Failure {
 }
 
 /// Validates the bounded URL and optional exact byte identity.
+///
+/// # Errors
+///
+/// Returns an error when URL, digest, or storage bounds are invalid.
 pub fn validate(specification: &Specification, storage_bytes: u64) -> Result<Url, String> {
     let url = checked_url(&specification.url)?;
     if specification.expected_sha256.as_ref().is_some_and(|digest| !sha256(digest)) {
@@ -77,6 +81,10 @@ pub fn validate(specification: &Specification, storage_bytes: u64) -> Result<Url
 }
 
 /// Fetches one validated object without ambient proxy or credential discovery.
+///
+/// # Errors
+///
+/// Returns a classified preparation error for invalid input, cancellation, or infrastructure failure.
 pub fn fetch(
     specification: &Specification,
     cancellation: &Arc<AtomicBool>,
@@ -212,7 +220,7 @@ fn address_class(address: IpAddr) -> AddressClass {
         IpAddr::V6(address) => address
             .to_ipv4_mapped()
             .map_or_else(|| classify(IpAddr::V6(address)), |mapped| classify(IpAddr::V4(mapped))),
-        address => classify(address),
+        address @ IpAddr::V4(_) => classify(address),
     }
 }
 
@@ -223,7 +231,7 @@ fn client(host: &str, addresses: &[SocketAddr]) -> Result<Client, String> {
         .no_proxy()
         .redirect(Policy::none())
         .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(120))
+        .timeout(Duration::from_mins(2))
         .resolve_to_addrs(host, addresses)
         .build()
         .map_err(|error| format!("dependency HTTPS client could not start: {error}"))

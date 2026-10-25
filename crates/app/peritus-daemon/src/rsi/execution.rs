@@ -6,7 +6,7 @@
 
 mod materialize;
 #[cfg(target_os = "linux")]
-mod recovery;
+pub mod recovery;
 #[cfg(target_os = "linux")]
 mod sandbox;
 

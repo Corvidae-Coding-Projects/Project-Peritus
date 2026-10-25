@@ -11,9 +11,7 @@ fn release_with_update(
     work_id: WorkId,
     update: WorkUpdate,
 ) -> Option<SchedulerReservation> {
-    let Some(reservation) = super::super::remove_reservation(state, dispatch_id) else {
-        return None;
-    };
+    let reservation = super::super::remove_reservation(state, dispatch_id)?;
     if !update_work(state, work_id, update) {
         return None;
     }
@@ -25,8 +23,7 @@ pub fn release_to_phase(
     work_id: WorkId,
     phase: WorkPhase,
 ) -> Option<SchedulerReservation> {
-    let result = release_with_update(state, dispatch_id, work_id, WorkUpdate::Phase(phase));
-    result
+    release_with_update(state, dispatch_id, work_id, WorkUpdate::Phase(phase))
 }
 pub fn release_to_retry_pending(
     state: &mut SchedulerState,
@@ -34,8 +31,7 @@ pub fn release_to_retry_pending(
     work_id: WorkId,
     cause: Sha256Digest,
 ) -> Option<SchedulerReservation> {
-    let result = release_with_update(state, dispatch_id, work_id, WorkUpdate::RetryPending(cause));
-    result
+    release_with_update(state, dispatch_id, work_id, WorkUpdate::RetryPending(cause))
 }
 pub fn release_to_terminal(
     state: &mut SchedulerState,
@@ -43,6 +39,5 @@ pub fn release_to_terminal(
     work_id: WorkId,
     terminal: WorkTerminal,
 ) -> Option<SchedulerReservation> {
-    let result = release_with_update(state, dispatch_id, work_id, WorkUpdate::Terminal(terminal));
-    result
+    release_with_update(state, dispatch_id, work_id, WorkUpdate::Terminal(terminal))
 }

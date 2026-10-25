@@ -1,8 +1,18 @@
 //! Product authority adapter for the existing native Rust plugin host.
 use super::super::{ProductRunInput, ProductRunnerError, error};
 use peritus_modules::{Definition, Registry};
-use peritus_plugin_host::*;
-use peritus_plugin_sdk::*;
+use peritus_plugin_host::{
+    AuthorityDecision, AuthorityMediator, AuthorityRequest, DigestTrustStore, DiscoveryLimits,
+    HostCancellation, HostConfig, HostError, HostFuture, InvocationGrant, InvocationSubject,
+    PluginHost, PluginInvocationResult, discover,
+};
+use peritus_plugin_sdk::{
+    HOST_CAPABILITY_APPLICATION_LABORATORY, HOST_CAPABILITY_ATTACHMENT, HOST_CAPABILITY_CHECKPOINT,
+    HOST_CAPABILITY_MODEL, HOST_CAPABILITY_PRIVATE_STATE, HOST_CAPABILITY_PROFILE,
+    HOST_CAPABILITY_SCOPED_SOURCE, HOST_CAPABILITY_SOURCE_BUILD, HOST_CAPABILITY_WORKER,
+    JsonBounds, JsonPayload, MODULE_HOST_CONTRACT_VERSION, ModuleHostCapability, ModuleHostOutcome,
+    ModuleHostProfile, ModuleHostRequest, ModuleHostResult, PluginId, RequestId,
+};
 use serde_json::{Value, json};
 use std::{
     fs,
@@ -57,59 +67,75 @@ pub(super) struct Runtime {
     pub(super) host_state: PathBuf,
     pub(super) module_id: String,
     pub(super) module_digest: String,
+    module_executable: PathBuf,
     _owner: fs::File,
 }
+
+struct StagedPlugin {
+    base: PathBuf,
+    owner: fs::File,
+    directory: PathBuf,
+    executable: PathBuf,
+}
+
+fn stage_plugin(
+    input: &ProductRunInput,
+    definition: &Definition,
+) -> Result<StagedPlugin, ProductRunnerError> {
+    let code = definition
+        .manifest
+        .code
+        .as_ref()
+        .ok_or_else(|| error("module has no native entrypoint"))?;
+    let source = definition.resource(artifact(code)?).map_err(error)?;
+    let root = super::super::root(input);
+    let base = root.join(format!("native-{}-{}", definition.manifest.id, definition.digest));
+    if base.starts_with(&input.workspace_root)
+        || input.workspace_root.starts_with(&base)
+        || base.starts_with(&input.source_root)
+        || input.source_root.starts_with(&base)
+    {
+        return Err(error(
+            "native plugin private state overlaps the selected workspace; no module state or source operation was started",
+        ));
+    }
+    fs::create_dir_all(&base).map_err(error)?;
+    let owner = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(base.join("session.lock"))
+        .map_err(error)?;
+    fs4::FileExt::try_lock(&owner)
+        .map_err(|cause| error(format!("native plugin session is already owned: {cause}")))?;
+    let directory = base.join("runtime").join(&definition.manifest.id);
+    fs::create_dir_all(&directory).map_err(error)?;
+    let executable = directory.join(if cfg!(windows) { "plugin.exe" } else { "plugin" });
+    let staged = tempfile::NamedTempFile::new_in(&directory).map_err(error)?;
+    fs::copy(&source, staged.path()).map_err(error)?;
+    staged.as_file().sync_all().map_err(error)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(staged.path(), fs::Permissions::from_mode(0o700)).map_err(error)?;
+    }
+    let current = Registry::for_user()
+        .and_then(|registry| registry.load(&definition.manifest.id, true))
+        .map_err(error)?;
+    if current.digest != definition.digest || hash(&source)? != hash(staged.path())? {
+        return Err(error("native package changed during launch; no executable was started"));
+    }
+    staged.persist(&executable).map_err(|cause| error(cause.error))?;
+    Ok(StagedPlugin { base, owner, directory, executable })
+}
+
 impl Runtime {
     pub(super) async fn start(
         input: &ProductRunInput,
         definition: &Definition,
     ) -> Result<Self, ProductRunnerError> {
-        let code = definition
-            .manifest
-            .code
-            .as_ref()
-            .ok_or_else(|| error("module has no native entrypoint"))?;
-        let artifact = artifact(code)?;
-        let source = definition.resource(artifact).map_err(error)?;
-        let base = super::super::root(input)
-            .join(format!("native-{}-{}", definition.manifest.id, definition.digest));
-        if base.starts_with(&input.workspace_root)
-            || input.workspace_root.starts_with(&base)
-            || base.starts_with(&input.source_root)
-            || input.source_root.starts_with(&base)
-        {
-            return Err(error(
-                "native plugin private state overlaps the selected workspace; no module state or source operation was started",
-            ));
-        }
-        fs::create_dir_all(&base).map_err(error)?;
-        let owner = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(base.join("session.lock"))
-            .map_err(error)?;
-        fs4::FileExt::try_lock(&owner)
-            .map_err(|e| error(format!("native plugin session is already owned: {e}")))?;
-        let directory = base.join("runtime").join(&definition.manifest.id);
-        fs::create_dir_all(&directory).map_err(error)?;
-        let executable = directory.join(if cfg!(windows) { "plugin.exe" } else { "plugin" });
-        let staged = tempfile::NamedTempFile::new_in(&directory).map_err(error)?;
-        fs::copy(&source, staged.path()).map_err(error)?;
-        staged.as_file().sync_all().map_err(error)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(staged.path(), fs::Permissions::from_mode(0o700)).map_err(error)?;
-        }
-        let current = Registry::for_user()
-            .and_then(|r| r.load(&definition.manifest.id, true))
-            .map_err(error)?;
-        if current.digest != definition.digest || hash(&source)? != hash(staged.path())? {
-            return Err(error("native package changed during launch; no executable was started"));
-        }
-        staged.persist(&executable).map_err(|e| error(e.error))?;
+        let StagedPlugin { base, owner, directory, executable } = stage_plugin(input, definition)?;
         let version = definition
             .manifest
             .version
@@ -171,6 +197,7 @@ impl Runtime {
             host_state,
             module_id: definition.manifest.id.clone(),
             module_digest: definition.digest.clone(),
+            module_executable: executable,
             _owner: owner,
         })
     }
@@ -236,6 +263,20 @@ impl Runtime {
         input: &ProductRunInput,
         request: &ModuleHostRequest,
     ) -> Result<ModuleHostResult, ProductRunnerError> {
+        let outcome = self.host_outcome(input, request)?;
+        Ok(ModuleHostResult {
+            key: request.key.clone(),
+            capability: request.capability.clone(),
+            version: request.version,
+            outcome,
+        })
+    }
+
+    fn host_outcome(
+        &self,
+        input: &ProductRunInput,
+        request: &ModuleHostRequest,
+    ) -> Result<ModuleHostOutcome, ProductRunnerError> {
         let outcome = if request.capability == HOST_CAPABILITY_PROFILE
             && request.version == MODULE_HOST_CONTRACT_VERSION
             && request.operation == "inspect"
@@ -246,37 +287,17 @@ impl Runtime {
         } else if request.capability == HOST_CAPABILITY_SCOPED_SOURCE
             && request.version == MODULE_HOST_CONTRACT_VERSION
         {
-            if !input
+            if input
                 .conversation
                 .effective_permissions()
                 .allows(crate::control::PermissionCapability::Read)
             {
+                super::scoped_source::Broker::new(input, &self.state, &self.module_digest)
+                    .dispatch(&request.operation, request.input.clone())
+            } else {
                 ModuleHostOutcome::Rejected {
                     code: "source_read_permission".into(),
                     detail: "current conversation authority does not permit source reads".into(),
-                }
-            } else {
-                super::scoped_source::Broker::new(input, &self.state, &self.module_digest)
-                    .dispatch(&request.operation, request.input.clone())
-            }
-        } else if request.capability == HOST_CAPABILITY_OWNED_JOBS
-            && request.version == MODULE_HOST_CONTRACT_VERSION
-        {
-            #[cfg(target_os = "linux")]
-            {
-                super::owned_jobs::Broker::new(
-                    input,
-                    &self.host_state,
-                    &self.state,
-                    &self.module_id,
-                    &self.module_digest,
-                )
-                .dispatch(&request.key, &request.operation, request.input.clone())
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                ModuleHostOutcome::Unsupported {
-                    detail: "host-owned native module jobs currently require Linux".into(),
                 }
             }
         } else if request.capability == HOST_CAPABILITY_SOURCE_BUILD
@@ -301,6 +322,15 @@ impl Runtime {
                     detail: "source-built module installation currently requires Linux".into(),
                 }
             }
+        } else if request.capability == HOST_CAPABILITY_APPLICATION_LABORATORY
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+        {
+            self.application_laboratory_outcome(input, request)
+        } else if request.capability == HOST_CAPABILITY_WORKER
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+            && request.operation == "execute"
+        {
+            self.worker_outcome(input, request)
         } else {
             ModuleHostOutcome::Unsupported {
                 detail: format!(
@@ -309,12 +339,55 @@ impl Runtime {
                 ),
             }
         };
-        Ok(ModuleHostResult {
-            key: request.key.clone(),
-            capability: request.capability.clone(),
-            version: request.version,
-            outcome,
-        })
+        Ok(outcome)
+    }
+
+    fn worker_outcome(
+        &self,
+        input: &ProductRunInput,
+        request: &ModuleHostRequest,
+    ) -> ModuleHostOutcome {
+        #[cfg(target_os = "linux")]
+        {
+            super::application_laboratory::Broker::new(
+                input,
+                &self.host_state,
+                &self.state,
+                &self.module_id,
+                &self.module_digest,
+            )
+            .execute_worker(&self.module_executable, request.input.clone())
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            ModuleHostOutcome::Unsupported {
+                detail: "isolated native module workers currently require Linux".into(),
+            }
+        }
+    }
+
+    fn application_laboratory_outcome(
+        &self,
+        input: &ProductRunInput,
+        request: &ModuleHostRequest,
+    ) -> ModuleHostOutcome {
+        #[cfg(target_os = "linux")]
+        {
+            super::application_laboratory::Broker::new(
+                input,
+                &self.host_state,
+                &self.state,
+                &self.module_id,
+                &self.module_digest,
+            )
+            .dispatch(&request.key, &request.operation, request.input.clone())
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            ModuleHostOutcome::Unsupported {
+                detail: "host-owned application laboratories currently require Linux".into(),
+            }
+        }
     }
     pub(super) fn call_sync(
         &self,
@@ -354,26 +427,32 @@ fn host_profile(input: &ProductRunInput) -> ModuleHostProfile {
             version: MODULE_HOST_CONTRACT_VERSION,
         },
     ];
-    if cfg!(target_os = "linux") && input.module_jobs.is_some() {
-        capabilities
-            .push(ModuleHostCapability { name: HOST_CAPABILITY_OWNED_JOBS.into(), version: 1 });
-    }
     if cfg!(target_os = "linux") {
         capabilities.push(ModuleHostCapability {
             name: HOST_CAPABILITY_SOURCE_BUILD.into(),
             version: MODULE_HOST_CONTRACT_VERSION,
         });
     }
+    if cfg!(target_os = "linux") && input.module_jobs.is_some() {
+        capabilities.push(ModuleHostCapability {
+            name: HOST_CAPABILITY_APPLICATION_LABORATORY.into(),
+            version: MODULE_HOST_CONTRACT_VERSION,
+        });
+        capabilities.push(ModuleHostCapability {
+            name: HOST_CAPABILITY_WORKER.into(),
+            version: MODULE_HOST_CONTRACT_VERSION,
+        });
+    }
     ModuleHostProfile { schema: MODULE_HOST_CONTRACT_VERSION, capabilities }
 }
 fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
+    crate::encode_hex(bytes)
 }
 fn hash(path: &Path) -> Result<Vec<u8>, ProductRunnerError> {
     use sha2::{Digest, Sha256};
     let mut f = fs::File::open(path).map_err(error)?;
     let mut hash = Sha256::new();
-    let mut bytes = [0; 32768];
+    let mut bytes = vec![0; 32_768];
     loop {
         let n = f.read(&mut bytes).map_err(error)?;
         if n == 0 {

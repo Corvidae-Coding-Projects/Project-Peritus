@@ -11,7 +11,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Panel {
+pub enum Panel {
     Find,
     Files,
     Keys,
@@ -28,7 +28,7 @@ struct PendingLocal {
 }
 
 #[derive(Debug)]
-pub(crate) struct Convenience {
+pub struct Convenience {
     pub(crate) preferences: Preferences,
     pub(crate) panel: Option<Panel>,
     pub(crate) query: String,
@@ -180,7 +180,7 @@ impl AppModel {
         self.chat.output_selection = None;
         let ui = &mut self.chat.convenience;
         ui.panel = Some(panel);
-        ui.query = query.to_owned();
+        query.clone_into(&mut ui.query);
         ui.selected = 0;
         ui.scroll = 0;
         ui.preview = None;
@@ -256,7 +256,7 @@ impl AppModel {
         generation: u64,
         result: Result<LocalReply, String>,
     ) -> Vec<Effect> {
-        if !self.chat.convenience.pending.as_ref().is_some_and(|p| p.generation == generation) {
+        if self.chat.convenience.pending.as_ref().is_none_or(|p| p.generation != generation) {
             return Vec::new();
         }
         let Some(pending) = self.chat.convenience.pending.take() else {
@@ -372,22 +372,8 @@ impl AppModel {
             }
             return Vec::new();
         }
-        if self.chat.convenience.preview.is_some() {
-            if key.code == KeyCode::Char('c') {
-                if let Some(text) = self.chat.convenience.preview.clone() {
-                    return self.copy_text(text);
-                }
-            }
-            let scroll = &mut self.chat.convenience.scroll;
-            match key.code {
-                KeyCode::Up => *scroll = scroll.saturating_sub(1),
-                KeyCode::Down => *scroll = scroll.saturating_add(1),
-                KeyCode::PageUp => *scroll = scroll.saturating_sub(10),
-                KeyCode::PageDown => *scroll = scroll.saturating_add(10),
-                KeyCode::Home => *scroll = 0,
-                _ => {}
-            }
-            return Vec::new();
+        if let Some(effects) = self.convenience_preview_key(key) {
+            return effects;
         }
         let count = match panel {
             Panel::Find => self.chat.convenience.search.as_ref().map_or(0, |p| p.hits.len()),
@@ -406,59 +392,20 @@ impl AppModel {
         }
         match key.code {
             KeyCode::Up => {
-                self.chat.convenience.selected = self.chat.convenience.selected.saturating_sub(1)
+                self.chat.convenience.selected = self.chat.convenience.selected.saturating_sub(1);
             }
             KeyCode::Down => {
                 self.chat.convenience.selected =
-                    (self.chat.convenience.selected + 1).min(count.saturating_sub(1))
+                    (self.chat.convenience.selected + 1).min(count.saturating_sub(1));
             }
             KeyCode::PageUp => {
-                self.chat.convenience.selected = self.chat.convenience.selected.saturating_sub(10)
+                self.chat.convenience.selected = self.chat.convenience.selected.saturating_sub(10);
             }
             KeyCode::PageDown => {
                 self.chat.convenience.selected =
-                    (self.chat.convenience.selected + 10).min(count.saturating_sub(1))
+                    (self.chat.convenience.selected + 10).min(count.saturating_sub(1));
             }
-            KeyCode::Enter => match panel {
-                Panel::Files => {
-                    if let Some(path) =
-                        self.chat.convenience.files.get(self.chat.convenience.selected).cloned()
-                    {
-                        let Some(path_text) = path.to_str() else {
-                            self.notice(NoticeLevel::Warning,"This filename is not valid UTF-8 and cannot be attached through this interface.");
-                            return Vec::new();
-                        };
-                        self.chat.convenience.panel = None;
-                        self.chat.workbench.files.preserve_composer = true;
-                        let effects = self.file_command(path_text);
-                        return effects;
-                    }
-                }
-                Panel::Find => {
-                    self.chat.convenience.preview = self
-                        .chat
-                        .convenience
-                        .search
-                        .as_ref()
-                        .and_then(|p| p.hits.get(self.chat.convenience.selected))
-                        .map(|h| h.body.clone());
-                    if self.chat.convenience.preview.is_none() {
-                        return self.search_local();
-                    }
-                }
-                Panel::Keys => self.chat.convenience.capturing = true,
-                Panel::Theme => self.apply_theme(
-                    [Theme::Dark, Theme::Light, Theme::Plain]
-                        [self.chat.convenience.selected.min(2)],
-                ),
-                Panel::Code => {
-                    if let Some((_, body)) =
-                        self.chat.convenience.blocks.get(self.chat.convenience.selected).cloned()
-                    {
-                        return self.copy_text(body);
-                    }
-                }
-            },
+            KeyCode::Enter => return self.activate_convenience_selection(panel),
             KeyCode::Backspace if matches!(panel, Panel::Find | Panel::Files) => {
                 self.chat.convenience.query.pop();
                 self.invalidate_local_results();
@@ -484,6 +431,75 @@ impl AppModel {
             _ => {}
         }
         Vec::new()
+    }
+
+    fn convenience_preview_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        self.chat.convenience.preview.as_ref()?;
+        if key.code == KeyCode::Char('c')
+            && let Some(text) = self.chat.convenience.preview.clone()
+        {
+            return Some(self.copy_text(text));
+        }
+        let scroll = &mut self.chat.convenience.scroll;
+        match key.code {
+            KeyCode::Up => *scroll = scroll.saturating_sub(1),
+            KeyCode::Down => *scroll = scroll.saturating_add(1),
+            KeyCode::PageUp => *scroll = scroll.saturating_sub(10),
+            KeyCode::PageDown => *scroll = scroll.saturating_add(10),
+            KeyCode::Home => *scroll = 0,
+            _ => {}
+        }
+        Some(Vec::new())
+    }
+
+    fn activate_convenience_selection(&mut self, panel: Panel) -> Vec<Effect> {
+        match panel {
+            Panel::Files => {
+                let Some(path) =
+                    self.chat.convenience.files.get(self.chat.convenience.selected).cloned()
+                else {
+                    return Vec::new();
+                };
+                let Some(path_text) = path.to_str() else {
+                    self.notice(NoticeLevel::Warning,"This filename is not valid UTF-8 and cannot be attached through this interface.");
+                    return Vec::new();
+                };
+                self.chat.convenience.panel = None;
+                self.chat.workbench.files.preserve_composer = true;
+                self.file_command(path_text)
+            }
+            Panel::Find => {
+                self.chat.convenience.preview = self
+                    .chat
+                    .convenience
+                    .search
+                    .as_ref()
+                    .and_then(|page| page.hits.get(self.chat.convenience.selected))
+                    .map(|hit| hit.body.clone());
+                if self.chat.convenience.preview.is_none() {
+                    return self.search_local();
+                }
+                Vec::new()
+            }
+            Panel::Keys => {
+                self.chat.convenience.capturing = true;
+                Vec::new()
+            }
+            Panel::Theme => {
+                self.apply_theme(
+                    [Theme::Dark, Theme::Light, Theme::Plain]
+                        [self.chat.convenience.selected.min(2)],
+                );
+                Vec::new()
+            }
+            Panel::Code => self
+                .chat
+                .convenience
+                .blocks
+                .get(self.chat.convenience.selected)
+                .cloned()
+                .map_or_else(Vec::new, |(_, body)| self.copy_text(body)),
+        }
     }
 
     fn invalidate_local_results(&mut self) {
@@ -531,12 +547,11 @@ impl AppModel {
                     .collect::<String>(),
             )
         });
-        match text {
-            Some(t) => self.copy_text(t),
-            None => {
-                self.notice(NoticeLevel::Info, "No assistant response is available to copy.");
-                Vec::new()
-            }
+        if let Some(t) = text {
+            self.copy_text(t)
+        } else {
+            self.notice(NoticeLevel::Info, "No assistant response is available to copy.");
+            Vec::new()
         }
     }
 

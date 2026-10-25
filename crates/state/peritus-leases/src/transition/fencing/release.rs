@@ -29,7 +29,8 @@ impl LeaseAggregate {
             }
         };
         let binding = crate::LeaseCommandBinding::release(&command);
-        let result = fence(
+
+        fence(
             self,
             command.command_id(),
             command.observed_at(),
@@ -40,7 +41,6 @@ impl LeaseAggregate {
                 LeaseTransitionKind::ReleasedReconciling
             },
             binding,
-        );
-        result
+        )
     }
 }

@@ -94,7 +94,7 @@ impl LocalMemory {
         workspace_scope: environment::WorkspaceScope,
     ) -> Result<Self, DeveloperLoopError> {
         config.validate().map_err(|_| error("invalid local context configuration"))?;
-        let limits = config.working_limits().map_err(|_| error("invalid local context limits"))?;
+        let limits = LocalContextConfig::working_limits();
         let store = if workspace_scope.direct {
             LocalStore::open_folder(root, workspace, binding, &workspace_scope.protected)?
         } else {
@@ -120,9 +120,9 @@ impl LocalMemory {
             last_checkpoint: None,
             last_view: Vec::new(),
             inline_epoch_start: None,
-            exchange_index: Default::default(),
-            decoded_hits: Default::default(),
-            decoded_misses: Default::default(),
+            exchange_index: super::assembly::exchanges::ExchangeIndex::default(),
+            decoded_hits: std::cell::Cell::default(),
+            decoded_misses: std::cell::Cell::default(),
             prepared: None,
             profile: None,
             tools: Vec::new(),
@@ -134,10 +134,10 @@ impl LocalMemory {
             task_contract: String::new(),
             conversation: None,
             workspace_scope,
-            read_reuse: Default::default(),
-            activity: Default::default(),
-            continuation_actions: Default::default(),
-            source_policy: Default::default(),
+            read_reuse: super::read_reuse::ReadReuse::default(),
+            activity: super::activity::Activity::default(),
+            continuation_actions: std::cell::RefCell::default(),
+            source_policy: std::cell::RefCell::default(),
         };
         memory.recover()?;
         let trace_path = memory.trace_path.clone();

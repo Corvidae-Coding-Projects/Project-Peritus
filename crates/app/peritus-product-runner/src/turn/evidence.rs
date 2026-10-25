@@ -57,11 +57,12 @@ pub(super) fn project(
     let displayed: [&str; 6] =
         std::array::from_fn(|index| binary_markers[index].as_deref().unwrap_or(values[index]));
     let allocations = allocations(&displayed, evidence_budget(max_input_tokens, framing_tokens));
-    let [transcript, diff, gates, developer, prior, correction] =
-        std::array::from_fn(|index| match &binary_markers[index] {
-            Some(marker) => marker[..marker.len().min(allocations[index])].to_owned(),
-            None => bounded(SOURCE_NAMES[index], values[index], allocations[index]),
-        });
+    let [transcript, diff, gates, developer, prior, correction] = std::array::from_fn(|index| {
+        binary_markers[index].as_ref().map_or_else(
+            || bounded(SOURCE_NAMES[index], values[index], allocations[index]),
+            |marker| marker[..marker.len().min(allocations[index])].to_owned(),
+        )
+    });
     ReviewerEvidence { transcript, diff, gates, developer, prior, correction }
 }
 

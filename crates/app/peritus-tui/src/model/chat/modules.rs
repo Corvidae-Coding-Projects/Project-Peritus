@@ -123,34 +123,10 @@ impl AppModel {
         self.module_operation(ModuleOperation::Browse)
     }
     pub(super) fn module_menu_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if let Some(effects) = self.navigate_module_menu(key) {
+            return effects;
+        }
         let Some(menu) = self.chat.module_menu.as_mut() else { return Vec::new() };
-        if key.code == KeyCode::Esc {
-            self.chat.module_menu = None;
-            return Vec::new();
-        }
-        if menu.busy {
-            return Vec::new();
-        }
-        match key.code {
-            KeyCode::Up => menu.selected = menu.selected.saturating_sub(1),
-            KeyCode::Down => {
-                menu.selected = (menu.selected + 1).min(menu.rows.len().saturating_sub(1));
-            }
-            KeyCode::Home => menu.selected = 0,
-            KeyCode::End => menu.selected = menu.rows.len().saturating_sub(1),
-            KeyCode::Left | KeyCode::BackTab => {
-                menu.selected_action = menu.selected_action.saturating_sub(1);
-            }
-            KeyCode::Right | KeyCode::Tab => {
-                let last = menu.session["view"]["actions"]
-                    .as_array()
-                    .map_or(0, Vec::len)
-                    .saturating_sub(1);
-                menu.selected_action = (menu.selected_action + 1).min(last);
-            }
-            KeyCode::Char('r') => return self.module_operation(ModuleOperation::Refresh),
-            _ => {}
-        }
         let Some(row) = menu.rows.get(menu.selected) else { return Vec::new() };
         let id = row["id"].as_str().unwrap_or_default().to_owned();
         if row["enabled"] == true
@@ -231,6 +207,38 @@ impl AppModel {
             _ => {}
         }
         Vec::new()
+    }
+
+    fn navigate_module_menu(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        let menu = self.chat.module_menu.as_mut()?;
+        if key.code == KeyCode::Esc {
+            self.chat.module_menu = None;
+            return Some(Vec::new());
+        }
+        if menu.busy {
+            return Some(Vec::new());
+        }
+        match key.code {
+            KeyCode::Up => menu.selected = menu.selected.saturating_sub(1),
+            KeyCode::Down => {
+                menu.selected = (menu.selected + 1).min(menu.rows.len().saturating_sub(1));
+            }
+            KeyCode::Home => menu.selected = 0,
+            KeyCode::End => menu.selected = menu.rows.len().saturating_sub(1),
+            KeyCode::Left | KeyCode::BackTab => {
+                menu.selected_action = menu.selected_action.saturating_sub(1);
+            }
+            KeyCode::Right | KeyCode::Tab => {
+                let last = menu.session["view"]["actions"]
+                    .as_array()
+                    .map_or(0, Vec::len)
+                    .saturating_sub(1);
+                menu.selected_action = (menu.selected_action + 1).min(last);
+            }
+            KeyCode::Char('r') => return Some(self.module_operation(ModuleOperation::Refresh)),
+            _ => {}
+        }
+        None
     }
 }
 

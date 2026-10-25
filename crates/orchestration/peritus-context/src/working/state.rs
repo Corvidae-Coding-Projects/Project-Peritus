@@ -77,29 +77,27 @@ impl WorkingState {
         &self.environment
     }
     pub(super) fn with_entries(&self, entries: Vec<WorkingEntry>, revision: u64) -> Self {
-        let result = Self {
+        Self {
             environment: self.environment.clone(),
             revision,
             observations: self.observations.clone(),
             entries,
             limits: self.limits,
             protocol: self.protocol.clone(),
-        };
-        result
+        }
     }
     pub(super) fn clone_entries(&self) -> Vec<WorkingEntry> {
         WorkingEntry::clone_sequence(&self.entries)
     }
     pub(super) fn with_protocol(&self, protocol: super::WorkingProtocol, revision: u64) -> Self {
-        let result = Self {
+        Self {
             environment: self.environment.clone(),
             revision,
             observations: self.observations.clone(),
             entries: self.entries.clone(),
             limits: self.limits,
             protocol,
-        };
-        result
+        }
     }
     /// Widens host allocation policy without changing content, bindings, or semantic revision.
     /// Old saved policy is not a lifetime limit when a host adopts a wider current policy.

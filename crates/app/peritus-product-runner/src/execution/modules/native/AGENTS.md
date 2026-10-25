@@ -6,8 +6,7 @@
 | --- | --- |
 | [runtime.rs](runtime.rs) | Enabled-digest launch snapshot, existing native process host, per-call revision-bound live authority, framed service RPC, exact writer/reviewer route metadata, and cancellation/cleanup. |
 | [scoped_source.rs](scoped_source.rs) | Explicit current-workspace capture, immutable content-addressed manifests, revocable handles, mandatory Git/Peritus metadata exclusions, bounded range evidence, exact before/after byte verification, reuse and corruption fail-closure. |
-| [owned_jobs.rs](owned_jobs.rs) | Durable asynchronous Linux job broker, live authority monitoring, original and copy-patched canary replay adapters, host-authored diffs, positive controls, logs, cancellation, receipts, and owner-loss recovery. |
-| [dependency_preparation.rs](dependency_preparation.rs) | Credential-free public-HTTPS preparation with DNS/IP checks, bounded redirects and bytes, and exact SHA-256 admission. |
+| [application_laboratory.rs](application_laboratory.rs) | Generic Linux disposable-source lifecycle, literal-argv execution, isolated module-worker execution, bounded raw process observations, cancellation, cleanup, and original-source verification. It contains no module-specific adapters or result semantics. |
 | [tools.rs](tools.rs) | Borrowed host service intersection and plugin-exported model functions; actual observation delivery. |
 | [publication.rs](publication.rs) | Shared enabled-package validation and exact-run actions, concrete progress, bounded summary, and export presentation for both clients. |
 
@@ -27,19 +26,22 @@ Cancellation or new user input prevents acknowledgement. A crash between publica
 acknowledgement can replay that checkpoint; this contract favors retained work over losing it.
 
 Every module call receives the additive versioned host capability profile. `HostService` requests
-are returned through `host_result`; unsupported source, job, or source-build services are explicit
+are returned through `host_result`; unsupported source, worker, laboratory, or source-build services are explicit
 outcomes and are never treated as permission to fall back to ambient effects.
 
-On configured Linux hosts, `module.owned-jobs@1` provides submit, poll, paged log, and cancel. The
-proof adapter uses the existing native private-filesystem backend, cleared environment, deny-all
-network and secrets, bounded resources, hidden host canaries, and host-authored receipts. The
-patched replay adapter additionally verifies the exact source preimage, creates the unified diff,
-materializes replacement bytes only in disposable job storage, and requires both canary
-nondisclosure and the declared positive output before reporting that a case held. The scoped-source
-`verify` operation rereads all included original bytes and executable bits against the starting
-manifest; immutable artifacts alone are not substituted for that final live comparison. The
-separate dependency-preparation adapter permits only exact digest-pinned public HTTPS retrieval
-without credentials, then hands only the content-addressed artifact identity to later work.
+On configured Linux hosts, `module.worker@1` executes the selected module's own named worker from
+the exact enabled package in a disposable copy of explicit scoped source. The host interprets no
+worker name, adapter, vulnerability class, probe, oracle, finding, or repair policy. It narrows
+generic resource bounds, clears credentials and networking, owns the process tree, returns bounded
+raw streams and lifecycle facts, removes disposable bytes, and verifies the original source.
+Module-specific code and typed observations remain in the separately installed module.
+Workers may request a small named set of generic runtime resources. The browser-automation feature
+provisions and read-only mounts Peritus's credential-free managed Python/Chromium runtime, while the
+module remains solely responsible for browser actions, routes, oracles, and result interpretation.
+
+The scoped-source `verify` operation rereads all included original bytes and executable bits
+against the starting manifest; immutable artifacts alone are not substituted for that final live
+comparison.
 `module.source-build@1` is inspection-only from module code: the host-owned module market performs
 the explicit build and installation, while the installed module may read its exact retained build
 identity. It cannot trigger, widen, or retry its own build.

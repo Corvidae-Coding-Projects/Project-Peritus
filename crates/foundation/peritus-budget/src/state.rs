@@ -113,7 +113,7 @@ impl BudgetLedger {
     #[doc = " Creates a ledger containing one open immutable root account."]
     #[must_use]
     pub fn new_root(root_id: BudgetId, revision: RevisionTuple, limits: BudgetLimits) -> Self {
-        let result = Self {
+        Self {
             root_id,
             accounts: vec![BudgetAccount {
                 id: root_id,
@@ -126,9 +126,7 @@ impl BudgetLedger {
                 phase: BudgetAccountPhase::Open,
             }],
             reservations: Vec::new(),
-        };
-
-        result
+        }
     }
     #[doc = " Returns the unique root identity."]
     #[must_use]

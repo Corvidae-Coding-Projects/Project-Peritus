@@ -33,6 +33,10 @@ pub(crate) fn invalid(message: impl Into<String>) -> Error {
 }
 
 /// Per-user data directory; contains no provider credentials or user browser profiles.
+///
+/// # Errors
+///
+/// Returns an error when no per-user data directory can be resolved.
 pub fn data_root() -> Result<PathBuf, Error> {
     let root = if cfg!(windows) {
         env::var_os("LOCALAPPDATA").map(|p| PathBuf::from(p).join("Peritus"))
@@ -48,6 +52,10 @@ pub fn data_root() -> Result<PathBuf, Error> {
 }
 
 /// Accept only HTTP(S) URLs without embedded credentials, including on redirects.
+///
+/// # Errors
+///
+/// Returns an error when the value is not an absolute credential-free HTTP(S) URL.
 pub fn checked_url(value: &str) -> Result<url::Url, Error> {
     let mut url =
         url::Url::parse(value).map_err(|_| invalid("use an absolute HTTP or HTTPS URL"))?;

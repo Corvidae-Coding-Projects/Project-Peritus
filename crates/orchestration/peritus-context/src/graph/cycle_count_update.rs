@@ -6,7 +6,7 @@ use crate::ContextNode;
 pub(super) fn remove_source(
     nodes: &[ContextNode],
     _removed: &[bool],
-    counts: &mut Vec<usize>,
+    counts: &mut [usize],
     source: usize,
 ) {
     let source_node = &nodes[source];

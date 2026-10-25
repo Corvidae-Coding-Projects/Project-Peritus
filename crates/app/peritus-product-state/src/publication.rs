@@ -1,8 +1,10 @@
 //! Per-record mutation ownership and short-lock publication of immutable read snapshots.
 //!
 //! A writer may perform durable I/O while readers keep the previously published state. Writers
-//! of distinct keys do not serialize behind that I/O. Callers publish only after their own
-//! durability/admission checks; this container grants no execution authority.
+//! of distinct keys do not serialize behind that I/O.
+//!
+//! Callers publish only after their own durability/admission checks; this container grants no
+//! execution authority.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -47,14 +49,11 @@ impl<K: Ord + Clone> PublicationGates<K> {
             let mut entries =
                 self.entries.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             entries.retain(|_, gate| gate.strong_count() > 0);
-            match entries.get(&key).and_then(Weak::upgrade) {
-                Some(gate) => gate,
-                None => {
-                    let gate = Arc::new(Gate::default());
-                    entries.insert(key, Arc::downgrade(&gate));
-                    gate
-                }
-            }
+            entries.get(&key).and_then(Weak::upgrade).unwrap_or_else(|| {
+                let gate = Arc::new(Gate::default());
+                entries.insert(key, Arc::downgrade(&gate));
+                gate
+            })
         };
         let mut busy = gate.busy.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         while *busy {
@@ -131,10 +130,12 @@ impl<K: Ord, V> PublishedView<K, V> {
         self.0.iter().map(|(key, entry)| (key, entry.value.get().unwrap_or(&entry.hint)))
     }
     /// Number of indexed records, including unloaded records.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
     /// Whether this view has no indexed records.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -166,6 +167,10 @@ impl<K: Ord + Clone, V: Clone> PublishedRecords<K, V> {
 
     /// Registers indexed history without opening its payload. The loader must validate full
     /// authoritative state before returning a value; the hint is never returned by `get`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the publication map is poisoned.
     pub fn insert_deferred(
         &self,
         key: K,
@@ -280,16 +285,19 @@ impl<K: Ord + Clone, V: Clone> Drop for PendingRecords<'_, K, V> {
         if std::thread::panicking() || self.dirty.is_empty() {
             return;
         }
-        let mut published =
+        let mut records =
             self.owner.records.write().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let published = Arc::make_mut(&mut published);
-        for key in &self.dirty {
-            if let Some(value) = self.local.0.get(key) {
-                published.insert(key.clone(), Arc::clone(value));
-            } else {
-                published.remove(key);
+        {
+            let published = Arc::make_mut(&mut records);
+            for key in &self.dirty {
+                if let Some(value) = self.local.0.get(key) {
+                    published.insert(key.clone(), Arc::clone(value));
+                } else {
+                    published.remove(key);
+                }
             }
         }
+        drop(records);
     }
 }
 

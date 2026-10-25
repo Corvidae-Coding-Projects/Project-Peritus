@@ -24,7 +24,7 @@ while retaining them for diagnosis. Removing a selection keeps immutable history
 peritus modules refresh
 peritus modules market
 peritus modules install-market peritus.deep-research EXACT_DIGEST
-peritus modules build-install-market peritus.red-team EXACT_SOURCE_DIGEST
+peritus modules build-install-market example.native-module EXACT_SOURCE_DIGEST
 peritus modules enable peritus.deep-research
 peritus modules show peritus.deep-research
 ```

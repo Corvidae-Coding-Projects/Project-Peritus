@@ -50,7 +50,7 @@ impl AppModel {
             KeyCode::Up => self.chat.model_selection = self.chat.model_selection.saturating_sub(1),
             KeyCode::Down => {
                 self.chat.model_selection =
-                    self.chat.model_selection.saturating_add(1).min(count.saturating_sub(1))
+                    self.chat.model_selection.saturating_add(1).min(count.saturating_sub(1));
             }
             KeyCode::Home => self.chat.model_selection = 0,
             KeyCode::End => self.chat.model_selection = count.saturating_sub(1),
@@ -103,20 +103,20 @@ impl AppModel {
         let providers = ProductProviderSelection::new(writer, reviewer, fixer);
         let prior = &self.chat.models;
         let models = ProductRoleModels::new(
-            if writer != current.writer() {
-                ProductModelChoice::default()
-            } else {
+            if writer == current.writer() {
                 prior.writer().clone()
-            },
-            if reviewer != current.reviewer() {
-                ProductModelChoice::default()
             } else {
+                ProductModelChoice::default()
+            },
+            if reviewer == current.reviewer() {
                 prior.reviewer().clone()
-            },
-            if fixer != current.fixer() {
-                ProductModelChoice::default()
             } else {
+                ProductModelChoice::default()
+            },
+            if fixer == current.fixer() {
                 prior.fixer().clone()
+            } else {
+                ProductModelChoice::default()
             },
         );
         self.clear_chat_command();

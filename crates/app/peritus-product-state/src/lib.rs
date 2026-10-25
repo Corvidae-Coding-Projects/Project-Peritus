@@ -1,7 +1,9 @@
 //! Pure, resumable product state for the single-command Peritus experience.
 //!
 //! This crate owns no filesystem, process, terminal, network, credential, or daemon effects. It
-//! defines the durable facts effectful product composition must preserve between launches.
+//! defines durable facts for effectful product composition.
+//!
+//! Those facts must be preserved between launches.
 
 mod error;
 mod identity;

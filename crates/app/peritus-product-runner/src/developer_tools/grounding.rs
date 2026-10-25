@@ -146,7 +146,7 @@ impl GroundingEvidence {
         self.persist();
     }
 
-    pub fn required_tool_name(&self) -> Option<&'static str> {
+    pub const fn required_tool_name(&self) -> Option<&'static str> {
         if self.grounded {
             return None;
         }
@@ -219,7 +219,7 @@ impl GroundingEvidence {
         Ok(())
     }
 
-    pub fn validate(&self) -> Result<(), &'static str> {
+    pub const fn validate(&self) -> Result<(), &'static str> {
         if self.grounded {
             return Ok(());
         }
@@ -248,13 +248,13 @@ impl GroundingEvidence {
     }
 }
 
-pub(crate) fn file_digest(path: &Path) -> Result<String, std::io::Error> {
+pub fn file_digest(path: &Path) -> Result<String, std::io::Error> {
     file_digest_and_bytes(path).map(|(digest, _)| digest)
 }
 
 fn file_digest_and_bytes(path: &Path) -> Result<(String, u64), std::io::Error> {
     let content = crate::file_observation::read(path, false)?;
-    Ok((content.digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>(), content.bytes))
+    Ok((crate::encode_hex(&content.digest), content.bytes))
 }
 
 fn listing_digest(root: &Path) -> Result<String, std::io::Error> {
@@ -268,7 +268,7 @@ fn listing_digest(root: &Path) -> Result<String, std::io::Error> {
         hash.update(bytes.len().to_le_bytes());
         hash.update(bytes);
     }
-    Ok(hash.finalize().iter().map(|byte| format!("{byte:02x}")).collect::<String>())
+    Ok(crate::encode_hex(&hash.finalize()))
 }
 
 // Admission has already rejected traversal/absolute paths. Equivalent spellings share evidence.

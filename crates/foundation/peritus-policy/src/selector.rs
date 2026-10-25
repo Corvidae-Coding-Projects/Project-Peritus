@@ -52,10 +52,7 @@ impl ActorSelector {
     }
     pub(crate) fn duplicate(&self) -> Self {
         match &self.0 {
-            SelectorValues::AnyWithinParent => {
-                let duplicate = Self::any_within_parent();
-                duplicate
-            }
+            SelectorValues::AnyWithinParent => Self::any_within_parent(),
             SelectorValues::Exact(values) => {
                 let mut copied = Vec::new();
                 let mut index = 0;
@@ -63,8 +60,8 @@ impl ActorSelector {
                     copied.push(values[index]);
                     index += 1;
                 }
-                let duplicate = Self(SelectorValues::Exact(copied));
-                duplicate
+
+                Self(SelectorValues::Exact(copied))
             }
         }
     }
@@ -105,10 +102,7 @@ impl RoleSelector {
     }
     pub(crate) fn duplicate(&self) -> Self {
         match &self.0 {
-            SelectorValues::AnyWithinParent => {
-                let duplicate = Self::any_within_parent();
-                duplicate
-            }
+            SelectorValues::AnyWithinParent => Self::any_within_parent(),
             SelectorValues::Exact(values) => {
                 let mut copied = Vec::new();
                 let mut index = 0;
@@ -116,8 +110,8 @@ impl RoleSelector {
                     copied.push(values[index]);
                     index += 1;
                 }
-                let duplicate = Self(SelectorValues::Exact(copied));
-                duplicate
+
+                Self(SelectorValues::Exact(copied))
             }
         }
     }
@@ -158,10 +152,7 @@ impl EnvironmentSelector {
     }
     pub(crate) fn duplicate(&self) -> Self {
         match &self.0 {
-            SelectorValues::AnyWithinParent => {
-                let duplicate = Self::any_within_parent();
-                duplicate
-            }
+            SelectorValues::AnyWithinParent => Self::any_within_parent(),
             SelectorValues::Exact(values) => {
                 let mut copied = Vec::new();
                 let mut index = 0;
@@ -169,8 +160,8 @@ impl EnvironmentSelector {
                     copied.push(values[index]);
                     index += 1;
                 }
-                let duplicate = Self(SelectorValues::Exact(copied));
-                duplicate
+
+                Self(SelectorValues::Exact(copied))
             }
         }
     }

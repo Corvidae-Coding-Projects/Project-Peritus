@@ -22,10 +22,18 @@ pub const HOST_CAPABILITY_MODEL: &str = "module.model";
 pub const HOST_CAPABILITY_ATTACHMENT: &str = "module.attachment";
 /// Explicit, revocable source selection and immutable source handles.
 pub const HOST_CAPABILITY_SCOPED_SOURCE: &str = "module.scoped-source";
-/// Host-owned asynchronous execution with polling, cancellation, and cleanup.
-pub const HOST_CAPABILITY_OWNED_JOBS: &str = "module.owned-jobs";
 /// Pinned source discovery, local compilation, and inert installation.
 pub const HOST_CAPABILITY_SOURCE_BUILD: &str = "module.source-build";
+/// Module-owned worker execution in an isolated copy of explicitly scoped source.
+pub const HOST_CAPABILITY_WORKER: &str = "module.worker";
+/// Host-owned disposable application laboratory lifecycle and observations.
+pub const HOST_CAPABILITY_APPLICATION_LABORATORY: &str = "module.application-laboratory";
+
+/// Generic managed browser/Python runtime available to an isolated module worker.
+///
+/// This grants no browser operation or target authority. The module owns its driver and request
+/// semantics; the host only provisions and mounts the credential-free runtime files.
+pub const MODULE_WORKER_FEATURE_BROWSER_AUTOMATION: &str = "browser-automation-v1";
 
 /// One versioned host service currently available to a native module.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -342,278 +350,6 @@ pub struct ScopedSourceVerification {
     pub removed_paths: Vec<String>,
 }
 
-/// Requested maximum resources for a host-owned job; the host may only narrow them.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobLimits {
-    /// Maximum aggregate memory in bytes.
-    pub memory_bytes: u64,
-    /// Maximum disposable storage in bytes.
-    pub storage_bytes: u64,
-    /// Maximum aggregate CPU time in milliseconds.
-    pub cpu_millis: u64,
-    /// Maximum elapsed time in milliseconds.
-    pub wall_millis: u64,
-    /// Maximum owned process count.
-    pub processes: u32,
-}
-
-/// Version-one request for a host-owned operation in a scoped disposable copy.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobRequest {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque host-issued source handle.
-    pub source_handle: String,
-    /// Exact scope revision authorizing the request.
-    pub scope_revision: String,
-    /// Stable adapter/recipe interpreted and validated by the host.
-    pub operation: String,
-    /// Adapter-specific structured specification.
-    pub specification: Value,
-    /// Requested ceilings, narrowed and recorded by the host.
-    pub limits: ModuleJobLimits,
-}
-
-/// Opaque identity of one accepted host-owned job.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobHandle {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque host-owned job identity.
-    pub job_id: String,
-    /// Source handle bound to the job.
-    pub source_handle: String,
-    /// Scope revision bound to the job.
-    pub scope_revision: String,
-}
-
-/// Lifecycle state observed by the host for one accepted job.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModuleJobPhase {
-    /// The request is durably accepted but execution has not started.
-    Queued,
-    /// A native process is running under host ownership.
-    Running,
-    /// The trusted controller produced a retained receipt.
-    Completed,
-    /// Preparation or execution failed with retained diagnostics.
-    Failed,
-    /// Cancellation completed and descendants were reaped.
-    Cancelled,
-    /// Restart recovery cannot prove the prior process outcome.
-    Indeterminate,
-}
-
-/// Retained stream selected for a bounded job-log read.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModuleJobStream {
-    /// Target standard output.
-    Stdout,
-    /// Target standard error.
-    Stderr,
-    /// Host controller diagnostics, never target-supplied proof.
-    Controller,
-}
-
-/// Trusted controller classification for one exact proof case.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModuleJobVerdict {
-    /// The independently selected oracle observed the specified violation.
-    ViolationObserved,
-    /// The selected case completed without the oracle observing that violation.
-    PropertyHeldForCase,
-    /// Infrastructure or lifecycle facts do not support either conclusion.
-    Indeterminate,
-}
-
-/// Host-authored identity and exact diff for a copy-only target patch.
-///
-/// The host constructs this receipt from the immutable source artifact and replacement bytes. A
-/// module cannot use it to write the selected source checkout.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModulePatchReceipt {
-    /// Content identity of the patch, independent of any individual replay case.
-    pub patch_digest: String,
-    /// Canonical source-relative path changed in the disposable copy.
-    pub source_path: String,
-    /// Digest of the immutable source file before the patch.
-    pub original_digest: String,
-    /// Digest of the replacement bytes executed by the host.
-    pub patched_digest: String,
-    /// Content identity of the exact unified diff.
-    pub diff_artifact: String,
-    /// Exact bounded unified diff bytes retained for export and independent review.
-    pub diff_bytes: Vec<u8>,
-    /// Stable module-owned replay case identity.
-    pub case_id: String,
-    /// Finding identities the patch claims to address.
-    pub findings: Vec<String>,
-    /// Declared prerequisites bound into the patch identity.
-    pub prerequisites: Vec<String>,
-    /// Application order within a multi-patch plan.
-    pub order: u32,
-    /// Earlier patch identities required by this patch.
-    pub dependencies: Vec<String>,
-}
-
-/// Poll request for one exact opaque job identity.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobStatusRequest {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque host-owned job identity.
-    pub job_id: String,
-    /// Optional bounded long-poll duration; the host may narrow it.
-    pub wait_millis: u64,
-}
-
-/// Bounded retained-stream request for one exact job.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobLogRequest {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque host-owned job identity.
-    pub job_id: String,
-    /// Exact retained stream.
-    pub stream: ModuleJobStream,
-    /// Zero-based byte offset.
-    pub offset: u64,
-    /// Requested byte count; the host applies its own upper bound.
-    pub maximum_bytes: u64,
-}
-
-/// Idempotent cancellation request for one exact job.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobCancelRequest {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque host-owned job identity.
-    pub job_id: String,
-    /// Bounded user-facing reason retained by the host.
-    pub reason: String,
-}
-
-/// Host-authored execution receipt. Target output cannot construct this value.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobReceipt {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque job identity.
-    pub job_id: String,
-    /// Stable validated host adapter.
-    pub operation: String,
-    /// Digest of the admitted request and narrowed limits.
-    pub request_digest: String,
-    /// Digest of the exact enabled native module package.
-    pub module_digest: String,
-    /// Opaque source authority used by the job.
-    pub source_handle: String,
-    /// Exact source authority revision.
-    pub scope_revision: String,
-    /// Immutable selected-source snapshot identity.
-    pub snapshot_digest: String,
-    /// Digest of the exact launched target bytes.
-    pub target_digest: String,
-    /// Native sandbox backend name and version.
-    pub backend: String,
-    /// Digest of the checked execution plan.
-    pub execution_plan_digest: String,
-    /// Digest of the host-selected oracle inputs and comparison rule.
-    pub oracle_digest: String,
-    /// Independent controller classification.
-    pub verdict: ModuleJobVerdict,
-    /// Stable terminal disposition observed by the process owner.
-    pub terminal_disposition: String,
-    /// Numeric exit status when the platform supplied one.
-    pub exit_code: Option<i32>,
-    /// Complete retained stdout artifact identity.
-    pub stdout_artifact: String,
-    /// Complete retained stderr artifact identity.
-    pub stderr_artifact: String,
-    /// Effective host-narrowed limits.
-    pub limits: ModuleJobLimits,
-    /// Whether the complete target tree and support tasks were observed stopped.
-    pub cleanup_complete: bool,
-    /// Enforced network policy name.
-    pub network_policy: String,
-    /// Dependency-preparation provenance, absent for proof execution jobs.
-    pub preparation: Option<ModulePreparationReceipt>,
-    /// Copy-only patch identity and diff, present only for a patched replay adapter.
-    #[serde(default)]
-    pub patch: Option<ModulePatchReceipt>,
-}
-
-/// Host-authored provenance for one constrained dependency retrieval.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModulePreparationReceipt {
-    /// Original declared HTTPS URL.
-    pub requested_url: String,
-    /// Final HTTPS URL after bounded, independently revalidated redirects.
-    pub final_url: String,
-    /// Ordered redirect targets, excluding the original request.
-    pub redirects: Vec<String>,
-    /// Public socket addresses pinned for each attempted HTTPS origin.
-    pub resolved_addresses: Vec<String>,
-    /// Exact retained dependency byte length.
-    pub bytes: u64,
-    /// Content-addressed artifact identity for the retained dependency.
-    pub artifact_digest: String,
-}
-
-/// Current retained observation of one host-owned job.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobStatus {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque job identity.
-    pub job_id: String,
-    /// Current lifecycle phase.
-    pub phase: ModuleJobPhase,
-    /// Stable validated host adapter.
-    pub operation: String,
-    /// Digest of the admitted request and narrowed limits.
-    pub request_digest: String,
-    /// Effective host-narrowed limits.
-    pub limits: ModuleJobLimits,
-    /// Terminal trusted receipt, when one exists.
-    pub receipt: Option<ModuleJobReceipt>,
-    /// Host-authored diagnostic; never a proof verdict by itself.
-    pub detail: String,
-}
-
-/// One bounded retained-stream page.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModuleJobLogPage {
-    /// Contract schema, currently one.
-    pub schema: u16,
-    /// Opaque job identity.
-    pub job_id: String,
-    /// Exact retained stream.
-    pub stream: ModuleJobStream,
-    /// Inclusive returned start offset.
-    pub range_start: u64,
-    /// Exclusive returned end offset.
-    pub range_end: u64,
-    /// Total retained bytes observed for this stream.
-    pub total_bytes: u64,
-    /// Exact returned bytes.
-    pub bytes: Vec<u8>,
-}
-
 /// Pinned source identity for one locally built market package.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -654,6 +390,304 @@ pub struct LocalPackageIdentity {
     pub executable_digest: String,
     /// Digest of the installed local package.
     pub package_digest: String,
+}
+
+/// Host platform identity for a portable module service.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleHostPlatform {
+    /// Rust-style operating-system name such as `linux`.
+    pub os: String,
+    /// Rust-style architecture name such as `x86_64`.
+    pub architecture: String,
+}
+
+/// Resource ceilings requested for one module-owned worker; the host may only narrow them.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleWorkerLimits {
+    /// Maximum elapsed execution time in milliseconds.
+    pub wall_millis: u64,
+    /// Maximum aggregate memory in bytes.
+    pub memory_bytes: u64,
+    /// Maximum disposable storage in bytes.
+    pub storage_bytes: u64,
+    /// Maximum owned process count.
+    pub processes: u32,
+    /// Maximum simultaneously open file descriptors across each worker process.
+    pub open_handles: u32,
+}
+
+/// Generic request to execute the selected module's own worker against disposable source.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleWorkerRequest {
+    /// Request schema, currently one.
+    pub schema: u16,
+    /// Exact source authority selected by the user.
+    pub source: ScopedSourceAuthority,
+    /// Module-defined worker name; the host does not interpret its meaning.
+    pub worker: String,
+    /// Opaque module-owned JSON input serialized to the worker's standard input.
+    pub input: Value,
+    /// Optional named host runtime features. Names are generic execution resources rather than
+    /// module, adapter, or vulnerability identities. Unknown features are rejected.
+    #[serde(default)]
+    pub runtime_features: Vec<String>,
+    /// Requested ceilings narrowed by the host.
+    pub limits: ModuleWorkerLimits,
+}
+
+/// Raw host observation from one isolated module-owned worker.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleWorkerResult {
+    /// Result schema, currently one.
+    pub schema: u16,
+    /// Exact module-defined worker name.
+    pub worker: String,
+    /// Stable terminal disposition observed by the host process owner.
+    pub terminal_disposition: String,
+    /// Numeric exit code when the platform supplied one.
+    pub exit_code: Option<i32>,
+    /// Bounded raw standard output.
+    pub stdout: Vec<u8>,
+    /// Bounded raw standard error.
+    pub stderr: Vec<u8>,
+    /// Digest of the checked execution plan.
+    pub execution_plan_digest: String,
+    /// Whether the complete owned process tree and support tasks stopped.
+    pub cleanup_complete: bool,
+    /// Whether the selected original source still matches its retained snapshot.
+    pub original_source_unchanged: bool,
+}
+
+/// One exact application shape supported by the host-owned laboratory controller.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryRecipe {
+    /// Recipe schema, currently one.
+    pub schema: u16,
+    /// Stable recipe identity interpreted by the host.
+    pub recipe_id: String,
+    /// Exact recipe version.
+    pub version: String,
+    /// Supported host platform.
+    pub platform: ModuleHostPlatform,
+    /// Required source roles, in canonical order.
+    pub source_roles: Vec<String>,
+    /// Host-owned isolation backend required by this recipe.
+    pub isolation_backend: String,
+    /// Human-readable interface shape exposed through opaque handles.
+    pub interface: String,
+}
+
+/// Host projection of currently supported laboratory recipes.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryCatalog {
+    /// Catalog schema, currently one.
+    pub schema: u16,
+    /// Recipes available on this exact host platform.
+    pub recipes: Vec<ModuleLaboratoryRecipe>,
+}
+
+/// Request to create a laboratory from the complete immutable source snapshot.
+///
+/// Unlike an exact compatibility recipe, this request does not require the target to implement a
+/// Peritus protocol or place code in specially named files. The host copies the complete admitted
+/// tree and exposes only generic, sandboxed process operations over it.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratorySourceCreateRequest {
+    /// Request schema, currently one.
+    pub schema: u16,
+    /// Exact immutable source authority selected by the user.
+    pub source: ScopedSourceAuthority,
+}
+
+/// One generic process invocation against a complete disposable source copy.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryProcessInput {
+    /// Input schema, currently one.
+    pub schema: u16,
+    /// Host-resolved runtime family, for example `direct`, `python3`, `node`, or `cargo`.
+    pub runtime: String,
+    /// Canonical source-relative entry point or project manifest.
+    pub entrypoint: String,
+    /// Literal argument vector. No shell parsing or expansion is performed.
+    pub arguments: Vec<String>,
+    /// Bounded standard-input bytes supplied to the process.
+    pub stdin: Vec<u8>,
+    /// Credential-free literal environment entries selected for the copied target.
+    pub environment: std::collections::BTreeMap<String, String>,
+    /// Per-invocation wall-clock ceiling in milliseconds.
+    pub wall_millis: u64,
+    /// Exit codes accepted by the caller's predeclared oracle.
+    pub expected_exit_codes: Vec<i32>,
+    /// Literal stdout fragments required by the caller's predeclared oracle.
+    pub stdout_contains: Vec<String>,
+    /// Literal stderr fragments required by the caller's predeclared oracle.
+    pub stderr_contains: Vec<String>,
+}
+
+/// Opaque identities returned for one laboratory. No resolved path, address, or credential appears.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryHandle {
+    /// Handle schema, currently one.
+    pub schema: u16,
+    /// Content-bound laboratory identity.
+    pub laboratory_id: String,
+    /// Exact source revision.
+    pub scope_revision: String,
+    /// Immutable source snapshot.
+    pub source_snapshot: String,
+    /// Exact host recipe.
+    pub recipe_id: String,
+    /// Opaque application service identity.
+    pub application_service: String,
+    /// Opaque backing service identity.
+    pub backing_service: String,
+    /// Opaque endpoint resolved only by the host.
+    pub endpoint_handle: String,
+    /// Opaque test identity; this is not credential material.
+    pub identity_handle: String,
+    /// Opaque secret lease identity; this is not secret material.
+    pub secret_handle: String,
+}
+
+/// Durable lifecycle phase for one disposable application laboratory.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleLaboratoryPhase {
+    /// Identity exists but no source bytes have been materialized.
+    Created,
+    /// Exact copied source and private support data are prepared.
+    Prepared,
+    /// The copied application and backing service passed real readiness checks.
+    Ready,
+    /// The owned process tree stopped and retained state remains available.
+    Stopped,
+    /// The controller observed a recoverable or terminal failure.
+    Failed,
+    /// Cleanup, identity, or secret-output integrity could not be established.
+    Quarantined,
+    /// Disposable bytes were removed while identities and receipts remain readable.
+    TornDown,
+}
+
+/// Bounded resource and activity facts authored by the laboratory controller.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryTelemetry {
+    /// Requests admitted through the opaque endpoint.
+    pub requests: u64,
+    /// Bytes written through the host control channel.
+    pub input_bytes: u64,
+    /// Bytes admitted from target responses after secret filtering.
+    pub output_bytes: u64,
+    /// Latest host-observed copied-store digest.
+    pub state_digest: String,
+    /// Whether the host-loopback escape canary remained untouched.
+    pub host_loopback_blocked: bool,
+    /// Whether no credential value was admitted to a module-visible result.
+    pub credential_output_blocked: bool,
+}
+
+/// Host-authored receipt for a laboratory lifecycle or application operation.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryReceipt {
+    /// Receipt schema, currently one.
+    pub schema: u16,
+    /// Exact laboratory identity.
+    pub laboratory_id: String,
+    /// Stable operation name.
+    pub operation: String,
+    /// Digest of the exact admitted request.
+    pub request_digest: String,
+    /// Exact immutable source snapshot.
+    pub source_snapshot: String,
+    /// Digest of the copied application entry point.
+    pub application_digest: String,
+    /// Digest of the copied backing service entry point.
+    pub service_digest: String,
+    /// Host-owned isolation backend identity.
+    pub isolation_backend: String,
+    /// Network and service-routing policy identity.
+    pub network_policy: String,
+    /// Typed observation with secrets and resolved host paths excluded.
+    pub observation: Value,
+    /// Telemetry observed at this operation boundary.
+    pub telemetry: ModuleLaboratoryTelemetry,
+    /// Whether the complete owned target process tree was observed stopped.
+    pub process_cleanup_complete: bool,
+    /// Whether the selected original source still matches its retained snapshot.
+    pub original_source_unchanged: Option<bool>,
+}
+
+/// Current durable laboratory status.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryStatus {
+    /// Status schema, currently one.
+    pub schema: u16,
+    /// Opaque handle set.
+    pub handle: ModuleLaboratoryHandle,
+    /// Current lifecycle phase.
+    pub phase: ModuleLaboratoryPhase,
+    /// Latest controller telemetry.
+    pub telemetry: ModuleLaboratoryTelemetry,
+    /// Number of retained snapshots.
+    pub snapshots: u64,
+    /// Number of retained host-authored receipts.
+    pub receipts: u64,
+    /// Actionable lifecycle detail.
+    pub detail: String,
+    /// Retained causal failure, if one exists.
+    pub retained_error: Option<String>,
+    /// Whether disposable source, state, process, socket, and secret bytes were removed.
+    pub cleanup_complete: bool,
+}
+
+/// Combined current status and optional new receipt returned by a laboratory operation.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryResult {
+    /// Result schema, currently one.
+    pub schema: u16,
+    /// Current durable lifecycle state.
+    pub status: ModuleLaboratoryStatus,
+    /// New host-authored operation receipt, absent for a pure status read.
+    pub receipt: Option<ModuleLaboratoryReceipt>,
+}
+
+/// Request for one exact laboratory lifecycle operation.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryLifecycleRequest {
+    /// Request schema, currently one.
+    pub schema: u16,
+    /// Exact opaque laboratory identity.
+    pub laboratory_id: String,
+}
+
+/// Request to operate one live application through its host-resolved endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleLaboratoryInvokeRequest {
+    /// Request schema, currently one.
+    pub schema: u16,
+    /// Exact opaque laboratory identity.
+    pub laboratory_id: String,
+    /// Exact opaque endpoint returned at creation.
+    pub endpoint_handle: String,
+    /// Registered operation, currently `state.round-trip.v1`.
+    pub operation: String,
+    /// Bounded application input.
+    pub input: Value,
 }
 
 fn key(value: &str) -> bool {

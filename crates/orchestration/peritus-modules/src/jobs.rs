@@ -2,6 +2,7 @@
 use crate::{Definition, Error, digest, invalid, publish};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{
     fs,
     io::{Read, Seek, SeekFrom},
@@ -45,6 +46,10 @@ pub struct Job {
 }
 impl Job {
     /// Opens/resumes a job under a caller-owned state root, bound to exact module/input identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when ownership, identity, checkpoint order, or retained output is invalid.
     pub fn open(
         root: &Path,
         definition: Definition,
@@ -105,6 +110,10 @@ impl Job {
         Ok(job)
     }
     /// Inspects a committed snapshot without taking ownership from an active job.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the checkpoint or its retained output cannot be validated.
     pub fn inspect(
         root: &Path,
         definition: Definition,
@@ -135,7 +144,9 @@ impl Job {
         }
         let job = Self { root, state, _lock: None, definition };
         let page = match job.state.completed.last() {
-            Some(output) => job.read(&[output.stage.clone()], &output.stage, offset, 32768)?,
+            Some(output) => {
+                job.read(std::slice::from_ref(&output.stage), &output.stage, offset, 32768)?
+            }
             None => json!(null),
         };
         Ok(
@@ -144,10 +155,12 @@ impl Job {
     }
 
     /// Current committed stages and exact governing inputs.
-    pub fn state(&self) -> &JobState {
+    #[must_use]
+    pub const fn state(&self) -> &JobState {
         &self.state
     }
     /// Private job directory for progress/report observations.
+    #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -155,6 +168,10 @@ impl Job {
         publish(&self.root.join("job.json"), &serde_json::to_vec_pretty(&self.state)?)
     }
     /// Publishes the next declared stage and only then advances the checkpoint.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the stage is out of order, empty, or cannot be durably published.
     pub fn complete(&mut self, stage: &str, text: &str) -> Result<(), Error> {
         let expected = self
             .definition
@@ -190,13 +207,12 @@ impl Job {
         {
             return Err(invalid("invalid module artifact digest"));
         }
-        use sha2::{Digest, Sha256};
         let mut file = fs::File::open(self.path(output))?;
         if file.metadata()?.len() != output.bytes {
             return Err(invalid("module output length changed"));
         }
         let mut hash = Sha256::new();
-        let mut buf = [0u8; 32768];
+        let mut buf = vec![0u8; 32768];
         loop {
             let n = file.read(&mut buf)?;
             if n == 0 {
@@ -204,13 +220,17 @@ impl Job {
             }
             hash.update(&buf[..n]);
         }
-        let actual: String = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
+        let actual = crate::hex(&hash.finalize());
         if actual != output.sha256 {
             return Err(invalid("module output integrity mismatch"));
         }
         Ok(())
     }
     /// Reads only outputs explicitly admitted by the current stage's dependency list.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for undeclared access, integrity drift, or invalid UTF-8 paging.
     pub fn read(
         &self,
         allowed: &[String],
@@ -228,8 +248,8 @@ impl Job {
             return Err(invalid("module output offset is beyond its retained bytes"));
         }
         file.seek(SeekFrom::Start(offset))?;
-        let mut bytes =
-            vec![0; max_bytes.clamp(4, 1024 * 1024).min((output.bytes - offset) as usize)];
+        let remaining = usize::try_from(output.bytes - offset).unwrap_or(usize::MAX);
+        let mut bytes = vec![0; max_bytes.clamp(4, 1024 * 1024).min(remaining)];
         file.read_exact(&mut bytes)?;
         let text = match std::str::from_utf8(&bytes) {
             Ok(s) => s,
@@ -243,6 +263,10 @@ impl Job {
         )
     }
     /// Exact final output for human presentation; model inputs use paged dependency reads.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the final artifact is absent, unreadable, or fails integrity checks.
     pub fn result(&self) -> Result<Option<String>, Error> {
         if self.state.completed.len() != self.definition.manifest.stages.len() {
             return Ok(None);

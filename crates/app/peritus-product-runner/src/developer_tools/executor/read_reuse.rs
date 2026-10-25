@@ -31,7 +31,7 @@ impl WorkspaceDeveloperTools {
         } else {
             checked(&self.root, raw, true)?
         };
-        let _readable =
+        let readable =
             std::fs::File::open(&path).map_err(|error| super::tool(error.to_string()))?;
         let digest = super::super::grounding::file_digest(&path)
             .map_err(|error| super::tool(error.to_string()))?;
@@ -39,15 +39,13 @@ impl WorkspaceDeveloperTools {
             return self.dispatch_tool(call, arguments);
         }
         if candidate.get("content").is_some() {
-            let metadata = _readable.metadata().map_err(|error| super::tool(error.to_string()))?;
+            let metadata = readable.metadata().map_err(|error| super::tool(error.to_string()))?;
             candidate["permissions"] = Value::String(crate::file_metadata::permissions(&metadata));
             candidate["bytes"] = Value::from(metadata.len());
         }
         if candidate["read_reuse"]["state"] != "read_missing" {
-            return match crate::local_context::read_reuse::fit_response(candidate, arguments)? {
-                Some(value) => Ok(value),
-                None => self.dispatch_tool(call, arguments),
-            };
+            return crate::local_context::read_reuse::fit_response(candidate, arguments)
+                .map_or_else(|| self.dispatch_tool(call, arguments), Ok);
         }
         let mut narrowed = arguments.clone();
         for key in ["start_line", "end_line", "line_byte_offset", "end_line_byte_offset"] {
@@ -69,9 +67,7 @@ impl WorkspaceDeveloperTools {
             return self.dispatch_tool(call, arguments);
         }
         value["read_reuse"] = candidate["read_reuse"].clone();
-        match crate::local_context::read_reuse::fit_response(value, arguments)? {
-            Some(value) => Ok(value),
-            None => self.dispatch_tool(call, arguments),
-        }
+        crate::local_context::read_reuse::fit_response(value, arguments)
+            .map_or_else(|| self.dispatch_tool(call, arguments), Ok)
     }
 }

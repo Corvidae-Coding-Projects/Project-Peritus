@@ -33,7 +33,7 @@ pub(super) async fn lifecycle_lock(root: &Path, timeout: Duration) -> Result<Fil
         match fs4::FileExt::try_lock(&file) {
             Ok(()) => return Ok(file),
             Err(fs4::TryLockError::WouldBlock) if started.elapsed() < timeout => {
-                tokio::time::sleep(Duration::from_millis(50)).await
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
             Err(error) => {
                 return Err(LauncherError::DaemonSpawn(format!(

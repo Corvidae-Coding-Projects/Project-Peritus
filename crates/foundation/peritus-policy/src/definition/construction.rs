@@ -59,9 +59,7 @@ impl PolicyDefinition {
             }
             index += 1;
         }
-        if let Err(error) = validate_layer_boundaries(layers.as_slice(), ceiling.boundary()) {
-            return Err(error);
-        }
+        validate_layer_boundaries(layers.as_slice(), ceiling.boundary())?;
         let policy = Self { policy_id, ceiling, operations, layers };
         Ok(policy)
     }

@@ -54,7 +54,7 @@ pub enum ProviderRouteKind {
     CodexRuntime,
     /// Official credential-owning Claude executable route.
     ClaudeRuntime,
-    /// Tool-disabled official OpenCode executable for a hosted Zen or Go route.
+    /// Tool-disabled official `OpenCode` executable for a hosted Zen or Go route.
     OpenCodeRuntime,
 }
 

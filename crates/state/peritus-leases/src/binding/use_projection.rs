@@ -49,7 +49,8 @@ impl LeaseUseCommandBinding {
             index += 1;
         }
         let successor = capability.successor();
-        let binding = Self {
+
+        Self {
             command_id: command.command_id,
             claim: command.claim,
             observed_at: command.observed_at,
@@ -72,8 +73,7 @@ impl LeaseUseCommandBinding {
             successor_issued_at: successor.issued_at(),
             successor_issuance_digest: successor.issuance_digest(),
             successor_issuance_command_id: successor.issuance_command_id(),
-        };
-        binding
+        }
     }
     #[doc = " Returns the exact lease command identity."]
     #[must_use]
