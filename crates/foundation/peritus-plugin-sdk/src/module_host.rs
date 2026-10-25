@@ -35,6 +35,13 @@ pub const HOST_CAPABILITY_APPLICATION_LABORATORY: &str = "module.application-lab
 /// semantics; the host only provisions and mounts the credential-free runtime files.
 pub const MODULE_WORKER_FEATURE_BROWSER_AUTOMATION: &str = "browser-automation-v1";
 
+/// Locked Cargo registry dependencies prepared for an isolated module worker.
+///
+/// The host reads the disposable source copy's `Cargo.lock`, downloads checksum-pinned crates
+/// during preparation, and exposes only that private vendored set to the network-denied worker.
+/// The module still owns every command, target recipe, and interpretation of its output.
+pub const MODULE_WORKER_FEATURE_CARGO_DEPENDENCIES: &str = "cargo-dependencies-v1";
+
 /// One versioned host service currently available to a native module.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]

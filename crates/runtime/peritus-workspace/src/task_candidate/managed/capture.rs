@@ -5,7 +5,7 @@ use crate::{ProductRunnerError, file_metadata, workspace_filter};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 mod directories;
@@ -165,7 +165,10 @@ pub(super) fn build_tree(
     root: &Path,
     entries: &BTreeMap<String, Entry>,
 ) -> Result<String, ProductRunnerError> {
-    let temporary = tempfile::tempdir().map_err(failure)?;
+    let temporary = tempfile::Builder::new()
+        .prefix("peritus-index-")
+        .tempdir_in(git_common_directory(root)?)
+        .map_err(failure)?;
     let index_path = temporary.path().join("index");
     let mut input = Vec::new();
     for (path, entry) in entries {
@@ -174,6 +177,11 @@ pub(super) fn build_tree(
     private_git(root, &index_path, &["read-tree", "--empty"], None)?;
     private_git(root, &index_path, &["update-index", "-z", "--index-info"], Some(&input))?;
     text(private_git(root, &index_path, &["-c", "core.fsync=all", "write-tree"], None)?)
+}
+
+fn git_common_directory(root: &Path) -> Result<PathBuf, ProductRunnerError> {
+    let directory = PathBuf::from(text(git(root, &["rev-parse", "--git-common-dir"], None)?)?);
+    Ok(if directory.is_absolute() { directory } else { root.join(directory) })
 }
 
 pub(super) fn private_git(

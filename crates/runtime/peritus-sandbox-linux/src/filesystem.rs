@@ -333,10 +333,10 @@ impl MountPlan {
             private::bootstrap(&mut actions, plan, helper)?;
         }
         for path in writable {
-            // The private filesystem already materializes the kernel-provided device namespace.
-            // Keep the checked contract's exact /dev/null access in Landlock without attempting
-            // to turn that device into a host writable bind outside the workspace.
-            if path == Path::new("/dev/null") {
+            // The private filesystem already materializes its device namespace and scratch
+            // filesystem. Keep checked access to those namespace-private paths in Landlock
+            // without replacing them with writable host binds outside the workspace.
+            if path == Path::new("/dev/null") || path == Path::new("/tmp") {
                 continue;
             }
             if !path.starts_with(policy.workspace_root()) {
