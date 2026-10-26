@@ -35,6 +35,21 @@ Codex account. `model-key-reuse.py` checks model-only settings without key entry
 `tool-output.rs` consume actual public library interfaces with varied inputs; their results do
 not establish paid-provider inference.
 
+`acceptance-contract.rs` reproduces issue #155 through the actual public `peritus-gates` API. Link
+it from a current application build, then give it an absent or empty disposable fixture directory:
+
+```sh
+python3 docs/testing/reproducers/open-issues/link.py --build BUILD.jsonl \
+  --source docs/testing/reproducers/open-issues/acceptance-contract.rs \
+  --output /path/to/acceptance-contract
+/path/to/acceptance-contract /tmp/peritus-issue155-fixture
+```
+
+The consumer creates a Make-owned modpack-data workspace, requires complete coverage with no
+uncovered paths, proves that `make check` rather than the cheaper `check-fast` target was selected,
+reads every changed file, and executes the selected full check. It never runs a default or unknown
+Make target.
+
 `context-display.py` performs a real-account source read and archived-source retrieval, retaining
 an isolated fixture JSON. Pass that fixture to `read-preview.py --fixture FIXTURE.json` along
 with `--binary-dir`, `--ui`, `--probe` (the linked `selection.rs`) and `--output`. Before the fix,

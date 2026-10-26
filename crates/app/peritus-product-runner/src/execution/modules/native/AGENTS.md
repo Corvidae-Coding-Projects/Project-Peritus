@@ -38,8 +38,10 @@ generic resource bounds, clears credentials and networking, owns the process tre
 raw streams and lifecycle facts, removes disposable bytes, and verifies the original source.
 Module-specific code and typed observations remain in the separately installed module.
 Workers may request a small named set of generic runtime resources. The browser-automation feature
-provisions and read-only mounts Peritus's credential-free managed Python/Chromium runtime, while the
-module remains solely responsible for browser actions, routes, oracles, and result interpretation.
+provisions and read-only mounts Peritus's credential-free managed Python/Chromium runtime. The Bun
+feature projects a credential-free Bun executable and any existing read-only package cache. The
+module remains solely responsible for entry points, browser actions, routes, oracles, and result
+interpretation.
 
 The scoped-source `verify` operation rereads all included original bytes and executable bits
 against the starting manifest; immutable artifacts alone are not substituted for that final live

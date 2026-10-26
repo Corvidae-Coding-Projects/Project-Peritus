@@ -35,6 +35,12 @@ pub const HOST_CAPABILITY_APPLICATION_LABORATORY: &str = "module.application-lab
 /// semantics; the host only provisions and mounts the credential-free runtime files.
 pub const MODULE_WORKER_FEATURE_BROWSER_AUTOMATION: &str = "browser-automation-v1";
 
+/// Credential-free Bun runtime and read-only package cache for an isolated module worker.
+///
+/// The host projects only generic runtime resources. The module still owns source entry points,
+/// commands, target behavior, evidence, and interpretation.
+pub const MODULE_WORKER_FEATURE_BUN_RUNTIME: &str = "bun-runtime-v1";
+
 /// Locked Cargo registry dependencies prepared for an isolated module worker.
 ///
 /// The host reads the disposable source copy's `Cargo.lock`, downloads checksum-pinned crates
