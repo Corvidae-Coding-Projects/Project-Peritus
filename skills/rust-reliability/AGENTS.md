@@ -24,6 +24,10 @@ Canonical Rust reliability guidance, references, agent metadata, and an optional
 - [Compiled guidance/activation owner](../../crates/app/peritus-product-runner/src/engineering_workflow/AGENTS.md).
 - [Canonical read-only resource access](../../crates/app/peritus-product-runner/src/developer_tools/AGENTS.md).
 
+## Working in this area
+
+Start with [`SKILL.md`](SKILL.md); load referenced resources only when the skill routes the task to them. Bundling supplies guidance and resources but no execution authority, so keep tool permissions and runtime behavior in their host owners and preserve package-relative links.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

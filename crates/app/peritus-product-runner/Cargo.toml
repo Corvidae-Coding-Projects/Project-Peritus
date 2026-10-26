@@ -23,6 +23,7 @@ peritus-harness = { version = "=0.1.11", path = "../../orchestration/peritus-har
 peritus-tools-computer = { version = "=0.1.11", path = "../../tools/peritus-tools-computer" }
 getrandom.workspace = true
 image.workspace = true
+ignore.workspace = true
 peritus-agent = { version = "=0.1.11", path = "../../orchestration/peritus-agent" }
 peritus-artifact-store = { version = "=0.1.11", path = "../../state/peritus-artifact-store" }
 peritus-budget = { version = "=0.1.11", path = "../../foundation/peritus-budget" }
@@ -61,9 +62,11 @@ toml.workspace = true
 yaml-rust2.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
+flate2.workspace = true
 peritus-network = { version = "=0.1.11", path = "../../runtime/peritus-network" }
 peritus-sandbox-linux = { version = "=0.1.11", path = "../../runtime/peritus-sandbox-linux" }
 reqwest = { workspace = true, features = ["blocking"] }
+tar.workspace = true
 url.workspace = true
 
 [build-dependencies]

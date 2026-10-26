@@ -22,6 +22,7 @@ Shared C4/C2 command ownership for product developer tools.
 | [lease.rs](lease.rs) | Writable workspace lease consumption for one C2 product command. |
 | [materialization_authority.rs](materialization_authority.rs) | Exact host-owned C1 authority for an actually committed E1 materialization. |
 | [mod.rs](mod.rs) | Shared C4/C2 command ownership for product developer tools. |
+| [module_job.rs](module_job.rs) | Crate-private launch seam for already-admitted native module jobs; the host constructs the cleared environment, C2 authority, execution plan, sandbox admission, and backend. |
 | [ordinal.rs](ordinal.rs) | Durable allocation of fresh command identities across runtime instances. |
 | [output.rs](output.rs) | Bounded exact output reads scoped to an existing native command receipt. |
 | [plan.rs](plan.rs) | C4 call and caller-bound C2 execution-plan construction. |
@@ -40,6 +41,10 @@ Shared C4/C2 command ownership for product developer tools.
 | --- | --- |
 | [compactor/](compactor/AGENTS.md) | Implementation pieces for `compactor.rs`: Optional auxiliary inference through the existing C2 authority and native C3 gateway. |
 | [preview/](preview/AGENTS.md) | Implementation pieces for `preview.rs`: Typed daemon-facing facade over the existing C4/C2 owned command lifecycle. |
+
+## Working in this area
+
+Start at [`mod.rs`](mod.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../../AGENTS.md) · [Repository map](../../../../../../AGENTS.md).
 

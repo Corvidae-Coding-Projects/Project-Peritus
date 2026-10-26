@@ -68,6 +68,10 @@ Verified, effect-free policy, capability, and authority-time decisions for Perit
 | [scope_selector/](scope_selector/AGENTS.md) | Implementation pieces for `scope_selector.rs`: Complete parent-relative scope selectors and exact executable refinement. |
 | [selector/](selector/AGENTS.md) | Implementation pieces for `selector.rs`: Parent-relative selectors with exact finite wildcard semantics. |
 
+## Working in this area
+
+Start at [`lib.rs`](lib.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

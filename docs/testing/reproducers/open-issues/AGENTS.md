@@ -1,5 +1,7 @@
 # Open issue replays
 
+## Responsibility
+
 Real application interface consumers for the October 22 issue/PR campaign.
 
 | File | Role |
@@ -17,3 +19,6 @@ Real application interface consumers for the October 22 issue/PR campaign.
 | [context-display.py](context-display.py) | Real official-account workspace read, exact archived-source retrieval and native context-read label display; retains its owned fixture for display replay. |
 | [read-preview.py](read-preview.py) | Reopens actual long reads at three terminal widths and verifies expansion without source/history changes; optional real-provider Markdown, Unicode, short-read and missing-file journeys. |
 | [README.md](README.md) | Execution instructions and scope boundaries. |
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.

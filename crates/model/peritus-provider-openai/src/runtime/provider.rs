@@ -63,7 +63,7 @@ impl CodexRuntimeProvider {
             return Ok(directory.clone());
         }
         drop(directory);
-        let created = std::sync::Arc::new(tempfile::tempdir().map_err(|_| {
+        let created = std::sync::Arc::new(private_runtime_directory().map_err(|_| {
             ProviderCoreError::configuration(
                 "codex_runtime_directory",
                 "private runtime directory unavailable",
@@ -331,6 +331,18 @@ impl CodexRuntimeProvider {
         };
         Ok(OwnedModelStream::new(stream, cancellation))
     }
+}
+
+fn private_runtime_directory() -> std::io::Result<tempfile::TempDir> {
+    if let Some(path) = std::env::var_os("XDG_RUNTIME_DIR").map(std::path::PathBuf::from)
+        && path.is_absolute()
+        && std::fs::symlink_metadata(&path)
+            .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+        && let Ok(directory) = tempfile::Builder::new().prefix("peritus-openai-").tempdir_in(path)
+    {
+        return Ok(directory);
+    }
+    tempfile::Builder::new().prefix("peritus-openai-").tempdir()
 }
 
 impl ModelProvider for CodexRuntimeProvider {

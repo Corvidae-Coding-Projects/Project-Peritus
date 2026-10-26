@@ -1,5 +1,7 @@
 # skills — navigation
 
+## Responsibility
+
 Canonical skill packages, discovered recursively within each package and embedded by the
 [product-runner build](../crates/app/peritus-product-runner/build.rs). Read [README.md](README.md)
 for the package format and automatic registration contract.
@@ -18,5 +20,9 @@ for the package format and automatic registration contract.
 The [runtime catalog](../crates/app/peritus-product-runner/src/bundled_skills.rs) owns lookup;
 [tool readers](../crates/app/peritus-product-runner/src/developer_tools/bundled_skill.rs) own paged
 model delivery. Execution and permissions remain with the host.
+
+## Working in this area
+
+Start with the child package waypoint; load referenced resources only when the skill routes the task to them. Bundling supplies guidance and resources but no execution authority, so keep tool permissions and runtime behavior in their host owners and preserve package-relative links.
 
 Navigation: [Repository map](../AGENTS.md).

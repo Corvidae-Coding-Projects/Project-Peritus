@@ -22,6 +22,10 @@ Local dependency waypoints: [peritus-daemon](../../../../../crates/app/peritus-d
 | [publication.rs](publication.rs) | Read back actual published F0 owner evidence; never claim or acknowledge an outbox row here. |
 | [review.rs](review.rs) | Imports an independently executed review into its actual D2 owner. This consumer accepts only the fresh delegated review's final scoped result. It never manufactures a review, provider identity, finding, or approval. |
 
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -14,6 +14,10 @@ Real-interface replay resources for in place scope; start with the local README/
 | [runtime_setup.py](runtime_setup.py) | Create an owned disposable application fixture and copy actual CLI/daemon/TUI binaries for a runtime-write replay. |
 | [runtime_replay.py](runtime_replay.py) | Drive the actual terminal, daemon, and authenticated Codex through source edits and commands while a bounded fixture writer remains active. |
 
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

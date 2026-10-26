@@ -1,5 +1,7 @@
 # modules — navigation
 
+## Responsibility
+
 Host tool intersection for module stages. The parent modules.rs owns workflow execution.
 
 ## Files
@@ -14,3 +16,6 @@ Host tool intersection for module stages. The parent modules.rs owns workflow ex
 Read callers for exact behavior. This map adds no testing or approval gates.
 
 Native runtime details: [native/AGENTS.md](native/AGENTS.md).
+## Working in this area
+
+Read the parent module that declares this directory, then use the file table to follow the narrow implementation path and its callers. Keep contracts, host effects, persistence, and presentation in their owning layers; directory proximity alone does not transfer authority.

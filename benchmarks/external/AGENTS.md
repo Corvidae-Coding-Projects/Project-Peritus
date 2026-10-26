@@ -23,6 +23,10 @@ External benchmark adapters, pinned upstream identities, retained failure notes,
 | [harnessbench/](harnessbench/AGENTS.md) | HarnessBench API/runner adapters and example configuration for invoking native Peritus against upstream tasks. |
 | [terminalbench/](terminalbench/AGENTS.md) | Harbor/Terminal-Bench bridge: native-agent invocation, deadline resolution, credential checkpointing, and process-family cleanup. |
 
+## Working in this area
+
+Read the profile or workload definition together with the runner that consumes it and the baseline metadata that identifies the compared build. Benchmark artifacts measure the stated scenario only; keep them separate from product acceptance and refresh provenance whenever inputs or methodology change.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

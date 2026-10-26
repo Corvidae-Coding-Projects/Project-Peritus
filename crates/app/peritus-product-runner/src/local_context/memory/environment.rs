@@ -38,7 +38,11 @@ pub(in crate::local_context) fn capture(
         sha256(&binding.workspace().into_bytes())
     } else {
         crate::progress::WorkspaceCheckpoint::capture(root)
-            .map_err(|_| error("capture candidate identity"))?
+            .map_err(|failure| {
+                DeveloperLoopError::Context(format!(
+                    "local working memory: capture candidate identity: {failure}"
+                ))
+            })?
             .digest()
     };
     let mut files = Vec::new();

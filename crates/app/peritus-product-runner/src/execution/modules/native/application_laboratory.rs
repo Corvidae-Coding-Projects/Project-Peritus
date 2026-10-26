@@ -6,15 +6,16 @@
 
 use super::{ProductRunInput, scoped_source};
 use crate::control::PermissionCapability;
-use peritus_modules::Registry;
+use flate2::read::GzDecoder;
+use peritus_modules::{Registry, preparation};
 use peritus_plugin_sdk::{
-    MODULE_WORKER_FEATURE_BROWSER_AUTOMATION, ModuleHostOutcome, ModuleHostPlatform,
-    ModuleLaboratoryCatalog, ModuleLaboratoryHandle, ModuleLaboratoryInvokeRequest,
-    ModuleLaboratoryLifecycleRequest, ModuleLaboratoryPhase, ModuleLaboratoryProcessInput,
-    ModuleLaboratoryReceipt, ModuleLaboratoryRecipe, ModuleLaboratoryResult,
-    ModuleLaboratorySourceCreateRequest, ModuleLaboratoryStatus, ModuleLaboratoryTelemetry,
-    ModuleWorkerRequest, ModuleWorkerResult, ScopedSourceAuthority, ScopedSourceVerification,
-    ScopedSourceVerifyRequest,
+    MODULE_WORKER_FEATURE_BROWSER_AUTOMATION, MODULE_WORKER_FEATURE_CARGO_DEPENDENCIES,
+    ModuleHostOutcome, ModuleHostPlatform, ModuleLaboratoryCatalog, ModuleLaboratoryHandle,
+    ModuleLaboratoryInvokeRequest, ModuleLaboratoryLifecycleRequest, ModuleLaboratoryPhase,
+    ModuleLaboratoryProcessInput, ModuleLaboratoryReceipt, ModuleLaboratoryRecipe,
+    ModuleLaboratoryResult, ModuleLaboratorySourceCreateRequest, ModuleLaboratoryStatus,
+    ModuleLaboratoryTelemetry, ModuleWorkerRequest, ModuleWorkerResult, ScopedSourceAuthority,
+    ScopedSourceVerification, ScopedSourceVerifyRequest,
 };
 use peritus_process::{
     CancellationReason, CommandSpec, DeadlinePolicy, EnvironmentPlan, EnvironmentVariable,
@@ -54,6 +55,14 @@ const SCHEMA: u16 = 1;
 const SOURCE_RECIPE: &str = "linux.complete-source.v1";
 const PROCESS_OPERATION: &str = "process.execute.v1";
 const OUTPUT_BYTES: u64 = 4 * 1024 * 1024;
+const CARGO_DEPENDENCY_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
+const CARGO_DEPENDENCY_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
+const CARGO_DEPENDENCY_EXPANDED_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+const CARGO_DEPENDENCY_FILES: u64 = 200_000;
+const CARGO_DEPENDENCY_PACKAGES: usize = 4_096;
+const SOURCE_PROCESS_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+const CARGO_PROCESS_MEMORY_CAP_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+const CARGO_PROCESS_MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -115,6 +124,7 @@ struct WorkerRuntimeFeatures {
     read_only_roots: Vec<PathBuf>,
     read_private_proc: bool,
     read_random_device: bool,
+    prepare_cargo_dependencies: bool,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -214,15 +224,14 @@ impl<'a> Broker<'a> {
     ) -> Result<Value, LaboratoryError> {
         self.require_effect_authority()?;
         validate_worker_request(request)?;
-        let runtime = worker_runtime_features(&request.runtime_features)?;
+        let mut runtime = worker_runtime_features(&request.runtime_features)?;
         let broker = scoped_source::Broker::new(self.input, self.source_state, self.module_digest);
         let snapshot = broker.validate_authority(&request.source).map_err(source_error)?;
-        let private = tempfile::Builder::new()
-            // Worker source copies are disposable and may host runtimes with fixed-size AF_UNIX
-            // paths. Keep their actual path short instead of nesting it under durable run state.
-            .prefix("peritus-module-worker-")
-            .tempdir()
-            .map_err(io_error)?;
+        // Worker source copies may be much larger than the host's shared temporary-filesystem
+        // quota. Keep them in the user's private cache, using a deliberately short directory name
+        // so runtimes with fixed-size AF_UNIX socket paths retain essentially the same headroom as
+        // they had under `/tmp`.
+        let private = worker_private_directory()?;
         let source_root = private.path().join("source");
         let tree = broker
             .materialize_tree(
@@ -241,6 +250,12 @@ impl<'a> Broker<'a> {
         }
         for protected in [".git", ".peritus", ".crosslink"] {
             fs::create_dir_all(source_root.join(protected)).map_err(io_error)?;
+        }
+        if runtime.prepare_cargo_dependencies {
+            prepare_cargo_dependencies(&source_root, &self.input.cancelled)?;
+            let cargo_home = source_root.join(".peritus-cargo-home");
+            fs::create_dir_all(&cargo_home).map_err(io_error)?;
+            runtime.environment.insert("CARGO_HOME".into(), cargo_home.to_string_lossy().into());
         }
         let executable = fs::canonicalize(module_executable).map_err(io_error)?;
         let process_input = worker_process_input(request, runtime.environment)?;
@@ -383,29 +398,72 @@ impl<'a> Broker<'a> {
     ) -> Result<Value, LaboratoryError> {
         self.require_effect_authority()?;
         validate_lifecycle(request)?;
+        let directory = laboratory_directory(&self.root, &request.laboratory_id);
+        let private = directory.join("private");
+        let mut prepared = {
+            let _guard = state_lock().lock().map_err(|_| state_poisoned())?;
+            let index = load(&self.root)?;
+            let lab = owned(&index, &request.laboratory_id, self.module_id, self.module_digest)?;
+            if lab.status.phase != ModuleLaboratoryPhase::Created {
+                return Err(rejected(
+                    "laboratory_phase",
+                    "only a newly created laboratory can be prepared",
+                ));
+            }
+            if let Ok(metadata) = fs::symlink_metadata(&directory) {
+                if metadata.file_type().is_symlink() {
+                    return Err(failed(
+                        "laboratory_orphan",
+                        "laboratory storage is an unexpected symbolic link",
+                        false,
+                    ));
+                }
+                fs::remove_dir_all(&directory).map_err(|error| {
+                    failed(
+                        "laboratory_orphan",
+                        &format!(
+                            "interrupted disposable laboratory storage could not be replaced: {error}"
+                        ),
+                        true,
+                    )
+                })?;
+            }
+            fs::create_dir_all(directory.parent().ok_or_else(|| {
+                failed("laboratory_path", "laboratory storage has no parent", false)
+            })?)
+            .map_err(io_error)?;
+            fs::create_dir(&directory).map_err(io_error)?;
+            fs::create_dir(&private).map_err(io_error)?;
+            lab.clone()
+        };
+        let broker = scoped_source::Broker::new(self.input, self.source_state, self.module_digest);
+        let receipt = match prepare_complete_source(
+            &mut prepared,
+            request,
+            &private,
+            &broker,
+            &self.input.cancelled,
+        ) {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                let _ = fs::remove_dir_all(&directory);
+                return Err(error);
+            }
+        };
+        let status = prepared.status.clone();
         let _guard = state_lock().lock().map_err(|_| state_poisoned())?;
         let mut index = load(&self.root)?;
         let lab =
             owned_mut(&mut index, &request.laboratory_id, self.module_id, self.module_digest)?;
         if lab.status.phase != ModuleLaboratoryPhase::Created {
-            return Err(rejected(
-                "laboratory_phase",
-                "only a newly created laboratory can be prepared",
-            ));
-        }
-        let directory = laboratory_directory(&self.root, &request.laboratory_id);
-        if directory.exists() {
+            let _ = fs::remove_dir_all(&directory);
             return Err(failed(
-                "laboratory_orphan",
-                "laboratory storage already exists without a completed preparation",
+                "laboratory_phase",
+                "laboratory state changed while source preparation was in progress",
                 false,
             ));
         }
-        let private = directory.join("private");
-        fs::create_dir_all(&private).map_err(io_error)?;
-        let broker = scoped_source::Broker::new(self.input, self.source_state, self.module_digest);
-        let receipt = prepare_complete_source(lab, request, &private, &broker)?;
-        let status = lab.status.clone();
+        *lab = prepared;
         save(&self.root, &index)?;
         result(status, Some(receipt))
     }
@@ -502,13 +560,14 @@ impl<'a> Broker<'a> {
                 source_environment_names(input),
             )
             .map_err(|error| failed("laboratory_runtime", &error.to_string(), true))?;
+        let resources = source_resources(input)?;
         let prepared = prepare_source_process(
             config,
             &context.identity(),
             &material.source_root,
             &resolved,
             input,
-            source_resources(input.wall_millis)?,
+            resources,
             SourceProcessFeatures::default(),
         )?;
         let observed =
@@ -522,7 +581,7 @@ impl<'a> Broker<'a> {
             );
         }
         let request_bytes = serde_json::to_vec(input).map_err(json_error)?;
-        let process_result = source_process_result(input, &observed);
+        let process_result = source_process_result(input, resources, &observed);
         self.record_source_process(request, &material, &request_bytes, process_result)
     }
 
@@ -951,6 +1010,7 @@ fn prepare_complete_source(
     request: &ModuleLaboratoryLifecycleRequest,
     private: &Path,
     broker: &scoped_source::Broker<'_>,
+    cancelled: &Arc<AtomicBool>,
 ) -> Result<ModuleLaboratoryReceipt, LaboratoryError> {
     let source_root = private.join("source");
     let tree = broker
@@ -966,6 +1026,7 @@ fn prepare_complete_source(
     for protected in [".git", ".peritus", ".crosslink"] {
         fs::create_dir_all(source_root.join(protected)).map_err(io_error)?;
     }
+    let cargo_dependencies = prepare_cargo_dependencies(&source_root, cancelled)?;
     let secret = create_private_secret(private)?;
     lab.source_digest = tree.snapshot_digest;
     lab.secret_digest = digest(&secret);
@@ -989,6 +1050,7 @@ fn prepare_complete_source(
             "bytes": tree.total_bytes,
             "supported_operation": PROCESS_OPERATION,
             "launch_candidates": launch_candidates,
+            "cargo_dependencies": cargo_dependencies,
         }),
         false,
         None,
@@ -996,6 +1058,382 @@ fn prepare_complete_source(
     lab.receipts.push(receipt.clone());
     lab.status.receipts = count(&lab.receipts)?;
     Ok(receipt)
+}
+
+#[derive(Deserialize)]
+struct CargoLockfile {
+    #[serde(default)]
+    package: Vec<CargoLockedPackage>,
+}
+
+#[derive(Deserialize)]
+struct CargoLockedPackage {
+    name: String,
+    version: String,
+    source: Option<String>,
+    checksum: Option<String>,
+}
+
+struct CargoPreparationSummary {
+    compressed_bytes: u64,
+    expanded_bytes: u64,
+    files: u64,
+    identity: String,
+}
+
+fn prepare_cargo_dependencies(
+    source_root: &Path,
+    cancelled: &Arc<AtomicBool>,
+) -> Result<Value, LaboratoryError> {
+    let lock_path = source_root.join("Cargo.lock");
+    if !lock_path.is_file() {
+        return Ok(json!({"kind": "not_applicable"}));
+    }
+    let packages = cargo_locked_packages(&lock_path)?;
+    if packages.is_empty() {
+        return Ok(json!({"kind": "cargo_vendor_v1", "packages": 0}));
+    }
+    let partial = source_root.join(".peritus-vendor.partial");
+    let vendor = source_root.join(".peritus-vendor");
+    if partial.exists()
+        || vendor.exists()
+        || [".peritus-cargo-home", ".peritus-build-target", ".peritus-lab-home", ".peritus-lab-tmp"]
+            .into_iter()
+            .any(|path| source_root.join(path).exists())
+    {
+        return Err(rejected(
+            "laboratory_dependencies",
+            "source uses a reserved Peritus dependency-preparation path",
+        ));
+    }
+    fs::create_dir(&partial).map_err(io_error)?;
+    let prepared = (|| {
+        let summary = fetch_cargo_packages(&partial, &packages, cancelled)?;
+        fs::rename(&partial, &vendor).map_err(io_error)?;
+        write_cargo_vendor_config(source_root, &vendor)?;
+        Ok(json!({
+            "kind": "cargo_vendor_v1",
+            "packages": packages.len(),
+            "compressed_bytes": summary.compressed_bytes,
+            "expanded_bytes": summary.expanded_bytes,
+            "files": summary.files,
+            "identity": summary.identity,
+            "network_policy": "public_https_crates_io_only; lockfile_sha256_required",
+        }))
+    })();
+    if prepared.is_err() {
+        let _ = fs::remove_dir_all(&partial);
+        let _ = fs::remove_dir_all(&vendor);
+        let _ = fs::remove_dir_all(source_root.join(".peritus-cargo-home"));
+    }
+    prepared
+}
+
+fn cargo_locked_packages(path: &Path) -> Result<Vec<CargoLockedPackage>, LaboratoryError> {
+    let lock: CargoLockfile = toml::from_str(
+        &fs::read_to_string(path)
+            .map_err(|error| failed("laboratory_dependencies", &error.to_string(), true))?,
+    )
+    .map_err(|error| failed("laboratory_dependencies", &error.to_string(), false))?;
+    let mut packages =
+        lock.package.into_iter().filter(|package| package.source.is_some()).collect::<Vec<_>>();
+    packages.sort_by(|left, right| {
+        (&left.name, &left.version, &left.source).cmp(&(&right.name, &right.version, &right.source))
+    });
+    if packages.len() > CARGO_DEPENDENCY_PACKAGES {
+        return Err(rejected(
+            "laboratory_dependencies",
+            "Cargo.lock exceeds the bounded dependency package count",
+        ));
+    }
+    for package in &packages {
+        validate_cargo_package(package)?;
+    }
+    Ok(packages)
+}
+
+fn validate_cargo_package(package: &CargoLockedPackage) -> Result<(), LaboratoryError> {
+    if package.source.as_deref() != Some("registry+https://github.com/rust-lang/crates.io-index") {
+        return Err(rejected(
+            "laboratory_dependencies",
+            &format!(
+                "Cargo dependency {} {} uses an unsupported non-crates.io source",
+                package.name, package.version
+            ),
+        ));
+    }
+    if !cargo_component(&package.name)
+        || !cargo_version(&package.version)
+        || !package.checksum.as_deref().is_some_and(lower_sha256)
+    {
+        return Err(rejected(
+            "laboratory_dependencies",
+            "Cargo.lock contains an invalid registry dependency identity or checksum",
+        ));
+    }
+    Ok(())
+}
+
+fn fetch_cargo_packages(
+    destination: &Path,
+    packages: &[CargoLockedPackage],
+    cancelled: &Arc<AtomicBool>,
+) -> Result<CargoPreparationSummary, LaboratoryError> {
+    thread::scope(|scope| {
+        scope
+            .spawn(|| fetch_cargo_packages_on_worker(destination, packages, cancelled))
+            .join()
+            .map_err(|_| {
+                failed("laboratory_dependencies", "dependency preparation worker panicked", true)
+            })?
+    })
+}
+
+fn fetch_cargo_packages_on_worker(
+    destination: &Path,
+    packages: &[CargoLockedPackage],
+    cancelled: &Arc<AtomicBool>,
+) -> Result<CargoPreparationSummary, LaboratoryError> {
+    let mut compressed_bytes = 0_u64;
+    let mut expanded_bytes = 0_u64;
+    let mut files = 0_u64;
+    let mut identity = Sha256::new();
+    let mut fetcher = preparation::Fetcher::default();
+    for package in packages {
+        if cancelled.load(Ordering::Acquire) {
+            return Err(failed(
+                "laboratory_dependencies",
+                "dependency preparation was cancelled",
+                true,
+            ));
+        }
+        let checksum = package.checksum.as_deref().ok_or_else(|| {
+            rejected("laboratory_dependencies", "registry dependency has no checksum")
+        })?;
+        let remaining = CARGO_DEPENDENCY_TOTAL_BYTES.saturating_sub(compressed_bytes);
+        if remaining == 0 {
+            return Err(rejected(
+                "laboratory_dependencies",
+                "Cargo dependency archives exceed the bounded transfer size",
+            ));
+        }
+        let specification = preparation::Specification {
+            url: format!(
+                "https://static.crates.io/crates/{0}/{0}-{1}.crate",
+                package.name, package.version
+            ),
+            expected_sha256: Some(checksum.into()),
+            maximum_bytes: remaining.min(CARGO_DEPENDENCY_ARCHIVE_BYTES),
+        };
+        let completed =
+            fetcher.fetch(&specification, cancelled).map_err(cargo_preparation_error)?;
+        compressed_bytes = compressed_bytes
+            .checked_add(u64::try_from(completed.bytes.len()).map_err(|_| {
+                rejected("laboratory_dependencies", "dependency archive is too large")
+            })?)
+            .ok_or_else(|| {
+                rejected("laboratory_dependencies", "dependency byte count overflowed")
+            })?;
+        extract_crate_archive(
+            &completed.bytes,
+            &destination.join(format!("{}-{}", package.name, package.version)),
+            &package.name,
+            &package.version,
+            checksum,
+            &mut files,
+            &mut expanded_bytes,
+            cancelled,
+        )?;
+        for value in
+            [package.name.as_str(), package.version.as_str(), checksum, completed.digest.as_str()]
+        {
+            identity.update(value.as_bytes());
+            identity.update([0]);
+        }
+    }
+    Ok(CargoPreparationSummary {
+        compressed_bytes,
+        expanded_bytes,
+        files,
+        identity: hex(&identity.finalize()),
+    })
+}
+
+fn write_cargo_vendor_config(source_root: &Path, vendor: &Path) -> Result<(), LaboratoryError> {
+    let cargo_home = source_root.join(".peritus-cargo-home");
+    fs::create_dir(&cargo_home).map_err(io_error)?;
+    let vendor_text = vendor
+        .to_str()
+        .ok_or_else(|| rejected("laboratory_dependencies", "vendor path is not valid UTF-8"))?;
+    let quoted_vendor = toml::Value::String(vendor_text.into()).to_string();
+    let config = format!(
+        "[source.crates-io]\nreplace-with = \"peritus-vendored-sources\"\n\n[source.peritus-vendored-sources]\ndirectory = {quoted_vendor}\n\n[net]\noffline = true\n"
+    );
+    write_private(&cargo_home.join("config.toml"), config.as_bytes())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn extract_crate_archive(
+    bytes: &[u8],
+    destination: &Path,
+    name: &str,
+    version: &str,
+    package_checksum: &str,
+    file_count: &mut u64,
+    expanded_bytes: &mut u64,
+    cancelled: &Arc<AtomicBool>,
+) -> Result<(), LaboratoryError> {
+    fs::create_dir(destination).map_err(io_error)?;
+    let expected_root = format!("{name}-{version}");
+    let decoder = GzDecoder::new(bytes);
+    let mut archive = tar::Archive::new(decoder);
+    let mut files = BTreeMap::new();
+    for entry in archive.entries().map_err(|error| {
+        failed("laboratory_dependencies", &format!("read crate archive: {error}"), false)
+    })? {
+        if cancelled.load(Ordering::Acquire) {
+            return Err(failed(
+                "laboratory_dependencies",
+                "dependency extraction was cancelled",
+                true,
+            ));
+        }
+        let mut entry = entry.map_err(|error| {
+            failed("laboratory_dependencies", &format!("read crate entry: {error}"), false)
+        })?;
+        let archived = entry
+            .path()
+            .map_err(|error| {
+                failed("laboratory_dependencies", &format!("read crate path: {error}"), false)
+            })?
+            .into_owned();
+        let mut components = archived.components();
+        let root = components.next().ok_or_else(|| {
+            rejected("laboratory_dependencies", "crate archive entry has no package root")
+        })?;
+        if !matches!(root, Component::Normal(value) if value == expected_root.as_str()) {
+            return Err(rejected(
+                "laboratory_dependencies",
+                "crate archive entry has an unexpected package root",
+            ));
+        }
+        let relative = components.as_path();
+        if relative.as_os_str().is_empty() {
+            continue;
+        }
+        if !relative.components().all(|part| matches!(part, Component::Normal(_))) {
+            return Err(rejected(
+                "laboratory_dependencies",
+                "crate archive entry escapes its package root",
+            ));
+        }
+        let target = destination.join(relative);
+        let kind = entry.header().entry_type();
+        if kind.is_dir() {
+            fs::create_dir_all(&target).map_err(io_error)?;
+            continue;
+        }
+        if !kind.is_file() {
+            return Err(rejected(
+                "laboratory_dependencies",
+                "crate archive contains a link or special file",
+            ));
+        }
+        *file_count = file_count.checked_add(1).ok_or_else(|| {
+            rejected("laboratory_dependencies", "dependency file count overflowed")
+        })?;
+        *expanded_bytes = expanded_bytes.checked_add(entry.size()).ok_or_else(|| {
+            rejected("laboratory_dependencies", "dependency byte count overflowed")
+        })?;
+        if *file_count > CARGO_DEPENDENCY_FILES || *expanded_bytes > CARGO_DEPENDENCY_EXPANDED_BYTES
+        {
+            return Err(rejected(
+                "laboratory_dependencies",
+                "expanded Cargo dependencies exceed the bounded file or byte count",
+            ));
+        }
+        let relative_text = relative
+            .to_str()
+            .ok_or_else(|| rejected("laboratory_dependencies", "crate path is not valid UTF-8"))?;
+        let expected_size = entry.size();
+        files.insert(
+            relative_text.replace('\\', "/"),
+            write_dependency_file(&mut entry, &target, expected_size)?,
+        );
+    }
+    let checksum = serde_json::to_vec(&json!({
+        "files": files,
+        "package": package_checksum,
+    }))
+    .map_err(json_error)?;
+    write_private(&destination.join(".cargo-checksum.json"), &checksum)
+}
+
+fn write_dependency_file(
+    input: &mut impl std::io::Read,
+    target: &Path,
+    expected_size: u64,
+) -> Result<String, LaboratoryError> {
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(io_error)?;
+    }
+    let mut output =
+        fs::OpenOptions::new().write(true).create_new(true).open(target).map_err(io_error)?;
+    let mut hash = Sha256::new();
+    let mut copied = 0_u64;
+    let mut chunk = vec![0_u8; 64 * 1024].into_boxed_slice();
+    loop {
+        let count = input.read(&mut chunk).map_err(io_error)?;
+        if count == 0 {
+            break;
+        }
+        output.write_all(&chunk[..count]).map_err(io_error)?;
+        hash.update(&chunk[..count]);
+        copied = copied
+            .checked_add(u64::try_from(count).map_err(|_| {
+                rejected("laboratory_dependencies", "dependency entry is too large")
+            })?)
+            .ok_or_else(|| {
+                rejected("laboratory_dependencies", "dependency entry size overflowed")
+            })?;
+    }
+    if copied != expected_size {
+        return Err(rejected(
+            "laboratory_dependencies",
+            "crate archive entry ended before its declared size",
+        ));
+    }
+    output.sync_all().map_err(io_error)?;
+    Ok(hex(&hash.finalize()))
+}
+
+fn cargo_preparation_error(error: preparation::Failure) -> LaboratoryError {
+    match error {
+        preparation::Failure::Cancelled => {
+            failed("laboratory_dependencies", "dependency download was cancelled", true)
+        }
+        preparation::Failure::Rejected(detail) => rejected("laboratory_dependencies", &detail),
+        preparation::Failure::Infrastructure(detail) => {
+            failed("laboratory_dependencies", &detail, true)
+        }
+    }
+}
+
+fn cargo_component(value: &str) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+}
+
+fn cargo_version(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'+' | b'_'))
+}
+
+fn lower_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value.bytes().all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
 }
 
 fn create_private_secret(private: &Path) -> Result<[u8; 32], LaboratoryError> {
@@ -1019,6 +1457,7 @@ fn read_process_output(
 
 fn source_process_result(
     input: &ModuleLaboratoryProcessInput,
+    resources: ProcessResourcePolicy,
     observed: &SourceProcessObservation,
 ) -> SourceProcessResult {
     let exit_code = match observed.terminal.os_exit() {
@@ -1046,6 +1485,13 @@ fn source_process_result(
         "environment_names": input.environment.keys().collect::<Vec<_>>(),
         "stdin_bytes": input.stdin.len(),
         "wall_millis": input.wall_millis,
+        "effective_limits": {
+            "memory_bytes": resources.memory_bytes(),
+            "storage_bytes": resources.disk_bytes(),
+            "cpu_millis": resources.cpu_millis().unwrap_or(input.wall_millis),
+            "wall_millis": resources.wall_millis().unwrap_or(input.wall_millis),
+            "processes": resources.process_count(),
+        },
         "terminal_disposition": format!("{:?}", observed.terminal.disposition()).to_ascii_lowercase(),
         "exit_code": exit_code,
         "stdout": String::from_utf8_lossy(&observed.stdout),
@@ -1187,6 +1633,48 @@ fn worker_resources(
     .map_err(process_error)
 }
 
+fn worker_private_directory() -> Result<tempfile::TempDir, LaboratoryError> {
+    let cache = std::env::var_os("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .filter(|path| path.is_absolute())
+                .map(|path| path.join(".cache"))
+        })
+        .ok_or_else(|| {
+            failed(
+                "worker_runtime",
+                "a private user cache is unavailable for disposable module workers",
+                true,
+            )
+        })?;
+    let root = cache.join("peritus/jobs");
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt as _;
+        builder.mode(0o700);
+    }
+    builder.create(&root).map_err(io_error)?;
+    let metadata = fs::symlink_metadata(&root).map_err(io_error)?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err(failed(
+            "worker_runtime",
+            "the private module-worker cache is not a regular directory",
+            false,
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).map_err(io_error)?;
+    }
+    tempfile::Builder::new().prefix("w-").tempdir_in(root).map_err(io_error)
+}
+
 fn worker_process_input(
     request: &ModuleWorkerRequest,
     environment: BTreeMap<String, String>,
@@ -1211,12 +1699,13 @@ fn source_environment(
     input: &ModuleLaboratoryProcessInput,
 ) -> Result<BTreeMap<String, String>, LaboratoryError> {
     let private_home = work.join(".peritus-lab-home");
-    let private_tmp = work.join(".peritus-lab-tmp");
     fs::create_dir_all(&private_home).map_err(io_error)?;
-    fs::create_dir_all(&private_tmp).map_err(io_error)?;
     let mut environment = input.environment.clone();
     environment.insert("HOME".into(), private_home.to_string_lossy().into_owned());
-    environment.insert("TMPDIR".into(), private_tmp.to_string_lossy().into_owned());
+    // The Linux backend replaces `/tmp` with a fresh mount for every process. Use that short
+    // namespace path instead of a workspace-derived path so runtimes with AF_UNIX path limits
+    // (notably Chromium) retain their normal socket-name headroom without sharing host scratch.
+    environment.insert("TMPDIR".into(), "/tmp".into());
     let runtime_directory = executable.parent().ok_or_else(|| {
         rejected("laboratory_runtime", "resolved runtime has no parent directory")
     })?;
@@ -1228,6 +1717,9 @@ fn source_environment(
         let cargo_home = work.join(".peritus-cargo-home");
         fs::create_dir_all(&cargo_home).map_err(io_error)?;
         environment.insert("CARGO_HOME".into(), cargo_home.to_string_lossy().into_owned());
+        let target = work.join(".peritus-build-target");
+        fs::create_dir_all(&target).map_err(io_error)?;
+        environment.insert("CARGO_TARGET_DIR".into(), target.to_string_lossy().into_owned());
     }
     Ok(environment)
 }
@@ -1237,22 +1729,49 @@ fn source_environment_names(input: &ModuleLaboratoryProcessInput) -> BTreeSet<St
     names.extend(["HOME".into(), "TMPDIR".into(), "PATH".into()]);
     if input.runtime == "cargo" {
         names.insert("CARGO_HOME".into());
+        names.insert("CARGO_TARGET_DIR".into());
     }
     names
 }
 
-fn source_resources(wall_millis: u64) -> Result<ProcessResourcePolicy, LaboratoryError> {
+fn source_resources(
+    input: &ModuleLaboratoryProcessInput,
+) -> Result<ProcessResourcePolicy, LaboratoryError> {
+    let disk_bytes =
+        if input.runtime == "cargo" { 16 * 1024 * 1024 * 1024 } else { 2 * 1024 * 1024 * 1024 };
     ProcessResourcePolicy::new(
-        Some(wall_millis),
-        Some(wall_millis),
-        2 * 1024 * 1024 * 1024,
-        2 * 1024 * 1024 * 1024,
+        Some(input.wall_millis),
+        Some(input.wall_millis),
+        source_memory_bytes(input),
+        disk_bytes,
         Some(OUTPUT_BYTES),
         64,
         8_192,
         1,
     )
     .map_err(process_error)
+}
+
+fn source_memory_bytes(input: &ModuleLaboratoryProcessInput) -> u64 {
+    if input.runtime != "cargo" {
+        return SOURCE_PROCESS_MEMORY_BYTES;
+    }
+
+    #[cfg(target_os = "linux")]
+    if let Ok(memory) = fs::read_to_string("/proc/meminfo")
+        && let Some(available_kib) = memory.lines().find_map(|line| {
+            line.strip_prefix("MemAvailable:")
+                .and_then(|value| value.split_ascii_whitespace().next())
+                .and_then(|value| value.parse::<u64>().ok())
+        })
+    {
+        let available_bytes = available_kib.saturating_mul(1024);
+        return available_bytes
+            .saturating_sub(CARGO_PROCESS_MEMORY_RESERVE_BYTES)
+            .clamp(SOURCE_PROCESS_MEMORY_BYTES, CARGO_PROCESS_MEMORY_CAP_BYTES);
+    }
+
+    SOURCE_PROCESS_MEMORY_BYTES
 }
 
 fn compile_source_process(
@@ -1397,6 +1916,7 @@ fn source_process_filesystem(
             ]),
         )
         .map_err(sandbox_error)?,
+        private_tmp_rule()?,
     ];
     for runtime in [
         // Distribution toolchain links such as Fedora's /usr/bin/ld resolve through this
@@ -1425,6 +1945,7 @@ fn source_process_filesystem(
             .map_err(sandbox_error)?,
         );
     }
+    rules.extend(source_header_rules()?);
     for root in features.roots {
         rules.push(
             FilesystemRule::new(
@@ -1456,6 +1977,46 @@ fn source_process_filesystem(
         );
     }
     FilesystemContract::new(rules).map_err(sandbox_error)
+}
+
+fn source_header_rules() -> Result<Vec<FilesystemRule>, LaboratoryError> {
+    let read = FileOperationSet::from_operations([
+        FileOperation::Read,
+        FileOperation::Discover,
+        FileOperation::Metadata,
+    ]);
+    ["/usr/include", "/usr/local/include"]
+        .into_iter()
+        .filter_map(|headers| Path::new(headers).canonicalize().ok())
+        .map(|headers| {
+            FilesystemRule::new(
+                RuleEffect::Allow,
+                sandbox_path(&headers)?,
+                PathScope::Descendants,
+                read,
+            )
+            .map_err(sandbox_error)
+        })
+        .collect()
+}
+
+fn private_tmp_rule() -> Result<FilesystemRule, LaboratoryError> {
+    // `/tmp` is a fresh tmpfs inside this process's private mount namespace. Granting scratch
+    // operations here does not expose the host's shared temporary directory.
+    FilesystemRule::new(
+        RuleEffect::Allow,
+        sandbox_path(Path::new("/tmp"))?,
+        PathScope::Descendants,
+        FileOperationSet::from_operations([
+            FileOperation::Read,
+            FileOperation::Discover,
+            FileOperation::Metadata,
+            FileOperation::Create,
+            FileOperation::Write,
+            FileOperation::Remove,
+        ]),
+    )
+    .map_err(sandbox_error)
 }
 
 fn private_proc_rule() -> Result<FilesystemRule, LaboratoryError> {
@@ -1735,6 +2296,25 @@ fn collect_source_files(
         let entry = entry.map_err(io_error)?;
         let path = entry.path();
         let file_type = entry.file_type().map_err(io_error)?;
+        let relative = path
+            .strip_prefix(root)
+            .map_err(|_| failed("laboratory_source", "source path escaped its root", false))?;
+        if current == root
+            && file_type.is_dir()
+            && matches!(
+                relative.to_str(),
+                Some(
+                    ".peritus-vendor"
+                        | ".peritus-vendor.partial"
+                        | ".peritus-cargo-home"
+                        | ".peritus-build-target"
+                        | ".peritus-lab-home"
+                        | ".peritus-lab-tmp"
+                )
+            )
+        {
+            continue;
+        }
         if file_type.is_symlink() {
             return Err(failed(
                 "laboratory_source",
@@ -1745,13 +2325,7 @@ fn collect_source_files(
         if file_type.is_dir() {
             collect_source_files(root, &path, paths)?;
         } else if file_type.is_file() {
-            paths.push(
-                path.strip_prefix(root)
-                    .map_err(|_| {
-                        failed("laboratory_source", "source path escaped its root", false)
-                    })?
-                    .to_path_buf(),
-            );
+            paths.push(relative.to_path_buf());
         } else {
             return Err(failed(
                 "laboratory_source",
@@ -1916,6 +2490,10 @@ fn validate_worker_request(request: &ModuleWorkerRequest) -> Result<(), Laborato
 fn worker_runtime_features(names: &[String]) -> Result<WorkerRuntimeFeatures, LaboratoryError> {
     let mut runtime = WorkerRuntimeFeatures::default();
     for name in names {
+        if name == MODULE_WORKER_FEATURE_CARGO_DEPENDENCIES {
+            runtime.prepare_cargo_dependencies = true;
+            continue;
+        }
         if name != MODULE_WORKER_FEATURE_BROWSER_AUTOMATION {
             return Err(rejected(
                 "worker_runtime_feature",
@@ -2030,8 +2608,12 @@ fn resolve_source_command(
         "cargo" => (
             required_runtime("cargo", &["/usr/bin/cargo", "/usr/local/bin/cargo"])?,
             vec![
+                "--quiet".into(),
                 "run".into(),
+                "--locked".into(),
                 "--offline".into(),
+                "--jobs".into(),
+                "2".into(),
                 "--manifest-path".into(),
                 path_text(&entrypoint)?,
                 "--".into(),

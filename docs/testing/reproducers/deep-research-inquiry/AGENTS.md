@@ -1,5 +1,7 @@
 # Independent inquiry replay navigation
 
+## Responsibility
+
 Read [README.md](README.md) for explicit fixture inputs, owned output paths and evidence limits.
 
 | File | Role |
@@ -14,5 +16,9 @@ Read [README.md](README.md) for explicit fixture inputs, owned output paths and 
 | [build-provider-retry.py](build-provider-retry.py) | Build that standalone consumer with two Cargo workers and repository-relative path dependencies. |
 | [provider-retry.py](provider-retry.py) | Stop only the first owned official client process to exercise the real timeout/retry path beyond the former two-minute horizon. |
 | [README.md](README.md) | Replay prerequisites and the exact scope of each consumer. |
+
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
 
 Navigation: [Parent](../AGENTS.md) · [Campaign](../../deep-research-inquiry-real-2026-10-17.md).

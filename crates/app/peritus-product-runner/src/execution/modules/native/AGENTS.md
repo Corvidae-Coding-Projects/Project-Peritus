@@ -1,5 +1,7 @@
 # Native Rust plugin bridge
 
+## Responsibility
+
 [native.rs](../native.rs) drives generic plugin actions; feature behavior belongs to the independently compiled module.
 
 | File | Responsibility |
@@ -45,3 +47,6 @@ comparison.
 `module.source-build@1` is inspection-only from module code: the host-owned module market performs
 the explicit build and installation, while the installed module may read its exact retained build
 identity. It cannot trigger, widen, or retry its own build.
+## Working in this area
+
+Read the parent module that declares this directory, then use the file table to follow the narrow implementation path and its callers. Keep contracts, host effects, persistence, and presentation in their owning layers; directory proximity alone does not transfer authority.

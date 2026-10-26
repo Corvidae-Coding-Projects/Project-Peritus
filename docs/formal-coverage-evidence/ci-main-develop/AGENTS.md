@@ -29,6 +29,10 @@ Historical evidence for ci main develop; recorded inputs, outputs and source ide
 | [tests-implementation.txt](tests-implementation.txt) | Retained evidence/output for tests implementation. |
 | [tests-independent.txt](tests-independent.txt) | Retained evidence/output for tests independent. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

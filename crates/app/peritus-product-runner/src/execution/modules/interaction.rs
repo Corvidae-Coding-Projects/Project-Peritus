@@ -11,13 +11,22 @@ pub(super) struct StageInteraction<'a> {
 }
 impl DeveloperInteraction for StageInteraction<'_> {
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
-        let input = self.inner.input()?;
+        let mut input = self.inner.input()?;
         if input.revision != self.revision {
             return Err(DeveloperLoopError::Context(
                 "new user input paused the module; steering remains pending for the conversation"
                     .into(),
             ));
         }
+        // The module coordinator has already admitted the command and copied the accepted
+        // steering into its durable, bounded request. Replaying the product run's complete public
+        // conversation here can include prior module reports and build logs hundreds of KiB long,
+        // crowding the actual stage prompt out of the provider context. The revision and current
+        // images remain live for stale-request admission; text authority stays in the coordinator's
+        // explicit prompt until a new revision pauses this stage.
+        input.conversation =
+            "The current module command and accepted steering are already represented in the module-owned prompt. Continue only that bounded module stage."
+                .into();
         Ok(input)
     }
     fn prepare_request(

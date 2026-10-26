@@ -27,6 +27,10 @@ Concrete host effects: process ownership, sandboxes, network access, secret deli
 | [peritus-secrets/](peritus-secrets/AGENTS.md) | Exact secret leases, zeroizing delivery, redaction, and credential-store adapters. |
 | [peritus-workspace/](peritus-workspace/AGENTS.md) | Target-owned workspace authorization, snapshots, rollback, and restart reconciliation. |
 
+## Working in this area
+
+Read the parent module that declares this directory, then use the file table to follow the narrow implementation path and its callers. Keep contracts, host effects, persistence, and presentation in their owning layers; directory proximity alone does not transfer authority.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

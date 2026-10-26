@@ -28,6 +28,10 @@ Retained grouping with active package/release/external-benchmark components and 
 | [peritus-security-qualification/](peritus-security-qualification/AGENTS.md) | Historical component record for `peritus-security-qualification`. No Cargo package/source entrypoint is present in this directory. |
 | [peritus-test-support/](peritus-test-support/AGENTS.md) | Historical component record for `peritus-test-support`. No Cargo package/source entrypoint is present in this directory. |
 
+## Working in this area
+
+Read the parent module that declares this directory, then use the file table to follow the narrow implementation path and its callers. Keep contracts, host effects, persistence, and presentation in their owning layers; directory proximity alone does not transfer authority.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
