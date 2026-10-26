@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.1.12
+
+### Fixed
+
+- Recognize Make-owned projects during candidate acceptance and select an explicitly declared `check`, `verify`, or `validate` target. Makefile/data workspaces no longer stop with a missing check-contract error (#155).
+- Apply scoped file-readability and JSON/YAML structural checks to otherwise unrecognized candidate files. Keep existing language-specific checks and avoid duplicate Make commands inside recognized projects.
+- Prepare source-built module dependencies and application runtimes in isolated laboratories, including Bun when requested by a module. Keep runtime access within the generic module interface.
+
+### Changed
+
+- Refresh recursive agent navigation guides and exclude private local Chrome-extension files and red-team campaign artifacts from source control.
+
+### Real testing
+
+- Reproduced issue #155's uncovered Makefile/data failure, then linked the saved public-interface replay against a complete daemon build and executed the selected `make check` target successfully.
+- Exercised generic-file fallback, Makefiles without recognized check targets, and Rust workspaces containing Makefiles. Arbitrary/default Make targets and duplicate Make checks were not scheduled.
+- Targeted build/check, formatting, and strict Clippy passed for the affected gate and product-runner packages. Native release packages additionally exercise installation and offline terminal startup on Unix. No unit, mock, formal-verification, or repository qualification suites are part of this release workflow.
+
 ## 0.1.11
 
 ### Changed
