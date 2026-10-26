@@ -1,6 +1,9 @@
 //! Exact commands for each supported project family.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 use crate::{GateError, GateErrorKind, GateRecoveryAction};
 
@@ -22,6 +25,8 @@ pub(super) fn commands_for(
         commands.push(json_structure(project));
     }
     let language_commands = match project.kind() {
+        ProjectKind::Generic => Ok(Vec::new()),
+        ProjectKind::Make => make_commands(workspace_root, project),
         ProjectKind::Artifact => artifact_commands(workspace_root, project),
         ProjectKind::Rust => rust_commands(workspace_root, project),
         ProjectKind::Node => node_commands(workspace_root, project),
@@ -31,6 +36,41 @@ pub(super) fn commands_for(
     }?;
     commands.extend(language_commands);
     Ok(commands)
+}
+
+fn make_commands(
+    workspace_root: &Path,
+    project: &AffectedProject,
+) -> Result<Vec<GateCommandSpec>, GateError> {
+    let manifest = required_manifest(project)?;
+    let text = std::fs::read_to_string(workspace_root.join(manifest))
+        .map_err(|_| planning("affected Makefile is unreadable"))?;
+    let targets = declared_make_targets(&text);
+    let selected = if targets.contains("check") {
+        Some(("Make check", "check"))
+    } else if targets.contains("verify") {
+        Some(("Make verify", "verify"))
+    } else if targets.contains("validate") {
+        Some(("Make validate", "validate"))
+    } else {
+        None
+    };
+    Ok(selected
+        .into_iter()
+        .map(|(label, target)| spec(label, "make", vec![target.to_owned()], project))
+        .collect())
+}
+
+fn declared_make_targets(makefile: &str) -> BTreeSet<&str> {
+    makefile
+        .lines()
+        .filter(|line| !line.starts_with('\t'))
+        .filter_map(|line| line.split('#').next())
+        .filter_map(|line| line.split_once(':').map(|(targets, _)| targets))
+        .filter(|targets| !targets.contains('='))
+        .flat_map(str::split_whitespace)
+        .filter(|target| !target.contains('%'))
+        .collect()
 }
 
 fn is_yaml(path: &Path) -> bool {

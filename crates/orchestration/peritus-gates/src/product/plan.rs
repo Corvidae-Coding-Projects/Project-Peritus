@@ -12,6 +12,13 @@ use super::commands::commands_for;
 /// Supported project families with deterministic production checks.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ProjectKind {
+    /// Candidate files without a recognized project manifest.
+    ///
+    /// The host applies only generic file-state and structural checks. It never guesses a build
+    /// command or executes an arbitrary `Makefile` target for this fallback project.
+    Generic,
+    /// Make project with a checked-in `Makefile`.
+    Make,
     /// General artifact output whose semantic oracle is host-owned.
     ///
     /// A checked-in `peritus-workspace.toml` or an exact caller-requested output can establish
@@ -127,6 +134,7 @@ impl GateCommandSpec {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TargetGatePlan {
     changed_paths: Vec<PathBuf>,
+    fallback_paths: Vec<PathBuf>,
     projects: Vec<AffectedProject>,
     commands: Vec<GateCommandSpec>,
     uncovered_paths: Vec<PathBuf>,
@@ -146,7 +154,8 @@ impl TargetGatePlan {
         changed_paths.dedup();
         let requested_artifacts = requested_artifacts.iter().collect::<BTreeSet<_>>();
         let mut projects = BTreeSet::new();
-        let mut uncovered_paths = Vec::new();
+        let mut fallback_paths = Vec::new();
+        let uncovered_paths = Vec::new();
         for path in &changed_paths {
             let found = nearest_projects(workspace_root, path);
             if found.is_empty() {
@@ -158,20 +167,29 @@ impl TargetGatePlan {
                     });
                     continue;
                 }
-                uncovered_paths.push(path.clone());
+                fallback_paths.push(path.clone());
                 continue;
             }
             projects.extend(found);
         }
+        if !fallback_paths.is_empty() {
+            projects.insert(AffectedProject {
+                kind: ProjectKind::Generic,
+                root: common_parent(&fallback_paths),
+                manifest: None,
+            });
+        }
         let projects = projects.into_iter().collect::<Vec<_>>();
-        uncovered_paths.retain(|path| {
-            !projects.iter().any(|project| adjacent_to_manifestless_project(path, project))
-        });
         let mut commands = Vec::new();
         for project in &projects {
-            commands.extend(commands_for(workspace_root, project, &changed_paths)?);
+            let project_paths = if project.kind() == ProjectKind::Generic {
+                &fallback_paths
+            } else {
+                &changed_paths
+            };
+            commands.extend(commands_for(workspace_root, project, project_paths)?);
         }
-        Ok(Self { changed_paths, projects, commands, uncovered_paths })
+        Ok(Self { changed_paths, fallback_paths, projects, commands, uncovered_paths })
     }
 
     /// Exact candidate paths compared with the pre-run baseline.
@@ -184,6 +202,12 @@ impl TargetGatePlan {
     #[must_use]
     pub fn projects(&self) -> &[AffectedProject] {
         &self.projects
+    }
+
+    /// Candidate paths covered by the generic host-owned fallback contract.
+    #[must_use]
+    pub fn fallback_paths(&self) -> &[PathBuf] {
+        &self.fallback_paths
     }
 
     /// Exact commands required for acceptance.
@@ -238,10 +262,15 @@ impl TargetGatePlan {
     }
 }
 
-fn adjacent_to_manifestless_project(path: &Path, project: &AffectedProject) -> bool {
-    project.manifest().is_none()
-        && matches!(project.kind(), ProjectKind::Python | ProjectKind::Node)
-        && path.parent().unwrap_or_else(|| Path::new("")) == project.root()
+fn common_parent(paths: &[PathBuf]) -> PathBuf {
+    let mut common =
+        paths.first().and_then(|path| path.parent()).unwrap_or_else(|| Path::new("")).to_path_buf();
+    while !paths.iter().all(|path| path.starts_with(&common)) {
+        if !common.pop() {
+            break;
+        }
+    }
+    common
 }
 
 fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProject> {
@@ -288,6 +317,17 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
                 kind: ProjectKind::Sqlite,
                 root: relative.to_path_buf(),
                 manifest: Some(relative.join("schema.sql")),
+            });
+        }
+        if found.is_empty()
+            && let Some(marker) = ["GNUmakefile", "makefile", "Makefile"]
+                .into_iter()
+                .find(|marker| absolute.join(marker).is_file())
+        {
+            found.push(AffectedProject {
+                kind: ProjectKind::Make,
+                root: relative.to_path_buf(),
+                manifest: Some(relative.join(marker)),
             });
         }
         if !found.is_empty() {
