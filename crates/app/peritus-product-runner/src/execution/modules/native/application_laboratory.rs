@@ -9,13 +9,14 @@ use crate::control::PermissionCapability;
 use flate2::read::GzDecoder;
 use peritus_modules::{Registry, preparation};
 use peritus_plugin_sdk::{
-    MODULE_WORKER_FEATURE_BROWSER_AUTOMATION, MODULE_WORKER_FEATURE_CARGO_DEPENDENCIES,
-    ModuleHostOutcome, ModuleHostPlatform, ModuleLaboratoryCatalog, ModuleLaboratoryHandle,
-    ModuleLaboratoryInvokeRequest, ModuleLaboratoryLifecycleRequest, ModuleLaboratoryPhase,
-    ModuleLaboratoryProcessInput, ModuleLaboratoryReceipt, ModuleLaboratoryRecipe,
-    ModuleLaboratoryResult, ModuleLaboratorySourceCreateRequest, ModuleLaboratoryStatus,
-    ModuleLaboratoryTelemetry, ModuleWorkerRequest, ModuleWorkerResult, ScopedSourceAuthority,
-    ScopedSourceVerification, ScopedSourceVerifyRequest,
+    MODULE_WORKER_FEATURE_BROWSER_AUTOMATION, MODULE_WORKER_FEATURE_BUN_RUNTIME,
+    MODULE_WORKER_FEATURE_CARGO_DEPENDENCIES, ModuleHostOutcome, ModuleHostPlatform,
+    ModuleLaboratoryCatalog, ModuleLaboratoryHandle, ModuleLaboratoryInvokeRequest,
+    ModuleLaboratoryLifecycleRequest, ModuleLaboratoryPhase, ModuleLaboratoryProcessInput,
+    ModuleLaboratoryReceipt, ModuleLaboratoryRecipe, ModuleLaboratoryResult,
+    ModuleLaboratorySourceCreateRequest, ModuleLaboratoryStatus, ModuleLaboratoryTelemetry,
+    ModuleWorkerRequest, ModuleWorkerResult, ScopedSourceAuthority, ScopedSourceVerification,
+    ScopedSourceVerifyRequest,
 };
 use peritus_process::{
     CancellationReason, CommandSpec, DeadlinePolicy, EnvironmentPlan, EnvironmentVariable,
@@ -2204,6 +2205,23 @@ fn discover_source_candidates(root: &Path) -> Result<Vec<Value>, LaboratoryError
         "high",
         "root Go module manifest",
     );
+    if names.contains("package.json")
+        && let Ok(bytes) = fs::read(root.join("package.json"))
+        && let Ok(package) = serde_json::from_slice::<Value>(&bytes)
+        && package
+            .get("packageManager")
+            .and_then(Value::as_str)
+            .is_some_and(|manager| manager.starts_with("bun@"))
+    {
+        push_source_candidate(
+            &names,
+            &mut candidates,
+            "bun",
+            "package.json",
+            "high",
+            "package.json declares Bun as its package manager",
+        );
+    }
     for (runtime, entrypoint, reason) in [
         ("python3", "main.py", "conventional Python entry point"),
         ("python3", "__main__.py", "Python module entry point"),
@@ -2398,6 +2416,7 @@ fn validate_process_input(input: &ModuleLaboratoryProcessInput) -> Result<(), La
         "direct"
             | "python3"
             | "node"
+            | "bun"
             | "bash"
             | "ruby"
             | "php"
@@ -2410,7 +2429,7 @@ fn validate_process_input(input: &ModuleLaboratoryProcessInput) -> Result<(), La
     ) {
         return Err(rejected(
             "laboratory_runtime",
-            "runtime must be direct, python3, node, bash, ruby, php, perl, cargo, go, java, dotnet, or make",
+            "runtime must be direct, python3, node, bun, bash, ruby, php, perl, cargo, go, java, dotnet, or make",
         ));
     }
     if input.arguments.len() > 256
@@ -2492,6 +2511,35 @@ fn worker_runtime_features(names: &[String]) -> Result<WorkerRuntimeFeatures, La
     for name in names {
         if name == MODULE_WORKER_FEATURE_CARGO_DEPENDENCIES {
             runtime.prepare_cargo_dependencies = true;
+            continue;
+        }
+        if name == MODULE_WORKER_FEATURE_BUN_RUNTIME {
+            let bun = required_runtime("bun", &["/usr/bin/bun", "/usr/local/bin/bun"])?;
+            let bun_directory = bun.parent().ok_or_else(|| {
+                rejected("worker_runtime_feature", "the Bun executable has no runtime directory")
+            })?;
+            runtime
+                .environment
+                .insert("PERITUS_BUN_EXECUTABLE".into(), bun.to_string_lossy().into_owned());
+            runtime.read_only_roots.push(bun_directory.to_path_buf());
+            if let Some(cache) = std::env::var_os("BUN_INSTALL_CACHE_DIR")
+                .map(PathBuf::from)
+                .or_else(|| {
+                    std::env::var_os("BUN_INSTALL")
+                        .map(PathBuf::from)
+                        .or_else(|| {
+                            std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".bun"))
+                        })
+                        .map(|root| root.join("install/cache"))
+                })
+                .and_then(|path| fs::canonicalize(path).ok())
+                .filter(|path| path.is_dir())
+            {
+                runtime
+                    .environment
+                    .insert("BUN_INSTALL_CACHE_DIR".into(), cache.to_string_lossy().into_owned());
+                runtime.read_only_roots.push(cache);
+            }
             continue;
         }
         if name != MODULE_WORKER_FEATURE_BROWSER_AUTOMATION {
@@ -2592,6 +2640,15 @@ fn resolve_source_command(
             required_runtime("node", &["/usr/bin/node", "/usr/local/bin/node"])?,
             vec![path_text(&entrypoint)?],
         ),
+        "bun" => {
+            let executable = required_runtime("bun", &["/usr/bin/bun", "/usr/local/bin/bun"])?;
+            let arguments = if input.entrypoint == "package.json" {
+                vec!["run".into(), "start".into()]
+            } else {
+                vec![path_text(&entrypoint)?]
+            };
+            (executable, arguments)
+        }
         "bash" => (
             required_runtime("bash", &["/usr/bin/bash", "/bin/bash"])?,
             vec![path_text(&entrypoint)?],
@@ -2658,7 +2715,19 @@ fn required_runtime(label: &str, candidates: &[&str]) -> Result<PathBuf, Laborat
     {
         return Ok(path);
     }
+    if label == "bun"
+        && let Some(path) = user_runtime_program("BUN_INSTALL", ".bun", "bun")
+    {
+        return Ok(path);
+    }
     Err(rejected("laboratory_runtime", &format!("the host-owned {label} runtime is unavailable")))
+}
+
+fn user_runtime_program(environment: &str, default_root: &str, program: &str) -> Option<PathBuf> {
+    let root = std::env::var_os(environment)
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(default_root)))?;
+    fs::canonicalize(root.join("bin").join(program)).ok().filter(|path| path.is_file())
 }
 
 fn rustup_toolchain_program(program: &str) -> Option<PathBuf> {
