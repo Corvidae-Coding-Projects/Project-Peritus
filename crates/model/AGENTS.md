@@ -22,6 +22,10 @@ Provider-neutral requests/events and transport adapters for account runtimes and
 | [peritus-provider-openai/](peritus-provider-openai/AGENTS.md) | First-party OpenAI Responses adapter for Peritus. |
 | [peritus-provider-opencode/](peritus-provider-opencode/AGENTS.md) | Official OpenCode model transport for Peritus. |
 
+## Working in this area
+
+Read the parent module that declares this directory, then use the file table to follow the narrow implementation path and its callers. Keep contracts, host effects, persistence, and presentation in their owning layers; directory proximity alone does not transfer authority.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -30,6 +30,10 @@ Historical evidence for executable evidence checker; recorded inputs, outputs an
 | [peritus-sol-xtask-evidence-report-001.md.txt](peritus-sol-xtask-evidence-report-001.md.txt) | Retained result/report data. |
 | [review.json](review.json) | Structured review data with fields `schema`, `schema_version`, `status`, `author`, `independent_source_reviewer`. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -1,5 +1,7 @@
 # Generated configuration upgrade replay
 
+## Responsibility
+
 This folder operates the public launcher API and actual packaged terminal/daemon against
 disposable application directories. It does not substitute providers or daemon responses.
 
@@ -12,3 +14,6 @@ disposable application directories. It does not substitute providers or daemon r
 
 The production owners are the [launcher configuration](../../../../crates/app/peritus-launcher/src/bootstrap/configuration.rs)
 and its [compatibility map](../../../../crates/app/peritus-launcher/src/bootstrap/configuration/AGENTS.md).
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.

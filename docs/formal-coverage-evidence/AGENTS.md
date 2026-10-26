@@ -55,6 +55,10 @@ Historical formal/qualification evidence archive. Files record earlier runs and 
 | [stabilization-checkpoint/](stabilization-checkpoint/AGENTS.md) | Historical evidence for stabilization checkpoint; recorded inputs, outputs and source identities belong to the earlier investigation. |
 | [waiver-authority/](waiver-authority/AGENTS.md) | Historical evidence for waiver authority; recorded inputs, outputs and source identities belong to the earlier investigation. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -35,6 +35,10 @@ Structured Git repository and detached-worktree operations for Peritus.
 | [status/](status/AGENTS.md) | Implementation pieces for `status.rs`: Bounded typed observations of Git porcelain-v2 status. |
 | [worktree/](worktree/AGENTS.md) | Implementation pieces for `worktree.rs`: Detached linked-worktree registrations and lifecycle operations. |
 
+## Working in this area
+
+Start at [`lib.rs`](lib.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

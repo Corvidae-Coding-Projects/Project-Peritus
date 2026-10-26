@@ -71,4 +71,8 @@ These maps explain ownership and navigation. Read the linked implementation and 
 | [webui/](webui/AGENTS.md) | Svelte browser client and its build/static assets. The Rust gateway is peritus-web; the daemon owns agent execution. |
 | [xtask/](xtask/AGENTS.md) | Repository packaging and release command owner. Read the current command dispatcher rather than old qualification instructions. |
 
+## Working in this area
+
+Use the question-to-entry-point table first, then descend through the nearest child waypoint before reading implementation details. Confirm active packages in the root manifests and trace current callers; designs, fixtures, and retained evidence describe intent or history rather than automatically proving live behavior.
+
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

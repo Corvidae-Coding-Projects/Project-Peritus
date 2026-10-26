@@ -14,6 +14,10 @@ Retained real-interface observations grouped by boundaries, framing, varied inpu
 | [mutation/](mutation/AGENTS.md) | Retained mutation/canary observations showing which behavior each campaign could reach and detect. |
 | [recovery/](recovery/AGENTS.md) | Retained abrupt-interruption and restart observations with earlier campaign scope and outcomes. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

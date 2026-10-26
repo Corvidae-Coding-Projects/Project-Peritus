@@ -88,6 +88,10 @@ Historical evidence for context graph reuse; recorded inputs, outputs and source
 | [peritus-sol-knowledge-errors-source-final.sha256](peritus-sol-knowledge-errors-source-final.sha256) | Retained evidence/output for peritus sol knowledge errors source final. |
 | [review.json](review.json) | Structured review data with fields `schema`, `schema_version`, `status`, `recorded_at`, `base_commit`. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

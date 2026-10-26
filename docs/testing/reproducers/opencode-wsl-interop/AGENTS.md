@@ -16,6 +16,10 @@ catalog entry points, an independent native-host oracle, and the retained baseli
 
 Implementation owner: [OpenCode adapter](../../../../crates/model/peritus-provider-opencode/src/AGENTS.md).
 Campaign: [WSL interop report](../../opencode-wsl-interop-real-testing-2026-10-20.md).
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent](../AGENTS.md) · [Repository](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

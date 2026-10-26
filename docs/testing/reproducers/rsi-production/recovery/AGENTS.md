@@ -13,6 +13,10 @@ Real-interface replay resources for recovery; start with the local README/driver
 | [consumer.rs](consumer.rs) | Local implementation for docs / testing / reproducers / rsi-production / recovery. Entry names: `AnyResult`, `digest`, `eid`, `save`, `read`. |
 | [evaluator.py](evaluator.py) | Independent CLI requirements oracle, run only in evaluator stage. |
 
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

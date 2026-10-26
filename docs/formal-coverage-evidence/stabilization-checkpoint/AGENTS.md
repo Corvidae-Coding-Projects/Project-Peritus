@@ -43,6 +43,10 @@ Historical evidence for stabilization checkpoint; recorded inputs, outputs and s
 | [xtask-tests.err.txt](xtask-tests.err.txt) | Retained evidence/output for xtask tests.err. |
 | [xtask-tests.log.txt](xtask-tests.log.txt) | Retained evidence/output for xtask tests.log. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

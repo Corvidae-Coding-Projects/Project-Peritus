@@ -15,6 +15,10 @@ HarnessBench API/runner adapters and example configuration for invoking native P
 | [pin.toml](pin.toml) | Configuration/contract data for pin. Sections: `schema_version`, `repository`, `revision`, `revision_date`, `task_count`. |
 | [rubric_server.py](rubric_server.py) | Local HTTP boundary from HarnessBench rubrics to the native Peritus account router. |
 
+## Working in this area
+
+Read the profile or workload definition together with the runner that consumes it and the baseline metadata that identifies the compared build. Benchmark artifacts measure the stated scenario only; keep them separate from product acceptance and refresh provenance whenever inputs or methodology change.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

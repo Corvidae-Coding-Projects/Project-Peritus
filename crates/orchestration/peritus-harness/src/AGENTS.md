@@ -24,6 +24,10 @@ Durable checked harness definitions and exact C1 materialization.
 | [runtime/](runtime/AGENTS.md) | Commit-before-effect runtime driver and effect ports. |
 | [wire/](wire/AGENTS.md) | Canonical B3 schema-v1 families 79, 80, and 81. |
 
+## Working in this area
+
+Start at [`lib.rs`](lib.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

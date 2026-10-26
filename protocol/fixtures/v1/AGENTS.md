@@ -16,6 +16,10 @@ Version-one domain command/contract byte examples and their SHA-256 inventory; c
 | [kernel-command-pause-session.bin](kernel-command-pause-session.bin) | Retained binary/archive data for kernel command pause session; not a source-code entrypoint. |
 | [policy-amendment.bin](policy-amendment.bin) | Retained binary/archive data for policy amendment; not a source-code entrypoint. |
 
+## Working in this area
+
+Choose the exact version and recovery disposition through the child waypoints before inspecting retained bytes. These directories organize inputs and expected observations; follow the parent map to the active codec, scheduler, or recovery implementation.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

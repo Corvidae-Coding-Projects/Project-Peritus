@@ -106,6 +106,10 @@ Real-interface campaign reports and reproducible defects. These document observe
 | [evidence/](evidence/AGENTS.md) | Retained real-interface observations grouped by boundaries, framing, varied inputs, mutations, and recovery campaigns. |
 | [reproducers/](reproducers/AGENTS.md) | Retained drivers/consumers for replaying actual program defects with disposable state and independently stated expectations. |
 
+## Working in this area
+
+Use each report together with its named reproducer, source identity, and independent observation boundary. Separate historical results from current behavior, keep new mutable artifacts outside the repository unless they are intentionally retained evidence, and route implementation changes through the linked code owner.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

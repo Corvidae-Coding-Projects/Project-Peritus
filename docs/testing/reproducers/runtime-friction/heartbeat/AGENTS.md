@@ -13,6 +13,10 @@ Real-interface replay resources for heartbeat; start with the local README/drive
 | [public-approval-registry.bin](public-approval-registry.bin) | Retained binary/archive data for public approval registry; not a source-code entrypoint. |
 | [replay.py](replay.py) | Real Peritus TUI/daemon heartbeat replay; no replacement protocol or application. |
 
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.
