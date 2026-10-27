@@ -4,6 +4,29 @@ These consumers operate actual daemon IPC, native terminal rendering and public 
 `readiness.py` uses an absent session D-Bus, inert credential references, isolated application
 directories and real `peritusd`; it never impersonates an AI service or reads user credentials.
 
+For issue #160, build the actual tool/context consumer and replay failed-read recovery:
+
+```sh
+REPLAY_ROOT="$(mktemp -d "$HOME/.cache/peritus-task-continuity.XXXXXX")"
+mkdir -p "$REPLAY_ROOT/tmp"
+export TMPDIR="$REPLAY_ROOT/tmp"
+export CARGO_TARGET_DIR="$REPLAY_ROOT/target"
+python3 docs/testing/reproducers/open-issues/build-task-continuity.py "$REPLAY_ROOT/consumer"
+python3 docs/testing/reproducers/open-issues/task-continuity.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/cases"
+python3 docs/testing/reproducers/open-issues/task-continuity.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/live-codex" --live
+```
+
+The final command uses the official Codex executable and its existing authorized account.
+For OpenCode Zen, set `PERITUS_REAL_KEY_FILE` to an authorized key file and add `--zen --live`
+with a fresh output directory. Live runs use actual inference, not a response substitute.
+The consumer seeds history using real rejected host calls, then delegates continued execution
+to the actual developer loop, memory tools, and durable context. It does not require the model
+to spontaneously make a malformed call. Every case retains its commands, exact visible views,
+and output under the selected disposable directory. Expected behavior and observed baseline/
+fixed results are in [the issue #160 record](../../task-continuity-real-2026-10-26.md).
+
 Build `peritus-cli`, `peritus-daemon`, and `peritus-web` with one job, debug symbols disabled,
 and `--message-format=json`. Give `link.py` that complete Cargo log to link `readiness.rs`
 and `ui.rs` to the exact same artifact cohort. Seed the fixture with the public

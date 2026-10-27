@@ -33,7 +33,7 @@ pub(super) fn validate(name: &str, arguments: &Value) -> Result<(), DeveloperLoo
     let schema =
         catalog.get(name).ok_or_else(|| tool("model requested an undeclared developer tool"))?;
     validate_value(schema, arguments, "$", 0).map_err(|detail| tool(format!(
-        "Invalid tool arguments: {detail}. No action was executed. Correct the fields to match the declared tool schema; do not repeat the unchanged call."
+        "Invalid tool arguments: {detail}. No action was executed. This rejected call does not change the current user task or establish that a file or service is unavailable. Correct the fields to match the declared tool schema and continue the current unfinished step; do not repeat the unchanged call or resume an older task."
     )))
 }
 

@@ -175,7 +175,7 @@ impl Activity {
         if output.is_error || reused_read || self.visible.contains_key(&key) {
             self.feedback = Some(if output.is_error {
                 format!(
-                    "The {name} call repeats the same rejected outcome. Change the invalid arguments, satisfy the named permission/precondition, or continue another authorized step. Re-reading unrelated source cannot repair this rejection. No effect was established by the rejection."
+                    "The {name} call repeats the same rejected outcome. Keep the current user task and unfinished plan active. Change the invalid arguments, satisfy the named permission/precondition, or take another authorized step toward that same task. Re-reading unrelated source or resuming an older task cannot repair this rejection. No effect was established by the rejection; invalid arguments do not establish that the target is unavailable."
                 )
             } else {
                 format!(

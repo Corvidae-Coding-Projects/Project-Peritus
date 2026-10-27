@@ -20,6 +20,9 @@ Real application interface consumers for the October 22 issue/PR campaign.
 | [pipeline-promise.rs](pipeline-promise.rs) | Operates the exact production reply check against public prose, quotations, code, and conditional offers for issue #159. |
 | [pipeline-handoff.rs](pipeline-handoff.rs) | Actual ProductRunner and official Codex/OpenCode inference consumer for approved handoffs, read-only replies, and local-storage failure/recovery. |
 | [build-pipeline-handoff.py](build-pipeline-handoff.py) | Builds the public handoff consumer in a separate disposable Cargo project with two build jobs. |
+| [task-continuity.rs](task-continuity.rs) | Actual workspace tools, durable context, reopening, permission changes, and official-provider continuation after rejected reads for issue #160. |
+| [build-task-continuity.py](build-task-continuity.py) | Builds the task-continuity consumer outside Cargo workspace membership using the workspace dependency lock. |
+| [task-continuity.py](task-continuity.py) | Drives 24 deterministic invalid-read/mixed-batch recovery journeys and optional live inference; checks plans, paired results, observed file contents, and read-permission boundaries. |
 | [pipeline-authorized.txt](pipeline-authorized.txt) | Concrete proposed log-triage task followed by the reported short approval. |
 | [pipeline-readonly.txt](pipeline-readonly.txt) | Read-only quotation/explanation boundary; must not launch implementation. |
 | [context-display.py](context-display.py) | Real official-account workspace read, exact archived-source retrieval and native context-read label display; retains its owned fixture for display replay. |
