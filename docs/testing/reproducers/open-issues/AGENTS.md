@@ -23,6 +23,8 @@ Real application interface consumers for the October 22 issue/PR campaign.
 | [task-continuity.rs](task-continuity.rs) | Actual workspace tools, durable context, reopening, permission changes, and official-provider continuation after rejected reads for issue #160. |
 | [build-task-continuity.py](build-task-continuity.py) | Builds the task-continuity consumer outside Cargo workspace membership using the workspace dependency lock. |
 | [task-continuity.py](task-continuity.py) | Drives 24 deterministic invalid-read/mixed-batch recovery journeys and optional live inference; checks plans, paired results, observed file contents, and read-permission boundaries. |
+| [argument-fault-vendor.py](argument-fault-vendor.py) | Prompts the real official OpenCode model for a controlled malformed proposal, then restores normal task instructions; captures genuine vendor output without fabricating replies. |
+| [read-argument-repair.py](read-argument-repair.py) | Drives upstream argument correction through the actual developer loop and checks dispatch errors, correction inference, repeated mistakes, valid empty arguments, and final file observations. |
 | [pipeline-authorized.txt](pipeline-authorized.txt) | Concrete proposed log-triage task followed by the reported short approval. |
 | [pipeline-readonly.txt](pipeline-readonly.txt) | Read-only quotation/explanation boundary; must not launch implementation. |
 | [context-display.py](context-display.py) | Real official-account workspace read, exact archived-source retrieval and native context-read label display; retains its owned fixture for display replay. |

@@ -254,7 +254,30 @@ impl OpenCodeRuntimeProvider {
     ) -> Result<OutputDisposition, ProviderCoreError> {
         // Native framing and failures stay authoritative. Only a completed, successful,
         // tool-disabled inference with a rejected model envelope can be regenerated.
-        match super::output::decode(output.stdout(), request, runtime) {
+        let decoded = match super::output::decode(output.stdout(), request, runtime) {
+            Ok(super::output::Decoded::ArgumentCorrection { turn, detail, rejected })
+                if output.exit().success() =>
+            {
+                let reason = super::recovery::TurnRejection::Arguments;
+                state.corrections.push(
+                    reason.audit(if state.rejected_usage.is_some() { 2 } else { 1 }, &rejected)?,
+                );
+                if state.rejected_usage.is_none() {
+                    state.rejected_usage = Some(turn.usage);
+                    state.prompt = reason.correction(&runtime.prompt);
+                    state.prompt.extend_from_slice(format!(
+                        "\nArgument correction required: {detail}. Supply the value from the current task and observed workspace paths. Do not invent a default, copy a different call's arguments, or return to an earlier task. If the target is unknown, request an authorized discovery tool with valid arguments.\n"
+                    ).as_bytes());
+                    return Ok(OutputDisposition::Retry);
+                }
+                // A model that still makes a valid-envelope argument mistake must get the
+                // ordinary host's actionable rejection, not a new terminal provider blocker.
+                Ok(super::output::Decoded::Turn(turn))
+            }
+            Ok(super::output::Decoded::ArgumentCorrection { .. }) => Err(super::malformed()),
+            decoded => decoded,
+        };
+        match decoded {
             Ok(super::output::Decoded::Rejected { reason, usage, rejected })
                 if output.exit().success() =>
             {
@@ -314,7 +337,11 @@ impl OpenCodeRuntimeProvider {
                     std::mem::take(&mut state.corrections),
                 )
                 .map(OutputDisposition::Complete),
-            Ok(super::output::Decoded::Rejected { .. }) | Err(_) => self
+            Ok(
+                super::output::Decoded::Rejected { .. }
+                | super::output::Decoded::ArgumentCorrection { .. },
+            )
+            | Err(_) => self
                 .failed(
                     request,
                     cancellation.clone(),

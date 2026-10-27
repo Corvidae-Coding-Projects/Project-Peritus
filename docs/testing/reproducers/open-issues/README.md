@@ -27,6 +27,33 @@ to spontaneously make a malformed call. Every case retains its commands, exact v
 and output under the selected disposable directory. Expected behavior and observed baseline/
 fixed results are in [the issue #160 record](../../task-continuity-real-2026-10-26.md).
 
+The upstream malformed-call campaign uses that same built consumer with actual OpenCode Zen
+inference. Set `PERITUS_REAL_KEY_FILE` to an authorized Zen key file, then run:
+
+```sh
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-missing"
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-null" \
+  --arguments '{"path":null}'
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-markup" --dsml
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-repeat" --fault-count 2
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-valid-empty" --valid-empty
+```
+
+The driver first grounds the real host in the disposable workspace. Its wrapper temporarily
+changes **only the disposable inference instructions** to ask the actual model to emit a bad
+call. No response is synthesized: the official executable, real model, native tool denials,
+credentials, output bytes, and exit status remain real. The next request receives the original
+task and Peritus's actual correction. The oracle requires captured model output to contain the
+requested proposal and correction input to name the argument issue; otherwise the branch is
+reported unexercised. `--fault-count 0` provides the ordinary control. `--baseline` expects a
+failed host read on the pre-fix consumer. See the
+[upstream correction record](../../read-argument-repair-real-2026-10-27.md) for scope and results.
+
 Build `peritus-cli`, `peritus-daemon`, and `peritus-web` with one job, debug symbols disabled,
 and `--message-format=json`. Give `link.py` that complete Cargo log to link `readiness.rs`
 and `ui.rs` to the exact same artifact cohort. Seed the fixture with the public

@@ -28,6 +28,13 @@ pub struct NativeFailure {
 
 pub enum Decoded {
     Turn(RuntimeTurn),
+    /// A structurally valid inert proposal needs model-authored argument repair. Keep the
+    /// original turn available for ordinary host rejection if a correction still gets it wrong.
+    ArgumentCorrection {
+        turn: RuntimeTurn,
+        detail: String,
+        rejected: String,
+    },
     Failure(NativeFailure),
     Rejected {
         reason: TurnRejection,
@@ -99,9 +106,58 @@ pub fn decode(
         return Err(super::malformed());
     }
     Ok(match decode_turn(&result, request, runtime, usage) {
-        Ok(turn) => Decoded::Turn(turn),
+        Ok(turn) => match argument_issue(&turn, request)? {
+            Some(detail) => Decoded::ArgumentCorrection { turn, detail, rejected: result },
+            None => Decoded::Turn(turn),
+        },
         Err(reason) => Decoded::Rejected { reason, usage, rejected: result },
     })
+}
+
+/// Early shape feedback, not a replacement for the host's full schema/authority checks.
+/// In particular, never fill a missing value from prose, another call, or a previous task.
+fn argument_issue(
+    turn: &RuntimeTurn,
+    request: &ModelRequest,
+) -> Result<Option<String>, ProviderCoreError> {
+    for call in &turn.tool_calls {
+        let tool = request
+            .tools()
+            .iter()
+            .find(|tool| tool.name().as_str() == call.name)
+            .ok_or_else(super::malformed)?;
+        let schema: Value = serde_json::from_slice(tool.parameters().canonical_bytes())
+            .map_err(|_| super::malformed())?;
+        for required in schema["required"].as_array().into_iter().flatten() {
+            let field = required.as_str().ok_or_else(super::malformed)?;
+            if !call.arguments.contains_key(field) {
+                return Ok(Some(format!(
+                    "{}: required arguments field {field:?} is missing",
+                    call.name
+                )));
+            }
+        }
+        for (field, value) in &call.arguments {
+            let property = &schema["properties"][field];
+            let wrong_type = match property["type"].as_str() {
+                Some("string") => !value.is_string(),
+                Some("object") => !value.is_object(),
+                Some("array") => !value.is_array(),
+                Some("boolean") => !value.is_boolean(),
+                Some("integer") => !(value.is_i64() || value.is_u64()),
+                Some("number") => !value.is_number(),
+                Some("null") => !value.is_null(),
+                _ => false,
+            };
+            if wrong_type {
+                return Ok(Some(format!(
+                    "{}: arguments field {field:?} must have declared type {}",
+                    call.name, property["type"]
+                )));
+            }
+        }
+    }
+    Ok(None)
 }
 
 fn decode_turn(
