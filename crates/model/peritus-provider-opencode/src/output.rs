@@ -364,7 +364,9 @@ pub fn observe_stderr(bytes: &[u8]) -> Option<ProviderCoreError> {
     // v1.19.0 incorrectly retries a 403 when its body says server_error. Observe only
     // recognized SDK error diagnostics; model text on stdout never enters this decision.
     let text = String::from_utf8_lossy(bytes);
-    let diagnostic = if text
+    let diagnostic = if local_storage_error(&text) {
+        "opencode.runtime.local_storage"
+    } else if text
         .contains("AI_APICallError: Upstream request failed: This Go model requires Global regions")
     {
         "opencode.runtime.go_global_regions_required"
@@ -381,12 +383,23 @@ pub fn observe_stderr(bytes: &[u8]) -> Option<ProviderCoreError> {
     };
     Some(ProviderCoreError::configuration(
         diagnostic,
-        "OpenCode rejected credentials or workspace/model access; repair the saved key or select an allowed model",
+        if diagnostic == "opencode.runtime.local_storage" {
+            "OpenCode's private SQLite storage failed; check local free space, user quotas, and runtime-directory write access before retrying"
+        } else {
+            "OpenCode rejected credentials or workspace/model access; repair the saved key or select an allowed model"
+        },
     ))
+}
+
+fn local_storage_error(text: &str) -> bool {
+    text.contains("SQLiteError: disk I/O error")
+        || text.contains("SQLiteError: database or disk is full")
+        || text.contains("SQLiteError: unable to open database file")
 }
 
 pub fn observed_failure(error: &ProviderCoreError) -> Option<NativeFailure> {
     let code = match error.operation() {
+        "opencode.runtime.local_storage" => "opencode.runtime.local_storage",
         "opencode.runtime.go_subscription_required" => "opencode.runtime.go_subscription_required",
         "opencode.runtime.model_access_disabled" => "opencode.runtime.model_access_disabled",
         "opencode.runtime.authentication" => "opencode.runtime.authentication",
@@ -396,7 +409,9 @@ pub fn observed_failure(error: &ProviderCoreError) -> Option<NativeFailure> {
         _ => return None,
     };
     Some(NativeFailure {
-        category: if code == "opencode.runtime.go_global_regions_required" {
+        category: if code == "opencode.runtime.local_storage" {
+            FailureCategory::Provider
+        } else if code == "opencode.runtime.go_global_regions_required" {
             FailureCategory::InvalidRequest
         } else if code == "opencode.runtime.authentication" {
             FailureCategory::Authentication

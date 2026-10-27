@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [pipeline-handoff-real-2026-10-26.md](pipeline-handoff-real-2026-10-26.md) | Issue #159 promise/receipt checks, actual Codex/DeepSeek handoffs, read-only boundaries, and OpenCode SQLite quota failure/recovery. |
 | [red-team-phase8-real-2026-10-24.md](red-team-phase8-real-2026-10-24.md) | Final adversarial containment, corruption recovery, actual-provider brownfield repair, clean source-build/install/launch, and source-publication campaign. |
 | [red-team-phase8-evidence.json](red-team-phase8-evidence.json) | Exact Phase 8 market, source-build, hostile replay, state recovery, brownfield, artifact, original-preservation, and check identities. |
 | [red-team-phase8-acceptance-ledger.md](red-team-phase8-acceptance-ledger.md) | Bounded A1–A14 final-program mapping with explicit platform, adapter, coverage, and claim limits. |

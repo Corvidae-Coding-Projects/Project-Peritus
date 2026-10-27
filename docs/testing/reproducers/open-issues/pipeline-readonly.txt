@@ -1,0 +1,2 @@
+User:
+What does run_pipeline do, and why doesn't saying "I'll have the pipeline run it" prove anything was started? This is an informational question only. Do not run the pipeline or change files.

@@ -100,6 +100,9 @@ fn failure_hint(
     category: peritus_model_protocol::FailureCategory,
     diagnostic_code: &str,
 ) -> &'static str {
+    if diagnostic_code == "opencode.runtime.local_storage" {
+        return "OpenCode's local SQLite storage failed. Check free space, user quotas, and write access to the private runtime directory, then retry. Saved work is retained; changing the provider key will not repair local storage.";
+    }
     if diagnostic_code == "openai.codex_runtime.input_limit" {
         return "Codex rejected the input size. Read smaller document pages or choose a provider that accepts larger requests.";
     }

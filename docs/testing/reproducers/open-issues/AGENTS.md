@@ -17,6 +17,11 @@ Real application interface consumers for the October 22 issue/PR campaign.
 | [model-key-reuse.py](model-key-reuse.py) | Actual model-only settings edits across six provider families without key entry or reference replacement. |
 | [tool-output.rs](tool-output.rs) | Actual shared presentation API for 140 working-entry shapes, directories, empty state, JSON fragments and unfamiliar record preservation. |
 | [acceptance-contract.rs](acceptance-contract.rs) | Actual public gate-planning consumer for a Make-owned data workspace, including execution of the selected full check target. |
+| [pipeline-promise.rs](pipeline-promise.rs) | Operates the exact production reply check against public prose, quotations, code, and conditional offers for issue #159. |
+| [pipeline-handoff.rs](pipeline-handoff.rs) | Actual ProductRunner and official Codex/OpenCode inference consumer for approved handoffs, read-only replies, and local-storage failure/recovery. |
+| [build-pipeline-handoff.py](build-pipeline-handoff.py) | Builds the public handoff consumer in a separate disposable Cargo project with two build jobs. |
+| [pipeline-authorized.txt](pipeline-authorized.txt) | Concrete proposed log-triage task followed by the reported short approval. |
+| [pipeline-readonly.txt](pipeline-readonly.txt) | Read-only quotation/explanation boundary; must not launch implementation. |
 | [context-display.py](context-display.py) | Real official-account workspace read, exact archived-source retrieval and native context-read label display; retains its owned fixture for display replay. |
 | [read-preview.py](read-preview.py) | Reopens actual long reads at three terminal widths and verifies expansion without source/history changes; optional real-provider Markdown, Unicode, short-read and missing-file journeys. |
 | [README.md](README.md) | Execution instructions and scope boundaries. |

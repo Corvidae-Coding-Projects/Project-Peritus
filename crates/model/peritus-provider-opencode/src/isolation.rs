@@ -37,10 +37,7 @@ impl Isolation {
         credential: Option<&Credential>,
         system: &str,
     ) -> Result<Self, ProviderCoreError> {
-        let directory = tempfile::Builder::new()
-            .prefix("peritus-opencode-")
-            .tempdir()
-            .map_err(|_| private_error())?;
+        let directory = private_directory().map_err(|_| private_error())?;
         let root = std::fs::canonicalize(directory.path()).map_err(|_| private_error())?;
         reject_ambient_project(&root)?;
         for path in ["data/opencode", "config/opencode", "cache", "state", "home", "tmp"] {
@@ -142,6 +139,22 @@ impl Isolation {
         )?
         .with_environment_overrides(values)
     }
+}
+
+fn private_directory() -> std::io::Result<tempfile::TempDir> {
+    // OpenCode writes its own SQLite database and cache. The shared temporary filesystem can
+    // exhaust a user's quota even when it reports free space. Prefer the private session runtime,
+    // as the official-account adapter does; retain the ambient-project check before credentials.
+    if let Some(path) = std::env::var_os("XDG_RUNTIME_DIR").map(std::path::PathBuf::from)
+        && path.is_absolute()
+        && std::fs::symlink_metadata(&path)
+            .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+        && reject_ambient_project(&path).is_ok()
+        && let Ok(directory) = tempfile::Builder::new().prefix("peritus-opencode-").tempdir_in(path)
+    {
+        return Ok(directory);
+    }
+    tempfile::Builder::new().prefix("peritus-opencode-").tempdir()
 }
 
 fn reject_ambient_project(root: &Path) -> Result<(), ProviderCoreError> {

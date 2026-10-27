@@ -139,6 +139,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
+    fn response_blocker(&self, reply: &str) -> Option<String> {
+        self.base.response_blocker(reply)
+    }
     fn continuation_blocker(&self) -> Option<String> {
         self.base.continuation_blocker()
     }

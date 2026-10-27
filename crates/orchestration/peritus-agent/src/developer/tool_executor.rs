@@ -88,6 +88,14 @@ pub trait DeveloperToolExecutor: Send {
         None
     }
 
+    /// Checks a proposed final reply against host-owned execution receipts.
+    ///
+    /// A correction stays in this invocation and does not grant tool authority. Existing
+    /// executors keep their completion precondition unless they need to inspect the reply itself.
+    fn response_blocker(&self, _reply: &str) -> Option<String> {
+        self.completion_blocker()
+    }
+
     /// Names the one declared tool that must run before other work can make progress.
     ///
     /// The developer loop projects this as a provider-level specific tool choice. This lets an

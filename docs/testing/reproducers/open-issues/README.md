@@ -50,6 +50,33 @@ uncovered paths, proves that `make check` rather than the cheaper `check-fast` t
 reads every changed file, and executes the selected full check. It never runs a default or unknown
 Make target.
 
+Issue #159's `pipeline-handoff.rs` operates the actual ProductRunner with official provider
+inference and disposable log/lock fixtures. It uses the existing official Codex account by default;
+`--zen` selects the actual OpenCode Zen/DeepSeek transport and reads the explicitly selected
+`PERITUS_REAL_KEY_FILE`. It consumes provider usage. Build and run it outside the checkout:
+
+```sh
+python3 docs/testing/reproducers/open-issues/build-pipeline-handoff.py /absolute/new/consumer
+/absolute/new/consumer/target/debug/peritus-pipeline-handoff-replay \
+  /absolute/new/approved-case docs/testing/reproducers/open-issues/pipeline-authorized.txt
+/absolute/new/consumer/target/debug/peritus-pipeline-handoff-replay \
+  /absolute/new/readonly-case docs/testing/reproducers/open-issues/pipeline-readonly.txt
+```
+
+The approved case must enter the pipeline and produce a matching `identity-report.md`; the
+read-only case must answer without entering design or writing a report. Both must preserve the
+input files and `keep.txt`. `--plan` selects read-only Plan mode. With `--zen`, a private transparent
+vendor capture wrapper can be selected through `PERITUS_REAL_CAPTURE` and the existing capture
+driver's environment; it must relay unchanged official vendor input/output, never replace results.
+See [the campaign report](../../pipeline-handoff-real-2026-10-26.md) for the observed SQLite
+storage failure, real runtime-directory recovery, and coverage limits.
+
+`pipeline-promise.rs` is a narrower component replay which compiles the exact host reply check
+and reads one proposed public reply from stdin. A `true` result means correction is required
+before a promise can finish the conversation. It does not launch a pipeline and does not by itself
+establish successful model correction. Build it with `rustc --edition=2024` and pass the screenshot's
+promise, quotations/code, conditional offers, and informational explanations through stdin.
+
 `context-display.py` performs a real-account source read and archived-source retrieval, retaining
 an isolated fixture JSON. Pass that fixture to `read-preview.py --fixture FIXTURE.json` along
 with `--binary-dir`, `--ui`, `--probe` (the linked `selection.rs`) and `--output`. Before the fix,
