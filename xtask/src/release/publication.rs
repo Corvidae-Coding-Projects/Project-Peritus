@@ -43,12 +43,20 @@ struct Asset {
 }
 
 pub fn stage_draft(root: &Path) -> Result<(), XtaskError> {
+    stage(root, true)
+}
+
+pub fn stage_native_draft(root: &Path) -> Result<(), XtaskError> {
+    stage(root, false)
+}
+
+fn stage(root: &Path, include_distro: bool) -> Result<(), XtaskError> {
     let tag = super::environment("GITHUB_REF_NAME")?;
     let expected_tag = format!("v{}", super::workspace_version(root)?);
     if tag != expected_tag {
         return Err(XtaskError::metadata("release tag does not match the workspace version"));
     }
-    validate_release(&read_release(root, &tag)?, &tag, false)?;
+    validate_release(&read_release(root, &tag)?, &tag, false, include_distro)?;
     let bootstraps = stage_bootstraps(root, &tag)?;
     super::run(
         Command::new("gh")
@@ -57,7 +65,7 @@ pub fn stage_draft(root: &Path) -> Result<(), XtaskError> {
             .args(bootstraps),
         "upload tag-bound release installers and their checksums",
     )?;
-    validate_release(&read_release(root, &tag)?, &tag, true)
+    validate_release(&read_release(root, &tag)?, &tag, true, include_distro)
 }
 
 fn read_release(root: &Path, tag: &str) -> Result<Release, XtaskError> {
@@ -73,24 +81,26 @@ fn read_release(root: &Path, tag: &str) -> Result<Release, XtaskError> {
         .map_err(|error| XtaskError::metadata(format!("invalid GitHub release response: {error}")))
 }
 
-fn expected_assets(include_bootstraps: bool, tag: &str) -> Vec<String> {
+fn expected_assets(include_bootstraps: bool, tag: &str, include_distro: bool) -> Vec<String> {
     let mut names = Vec::new();
     for (platform, architecture, _) in TARGETS {
         let extension = if platform == "windows" { "zip" } else { "tar.gz" };
         let archive = format!("peritus-{platform}-{architecture}.{extension}");
         names.extend(EVIDENCE_SUFFIXES.iter().map(|suffix| format!("{archive}{suffix}")));
     }
-    let version = tag.trim_start_matches('v');
-    for (architecture, debian_architecture) in [("x86_64", "amd64"), ("aarch64", "arm64")] {
-        for format in ["deb", "rpm"] {
-            for suffix in ["", ".asc", ".sha256"] {
-                names.push(format!("peritus-{format}-{architecture}.tar.gz{suffix}"));
+    if include_distro {
+        let version = tag.trim_start_matches('v');
+        for (architecture, debian_architecture) in [("x86_64", "amd64"), ("aarch64", "arm64")] {
+            for format in ["deb", "rpm"] {
+                for suffix in ["", ".asc", ".sha256"] {
+                    names.push(format!("peritus-{format}-{architecture}.tar.gz{suffix}"));
+                }
             }
+            names.push(format!("peritus_{version}-1_{debian_architecture}.deb"));
+            names.push(format!("peritus-{version}-1.fc44.{architecture}.rpm"));
         }
-        names.push(format!("peritus_{version}-1_{debian_architecture}.deb"));
-        names.push(format!("peritus-{version}-1.fc44.{architecture}.rpm"));
+        names.push("peritus-release.asc".to_owned());
     }
-    names.push("peritus-release.asc".to_owned());
     if include_bootstraps {
         for bootstrap in BOOTSTRAPS {
             names.push(bootstrap.to_owned());
@@ -104,11 +114,12 @@ fn validate_release(
     release: &Release,
     tag: &str,
     include_bootstraps: bool,
+    include_distro: bool,
 ) -> Result<(), XtaskError> {
     if !release.is_draft || release.tag_name != tag {
         return Err(XtaskError::metadata("staging requires the exact unpublished draft"));
     }
-    for name in expected_assets(include_bootstraps, tag) {
+    for name in expected_assets(include_bootstraps, tag, include_distro) {
         let mut matching = release.assets.iter().filter(|asset| asset.name == name);
         if !matching.next().is_some_and(|asset| asset.state == "uploaded" && asset.size > 0)
             || matching.next().is_some()

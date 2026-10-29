@@ -371,7 +371,8 @@ Return an exact continuation when more work remains. After restart, discard unst
 plan steps and re-admit any continuation; reconcile original command handles before waiting.
 
 The first host contract is `inspection_plan` version 1, selected with
-`local_context.read_only_plans="sequential"` (default `"disabled"`). It accepts a current scope,
+`local_context.read_only_plans="sequential"` (enabled by default as of v0.1.14; explicit
+`"disabled"` is the opt-out). It accepts a current scope,
 input revision, and either a dependency-ordered node list or a scoped committed continuation.
 Nodes name only `workspace_list`, `workspace_search`, or `workspace_read`. Earlier-result JSON
 Pointers can supply named ordinary arguments; missing or erroneous values return judgment to
@@ -696,3 +697,14 @@ The following are experiments to resolve with evidence during their listed incre
 Design verdict: **ready** for incremental implementation beginning with I0–I3. Broader context,
 scheduling, and freshness changes remain explicitly experimental until their real-operation
 evidence demonstrates preserved behavior and net benefit.
+
+
+## v0.1.14 default-policy amendment
+
+Conservative decision views and sequential read-only plans are now the defaults for omitted
+and partial configuration. Explicit `decision_view="history"` and `read_only_plans="disabled"`
+retain the prior selections. Whole-memory disablement and all per-step host authority remain
+in force. Candidate observation sharing stays opt-in. This changes the delivery policy after
+the I0–I6 campaign; historical measurements and opt-in qualification records retain their
+original context. See the v0.1.14 default-policy real-interface report for the new omitted-setting
+and live-provider evidence. No universal latency or token reduction is inferred from these runs.

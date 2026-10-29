@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "design_doc": ".design/incremental-execution-efficiency.md",
-  "doc_hash": "sha256:e540f7bdaf5c60159dfd958d8b28d471ef39bf2b629540f6b706a4798c029b43",
+  "doc_hash": "sha256:ce1d8ee9d13ed3f7f645628e73ca9a725ea17cb3e3fbcd32308a35a364d106bd",
   "stage": "designed",
   "plans": [],
   "runs": []

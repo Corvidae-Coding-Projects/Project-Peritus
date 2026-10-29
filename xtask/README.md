@@ -31,7 +31,7 @@ The root Cargo alias points to this package; command parsing lives in
 | Operation | Commands | Implementation |
 | --- | --- | --- |
 | Build a complete native package or install it for the current user | `product-package`, `product-install` | [Package lifecycle](src/product_package/AGENTS.md), [assembly wrapper](src/product_package.rs), [native package builder](../crates/app/testing/peritus-platform-qualification/AGENTS.md) |
-| Create/stage a tag-bound GitHub release draft | `release-create`, `release-stage` | [Release owner](src/release/AGENTS.md), [release dispatch](src/release.rs) |
+| Create/stage a tag-bound GitHub release draft | `release-create`, `release-stage`, `release-native-stage` | [Release owner](src/release/AGENTS.md), [release dispatch](src/release.rs) |
 | Archive/checksum a native build or assemble downloaded same-run binaries | `release-package-stage`, `release-package-assemble` | [Release dispatch](src/release.rs), [archive writer](../packaging/archive.py), [native packaging](../packaging/native_release.py) |
 | Build native daemon/CLI libraries and binaries | `release-daemon-library`, `release-daemon-binary`, `release-cli-library`, `release-cli-binary`, `release-windows-binary` | [Native compilation](../packaging/native_build.py), [Windows compilation](../packaging/windows_release.py), [compilation background](../packaging/native-build.md) |
 | Retain native assembly observations | `release-rebuild-record` | [Rebuild operations](src/release/rebuild.rs), [observation recorder](../packaging/rebuild.py) |

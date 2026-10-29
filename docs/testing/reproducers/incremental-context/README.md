@@ -405,3 +405,14 @@ Set `local_context.candidate_observation = "shared"` for opt-in managed Linux ca
 use separate captures; in-place task scopes retain their existing path. Keep serial plans and
 complete catalogs. See [the I6 completion report](../../execution-efficiency-i6-freshness.md)
 for exact cohorts, timings, platform limits and the retained setup/oracle corrections.
+
+
+## v0.1.14 default-policy replay
+
+`link.py --defaults-output <binary>` also links `context-defaults-consumer.rs` against the
+fresh daemon/product libraries. `context-defaults.py --consumer <binary> --output <fresh-dir>`
+checks seven independent daemon TOML and partial JSON cases, including both explicit opt-outs.
+`decision-replay.py`, `plan-replay.py`, `plan-daemon-control.py`, `plan-live-compare.py` and
+`candidate-observation-live.py` accept `--use-defaults` to omit the two optimization settings.
+The live plan replay requires an actual model-authored dependent plan and observed decision-view
+compilation; an ordinary successful answer alone does not qualify the default route.

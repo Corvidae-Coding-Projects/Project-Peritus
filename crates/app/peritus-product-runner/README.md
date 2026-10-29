@@ -239,9 +239,9 @@ storage, trace versions, read-only inspection, and optional native auxiliary inf
 
 ## Behavioral work
 
-Set `local_context.decision_view = "conservative"` to select exact decision evidence cards,
+The default `local_context.decision_view = "conservative"` selects exact decision evidence cards,
 current host requirements/state, broad source dependencies and complete protocol exchanges.
-`"history"` remains the default and explicit rollback: live gains vary by workload, and a
+`"history"` is an explicit opt-out and rollback: live gains vary by workload, and a
 smaller view does not guarantee faster or more reliable model completion. Original source
 bytes remain available through `context_sources` and its named retrieval tools. Current
 permissions, protected/opaque paths, fresh candidate observations and independent review still
@@ -257,8 +257,8 @@ reader floor; older binaries explicitly refuse that lineage. New source classifi
 derived once per archive suffix, while candidate and permission checks remain current. See
 [the I4 report](../../../docs/testing/execution-efficiency-i4-decision-views.md).
 
-Read-only inspection plans are experimental and disabled by default. Set
-`local_context.read_only_plans` to `"sequential"` to advertise `inspection_plan` and
+Read-only inspection plans are enabled by default. The default
+`local_context.read_only_plans = "sequential"` advertises `inspection_plan` and
 `inspection_result_read`. Plans support only workspace list/search/read, earlier-result JSON
 references, and response continuations. Each child receives ordinary current admission; exact
 child output is committed before the next child runs. Ambiguous references, errors, steering,

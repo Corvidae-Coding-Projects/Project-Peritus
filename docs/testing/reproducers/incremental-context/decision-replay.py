@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--require-host-invalidation', action='store_true')
     parser.add_argument('--expect-native-closure-bug', action='store_true')
+    parser.add_argument('--use-defaults', action='store_true', help='omit both policy fields to exercise application defaults')
     args = parser.parse_args()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -30,6 +31,8 @@ def main():
             'command_state': str(root / 'private/commands'), 'capacity': 200000,
             'task': 'Inspect alpha.txt and beta.txt. Preserve exact facts and current instructions.',
             'include_memory_tools': True, 'local_context': {'decision_view': 'conservative'}}
+    if args.use_defaults:
+        spec['local_context'] = {}
     spec_path = root / 'spec.json'
     spec_path.write_text(json.dumps(spec))
     errors = (root / 'stderr.log').open('w')

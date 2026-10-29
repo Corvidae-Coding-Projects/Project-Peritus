@@ -8,7 +8,7 @@ Implementation pieces for `release.rs`: Tag-bound GitHub release staging behind 
 
 | File | Role |
 | --- | --- |
-| [publication.rs](publication.rs) | Complete target inventory and tag-bound bootstrap staging, without publication authority. |
+| [publication.rs](publication.rs) | Complete native or full-distribution target inventory and tag-bound bootstrap staging, without publication authority. |
 | [rebuild.rs](rebuild.rs) | Reviewed, failure-propagating entry points for native rebuild observations. |
 
 Owning module: [release.rs](../release.rs). Inspect that parent before changing the local pieces.

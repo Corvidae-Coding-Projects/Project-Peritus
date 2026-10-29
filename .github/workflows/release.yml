@@ -603,3 +603,38 @@ jobs:
           dist/peritus-native-package.json
           "${{ steps.provenance.outputs.bundle-path }}"
           "${{ steps.sbom.outputs.bundle-path }}"
+      - name: Install from source with unusable compiler wrappers on Windows
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $broken = Join-Path $env:RUNNER_TEMP 'non-executable-sccache.exe'
+          Set-Content -LiteralPath $broken -Value 'This file is not an executable.'
+          $env:RUSTC_WRAPPER = $broken
+          $env:RUSTC_WORKSPACE_WRAPPER = $broken
+          $env:CARGO_BUILD_RUSTC_WRAPPER = $broken
+          $env:CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER = $broken
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 -Source
+          if ($LASTEXITCODE -ne 0) { throw "Source installer failed: $LASTEXITCODE" }
+          if ($env:RUSTC_WRAPPER -ne $broken) { throw 'Installer changed the parent environment.' }
+          $installed = Join-Path $env:LOCALAPPDATA 'Programs/Peritus/bin/peritus.exe'
+          $expected = 'peritus ' + $env:GITHUB_REF_NAME.TrimStart('v')
+          $actual = & $installed --version
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) { throw "Installed version differs: $actual" }
+
+  native-stage:
+    if: ${{ github.event_name == 'workflow_dispatch' && !inputs.runtime_replay && startsWith(github.ref, 'refs/tags/v') }}
+    name: Stage native release installers
+    needs: native-package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Require all native assets and upload version-bound installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo run --locked --package xtask -- release-native-stage

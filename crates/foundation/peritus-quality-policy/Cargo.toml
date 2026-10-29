@@ -10,8 +10,8 @@ readme = "README.md"
 description = "Verified exact-revision acceptance evaluator for Project Peritus"
 
 [dependencies]
-peritus-spec = { version = "=0.1.13", path = "../peritus-spec" }
-peritus-types = { version = "=0.1.13", path = "../peritus-types" }
+peritus-spec = { version = "=0.1.14", path = "../peritus-spec" }
+peritus-types = { version = "=0.1.14", path = "../peritus-types" }
 
 [package.metadata.peritus]
 owner = "B2"

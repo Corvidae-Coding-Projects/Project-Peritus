@@ -1,6 +1,22 @@
 #!/bin/sh
 set -eu
 
+# Source installs must enter before Cargo probes rustc through user-selected caches.
+if [ "${1:-}" = "--source" ]; then
+    [ "$#" -eq 1 ] || { printf '%s\n' 'usage: install.sh [--source]' >&2; exit 2; }
+    source_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    [ -f "$source_root/xtask/Cargo.toml" ] || {
+        printf '%s\n' 'Source installation requires the complete Peritus checkout.' >&2
+        exit 1
+    }
+    cd "$source_root"
+    # Empty values override both inherited environment and user Cargo configuration.
+    # They are confined to this installer and its descendants.
+    export RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=
+    exec cargo run --locked --jobs 2 --package xtask -- product-install
+fi
+[ "$#" -eq 0 ] || { printf '%s\n' 'usage: install.sh [--source]' >&2; exit 2; }
+
 repository=${PERITUS_REPOSITORY:-Corvidae-Coding-Projects/Project-Peritus}
 release_base=${PERITUS_RELEASE_BASE_URL:-https://github.com/$repository/releases/download}
 # The release publisher replaces this token. A release bootstrap stays bound to its own tag.
