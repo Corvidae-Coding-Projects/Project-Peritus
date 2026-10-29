@@ -14,9 +14,17 @@ pub(super) struct Exchange {
     message_shapes: Vec<(Role, usize)>,
     pub(super) estimate: DeveloperContextEstimate,
     replacements: Vec<(usize, usize, Replacement)>,
+    native_replay: bool,
+    has_tool_calls: bool,
 }
 
 impl Exchange {
+    pub(super) const fn has_tool_calls(&self) -> bool {
+        self.has_tool_calls
+    }
+    pub(super) const fn requires_native_replay(&self) -> bool {
+        self.native_replay
+    }
     pub(super) fn load(&self, memory: &LocalMemory) -> Result<Vec<Message>, DeveloperLoopError> {
         let mut messages = Vec::new();
         for (index, id) in self.message_ids.iter().enumerate() {
@@ -124,6 +132,8 @@ struct IndexedExchange {
     read_targets: Vec<Option<String>>,
     read_stamps: Vec<ReadStamp>,
     settled_mutations: Vec<String>,
+    native_replay: bool,
+    has_tool_calls: bool,
 }
 
 #[derive(Clone)]
@@ -214,8 +224,16 @@ impl IndexedExchange {
         self.estimate = DeveloperContextEstimate::messages(&messages);
         self.message_shapes =
             messages.iter().map(|message| (message.role(), message.content().len())).collect();
+        self.native_replay = messages.iter().flat_map(Message::content).any(|block| {
+            !matches!(
+                block,
+                ContentBlock::Text(_) | ContentBlock::ToolCall(_) | ContentBlock::ToolResult(_)
+            )
+        });
         let mut mutations = std::collections::BTreeMap::new();
+        self.has_tool_calls = false;
         for block in messages.iter().flat_map(Message::content) {
+            self.has_tool_calls |= matches!(block, ContentBlock::ToolCall(_));
             if let ContentBlock::ToolCall(call) = block
                 && matches!(
                     call.name().as_str(),
@@ -410,6 +428,8 @@ pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, Develope
             sources: indexed.sources.clone(),
             estimate: indexed.estimate,
             replacements: Vec::new(),
+            native_replay: indexed.native_replay,
+            has_tool_calls: indexed.has_tool_calls,
         };
         let mut has_unique_stale_source = false;
         for stamp in &indexed.read_stamps {

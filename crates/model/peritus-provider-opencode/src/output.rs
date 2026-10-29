@@ -283,6 +283,20 @@ fn counters(part: &Value) -> Result<UsageCounters, ProviderCoreError> {
     let count = |name: &str| -> Result<Option<u64>, ProviderCoreError> {
         tokens.pointer(name).map(|value| value.as_u64().ok_or_else(super::malformed)).transpose()
     };
+    // OpenCode 1.19 partitions input into uncached, cache-read and cache-write tokens.
+    // C5 input is the entire input; cache counters are subsets, not additional usage.
+    let input = count("/input")?;
+    let cached = count("/cache/read")?;
+    let created = count("/cache/write")?;
+    let combined_input = match (input, cached, created) {
+        (Some(input), Some(cached), Some(created)) => Some(
+            input
+                .checked_add(cached)
+                .and_then(|value| value.checked_add(created))
+                .ok_or_else(super::malformed)?,
+        ),
+        _ => None,
+    };
     let output = count("/output")?;
     let reasoning = count("/reasoning")?;
     let combined = match (output, reasoning) {
@@ -292,9 +306,9 @@ fn counters(part: &Value) -> Result<UsageCounters, ProviderCoreError> {
         (output, _) => output,
     };
     Ok(UsageCounters::new(
-        count("/input")?,
-        count("/cache/read")?,
-        count("/cache/write")?,
+        combined_input,
+        cached,
+        created,
         combined,
         reasoning,
         None,

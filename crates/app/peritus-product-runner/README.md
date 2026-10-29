@@ -239,6 +239,58 @@ storage, trace versions, read-only inspection, and optional native auxiliary inf
 
 ## Behavioral work
 
+Set `local_context.decision_view = "conservative"` to select exact decision evidence cards,
+current host requirements/state, broad source dependencies and complete protocol exchanges.
+`"history"` remains the default and explicit rollback: live gains vary by workload, and a
+smaller view does not guarantee faster or more reliable model completion. Original source
+bytes remain available through `context_sources` and its named retrieval tools. Current
+permissions, protected/opaque paths, fresh candidate observations and independent review still
+govern; reconstruction keys grant no authority or acceptance credit.
+
+Before accepting a host-bound model update or migrating unproven legacy conclusions, the host
+commits a version-6 checkpoint reader floor. Bound dependencies come from the exact published
+and admitted originating request, including current input, the managed candidate and supplied
+file constraints. Missing/changed/unknown inputs retain explicitly stale entries; model claims
+cannot narrow those dependencies. Direct folders lack a whole-candidate proof. Stale plans
+remain progress, not current facts. Migration/restart/rollback preserve exact sources and the
+reader floor; older binaries explicitly refuse that lineage. New source classifications are
+derived once per archive suffix, while candidate and permission checks remain current. See
+[the I4 report](../../../docs/testing/execution-efficiency-i4-decision-views.md).
+
+Read-only inspection plans are experimental and disabled by default. Set
+`local_context.read_only_plans` to `"sequential"` to advertise `inspection_plan` and
+`inspection_result_read`. Plans support only workspace list/search/read, earlier-result JSON
+references, and response continuations. Each child receives ordinary current admission; exact
+child output is committed before the next child runs. Ambiguous references, errors, steering,
+permission changes, and cancellation return control. Direct tools remain available.
+
+First use publishes a version-4 checkpoint reader guard before child dispatch. Current readers
+retain historical versions 1–3; older binaries explicitly refuse v4. Set the policy back to
+`"disabled"` to stop new plans while retaining exact v4 result retrieval and history. This
+setting never downgrades the checkpoint or erases completed results.
+
+`command_wait` observes an original `command_start` handle until completion or, when selected,
+new output. It checks current control between local polls and yields on steering, pause,
+cancellation, or revoked read access. A wait deadline ends only observation; it does not kill,
+restart, or declare success for the original process. Use existing handle-based recovery and
+controls to reconcile or manage that process.
+
+Waits also compare current effective permissions and the host's monotonic permission revision.
+Revoking and restoring the former bits still ends the old observation. Ledger read failures stop
+observation; static `ConversationView` implementations retain the default snapshot checks.
+Referenced plan arguments must be omitted from literal `arguments`, including empty/null
+placeholders. Ambiguous suppliers reject before any child dispatch. See
+[the I5 qualification report](../../../docs/testing/execution-efficiency-i5-plans-waits.md).
+
+Managed Linux runs can opt into `local_context.candidate_observation = "shared"`. The recorder
+derives source and repository identities from the same complete capture and requires a second
+fresh complete pair to match, reducing three source enumerations to two. It retains the existing
+retry limit, exact hashes, permissions, nested Git state, candidate gates, review and settlement.
+No observation survives as a freshness proof across a later boundary or process restart.
+`"separate"` remains the default and rollback. Other platforms always use separate captures;
+in-place task scopes keep their existing path. No stored format changes. See
+[the I6 qualification report](../../../docs/testing/execution-efficiency-i6-freshness.md).
+
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
 
 Retained local context has no default observation, entry, text, link, or update-count quota.

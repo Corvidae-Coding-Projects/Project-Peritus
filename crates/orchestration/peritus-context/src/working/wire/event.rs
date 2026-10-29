@@ -1,14 +1,19 @@
 //! Standalone canonical working-event frames with exact scope checks.
 
 use super::super::{WorkingBinding, WorkingDelta, WorkingError, WorkingEvent, WorkingLimits};
-use super::{WorkingCodecError, count, entry, fields, reader, writer};
+use super::{WorkingCodecError, count, entry, fields, reader_version, writer, writer_version};
 
-/// Encodes one source/environment/delta event as a version-one canonical payload.
+/// Encodes ordinary events as version 2 and host dependency events as version 3.
 ///
 /// # Errors
 /// Rejects data that exceeds the canonical allocation envelope.
 pub fn encode_working_event(event: &WorkingEvent) -> Result<Vec<u8>, WorkingCodecError> {
-    let mut w = writer(*b"PWME")?;
+    let mut w =
+        if matches!(event, WorkingEvent::HostDelta { .. } | WorkingEvent::HostInvalidate { .. }) {
+            writer_version(*b"PWME", super::HOST_VERSION)?
+        } else {
+            writer(*b"PWME")?
+        };
     match event {
         WorkingEvent::Observation { binding, source } => {
             w.write_u8(0)?;
@@ -35,6 +40,26 @@ pub fn encode_working_event(event: &WorkingEvent) -> Result<Vec<u8>, WorkingCode
             w.write_u64(update.base_revision())?;
             super::protocol::write_protocol(&mut w, update.protocol())?;
         }
+        WorkingEvent::HostDelta { delta, dependencies, source_binding } => {
+            w.write_u8(4)?;
+            fields::write_binding(&mut w, delta.binding())?;
+            w.write_u64(delta.base_revision())?;
+            w.write_collection_len(delta.entries().len())?;
+            for proposal in delta.entries() {
+                entry::write_entry(&mut w, proposal)?;
+            }
+            fields::write_validity(&mut w, dependencies)?;
+            fields::write_host_binding(&mut w, *source_binding)?;
+        }
+        WorkingEvent::HostInvalidate { binding, base_revision, entries } => {
+            w.write_u8(5)?;
+            fields::write_binding(&mut w, *binding)?;
+            w.write_u64(*base_revision)?;
+            w.write_collection_len(entries.len())?;
+            for id in entries {
+                w.write_fixed(id.as_bytes())?;
+            }
+        }
     }
     Ok(w.into_bytes())
 }
@@ -48,8 +73,14 @@ pub fn decode_working_event(
     expected: WorkingBinding,
     limits: WorkingLimits,
 ) -> Result<WorkingEvent, WorkingCodecError> {
-    let mut r = reader(bytes, *b"PWME")?;
-    let (binding, event) = match r.read_u8()? {
+    let (mut r, version) = reader_version(bytes, *b"PWME")?;
+    let tag = r.read_u8()?;
+    if version == super::HOST_ENTRY_VERSION
+        || (version == super::HOST_VERSION && !matches!(tag, 4 | 5))
+    {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    let (binding, event) = match tag {
         0 => {
             let binding = fields::read_binding(&mut r)?;
             (binding, WorkingEvent::Observation { binding, source: fields::read_source(&mut r)? })
@@ -79,6 +110,35 @@ pub fn decode_working_event(
                     binding, revision, protocol,
                 )),
             )
+        }
+        4 => {
+            if version != super::HOST_VERSION {
+                return Err(WorkingCodecError::InvalidValue);
+            }
+            let binding = fields::read_binding(&mut r)?;
+            let revision = r.read_u64()?;
+            let length = count(&mut r, limits.operations())?;
+            let mut entries = Vec::new();
+            for _ in 0..length {
+                entries.push(entry::read_entry(&mut r, limits)?);
+            }
+            let delta = WorkingDelta::new(binding, revision, entries, limits)?;
+            let dependencies = fields::read_validity(&mut r, limits)?;
+            let source_binding = fields::read_host_binding(&mut r)?;
+            (binding, WorkingEvent::HostDelta { delta, dependencies, source_binding })
+        }
+        5 => {
+            if version != super::HOST_VERSION {
+                return Err(WorkingCodecError::InvalidValue);
+            }
+            let binding = fields::read_binding(&mut r)?;
+            let base_revision = r.read_u64()?;
+            let length = count(&mut r, limits.operations())?;
+            let mut entries = Vec::new();
+            for _ in 0..length {
+                entries.push(fields::read_id(&mut r)?);
+            }
+            (binding, WorkingEvent::HostInvalidate { binding, base_revision, entries })
         }
         _ => return Err(WorkingCodecError::InvalidValue),
     };

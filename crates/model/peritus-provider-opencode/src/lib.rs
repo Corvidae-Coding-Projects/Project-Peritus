@@ -16,6 +16,7 @@ mod stream;
 pub use catalog::discover_models;
 pub use executable::OpenCodeExecutable;
 pub use provider::OpenCodeRuntimeProvider;
+pub use request::OpenCodeRequestLayout;
 
 use peritus_provider_core::{ProviderCoreError, hosted::HostedService};
 

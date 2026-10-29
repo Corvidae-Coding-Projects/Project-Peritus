@@ -36,7 +36,7 @@ impl WorkingDelta {
         }
         let mut index = 0;
         while index < entries.len() {
-            if unusable(entries[index].status()) {
+            if unusable(entries[index].status()) || entries[index].host_binding().is_some() {
                 return Err(WorkingError::DerivedStatus);
             }
             if index > 0 && entries[index - 1].id() >= entries[index].id() {
@@ -70,10 +70,18 @@ impl WorkingDelta {
 #[doc = " # Errors"]
 #[doc = " Rejects wrong scope/revision, missing sources or dependencies, cycles, stale proposals,"]
 #[doc = " resurrection of superseded records, allocation overflow, or exhausted revisions."]
-#[allow(clippy::too_many_lines, reason = "proof steps mirror the atomic reducer phases")]
 pub fn apply_working_delta(
     state: &WorkingState,
     delta: &WorkingDelta,
+) -> Result<WorkingState, WorkingError> {
+    reduce_delta(state, delta, None)
+}
+
+#[allow(clippy::too_many_lines, reason = "proof steps mirror the atomic reducer phases")]
+pub(super) fn reduce_delta(
+    state: &WorkingState,
+    delta: &WorkingDelta,
+    host: Option<(&super::WorkingValidity, super::WorkingHostBinding)>,
 ) -> Result<WorkingState, WorkingError> {
     state.check_binding(delta.binding)?;
     if delta.base_revision != state.revision() {
@@ -82,11 +90,22 @@ pub fn apply_working_delta(
     if delta.entries.len() > state.limits.operations() {
         return Err(WorkingError::Capacity);
     }
+    if host.is_some_and(|(_, binding)| binding.through_observation() > state.through_observation())
+    {
+        return Err(WorkingError::MissingSource);
+    }
     let revision = next_revision(state.revision())?;
     let mut entries = state.clone_entries();
     let mut index = 0;
     while index < delta.entries.len() {
         let entry = &delta.entries[index];
+        if host.is_none()
+            && state
+                .entry(state.binding(), entry.id())
+                .is_ok_and(|previous| previous.host_binding().is_some())
+        {
+            return Err(WorkingError::DerivedStatus);
+        }
         validate_references(state, entry)?;
         validate_upsert(state, entry)?;
         let _checked = WorkingEntry::new(
@@ -97,7 +116,15 @@ pub fn apply_working_delta(
             entry.validity.clone(),
             state.limits,
         )?;
-        upsert_entry(&mut entries, entry, state.limits.entries())?;
+        let mut retained = entry.clone();
+        if let Some((host, binding)) = host {
+            let unknown = super::WorkingValidity::uncertain();
+            let host = if binding.request().is_some() { host } else { &unknown };
+            retained.validity = retained.validity.with_host(host, state.limits)?;
+            retained.host_declared_status = Some(entry.status());
+            retained.host_binding = Some(binding);
+        }
+        upsert_entry(&mut entries, &retained, state.limits.entries())?;
         index += 1;
     }
     validate_graph(&entries)?;
@@ -114,7 +141,7 @@ pub fn apply_working_delta(
         let Some(target) = find_entry(&entries, delta.entries[index].id) else {
             return Err(WorkingError::MissingEntry);
         };
-        if entries[target].status == WorkingEntryStatus::Stale {
+        if host.is_none() && entries[target].status == WorkingEntryStatus::Stale {
             return Err(WorkingError::StaleEntry);
         }
         index += 1;

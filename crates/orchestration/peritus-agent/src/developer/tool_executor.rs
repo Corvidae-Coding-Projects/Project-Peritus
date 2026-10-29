@@ -6,6 +6,12 @@ use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Drains completed host child calls, separately from provider-proposed parent calls.
+    /// Wrappers must forward this counter. It records work, never grants authority or success.
+    fn take_host_tool_calls(&mut self) -> u32 {
+        0
+    }
+
     /// Supplies host-owned conditional guidance before context assembly and budget admission.
     /// This replaces the current policy each turn; it never accumulates in optional history.
     fn system_guidance(&mut self) -> Option<String> {

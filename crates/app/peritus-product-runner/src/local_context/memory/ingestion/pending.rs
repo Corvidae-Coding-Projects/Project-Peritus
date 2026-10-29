@@ -24,6 +24,21 @@ impl LocalMemory {
         if source.invocation != self.transcript.invocation {
             return Err(error("source projection invocation mismatch"));
         }
+        if source.kind == ArchiveKind::HostObservation
+            && let Some(record) = super::super::super::operation_plan::decode_message(
+                &self.store.read(source.artifact)?,
+            )?
+        {
+            if self.checkpoint_schema < super::super::super::record::PLAN_CHECKPOINT_SCHEMA_VERSION
+                || record.scope
+                    != super::super::super::tools::hex(self.store.scope_digest().as_bytes())
+            {
+                return Err(error("plan evidence reader guard or scope mismatch"));
+            }
+            // Child results remain exact retrievable evidence. They are not interleaved
+            // into the provider's native parent-call/result protocol or literal inputs.
+            return Ok(());
+        }
         match source.kind {
             ArchiveKind::Policy
             | ArchiveKind::User
@@ -82,6 +97,7 @@ impl LocalMemory {
             call.name.as_str(),
             "command_start"
                 | "command_poll"
+                | "command_wait"
                 | "command_stdin"
                 | "command_resize"
                 | "command_signal"
@@ -122,7 +138,7 @@ impl LocalMemory {
             .transcript
             .message_ids
             .iter()
-            .filter_map(|id| self.sources.iter().find(|source| source.sequence == *id))
+            .filter_map(|id| self.archived(*id).ok())
             .filter(|source| matches!(source.kind, ArchiveKind::Policy | ArchiveKind::User))
             .map(|source| {
                 ObservationId::new(source.sequence).map_err(|_| error("invalid literal source"))

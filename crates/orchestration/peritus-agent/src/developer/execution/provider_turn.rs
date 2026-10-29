@@ -2,8 +2,8 @@
 use super::super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperRetryRecord, DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent,
-    DeveloperUsage,
+    DeveloperRequestMetrics, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperTrace,
+    DeveloperTraceEvent, DeveloperUsage,
     context_port::DeveloperContextPreparation,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
@@ -160,6 +160,7 @@ pub(super) async fn complete_turn(
             provider,
         )?;
         if let Some(owner) = retry_context.as_mut() {
+            owner.context.bind_request(&model_request)?;
             owner.tools.observe_model_context(model_request.messages())?;
         }
         if !admit_role_request(interaction, profile, &model_request, attempt)? {
@@ -167,18 +168,16 @@ pub(super) async fn complete_turn(
         }
         let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
         trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
-        let driven = cancel_first(
+        let driven = measured_drive(
+            provider,
+            model_request,
+            protocol_limits,
+            trace,
+            interaction.map(|value| value.0),
             &request.cancellation,
-            drive(
-                provider,
-                model_request,
-                protocol_limits,
-                trace,
-                interaction.map(|value| value.0),
-            ),
+            (kind, turn, attempt),
         )
-        .await
-        .unwrap_or(Err(DeveloperLoopError::Cancelled));
+        .await;
         if let Some((port, role, _)) = interaction {
             let request_usage = driven.as_ref().map_or_else(
                 |_| peritus_model_protocol::UsageCounters::default(),
@@ -254,12 +253,47 @@ fn announce_retry(
     })
 }
 
+async fn measured_drive(
+    provider: &dyn ModelProvider,
+    request: ModelRequest,
+    limits: ProtocolLimits,
+    trace: &mut dyn DeveloperTrace,
+    interaction: Option<&dyn DeveloperInteraction>,
+    cancellation: &CancellationToken,
+    position: (ModelTurnKind, u16, u8),
+) -> Result<ModelSession, DeveloperLoopError> {
+    let started = std::time::Instant::now();
+    let mut metrics = DeveloperRequestMetrics {
+        reason: Some(if position.0 == ModelTurnKind::Developer {
+            "developer"
+        } else {
+            "semantic_compaction"
+        }),
+        turn: position.1,
+        attempt: position.2,
+        request_id: request.request_id().expose_for_wire().to_owned(),
+        ..DeveloperRequestMetrics::default()
+    };
+    let result = cancel_first(
+        cancellation,
+        drive(provider, request, limits, trace, interaction, &mut metrics, started),
+    )
+    .await
+    .unwrap_or(Err(DeveloperLoopError::Cancelled));
+    metrics.elapsed_micros = micros(started);
+    metrics.drive_failed = result.is_err();
+    trace.performance(&metrics);
+    result
+}
+
 async fn drive(
     provider: &dyn ModelProvider,
     model_request: ModelRequest,
     protocol_limits: ProtocolLimits,
     trace: &mut dyn DeveloperTrace,
     interaction: Option<&dyn DeveloperInteraction>,
+    metrics: &mut DeveloperRequestMetrics,
+    started: std::time::Instant,
 ) -> Result<ModelSession, DeveloperLoopError> {
     // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
     // stop only this attempt, leaving the caller's token active for bounded automatic retries.
@@ -272,6 +306,8 @@ async fn drive(
                 .map_err(DeveloperLoopError::from)
         })
         .await?;
+    metrics.start_micros = Some(micros(started));
+    metrics.projections = session.projections().to_vec();
     let result = async {
         loop {
             match progress
@@ -280,6 +316,7 @@ async fn drive(
             {
                 ModelAdvance::Closed => return Ok::<(), DeveloperLoopError>(()),
                 ModelAdvance::EnvelopePending { .. } => {
+                    metrics.first_event_micros.get_or_insert_with(|| micros(started));
                     let encoded = session.encode_pending()?;
                     trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
                     let runtime_progress = session.pending().and_then(|envelope| {
@@ -306,6 +343,12 @@ async fn drive(
                         )
                     });
                     let _ = session.accept_durable_pending()?;
+                    metrics.usage_observed |= has_usage;
+                    metrics.terminal_observed = session.terminal().is_some();
+                    metrics.terminal = session.terminal().cloned();
+                    if public_text.as_ref().is_some_and(|(summary, _)| !summary) {
+                        metrics.first_text_micros.get_or_insert_with(|| micros(started));
+                    }
                     if let Some(event) = runtime_progress {
                         progress.observe(&event)?;
                     }
@@ -336,6 +379,10 @@ async fn drive(
     trace.account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
     result?;
     Ok(session)
+}
+
+fn micros(started: std::time::Instant) -> u64 {
+    u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX)
 }
 
 struct AttemptCancellation(CancellationToken);

@@ -55,6 +55,13 @@ impl DeveloperInteraction for StageInteraction<'_> {
     fn allows_semantic_compaction(&self) -> bool {
         self.inner.allows_semantic_compaction()
     }
+    fn tool_control(
+        &self,
+        input_revision: u64,
+    ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
+        self.input()?;
+        self.inner.tool_control(input_revision)
+    }
     fn admit_tool(
         &self,
         role: DeveloperModelRole,

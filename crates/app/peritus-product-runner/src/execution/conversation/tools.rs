@@ -42,6 +42,9 @@ impl<'a> ConversationTools<'a> {
 }
 
 impl DeveloperToolExecutor for ConversationTools<'_> {
+    fn take_host_tool_calls(&mut self) -> u32 {
+        self.workspace.take_host_tool_calls()
+    }
     fn system_guidance(&mut self) -> Option<String> {
         if self.allow_pipeline {
             // This phase can only inspect or hand off. Its optional inspection must not impose

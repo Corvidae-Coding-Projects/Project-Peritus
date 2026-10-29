@@ -31,7 +31,7 @@ pub async fn run_live_invocation(
     }
     let mut memory_tools;
     let tools: &mut dyn DeveloperToolExecutor = if let Some(memory) = memory {
-        memory_tools = MemoryTools::new(tools, memory.clone());
+        memory_tools = MemoryTools::new(tools, memory.clone()).with_model_role(role);
         &mut memory_tools
     } else {
         tools
@@ -44,8 +44,12 @@ pub async fn run_live_invocation(
         accounting.accounting.elapsed_millis(),
     );
     let tools: &mut dyn DeveloperToolExecutor = &mut measured;
-    let mut trace =
-        AccountingTrace::new(accounting.trace_path, accounting.accounting, &request.request_prefix);
+    let mut trace = AccountingTrace::new(
+        accounting.trace_path,
+        accounting.accounting,
+        &request.request_prefix,
+        role,
+    );
     match memory {
         Some(memory) => {
             trace.trace =

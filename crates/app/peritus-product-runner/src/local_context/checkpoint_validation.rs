@@ -5,7 +5,9 @@ use super::{
     memory::environment,
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
+        DEPENDENCY_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION, PLAN_CHECKPOINT_SCHEMA_VERSION,
+        TranscriptManifest, ViewValidation, decode,
     },
 };
 use peritus_agent::DeveloperLoopError;
@@ -51,6 +53,16 @@ pub(super) fn validate_checkpoint(
     validation: &ViewValidation,
     limits: WorkingLimits,
 ) -> Result<(), DeveloperLoopError> {
+    if schema_version < LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+        && transcript.host_dependency_version.is_some()
+    {
+        return Err(error("host dependencies require a version-5 checkpoint"));
+    }
+    if schema_version < DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+        && transcript.host_dependency_version == Some(2)
+    {
+        return Err(error("declared progress dependencies require a version-6 checkpoint"));
+    }
     let archive_bytes = sources.iter().try_fold(0_u64, |total, source| {
         total
             .checked_add(source.artifact.bytes)
@@ -79,7 +91,11 @@ pub(super) fn validate_checkpoint(
         || !selected_exist
         || match schema_version {
             LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),
-            2 | CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
+            2
+            | CHECKPOINT_SCHEMA_VERSION
+            | PLAN_CHECKPOINT_SCHEMA_VERSION
+            | LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+            | DEPENDENCY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
             _ => true,
         }
     {
@@ -148,6 +164,7 @@ pub(super) fn validate_transcript(
         || transcript.pending.len() > limits.entries()
         || transcript.files.len() > limits.entries()
         || transcript.facts_through > state.through_observation()
+        || transcript.host_dependency_version.is_some_and(|version| !matches!(version, 1 | 2))
     {
         return Err(error("transcript manifest bounds or identity mismatch"));
     }

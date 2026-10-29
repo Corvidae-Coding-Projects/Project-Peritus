@@ -4,7 +4,9 @@ mod append;
 mod identity;
 mod inspection;
 mod location;
+mod work;
 pub(super) use inspection::inspect;
+pub(super) use work::StorageWork;
 
 use super::error;
 use identity::StorageIdentity;
@@ -52,6 +54,8 @@ pub(super) struct StoredArtifact {
 mod artifact_wire;
 
 pub(super) struct LocalStore {
+    work: std::cell::Cell<StorageWork>,
+    reuse_artifacts: bool,
     journal: SqliteJournal,
     artifacts: ArtifactStore,
     identity: StorageIdentity,
@@ -110,7 +114,16 @@ impl LocalStore {
             .map_err(|_| error("read checkpoint root"))?;
         let generation =
             checkpoint.as_ref().map_or(0, peritus_journal::DurableStateRecord::revision);
-        Ok(Self { journal, artifacts, identity, head, generation, _owner: owner })
+        Ok(Self {
+            work: std::cell::Cell::default(),
+            reuse_artifacts: false,
+            journal,
+            artifacts,
+            identity,
+            head,
+            generation,
+            _owner: owner,
+        })
     }
 
     pub(super) const fn scope_digest(&self) -> Sha256Digest {
@@ -147,11 +160,64 @@ impl LocalStore {
     }
 
     pub(super) fn store(&self, bytes: &[u8]) -> Result<StoredArtifact, DeveloperLoopError> {
+        let started = std::time::Instant::now();
+        let mut work = self.work.get();
+        work.store_calls = work.store_calls.saturating_add(1);
+        work.submitted_bytes = work.submitted_bytes.saturating_add(bytes.len() as u64);
+        self.work.set(work);
+        let result = self.store_inner(bytes);
+        let mut work = self.work.get();
+        work.elapsed_micros = work
+            .elapsed_micros
+            .saturating_add(u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX));
+        self.work.set(work);
+        result
+    }
+
+    pub(super) const fn work(&self) -> StorageWork {
+        self.work.get()
+    }
+
+    pub(super) const fn set_artifact_reuse(&mut self, enabled: bool) {
+        self.reuse_artifacts = enabled;
+    }
+
+    pub(super) fn reuse(
+        &self,
+        artifact: StoredArtifact,
+    ) -> Result<StoredArtifact, DeveloperLoopError> {
+        let mut work = self.work.get();
+        work.reuse_attempts = work.reuse_attempts.saturating_add(1);
+        self.work.set(work);
+        let metadata = self
+            .artifacts
+            .verify(ArtifactDigest::from_sha256(artifact.digest))
+            .map_err(|_| error("reused checkpoint artifact unavailable or corrupt"))?;
+        if metadata.size() != artifact.bytes {
+            return Err(error("reused checkpoint artifact length mismatch"));
+        }
+        let mut work = self.work.get();
+        work.reused_objects = work.reused_objects.saturating_add(1);
+        work.verified_bytes = work.verified_bytes.saturating_add(artifact.bytes);
+        self.work.set(work);
+        Ok(artifact)
+    }
+
+    fn store_inner(&self, bytes: &[u8]) -> Result<StoredArtifact, DeveloperLoopError> {
         let length = u64::try_from(bytes.len()).map_err(|_| error("artifact size overflow"))?;
         if length > MAX_ARTIFACT_SQLITE_BYTES {
             return Err(error("artifact size exceeds the durable SQLite representation"));
         }
         let digest = sha256(bytes);
+        if self.reuse_artifacts
+            && self
+                .artifacts
+                .metadata(ArtifactDigest::from_sha256(digest))
+                .map_err(|_| error("inspect existing context artifact"))?
+                .is_some_and(|metadata| metadata.is_referenceable())
+        {
+            return self.reuse(StoredArtifact { digest, bytes: length });
+        }
         let event = self.identity.event(
             self.sequence().checked_add(1).ok_or_else(|| error("event sequence overflow"))?,
         )?;
@@ -163,14 +229,26 @@ impl LocalStore {
             EncryptionMetadata::unencrypted(),
             event,
         );
+        let mut work = self.work.get();
+        work.write_attempts = work.write_attempts.saturating_add(1);
+        self.work.set(work);
         let mut writer =
             self.artifacts.begin_write(request).map_err(|_| error("begin artifact write"))?;
         writer.write_chunk(bytes).map_err(|_| error("write artifact bytes"))?;
+        let mut work = self.work.get();
+        work.completed_write_bytes = work.completed_write_bytes.saturating_add(length);
+        self.work.set(work);
         let finalized = writer.finalize().map_err(|_| error("finalize artifact"))?;
+        let mut work = self.work.get();
+        work.finalizations = work.finalizations.saturating_add(1);
+        self.work.set(work);
         Ok(StoredArtifact { digest, bytes: finalized.size() })
     }
 
     pub(super) fn read(&self, artifact: StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError> {
+        let mut work = self.work.get();
+        work.read_calls = work.read_calls.saturating_add(1);
+        self.work.set(work);
         if artifact.bytes > MAX_ARTIFACT_SQLITE_BYTES {
             return Err(error("artifact size exceeds the durable SQLite representation"));
         }
@@ -181,6 +259,10 @@ impl LocalStore {
         if bytes.len() as u64 != artifact.bytes {
             return Err(error("artifact length mismatch"));
         }
+        let mut work = self.work.get();
+        work.completed_read_bytes = work.completed_read_bytes.saturating_add(artifact.bytes);
+        work.verified_bytes = work.verified_bytes.saturating_add(artifact.bytes);
+        self.work.set(work);
         Ok(bytes)
     }
 

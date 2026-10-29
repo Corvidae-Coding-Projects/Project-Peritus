@@ -9,7 +9,7 @@ Live conversation/control/provider selection projected into role execution; this
 | File | Role |
 | --- | --- |
 | [inputs.rs](inputs.rs) | Durable public projection of accepted ledger input, separate from inference admission. |
-| [live.rs](live.rs) | Live D0 input, provider selection, admission and typed activity adapter. |
+| [live.rs](live.rs) | Live D0 input, provider selection, admission, durable permission revision and typed activity adapter. |
 | [models.rs](models.rs) | Authorized, concurrent-update-fenced and durable future-turn model/provider selection, independent of input admission or execution restart. |
 | [narration.rs](narration.rs) | Public host observations. Never infer success, reveal arguments, or impersonate model reasoning. |
 | [presentation.rs](presentation.rs) | Human-readable projections of completed pipeline response envelopes. |

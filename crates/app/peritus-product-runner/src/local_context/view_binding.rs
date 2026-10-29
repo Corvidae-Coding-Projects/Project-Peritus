@@ -3,8 +3,9 @@
 use super::{
     error,
     record::{
-        CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, LEGACY_CHECKPOINT_SCHEMA_VERSION,
-        ViewValidation, encode,
+        CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, DEPENDENCY_CHECKPOINT_SCHEMA_VERSION,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION, LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION,
+        PLAN_CHECKPOINT_SCHEMA_VERSION, ViewValidation, encode,
     },
 };
 use peritus_agent::DeveloperLoopError;
@@ -55,6 +56,7 @@ pub(super) fn tool_policy(tools: &[ToolDefinition]) -> Result<[u8; 32], Develope
 
 /// Binds exact provider-view bytes to their canonical selection, policy, and accounting record.
 pub(super) fn checkpoint(
+    version: u16,
     scope: [u8; 32],
     generation: u64,
     through_event: u64,
@@ -62,15 +64,7 @@ pub(super) fn checkpoint(
     view: &[u8],
     validation: &ViewValidation,
 ) -> Result<[u8; 32], DeveloperLoopError> {
-    checkpoint_version(
-        CHECKPOINT_SCHEMA_VERSION,
-        scope,
-        generation,
-        through_event,
-        render_policy,
-        view,
-        validation,
-    )
+    checkpoint_version(version, scope, generation, through_event, render_policy, view, validation)
 }
 
 fn checkpoint_version(
@@ -107,7 +101,13 @@ pub(super) fn verify(
         {
             Ok(())
         }
-        2 | CHECKPOINT_SCHEMA_VERSION if validation.tool_policy.is_some() => {
+        2
+        | CHECKPOINT_SCHEMA_VERSION
+        | PLAN_CHECKPOINT_SCHEMA_VERSION
+        | LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+        | DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+            if validation.tool_policy.is_some() =>
+        {
             let expected = checkpoint_version(
                 manifest.schema_version,
                 manifest.scope,

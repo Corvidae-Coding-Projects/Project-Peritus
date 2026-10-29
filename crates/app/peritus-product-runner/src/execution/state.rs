@@ -52,6 +52,8 @@ impl ExecutionContext {
             input.workspace_id,
             prior,
             input.delivery_scope.allows_external_effects(),
+            input.command_runtime.local_context_config().candidate_observation
+                == crate::CandidateObservationPolicy::Shared,
         )?;
         let _ = recorder.refresh(input.conversation.revision())?;
         let next_phase = match (&input.resume, recorder.checkpoint()?) {

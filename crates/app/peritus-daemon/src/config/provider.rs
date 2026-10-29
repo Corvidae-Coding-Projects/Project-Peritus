@@ -109,6 +109,7 @@ pub struct ProviderRoute {
     hosted_service: Option<String>,
     wire_protocol: Option<ProviderRouteKind>,
     discover_model_limits: Option<bool>,
+    opencode_request_layout: Option<peritus_provider_opencode::OpenCodeRequestLayout>,
 }
 
 mod locality;
@@ -125,11 +126,17 @@ impl ProviderRoute {
         if self.discover_model_limits.is_some() && self.kind != ProviderRouteKind::Hosted {
             return Err(invalid("discover_model_limits is supported only for named hosted routes"));
         }
+        if self.opencode_request_layout.is_some()
+            && self.adapter_kind()? != ProviderRouteKind::OpenCodeRuntime
+        {
+            return Err(invalid("opencode_request_layout applies only to OpenCode runtime routes"));
+        }
         let profile = self.profile.build(self.adapter_kind()?)?;
         let declaration = match self.kind {
             ProviderRouteKind::Hosted => {
                 if self.adapter_kind()? == ProviderRouteKind::OpenCodeRuntime {
                     ProviderDeclaration::OpenCodeRuntime {
+                        request_layout: self.opencode_request_layout.unwrap_or_default(),
                         discover_model_limits: self.discover_model_limits(),
                         executable: self.executable_selection(),
                         service: self.hosted()?,

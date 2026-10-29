@@ -79,6 +79,7 @@ fn is_command_tool(name: &str) -> bool {
         "run_command"
             | "command_start"
             | "command_poll"
+            | "command_wait"
             | "command_stdin"
             | "command_resize"
             | "command_signal"

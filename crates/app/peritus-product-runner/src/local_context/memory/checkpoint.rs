@@ -2,7 +2,7 @@
 
 use super::super::{
     checkpoint_validation, error,
-    record::{CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, MemoryRecord, encode},
+    record::{CheckpointManifest, MemoryRecord, encode},
     view_binding,
 };
 use super::LocalMemory;
@@ -16,6 +16,29 @@ impl LocalMemory {
         &mut self,
         messages: &[Message],
     ) -> Result<(), DeveloperLoopError> {
+        let started = std::time::Instant::now();
+        let previous_work = self.store.work();
+        let previous_pages = self.page_cache.work();
+        let previous_generation = self.store.generation();
+        let result = self.publish_inner(messages);
+        crate::efficiency::event(
+            &self.trace_path,
+            serde_json::json!({
+                "event": "context-checkpoint-work",
+                "generation_before": previous_generation,
+                "generation": self.store.generation(),
+                "committed": self.store.generation() != previous_generation,
+                "completed": result.is_ok(),
+                "elapsed_micros": started.elapsed().as_micros(),
+                "work": self.store.work().since(previous_work),
+                "pages": self.page_cache.work().since(previous_pages),
+                "semantics": "per-publication attempt, including failures; completed byte counters exclude partial failed I/O; not physical filesystem or provider counters"
+            }),
+        );
+        result
+    }
+
+    fn validate_prepared(&self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         let prepared =
             self.prepared.as_ref().ok_or_else(|| error("no prepared view to publish"))?;
         let profile = self.profile.as_ref().ok_or_else(|| error("prepared view lacks profile"))?;
@@ -38,15 +61,40 @@ impl LocalMemory {
             return Err(error("stale or changed prepared view"));
         }
         checkpoint_validation::validate_checkpoint(
-            CHECKPOINT_SCHEMA_VERSION,
+            self.checkpoint_schema,
             &self.state,
             &self.sources,
             &self.transcript,
             &prepared.validation,
             self.limits,
         )?;
-        let (working_state, source_index, mut roots) =
-            super::super::pages::store(&self.store, &self.state, &self.sources)?;
+        Ok(())
+    }
+
+    fn publish_inner(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        self.validate_prepared(messages)?;
+        let dependencies = if self.host_dependencies_enabled() && self.reader_guard_target.is_none()
+        {
+            Some(super::PublishedDependencies {
+                validity: super::super::assembly::decision::request_dependencies(self)?,
+                through: self.state.through_observation(),
+                state_revision: self.state.revision(),
+                model_revision: self.model_revision,
+                view: sha256(&encode_messages(messages, ProtocolLimits::PRODUCTION)?),
+            })
+        } else {
+            None
+        };
+        let prepared =
+            self.prepared.as_ref().ok_or_else(|| error("no prepared view to publish"))?;
+        let render_policy = prepared.policy.into_bytes();
+        let (working_state, source_index, mut roots) = super::super::pages::store(
+            &self.store,
+            &self.state,
+            &self.sources,
+            &mut self.page_cache,
+            self.config.reuse_checkpoint_pages,
+        )?;
         let transcript_manifest = self.store.store(&encode(&self.transcript)?)?;
         let view_bytes = encode_messages(messages, ProtocolLimits::PRODUCTION)?;
         let view = self.store.store(&view_bytes)?;
@@ -60,6 +108,7 @@ impl LocalMemory {
             self.store.generation().checked_add(1).ok_or_else(|| error("generation overflow"))?;
         let scope = self.store.scope_digest().into_bytes();
         let view_binding = view_binding::checkpoint(
+            self.checkpoint_schema,
             scope,
             generation,
             prepared.through_event,
@@ -68,7 +117,7 @@ impl LocalMemory {
             &prepared.validation,
         )?;
         let manifest = CheckpointManifest {
-            schema_version: CHECKPOINT_SCHEMA_VERSION,
+            schema_version: self.checkpoint_schema,
             trace_cursor: self.trace_cursor.clone(),
             scope,
             generation,
@@ -111,6 +160,7 @@ impl LocalMemory {
         ]))
         .map_err(|_| error("encode checkpoint trace"))?;
         self.last_checkpoint = Some(manifest);
+        self.published_dependencies = dependencies;
         self.last_view = messages.to_vec();
         self.prepared = None;
         crate::trace::local_memory::checkpoint(&self.trace_path, &trace_payload)?;

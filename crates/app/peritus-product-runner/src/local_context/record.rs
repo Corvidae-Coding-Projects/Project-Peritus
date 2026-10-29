@@ -9,6 +9,9 @@ use serde::de::DeserializeOwned;
 
 pub(super) const LEGACY_CHECKPOINT_SCHEMA_VERSION: u16 = 1;
 pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 3;
+pub(super) const PLAN_CHECKPOINT_SCHEMA_VERSION: u16 = 4;
+pub(super) const LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION: u16 = 5;
+pub(super) const DEPENDENCY_CHECKPOINT_SCHEMA_VERSION: u16 = 6;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -60,7 +63,11 @@ impl ArchivedObservation {
         self.call.as_ref().is_some_and(|call| {
             matches!(
                 call.name.as_str(),
-                "context_read" | "context_update" | "developer_evidence_read"
+                "context_read"
+                    | "context_sources"
+                    | "context_update"
+                    | "developer_evidence_read"
+                    | "inspection_result_read"
             )
         })
     }
@@ -107,6 +114,9 @@ pub(super) enum MemoryRecord {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct TranscriptManifest {
+    /// Versioned host dependency semantics survive selection-policy rollback.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) host_dependency_version: Option<u16>,
     pub(super) invocation: u64,
     pub(super) request_prefix: String,
     pub(super) current_inputs: Vec<u64>,

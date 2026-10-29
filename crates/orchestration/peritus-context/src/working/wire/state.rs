@@ -2,7 +2,9 @@
 
 use super::super::validation::{invalidate_entries, validate_graph, validate_references};
 use super::super::{WorkingBinding, WorkingEntryStatus, WorkingError, WorkingLimits, WorkingState};
-use super::{WorkingCodecError, count, entry, fields, reader_version, wide_count, writer};
+use super::{
+    WorkingCodecError, count, entry, fields, reader_version, wide_count, writer, writer_version,
+};
 use peritus_codec::{CanonicalReader, CanonicalWriter};
 
 /// Encodes exact retained state, including counterevidence and invalidation boundaries.
@@ -10,7 +12,12 @@ use peritus_codec::{CanonicalReader, CanonicalWriter};
 /// # Errors
 /// Rejects snapshots wider than the canonical allocation envelope.
 pub fn encode_working_state(state: &WorkingState) -> Result<Vec<u8>, WorkingCodecError> {
-    let mut w = writer(*b"PWMS")?;
+    let bound = state.entries.iter().any(|entry| entry.host_binding().is_some());
+    let mut w = if bound {
+        writer_version(*b"PWMS", super::HOST_ENTRY_VERSION)?
+    } else {
+        writer(*b"PWMS")?
+    };
     write_limits(&mut w, state.limits())?;
     fields::write_environment(&mut w, state.environment())?;
     w.write_u64(state.revision())?;
@@ -20,7 +27,11 @@ pub fn encode_working_state(state: &WorkingState) -> Result<Vec<u8>, WorkingCode
     }
     w.write_u64(state.entries.len() as u64)?;
     for record in &state.entries {
-        entry::write_entry(&mut w, record)?;
+        if bound {
+            entry::write_bound_entry_v4(&mut w, record)?;
+        } else {
+            entry::write_entry(&mut w, record)?;
+        }
     }
     super::protocol::write_protocol(&mut w, &state.protocol)?;
     Ok(w.into_bytes())
@@ -65,7 +76,13 @@ pub fn decode_working_state(
         wide_count(&mut r, limits.entries())?
     };
     for _ in 0..entries {
-        let record = entry::read_entry(&mut r, limits)?;
+        let record = if version == super::HOST_ENTRY_VERSION {
+            entry::read_bound_entry_v4(&mut r, limits)?
+        } else if version == super::HOST_VERSION {
+            entry::read_bound_entry(&mut r, limits)?
+        } else {
+            entry::read_entry(&mut r, limits)?
+        };
         if state.entries.last().is_some_and(|old| old.id() >= record.id()) {
             return Err(WorkingError::NonCanonicalOrder.into());
         }
@@ -73,6 +90,11 @@ pub fn decode_working_state(
     }
     state.protocol = super::protocol::read_protocol(&mut r, limits)?;
     r.finish()?;
+    if matches!(version, super::HOST_VERSION | super::HOST_ENTRY_VERSION)
+        && !state.entries.iter().any(|entry| entry.host_binding().is_some())
+    {
+        return Err(WorkingCodecError::InvalidValue);
+    }
     validate_snapshot(&state)?;
     Ok(state)
 }
@@ -93,7 +115,23 @@ pub(super) fn validate_snapshot(state: &WorkingState) -> Result<(), WorkingCodec
     }
     for record in &state.entries {
         validate_references(state, record)?;
+        if (record.host_binding().is_none() && record.host_declared_status.is_some())
+            || (record.host_binding().is_some()
+                && !matches!(
+                    record.status(),
+                    WorkingEntryStatus::Stale | WorkingEntryStatus::Superseded
+                )
+                && record.host_declared_status != Some(record.status()))
+        {
+            return Err(WorkingCodecError::InvalidValue);
+        }
         if record.stale_through > state.through_observation() {
+            return Err(WorkingCodecError::InvalidValue);
+        }
+        if record.host_binding().is_some_and(|binding| {
+            binding.through_observation() > state.through_observation()
+                || (binding.request().is_none() && !record.validity().requires_recheck())
+        }) {
             return Err(WorkingCodecError::InvalidValue);
         }
         let successors = successors.get(&record.id()).copied().unwrap_or(0);

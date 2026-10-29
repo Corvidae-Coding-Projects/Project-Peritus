@@ -13,6 +13,36 @@ use peritus_context::{
 };
 
 impl LocalMemory {
+    pub(in crate::local_context) fn is_mechanical_entry(
+        &self,
+        entry: &WorkingEntry,
+    ) -> Result<bool, DeveloperLoopError> {
+        let [id] = entry.links().supports() else { return Ok(false) };
+        if entry.kind() != WorkingEntryKind::FailedApproach
+            || !entry.links().contradicts().is_empty()
+            || !entry.links().depends_on().is_empty()
+            || entry.supersedes().is_some()
+        {
+            return Ok(false);
+        }
+        let source = self.archived(id.get())?;
+        let Some(call) = source.call.as_ref() else { return Ok(false) };
+        if source.kind != ArchiveKind::ToolOutput {
+            return Ok(false);
+        }
+        let expected_id = environment::key(
+            format!("failed-approach:{}:{:02x?}", call.name, call.arguments_digest).as_bytes(),
+        )?;
+        let text = format!(
+            "Host tool {} reported {} for arguments SHA-256 {:02x?}. Inspect obs:{:06} before repeating the unchanged approach; this is an observation, not independent acceptance.",
+            call.name,
+            if source.is_error { "failure" } else { "a later non-error result" },
+            call.arguments_digest,
+            source.sequence
+        );
+        let text = &text[..text.floor_char_boundary(self.limits.entry_bytes())];
+        Ok(entry.id() == expected_id && entry.content().bytes() == text.as_bytes())
+    }
     pub(in crate::local_context) fn derived_memory_allowed(&self) -> bool {
         peritus_role::RoleProfile::for_harness_role(self.binding.role())
             .context()
@@ -21,16 +51,23 @@ impl LocalMemory {
     }
 
     pub(in crate::local_context) fn ingest_facts(&mut self) -> Result<(), DeveloperLoopError> {
-        if !self.derived_memory_allowed() {
+        // A version-5 prototype can be read before a profile is available. Defer new
+        // host semantics until preparation can commit the version-6 reader floor.
+        if !self.derived_memory_allowed()
+            || (self.checkpoint_schema
+                == crate::local_context::record::LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+                && self.profile.is_none())
+        {
             return Ok(());
         }
+        if self.checkpoint_schema
+            >= crate::local_context::record::DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+        {
+            self.ensure_host_dependencies()?;
+        }
         let pending = self
-            .sources
-            .iter()
-            .filter(|source| {
-                source.sequence > self.transcript.facts_through
-                    && source.kind == ArchiveKind::ToolOutput
-            })
+            .sources_after(self.transcript.facts_through)
+            .filter(|source| source.kind == ArchiveKind::ToolOutput)
             .cloned()
             .collect::<Vec<_>>();
         for source in pending {
@@ -42,6 +79,7 @@ impl LocalMemory {
                         .as_bytes(),
                 )?;
                 let previous = self.state.entry(self.state.binding(), id).ok();
+                let was_host_bound = previous.is_some_and(|entry| entry.host_binding().is_some());
                 if (source.is_error || previous.is_some())
                     && !previous.is_some_and(|entry| {
                         entry.links().supports().iter().any(|id| id.get() == source.sequence)
@@ -109,11 +147,27 @@ impl LocalMemory {
                         self.limits,
                     )
                     .map_err(|_| error("invalid mechanical delta"))?;
-                    self.state_event(&WorkingEvent::Delta(delta))?;
+                    self.commit_mechanical_delta(delta, was_host_bound, source.sequence)?;
                 }
             }
             self.transcript.facts_through = source.sequence;
         }
         self.persist_transcript()
+    }
+    fn commit_mechanical_delta(
+        &mut self,
+        delta: WorkingDelta,
+        was_host_bound: bool,
+        sequence: u64,
+    ) -> Result<(), DeveloperLoopError> {
+        if was_host_bound {
+            self.state_event(&WorkingEvent::HostDelta {
+                delta,
+                dependencies: WorkingValidity::uncertain(),
+                source_binding: peritus_context::working::WorkingHostBinding::new(sequence, None),
+            })
+        } else {
+            self.state_event(&WorkingEvent::Delta(delta))
+        }
     }
 }

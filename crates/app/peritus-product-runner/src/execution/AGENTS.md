@@ -11,7 +11,7 @@ Product-run and conversation entrypoints, live input contracts, phase orchestrat
 | [acceptance.rs](acceptance.rs) | Delivery-scope-specific acceptance evidence and decisions. |
 | [cancellation.rs](cancellation.rs) | Shared cancellation observation for every product-run phase. |
 | [candidate_digest.rs](candidate_digest.rs) | Exact candidate identity inspection for external handoff controls. |
-| [checkpoint.rs](checkpoint.rs) | Candidate observations at material tool/run boundaries; in-place axes share captured file observations, while managed Git candidates retain repository-context fences. |
+| [checkpoint.rs](checkpoint.rs) | Candidate observations at material tool/run boundaries; in-place axes share captured file observations, while managed Git candidates retain full repository-context fences, with an opt-in Linux same-capture identity projection and conservative fallback elsewhere. |
 | [conversation.rs](conversation.rs) | Read-only conversational front end to the existing production execution pipeline. |
 | [cycle.rs](cycle.rs) | One inspect-review-fix cycle of a product run. |
 | [deadline.rs](deadline.rs) | Phase-aware run admission with time reserved for honest finalization. |
@@ -28,7 +28,7 @@ Product-run and conversation entrypoints, live input contracts, phase orchestrat
 | [summary.rs](summary.rs) | Task-level completion summary conservation. |
 | [terminal_exit.rs](terminal_exit.rs) | Active-loop exit facts consumed by the protected finalization boundary. |
 | [turn_result.rs](turn_result.rs) | Completed developer-turn values shared by writer and fixer phases. |
-| [types.rs](types.rs) | Public run contracts and internal completed-turn values. |
+| [types.rs](types.rs) | Public run and conversation contracts, optional durable permission revision, and internal completed-turn values. |
 
 ## Child areas
 

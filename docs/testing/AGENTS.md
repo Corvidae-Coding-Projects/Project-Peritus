@@ -8,6 +8,13 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [execution-efficiency-i0-cost-baseline.md](execution-efficiency-i0-cost-baseline.md) | I0 completion contract, seven real-provider cost-ledger cases, independent usage reconciliation, diagnostic isolation, and bounded qualification evidence. |
+| [execution-efficiency-i1-indexed-projections.md](execution-efficiency-i1-indexed-projections.md) | I1 completion, exact reference/index correspondence, measured large-history lookup work, real provider continuation and bounded recovery evidence. |
+| [execution-efficiency-i2-checkpoint-pages.md](execution-efficiency-i2-checkpoint-pages.md) | I2 completion, default-enabled verified page reuse, syscall/write measurements, corruption/interruption recovery and real accepted product journeys. |
+| [execution-efficiency-i3-provider-layout.md](execution-efficiency-i3-provider-layout.md) | I3 completion, default once-only OpenCode schemas, real selection/correction/ProductRunner comparisons, full cached-input accounting and measured limits. |
+| [execution-efficiency-i4-decision-views.md](execution-efficiency-i4-decision-views.md) | I4 completion, exact decision views, originating request dependencies, v6 reader guard and declared progress, native closure fixes, recovery and real provider qualification. |
+| [execution-efficiency-i5-plans-waits.md](execution-efficiency-i5-plans-waits.md) | I5 completion, sequential plans, owned waits, live control and permission revisions, exact publication/recovery evidence and paired native-provider observations. |
+| [execution-efficiency-i6-freshness.md](execution-efficiency-i6-freshness.md) | I6 shared full-capture qualification, platform fallback, real managed continuation/rollback, exact identity correspondence and bounded local savings. |
 | [red-team-phase8-real-2026-10-24.md](red-team-phase8-real-2026-10-24.md) | Final adversarial containment, corruption recovery, actual-provider brownfield repair, clean source-build/install/launch, and source-publication campaign. |
 | [red-team-phase8-evidence.json](red-team-phase8-evidence.json) | Exact Phase 8 market, source-build, hostile replay, state recovery, brownfield, artifact, original-preservation, and check identities. |
 | [red-team-phase8-acceptance-ledger.md](red-team-phase8-acceptance-ledger.md) | Bounded A1–A14 final-program mapping with explicit platform, adapter, coverage, and claim limits. |

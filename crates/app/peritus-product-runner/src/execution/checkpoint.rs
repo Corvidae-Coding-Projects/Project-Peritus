@@ -24,6 +24,7 @@ pub struct CandidateRecorder {
     baseline: CandidateBaseline,
     run_id: RunId,
     workspace_id: WorkspaceId,
+    share_candidate_observations: bool,
     state: Arc<Mutex<RecorderState>>,
 }
 
@@ -53,6 +54,7 @@ impl CandidateRecorder {
         workspace_id: WorkspaceId,
         prior: Option<&CandidateCheckpoint>,
         retain_external_effect: bool,
+        share_candidate_observations: bool,
     ) -> Result<Self, ProductRunnerError> {
         let mut reducer = SettlementReducer::new();
         if let Some(checkpoint) = prior.copied() {
@@ -72,6 +74,9 @@ impl CandidateRecorder {
             baseline,
             run_id,
             workspace_id,
+            // The shared full-capture path is qualified on Linux. Other platforms retain
+            // the original fence until their filesystem/Git semantics are qualified.
+            share_candidate_observations: share_candidate_observations && cfg!(target_os = "linux"),
             state: Arc::new(Mutex::new(RecorderState {
                 reducer,
                 next_sequence: prior
@@ -298,6 +303,16 @@ impl CandidateRecorder {
 
     fn capture_candidate_axes(&self) -> Result<(Sha256Digest, Sha256Digest), ProductRunnerError> {
         for _ in 0..3 {
+            if self.share_candidate_observations {
+                // Both sides are complete fresh observations, including root/nested modes.
+                // No prior-boundary identity, notification or metadata-only token is reused.
+                let before = crate::progress::WorkspaceCheckpoint::capture_with_source(&self.root)?;
+                let after = crate::progress::WorkspaceCheckpoint::capture_with_source(&self.root)?;
+                if before == after {
+                    return Ok((after.1, after.0.digest()));
+                }
+                continue;
+            }
             let before = self.baseline.checkpoint(&self.root)?.digest();
             let content = self.baseline.content_digest(&self.root)?;
             let after = self.baseline.checkpoint(&self.root)?.digest();

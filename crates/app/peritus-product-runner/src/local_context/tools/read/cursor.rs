@@ -18,7 +18,16 @@ pub(super) fn json_entry_cursor(memory: &LocalMemory, index: usize, offset: u64)
 fn cursor_prefix(memory: &LocalMemory, kind: &str, query: Option<&str>) -> String {
     let scope = hex(memory.store.scope_digest().as_bytes());
     match (kind, query) {
-        ("entry", _) => format!("entry:{scope}:{}", memory.model_revision),
+        ("entry", _) => {
+            let version = if memory.checkpoint_schema
+                >= crate::local_context::record::DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+            {
+                "entry-v2"
+            } else {
+                "entry"
+            };
+            format!("{version}:{scope}:{}", memory.model_revision)
+        }
         ("search", Some(query)) => {
             use sha2::{Digest as _, Sha256};
             let digest = Sha256::digest(query.as_bytes());

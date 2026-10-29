@@ -5,14 +5,36 @@ mod replay;
 use super::{ControlStore, ControlStoreError as Error};
 use peritus_model_protocol::UsageCounters;
 use peritus_product_runner::control::{
-    ControlError, ControlIntent, ControlOperation, ConversationRecord, GoalAdmission, GoalRole,
-    GoalSettlement, GoalState, GoalUsageReport, GraphicalOutputEvidence, OperationId,
+    ControlError, ControlIntent, ControlOperation, ConversationRecord, GoalAdmission,
+    GoalPauseMode, GoalRole, GoalSettlement, GoalState, GoalUsageReport, GraphicalOutputEvidence,
+    OperationId,
 };
 use peritus_types::{ActorId, WorkspaceId};
 
 use replay::{apply_versioned_tool_goal, equivalent_host_intent, goal_tool_key};
 
 impl ControlStore {
+    /// Observes an admitted tool's current goal without changing accounting or pause state.
+    pub fn goal_tool_control(&self, start: &ControlOperation) -> Result<GoalAdmission, Error> {
+        Ok(match self.goal_record(start)? {
+            None => GoalAdmission::Accepted,
+            Some((_, goal))
+                if goal.state() == GoalState::Active
+                    || (goal.state() == GoalState::Pausing
+                        && goal.pause_mode() == Some(GoalPauseMode::BeforeEdit)) =>
+            {
+                // A before-edit pause still admits proven reads. Mutation admission stays
+                // in reserve_goal_tool; this passive query cannot reserve any operation.
+                GoalAdmission::Accepted
+            }
+            Some((_, goal)) => match goal.state() {
+                GoalState::Pausing | GoalState::Paused | GoalState::Cancelled => {
+                    GoalAdmission::Paused
+                }
+                _ => GoalAdmission::Inactive,
+            },
+        })
+    }
     /// Returns the current attempt for a governed goal, or `None` for an ordinary execution.
     pub fn goal_attempt(&self, start: &ControlOperation) -> Result<Option<u32>, Error> {
         Ok(self.goal_record(start)?.map(|(_, goal)| goal.attempt()))

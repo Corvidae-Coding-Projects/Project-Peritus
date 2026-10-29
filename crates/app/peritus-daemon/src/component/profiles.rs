@@ -89,6 +89,8 @@ pub enum ProviderDeclaration {
     },
     /// Official `OpenCode` executable with a Peritus-owned Zen/Go API credential.
     OpenCodeRuntime {
+        /// Adapter layout for new turns; absent external configuration uses once-only schemas.
+        request_layout: peritus_provider_opencode::OpenCodeRequestLayout,
         /// Resolve token capacities from the selected Zen/Go model catalog.
         discover_model_limits: bool,
         /// Pinned vendor executable.

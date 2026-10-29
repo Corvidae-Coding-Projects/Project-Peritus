@@ -109,6 +109,17 @@ pub enum DeveloperContextEvent<'a> {
 /// This seam does not itself implement durable storage, working-state reduction, or retrieval.
 /// Those policies belong in C6 with effects supplied by the product host through C0 facilities.
 pub trait DeveloperContextPort: Send {
+    /// Binds the final complete request, including options and tool choice, before admission.
+    /// The default preserves existing embedders; this does not grant provider authority.
+    ///
+    /// # Errors
+    /// Returns a local binding or persistence failure before provider dispatch.
+    fn bind_request(
+        &mut self,
+        _request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
     /// Reopens the bound lineage and durably records the current invocation's exact inputs.
     ///
     /// `initial_messages` contains the current policy and user prompt, including attachments.
@@ -167,6 +178,15 @@ pub trait DeveloperContextPort: Send {
 pub(super) struct ContextSession<'a>(pub(super) Option<&'a mut dyn DeveloperContextPort>);
 
 impl ContextSession<'_> {
+    pub(super) fn bind_request(
+        &mut self,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<(), DeveloperLoopError> {
+        if let Some(port) = &mut self.0 {
+            port.bind_request(request)?;
+        }
+        Ok(())
+    }
     pub(super) fn annotate(
         &self,
         call: &CompletedToolCall,

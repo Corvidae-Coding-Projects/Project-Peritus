@@ -2,9 +2,14 @@
 
 mod checkpoint;
 mod decoded;
+mod dependencies;
 pub(super) mod environment;
 mod ingestion;
+pub(in crate::local_context) use dependencies::{HostRequestBinding, PublishedDependencies};
+pub(in crate::local_context) use ingestion::call_identity;
 mod recovery;
+mod source_index;
+pub(in crate::local_context) use source_index::SourceProjectionWork;
 
 use super::{
     LocalContextConfig, error,
@@ -27,6 +32,13 @@ pub(super) struct LocalMemory {
     pub(super) store: LocalStore,
     pub(super) state: WorkingState,
     pub(super) sources: Vec<ArchivedObservation>,
+    pub(super) archive_bytes: Option<u64>,
+    pub(super) indexed_sources: bool,
+    pub(super) source_work: std::cell::Cell<SourceProjectionWork>,
+    tool_sources: std::collections::BTreeMap<(u64, u64), usize>,
+    latest_tool_sequence: std::collections::BTreeMap<u64, u64>,
+    pub(super) page_cache: super::pages::PageCache,
+    pub(super) checkpoint_schema: u16,
     pub(super) transcript: TranscriptManifest,
     pub(super) config: LocalContextConfig,
     pub(super) workspace: PathBuf,
@@ -42,6 +54,8 @@ pub(super) struct LocalMemory {
     pub(super) exchange_index: super::assembly::exchanges::ExchangeIndex,
     pub(super) decoded_hits: std::cell::Cell<u64>,
     pub(super) decoded_misses: std::cell::Cell<u64>,
+    pub(super) archive_lookups: std::cell::Cell<u64>,
+    pub(super) measure_work: bool,
     pub(super) prepared: Option<PreparedView>,
     pub(super) profile: Option<ProviderProfile>,
     pub(super) tools: Vec<ToolDefinition>,
@@ -52,12 +66,21 @@ pub(super) struct LocalMemory {
     pub(super) compactor_runtime: Option<crate::CommandRuntime>,
     pub(super) task_contract: String,
     pub(super) conversation: Option<std::sync::Arc<dyn crate::ConversationView>>,
+    pub(super) cancellation: Option<(
+        std::sync::Arc<std::sync::atomic::AtomicBool>,
+        peritus_provider_core::CancellationToken,
+    )>,
     pub(super) workspace_scope: environment::WorkspaceScope,
     pub(super) activity: super::activity::Activity,
     pub(super) source_policy:
         std::cell::RefCell<std::collections::BTreeMap<u64, super::source_policy::Descriptor>>,
     pub(super) continuation_actions: std::cell::RefCell<std::collections::BTreeMap<u64, String>>,
     pub(super) read_reuse: super::read_reuse::ReadReuse,
+    pub(super) decision_index: super::assembly::decision::Index,
+    pub(super) decision_files: [u8; 32],
+    pub(super) decision_dependencies: Option<HostRequestBinding>,
+    pub(super) published_dependencies: Option<PublishedDependencies>,
+    pub(super) reader_guard_target: Option<u16>,
 }
 
 pub(super) struct PreparedView {
@@ -95,11 +118,12 @@ impl LocalMemory {
     ) -> Result<Self, DeveloperLoopError> {
         config.validate().map_err(|_| error("invalid local context configuration"))?;
         let limits = LocalContextConfig::working_limits();
-        let store = if workspace_scope.direct {
+        let mut store = if workspace_scope.direct {
             LocalStore::open_folder(root, workspace, binding, &workspace_scope.protected)?
         } else {
             LocalStore::open(root, workspace, binding)?
         };
+        store.set_artifact_reuse(config.reuse_checkpoint_pages);
         let environment =
             environment::capture(workspace, binding, &[], "", limits, &workspace_scope)?;
         let state =
@@ -108,6 +132,14 @@ impl LocalMemory {
             store,
             state,
             sources: Vec::new(),
+            archive_bytes: Some(0),
+            indexed_sources: std::env::var_os("PERITUS_CONTEXT_SOURCE_INDEX")
+                .is_none_or(|value| value != "reference"),
+            source_work: std::cell::Cell::default(),
+            tool_sources: std::collections::BTreeMap::new(),
+            latest_tool_sequence: std::collections::BTreeMap::new(),
+            page_cache: super::pages::PageCache::default(),
+            checkpoint_schema: super::record::CHECKPOINT_SCHEMA_VERSION,
             transcript: TranscriptManifest::default(),
             config,
             workspace: workspace.to_path_buf(),
@@ -123,6 +155,8 @@ impl LocalMemory {
             exchange_index: super::assembly::exchanges::ExchangeIndex::default(),
             decoded_hits: std::cell::Cell::default(),
             decoded_misses: std::cell::Cell::default(),
+            archive_lookups: std::cell::Cell::default(),
+            measure_work: peritus_provider_core::efficiency_diagnostics_enabled(),
             prepared: None,
             profile: None,
             tools: Vec::new(),
@@ -133,13 +167,22 @@ impl LocalMemory {
             compactor_runtime: None,
             task_contract: String::new(),
             conversation: None,
+            cancellation: None,
             workspace_scope,
             read_reuse: super::read_reuse::ReadReuse::default(),
+            decision_index: super::assembly::decision::Index::default(),
+            decision_files: [0; 32],
+            decision_dependencies: None,
+            published_dependencies: None,
+            reader_guard_target: None,
             activity: super::activity::Activity::default(),
             continuation_actions: std::cell::RefCell::default(),
             source_policy: std::cell::RefCell::default(),
         };
         memory.recover()?;
+        if memory.checkpoint_schema >= super::record::DEPENDENCY_CHECKPOINT_SCHEMA_VERSION {
+            memory.ensure_host_dependencies()?;
+        }
         let trace_path = memory.trace_path.clone();
         let cursor = memory.trace_cursor.clone();
         let (torn, recovered_cursor) = crate::trace::local_memory::observations(
@@ -160,6 +203,7 @@ impl LocalMemory {
     }
 
     pub(super) fn state_event(&mut self, event: &WorkingEvent) -> Result<(), DeveloperLoopError> {
+        self.validate_host_event(event, false)?;
         let next = apply_working_event(&self.state, event)
             .map_err(|_| error("working-state event rejected"))?;
         let model_revision = self.next_model_revision(event)?;
@@ -177,7 +221,13 @@ impl LocalMemory {
         &self,
         event: &WorkingEvent,
     ) -> Result<u64, DeveloperLoopError> {
-        if matches!(event, WorkingEvent::Delta(_) | WorkingEvent::Refresh { .. }) {
+        if matches!(
+            event,
+            WorkingEvent::Delta(_)
+                | WorkingEvent::Refresh { .. }
+                | WorkingEvent::HostDelta { .. }
+                | WorkingEvent::HostInvalidate { .. }
+        ) {
             self.model_revision.checked_add(1).ok_or_else(|| error("model revision overflow"))
         } else {
             Ok(self.model_revision)
@@ -192,18 +242,32 @@ impl LocalMemory {
         self.store.append(&encode(record)?, roots, None)
     }
 
-    pub(super) fn archived(
-        &self,
-        sequence: u64,
-    ) -> Result<&ArchivedObservation, DeveloperLoopError> {
-        let index = usize::try_from(
-            sequence.checked_sub(1).ok_or_else(|| error("invalid observation handle"))?,
-        )
-        .map_err(|_| error("observation handle overflow"))?;
-        self.sources
-            .get(index)
-            .filter(|source| source.sequence == sequence)
-            .ok_or_else(|| error("observation is unavailable"))
+    pub(super) fn append_source(&mut self, source: ArchivedObservation) {
+        self.archive_bytes =
+            self.archive_bytes.and_then(|total| total.checked_add(source.artifact.bytes));
+        if let Some(sequence) = source.tool_sequence {
+            self.tool_sources.entry((source.invocation, sequence)).or_insert(self.sources.len());
+            if source.kind == super::record::ArchiveKind::ToolOutput {
+                self.latest_tool_sequence.insert(source.invocation, sequence);
+            }
+        }
+        self.sources.push(source);
+    }
+
+    fn rebuild_source_indexes(&mut self) {
+        self.archive_bytes = Some(0);
+        self.tool_sources.clear();
+        self.latest_tool_sequence.clear();
+        for (index, source) in self.sources.iter().enumerate() {
+            self.archive_bytes =
+                self.archive_bytes.and_then(|total| total.checked_add(source.artifact.bytes));
+            if let Some(sequence) = source.tool_sequence {
+                self.tool_sources.entry((source.invocation, sequence)).or_insert(index);
+                if source.kind == super::record::ArchiveKind::ToolOutput {
+                    self.latest_tool_sequence.insert(source.invocation, sequence);
+                }
+            }
+        }
     }
 
     pub(super) fn artifact(&self, sequence: u64) -> Result<Vec<u8>, DeveloperLoopError> {

@@ -12,7 +12,7 @@ Streaming content-addressed artifact storage for Peritus.
 | [config.rs](config.rs) | Store configuration validation. |
 | [digest.rs](digest.rs) | Artifact digest values and canonical lowercase encoding. |
 | [error.rs](error.rs) | Stable artifact-store errors and recovery guidance. |
-| [finalize.rs](finalize.rs) | Narrow file hashing, verification, and atomic no-replace publication. |
+| [finalize.rs](finalize.rs) | Regular-object checks, exact file hashing/verification, and atomic no-replace publication. |
 | [gc_plan.rs](gc_plan.rs) | Deterministic mark, quarantine, restore, and sweep plans. |
 | [lib.rs](lib.rs) | Streaming content-addressed artifact storage for Peritus. |
 | [metadata.rs](metadata.rs) | Durable artifact metadata value types. |

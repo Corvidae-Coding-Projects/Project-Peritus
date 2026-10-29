@@ -25,6 +25,7 @@ Provider-independent owned transport primitives for Peritus.
 | [http.rs](http.rs) | Bounded owned HTTP request, response, status, and header values. |
 | [lib.rs](lib.rs) | Provider-independent owned transport primitives for Peritus. |
 | [process.rs](process.rs) | Bounded owned subprocess requests with a runtime-private Tokio implementation. |
+| [projection.rs](projection.rs) | Content-free measurements of actual adapter-rendered parts and a hashed prefix lower bound; never provider token or cache claims. |
 | [process_containment.rs](process_containment.rs) | Host process containment for credential-owning provider executables. |
 | [qualification.rs](qualification.rs) | Provider role requirements and user-authorized route selection. |
 | [recovery.rs](recovery.rs) | Stable provider terminal causes and phase-local recovery dispositions. |
@@ -44,6 +45,7 @@ Provider-independent owned transport primitives for Peritus.
 | [hosted/](hosted/AGENTS.md) | Implementation pieces for `hosted.rs`: Reviewed hosted API identities and operation routes; never a fallback model catalog. |
 | [http/](http/AGENTS.md) | Implementation pieces for `http.rs`: Bounded owned HTTP request, response, status, and header values. |
 | [process/](process/AGENTS.md) | Implementation pieces for `process.rs`: Bounded owned subprocess requests with a runtime-private Tokio implementation. |
+| [projection/](projection/AGENTS.md) | Disjoint content-free component measurements over actual adapter-rendered byte spans. |
 | [qualification/](qualification/AGENTS.md) | Implementation pieces for `qualification.rs`: Provider role requirements and user-authorized route selection. |
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).

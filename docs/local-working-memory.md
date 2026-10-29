@@ -22,6 +22,7 @@ semantic_backend = "disabled"
 trigger_percent = 85
 max_read_bytes = 16384
 checkpoint_every_completed_batch = true
+reuse_checkpoint_pages = true
 ```
 
 Set `enabled = false` to select the previous developer-loop compaction path explicitly.
@@ -69,12 +70,72 @@ size, and stale evidence are rejected. File/candidate/conversation changes conse
 invalidate dependent conclusions. Recognizable credential-shaped text is rejected as an
 accidental-disclosure guard, not as a complete secret classifier. Do not put secrets in entries.
 
+Live input revisions refresh this binding even while the same memory owner remains open.
+Conversation-dependent conclusions become stale; their exact text and sources remain available.
+Returning to earlier wording does not silently make them current again. Recovery first finishes
+committed observations under their original epoch, then checks current input before new work.
+
 `context_read` retrieves exact authorized archived bytes by `obs:NNNNNN` or fully scoped
 handles. It also supports bounded literal search and revision-bound working-entry pages.
 Follow `next_offset` for a byte range, `next_handle_index` for unreturned explicit handles,
 or `cursor` for another search/state page. Binary or split-UTF-8 ranges use hex encoding;
 source digests and total byte lengths identify the original artifact. Small response limits
 that cannot fit metadata return a rejection rather than a non-progressing page.
+
+`context_sources` pages complete readable source descriptors within a fixed archive snapshot.
+Its cursor is scope-bound, and current permissions and source restrictions are rechecked on
+every page. It returns source handles and original byte identities; use the named retrieval
+tool for exact bytes. New observations do not restart an in-progress descriptor scan.
+
+### Experimental decision views
+
+Set `[context.local] decision_view = "conservative"` to select the decision compiler. The
+default is `"history"`. This is an opt-in projection. Host-bound entries require a committed
+checkpoint-v6 reader guard; older supported state remains readable and migrates conservatively.
+Setting it back to `"history"` retains that guard, current committed progress and exact sources.
+
+The compiler retains current host policy, literal input, control and pending outcomes. It
+prioritizes active working dependencies within the negotiated provider envelope, separates
+exact original tool bytes from complete current native exchanges, and coalesces only proven
+identical successful inspections. Errors and unknown/effect outcomes remain distinct. Partial
+raw JSON cards announce their original byte offset and retrieval path; they are not complete
+file pages. The full archive remains retrievable when it exceeds model capacity.
+
+Model-authored scope cannot establish independence. The compiler annotates derived projections
+with conservative whole-view/candidate dependencies, and every supplied file read contributes a current binding
+even when a model omits that path from its declaration. If a supplied source is excluded by
+current restrictions, unscoped derived/native history is withheld rather than quoting it into
+the new view. Reviewers still receive only their own exact observations and no writer scratch.
+
+Unproven opaque/native replay dependencies and incompatible adapter envelopes retain the
+existing history selector when current restrictions permit it. Restricted views instead page
+readable exact sources. Neither path replaces fresh grounding, full candidate checks, independent
+review or settlement evidence. Reconstruction identities are diagnostics, never cached verdicts;
+the complete final request fingerprint includes options, reasoning, tool choice and schema order.
+Current input admission still governs submission.
+
+Durable host bindings come from the exact admitted originating request. Changed or unknown
+inputs make dependent conclusions stale without deleting their exact text or declared progress.
+Model declarations cannot narrow those constraints or restore freshness. Ordinary events keep
+their existing encoding; host events use version 3 and bound-entry pages use version 4. Actual
+continuation, migration, recovery and rollback evidence is recorded in the
+[I4 report](testing/execution-efficiency-i4-decision-views.md). The compiler remains opt-in
+because measured benefit varies by workload.
+
+### Experimental shared candidate observations
+
+Set `[context.local] candidate_observation = "shared"` on Linux to derive managed repository and source
+identities from the same complete captured preimages. A second fresh full capture must match
+both identities before a candidate checkpoint is observed. Each material boundary still scans
+current contents, kinds, modes, HEAD and nested repositories; no prior-boundary candidate digest,
+filesystem notification or metadata-only token substitutes for that scan. In-place task scopes
+retain their existing observation path.
+
+The default `"separate"` preserves the original repository/source/repository capture sequence.
+Returning to it requires no state migration and retains current history. Other platforms always
+use Separate even if Shared is requested. This changes local capture work, not qualification
+requirements or digest encodings. The [I6 report](testing/execution-efficiency-i6-freshness.md)
+records local savings, current acceptance/restart/rollback and explicit platform coverage.
 
 Tool outputs remain untrusted evidence. Host-owned source metadata overwrites any forged
 `local_context` annotation only after the original output is archived. Neither memory updates
@@ -95,9 +156,18 @@ the editable workspace. Each lineage has one owner, a C0 journal (namespace 3401
 artifact bytes, canonical C6 state/events, and a transactionally published checkpoint manifest.
 Artifacts include the exact C5 message archive, transcript/source indexes, and validation.
 Checkpoint roots retain source artifacts through normal C0 garbage collection. The archive
-uses a one-GiB store quota, 64-MiB artifact limit, and bounded event/observation counts. Capacity
-exhaustion is explicit; entries and old sources are not silently deleted to make space.
+uses the artifact size representation bound imposed by SQLite's signed 64-bit sizes; this
+local store imposes no separate byte quota. Capacity/IO failures remain explicit; entries and
+old sources are not silently deleted to make space.
 Run retention/deletion must include this trace-adjacent directory; no cross-task sync is added.
+
+Immutable observation/source pages are reused by default. Reuse requires the same lineage,
+record range and immutable page identity, followed by full artifact size/digest verification.
+Changed tails are encoded normally; every checkpoint retains its complete dependency roots.
+Both the completed-batch and next-request checkpoints remain, with their existing fsync and CAS
+boundaries. Set `reuse_checkpoint_pages = false` under `[context.local]` to use the original
+encoding/publication path against current committed history. No new storage format is needed.
+Non-regular artifact objects, including symlinks to matching bytes, are rejected by verification.
 
 ```sh
 peritusd context-inspect --trace /absolute/path/run.trace \

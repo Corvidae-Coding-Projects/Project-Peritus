@@ -13,6 +13,9 @@ impl LocalMemory {
     pub(super) fn compact_locally(&mut self) -> Result<(), DeveloperLoopError> {
         if self.config.semantic_backend == LocalSemanticBackend::Disabled
             || !self.derived_memory_allowed()
+            || !self.conversation.as_ref().is_some_and(|view| {
+                view.effective_permissions().allows(crate::control::PermissionCapability::Read)
+            })
         {
             return Ok(());
         }
@@ -59,7 +62,11 @@ impl LocalMemory {
             .and_then(|input| run(&config, input).ok())
             .filter(|output| !output.is_empty() && output.len() <= config.max_output_bytes);
         let failed = match &output {
-            Some(output) => tools::update::execute(self, output)?.get("rejected").is_some(),
+            Some(output) => {
+                // Auxiliary output was not produced by the primary model's bound request.
+                self.decision_dependencies = None;
+                tools::update::execute(self, output)?.get("rejected").is_some()
+            }
             None => true,
         };
         let input = input.map(|input| self.store.store(&input)).transpose()?;
@@ -87,13 +94,16 @@ impl LocalMemory {
             .ok_or_else(|| error("local update schema unavailable"))?;
         let schema: Value = serde_json::from_slice(schema.parameters().canonical_bytes())
             .map_err(|_| error("invalid local update schema"))?;
-        let entries = self
+        let mut entries = Vec::new();
+        for entry in self
             .state
             .entries(self.state.binding())
             .map_err(|_| error("local compactor scope mismatch"))?
-            .iter()
-            .map(|entry| tools::entry_view(self, entry))
-            .collect::<Vec<_>>();
+        {
+            if super::source_policy::entry_allowed(self, entry)? {
+                entries.push(tools::entry_view(self, entry));
+            }
+        }
         let mut input = Value::from_iter([
             ("schema_version", Value::from(1)),
             (
@@ -117,6 +127,9 @@ impl LocalMemory {
             .filter(|source| source.kind == ArchiveKind::ToolOutput && !source.is_memory_receipt())
             .take(8)
         {
+            if !super::source_policy::allowed(self, source.sequence)? {
+                continue;
+            }
             let bytes = self.artifact(source.sequence)?;
             let text = String::from_utf8_lossy(&bytes);
             let mut end = text.len().min(maximum / 4);

@@ -8,7 +8,7 @@ Durable working-context host: journal/artifact storage, current-policy assembly,
 
 | File | Role |
 | --- | --- |
-| [pages.rs](pages.rs) | Content-addressed working/source pages, atomic checkpoint roots, and legacy snapshot restoration. |
+| [pages.rs](pages.rs) | Content-addressed working/source pages, default-enabled immutable page reuse with checked lineage/ranges and full artifact verification, and legacy snapshot restoration. |
 | [activity.rs](activity.rs) | Bounded role-scoped outcome fingerprints, final-view reuse, and progress feedback derived from durable metadata. |
 | [source_policy.rs](source_policy.rs) | Current read/reference/private admission for archived sources, receipt chains, and source-linked working entries. |
 | [assembly.rs](assembly.rs) | Semantic pinning, complete current exchanges, and local-only evidence selection. |
@@ -30,6 +30,7 @@ Durable working-context host: journal/artifact storage, current-policy assembly,
 | --- | --- |
 | [assembly/](assembly/AGENTS.md) | Model-view construction: keep current host policy and governing input, select working state/evidence, restore current exchanges, and fit the provider transport. |
 | [memory/](memory/AGENTS.md) | Implementation pieces for `memory.rs`: Durable state owner shared by the loop port and its bounded memory-tool decorator. |
+| [operation_plan/](operation_plan/AGENTS.md) | Opt-in typed sequential inspection plans, exact durable child results, current admission, and version-4 reader compatibility. |
 | [read_reuse/](read_reuse/AGENTS.md) | Exact archived source slicing and final provider-view coverage. |
 | [storage/](storage/AGENTS.md) | Implementation pieces for `storage.rs`: Single-owner C0 journal/artifact storage and atomic checkpoint-root publication. |
 | [tools/](tools/AGENTS.md) | Model-facing context read/update operations and schema. These retain evidence/working entries without granting workspace or process authority. |

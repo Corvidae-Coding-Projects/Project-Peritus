@@ -37,6 +37,25 @@ pub(super) fn validate(name: &str, arguments: &Value) -> Result<(), DeveloperLoo
     )))
 }
 
+pub(super) fn validate_deferred(
+    name: &str,
+    arguments: &Value,
+    deferred: &[String],
+) -> Result<(), DeveloperLoopError> {
+    let catalog =
+        CATALOG.get_or_init(load).as_ref().map_err(|_| tool("host tool catalog is invalid"))?;
+    let mut schema = catalog.get(name).ok_or_else(|| tool("undeclared inspection tool"))?.clone();
+    for field in deferred {
+        if schema["properties"].get(field).is_none() {
+            return Err(tool("plan result reference names an undeclared argument"));
+        }
+    }
+    if let Some(required) = schema["required"].as_array_mut() {
+        required.retain(|field| !deferred.iter().any(|name| field.as_str() == Some(name)));
+    }
+    validate_value(&schema, arguments, "$", 0).map_err(tool)
+}
+
 fn load() -> Result<Catalog, String> {
     let mut definitions = catalog::definitions().map_err(|error| error.to_string())?;
     definitions.push(catalog::in_place_definition().map_err(|error| error.to_string())?);

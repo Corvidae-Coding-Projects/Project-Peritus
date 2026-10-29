@@ -17,7 +17,7 @@ libc.workspace = true
 peritus-model-protocol = { version = "=0.1.11", path = "../peritus-model-protocol" }
 peritus-types = { version = "=0.1.11", path = "../../foundation/peritus-types" }
 reqwest.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
 sha2.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["io-util", "process", "time"] }

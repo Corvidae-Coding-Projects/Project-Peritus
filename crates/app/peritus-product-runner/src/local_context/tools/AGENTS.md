@@ -10,6 +10,7 @@ Model-facing context read/update operations and schema. These retain evidence/wo
 | --- | --- |
 | [entry_view.rs](entry_view.rs) | Shared non-authoritative state vocabulary for inspection and optional local inference. |
 | [read.rs](read.rs) | Exact byte-range retrieval and bounded literal-search/state pages with scope-bound cursors. |
+| [sources.rs](sources.rs) | Byte-bounded readable source descriptors with fixed-snapshot scope-bound cursors and current source-policy checks. |
 | [schema.rs](schema.rs) | Strict public JSON schemas mirror bounded parsers, including nested operations. |
 | [secret_text.rs](secret_text.rs) | Conservative rejection of recognizable credential material in derived entries. |
 | [update.rs](update.rs) | Validate a whole proposal before committing; archive/protocol events do not conflict with it. |

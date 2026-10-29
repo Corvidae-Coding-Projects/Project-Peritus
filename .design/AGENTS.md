@@ -8,6 +8,9 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [incremental-execution-efficiency.md](incremental-execution-efficiency.md) | Proposed incremental storage, context compilation, provider framing, and read-only operation scheduling with preserved functionality and measured acceptance. |
+| [incremental-execution-efficiency.pipeline.json](incremental-execution-efficiency.pipeline.json) | Design content identity and unstarted delivery-pipeline metadata for the efficiency proposal. |
+| [incremental-execution-efficiency.progress.md](incremental-execution-efficiency.progress.md) | Active I0–I6 implementation ledger, qualification evidence, and explicit completion gaps. |
 | [structural-runtime-remediation.md](structural-runtime-remediation.md) | Six structural runtime repairs and independent behavioral expectations. |
 | [staged-project-execution.md](staged-project-execution.md) | Core issue tracker, design decomposition, maturity-scoped agent loops, separate contexts, and host-owned automatic task closure. |
 | [staged-project-execution.pipeline.json](staged-project-execution.pipeline.json) | Design content identity and unstarted delivery-pipeline metadata for the staged project proposal. |

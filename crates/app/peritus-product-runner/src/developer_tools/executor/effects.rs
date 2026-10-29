@@ -136,6 +136,10 @@ impl WorkspaceDeveloperTools {
                 self.attach_command_owner_from_handle(arguments)?;
                 self.poll_command(arguments)
             }
+            "command_wait" => {
+                self.attach_command_owner_from_handle(arguments)?;
+                self.wait_command(arguments)
+            }
             "command_stdin" => {
                 self.bind_command_receipt_owner(arguments, call.id().expose_for_wire())?;
                 self.write_command_stdin(arguments)
@@ -319,6 +323,7 @@ impl WorkspaceDeveloperTools {
             name,
             "run_command"
                 | "command_poll"
+                | "command_wait"
                 | "command_stdin"
                 | "command_resize"
                 | "command_signal"

@@ -70,6 +70,19 @@ impl WorkspaceCheckpoint {
         ))
     }
 
+    /// Captures this checkpoint and its source identity from the same complete preimages.
+    /// This is one fresh observation, not a cross-boundary cache or a stable-workspace fence.
+    /// Callers requiring a fence must capture again and compare the complete pair.
+    ///
+    /// # Errors
+    /// Rejects any incomplete HEAD, source, permission or nested-repository observation.
+    pub fn capture_with_source(root: &Path) -> Result<(Self, Sha256Digest), ProductRunnerError> {
+        let baseline = CandidateBaseline::capture(root)?;
+        let (repository, source) =
+            crate::candidate::managed::ManagedBaseline::repository_and_source_digests(root)?;
+        Ok((Self::managed_snapshot(baseline.head().to_owned(), repository), source))
+    }
+
     pub(crate) fn managed_snapshot(head: String, repository_digest: [u8; 32]) -> Self {
         let entries = vec![CheckpointEntry {
             path: PathBuf::new(),

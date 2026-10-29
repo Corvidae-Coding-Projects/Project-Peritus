@@ -23,6 +23,7 @@ pub struct OwnedModelStream {
     inner: Box<dyn ModelStream>,
     cancellation: CancellationToken,
     terminal_observed: bool,
+    projections: Vec<crate::RequestProjection>,
 }
 
 impl OwnedModelStream {
@@ -32,7 +33,36 @@ impl OwnedModelStream {
     where
         S: ModelStream + 'static,
     {
-        Self { inner: Box::new(inner), cancellation, terminal_observed: false }
+        Self {
+            inner: Box::new(inner),
+            cancellation,
+            terminal_observed: false,
+            projections: Vec::new(),
+        }
+    }
+
+    /// Attaches measurements of the actual adapter-rendered input. Existing adapters may
+    /// leave this unavailable; missing measurements never mean zero input or submission.
+    #[must_use]
+    pub fn with_projection(
+        mut self,
+        projection: impl Into<Option<crate::RequestProjection>>,
+    ) -> Self {
+        self.projections.extend(projection.into());
+        self
+    }
+
+    /// Borrows optional content-free measurements supplied by the rendering adapter.
+    #[must_use]
+    pub fn projection(&self) -> Option<&crate::RequestProjection> {
+        self.projections.first()
+    }
+
+    /// Borrows ordered renderings, including adapter-owned correction requests when supplied.
+    /// These are local projection measurements, not proof of provider submission or billing.
+    #[must_use]
+    pub fn projections(&self) -> &[crate::RequestProjection] {
+        &self.projections
     }
 
     /// Returns a cancellation handle for an external caller or deadline owner.
@@ -96,6 +126,7 @@ impl fmt::Debug for OwnedModelStream {
             .field("terminal_observed", &self.terminal_observed)
             .field("cancelled", &self.cancellation.is_cancelled())
             .field("inner", &"[private provider stream]")
+            .field("projections", &self.projections)
             .finish()
     }
 }

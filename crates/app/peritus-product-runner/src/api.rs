@@ -4,8 +4,8 @@ pub use crate::attachment_read::{AttachmentReadRequest, AttachmentReadResponse};
 
 pub use crate::budget::ProductRunProgress;
 pub use crate::context_config::{
-    LocalCompactorSandbox, LocalContextConfig, LocalContextEngine, LocalProcessConfig,
-    LocalSemanticBackend,
+    CandidateObservationPolicy, DecisionViewPolicy, LocalCompactorSandbox, LocalContextConfig,
+    LocalContextEngine, LocalProcessConfig, LocalSemanticBackend, ReadOnlyPlanExecution,
 };
 pub use crate::conversation_mode::ConversationMode;
 

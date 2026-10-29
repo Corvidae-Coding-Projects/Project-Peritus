@@ -21,7 +21,7 @@ pub(in crate::local_context) fn entry_view(memory: &LocalMemory, entry: &Working
         WorkingEntryStatus::Stale => "stale",
         WorkingEntryStatus::Superseded => "superseded",
     };
-    Value::from_iter([
+    let mut value = Value::from_iter([
         ("id", Value::from(format!("entry:{}", hex(entry.id().as_bytes())))),
         ("kind", Value::from(kind)),
         ("status", Value::from(status)),
@@ -64,5 +64,18 @@ pub(in crate::local_context) fn entry_view(memory: &LocalMemory, entry: &Working
             Value::from(entry.supersedes().map(|id| format!("entry:{}", hex(id.as_bytes())))),
         ),
         ("authority", Value::from("none")),
-    ])
+    ]);
+    if entry.host_binding().is_some()
+        && memory.checkpoint_schema >= super::super::record::DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+    {
+        value["declared_status"] = entry.declared_status().map_or(Value::Null, |status| {
+            Value::from(match status {
+                WorkingEntryStatus::Open => "open",
+                WorkingEntryStatus::Contradicted => "contradicted",
+                WorkingEntryStatus::Resolved => "resolved",
+                WorkingEntryStatus::Stale | WorkingEntryStatus::Superseded => "unknown",
+            })
+        });
+    }
+    value
 }

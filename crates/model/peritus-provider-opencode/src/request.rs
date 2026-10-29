@@ -21,19 +21,47 @@ pub struct RuntimeRequest {
     pub prompt: Vec<u8>,
     pub allowed_tools: BTreeSet<String>,
     pub max_calls: usize,
+    pub components: Option<peritus_provider_core::ProjectionComponents>,
 }
 
-pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
+/// Adapter-local layout selection; legacy remains available for qualification and rollback.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenCodeRequestLayout {
+    /// Original complete schema in both the system contract and prompt catalog.
+    Legacy,
+    /// One complete schema in the system contract, with a names-only prompt index.
+    #[default]
+    OnceOnly,
+}
+
+impl OpenCodeRequestLayout {
+    pub(crate) const fn projection_layout(self) -> &'static str {
+        match self {
+            Self::Legacy => "opencode-v1-system-prompt",
+            Self::OnceOnly => "opencode-v2-once-system-prompt",
+        }
+    }
+}
+
+pub fn encode(
+    request: &ModelRequest,
+    layout: OpenCodeRequestLayout,
+) -> Result<RuntimeRequest, ProviderCoreError> {
     validate_controls(request)?;
     let (schema, allowed_tools, max_calls) = result_schema(request)?;
     // Establish the private wire grammar before replaying policies for public prose.
     // The closing contract still follows all task policies and the schema stays strict.
     let mut system = WIRE_PREFIX.to_owned();
+    let mut components = peritus_provider_core::efficiency_diagnostics_enabled()
+        .then(peritus_provider_core::ProjectionComponents::default);
     system.push_str(TOOL_SYNTAX);
     let mut messages = Vec::new();
     for message in request.messages() {
         match message.role() {
-            Role::System | Role::Developer => append_system(&mut system, message)?,
+            Role::System | Role::Developer => {
+                append_system(&mut system, message, components.as_mut())?;
+            }
             _ => messages.push(message),
         }
     }
@@ -43,19 +71,33 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
     system.push_str(SYSTEM_PREFIX);
     system.push_str("Your entire response must be exactly one JSON object conforming to this schema, without Markdown fences, DSML, or XML tool markup: ");
     system.push_str(&schema);
+    if let Some(parts) = components.as_mut() {
+        parts.add(peritus_provider_core::ProjectionComponentKind::Schemas, schema.as_bytes());
+    }
     if messages.is_empty() {
         return Err(invalid("OpenCode runtime requires at least one non-system message"));
     }
     let payload = object([
         ("model", Value::String(request.model().as_str().to_owned())),
         ("max_output_tokens", Value::from(request.options().generation().max_output_tokens())),
-        ("peritus_tool_protocol", tool_protocol(request, max_calls)?),
+        ("peritus_tool_protocol", tool_protocol(request, max_calls, layout)?),
     ]);
     let mut prompt = INPUT_PREFIX.as_bytes().to_vec();
-    prompt.extend_from_slice(
-        &serde_json::to_vec(&payload)
-            .map_err(|_| invalid("OpenCode runtime transcript serialization failed"))?,
-    );
+    let metadata = serde_json::to_vec(&payload)
+        .map_err(|_| invalid("OpenCode runtime transcript serialization failed"))?;
+    if let Some(parts) = components.as_mut() {
+        let fields: Result<std::collections::BTreeMap<&str, &serde_json::value::RawValue>, _> =
+            serde_json::from_slice(&metadata);
+        if let Some(catalog) =
+            fields.as_ref().ok().and_then(|fields| fields.get("peritus_tool_protocol"))
+        {
+            parts.add(
+                peritus_provider_core::ProjectionComponentKind::Schemas,
+                catalog.get().as_bytes(),
+            );
+        }
+    }
+    prompt.extend_from_slice(&metadata);
     // Do not serialize literal document/report text inside another JSON string. That extra
     // escaping layer caused real quoted report values to acquire backslashes or lose quotes.
     // Keep the message sequence and block origins explicit; tool metadata remains canonical JSON.
@@ -65,6 +107,7 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
                 .as_bytes(),
         );
         for block in message.content() {
+            let start = prompt.len();
             match block {
                 ContentBlock::Text(text) | ContentBlock::Refusal(text) => {
                     let text = text.expose_for_wire();
@@ -80,19 +123,32 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
                     );
                 }
             }
+            if let Some(parts) = components.as_mut() {
+                parts.add(
+                    peritus_provider_core::ProjectionComponentKind::block(message.role(), block),
+                    &prompt[start..],
+                );
+            }
             prompt.extend_from_slice(b"\nEND PERITUS BLOCK\n");
         }
     }
     prompt.extend_from_slice(INPUT_SUFFIX.as_bytes());
     prompt.extend_from_slice(TOOL_SYNTAX.as_bytes());
-    Ok(RuntimeRequest { system: system.into_bytes(), prompt, allowed_tools, max_calls })
+    Ok(RuntimeRequest { system: system.into_bytes(), prompt, allowed_tools, max_calls, components })
 }
 
-fn tool_protocol(request: &ModelRequest, max_calls: usize) -> Result<Value, ProviderCoreError> {
+fn tool_protocol(
+    request: &ModelRequest,
+    max_calls: usize,
+    layout: OpenCodeRequestLayout,
+) -> Result<Value, ProviderCoreError> {
     let tools = request
         .tools()
         .iter()
         .map(|tool| {
+            if layout == OpenCodeRequestLayout::OnceOnly {
+                return Ok(object([("name", Value::String(tool.name().as_str().to_owned()))]));
+            }
             Ok(object([
                 ("name", Value::String(tool.name().as_str().to_owned())),
                 (
@@ -145,9 +201,11 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
 fn append_system(
     output: &mut String,
     message: &peritus_model_protocol::Message,
+    mut components: Option<&mut peritus_provider_core::ProjectionComponents>,
 ) -> Result<(), ProviderCoreError> {
     let label = if message.role() == Role::System { "system" } else { "developer" };
     for block in message.content() {
+        let start = output.len();
         let ContentBlock::Text(text) = block else {
             return Err(invalid("OpenCode runtime system instructions must be text"));
         };
@@ -156,6 +214,12 @@ fn append_system(
         output.push_str("]\n");
         output.push_str(text.expose_for_wire());
         output.push_str("\n\n");
+        if let Some(parts) = components.as_mut() {
+            parts.add(
+                peritus_provider_core::ProjectionComponentKind::block(message.role(), block),
+                &output.as_bytes()[start..],
+            );
+        }
     }
     Ok(())
 }

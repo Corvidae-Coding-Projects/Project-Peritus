@@ -7,6 +7,20 @@ use super::{
 use crate::ContextNodeId;
 
 impl WorkingState {
+    /// Returns an identity for one immutable observation page under the exact current binding.
+    /// Page numbers are zero-based; this does not retrieve or authorize artifact bytes.
+    ///
+    /// # Errors
+    /// Rejects a foreign binding or a page outside the retained observation prefix.
+    pub fn observation_page(
+        &self,
+        binding: WorkingBinding,
+        page: usize,
+    ) -> Result<super::WorkingObservationPage, WorkingError> {
+        self.check_binding(binding)?;
+        self.observations.page_identity(page).ok_or(WorkingError::MissingSource)
+    }
+
     #[doc = " Reads host-owned literal requirement references and unresolved operation state."]
     #[doc = ""]
     #[doc = " # Errors"]

@@ -318,6 +318,11 @@ pub enum DeveloperTraceEvent<'a> {
 
 /// Durable trace boundary owned by the production host.
 pub trait DeveloperTrace: Send {
+    /// Receives non-authoritative measurements for every admitted attempt, including failures.
+    /// Missing usage or projection data is unknown, never zero. Diagnostic failures must not
+    /// change execution or durable accounting. Existing trace hosts may ignore measurements.
+    fn performance(&mut self, _metrics: &DeveloperRequestMetrics) {}
+
     /// Records observed work independently of success, before the next fallible boundary.
     /// Existing trace-only hosts may ignore accounting; product hosts enforce shared budgets here.
     ///
@@ -335,6 +340,37 @@ pub trait DeveloperTrace: Send {
     /// # Errors
     /// Returns a redaction-safe persistence failure.
     fn record(&mut self, event: DeveloperTraceEvent<'_>) -> Result<(), DeveloperLoopError>;
+}
+
+/// Content-free measurements of one admitted provider attempt.
+#[derive(Default)]
+pub struct DeveloperRequestMetrics {
+    /// Provider-loop reason, distinct from adapter-owned format correction.
+    pub reason: Option<&'static str>,
+    /// One-based attempt within this developer/provider turn.
+    pub attempt: u8,
+    /// One-based developer turn; does not count adapter-internal corrections.
+    pub turn: u16,
+    /// Host request identity; this is not a provider response or cache identity.
+    pub request_id: String,
+    /// Actual adapter-rendered parts when the adapter supplies them.
+    pub projections: Vec<peritus_provider_core::RequestProjection>,
+    /// Time until the provider returned a stream, including connection/setup and buffered work.
+    pub start_micros: Option<u64>,
+    /// Time until the first normalized envelope, including provider setup.
+    pub first_event_micros: Option<u64>,
+    /// Time until the first public text delta, excluding reasoning summaries.
+    pub first_text_micros: Option<u64>,
+    /// Total elapsed time for this attempt, including unsuccessful or interrupted work.
+    pub elapsed_micros: u64,
+    /// Whether any normalized usage envelope was durably accepted.
+    pub usage_observed: bool,
+    /// Whether a normalized terminal outcome was durably accepted.
+    pub terminal_observed: bool,
+    /// Exact normalized durable terminal; a provider failure can end a well-formed stream.
+    pub terminal: Option<peritus_model_protocol::TerminalOutcome>,
+    /// Whether driving the attempt returned an error, including cancellation.
+    pub drive_failed: bool,
 }
 
 /// Successful terminal response from a developer role.

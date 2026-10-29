@@ -66,6 +66,24 @@ Output-token limits are advisory. Text and Peritus tool history are supported; n
 continuations, image attachments, explicit reasoning controls, and server cancellation are
 not currently advertised. Local cancellation terminates the owned process group.
 
+The default hosted-route setting `opencode_request_layout = "once_only"` delivers complete
+tool definitions only in the strict system transport schema, with a names-only prompt index.
+This setting changes only new inference projections; it does not relax host validation or retry
+an admitted request. Set `opencode_request_layout = "legacy"` to restore the original duplicated
+catalog while retaining current committed history. Model selection preserves that choice. Library hosts
+can select the same layout with `OpenCodeRuntimeProvider::with_request_layout`.
+
+Optional efficiency diagnostics measure the already rendered system and prompt separately,
+including adapter-owned correction renderings. These byte lengths and hashed prefix lower
+bounds precede vendor-owned framing and do not establish billing, submission, or cache hits.
+Normalized usage remains separate. `PERITUS_EFFICIENCY_LOG=0` disables optional diagnostics for
+the host process without changing request layout, authority, accounting, or run state.
+
+Input accounting includes fresh, cache-read, and cache-write tokens; the cache fields are
+subsets of that total. Output includes reasoning, which is also reported separately. Missing
+input partitions stay unknown. The [I3 report](../../../docs/testing/execution-efficiency-i3-provider-layout.md)
+records native projection, selection, correction and ProductRunner evidence and its limits.
+
 The adapter requires the tested OpenCode 1.19.0 contract because isolation depends on its
 configuration semantics. Setup installs that official version. Recognized subscription and
 model-access rejections abort the vendor retry loop immediately. Other vendor retries retain

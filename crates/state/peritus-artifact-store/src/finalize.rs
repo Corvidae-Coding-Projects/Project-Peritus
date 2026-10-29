@@ -126,6 +126,20 @@ fn verify_exact(
 }
 
 fn hash_file(path: &Path) -> Result<(ArtifactDigest, u64), ArtifactStoreError> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            ArtifactStoreError::message(
+                ErrorCode::MissingArtifact,
+                RecoveryClass::RecoverStore,
+                "artifact file is missing",
+            )
+        } else {
+            io(StoreOperation::InspectObject, error)
+        }
+    })?;
+    if !metadata.file_type().is_file() {
+        return Err(corrupt("artifact object is not a regular file"));
+    }
     let mut file = File::open(path).map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
             ArtifactStoreError::message(

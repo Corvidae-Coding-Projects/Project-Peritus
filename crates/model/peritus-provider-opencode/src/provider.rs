@@ -23,6 +23,7 @@ pub struct OpenCodeRuntimeProvider {
     discover_limits: bool,
     catalog: Mutex<Vec<DiscoveredModel>>,
     catalog_loading: tokio::sync::Mutex<()>,
+    request_layout: super::OpenCodeRequestLayout,
 }
 
 struct TurnState {
@@ -108,6 +109,7 @@ impl OpenCodeRuntimeProvider {
             discover_limits: true,
             catalog: Mutex::new(Vec::new()),
             catalog_loading: tokio::sync::Mutex::new(()),
+            request_layout: super::OpenCodeRequestLayout::default(),
         })
     }
 
@@ -115,6 +117,14 @@ impl OpenCodeRuntimeProvider {
     #[must_use]
     pub const fn with_discovered_limits(mut self, discover: bool) -> Self {
         self.discover_limits = discover;
+        self
+    }
+
+    /// Selects the adapter layout for new turns. This never retries an admitted request.
+    /// The once-only layout is the default; legacy remains an explicit independent rollback.
+    #[must_use]
+    pub const fn with_request_layout(mut self, layout: super::OpenCodeRequestLayout) -> Self {
+        self.request_layout = layout;
         self
     }
 
@@ -167,7 +177,21 @@ impl OpenCodeRuntimeProvider {
                 "selected model is absent from the official OpenCode catalog; refresh models or choose an exact advertised ID",
             ));
         }
-        let runtime = super::request::encode(&request)?;
+        let runtime = super::request::encode(&request, self.request_layout)?;
+        let mut projections = Vec::new();
+        let stream = self.turn_encoded(request, cancellation, runtime, &mut projections).await?;
+        Ok(projections.into_iter().fold(stream, OwnedModelStream::with_projection))
+    }
+
+    async fn turn_encoded(
+        &self,
+        request: ModelRequest,
+        cancellation: CancellationToken,
+        runtime: super::request::RuntimeRequest,
+        projections: &mut Vec<peritus_provider_core::RequestProjection>,
+    ) -> Result<OwnedModelStream, ProviderCoreError> {
+        let service = super::service_id(self.service)?;
+        let model = model_id(request.model(), service)?;
         let credential = self.credentials.resolve(&self.credential)?;
         let system = std::str::from_utf8(&runtime.system).map_err(|_| super::malformed())?;
         let private = super::isolation::Isolation::new(service, &credential, system)?;
@@ -194,6 +218,21 @@ impl OpenCodeRuntimeProvider {
             prompt: runtime.prompt.clone(),
         };
         loop {
+            if peritus_provider_core::efficiency_diagnostics_enabled() {
+                let projection = peritus_provider_core::RequestProjection::measure(
+                    self.request_layout.projection_layout(),
+                    &[&runtime.system, &state.prompt],
+                )
+                .with_reason(if state.rejected_usage.is_some() {
+                    "format_correction"
+                } else {
+                    "primary"
+                });
+                projections.push(runtime.components.as_ref().map_or_else(
+                    || projection.clone(),
+                    |parts| projection.clone().with_components(parts),
+                ));
+            }
             let process = private
                 .process(
                     &executable,
@@ -237,7 +276,14 @@ impl OpenCodeRuntimeProvider {
                     );
                 }
             };
-            match self.accept_output(&request, &runtime, &output, &cancellation, &mut state)? {
+            match self.accept_output(
+                &request,
+                &runtime,
+                &output,
+                &cancellation,
+                &mut state,
+                projections.last_mut(),
+            )? {
                 OutputDisposition::Retry => {}
                 OutputDisposition::Complete(stream) => return Ok(stream),
             }
@@ -251,13 +297,33 @@ impl OpenCodeRuntimeProvider {
         output: &ProcessOutput,
         cancellation: &CancellationToken,
         state: &mut TurnState,
+        mut projection: Option<&mut peritus_provider_core::RequestProjection>,
     ) -> Result<OutputDisposition, ProviderCoreError> {
         // Native framing and failures stay authoritative. Only a completed, successful,
         // tool-disabled inference with a rejected model envelope can be regenerated.
-        match super::output::decode(output.stdout(), request, runtime) {
+        let decoded = super::output::decode(output.stdout(), request, runtime);
+        if let Some(projection) = projection.as_mut() {
+            match &decoded {
+                Ok(super::output::Decoded::Turn(turn)) => projection.observe_native_result(
+                    if output.exit().success() { "completed" } else { "incomplete_exit" },
+                    Some(turn.usage),
+                ),
+                Ok(super::output::Decoded::Rejected { usage, .. }) => {
+                    projection.observe_native_result("rejected_envelope", Some(*usage));
+                }
+                Ok(super::output::Decoded::Failure(_)) => {
+                    projection.observe_native_result("failed", None);
+                }
+                Err(_) => projection.observe_native_result("malformed", None),
+            }
+        }
+        match decoded {
             Ok(super::output::Decoded::Rejected { reason, usage, rejected })
                 if output.exit().success() =>
             {
+                if let Some(projection) = projection.as_mut() {
+                    projection.observe_native_result("rejected_envelope", Some(usage));
+                }
                 state.corrections.push(
                     reason.audit(if state.rejected_usage.is_some() { 2 } else { 1 }, &rejected)?,
                 );
@@ -279,16 +345,23 @@ impl OpenCodeRuntimeProvider {
                 )
                 .map(OutputDisposition::Complete)
             }
-            Ok(super::output::Decoded::Failure(error)) => self
-                .failed(
+            Ok(super::output::Decoded::Failure(error)) => {
+                if let Some(projection) = projection.as_mut() {
+                    projection.observe_native_result("failed", None);
+                }
+                self.failed(
                     request,
                     cancellation.clone(),
                     &error,
                     OutcomeCertainty::Terminal,
                     std::mem::take(&mut state.corrections),
                 )
-                .map(OutputDisposition::Complete),
+                .map(OutputDisposition::Complete)
+            }
             Ok(super::output::Decoded::Turn(mut turn)) if output.exit().success() => {
+                if let Some(projection) = projection.as_mut() {
+                    projection.observe_native_result("completed", Some(turn.usage));
+                }
                 if let Some(previous) = state.rejected_usage {
                     turn.usage = super::recovery::combined_usage(previous, turn.usage)?;
                 }
@@ -474,7 +547,8 @@ impl ModelProvider for OpenCodeRuntimeProvider {
             Arc::clone(&self.credentials),
             profile,
         )?
-        .with_discovered_limits(self.discover_limits);
+        .with_discovered_limits(self.discover_limits)
+        .with_request_layout(self.request_layout);
         let models = self.catalog.lock().map_err(|_| catalog_error())?;
         let mut catalog = selected.catalog.lock().map_err(|_| catalog_error())?;
         catalog.extend(models.iter().cloned());

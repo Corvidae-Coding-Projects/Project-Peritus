@@ -34,13 +34,6 @@ pub(super) fn append_state(
     messages: &mut Vec<Message>,
     selected: &mut Vec<u64>,
 ) -> Result<usize, DeveloperLoopError> {
-    let entries = state.entries(state.binding()).map_err(|_| error("working scope mismatch"))?;
-    if !memory.derived_memory_allowed() || entries.is_empty() {
-        return Ok(entries.len());
-    }
-    let mut body = notice(memory, state)?;
-    // A share of the negotiated provider envelope leaves room for current instructions/results.
-    // This is a view preference. No entry is rejected, discarded, or made irretrievable.
     let available = memory.profile.as_ref().map_or(0, |profile| {
         profile
             .limits()
@@ -48,6 +41,22 @@ pub(super) fn append_state(
             .saturating_sub(estimate_developer_request_tokens(messages, &memory.tools))
             / 8
     });
+    append_with_budget(memory, state, messages, selected, available, false)
+}
+
+pub(super) fn append_with_budget(
+    memory: &LocalMemory,
+    state: &WorkingState,
+    messages: &mut Vec<Message>,
+    selected: &mut Vec<u64>,
+    available: u64,
+    conservative: bool,
+) -> Result<usize, DeveloperLoopError> {
+    let entries = state.entries(state.binding()).map_err(|_| error("working scope mismatch"))?;
+    if !memory.derived_memory_allowed() || entries.is_empty() {
+        return Ok(entries.len());
+    }
+    let mut body = notice(memory, state)?;
     let mut ranked = entries.iter().collect::<Vec<_>>();
     ranked.sort_by_key(|entry| {
         let urgent = entry.status() != WorkingEntryStatus::Superseded
@@ -75,20 +84,17 @@ pub(super) fn append_state(
     let mut visible = 0;
     let mut seen = std::collections::BTreeSet::new();
     for entry in ranked {
-        let readable = entry
-            .links()
-            .supports()
-            .iter()
-            .chain(entry.links().contradicts())
-            .map(|id| super::super::source_policy::allowed(memory, id.get()))
-            .collect::<Result<Vec<_>, _>>()?;
-        if readable.iter().any(|allowed| !allowed) {
+        if !super::super::source_policy::entry_allowed(memory, entry)? {
             continue;
         }
         // A workspace change can stale a plan's source binding without erasing task progress.
         // Keep that explicitly stale, untrusted plan visible; current user requirements and
         // independently validated source observations still govern every action.
-        if matches!(entry.status(), WorkingEntryStatus::Superseded | WorkingEntryStatus::Resolved)
+        if entry.declared_status() == Some(WorkingEntryStatus::Resolved)
+            || matches!(
+                entry.status(),
+                WorkingEntryStatus::Superseded | WorkingEntryStatus::Resolved
+            )
             || (entry.status() == WorkingEntryStatus::Stale
                 && !matches!(
                     entry.kind(),
@@ -109,6 +115,12 @@ pub(super) fn append_state(
             continue;
         }
         let mut record = super::super::tools::entry_view(memory, entry);
+        if conservative {
+            record["host_dependencies"] = serde_json::json!({
+                "scope":"entire_supplied_view_and_candidate", "independence":"unproven",
+                "model_validity":"proposal_only", "qualification":"requires_current_host_checks"
+            });
+        }
         if matches!(entry.kind(), WorkingEntryKind::Plan | WorkingEntryKind::FailedApproach)
             && entry.status() == WorkingEntryStatus::Stale
         {

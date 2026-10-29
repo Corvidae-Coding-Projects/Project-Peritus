@@ -57,7 +57,15 @@ impl LocalContextHandle {
     pub fn tool_definitions(
         &self,
     ) -> Result<Vec<peritus_model_protocol::ToolDefinition>, DeveloperLoopError> {
-        super::tools::definitions_with_config(&self.lock()?.config)
+        let memory = self.lock()?;
+        let mut definitions = super::tools::definitions_with_config(&memory.config)?;
+        if !memory.config.read_only_plans.is_enabled()
+            && memory.checkpoint_schema >= super::record::PLAN_CHECKPOINT_SCHEMA_VERSION
+        {
+            definitions.push(super::operation_plan::read_definition()?);
+        }
+        drop(memory);
+        Ok(definitions)
     }
 
     pub(in crate::local_context) fn effective_permissions(
@@ -116,13 +124,13 @@ impl LocalContextHandle {
             peritus_agent::DeveloperModelRole::Writer => HarnessRole::Writer,
             peritus_agent::DeveloperModelRole::Fixer => HarnessRole::Fixer,
         };
-        let binding = WorkingBinding::new(
-            input.run_id,
-            input.workspace_id,
-            task,
-            role,
-            input.conversation.revision(),
-        );
+        let revision = match input.conversation.interaction() {
+            Some(port) => {
+                port.input().map_err(|error| crate::turn::developer_error(&error))?.revision
+            }
+            None => input.conversation.revision(),
+        };
+        let binding = WorkingBinding::new(input.run_id, input.workspace_id, task, role, revision);
         let namespace = crate::encode_hex(hash.as_bytes());
         let root = input.trace_path.with_extension("context").join("modules").join(namespace);
         let protected =
@@ -201,6 +209,8 @@ impl LocalContextHandle {
         };
         memory.compactor_runtime = Some(input.command_runtime.clone());
         memory.conversation = Some(Arc::clone(&input.conversation));
+        memory.cancellation =
+            Some((Arc::clone(&input.cancelled), input.provider_cancellation.clone()));
         Ok(Some(Self {
             inner: Arc::new(Mutex::new(memory)),
             conversation: Arc::clone(&input.conversation),
@@ -319,7 +329,12 @@ impl DeveloperContextPort for LocalContextHandle {
         &mut self,
         request: DeveloperContextAssembly<'_>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.lock()?.prepare_view_with_governing(
+        let mut memory = self.lock()?;
+        // A new provider view starts an unbound request epoch. Internal batch/reader-guard
+        // checkpoints bypass this port and must preserve the active response's origin.
+        memory.decision_dependencies = None;
+        memory.published_dependencies = None;
+        memory.prepare_view_with_governing(
             request.profile,
             request.tools,
             Some(request.invocation_policy),
@@ -330,5 +345,19 @@ impl DeveloperContextPort for LocalContextHandle {
     }
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.lock()?.publish(messages)
+    }
+    fn bind_request(
+        &mut self,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<(), DeveloperLoopError> {
+        let mut memory = self.lock()?;
+        if memory.host_dependencies_enabled() {
+            memory.bind_host_dependencies(request)?;
+        }
+        if memory.config.decision_view == crate::DecisionViewPolicy::Conservative {
+            super::assembly::decision::record_request(&memory, request)?;
+        }
+        drop(memory);
+        Ok(())
     }
 }

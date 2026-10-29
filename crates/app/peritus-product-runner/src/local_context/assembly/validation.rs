@@ -14,11 +14,7 @@ impl LocalMemory {
         selected: Vec<u64>,
         omitted_entries: usize,
     ) -> Result<ViewValidation, DeveloperLoopError> {
-        let archive_bytes = self.sources.iter().try_fold(0_u64, |total, source| {
-            total
-                .checked_add(source.artifact.bytes)
-                .ok_or_else(|| error("archive accounting overflow"))
-        })?;
+        let archive_bytes = self.archived_bytes()?;
         let stale_entries = self
             .state
             .entries(self.state.binding())

@@ -140,6 +140,9 @@ impl<'a> ModuleTools<'a> {
     }
 }
 impl DeveloperToolExecutor for ModuleTools<'_> {
+    fn take_host_tool_calls(&mut self) -> u32 {
+        self.workspace.take_host_tool_calls()
+    }
     fn system_guidance(&mut self) -> Option<String> {
         self.workspace.system_guidance()
     }
