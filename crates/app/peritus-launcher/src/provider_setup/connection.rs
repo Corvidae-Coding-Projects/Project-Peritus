@@ -6,11 +6,28 @@ use peritus_product_state::DirectProviderProfile;
 pub(super) fn existing(
     terminal: &mut Terminal<'_>,
     profile: &DirectProviderProfile,
+    oauth_root: &std::path::Path,
 ) -> Result<DirectProviderProfile, LauncherError> {
+    if profile.kind() == peritus_product_state::ProviderKind::ChatGptOauth {
+        terminal.line(
+            "ChatGPT direct: r selects or reauthorizes an account; s signs out this registration.",
+        )?;
+    }
     loop {
-        let answer = terminal.prompt(&format!("{} / {}: Enter to keep, m to change model using saved key, r to replace key/settings, t to test connection (up to 3 small requests; may use paid tokens): ", profile.kind().label(), profile.model()))?;
+        let allowance = if profile.kind() == peritus_product_state::ProviderKind::ChatGptOauth {
+            "ChatGPT plan allowance"
+        } else {
+            "paid tokens"
+        };
+        let answer = terminal.prompt(&format!("{} / {}: Enter to keep, m to change model using saved credentials, r to change account/settings, t to test connection (up to 3 small requests; uses {allowance}): ", profile.kind().label(), profile.model()))?;
         match answer.to_ascii_lowercase().as_str() {
             "" => return Ok(profile.clone()),
+            "r" if profile.kind() == peritus_product_state::ProviderKind::ChatGptOauth => {
+                return super::chatgpt::setup(terminal, oauth_root);
+            }
+            "s" if profile.kind() == peritus_product_state::ProviderKind::ChatGptOauth => {
+                super::chatgpt::sign_out(terminal, profile)?;
+            }
             "r" => return super::direct::setup(terminal, profile.kind()),
             "m" => {
                 terminal.line("Discovering models with the saved credential; no key replacement or inference is requested.")?;
@@ -43,10 +60,12 @@ pub(super) fn offer(
     terminal: &mut Terminal<'_>,
     profile: &DirectProviderProfile,
 ) -> Result<(), LauncherError> {
-    if terminal.confirm(
-        "Test generation and tool calling now? Up to 3 small requests may use paid tokens. [y/N]: ",
-        false,
-    )? {
+    let prompt = if profile.kind() == peritus_product_state::ProviderKind::ChatGptOauth {
+        "Test generation and tool calling now? Up to 3 small requests use ChatGPT plan allowance. [y/N]: "
+    } else {
+        "Test generation and tool calling now? Up to 3 small requests may use paid tokens. [y/N]: "
+    };
+    if terminal.confirm(prompt, false)? {
         test(terminal, profile)?;
     }
     Ok(())
@@ -86,7 +105,7 @@ fn test(terminal: &mut Terminal<'_>, profile: &DirectProviderProfile) -> Result<
             terminal.line(if matches!(profile.kind(), peritus_product_state::ProviderKind::OpenCodeZen | peritus_product_state::ProviderKind::OpenCodeGo) {
                 "Check the saved API key, workspace billing/model access, and OpenCode CLI version. You can replace settings or test again; a separate OpenCode login is unnecessary."
             } else {
-                "Check the API key, billing/model access, and selected protocol. You can replace settings or test again."
+                "Check authentication, billing/model access, and selected protocol. You can replace settings or test again."
             })?;
             if profile.kind() == peritus_product_state::ProviderKind::CompatibleEndpoint {
                 let route = match profile.compatible_protocol() {

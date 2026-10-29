@@ -15,4 +15,5 @@ pub use direct::{
 pub use error::OnboardingError;
 pub use install::install_account_provider;
 pub use install::{install_opencode_runtime, opencode_runtime_installed};
+pub use peritus_provider_openai::{ChatGptAccount, ChatGptLogin};
 pub use status::{ProviderObservation, ProviderStatus};

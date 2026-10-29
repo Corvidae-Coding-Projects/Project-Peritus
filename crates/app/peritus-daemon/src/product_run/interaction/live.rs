@@ -336,6 +336,15 @@ impl DeveloperInteraction for LiveConversation {
             .record_input(record)
             .map_err(|error| port_error("read the governing conversation", error))
     }
+    fn current_input_revision(&self) -> Result<u64, DeveloperLoopError> {
+        let start = self.workbench_start()?;
+        self.service
+            .with_controls(false, |store| {
+                Ok(store.capture_execution(&start)?.inputs().generation())
+            })
+            .map_err(|error| port_error("observe current provider input generation", error.into()))
+    }
+
     fn prepare_request(
         &self,
         revision: u64,

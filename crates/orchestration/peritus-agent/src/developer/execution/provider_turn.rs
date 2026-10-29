@@ -10,10 +10,16 @@ use super::super::{
 };
 use super::{ContextSession, prepare_messages, successful, terminal_error, usable};
 use crate::{ModelAdvance, ModelSession};
-use peritus_model_protocol::{Message, ModelEvent, ModelRequest, ProtocolLimits};
+use peritus_model_protocol::{Message, ModelEvent, ModelRequest, ProtocolLimits, UsageCounters};
 use peritus_provider_core::{CancellationToken, ModelProvider, cancel_first};
 
 mod progress;
+
+/// Superseded inference has no usable response, but retains every observed usage counter.
+struct DrivenTurn {
+    session: Option<ModelSession>,
+    usage: UsageCounters,
+}
 
 pub(super) struct RetryContext<'a, 'port> {
     pub(super) context: &'a mut ContextSession<'port>,
@@ -173,29 +179,24 @@ pub(super) async fn complete_turn(
             model_request,
             protocol_limits,
             trace,
-            interaction.map(|value| value.0),
+            interaction.map(|(port, _, revision)| (port, revision)),
             &request.cancellation,
             (kind, turn, attempt),
         )
         .await;
-        if let Some((port, role, _)) = interaction {
-            let request_usage = driven.as_ref().map_or_else(
-                |_| peritus_model_protocol::UsageCounters::default(),
-                ModelSession::usage_high_water,
-            );
-            if port.complete_role_request(role, &admitted_request_id, request_usage)?
-                == DeveloperControlFlow::Stop
-            {
-                return Err(DeveloperLoopError::Cancelled);
-            }
+        match settle_request(&driven, usage, interaction, &admitted_request_id)? {
+            DeveloperControlFlow::Stop => return Err(DeveloperLoopError::Cancelled),
+            DeveloperControlFlow::Yield => return Ok(None),
+            DeveloperControlFlow::Continue => {}
         }
         match driven {
-            Ok(session) if successful(session.terminal()) && usable(&session) => {
-                usage.observe(session.usage_high_water())?;
+            Ok(DrivenTurn { session: None, .. }) => return Ok(None),
+            Ok(DrivenTurn { session: Some(session), .. })
+                if successful(session.terminal()) && usable(&session) =>
+            {
                 return Ok(Some(session));
             }
-            Ok(session) => {
-                usage.observe(session.usage_high_water())?;
+            Ok(DrivenTurn { session: Some(session), .. }) => {
                 let Some(record) =
                     planner.terminal(attempt, session.terminal(), usable(&session))?
                 else {
@@ -216,6 +217,23 @@ pub(super) async fn complete_turn(
         }
     }
     Err(DeveloperLoopError::EmptyResponse)
+}
+
+/// Release the host reservation even when the response was superseded or interrupted.
+fn settle_request(
+    driven: &Result<DrivenTurn, DeveloperLoopError>,
+    usage: &mut DeveloperUsage,
+    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    request_id: &str,
+) -> Result<DeveloperControlFlow, DeveloperLoopError> {
+    let observed = driven.as_ref().map_or_else(|_| UsageCounters::default(), |turn| turn.usage);
+    let flow = interaction.map_or(Ok(DeveloperControlFlow::Continue), |(port, role, _)| {
+        port.complete_role_request(role, request_id, observed)
+    })?;
+    if driven.is_ok() {
+        usage.observe(observed)?;
+    }
+    Ok(flow)
 }
 
 fn admit_role_request(
@@ -258,10 +276,10 @@ async fn measured_drive(
     request: ModelRequest,
     limits: ProtocolLimits,
     trace: &mut dyn DeveloperTrace,
-    interaction: Option<&dyn DeveloperInteraction>,
+    interaction: Option<(&dyn DeveloperInteraction, u64)>,
     cancellation: &CancellationToken,
     position: (ModelTurnKind, u16, u8),
-) -> Result<ModelSession, DeveloperLoopError> {
+) -> Result<DrivenTurn, DeveloperLoopError> {
     let started = std::time::Instant::now();
     let mut metrics = DeveloperRequestMetrics {
         reason: Some(if position.0 == ModelTurnKind::Developer {
@@ -291,30 +309,37 @@ async fn drive(
     model_request: ModelRequest,
     protocol_limits: ProtocolLimits,
     trace: &mut dyn DeveloperTrace,
-    interaction: Option<&dyn DeveloperInteraction>,
+    interaction: Option<(&dyn DeveloperInteraction, u64)>,
     metrics: &mut DeveloperRequestMetrics,
     started: std::time::Instant,
-) -> Result<ModelSession, DeveloperLoopError> {
+) -> Result<DrivenTurn, DeveloperLoopError> {
     // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
     // stop only this attempt, leaving the caller's token active for bounded automatic retries.
     let attempt = AttemptCancellation(CancellationToken::new());
     let mut progress = progress::ProviderProgress::new(interaction, &attempt.0);
-    let mut session = progress
+    let Some(mut session) = progress
         .wait(async {
             ModelSession::start(provider, model_request, protocol_limits, attempt.0.clone())
                 .await
                 .map_err(DeveloperLoopError::from)
         })
-        .await?;
+        .await?
+    else {
+        return Ok(DrivenTurn { session: None, usage: UsageCounters::default() });
+    };
+    let interaction = interaction.map(|(port, _)| port);
     metrics.start_micros = Some(micros(started));
     metrics.projections = session.projections().to_vec();
     let result = async {
         loop {
-            match progress
+            let Some(advance) = progress
                 .wait(async { session.pull_one().await.map_err(DeveloperLoopError::from) })
                 .await?
-            {
-                ModelAdvance::Closed => return Ok::<(), DeveloperLoopError>(()),
+            else {
+                return Ok(false);
+            };
+            match advance {
+                ModelAdvance::Closed => return Ok::<bool, DeveloperLoopError>(true),
                 ModelAdvance::EnvelopePending { .. } => {
                     metrics.first_event_micros.get_or_insert_with(|| micros(started));
                     let encoded = session.encode_pending()?;
@@ -376,9 +401,9 @@ async fn drive(
     }
     .await;
     // A later stream/trace/tool failure must not erase usage already accepted by the reducer.
-    trace.account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
-    result?;
-    Ok(session)
+    let usage = session.usage_high_water();
+    trace.account(DeveloperAccountingEvent::Usage(usage))?;
+    Ok(DrivenTurn { session: result?.then_some(session), usage })
 }
 
 fn micros(started: std::time::Instant) -> u64 {

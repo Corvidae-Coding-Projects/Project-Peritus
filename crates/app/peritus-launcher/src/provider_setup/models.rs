@@ -26,11 +26,12 @@ pub(super) fn choose_direct_with_default(
             Vec::new()
         }
     };
-    let (model, _) = choose_with_default(
-        terminal,
-        Ok(models.iter().map(|model| model.id.as_str().to_owned()).collect()),
-        existing.map(|profile| (profile.model(), false)),
-    )?;
+    for (index, model) in models.iter().enumerate() {
+        terminal.line(&format!("  {}. {} ({})", index + 1, model.label, model.id.as_str()))?;
+    }
+    let identifiers = models.iter().map(|model| model.id.as_str().to_owned()).collect::<Vec<_>>();
+    let (model, _) =
+        read_choice(terminal, &identifiers, existing.map(|profile| (profile.model(), false)))?;
     let metadata = models.iter().find(|entry| entry.id.as_str() == model);
     terminal.line(match metadata.and_then(|entry| entry.tools) {
         Some(true) => "Tool calling: advertised by provider; connection not tested.",
@@ -84,6 +85,14 @@ pub(super) fn choose_with_default(
     for (index, model) in models.iter().enumerate() {
         terminal.line(&format!("  {}. {model}", index + 1))?;
     }
+    read_choice(terminal, &models, default)
+}
+
+fn read_choice(
+    terminal: &mut Terminal<'_>,
+    models: &[String],
+    default: Option<(&str, bool)>,
+) -> Result<(String, bool), LauncherError> {
     terminal.line("These are provider-advertised models, not capability verification. No inference was requested.")?;
     if let Some((model, _)) = default {
         terminal.line(&format!("Press Enter to keep {model}."))?;

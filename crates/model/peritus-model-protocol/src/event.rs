@@ -180,7 +180,7 @@ impl EventEnvelope {
     ///
     /// # Errors
     ///
-    /// Rejects zero local/provider sequence numbers.
+    /// Rejects a zero local sequence. Provider sequences retain their native origin, including zero.
     pub fn new(
         sequence: u64,
         provider_sequence: Option<u64>,
@@ -188,11 +188,11 @@ impl EventEnvelope {
         provider_digest: Sha256Digest,
         event: ModelEvent,
     ) -> Result<Self, ProtocolError> {
-        if sequence == 0 || provider_sequence == Some(0) {
+        if sequence == 0 {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidEvent,
                 "event.sequence",
-                "event sequence numbers must be nonzero",
+                "local event sequence numbers must be nonzero",
             ));
         }
         Ok(Self { sequence, provider_sequence, provider_event_id, provider_digest, event })

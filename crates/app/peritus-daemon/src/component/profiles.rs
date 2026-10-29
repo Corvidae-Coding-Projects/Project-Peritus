@@ -109,6 +109,13 @@ pub enum ProviderDeclaration {
         /// Exact immutable C5 capability profile.
         profile: ProviderProfile,
     },
+    /// Peritus-owned `ChatGPT` OAuth session and public Responses transport.
+    ChatGptOauth {
+        /// Protected session reference, without bearer credentials.
+        credential_reference: String,
+        /// Immutable stateless Responses profile.
+        profile: ProviderProfile,
+    },
     /// First-party Anthropic Messages HTTP adapter.
     Anthropic(AnthropicConfig),
     /// First-party Google stable-v1 HTTP adapter.
@@ -186,6 +193,7 @@ impl ProviderDeclaration {
     pub const fn profile(&self) -> &ProviderProfile {
         match self {
             Self::OpenAi { profile, .. }
+            | Self::ChatGptOauth { profile, .. }
             | Self::Hosted { profile, .. }
             | Self::OpenCodeRuntime { profile, .. } => profile,
             Self::Anthropic(config) => config.profile(),

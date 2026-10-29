@@ -125,8 +125,15 @@ impl DirectProviderProfile {
                 )
             || !compatible && self.credential_header.is_some()
             || !bounded_text(&self.model, 256)
-            || !bounded_text(&self.credential_reference, 256)
-            || !self.credential_reference.starts_with("peritus-secret-v1:")
+            || !bounded_text(
+                &self.credential_reference,
+                if self.kind == ProviderKind::ChatGptOauth { 2_048 } else { 256 },
+            )
+            || !self.credential_reference.starts_with(if self.kind == ProviderKind::ChatGptOauth {
+                "peritus-chatgpt-oauth-v1:"
+            } else {
+                "peritus-secret-v1:"
+            })
             || self.endpoint.as_deref().is_some_and(|value| !bounded_text(value, 2_048))
             || self.credential_header.as_deref().is_some_and(|value| !bounded_text(value, 128))
             || self.compatible_protocol == Some(CompatibleProtocol::OpenCodeRuntime)

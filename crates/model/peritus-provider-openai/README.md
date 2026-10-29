@@ -176,3 +176,24 @@ CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-openai --all-fea
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
+
+## Optional direct ChatGPT OAuth preview
+
+`ChatGptLogin` registers Peritus independently through OpenAI's documented open-source OAuth
+flow. `ChatGptAccount` exposes non-secret registration metadata and live model discovery.
+`ChatGptProvider` composes the ordinary Responses transport with rotating account credentials
+and a separate supported request profile. It starts no Codex subprocess.
+
+The launcher exposes this as **ChatGPT direct OAuth (preview)** in `peritus providers`.
+It never migrates a saved Codex selection. On Unix, independent session files are atomic and
+owner-only beneath the product state root's `chatgpt-oauth` directory; on Windows files inherit a restricted
+owner/SYSTEM/Administrators ACL from the protected directory. Access and refresh tokens never enter
+product state, generated daemon config, model input, or diagnostics. Refresh and sign-out hold a
+cross-process account lock. Sign-out clears tokens but retains the issued registration identity.
+
+The wire profile requires streamed, stateless replay (`store=false`). It translates system text
+into `instructions`, groups Peritus functions in a namespace, and omits unsupported sampling,
+background, continuation, and output-ceiling fields. The output allowance is advisory, never a
+task-wide model token budget. Codex and API-key profiles keep their existing request contracts.
+
+Official contract: https://developers.openai.com/siwc/token-sharing-open-source

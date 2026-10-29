@@ -152,6 +152,16 @@ pub trait DeveloperInteraction: Send + Sync {
     /// Returns a durable-input or synchronization failure.
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError>;
 
+    /// Reads only the current input generation while a provider is pending.
+    /// Hosts should override this with a passive generation read that neither refreshes source
+    /// files nor assembles a model transcript. This query does not change pause semantics.
+    ///
+    /// # Errors
+    /// Fails closed on an unavailable or uncommitted current-input snapshot.
+    fn current_input_revision(&self) -> Result<u64, DeveloperLoopError> {
+        self.input().map(|input| input.revision)
+    }
+
     /// Observes control during an already admitted tool without reserving or completing it.
     /// Long waits must yield when input changes or execution is paused. No effect is admitted.
     ///

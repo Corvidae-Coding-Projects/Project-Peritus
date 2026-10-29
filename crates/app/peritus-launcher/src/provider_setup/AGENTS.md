@@ -8,6 +8,7 @@ Implementation pieces for `provider_setup.rs`: First-run provider selection and 
 
 | File | Role |
 | --- | --- |
+| [chatgpt.rs](chatgpt.rs) | Explicit direct ChatGPT browser sign-in, independent saved registrations, model selection, and sign-out. |
 | [connection.rs](connection.rs) | Provider settings actions and explicit small inference checks. |
 | [direct.rs](direct.rs) | Hidden credential entry and direct-provider settings prompts. |
 | [install.rs](install.rs) | Human-approved installation at the selected account-provider boundary. |

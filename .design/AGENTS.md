@@ -8,6 +8,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [openai-chatgpt-oauth.md](openai-chatgpt-oauth.md) | Optional direct ChatGPT OAuth design, compatibility constraints, and live-verification boundaries. |
 | [incremental-execution-efficiency.md](incremental-execution-efficiency.md) | Proposed incremental storage, context compilation, provider framing, and read-only operation scheduling with preserved functionality and measured acceptance. |
 | [incremental-execution-efficiency.pipeline.json](incremental-execution-efficiency.pipeline.json) | Design content identity and unstarted delivery-pipeline metadata for the efficiency proposal. |
 | [incremental-execution-efficiency.progress.md](incremental-execution-efficiency.progress.md) | Active I0–I6 implementation ledger, qualification evidence, and explicit completion gaps. |

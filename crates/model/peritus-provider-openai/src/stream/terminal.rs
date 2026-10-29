@@ -116,20 +116,47 @@ impl OpenAiStream {
         Ok(events)
     }
 
-    pub(super) fn stream_error(
-        &self,
-        _value: &Value,
-    ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
+    pub(super) fn stream_error(&self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {
+        let source = value.get("error").unwrap_or(value);
+        let code = source
+            .get("code")
+            .and_then(Value::as_str)
+            .or_else(|| source.get("type").and_then(Value::as_str));
+        let (category, diagnostic) = match code {
+            Some("invalid_function_parameters") => {
+                (FailureCategory::InvalidRequest, "openai.stream.invalid_function_parameters")
+            }
+            Some("invalid_request_error" | "subscription_sharing_unsupported_capability") => {
+                (FailureCategory::InvalidRequest, "openai.stream.invalid_request")
+            }
+            Some("subscription_sharing_usage_limit_exceeded") => {
+                (FailureCategory::QuotaExhausted, "openai.stream.plan_quota")
+            }
+            Some(
+                "subscription_sharing_usage_limit_unavailable"
+                | "subscription_sharing_user_unavailable",
+            ) => (FailureCategory::TransientProvider, "openai.stream.plan_unavailable"),
+            Some("subscription_sharing_invalid_user" | "invalid_token") => {
+                (FailureCategory::Authentication, "openai.stream.authentication")
+            }
+            _ => (FailureCategory::Provider, "openai.stream.error"),
+        };
+        let certainty =
+            if self.state.response_id().is_none() && category == FailureCategory::InvalidRequest {
+                OutcomeCertainty::DefinitelyNotAccepted
+            } else {
+                OutcomeCertainty::AcceptedPartial
+            };
         let failure = error::failure(
             &self.provider,
-            FailureCategory::Provider,
+            category,
             TransportPhase::StreamObserved,
-            OutcomeCertainty::AcceptedPartial,
+            certainty,
             Retryability::Never,
             Some(200),
             self.state.response_id().cloned(),
             None,
-            "openai.stream.error",
+            diagnostic,
         )?;
         Ok(vec![ModelEvent::ResponseFailed(failure)])
     }

@@ -47,6 +47,14 @@ impl OpenAiStream {
         } else {
             (None, None)
         };
+        let mut arguments = peritus_provider_core::healing::ToolArgumentBuffer::default();
+        if kind == ItemKind::ToolCall
+            && let Some(initial) =
+                item.get("arguments").or_else(|| item.get("input")).and_then(Value::as_str)
+            && !initial.is_empty()
+        {
+            arguments.append(initial.as_bytes(), self.limits)?;
+        }
         let inserted = self.state.insert_item(
             wire_id.to_owned(),
             state::ItemState {
@@ -55,7 +63,7 @@ impl OpenAiStream {
                 kind,
                 call_id,
                 call_name,
-                arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                arguments,
                 arguments_done: false,
                 completed: false,
             },
@@ -225,6 +233,7 @@ impl OpenAiStream {
         let wire_id = string_field(value, "item_id")?;
         let output_index = u32_field(value, "output_index")?;
         let arguments = string_field_any(value, &["arguments", "input"])?;
+        let limits = self.limits;
         let item = self
             .state
             .item_mut(wire_id)
@@ -232,8 +241,20 @@ impl OpenAiStream {
         if item.kind != ItemKind::ToolCall
             || item.output_index != output_index
             || item.arguments_done
-            || item.arguments.as_bytes() != arguments.as_bytes()
+            || item.completed
         {
+            return Err(error::malformed(
+                "OpenAI tool done targeted an incompatible or closed item",
+            ));
+        }
+        // The done event carries the complete argument snapshot even when no deltas arrived.
+        // Never replace observed partial arguments: only an entirely empty buffer can use it.
+        let final_snapshot = item.arguments.as_bytes().is_empty();
+        if final_snapshot {
+            item.arguments.append(arguments.as_bytes(), limits)?;
+        }
+        let spelling_changed = item.arguments.as_bytes() != arguments.as_bytes();
+        if spelling_changed && !same_argument_value(item.arguments.as_bytes(), arguments, limits) {
             return Err(error::malformed("OpenAI finalized tool input contradicted its deltas"));
         }
         if let Some(name) = value.get("name").and_then(Value::as_str)
@@ -246,7 +267,31 @@ impl OpenAiStream {
             .call_id
             .as_ref()
             .ok_or_else(|| error::malformed("OpenAI tool item omitted its call identity"))?;
-        item.arguments.complete(call_id, self.limits)
+        let mut events = item.arguments.complete(call_id, self.limits)?;
+        if spelling_changed || final_snapshot {
+            let details = serde_json::json!({"stream_bytes":item.arguments.as_bytes().len(),"done_bytes":arguments.len(),"same_json_value":true,"final_snapshot_without_deltas":final_snapshot});
+            let value = peritus_model_protocol::CanonicalJson::parse(
+                &details.to_string(),
+                peritus_model_protocol::JsonBounds::value(limits),
+            )
+            .map_err(|_| error::malformed("OpenAI argument-spelling notice exceeded bounds"))?;
+            let name = peritus_model_protocol::ExtensionName::new(
+                if final_snapshot {
+                    "openai.tool_arguments.final_snapshot"
+                } else {
+                    "openai.tool_arguments.normalized"
+                }
+                .to_owned(),
+            )
+            .map_err(|_| error::malformed("OpenAI argument-spelling notice name was invalid"))?;
+            events.insert(
+                0,
+                ModelEvent::ProviderEvent(peritus_model_protocol::ProviderExtension::new(
+                    name, value,
+                )),
+            );
+        }
+        Ok(events)
     }
 
     pub(super) fn reasoning_delta(
@@ -397,4 +442,23 @@ fn u32_field(value: &Value, name: &str) -> Result<u32, ProviderCoreError> {
         .and_then(Value::as_u64)
         .and_then(|value| u32::try_from(value).ok())
         .ok_or_else(|| error::malformed("OpenAI event omitted a bounded index"))
+}
+
+/// JSON spelling may change, but no decoded field, string, number or array element may change.
+fn same_argument_value(
+    streamed: &[u8],
+    done: &str,
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> bool {
+    use peritus_model_protocol::{CanonicalJson, JsonBounds};
+    let Ok(streamed) = std::str::from_utf8(streamed) else {
+        return false;
+    };
+    match (
+        CanonicalJson::parse(streamed, JsonBounds::value(limits)),
+        CanonicalJson::parse(done, JsonBounds::value(limits)),
+    ) {
+        (Ok(streamed), Ok(done)) => streamed == done,
+        _ => false,
+    }
 }

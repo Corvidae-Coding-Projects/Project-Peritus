@@ -31,11 +31,13 @@ pub enum ProviderKind {
     FireworksAi,
     /// `DeepSeek` hosted model API.
     DeepSeek,
+    /// Direct ChatGPT-plan OAuth and Responses, independently owned by Peritus.
+    ChatGptOauth,
 }
 
 impl ProviderKind {
     /// Provider choices in stable menu order; existing numeric selections retain their meaning.
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 14] = [
         Self::CodexAccount,
         Self::ClaudeAccount,
         Self::OpenAiApi,
@@ -49,6 +51,7 @@ impl ProviderKind {
         Self::TogetherAi,
         Self::FireworksAi,
         Self::DeepSeek,
+        Self::ChatGptOauth,
     ];
 
     /// Exact identifier of a reviewed hosted API, when selected.
@@ -83,6 +86,7 @@ impl ProviderKind {
             Self::TogetherAi => 11,
             Self::FireworksAi => 12,
             Self::DeepSeek => 13,
+            Self::ChatGptOauth => 14,
         };
         let mut bytes = [0; 16];
         bytes[0] = 0xa0 + index;
@@ -107,6 +111,7 @@ impl ProviderKind {
             Self::TogetherAi => "Together AI",
             Self::FireworksAi => "Fireworks AI",
             Self::DeepSeek => "DeepSeek",
+            Self::ChatGptOauth => "ChatGPT direct OAuth (preview)",
         }
     }
 
@@ -116,7 +121,7 @@ impl ProviderKind {
         matches!(self, Self::CodexAccount | Self::ClaudeAccount)
     }
 
-    /// Returns whether the route uses a credential stored by the operating system.
+    /// Returns whether Peritus owns the direct provider connection and credential lifecycle.
     #[must_use]
     pub const fn is_direct(self) -> bool {
         !self.is_account()

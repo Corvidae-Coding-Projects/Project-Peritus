@@ -23,6 +23,7 @@ const MAX_CAPABILITIES: usize = 18;
 const PROVIDER_ROUTE_KINDS: &[&str] = &[
     "hosted",
     "open-ai",
+    "chatgpt-oauth",
     "anthropic",
     "google-interactions",
     "google-generate-content",
@@ -40,6 +41,8 @@ pub enum ProviderRouteKind {
     Hosted,
     /// First-party `OpenAI` Responses HTTP route.
     OpenAi,
+    /// Peritus-owned ChatGPT-plan OAuth using public Responses.
+    ChatGptOauth,
     /// First-party Anthropic Messages HTTP route.
     Anthropic,
     /// Stable-v1 Google Interactions HTTP route.
@@ -67,6 +70,7 @@ impl<'de> Deserialize<'de> for ProviderRouteKind {
         match name.as_str() {
             "hosted" => Ok(Self::Hosted),
             "open-ai" => Ok(Self::OpenAi),
+            "chatgpt-oauth" => Ok(Self::ChatGptOauth),
             "anthropic" => Ok(Self::Anthropic),
             "google-interactions" => Ok(Self::GoogleInteractions),
             "google-generate-content" => Ok(Self::GoogleGenerateContent),
@@ -156,6 +160,12 @@ impl ProviderRoute {
                 OpenAiConfig::new(self.credential()?).map_err(provider_error)?,
                 profile,
             ),
+            ProviderRouteKind::ChatGptOauth => ProviderDeclaration::ChatGptOauth {
+                credential_reference: self.credential_reference.clone().ok_or_else(|| {
+                    invalid("ChatGPT OAuth requires a protected session reference")
+                })?,
+                profile,
+            },
             ProviderRouteKind::Anthropic => ProviderDeclaration::anthropic(
                 AnthropicConfig::new(
                     Endpoint::new(self.required_endpoint()?.to_owned()).map_err(provider_error)?,
@@ -299,7 +309,12 @@ impl ProviderRoute {
     }
 
     pub(crate) const fn requires_credential_broker(&self) -> bool {
-        !matches!(self.kind, ProviderRouteKind::CodexRuntime | ProviderRouteKind::ClaudeRuntime)
+        !matches!(
+            self.kind,
+            ProviderRouteKind::CodexRuntime
+                | ProviderRouteKind::ClaudeRuntime
+                | ProviderRouteKind::ChatGptOauth
+        )
     }
 }
 
@@ -384,7 +399,8 @@ pub(super) fn validate(routes: &[ProviderRoute]) -> Result<(), DaemonError> {
             || direct
                 && route.executable.is_some()
                 && route.adapter_kind()? != ProviderRouteKind::OpenCodeRuntime
-            || matches!(route.kind, ProviderRouteKind::OpenAi) && route.endpoint.is_some()
+            || matches!(route.kind, ProviderRouteKind::OpenAi | ProviderRouteKind::ChatGptOauth)
+                && route.endpoint.is_some()
             || matches!(
                 route.kind,
                 ProviderRouteKind::Anthropic
@@ -415,6 +431,9 @@ fn route_profile(
         }
         ProviderRouteKind::OpenAi => {
             ("openai", WireDialect::OpenAiResponses, OutputLimitEnforcement::ProviderEnforced)
+        }
+        ProviderRouteKind::ChatGptOauth => {
+            ("openai", WireDialect::OpenAiResponses, OutputLimitEnforcement::Advisory)
         }
         ProviderRouteKind::Anthropic => {
             ("anthropic", WireDialect::AnthropicMessages, OutputLimitEnforcement::ProviderEnforced)

@@ -183,7 +183,24 @@ impl OpenAiStream {
     fn fail_malformed(
         &mut self,
         digest: peritus_types::Sha256Digest,
+        validation: &ProviderCoreError,
     ) -> Result<(), ProviderCoreError> {
+        // Core diagnostics are static strings, never provider payloads or user/model text.
+        let notice = peritus_model_protocol::CanonicalJson::parse(
+            &serde_json::json!({"operation":validation.operation(), "detail":validation.detail()})
+                .to_string(),
+            peritus_model_protocol::JsonBounds::value(self.limits),
+        )
+        .map_err(|_| error::malformed("static OpenAI validation notice exceeded its bound"))?;
+        let name =
+            peritus_model_protocol::ExtensionName::new("openai.stream.validation".to_owned())
+                .map_err(|_| error::malformed("static OpenAI validation name was invalid"))?;
+        self.enqueue(
+            None,
+            None,
+            digest,
+            ModelEvent::ProviderEvent(peritus_model_protocol::ProviderExtension::new(name, notice)),
+        )?;
         let failure = error::failure(
             &self.provider,
             FailureCategory::MalformedPayload,
@@ -243,24 +260,30 @@ impl ModelStream for OpenAiStream {
                 match self.body.next(cancellation).await {
                     Ok(Some(chunk)) => match self.parser.push(&chunk) {
                         Ok(items) => {
-                            if let Err(_failure) = self.process_items(items) {
-                                self.fail_malformed(peritus_codec::sha256(&chunk))?;
+                            if let Err(failure) = self.process_items(items) {
+                                self.fail_malformed(peritus_codec::sha256(&chunk), &failure)?;
                             }
                         }
-                        Err(_failure) => self.fail_malformed(peritus_codec::sha256(&chunk))?,
+                        Err(failure) => {
+                            self.fail_malformed(peritus_codec::sha256(&chunk), &failure)?;
+                        }
                     },
                     Ok(None) => {
                         self.body_finished = true;
                         match self.parser.finish() {
                             Ok(items) => {
-                                if self.process_items(items).is_err() {
-                                    self.fail_malformed(peritus_codec::sha256(
-                                        b"openai-final-frame",
-                                    ))?;
+                                if let Err(failure) = self.process_items(items) {
+                                    self.fail_malformed(
+                                        peritus_codec::sha256(b"openai-final-frame"),
+                                        &failure,
+                                    )?;
                                 }
                             }
-                            Err(_failure) => {
-                                self.fail_malformed(peritus_codec::sha256(b"openai-final-frame"))?;
+                            Err(failure) => {
+                                self.fail_malformed(
+                                    peritus_codec::sha256(b"openai-final-frame"),
+                                    &failure,
+                                )?;
                             }
                         }
                         if !self.terminal {

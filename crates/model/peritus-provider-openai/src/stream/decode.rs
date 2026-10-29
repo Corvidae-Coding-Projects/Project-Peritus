@@ -28,6 +28,13 @@ impl OpenAiStream {
         if frame.event().is_some_and(|name| name != event_type) {
             return Err(error::malformed("OpenAI SSE event name contradicted its JSON type"));
         }
+        if event_type == "error" && value.get("sequence_number").is_none() {
+            let digest = peritus_codec::sha256(frame.data().as_bytes());
+            for event in self.stream_error(&value)? {
+                self.enqueue(None, None, digest, event)?;
+            }
+            return Ok(());
+        }
         let provider_sequence = value
             .get("sequence_number")
             .and_then(Value::as_u64)
@@ -97,6 +104,20 @@ impl OpenAiStream {
             | "response.reasoning_summary_part.added"
             | "response.reasoning_summary_part.done"
             | "response.output_text.annotation.added" => Self::ancillary(value),
+            "response.metadata" => {
+                let identity = value
+                    .get("response_id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| error::malformed("OpenAI metadata omitted response identity"))?;
+                if !self.state.response_matches(identity)
+                    || !value.get("metadata").is_some_and(Value::is_object)
+                {
+                    return Err(error::malformed(
+                        "OpenAI metadata changed response identity or shape",
+                    ));
+                }
+                Self::ancillary(value)
+            }
             "response.completed" => self.response_completed(value),
             "response.failed" => self.response_failed(value, false),
             "response.incomplete" => self.response_failed(value, true),

@@ -7,9 +7,26 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 
 pub fn validate(profile: &ProviderProfile) -> Result<(), ProviderCoreError> {
+    validate_with_limit(profile, OutputLimitEnforcement::ProviderEnforced)
+}
+
+pub fn validate_chatgpt(profile: &ProviderProfile) -> Result<(), ProviderCoreError> {
+    if profile.state_mode() != StateMode::StatelessReplay {
+        return Err(ProviderCoreError::invalid_request(
+            "chatgpt_profile",
+            "ChatGPT-plan OAuth requires stateless replay",
+        ));
+    }
+    validate_with_limit(profile, OutputLimitEnforcement::Advisory)
+}
+
+fn validate_with_limit(
+    profile: &ProviderProfile,
+    enforcement: OutputLimitEnforcement,
+) -> Result<(), ProviderCoreError> {
     if profile.provider().as_str() != "openai"
         || profile.dialect() != WireDialect::OpenAiResponses
-        || profile.output_limit_enforcement() != OutputLimitEnforcement::ProviderEnforced
+        || profile.output_limit_enforcement() != enforcement
         || !profile.capabilities().supports(Capability::Streaming)
     {
         return Err(ProviderCoreError::invalid_request(
