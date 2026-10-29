@@ -3,6 +3,7 @@
 //! The public boundary contains only validated Peritus protocol and provider-core values. `OpenAI`
 //! request/response shapes remain private implementation details.
 
+mod chatgpt;
 mod client;
 mod config;
 mod error;
@@ -14,3 +15,5 @@ mod stream;
 pub use client::{OpenAiClient, OpenAiProvider};
 pub use config::OpenAiConfig;
 pub use runtime::{CodexExecutable, CodexRuntimeClient, CodexRuntimeConfig, CodexRuntimeProvider};
+
+pub use chatgpt::{ChatGptAccount, ChatGptLogin, ChatGptProvider};

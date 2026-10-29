@@ -111,7 +111,10 @@ For system requirements, manual downloads, and installation options, see [Instal
 Peritus starts its local background process automatically. You do not need to write a configuration file.
 
 You can use OpenAI, Anthropic, Gemini, or a compatible API service.
-ChatGPT and Claude account connections use the separate `codex` and `claude` tools.
+The existing ChatGPT and Claude account connections use the separate `codex` and `claude` tools.
+Provider settings also offer **ChatGPT direct OAuth (preview)**: Peritus signs in through the
+browser and connects directly using your authorized ChatGPT plan allowance. This optional route
+keeps Codex available and does not change existing provider selections.
 If the selected tool is missing, setup asks before it downloads and runs the provider's installer.
 Model providers can charge for use. An installation does not include a provider account or model weights.
 
@@ -243,7 +246,9 @@ API-key choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, O
 Groq, Together AI, Fireworks AI, DeepSeek, and an explicitly configured compatible endpoint.
 In provider settings, press `t` on an existing direct provider to test generation, tool calling,
 and a tool-result round trip. The optional test makes up to three small requests and may use
-paid tokens; saving a key or listing models does not run it. See [provider contracts](docs/provider-contracts.md)
+paid tokens (or ChatGPT plan allowance for direct OAuth); saving credentials or listing models
+does not run it. For ChatGPT direct, `r` selects or reauthorizes an account and `s` signs out
+the current registration. See [provider contracts](docs/provider-contracts.md)
 for API sources, discovery behavior, and test limits.
 
 Zen and Go run through the official OpenCode CLI with its native tools disabled. Setup offers

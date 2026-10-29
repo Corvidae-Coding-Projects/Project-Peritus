@@ -55,6 +55,7 @@ impl fmt::Debug for RoutingId {
 pub struct OpenAiConfig {
     endpoint: Endpoint,
     opencode_gateway: bool,
+    chatgpt_plan: bool,
     credential: CredentialReference,
     organization: Option<RoutingId>,
     project: Option<RoutingId>,
@@ -74,6 +75,20 @@ impl OpenAiConfig {
     /// Returns a redaction-safe configuration error if the fixed endpoint cannot be represented.
     pub fn new(credential: CredentialReference) -> Result<Self, ProviderCoreError> {
         Self::from_endpoint(Endpoint::new(OPENAI_ENDPOINT.to_owned())?, credential)
+    }
+
+    /// Selects the stateless public Responses contract for ChatGPT-plan OAuth.
+    ///
+    /// # Errors
+    /// Returns a configuration error if the fixed first-party endpoint cannot be represented.
+    pub fn chatgpt_plan(credential: CredentialReference) -> Result<Self, ProviderCoreError> {
+        let mut config = Self::new(credential)?;
+        config.chatgpt_plan = true;
+        Ok(config)
+    }
+
+    pub(crate) const fn is_chatgpt_plan(&self) -> bool {
+        self.chatgpt_plan
     }
 
     /// Binds the exact documented `OpenCode` Responses operation.
@@ -145,6 +160,7 @@ impl OpenAiConfig {
         Ok(Self {
             endpoint,
             opencode_gateway: false,
+            chatgpt_plan: false,
             credential,
             organization: None,
             project: None,
@@ -203,6 +219,7 @@ impl fmt::Debug for OpenAiConfig {
             .debug_struct("OpenAiConfig")
             .field("endpoint", &self.endpoint)
             .field("opencode_gateway", &self.opencode_gateway)
+            .field("chatgpt_plan", &self.chatgpt_plan)
             .field("credential", &self.credential)
             .field("organization", &self.organization)
             .field("project", &self.project)

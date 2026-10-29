@@ -14,10 +14,18 @@ test-runtime-fake = []
 
 [dependencies]
 base64.workspace = true
-peritus-codec = { version = "=0.1.14", path = "../../foundation/peritus-codec" }
-peritus-model-protocol = { version = "=0.1.14", path = "../peritus-model-protocol" }
-peritus-provider-core = { version = "=0.1.14", path = "../peritus-provider-core" }
-peritus-types = { version = "=0.1.14", path = "../../foundation/peritus-types" }
+getrandom.workspace = true
+jsonwebtoken.workspace = true
+reqwest = { workspace = true, features = ["json", "form"] }
+sha2.workspace = true
+subtle.workspace = true
+tokio.workspace = true
+url.workspace = true
+zeroize.workspace = true
+peritus-codec = { version = "=0.1.15", path = "../../foundation/peritus-codec" }
+peritus-model-protocol = { version = "=0.1.15", path = "../peritus-model-protocol" }
+peritus-provider-core = { version = "=0.1.15", path = "../peritus-provider-core" }
+peritus-types = { version = "=0.1.15", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
@@ -28,6 +36,10 @@ path = "src/bin/codex_runtime_fake.rs"
 test = false
 bench = false
 required-features = ["test-runtime-fake"]
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+nix = { workspace = true, features = ["user"] }
 
 [package.metadata.peritus]
 owner = "C5"

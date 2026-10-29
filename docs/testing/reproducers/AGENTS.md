@@ -63,6 +63,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [chatgpt-oauth/](chatgpt-oauth/AGENTS.md) | Real independent ChatGPT OAuth and mid-inference steering consumers; live authorization is required. |
 | [open-issues/](open-issues/AGENTS.md) | Actual daemon/IPC and native TUI consumers for the sequential open issue/PR campaign. |
 | [configuration-upgrade/](configuration-upgrade/AGENTS.md) | Public bootstrap, real released CLI failure, historical hosted profile migration, interruption/concurrency, and actual terminal restart replay. |
 | [opencode-dsml-integrity/](opencode-dsml-integrity/AGENTS.md) | Public OpenCode-adapter input/recovery replay for literal marker preservation, ambiguous candidates and duplicate keys. |

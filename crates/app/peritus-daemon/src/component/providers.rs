@@ -10,7 +10,7 @@ use peritus_provider_core::{
     Credential, CredentialReference, CredentialSource, ModelProvider, ProviderCoreError,
 };
 use peritus_provider_google::GoogleClient;
-use peritus_provider_openai::{CodexRuntimeProvider, OpenAiProvider};
+use peritus_provider_openai::{ChatGptProvider, CodexRuntimeProvider, OpenAiProvider};
 use peritus_types::ProviderProfileId;
 
 use super::profiles::{ProviderDeclaration, ProviderProfileKey};
@@ -63,6 +63,8 @@ pub enum ProviderAdapterKind {
     Hosted,
     /// First-party `OpenAI` Responses HTTP adapter.
     OpenAi,
+    /// Direct ChatGPT-plan OAuth and public Responses transport.
+    ChatGptOauth,
     /// First-party Anthropic Messages HTTP adapter.
     Anthropic,
     /// First-party Google stable-v1 HTTP adapter.
@@ -244,6 +246,10 @@ fn instantiate(
         ProviderDeclaration::OpenAi { config, profile } => {
             let provider = OpenAiProvider::new(config, profile, direct_broker()?)?;
             Ok((ProviderAdapterKind::OpenAi, Arc::new(provider)))
+        }
+        ProviderDeclaration::ChatGptOauth { credential_reference, profile } => {
+            let provider = ChatGptProvider::new(&credential_reference, profile)?;
+            Ok((ProviderAdapterKind::ChatGptOauth, Arc::new(provider)))
         }
         ProviderDeclaration::Anthropic(config) => {
             let credentials = Box::new(SharedCredentialSource(direct_broker()?));

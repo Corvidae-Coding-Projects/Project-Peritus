@@ -120,6 +120,10 @@ impl DirectProviderDraft {
 ///
 /// Returns a malformed-reference or credential-store removal failure.
 pub fn remove_direct_credential(profile: &DirectProviderProfile) -> Result<(), OnboardingError> {
+    // Changing the selection or model does not revoke an independently saved OAuth account.
+    if profile.kind() == ProviderKind::ChatGptOauth {
+        return Ok(());
+    }
     let reference = parse_credential_reference(profile.credential_reference())?;
     PlatformCredentialStore::providers().remove(reference.resource_id())?;
     Ok(())
@@ -142,6 +146,13 @@ pub fn credential_store_available() -> bool {
 pub fn discover_direct_models(
     profile: &DirectProviderProfile,
 ) -> Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError> {
+    if profile.kind() == ProviderKind::ChatGptOauth {
+        let account = crate::ChatGptAccount::from_reference(profile.credential_reference())
+            .map_err(OnboardingError::ModelDiscovery)?;
+        return crate::models::run(async {
+            account.models(&peritus_provider_core::CancellationToken::new()).await
+        });
+    }
     let reference = parse_credential_reference(profile.credential_reference())?;
     let credential = PlatformCredentialStore::providers().lookup(reference)?;
     crate::models::direct(

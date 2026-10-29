@@ -1,5 +1,6 @@
 //! Responses request planning, validation, and HTTP construction.
 
+mod chatgpt;
 mod input;
 mod options;
 mod value;
@@ -133,7 +134,11 @@ pub fn http_request(
     credential: Credential,
 ) -> Result<HttpRequest, ProviderCoreError> {
     let (method, endpoint, body) = match plan {
-        RequestPlan::Create => (HttpMethod::Post, config.responses_endpoint()?, encode(request)?),
+        RequestPlan::Create => (
+            HttpMethod::Post,
+            config.responses_endpoint()?,
+            if config.is_chatgpt_plan() { chatgpt::encode(request)? } else { encode(request)? },
+        ),
         RequestPlan::Resume { response_id, sequence } => (
             HttpMethod::Get,
             resume_endpoint(config.endpoint(), response_id, *sequence)?,

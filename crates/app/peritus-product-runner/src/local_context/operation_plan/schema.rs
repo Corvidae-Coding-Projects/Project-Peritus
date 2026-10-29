@@ -27,10 +27,14 @@ pub(in crate::local_context) fn definitions() -> Result<Vec<ToolDefinition>, Dev
             "cursor":{"type":["string","null"],"maxLength":100},
             "max_result_bytes":{"type":"integer","minimum":2048,"maximum":65536}}});
     Ok(vec![
-        crate::local_context::tools::definition(
+        crate::local_context::tools::definition_with_strict(
             "inspection_plan",
             "Execute a version-1 read-only plan sequentially under current host admission. Use scope and input_revision from current host metadata. Supply exactly one of plan or cursor, setting the other null. Nodes must be in dependency order; result_refs copy a JSON Pointer from an earlier node's actual output into a named ordinary tool argument. Omit referenced arguments entirely from arguments, including empty or null placeholders: for a referenced path, arguments may contain start_line/end_line but no path key. List every referenced node in depends_on. Each child gets fresh ordinary permission/path checks and a durable exact result; errors or control changes stop further dispatch. No commands, mutations or arbitrary code. max_result_bytes pages this operation, never the task; follow continuation with a new currently bound call. Exact omitted child bytes use inspection_result_read. Do not repeat a settled effect.",
             &schema.to_string(),
+            // Child argument maps vary by tool and omit fields supplied by result references.
+            // Remote strict decoding cannot close this object without losing valid plans.
+            // The host still validates the whole plan and each resolved ordinary tool call.
+            false,
         )?,
         read_definition()?,
     ])

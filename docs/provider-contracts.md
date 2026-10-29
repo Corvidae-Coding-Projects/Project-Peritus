@@ -4,6 +4,38 @@ HTTP contracts reviewed against official documentation and upstream source on **
 Zen and Go now use the official OpenCode 1.19.0 executable contract, exercised on **2026-10-13**.
 Other hosted services continue through the reviewed HTTP adapters.
 
+## Optional ChatGPT direct OAuth preview
+
+Provider settings offer **ChatGPT direct OAuth (preview)** alongside the existing Codex account
+route. Peritus owns a separate browser authorization and registration using OpenAI's documented
+open-source sign-in flow. Existing selections are preserved. This route uses authorized ChatGPT
+plan allowance rather than an API key; it starts no Codex subprocess and imports no Codex tokens.
+
+The current account's `GET https://api.openai.com/v1/models` catalog supplies visible model slugs,
+display names and token capacities. The adapter refreshes its shared catalog after five minutes.
+Inference uses `POST https://api.openai.com/v1/responses` with `stream=true`, `store=false`, full
+stateless replay, system text in `instructions`, and Peritus functions in a namespace. Unsupported
+background, server continuation, sampling and output-ceiling fields are omitted. The output
+allowance is advisory for each request; it is not a task-wide token budget.
+
+Tokens stay in protected atomic files under the product state root's `chatgpt-oauth` directory.
+Generated configuration contains only a non-secret file reference. Refresh rotation is serialized
+across processes. Explicit sign-out revokes the saved grant when possible and clears local tokens;
+changing models or provider selections preserves saved accounts. Each tool call still receives
+normal host validation and authority checks. Only `inspection_plan` uses non-strict remote JSON
+generation because its child argument maps vary; Peritus validates the complete plan and each
+resolved child call before execution.
+
+Real verification on 2026-10-29 covered browser consent, a nine-model catalog, generation,
+function/result continuation, a two-file read plan, an independently reviewed coding task,
+steering during streaming, and simultaneous access-token renewal from two processes using
+`gpt-6.1-sol`. Windows OAuth runtime, remote revocation, account switching and other models are
+not behaviorally qualified. See the design's evidence ledger and retained real-interface consumers:
+[design](../.design/openai-chatgpt-oauth.md), [reproducers](testing/reproducers/chatgpt-oauth/README.md).
+
+Official contract reviewed 2026-10-29:
+https://developers.openai.com/siwc/token-sharing-open-source
+
 ## Model token capacities
 
 Generated named hosted routes set `discover_model_limits = true`. Their profile token numbers

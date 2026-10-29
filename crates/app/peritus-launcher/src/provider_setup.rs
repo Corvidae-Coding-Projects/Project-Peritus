@@ -8,6 +8,7 @@ use peritus_provider_onboarding::{
 
 use crate::{LauncherError, PreparedProduct, ProductBootstrap};
 
+mod chatgpt;
 mod connection;
 mod direct;
 mod install;
@@ -47,7 +48,13 @@ fn first_run(
         terminal.line(&format!("Using {default_text}."))?;
     }
 
-    let activated = activate_requested(&mut terminal, observations, requested, None)?;
+    let activated = activate_requested(
+        &mut terminal,
+        observations,
+        requested,
+        None,
+        &prepared.layout().state_root().join("chatgpt-oauth"),
+    )?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
     let automatic_failover = choose_failover(&mut terminal, &activated.enabled, false)?;
     let selection = ProviderSelection::with_direct_profiles_and_failover(
@@ -66,12 +73,19 @@ pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, Launcher
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
     terminal.line("Provider settings")?;
-    terminal
-        .line("Select one or more providers. Existing credentials stay in the OS key store.")?;
+    terminal.line(
+        "Select one or more providers. Existing provider credentials are retained securely.",
+    )?;
     show_catalog(&mut terminal, &observations, Some(&current))?;
     let (requested, _) =
         choose_provider_set(&mut terminal, current.enabled().to_vec(), "current selection")?;
-    let activated = activate_requested(&mut terminal, &observations, requested, Some(&current))?;
+    let activated = activate_requested(
+        &mut terminal,
+        &observations,
+        requested,
+        Some(&current),
+        &prepared.layout().state_root().join("chatgpt-oauth"),
+    )?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
     let automatic_failover =
         choose_failover(&mut terminal, &activated.enabled, current.automatic_failover())?;
@@ -171,6 +185,8 @@ fn show_catalog(
         let configured = current.and_then(|selection| selection.direct_profile(kind)).is_some();
         let status = if configured {
             "selected, configured; connection not tested this session"
+        } else if kind == ProviderKind::ChatGptOauth {
+            "Continue with ChatGPT"
         } else {
             "Add key"
         };
@@ -187,13 +203,15 @@ fn activate_requested(
     observations: &[ProviderObservation],
     requested: Vec<ProviderKind>,
     existing: Option<&ProviderSelection>,
+    oauth_root: &std::path::Path,
 ) -> Result<ActivatedProviders, LauncherError> {
     let mut enabled = Vec::new();
     let mut direct_profiles = Vec::new();
     for kind in requested {
         if kind.is_direct() {
             let profile = match existing.and_then(|selection| selection.direct_profile(kind)) {
-                Some(profile) => connection::existing(terminal, profile)?,
+                Some(profile) => connection::existing(terminal, profile, oauth_root)?,
+                None if kind == ProviderKind::ChatGptOauth => chatgpt::setup(terminal, oauth_root)?,
                 None => direct::setup(terminal, kind)?,
             };
             enabled.push(kind);

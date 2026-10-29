@@ -83,11 +83,20 @@ pub(in crate::local_context) fn definition(
     description: &str,
     schema: &str,
 ) -> Result<ToolDefinition, DeveloperLoopError> {
+    definition_with_strict(name, description, schema, true)
+}
+
+pub(in crate::local_context) fn definition_with_strict(
+    name: &str,
+    description: &str,
+    schema: &str,
+    strict: bool,
+) -> Result<ToolDefinition, DeveloperLoopError> {
     let limits = ProtocolLimits::PRODUCTION;
     Ok(ToolDefinition::new(
         ToolName::new(name.to_owned())?,
         Some(BoundedText::new(description.to_owned(), limits)?),
         JsonSchema::parse(schema, SchemaDialect::Draft202012, JsonBounds::schema(limits))?,
-        true,
+        strict,
     ))
 }

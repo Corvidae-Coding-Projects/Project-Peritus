@@ -52,7 +52,11 @@ impl OpenAiProvider {
         profile: ProviderProfile,
         credentials: Arc<dyn CredentialSource>,
     ) -> Result<Self, ProviderCoreError> {
-        crate::profile::validate(&profile)?;
+        if config.is_chatgpt_plan() {
+            crate::profile::validate_chatgpt(&profile)?;
+        } else {
+            crate::profile::validate(&profile)?;
+        }
         if config.is_gateway() && profile.state_mode() != StateMode::StatelessReplay {
             return Err(error::invalid(
                 "OpenCode gateway supports only stateless replay in this adapter",
@@ -113,7 +117,11 @@ impl ModelProvider for OpenAiProvider {
         model: peritus_model_protocol::ModelName,
     ) -> Result<Arc<dyn ModelProvider>, ProviderCoreError> {
         let profile = peritus_provider_core::catalog::selected_profile(&self.profile, model)?;
-        crate::profile::validate(&profile)?;
+        if self.config.is_chatgpt_plan() {
+            crate::profile::validate_chatgpt(&profile)?;
+        } else {
+            crate::profile::validate(&profile)?;
+        }
         Ok(Arc::new(Self::compose(
             self.config.clone(),
             profile,
@@ -220,7 +228,12 @@ impl ModelProvider for OpenAiProvider {
                     )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
-                if status.as_u16() != 200 || !is_event_stream(&headers) {
+                // The direct plan endpoint can omit Content-Type on a valid SSE response.
+                // Its body still passes the exact bounded SSE/event/terminal decoder. A declared
+                // incompatible MIME type remains an error, and API-key header rules stay strict.
+                let stream_body = is_event_stream(&headers)
+                    || self.config.is_chatgpt_plan() && headers.first("content-type").is_none();
+                if status.as_u16() != 200 || !stream_body {
                     return response::failure_stream(
                         &self.profile,
                         &cancellation,

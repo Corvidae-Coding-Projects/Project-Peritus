@@ -76,7 +76,7 @@ impl ResponseState {
                 SequenceDisposition::Conflict
             };
         }
-        if sequence == 0 || self.last_provider_sequence.is_some_and(|last| sequence <= last) {
+        if self.last_provider_sequence.is_some_and(|last| sequence <= last) {
             return SequenceDisposition::Conflict;
         }
         self.last_provider_sequence = Some(sequence);

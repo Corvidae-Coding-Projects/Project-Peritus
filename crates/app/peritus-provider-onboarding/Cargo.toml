@@ -12,15 +12,15 @@ keywords = ["agents", "authentication", "onboarding"]
 categories = ["authentication", "command-line-utilities"]
 
 [dependencies]
-peritus-provider-opencode = { version = "=0.1.14", path = "../../model/peritus-provider-opencode" }
-peritus-provider-core = { version = "=0.1.14", path = "../../model/peritus-provider-core" }
+peritus-provider-opencode = { version = "=0.1.15", path = "../../model/peritus-provider-opencode" }
+peritus-provider-core = { version = "=0.1.15", path = "../../model/peritus-provider-core" }
 tokio.workspace = true
 getrandom.workspace = true
-peritus-product-state = { version = "=0.1.14", path = "../peritus-product-state" }
-peritus-provider-anthropic = { version = "=0.1.14", path = "../../model/peritus-provider-anthropic" }
-peritus-provider-openai = { version = "=0.1.14", path = "../../model/peritus-provider-openai" }
-peritus-secrets = { version = "=0.1.14", path = "../../runtime/peritus-secrets" }
-peritus-types = { version = "=0.1.14", path = "../../foundation/peritus-types" }
+peritus-product-state = { version = "=0.1.15", path = "../peritus-product-state" }
+peritus-provider-anthropic = { version = "=0.1.15", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.1.15", path = "../../model/peritus-provider-openai" }
+peritus-secrets = { version = "=0.1.15", path = "../../runtime/peritus-secrets" }
+peritus-types = { version = "=0.1.15", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true

@@ -8,6 +8,7 @@ Implementation pieces for `request.rs`: Responses request planning, validation, 
 
 | File | Role |
 | --- | --- |
+| [chatgpt.rs](chatgpt.rs) | Separate stateless OAuth/ChatGPT-plan wire profile and namespaced host tools. |
 | [input.rs](input.rs) | Ordered message, content, media, tool-result, and replay projection. |
 | [options.rs](options.rs) | Tool, structured-output, reasoning, sampling, and cache projection. |
 | [value.rs](value.rs) | Explicit JSON value construction without code-generating macros. |

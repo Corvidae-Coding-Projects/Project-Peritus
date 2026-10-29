@@ -18,9 +18,9 @@ use peritus_model_protocol::{
 use serde_json::Value;
 
 pub(super) use entry_view::entry_view;
-pub(in crate::local_context) use schema::definition;
 pub use schema::definitions;
 pub(in crate::local_context) use schema::definitions_with_config;
+pub(in crate::local_context) use schema::{definition, definition_with_strict};
 
 /// Adds durable role-scoped context tools and evidence reuse to an authorized host executor.
 pub struct MemoryTools<'a> {

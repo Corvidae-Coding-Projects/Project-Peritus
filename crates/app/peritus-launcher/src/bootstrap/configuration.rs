@@ -271,6 +271,9 @@ fn direct_route(
         ProviderKind::OpenAiApi => {
             Ok(("open-ai", "a3000000000000000000000000000003", 200_000, 64_000, true, true))
         }
+        ProviderKind::ChatGptOauth => {
+            Ok(("chatgpt-oauth", "ae00000000000000000000000000000e", 200_000, 64_000, true, true))
+        }
         ProviderKind::AnthropicApi => {
             Ok(("anthropic", "a4000000000000000000000000000004", 200_000, 32_000, true, true))
         }
@@ -349,6 +352,9 @@ impl ProfileFeatures {
         if reasoning {
             capabilities.push("reasoning-controls");
             capabilities.push("reasoning-summaries");
+            if provider == ProviderKind::ChatGptOauth {
+                capabilities.push("reasoning-replay");
+            }
         }
         Self::new(capabilities, image_input)
     }

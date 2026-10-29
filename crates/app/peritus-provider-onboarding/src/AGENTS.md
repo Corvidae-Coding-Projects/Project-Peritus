@@ -9,7 +9,7 @@ Provider discovery, selection, credential references, official runtime installat
 | File | Role |
 | --- | --- |
 | [account.rs](account.rs) | Official executable discovery, status, and interactive login delegation. |
-| [direct.rs](direct.rs) | Direct provider profiles and metadata discovery backed by existing operating-system credential references. |
+| [direct.rs](direct.rs) | Direct provider profiles and metadata discovery using OS API-key references or C5-owned independent ChatGPT OAuth registrations. |
 | [error.rs](error.rs) | Redaction-safe onboarding failures. |
 | [install.rs](install.rs) | Explicitly approved provider installation through the vendors' native installers. |
 | [lib.rs](lib.rs) | Provider discovery and account authentication without credential custody. |

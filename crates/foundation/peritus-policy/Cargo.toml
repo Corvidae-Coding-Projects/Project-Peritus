@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Verified policy, capability, and authority-time core for Project Peritus"
 
 [dependencies]
-peritus-types = { version = "=0.1.14", path = "../peritus-types" }
+peritus-types = { version = "=0.1.15", path = "../peritus-types" }
 
 [package.metadata.peritus]
 owner = "B1"

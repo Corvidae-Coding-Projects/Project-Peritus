@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-OpenAI HTTP Responses adapter and official Codex account runtime transport, with separate request/stream/runtime paths.
+OpenAI HTTP Responses adapter and official Codex account runtime transport, with separate OAuth, request, stream, and runtime paths.
 
 ## Files in this folder
 
@@ -22,6 +22,7 @@ OpenAI HTTP Responses adapter and official Codex account runtime transport, with
 | Folder | Role / next waypoint |
 | --- | --- |
 | [bin/](bin/AGENTS.md) | Executable entrypoints for `peritus-provider-openai`; follow each binary into its package implementation. |
+| [chatgpt/](chatgpt/AGENTS.md) | Independent ChatGPT OAuth registration, protected sessions, renewal, account catalogs, and public Responses composition. |
 | [client/](client/AGENTS.md) | Implementation pieces for `client.rs`: Provider composition, credential timing, HTTP submission, and stream construction. |
 | [request/](request/AGENTS.md) | Implementation pieces for `request.rs`: Responses request planning, validation, and HTTP construction. |
 | [runtime/](runtime/AGENTS.md) | Implementation pieces for `runtime.rs`: Constrained account-backed transport through `OpenAI`'s credential-owning `Codex` executable. |

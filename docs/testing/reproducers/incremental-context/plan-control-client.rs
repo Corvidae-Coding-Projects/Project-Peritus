@@ -186,7 +186,7 @@ async fn main() -> Result<(), Error> {
             let intent=match other {
                 "steer" => WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(WorkbenchNewInput::new(
                     WorkbenchInputId::new(RequestIdentity::generate()?.request_id.into_bytes()).map_err(|e| format!("{e:?}"))?,
-                    WorkbenchInputText::new("STOP the old operation sequence. Do not inspect any more files or start any process. Reply exactly I5 STEERING RECEIVED.".to_owned())?,
+                    WorkbenchInputText::new(spec["steering"].as_str().unwrap_or("STOP the old operation sequence. Do not inspect any more files or start any process. Reply exactly I5 STEERING RECEIVED.").to_owned())?,
                     WorkbenchInputOrder::new(Vec::new())?)?)),
                 "before-edit" => WorkbenchIntent::PauseGoal{goal,mode:WorkbenchGoalPauseMode::BeforeEdit},
                 "pause" => WorkbenchIntent::PauseGoal{goal,mode:WorkbenchGoalPauseMode::AfterOperation},

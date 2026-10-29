@@ -46,3 +46,8 @@ configuration.
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.
+
+The optional ChatGPT direct OAuth route re-exports the C5-owned login and account surface.
+It discovers current models through that registration rather than an API-key store. Replacing a
+provider selection does not delete or revoke saved OAuth registrations; explicit sign-out owns
+revocation. The Codex/Claude executable routes retain their existing ownership.

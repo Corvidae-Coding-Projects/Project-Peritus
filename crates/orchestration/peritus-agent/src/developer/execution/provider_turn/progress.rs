@@ -9,10 +9,13 @@ use tokio::time::Instant;
 
 use super::{DeveloperActivity, DeveloperInteraction, DeveloperLoopError};
 
+const CONTROL_INTERVAL: Duration = Duration::from_millis(250);
 const NOTICE_INTERVAL: Duration = Duration::from_secs(20);
 
 pub(super) struct ProviderProgress<'a> {
     interaction: Option<&'a dyn DeveloperInteraction>,
+    control: Option<(&'a dyn DeveloperInteraction, u64)>,
+    next_control: Instant,
     cancellation: &'a CancellationToken,
     started: Instant,
     next_notice: Instant,
@@ -21,12 +24,14 @@ pub(super) struct ProviderProgress<'a> {
 
 impl<'a> ProviderProgress<'a> {
     pub(super) fn new(
-        interaction: Option<&'a dyn DeveloperInteraction>,
+        control: Option<(&'a dyn DeveloperInteraction, u64)>,
         cancellation: &'a CancellationToken,
     ) -> Self {
         let started = Instant::now();
         Self {
-            interaction,
+            interaction: control.map(|(port, _)| port),
+            control,
+            next_control: started,
             cancellation,
             started,
             next_notice: started + NOTICE_INTERVAL,
@@ -66,12 +71,19 @@ impl<'a> ProviderProgress<'a> {
     pub(super) async fn wait<T>(
         &mut self,
         operation: impl Future<Output = Result<T, DeveloperLoopError>>,
-    ) -> Result<T, DeveloperLoopError> {
+    ) -> Result<Option<T>, DeveloperLoopError> {
         tokio::pin!(operation);
         loop {
             tokio::select! {
                 biased;
-                result = &mut operation => return result,
+                () = tokio::time::sleep_until(self.next_control), if self.control.is_some() => {
+                    if let Some((port, revision)) = self.control
+                        && port.current_input_revision()? != revision {
+                        return Ok(None);
+                    }
+                    self.next_control = Instant::now() + CONTROL_INTERVAL;
+                }
+                result = &mut operation => return result.map(Some),
                 () = tokio::time::sleep_until(self.next_notice) => {
                     if let Some(interaction) = self.interaction {
                         let elapsed_seconds = self.started.elapsed().as_secs();

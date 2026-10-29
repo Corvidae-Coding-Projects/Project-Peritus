@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.1.15
+
+### Added
+
+- Offer ChatGPT direct OAuth as a separate preview provider. Peritus owns browser sign-in, protected account storage, automatic token renewal, and public Responses inference using authorized ChatGPT plan allowance. Codex remains available and existing provider selections are preserved.
+- Discover the signed-in account's current models and support direct host tools, stateless tool-result continuation, and opaque reasoning replay without a Codex subprocess.
+
+### Fixed
+
+- Incorporate new steering and questions while inference is pending, including after assistant text begins streaming. Superseded requests settle their accounting and cannot dispatch stale host tools; after-operation pause behavior is preserved.
+- Handle native zero-based Responses sequences, metadata events, unsequenced provider errors, and complete tool arguments supplied only at finalization. Reject contradictory observed arguments and incompatible item identities.
+- Advertise dynamic read-only plan arguments without unsupported remote strict-object closure while retaining full host plan, schema, and permission validation.
+
+### Real testing
+
+- Actual OAuth consent, nine-model discovery, generation, function/result continuation, sequential file plans, native verification, and independently reviewed coding delivery passed with `gpt-6.1-sol` on Linux. Concurrent processes renewed the same naturally expiring registration without losing its identity.
+- Streaming steering triggered a replacement request in 0.124 seconds; the final clean coding replay reached Achieved with all 11 requests settled. Strict affected Clippy, workspace checks, formatting, and Windows cross-compilation passed.
+- Windows OAuth runtime, remote revocation, reauthorization, multiple-account switching, and other models/modalities remain unqualified. Native release packaging and installation receive separate same-tag evidence; no unit, mock, formal, or repository qualification suites are included.
+
 ## 0.1.14
 
 ### Changed
