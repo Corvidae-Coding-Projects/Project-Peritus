@@ -93,6 +93,16 @@ pub enum WorkspaceMutationKind {
 
 /// Live daemon-owned conversation supplied to every model turn.
 pub trait ConversationView: Send + Sync {
+    /// Monotonic workspace permission revision, when the host owns a durable policy ledger.
+    /// Passive waits use it to notice revocation even if the former permissions are restored.
+    /// This identity grants no authority; current effective permissions remain mandatory.
+    ///
+    /// # Errors
+    /// Returns an error when a ledger-owning host cannot inspect its current policy. Static
+    /// or legacy hosts return none and retain effective-permission snapshot checks.
+    fn permission_revision(&self) -> Result<Option<u64>, String> {
+        Ok(None)
+    }
     /// Whether the latest actionable accepted user input explicitly invokes the saved ready design.
     /// This is a host-resolved task hint, not permission to implement or reuse an unrelated draft.
     fn requests_ready_design(&self) -> bool {

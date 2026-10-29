@@ -209,6 +209,7 @@ fn instantiate(
     };
     match declaration {
         ProviderDeclaration::OpenCodeRuntime {
+            request_layout,
             executable,
             service,
             credential,
@@ -226,7 +227,8 @@ fn instantiate(
                     direct_broker()?,
                     profile,
                 )?
-                .with_discovered_limits(discover_model_limits);
+                .with_discovered_limits(discover_model_limits)
+                .with_request_layout(request_layout);
             Ok((ProviderAdapterKind::OpenCodeRuntime, Arc::new(provider)))
         }
         ProviderDeclaration::Hosted { service, credential, profile, discover_model_limits } => {

@@ -23,6 +23,8 @@ const LIMITS: CodecLimits = CodecLimits::new(
     8,
 );
 const VERSION: u16 = 2;
+const HOST_VERSION: u16 = 3;
+const HOST_ENTRY_VERSION: u16 = 4;
 
 /// Structural decode/encode rejection, containing no archived text.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -53,9 +55,12 @@ impl core::fmt::Display for WorkingCodecError {
 impl std::error::Error for WorkingCodecError {}
 
 fn writer(magic: [u8; 4]) -> Result<CanonicalWriter, WorkingCodecError> {
+    writer_version(magic, VERSION)
+}
+fn writer_version(magic: [u8; 4], version: u16) -> Result<CanonicalWriter, WorkingCodecError> {
     let mut writer = CanonicalWriter::new(LIMITS);
     writer.write_fixed(&magic)?;
-    writer.write_u16(VERSION)?;
+    writer.write_u16(version)?;
     Ok(writer)
 }
 
@@ -68,14 +73,10 @@ fn reader_version(
         return Err(WorkingCodecError::InvalidValue);
     }
     let version = reader.read_u16()?;
-    if !matches!(version, 1 | VERSION) {
+    if !matches!(version, 1 | VERSION | HOST_VERSION | HOST_ENTRY_VERSION) {
         return Err(WorkingCodecError::InvalidValue);
     }
     Ok((reader, version))
-}
-
-fn reader(bytes: &[u8], magic: [u8; 4]) -> Result<CanonicalReader<'_>, WorkingCodecError> {
-    Ok(reader_version(bytes, magic)?.0)
 }
 
 fn count(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, WorkingCodecError> {

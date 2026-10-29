@@ -44,6 +44,68 @@ pub(super) fn write_entry(
     Ok(())
 }
 
+pub(super) fn write_bound_entry(
+    w: &mut CanonicalWriter,
+    record: &WorkingEntry,
+) -> Result<(), WorkingCodecError> {
+    write_entry(w, record)?;
+    w.write_option_tag(record.host_binding().is_some())?;
+    if let Some(binding) = record.host_binding() {
+        fields::write_host_binding(w, binding)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_bound_entry(
+    r: &mut CanonicalReader<'_>,
+    limits: WorkingLimits,
+) -> Result<WorkingEntry, WorkingCodecError> {
+    let mut record = read_entry(r, limits)?;
+    if r.read_option_tag()? {
+        record.host_binding = Some(fields::read_host_binding(r)?);
+        record.host_declared_status = match record.status() {
+            WorkingEntryStatus::Stale | WorkingEntryStatus::Superseded => None,
+            status => Some(status),
+        };
+    }
+    Ok(record)
+}
+
+pub(super) fn write_bound_entry_v4(
+    w: &mut CanonicalWriter,
+    record: &WorkingEntry,
+) -> Result<(), WorkingCodecError> {
+    write_bound_entry(w, record)?;
+    w.write_option_tag(record.host_declared_status.is_some())?;
+    if let Some(status) = record.host_declared_status {
+        w.write_u8(match status {
+            WorkingEntryStatus::Open => 0,
+            WorkingEntryStatus::Contradicted => 1,
+            WorkingEntryStatus::Resolved => 2,
+            _ => return Err(WorkingCodecError::InvalidValue),
+        })?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_bound_entry_v4(
+    r: &mut CanonicalReader<'_>,
+    limits: WorkingLimits,
+) -> Result<WorkingEntry, WorkingCodecError> {
+    let mut record = read_bound_entry(r, limits)?;
+    record.host_declared_status = if r.read_option_tag()? {
+        Some(match r.read_u8()? {
+            0 => WorkingEntryStatus::Open,
+            1 => WorkingEntryStatus::Contradicted,
+            2 => WorkingEntryStatus::Resolved,
+            _ => return Err(WorkingCodecError::InvalidValue),
+        })
+    } else {
+        None
+    };
+    Ok(record)
+}
+
 pub(super) fn read_entry(
     r: &mut CanonicalReader<'_>,
     limits: WorkingLimits,

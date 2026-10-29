@@ -4,7 +4,9 @@ use super::super::{
     checkpoint_validation, error,
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION, MemoryRecord, ViewValidation, decode, encode,
+        DEPENDENCY_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION, MemoryRecord, PLAN_CHECKPOINT_SCHEMA_VERSION,
+        ViewValidation, decode, encode,
     },
     view_binding,
 };
@@ -46,6 +48,9 @@ impl LocalMemory {
             self.limits,
         )?;
         // Derived host projections are completed from committed observations, never from effects.
+        // Complete them under their recovered epoch; the live owner refreshes current input
+        // before new work. A constructor's newer revision cannot relabel old observations.
+        self.binding = self.state.binding();
         self.sync_protocol()?;
         self.ingest_facts()?;
         Ok(())
@@ -57,7 +62,12 @@ impl LocalMemory {
     ) -> Result<(), DeveloperLoopError> {
         if !matches!(
             manifest.schema_version,
-            LEGACY_CHECKPOINT_SCHEMA_VERSION | 2 | CHECKPOINT_SCHEMA_VERSION
+            LEGACY_CHECKPOINT_SCHEMA_VERSION
+                | 2
+                | CHECKPOINT_SCHEMA_VERSION
+                | PLAN_CHECKPOINT_SCHEMA_VERSION
+                | LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+                | DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
         ) || manifest.scope != self.store.scope_digest().into_bytes()
             || manifest.generation != self.store.generation()
             || manifest.through_event >= self.store.sequence()
@@ -71,6 +81,7 @@ impl LocalMemory {
             super::super::pages::restore(manifest, self.binding, self.limits, |artifact| {
                 self.store.read(artifact)
             })?;
+        self.rebuild_source_indexes();
         self.trace_cursor.clone_from(&manifest.trace_cursor);
         self.transcript = decode(&self.store.read(manifest.transcript_manifest)?)?;
         let view_bytes = self.store.read(manifest.view)?;
@@ -87,12 +98,17 @@ impl LocalMemory {
         )?;
         view_binding::verify(manifest, &view_bytes, &validation)?;
         self.local_compactor_failures = validation.local_compactor_failures;
+        self.checkpoint_schema = manifest.schema_version.max(CHECKPOINT_SCHEMA_VERSION);
         self.retrieval_calls = validation.retrieval_calls;
         self.model_revision = validation.model_revision;
         self.state = self
             .state
             .with_limits(self.limits)
             .map_err(|_| error("widen retained working policy"))?;
+        if self.config.reuse_checkpoint_pages {
+            self.page_cache =
+                super::super::pages::PageCache::restore(manifest, &self.state, &self.store)?;
+        }
         Ok(())
     }
 
@@ -139,7 +155,7 @@ impl LocalMemory {
                 self.store.read(observation.artifact)?;
                 self.state = apply_working_event(&self.state, &event)
                     .map_err(|_| error("observation replay rejected"))?;
-                self.sources.push(observation.clone());
+                self.append_source(observation.clone());
                 self.project_observation(&observation)?;
             }
             MemoryRecord::StateEvent { reducer } => {
@@ -149,11 +165,22 @@ impl LocalMemory {
                 if matches!(event, WorkingEvent::Observation { .. }) {
                     return Err(error("unindexed observation event"));
                 }
+                self.validate_host_event(&event, true)?;
                 self.model_revision = self.next_model_revision(&event)?;
                 self.state = apply_working_event(&self.state, &event)
                     .map_err(|_| error("working-state replay rejected"))?;
             }
             MemoryRecord::Transcript { manifest } => {
+                if (self.checkpoint_schema < LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+                    && manifest.host_dependency_version.is_some())
+                    || (self.checkpoint_schema < DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+                        && manifest.host_dependency_version == Some(2))
+                    || (self.transcript.host_dependency_version.is_some()
+                        && self.transcript.host_dependency_version
+                            > manifest.host_dependency_version)
+                {
+                    return Err(error("host dependency reader floor or version downgrade"));
+                }
                 checkpoint_validation::validate_transcript(
                     &self.state,
                     &self.sources,

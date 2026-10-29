@@ -60,9 +60,26 @@ impl LocalMemory {
     }
 
     pub(in crate::local_context) fn refresh(&mut self) -> Result<(), DeveloperLoopError> {
+        let started = std::time::Instant::now();
+        let result = self.refresh_inner();
+        crate::efficiency::event(
+            &self.trace_path,
+            serde_json::json!({
+                "event": "context-environment-work", "invocation": self.transcript.request_prefix,
+                "elapsed_micros": started.elapsed().as_micros(), "completed": result.is_ok(),
+                "whole_candidate_capture": !self.workspace_scope.direct,
+                "declared_file_dependencies": self.transcript.files.len(),
+                "semantics": "one refresh attempt; elapsed includes current candidate/file observation and any refresh commit; configured dependency count is not physical files read"
+            }),
+        );
+        result
+    }
+
+    fn refresh_inner(&mut self) -> Result<(), DeveloperLoopError> {
+        let binding = self.current_binding()?;
         let environment = environment::capture(
             &self.workspace,
-            self.binding,
+            binding,
             &self.transcript.files,
             &self.task_contract,
             self.limits,
@@ -74,7 +91,29 @@ impl LocalMemory {
                 environment,
             })?;
         }
+        self.binding = self.state.binding();
         Ok(())
+    }
+
+    fn current_binding(
+        &self,
+    ) -> Result<peritus_context::working::WorkingBinding, DeveloperLoopError> {
+        let current = self.state.binding();
+        let Some(view) = self.conversation.as_deref() else { return Ok(current) };
+        let revision = match view.interaction() {
+            Some(port) => port.input()?.revision,
+            None => view.revision(),
+        };
+        if revision < current.conversation_revision() {
+            return Err(error("governing conversation revision moved backwards"));
+        }
+        Ok(peritus_context::working::WorkingBinding::new(
+            current.run(),
+            current.workspace(),
+            current.task(),
+            current.role(),
+            revision,
+        ))
     }
 
     pub(in crate::local_context) fn observe_message(
@@ -112,7 +151,7 @@ impl LocalMemory {
             Role::Tool => ArchiveKind::ToolMessage,
         });
         let bytes = encode_messages(std::slice::from_ref(message), ProtocolLimits::PRODUCTION)?;
-        let observation = self.persist_observation(kind, &bytes, None, None, false)?;
+        let observation = self.persist_observation(kind, &bytes, None, None, false, &[])?;
         self.project_observation(&observation)?;
         self.sync_protocol()?;
         Ok(observation.sequence)
@@ -126,20 +165,6 @@ impl LocalMemory {
         self.observe_tool_in(self.transcript.invocation, self.next_tool_sequence()?, call, output)
     }
 
-    fn next_tool_sequence(&self) -> Result<u64, DeveloperLoopError> {
-        self.sources
-            .iter()
-            .rev()
-            .find(|source| {
-                source.invocation == self.transcript.invocation
-                    && source.kind == ArchiveKind::ToolOutput
-            })
-            .and_then(|source| source.tool_sequence)
-            .unwrap_or(0)
-            .checked_add(1)
-            .ok_or_else(|| error("tool sequence overflow"))
-    }
-
     pub(in crate::local_context) fn observe_tool_in(
         &mut self,
         invocation: u64,
@@ -149,9 +174,7 @@ impl LocalMemory {
     ) -> Result<u64, DeveloperLoopError> {
         let identity = call_identity(call);
         let bytes = output.output.canonical_bytes();
-        if let Some(prior) = self.sources.iter().find(|source| {
-            source.invocation == invocation && source.tool_sequence == Some(tool_sequence)
-        }) {
+        if let Some(prior) = self.prior_tool_source(invocation, tool_sequence)? {
             if prior.call.as_ref() != Some(&identity)
                 || prior.artifact.digest != sha256(bytes)
                 || prior.is_error != output.is_error
@@ -180,6 +203,7 @@ impl LocalMemory {
             Some(tool_sequence),
             Some(identity),
             output.is_error,
+            &[],
         )?;
         self.project_observation(&observation)?;
         self.sync_protocol()?;
@@ -194,6 +218,7 @@ impl LocalMemory {
         tool_sequence: Option<u64>,
         call: Option<CallIdentity>,
         is_error: bool,
+        dependencies: &[peritus_types::Sha256Digest],
     ) -> Result<ArchivedObservation, DeveloperLoopError> {
         let sequence = self
             .state
@@ -225,14 +250,39 @@ impl LocalMemory {
             call,
             is_error,
         };
+        let mut roots = vec![artifact.digest, reducer.digest];
+        roots.extend_from_slice(dependencies);
         self.commit(
             &MemoryRecord::Observation { observation: observation.clone(), reducer },
-            &[artifact.digest, reducer.digest],
+            &roots,
         )?;
         self.state = next;
-        self.sources.push(observation.clone());
+        self.append_source(observation.clone());
         self.prepared = None;
         Ok(observation)
+    }
+
+    pub(in crate::local_context) fn observe_plan_record(
+        &mut self,
+        message: &Message,
+        dependencies: &[peritus_types::Sha256Digest],
+    ) -> Result<u64, DeveloperLoopError> {
+        if !self.last_checkpoint.as_ref().is_some_and(|checkpoint| {
+            checkpoint.schema_version >= super::super::record::PLAN_CHECKPOINT_SCHEMA_VERSION
+        }) {
+            return Err(error("plan evidence requires a committed version-4 reader guard"));
+        }
+        let bytes = encode_messages(std::slice::from_ref(message), ProtocolLimits::PRODUCTION)?;
+        let source = self.persist_observation(
+            ArchiveKind::HostObservation,
+            &bytes,
+            None,
+            None,
+            false,
+            dependencies,
+        )?;
+        self.project_observation(&source)?;
+        Ok(source.sequence)
     }
 
     pub(in crate::local_context) fn persist_transcript(

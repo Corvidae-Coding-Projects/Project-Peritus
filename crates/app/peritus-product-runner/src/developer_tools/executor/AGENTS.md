@@ -16,6 +16,7 @@ Concrete workspace executor lifecycle, construction, command ownership, mutation
 | [in_place.rs](in_place.rs) | Enroll task files or bounded directory subtrees before effects in non-Git work. |
 | [inspection_progress.rs](inspection_progress.rs) | Bounded, content-based detection of an unchanged inspection cycle. |
 | [read_reuse.rs](read_reuse.rs) | Admit cached/restored read plans through normal permissions, path checks, current file version, and grounding. |
+| [wait.rs](wait.rs) | Passive waits on original command handles; current input, effective permissions and durable permission revisions, with exact output wakeups and no locks across sleep. |
 
 Owning module: [executor.rs](../executor.rs). Inspect that parent before changing the local pieces.
 

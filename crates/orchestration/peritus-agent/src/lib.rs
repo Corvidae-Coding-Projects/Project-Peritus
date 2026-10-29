@@ -38,7 +38,7 @@ pub use developer::{
     DeveloperContextEstimate, DeveloperContextEvent, DeveloperContextPort, DeveloperControlFlow,
     DeveloperCyberAccessProgram, DeveloperInteraction, DeveloperLoop, DeveloperLoopError,
     DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperModelRole,
-    DeveloperProviderProgress, DeveloperRetryReason, DeveloperRetryRecord,
+    DeveloperProviderProgress, DeveloperRequestMetrics, DeveloperRetryReason, DeveloperRetryRecord,
     DeveloperReviewRetryReason, DeveloperToolEffect, DeveloperToolExecutor,
     DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
     estimate_developer_request_tokens,

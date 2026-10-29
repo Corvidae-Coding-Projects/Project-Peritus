@@ -41,6 +41,7 @@ mod construction;
 mod in_place;
 mod inspection_progress;
 mod read_reuse;
+mod wait;
 
 use active::ActiveCommandLedger;
 use checkpoint_observer::PreparedMutation;
@@ -342,6 +343,7 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         | "view_image"
         | "computer_snapshot"
         | "command_output"
+        | "command_wait"
         | "web_read"
         | "web_find" => Some(&[Read]),
         "web_search" | "web_open" => Some(&[Read, Network]),

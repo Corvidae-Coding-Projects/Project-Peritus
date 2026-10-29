@@ -54,10 +54,28 @@ impl ManagedBaseline {
     ///
     /// Returns an error when repository metadata or content cannot be observed canonically.
     pub fn repository_fingerprint(root: &Path) -> Result<[u8; 32], ProductRunnerError> {
-        use sha2::{Digest as _, Sha256};
         let snapshot = Self::capture(root, false)?;
+        snapshot.repository_digest(root)
+    }
+
+    /// Observes repository and source identities from the same complete captured preimages.
+    /// Returns the existing repository fingerprint and existing source digest, in that order.
+    /// No observation is retained between calls; callers requiring a freshness fence must
+    /// capture again and compare both identities before using them.
+    ///
+    /// # Errors
+    /// Rejects incomplete repository, source, permission or nested-repository observations.
+    pub fn repository_and_source_digests(
+        root: &Path,
+    ) -> Result<([u8; 32], peritus_types::Sha256Digest), ProductRunnerError> {
+        let snapshot = Self::capture(root, false)?;
+        Ok((snapshot.repository_digest(root)?, snapshot.captured_source_digest(root)?))
+    }
+
+    fn repository_digest(&self, root: &Path) -> Result<[u8; 32], ProductRunnerError> {
+        use sha2::{Digest as _, Sha256};
         let head = capture::nested_head(root)?;
-        let bytes = serde_json::to_vec(&(head, snapshot)).map_err(failure)?;
+        let bytes = serde_json::to_vec(&(head, self)).map_err(failure)?;
         Ok(Sha256::digest(bytes).into())
     }
 

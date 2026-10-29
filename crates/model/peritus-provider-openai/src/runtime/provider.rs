@@ -111,6 +111,7 @@ impl CodexRuntimeProvider {
         Box::pin(async move {
             validate_request_profile(self.config.profile(), &request)?;
             let runtime = super::request::encode(&request)?;
+            let projection = runtime.projection.clone();
             if runtime.prompt.iter().filter(|byte| (**byte & 0xc0) != 0x80).count()
                 > super::request::MAX_INPUT_CHARACTERS
             {
@@ -120,7 +121,7 @@ impl CodexRuntimeProvider {
                     &DecodeFailure::InputLimit,
                     peritus_model_protocol::UsageCounters::default(),
                 )?;
-                return Ok(OwnedModelStream::new(stream, cancellation));
+                return Ok(OwnedModelStream::new(stream, cancellation).with_projection(projection));
             }
             if let Err(error) = if self.authenticated.load(Ordering::Acquire) {
                 Ok(())
@@ -139,7 +140,7 @@ impl CodexRuntimeProvider {
                 } else {
                     return Err(error);
                 };
-                return Ok(OwnedModelStream::new(stream, cancellation));
+                return Ok(OwnedModelStream::new(stream, cancellation).with_projection(projection));
             }
             let model = request.model().clone();
             let progress = std::sync::Arc::new(super::live::Progress::default());
@@ -160,7 +161,8 @@ impl CodexRuntimeProvider {
             Ok(OwnedModelStream::new(
                 super::live::LiveRuntimeStream::new(model, operation, progress),
                 cancellation,
-            ))
+            )
+            .with_projection(projection))
         })
     }
 

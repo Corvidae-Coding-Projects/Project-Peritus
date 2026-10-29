@@ -22,6 +22,7 @@ pub mod hosted;
 mod http;
 mod process;
 pub(crate) mod process_containment;
+mod projection;
 mod qualification;
 mod recovery;
 mod redaction;
@@ -50,6 +51,8 @@ pub use process::{
     EnvironmentName, ProcessExecutable, ProcessExit, ProcessLimits, ProcessOutput, ProcessRequest,
     ProcessTransport, TokioProcessTransport,
 };
+pub use projection::{ProjectionComponent, ProjectionComponentKind, ProjectionComponents};
+pub use projection::{RequestProjection, efficiency_diagnostics_enabled};
 pub use qualification::{
     ProviderAvailability, ProviderCanaryError, ProviderCandidate, ProviderQualification,
     ProviderRequirement, ProviderRoute, select_qualified_provider, verify_live_provider,

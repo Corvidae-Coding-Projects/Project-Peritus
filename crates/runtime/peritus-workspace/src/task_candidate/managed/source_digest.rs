@@ -13,9 +13,16 @@ impl ManagedBaseline {
     /// Rejects unreadable or unsafe source state.
     pub fn source_digest(root: &Path) -> Result<Sha256Digest, ProductRunnerError> {
         let snapshot = Self::capture(root, false)?;
+        snapshot.captured_source_digest(root)
+    }
+
+    pub(super) fn captured_source_digest(
+        &self,
+        root: &Path,
+    ) -> Result<Sha256Digest, ProductRunnerError> {
         let mut hasher = Sha256::new();
         hasher.update(b"peritus-source-v1\0");
-        snapshot.hash_source(root, &mut hasher)?;
+        self.hash_source(root, &mut hasher)?;
         Ok(Sha256Digest::new(hasher.finalize().into()))
     }
 

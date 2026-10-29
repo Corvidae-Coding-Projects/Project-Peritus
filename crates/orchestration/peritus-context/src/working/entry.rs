@@ -116,6 +116,8 @@ pub struct WorkingEntry {
     pub(super) content: ContextContent,
     pub(super) links: WorkingLinks,
     pub(super) validity: WorkingValidity,
+    pub(super) host_binding: Option<super::WorkingHostBinding>,
+    pub(super) host_declared_status: Option<WorkingEntryStatus>,
     pub(super) supersedes: Option<ContextNodeId>,
     pub(super) stale_through: u64,
 }
@@ -168,6 +170,8 @@ impl WorkingEntry {
             content,
             links,
             validity,
+            host_binding: None,
+            host_declared_status: None,
             status: WorkingEntryStatus::Open,
             supersedes: None,
             stale_through: 0,
@@ -227,6 +231,24 @@ impl WorkingEntry {
     pub const fn validity(&self) -> &WorkingValidity {
         &self.validity
     }
+    /// Host-recorded source closure, separate from model-proposed provenance links.
+    #[must_use]
+    pub const fn host_binding(&self) -> Option<super::WorkingHostBinding> {
+        self.host_binding
+    }
+    /// Original investigation status, separate from effective host freshness.
+    /// Legacy stale/superseded entries may have no recoverable declared status.
+    #[must_use]
+    pub const fn declared_status(&self) -> Option<WorkingEntryStatus> {
+        if self.host_binding.is_some() {
+            self.host_declared_status
+        } else {
+            match self.status {
+                WorkingEntryStatus::Stale | WorkingEntryStatus::Superseded => None,
+                status => Some(status),
+            }
+        }
+    }
     #[doc = " Earlier record replaced by this one."]
     #[must_use]
     pub const fn supersedes(&self) -> Option<ContextNodeId> {
@@ -252,6 +274,8 @@ impl Clone for WorkingEntry {
             content: self.content.clone(),
             links: self.links.clone(),
             validity: self.validity.clone(),
+            host_binding: self.host_binding,
+            host_declared_status: self.host_declared_status,
             supersedes: self.supersedes,
             stale_through: self.stale_through,
         }

@@ -19,6 +19,14 @@ pub(super) struct LiveConversation {
     pub(super) run_id: RunId,
 }
 impl ConversationView for LiveConversation {
+    fn permission_revision(&self) -> Result<Option<u64>, String> {
+        let start = self.workbench_start().map_err(|error| error.to_string())?;
+        let workspace = peritus_types::WorkspaceId::new(*start.workspace_bytes())
+            .map_err(|_| "invalid run workspace permission binding".to_owned())?;
+        self.service
+            .with_controls(false, |store| Ok(Some(store.permission_policy(workspace)?.revision())))
+            .map_err(|error| error.to_string())
+    }
     fn requests_ready_design(&self) -> bool {
         let Ok(records) = self.service.inner.records.read() else { return false };
         let Some(run) = records.get(&self.run_id) else { return false };
@@ -365,6 +373,21 @@ impl DeveloperInteraction for LiveConversation {
             Ok(())
         })?;
         Ok(control_flow(admission))
+    }
+
+    fn tool_control(
+        &self,
+        input_revision: u64,
+    ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
+        let start = self.workbench_start()?;
+        self.service
+            .with_controls(false, |store| {
+                if store.capture_execution(&start)?.inputs().generation() != input_revision {
+                    return Ok(DeveloperControlFlow::Yield);
+                }
+                store.goal_tool_control(&start).map(control_flow)
+            })
+            .map_err(|error| port_error("observe current tool control", error.into()))
     }
 
     fn admit_tool(

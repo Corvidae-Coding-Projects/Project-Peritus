@@ -42,7 +42,9 @@ impl TurnRejection {
                 "content must be a string or report object; an empty string needs tool calls"
             }
             Self::Tools => "tool_calls must obey the declared names, selection, and maximum count",
-            Self::Arguments => "each call must contain exactly name and object-valued arguments",
+            Self::Arguments => {
+                "tool arguments did not match the declared call shape or required field types"
+            }
         }
     }
 

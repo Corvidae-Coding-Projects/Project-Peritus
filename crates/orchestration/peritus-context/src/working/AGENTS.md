@@ -16,6 +16,7 @@ Task-local, non-authoritative working state and deterministic reducers.
 | [entry.rs](entry.rs) | Source-backed investigation records with no evidence or instruction authority. |
 | [error.rs](error.rs) | Redaction-safe working-state validation failures. |
 | [event.rs](event.rs) | Ordered, replayable inputs to the deterministic working-state reducer. |
+| [host.rs](host.rs) | Explicit host dependency invalidation and source-prefix/request bindings; model updates cannot supply these operations. |
 | [evidence.rs](evidence.rs) | Stable locators for exact locally archived observations. |
 | [invalidation.rs](invalidation.rs) | Exact bounded invalidation reducer. |
 | [invalidation_environment.rs](invalidation_environment.rs) | Extensional proof bridge for fixed-point invalidation environments. |

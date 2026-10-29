@@ -254,7 +254,7 @@ impl DeveloperLoop {
                     )?;
                     continue;
                 }
-                if let Some(blocker) = tools.completion_blocker() {
+                if let Some(blocker) = tools.response_blocker(&final_text) {
                     context.append(
                         &mut messages,
                         Message::new(Role::Assistant, assistant, protocol_limits)?,
@@ -349,7 +349,11 @@ impl DeveloperLoop {
                             arguments: &call.arguments().to_wire_string(),
                         })?;
                     }
-                    let observation = tools.execute(&call)?;
+                    let executed = tools.execute(&call);
+                    for _ in 0..tools.take_host_tool_calls() {
+                        trace.account(DeveloperAccountingEvent::ToolCall)?;
+                    }
+                    let observation = executed?;
                     trace.account(DeveloperAccountingEvent::ToolCall)?;
                     if let Some(port) = interaction {
                         port.observe(DeveloperActivity::ToolFinished {

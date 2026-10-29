@@ -152,6 +152,18 @@ impl ModelSession {
         self.fingerprint
     }
 
+    /// Borrows optional measurements of the actual adapter projection, before vendor framing.
+    #[must_use]
+    pub fn projection(&self) -> Option<&peritus_provider_core::RequestProjection> {
+        self.stream.projection()
+    }
+
+    /// Borrows all measured adapter renderings, including any adapter-owned corrections.
+    #[must_use]
+    pub fn projections(&self) -> &[peritus_provider_core::RequestProjection] {
+        self.stream.projections()
+    }
+
     /// Pulls at most one normalized event and retains it for durable recording.
     ///
     /// # Errors

@@ -17,7 +17,7 @@ Implementation pieces for `managed.rs`: Task-owned preimages, independent of HEA
 | [recovery.rs](recovery.rs) | Recoverable removal of repositories that did not exist at task admission. |
 | [restore.rs](restore.rs) | Restore task preimages without changing unrelated staged or unstaged files. |
 | [retention.rs](retention.rs) | Independently retained nested Git history and metadata in the enclosing workspace. |
-| [source_digest.rs](source_digest.rs) | Content identity for retrying a commit that only changed Git history. |
+| [source_digest.rs](source_digest.rs) | Content identity for retrying a commit that only changed Git history; supports deriving this identity from the same full capture as the repository fingerprint. |
 
 ## Child areas
 

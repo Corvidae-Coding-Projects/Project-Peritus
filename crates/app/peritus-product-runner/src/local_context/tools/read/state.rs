@@ -27,14 +27,7 @@ pub(super) fn state_page(
     }
     let mut response = state_response(memory);
     for (index, entry) in entries.iter().enumerate().skip(start.index) {
-        let readable = entry
-            .links()
-            .supports()
-            .iter()
-            .chain(entry.links().contradicts())
-            .map(|id| super::super::super::source_policy::allowed(memory, id.get()))
-            .collect::<Result<Vec<_>, _>>()?;
-        if readable.iter().any(|allowed| !allowed) {
+        if !super::super::super::source_policy::entry_allowed(memory, entry)? {
             continue;
         }
         let item = entry_view(memory, entry);

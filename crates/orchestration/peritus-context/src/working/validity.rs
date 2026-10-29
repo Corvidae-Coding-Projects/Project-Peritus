@@ -81,6 +81,36 @@ pub struct WorkingValidity {
     requires_recheck: bool,
 }
 impl WorkingValidity {
+    /// Conjoins host constraints; conflicting or unknown bindings require a fresh check.
+    pub(super) fn with_host(
+        &self,
+        host: &Self,
+        limits: WorkingLimits,
+    ) -> Result<Self, WorkingError> {
+        if self.requires_recheck || host.requires_recheck {
+            return Ok(Self::uncertain());
+        }
+        let conversation_revision = match (self.conversation_revision, host.conversation_revision) {
+            (Some(a), Some(b)) if a != b => return Ok(Self::uncertain()),
+            (a, b) => a.or(b),
+        };
+        let candidate = match (self.candidate, host.candidate) {
+            (Some(a), Some(b)) if a != b => return Ok(Self::uncertain()),
+            (a, b) => a.or(b),
+        };
+        let mut files = self.files.clone();
+        for file in &host.files {
+            if let Some(previous) = files.iter().find(|previous| previous.key() == file.key()) {
+                if previous != file {
+                    return Ok(Self::uncertain());
+                }
+            } else {
+                files.push(*file);
+            }
+        }
+        files.sort_by_key(|file| file.key());
+        Self::new(conversation_revision, candidate, files, limits)
+    }
     #[doc = " Binds a conclusion to exact known dependencies. All supplied constraints must hold."]
     #[doc = ""]
     #[doc = " Empty constraints explicitly mean task-local lifetime. Use `uncertain` when dependencies"]

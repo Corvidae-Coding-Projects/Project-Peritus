@@ -25,6 +25,9 @@ pub fn inspection(name: &str) -> bool {
             | "skill_read"
             | "skill_list"
             | "context_read"
+            | "context_sources"
+            | "inspection_plan"
+            | "inspection_result_read"
             | "command_output"
             | "web_search"
             | "web_open"
@@ -175,7 +178,7 @@ impl Activity {
         if output.is_error || reused_read || self.visible.contains_key(&key) {
             self.feedback = Some(if output.is_error {
                 format!(
-                    "The {name} call repeats the same rejected outcome. Change the invalid arguments, satisfy the named permission/precondition, or continue another authorized step. Re-reading unrelated source cannot repair this rejection. No effect was established by the rejection."
+                    "The {name} call repeats the same rejected outcome. Keep the current user task and unfinished plan active. Change the invalid arguments, satisfy the named permission/precondition, or take another authorized step toward that same task. Re-reading unrelated source or resuming an older task cannot repair this rejection. No effect was established by the rejection; invalid arguments do not establish that the target is unavailable."
                 )
             } else {
                 format!(

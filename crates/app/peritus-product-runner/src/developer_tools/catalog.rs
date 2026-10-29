@@ -86,7 +86,7 @@ pub fn definitions_for_attachments(
         ),
         (
             "command_start",
-            "Start a structured command through the same C4/C2 ownership as run_command and return a stable handle immediately. Use interactive=true for programs that need terminal input; otherwise use false for a background pipe process. Follow with command_poll, command_stdin, command_resize, command_signal, command_cancel, or command_recover. The same grounding, resource, timeout, and non-destructive-command rules as run_command apply.",
+            "Start a structured command through the same C4/C2 ownership as run_command and return a stable handle immediately. Use interactive=true for programs that need terminal input; otherwise use false for a background pipe process. Follow with command_wait, command_poll, command_stdin, command_resize, command_signal, command_cancel, or command_recover. The same grounding, resource, timeout, and non-destructive-command rules as run_command apply.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"columns":{"default":80,"maximum":65535,"minimum":1,"type":"integer"},"cwd":{"type":"string"},"interactive":{"default":true,"type":"boolean"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"rows":{"default":24,"maximum":65535,"minimum":1,"type":"integer"},"timeout_seconds":{"default":120,"maximum":18446744073709551,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
         ),
         (
@@ -98,6 +98,11 @@ pub fn definitions_for_attachments(
             "command_poll",
             "Poll a command_start handle. Returns bounded progress while running or the stable terminal result with captured output.",
             COMMAND_HANDLE_SCHEMA,
+        ),
+        (
+            "command_wait",
+            "Wait on an existing command_start handle without starting or retrying a process. Default until=terminal avoids model calls for unchanged polls. For interactive programs choose output_or_terminal with stream and after_bytes equal to the last observed original byte count; new output returns an exact first page, continued through command_output. Live steering, pause, cancellation, permission revocation, and optional max_wait_ms end only the wait; the original command remains owned and must be reconciled or explicitly controlled. A wait ending never authorizes redispatch. Omit max_wait_ms to wait until a relevant change. Existing command_stdin, command_cancel and command_recover remain available.",
+            r#"{"type":"object","additionalProperties":false,"properties":{"handle":{"type":"string"},"until":{"type":"string","enum":["terminal","output_or_terminal"],"default":"terminal"},"stream":{"type":"string","enum":["stdout","stderr","terminal"],"default":"stdout"},"after_bytes":{"type":"integer","minimum":0,"default":0},"max_wait_ms":{"type":"integer","minimum":1,"maximum":60000}},"required":["handle"]}"#,
         ),
         (
             "command_stdin",

@@ -263,10 +263,11 @@ impl WorkspaceDeveloperTools {
             "workspace_patch" | "workspace_remove" => result.get("error").is_none(),
             _ => false,
         };
-        let completed_command = matches!(name, "run_command" | "command_poll" | "command_recover")
-            && result.get("success").and_then(Value::as_bool) == Some(true)
-            && (name == "run_command"
-                || result.get("state").and_then(Value::as_str) == Some("completed"));
+        let completed_command =
+            matches!(name, "run_command" | "command_poll" | "command_wait" | "command_recover")
+                && result.get("success").and_then(Value::as_bool) == Some(true)
+                && (name == "run_command"
+                    || result.get("state").and_then(Value::as_str) == Some("completed"));
         let mutations = if completed_direct_mutation {
             std::mem::take(&mut self.prepared_mutations)
         } else if completed_command {
@@ -318,7 +319,9 @@ impl WorkspaceDeveloperTools {
                     Some(ToolCheckpointBoundary::Verification)
                 }
             }
-            "run_command" | "command_poll" | "command_recover" if completed_command => {
+            "run_command" | "command_poll" | "command_wait" | "command_recover"
+                if completed_command =>
+            {
                 match string(arguments, "purpose")
                     .or_else(|| result.get("purpose").and_then(Value::as_str))
                 {

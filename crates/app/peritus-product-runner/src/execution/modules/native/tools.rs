@@ -74,6 +74,9 @@ impl<'a> NativeTools<'a> {
     }
 }
 impl DeveloperToolExecutor for NativeTools<'_> {
+    fn take_host_tool_calls(&mut self) -> u32 {
+        self.workspace.take_host_tool_calls()
+    }
     fn yields_to_host(&self) -> bool {
         self.completed
     }

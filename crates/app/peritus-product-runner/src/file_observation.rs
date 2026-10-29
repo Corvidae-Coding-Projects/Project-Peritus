@@ -23,6 +23,18 @@ pub struct ContentObservation {
 #[derive(Clone, Eq, PartialEq)]
 pub struct Fingerprint(Vec<u64>);
 
+impl Fingerprint {
+    /// Versioned identity of the existing platform change token, not proof of a candidate.
+    pub(crate) fn binding(&self) -> [u8; 32] {
+        let mut digest = Sha256::new();
+        digest.update(b"peritus-file-observation-token-v1\0");
+        for field in &self.0 {
+            digest.update(field.to_be_bytes());
+        }
+        digest.finalize().into()
+    }
+}
+
 struct Cached {
     fingerprint: Fingerprint,
     content: Arc<ContentObservation>,

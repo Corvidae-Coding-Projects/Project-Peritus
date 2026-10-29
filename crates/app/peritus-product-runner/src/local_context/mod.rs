@@ -5,6 +5,7 @@ mod assembly;
 mod checkpoint_validation;
 mod driver;
 mod memory;
+mod operation_plan;
 mod pages;
 mod port;
 pub mod read_reuse;

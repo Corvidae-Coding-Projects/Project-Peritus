@@ -11,15 +11,63 @@ pub(super) struct Descriptor {
     links: Vec<u64>,
 }
 
+pub(super) fn entry_allowed(
+    memory: &LocalMemory,
+    entry: &peritus_context::working::WorkingEntry,
+) -> Result<bool, DeveloperLoopError> {
+    let mut pending = entry
+        .links()
+        .supports()
+        .iter()
+        .chain(entry.links().contradicts())
+        .map(|id| id.get())
+        .collect::<Vec<_>>();
+    if let Some(binding) = entry.host_binding() {
+        pending.extend(
+            memory
+                .sources
+                .iter()
+                .take(usize::try_from(binding.through_observation()).unwrap_or(usize::MAX))
+                .map(|source| source.sequence),
+        );
+    }
+    allowed_sources(memory, pending)
+}
+
 pub(super) fn allowed(memory: &LocalMemory, id: u64) -> Result<bool, DeveloperLoopError> {
-    let mut pending = vec![id];
+    allowed_sources(memory, vec![id])
+}
+
+fn allowed_sources(
+    memory: &LocalMemory,
+    mut pending: Vec<u64>,
+) -> Result<bool, DeveloperLoopError> {
     let mut seen = BTreeSet::new();
+    let mut expanded_prefix = 0;
     while let Some(id) = pending.pop() {
         if !seen.insert(id) {
             continue;
         }
         let source = memory.archived(id)?;
-        if !matches!(source.kind, ArchiveKind::ToolOutput | ArchiveKind::ToolMessage) {
+        if source.kind == ArchiveKind::Assistant {
+            // Model prose and proposed arguments can quote any earlier supplied input.
+            // Expand each prefix at most once; source roles do not certify independence.
+            let through = source.sequence.saturating_sub(1);
+            if through > expanded_prefix {
+                pending.extend(
+                    memory
+                        .source_prefix_after(expanded_prefix)
+                        .take_while(|source| source.sequence <= through)
+                        .map(|source| source.sequence),
+                );
+                expanded_prefix = through;
+            }
+            continue;
+        }
+        if !matches!(
+            source.kind,
+            ArchiveKind::ToolOutput | ArchiveKind::ToolMessage | ArchiveKind::HostObservation
+        ) {
             continue;
         }
         let cached = memory.source_policy.borrow().get(&id).cloned();
@@ -28,7 +76,9 @@ pub(super) fn allowed(memory: &LocalMemory, id: u64) -> Result<bool, DeveloperLo
         } else {
             let mut descriptor = Descriptor::default();
             let bytes = memory.artifact(id)?;
-            if source.kind == ArchiveKind::ToolMessage {
+            if source.kind == ArchiveKind::HostObservation {
+                descriptor = plan_descriptor(memory, id, &bytes)?;
+            } else if source.kind == ArchiveKind::ToolMessage {
                 for message in decode_messages(&bytes, ProtocolLimits::PRODUCTION)? {
                     for block in message.content() {
                         if let ContentBlock::ToolResult(result) = block {
@@ -68,6 +118,51 @@ pub(super) fn allowed(memory: &LocalMemory, id: u64) -> Result<bool, DeveloperLo
         pending.extend(descriptor.links);
     }
     Ok(true)
+}
+
+fn plan_descriptor(
+    memory: &LocalMemory,
+    id: u64,
+    bytes: &[u8],
+) -> Result<Descriptor, DeveloperLoopError> {
+    use super::operation_plan::{PlanRecord, decode_message, load_record};
+    let mut descriptor = Descriptor::default();
+    if decode_message(bytes)?.is_none() {
+        return Ok(descriptor);
+    }
+    match load_record(memory, id)? {
+        PlanRecord::Proposal { .. } => {}
+        PlanRecord::Continuation { proposal, steps, next } => {
+            if steps.len() != next as usize || steps.len() > 64 {
+                return Err(super::error("invalid plan continuation dependencies"));
+            }
+            descriptor.links.push(proposal);
+            descriptor.links.extend(steps);
+        }
+        PlanRecord::Step { proposal, index, arguments, output, dependencies, .. } => {
+            if proposal >= id {
+                return Err(super::error("plan proposal is not an earlier source"));
+            }
+            let PlanRecord::Proposal { nodes, .. } = load_record(memory, proposal)? else {
+                return Err(super::error("plan step has no original proposal"));
+            };
+            let node = nodes
+                .get(index as usize)
+                .ok_or_else(|| super::error("plan step ordinal unavailable"))?;
+            if let Some(path) = arguments["path"].as_str() {
+                descriptor.paths.push(path.to_owned());
+            }
+            let value: Value = serde_json::from_slice(&memory.store.read(output)?)
+                .map_err(|_| super::error("invalid exact plan output"))?;
+            collect(memory, id, &value, Some(node.tool.name()), &mut descriptor)?;
+            descriptor.links.push(proposal);
+            descriptor.links.extend(dependencies);
+        }
+    }
+    if descriptor.links.iter().any(|source| *source >= id) {
+        return Err(super::error("plan receipt dependency is not backward scoped"));
+    }
+    Ok(descriptor)
 }
 
 fn collect(

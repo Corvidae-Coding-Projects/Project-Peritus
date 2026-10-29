@@ -5,6 +5,21 @@ use std::sync::Arc;
 
 pub(super) const PAGE_RECORDS: usize = 512;
 
+/// An opaque identity retaining one immutable observation page for projection reuse.
+/// Identity conveys neither artifact availability nor permission to read its sources.
+#[derive(Clone, Debug)]
+pub struct WorkingObservationPage {
+    page: Arc<Vec<ObservationSource>>,
+}
+
+impl WorkingObservationPage {
+    /// Whether both identities retain the very same immutable source page.
+    #[must_use]
+    pub fn same_page(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.page, &other.page)
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct ObservationPrefix {
     pages: Vec<Arc<Vec<ObservationSource>>>,
@@ -18,6 +33,10 @@ impl ObservationPrefix {
 
     pub(super) fn get(&self, index: usize) -> Option<&ObservationSource> {
         self.pages.get(index / PAGE_RECORDS)?.get(index % PAGE_RECORDS)
+    }
+
+    pub(super) fn page_identity(&self, page: usize) -> Option<WorkingObservationPage> {
+        self.pages.get(page).map(|page| WorkingObservationPage { page: Arc::clone(page) })
     }
 
     pub(super) fn push(&mut self, source: ObservationSource) -> Result<(), WorkingError> {

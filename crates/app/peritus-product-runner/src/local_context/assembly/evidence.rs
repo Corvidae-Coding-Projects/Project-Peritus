@@ -20,11 +20,12 @@ pub(super) fn append(
     let candidates = candidate_ids(memory)?;
     let mut bytes_left = memory.config.max_read_bytes;
     let mut seen_pages = seen_pages(messages);
+    let mut selected_ids = selected.iter().copied().collect::<std::collections::BTreeSet<_>>();
     for id in candidates {
         if bytes_left < 256 {
             break;
         }
-        if selected.contains(&id) {
+        if selected_ids.contains(&id) {
             continue;
         }
         let source = memory.archived(id)?;
@@ -50,17 +51,7 @@ pub(super) fn append(
             continue;
         }
         let (text, label) = if source.kind == ArchiveKind::Assistant {
-            let messages = decode_messages(&bytes, ProtocolLimits::PRODUCTION)?;
-            let text = messages
-                .iter()
-                .filter(|message| message.role() == Role::Assistant)
-                .flat_map(Message::content)
-                .filter_map(|block| match block {
-                    ContentBlock::Text(text) => Some(text.expose_for_wire()),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
+            let text = assistant_text(&bytes)?;
             if text.trim().is_empty() {
                 continue;
             }
@@ -110,9 +101,23 @@ pub(super) fn append(
         let Some((added, message)) = fitted else { continue };
         messages.push(message);
         selected.push(id);
+        selected_ids.insert(id);
         bytes_left = bytes_left.saturating_sub(added);
     }
     Ok(())
+}
+
+fn assistant_text(bytes: &[u8]) -> Result<String, DeveloperLoopError> {
+    Ok(decode_messages(bytes, ProtocolLimits::PRODUCTION)?
+        .iter()
+        .filter(|message| message.role() == Role::Assistant)
+        .flat_map(Message::content)
+        .filter_map(|block| match block {
+            ContentBlock::Text(text) => Some(text.expose_for_wire()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n"))
 }
 
 fn prepare(memory: &mut LocalMemory, messages: &[Message]) -> Result<bool, DeveloperLoopError> {
@@ -168,18 +173,26 @@ fn candidate_ids(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
             })
             .map(|source| source.sequence),
     );
-    candidates.sort_unstable_by_key(|id| {
+    if memory.indexed_sources {
+        candidates.sort_unstable();
+        candidates.dedup();
+    }
+    let key = |id: &u64| {
+        memory.rank_key();
         let target = memory
-            .sources
-            .iter()
-            .find(|source| source.sequence == *id)
+            .ranking_source(*id)
             .and_then(|source| source.call.as_ref())
             .and_then(|call| memory.inspection_targets.get(&call.id));
         let focus = target.is_some_and(|path| memory.task_contract.contains(path));
         let skill = target.is_some_and(|path| path.starts_with("skill:"));
         (std::cmp::Reverse(focus), std::cmp::Reverse(skill), std::cmp::Reverse(*id))
-    });
-    candidates.dedup();
+    };
+    if memory.indexed_sources {
+        candidates.sort_by_cached_key(key);
+    } else {
+        candidates.sort_unstable_by_key(key);
+        candidates.dedup();
+    }
     Ok(candidates)
 }
 
@@ -251,12 +264,8 @@ pub(super) fn read_is_current(memory: &LocalMemory, value: &serde_json::Value) -
 
 fn index_inspections(memory: &mut LocalMemory) -> Result<(), DeveloperLoopError> {
     let sources = memory
-        .sources
-        .iter()
-        .filter(|source| {
-            source.kind == ArchiveKind::Assistant
-                && source.sequence > memory.inspection_indexed_through
-        })
+        .sources_after(memory.inspection_indexed_through)
+        .filter(|source| source.kind == ArchiveKind::Assistant)
         .map(|source| source.sequence)
         .collect::<Vec<_>>();
     for id in sources {
@@ -287,5 +296,6 @@ fn index_inspections(memory: &mut LocalMemory) -> Result<(), DeveloperLoopError>
         }
         memory.inspection_indexed_through = id;
     }
+    memory.inspection_indexed_through = memory.sources.len() as u64;
     Ok(())
 }

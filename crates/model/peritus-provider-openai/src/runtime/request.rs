@@ -44,6 +44,7 @@ pub struct RuntimeRequest {
     pub allowed_tools: std::collections::BTreeSet<String>,
     pub max_calls: usize,
     pub min_calls: usize,
+    pub projection: Option<peritus_provider_core::RequestProjection>,
     images: Vec<RuntimeImage>,
     effort: &'static str,
     cyber_access_program: Option<&'static str>,
@@ -93,16 +94,47 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
         .map_err(|_| invalid("Codex runtime transcript serialization failed"))?;
     prompt.extend_from_slice(&payload);
     let contract = schema::result_contract(request)?;
+    let projection = peritus_provider_core::efficiency_diagnostics_enabled().then(|| {
+        let measured = peritus_provider_core::RequestProjection::measure(
+            "codex-v1-output-schema-prompt",
+            &[&contract.bytes, &prompt],
+        );
+        components(request, &payload, &contract.bytes)
+            .map_or_else(|| measured.clone(), |parts| measured.clone().with_components(&parts))
+    });
     Ok(RuntimeRequest {
         prompt,
         schema: contract.bytes,
         allowed_tools: contract.allowed_tools,
         max_calls: contract.max_calls,
         min_calls: contract.min_calls,
+        projection,
         images,
         effort,
         cyber_access_program,
     })
+}
+
+fn components(
+    request: &ModelRequest,
+    payload: &[u8],
+    schema: &[u8],
+) -> Option<peritus_provider_core::ProjectionComponents> {
+    use peritus_provider_core::{ProjectionComponentKind, ProjectionComponents};
+    use serde_json::value::RawValue;
+    let fields: std::collections::BTreeMap<&str, &RawValue> =
+        serde_json::from_slice(payload).ok()?;
+    let messages: Vec<&RawValue> = serde_json::from_str(fields.get("messages")?.get()).ok()?;
+    if messages.len() != request.messages().len() {
+        return None;
+    }
+    let mut result = ProjectionComponents::default();
+    result.add(ProjectionComponentKind::Schemas, schema);
+    result.add(ProjectionComponentKind::Schemas, fields.get("host_tools")?.get().as_bytes());
+    for (original, encoded) in request.messages().iter().zip(messages) {
+        result.add_json_message(original, encoded.get());
+    }
+    Some(result)
 }
 
 fn cyber_access_program(request: &ModelRequest) -> Result<Option<&'static str>, ProviderCoreError> {

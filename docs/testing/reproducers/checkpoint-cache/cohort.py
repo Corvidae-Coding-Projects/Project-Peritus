@@ -1,7 +1,8 @@
 """Select Cargo's actual linked dependency cohort, rather than newest feature variant."""
 import json
 from pathlib import Path
-def select(deps,required):
+def select(deps,required,anchor=None):
+    anchor=anchor or ('peritus_app_client' if 'peritus_app_client' in required else 'peritus_daemon')
     fingerprint=deps.parent/'.fingerprint';index={};roots=[]
     for p in fingerprint.glob('*/lib-*.json'):
         h=p.with_suffix('')
@@ -10,8 +11,8 @@ def select(deps,required):
         name=p.stem.removeprefix('lib-');suffix=p.parent.name.rsplit('-',1)[1];rlib=deps/f'lib{name}-{suffix}.rlib'
         if not rlib.exists():continue
         index[(name,stamp)]=(data,rlib)
-        if name==('peritus_app_client' if 'peritus_app_client' in required else 'peritus_daemon'):roots.append((p.stat().st_mtime,data,rlib))
-    assert roots,'anchor fingerprint required';_,root,root_rlib=max(roots);selected={('peritus_app_client' if 'peritus_app_client' in required else 'peritus_daemon'):root_rlib};pending=[root]
+        if name==anchor:roots.append((p.stat().st_mtime,data,rlib))
+    assert roots,'anchor fingerprint required';_,root,root_rlib=max(roots);selected={anchor:root_rlib};pending=[root]
     while pending:
         item=pending.pop()
         for _,name,_,stamp in item['deps']:

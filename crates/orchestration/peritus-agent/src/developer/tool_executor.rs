@@ -6,6 +6,12 @@ use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Drains completed host child calls, separately from provider-proposed parent calls.
+    /// Wrappers must forward this counter. It records work, never grants authority or success.
+    fn take_host_tool_calls(&mut self) -> u32 {
+        0
+    }
+
     /// Supplies host-owned conditional guidance before context assembly and budget admission.
     /// This replaces the current policy each turn; it never accumulates in optional history.
     fn system_guidance(&mut self) -> Option<String> {
@@ -86,6 +92,14 @@ pub trait DeveloperToolExecutor: Send {
     /// without a completion precondition use the default ready state.
     fn completion_blocker(&self) -> Option<String> {
         None
+    }
+
+    /// Checks a proposed final reply against host-owned execution receipts.
+    ///
+    /// A correction stays in this invocation and does not grant tool authority. Existing
+    /// executors keep their completion precondition unless they need to inspect the reply itself.
+    fn response_blocker(&self, _reply: &str) -> Option<String> {
+        self.completion_blocker()
     }
 
     /// Names the one declared tool that must run before other work can make progress.

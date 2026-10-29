@@ -4,6 +4,7 @@ mod entry_view;
 pub(super) mod read;
 mod schema;
 mod secret_text;
+mod sources;
 pub(super) mod update;
 
 use super::{LocalContextHandle, error, memory::LocalMemory};
@@ -17,6 +18,7 @@ use peritus_model_protocol::{
 use serde_json::Value;
 
 pub(super) use entry_view::entry_view;
+pub(in crate::local_context) use schema::definition;
 pub use schema::definitions;
 pub(in crate::local_context) use schema::definitions_with_config;
 
@@ -24,17 +26,29 @@ pub(in crate::local_context) use schema::definitions_with_config;
 pub struct MemoryTools<'a> {
     base: &'a mut dyn DeveloperToolExecutor,
     memory: LocalContextHandle,
+    role: Option<peritus_agent::DeveloperModelRole>,
+    host_calls: u32,
 }
 
 impl<'a> MemoryTools<'a> {
     /// Wraps host tools with scoped durable evidence retrieval and read reuse.
     /// The underlying executor retains all permissions, freshness and grounding checks.
     pub const fn new(base: &'a mut dyn DeveloperToolExecutor, memory: LocalContextHandle) -> Self {
-        Self { base, memory }
+        Self { base, memory, role: None, host_calls: 0 }
+    }
+
+    /// Supplies the actual provider role for per-child live admission; context roles may differ.
+    #[must_use]
+    pub const fn with_model_role(mut self, role: peritus_agent::DeveloperModelRole) -> Self {
+        self.role = Some(role);
+        self
     }
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn take_host_tool_calls(&mut self) -> u32 {
+        std::mem::take(&mut self.host_calls).saturating_add(self.base.take_host_tool_calls())
+    }
     fn system_guidance(&mut self) -> Option<String> {
         self.base.system_guidance()
     }
@@ -58,7 +72,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         match call.name().as_str() {
-            "context_read" => DeveloperToolEffect::ReadOnly,
+            "context_read" | "context_sources" | "inspection_plan" | "inspection_result_read" => {
+                DeveloperToolEffect::ReadOnly
+            }
             "context_update" => DeveloperToolEffect::MutationCapable,
             _ => self.base.effect(call),
         }
@@ -92,6 +108,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
+    fn response_blocker(&self, reply: &str) -> Option<String> {
+        self.base.response_blocker(reply)
+    }
     fn required_tool_name(&self) -> Option<&str> {
         self.base.required_tool_name()
     }
@@ -114,7 +133,18 @@ impl MemoryTools<'_> {
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let name = call.name().as_str();
-        if !self.base.tool_calls_allowed() || !matches!(name, "context_read" | "context_update") {
+        if matches!(name, "inspection_plan" | "inspection_result_read") {
+            return super::operation_plan::execute(
+                &self.memory,
+                self.base,
+                self.role,
+                call,
+                &mut self.host_calls,
+            );
+        }
+        if !self.base.tool_calls_allowed()
+            || !matches!(name, "context_read" | "context_sources" | "context_update")
+        {
             let candidate = if self.base.tool_calls_allowed() && name == "workspace_read" {
                 super::read_reuse::plan(&mut *self.memory.lock()?, call)
             } else {
@@ -148,11 +178,12 @@ impl MemoryTools<'_> {
             return Ok(output);
         }
         let permissions = self.memory.effective_permissions();
-        let required: &[PermissionCapability] = if name == "context_read" {
-            &[PermissionCapability::Read]
-        } else {
-            &[PermissionCapability::Read, PermissionCapability::Write]
-        };
+        let required: &[PermissionCapability] =
+            if matches!(name, "context_read" | "context_sources") {
+                &[PermissionCapability::Read]
+            } else {
+                &[PermissionCapability::Read, PermissionCapability::Write]
+            };
         if let Some(capability) =
             required.iter().copied().find(|capability| !permissions.allows(*capability))
         {
@@ -179,6 +210,7 @@ impl MemoryTools<'_> {
         // No lock crosses base execution, and memory never updates its grounding/receipt state.
         let mut memory = self.memory.lock()?;
         let value = match name {
+            "context_sources" => sources::execute(&memory, call.arguments().canonical_bytes())?,
             "context_read" => match memory.activity.context_candidate(call) {
                 Some(value)
                     if read::cached_allowed(&memory, call.arguments().canonical_bytes())? =>

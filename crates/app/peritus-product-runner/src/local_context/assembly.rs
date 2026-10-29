@@ -1,6 +1,7 @@
 //! Semantic pinning, complete current exchanges, and local-only evidence selection.
 
 mod continuation;
+pub(in crate::local_context) mod decision;
 pub(super) mod evidence;
 pub(super) mod exchanges;
 pub(super) mod retrieval;
@@ -97,10 +98,15 @@ impl LocalMemory {
         self.read_reuse.clear_rendered();
         let decoded_hits = self.decoded_hits.get();
         let decoded_misses = self.decoded_misses.get();
+        let archive_lookups = self.archive_lookups.get();
+        let source_work = self.source_work.get();
         let indexed_messages = self.exchange_index.processed();
         self.refresh()?;
         self.profile = Some(profile.clone());
         self.tools = tools.to_vec();
+        // Do not upgrade read-only runs until legacy conclusions or a new model update need
+        // durable host semantics. Guard preparation itself never invokes this migration.
+        self.prepare_host_dependencies()?;
         let capacity = profile.limits().max_input_tokens();
         let (mut messages, mut selected) = self.pinned_messages()?;
         // The host adds pending state last; keep literal pinned user text out of reordering.
@@ -132,18 +138,12 @@ impl LocalMemory {
             messages.push(pending);
         }
         messages.push(self.scope_message()?);
-        let mut working = working::append(self, &mut messages, &mut selected)?;
-        let historical_position = messages.len();
-        let (uncompacted, target) =
-            self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
-        let current_end = messages.len();
-        continuation::append(self, &mut messages, &mut selected, tools, target)?;
-        evidence::append(self, &mut messages, &mut selected, tools, target)?;
-        // Earlier assistant plans are historical observations, not a new user turn after
-        // current settled tool results. Keep every optional historical view before those
-        // current exchanges, including previews chosen from previous host invocations.
-        let historical = messages.split_off(current_end);
-        messages.splice(historical_position..historical_position, historical);
+        let (mut working, uncompacted) =
+            if self.config.decision_view == crate::DecisionViewPolicy::Conservative {
+                decision::append(self, &mut messages, &mut selected, tools, profile, provider)?
+            } else {
+                self.append_history(&mut messages, &mut selected, tools, capacity)?
+            };
         cache_order(&mut messages, protected_prefix);
         if let Some(provider) = provider
             && transport::fit(self, &mut messages, tools, provider)?
@@ -155,6 +155,9 @@ impl LocalMemory {
                 .len();
         }
         let estimated = estimate_developer_request_tokens(&messages, tools);
+        if self.config.decision_view == crate::DecisionViewPolicy::Conservative {
+            decision::record_key(self, &messages, profile, tools)?;
+        }
         selected.sort_unstable();
         selected.dedup();
         let validation =
@@ -173,6 +176,10 @@ impl LocalMemory {
                 "assembly_elapsed_ms":assembly_started.elapsed().as_millis(),
                 "decoded_message_cache_hits":self.decoded_hits.get().saturating_sub(decoded_hits),
                 "decoded_message_cache_misses":self.decoded_misses.get().saturating_sub(decoded_misses),
+                "checked_source_lookups":self.archive_lookups.get().saturating_sub(archive_lookups),
+                "source_projection_indexed":self.indexed_sources,
+                "source_projection_work":self.source_work.get().since(source_work),
+                "source_projection_work_cumulative":self.source_work.get(),
                 "newly_indexed_messages":self.exchange_index.processed().saturating_sub(indexed_messages),
                 "estimated_input_tokens":estimated,"unreduced_input_tokens":uncompacted,
                 "input_tokens_saved":uncompacted.saturating_sub(estimated),
@@ -188,6 +195,24 @@ impl LocalMemory {
             policy,
         });
         Ok(messages)
+    }
+
+    fn append_history(
+        &mut self,
+        messages: &mut Vec<Message>,
+        selected: &mut Vec<u64>,
+        tools: &[ToolDefinition],
+        capacity: u64,
+    ) -> Result<(usize, u64), DeveloperLoopError> {
+        let working = working::append(self, messages, selected)?;
+        let historical_position = messages.len();
+        let (uncompacted, target) = self.append_exchanges(messages, selected, tools, capacity)?;
+        let current_end = messages.len();
+        continuation::append(self, messages, selected, tools, target)?;
+        evidence::append(self, messages, selected, tools, target)?;
+        let historical = messages.split_off(current_end);
+        messages.splice(historical_position..historical_position, historical);
+        Ok((working, uncompacted))
     }
 
     fn append_exchanges(
@@ -313,13 +338,23 @@ impl LocalMemory {
     }
 
     fn scope_message(&self) -> Result<Message, DeveloperLoopError> {
+        let plan_binding = if self.config.read_only_plans.is_enabled() {
+            format!(
+                " inspection_plan version=1 scope={} input_revision={}; each child receives current ordinary admission.",
+                super::tools::hex(self.store.scope_digest().as_bytes()),
+                super::operation_plan::input_revision(self)?
+            )
+        } else {
+            String::new()
+        };
         text_message(
             Role::Developer,
             format!(
-                "Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.{}",
+                "Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.{}{}",
                 super::tools::hex(self.store.scope_digest().as_bytes()),
                 self.model_revision,
                 format_args!("{}{}", retrieval::coverage(self), super::read_reuse::progress(self)),
+                plan_binding,
             ),
         )
     }

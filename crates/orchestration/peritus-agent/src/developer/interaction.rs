@@ -152,6 +152,22 @@ pub trait DeveloperInteraction: Send + Sync {
     /// Returns a durable-input or synchronization failure.
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError>;
 
+    /// Observes control during an already admitted tool without reserving or completing it.
+    /// Long waits must yield when input changes or execution is paused. No effect is admitted.
+    ///
+    /// # Errors
+    /// Returns a current-input or control-store failure; callers stop waiting fail closed.
+    fn tool_control(
+        &self,
+        input_revision: u64,
+    ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
+        Ok(if self.input()?.revision == input_revision {
+            DeveloperControlFlow::Continue
+        } else {
+            DeveloperControlFlow::Yield
+        })
+    }
+
     /// Atomically checks current input and durably binds it to the exact prepared request.
     /// Upgraded hosts publish the immutable input IDs/revisions and request fingerprint in
     /// the same transaction as incorporation. This method must not start provider execution.

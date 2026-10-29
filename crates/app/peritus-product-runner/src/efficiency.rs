@@ -16,6 +16,9 @@ use std::{
 };
 
 pub fn event(trace: &Path, mut value: Value) {
+    if !peritus_provider_core::efficiency_diagnostics_enabled() {
+        return;
+    }
     value["schema"] = json!(1);
     value["at_unix_ms"] = json!(now());
     let path = trace.with_extension("efficiency.jsonl");
@@ -77,8 +80,10 @@ impl<'a> MeasuredTools<'a> {
         definitions: &[ToolDefinition],
         elapsed_before: u64,
     ) -> Self {
-        let mut state: State = fs::read(trace.with_extension("efficiency-state.json"))
-            .ok()
+        let enabled = peritus_provider_core::efficiency_diagnostics_enabled();
+        let mut state: State = enabled
+            .then(|| fs::read(trace.with_extension("efficiency-state.json")))
+            .and_then(Result::ok)
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
         if state.started_unix_ms == 0 {
@@ -88,7 +93,7 @@ impl<'a> MeasuredTools<'a> {
             base,
             trace: trace.to_owned(),
             prefix: prefix.to_owned(),
-            definitions: definitions.to_vec(),
+            definitions: if enabled { definitions.to_vec() } else { Vec::new() },
             started: Instant::now(),
             state,
             elapsed_before,
@@ -99,6 +104,9 @@ impl<'a> MeasuredTools<'a> {
     }
 
     fn save(&self) {
+        if !peritus_provider_core::efficiency_diagnostics_enabled() {
+            return;
+        }
         if let Ok(bytes) = serde_json::to_vec(&self.state)
             && let Some(parent) = self.trace.parent()
             && let Ok(mut file) = tempfile::NamedTempFile::new_in(parent)
@@ -110,6 +118,9 @@ impl<'a> MeasuredTools<'a> {
 }
 
 impl DeveloperToolExecutor for MeasuredTools<'_> {
+    fn take_host_tool_calls(&mut self) -> u32 {
+        self.base.take_host_tool_calls()
+    }
     fn system_guidance(&mut self) -> Option<String> {
         self.base.system_guidance()
     }
@@ -139,6 +150,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
+    fn response_blocker(&self, reply: &str) -> Option<String> {
+        self.base.response_blocker(reply)
+    }
     fn continuation_blocker(&self) -> Option<String> {
         self.base.continuation_blocker()
     }
@@ -154,6 +168,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     }
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.base.observe_model_context(messages)?;
+        if !peritus_provider_core::efficiency_diagnostics_enabled() {
+            return Ok(());
+        }
         let policy_bytes: usize = messages
             .iter()
             .filter(|message| message.role() == Role::System)
@@ -177,7 +194,20 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
-        let output = self.base.execute(call)?;
+        if !peritus_provider_core::efficiency_diagnostics_enabled() {
+            return self.base.execute(call);
+        }
+        let started = Instant::now();
+        let result = self.base.execute(call);
+        event(
+            &self.trace,
+            json!({"event":"host-tool-work","invocation":self.prefix,
+            "tool":call.name().as_str(),"completed":result.is_ok(),
+            "is_error":result.as_ref().ok().map(|output|output.is_error),
+            "elapsed_micros":started.elapsed().as_micros(),
+            "semantics":"one top-level host execution; includes child work and waiting; do not sum again with child timings"}),
+        );
+        let output = result?;
         self.record_observation(call, &output);
         Ok(output)
     }
@@ -185,6 +215,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
 
 impl MeasuredTools<'_> {
     fn record_observation(&mut self, call: &CompletedToolCall, output: &DeveloperToolObservation) {
+        if !peritus_provider_core::efficiency_diagnostics_enabled() {
+            return;
+        }
         let name = call.name().as_str();
         let arguments: Value =
             serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or(Value::Null);

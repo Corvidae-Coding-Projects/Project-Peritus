@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 0.1.13
+
+### Changed
+
+- Reuse unchanged immutable checkpoint pages and indexed source projections while preserving exact evidence, complete dependency roots, source checks, and both durable checkpoint boundaries.
+- Deliver full OpenCode tool schemas once per request by default. Preserve all tools, argument validation, explicit legacy layout rollback, and complete cached-input accounting.
+- Add opt-in conservative decision views, sequential read-only inspection plans with exact result retrieval, and host-owned waits on existing command handles. Direct tools, independent review, and current authority remain available.
+- Add opt-in managed Linux capture sharing: two fresh matching full captures replace three source enumerations. Other platforms retain the original path.
+
+### Fixed
+
+- Invalidate derived conclusions using host-bound originating request dependencies, including undeclared, ignored, changed or unknown inputs. Preserve exact historical evidence and declared progress across reconstruction and restart.
+- End command waits after permission changes, including revoke-and-restore, without restarting or implicitly cancelling the original command. Preserve read admission under BeforeEdit pauses and block mutation at the existing reservation boundary.
+- Preserve rejected-read exchanges and task continuity, require completed handoff receipts, and correct malformed OpenCode tool arguments before host dispatch. Repeated valid-envelope mistakes still reach normal actionable host rejection.
+- Reject non-regular artifact objects during verification instead of accepting a symlink to matching content.
+
+### Compatibility and real testing
+
+- Current readers retain supported historical checkpoints. Host-bound entries require a v6 reader guard; older readers refuse unsupported data explicitly. Rollback uses current committed state and never restores an older checkpoint or redispatches a command.
+- The I0–I6 reports record actual provider/API/daemon campaigns, page integrity, publication failures, native process kills, source amendments, current controls, independent review, and accepted deliveries. Paired task input reductions and local write/capture savings are workload-specific, not universal speedup claims.
+- Decision views, plans, and shared candidate captures remain opt-in. Strict affected Clippy, workspace builds/checks, formatting, and Windows cross-compilation passed; native release packages receive their own same-tag build and startup evidence. No unit, mock, formal-verification, or repository qualification suites are part of this release workflow.
+
 ## 0.1.12
 
 ### Fixed

@@ -65,6 +65,48 @@ pub struct LocalProcessConfig {
     pub memory_bytes: u64,
 }
 
+/// Host selection of disabled or sequential read-only inspection-plan execution.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReadOnlyPlanExecution {
+    /// Keep ordinary direct tools; do not admit inspection plans.
+    #[default]
+    Disabled,
+    /// Admit bounded sequential read-only plans through ordinary child tool checks.
+    Sequential,
+}
+
+impl ReadOnlyPlanExecution {
+    /// Whether the host selected sequential inspection-plan execution.
+    #[must_use]
+    pub const fn is_enabled(self) -> bool {
+        matches!(self, Self::Sequential)
+    }
+}
+
+/// Host-selected provider view compiler; neither variant changes retained evidence or authority.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DecisionViewPolicy {
+    /// Existing complete-exchange history selection.
+    #[default]
+    History,
+    /// Exact evidence with conservative dependencies and the current protocol closure.
+    Conservative,
+}
+
+/// Same-boundary candidate capture strategy. Both variants perform complete fresh scans.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CandidateObservationPolicy {
+    /// Original repository/source/repository captures.
+    #[default]
+    Separate,
+    /// Two fresh full captures, each deriving both existing identities, on qualified Linux.
+    /// Other platforms retain separate captures even when this variant is configured.
+    Shared,
+}
+
 /// Local working-memory policy; disabled explicitly selects legacy context handling.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(default)]
@@ -99,6 +141,17 @@ pub struct LocalContextConfig {
     pub max_read_bytes: usize,
     /// Publishes a checkpoint after each completed batch in addition to each next model view.
     pub checkpoint_every_completed_batch: bool,
+    /// Reuses immutable checkpoint pages and verified existing artifacts without rewriting them.
+    /// False retains the original encoding/publication work for qualification and rollback.
+    pub reuse_checkpoint_pages: bool,
+    /// Enables versioned sequential read-only inspection plans and exact child-result reads.
+    /// Using a plan publishes a version-4 reader guard before storing any child evidence.
+    pub read_only_plans: ReadOnlyPlanExecution,
+    /// Experimental next-decision compilation; defaults to the existing history selector.
+    pub decision_view: DecisionViewPolicy,
+    /// Opt-in same-capture managed identities on Linux; other platforms use separate captures.
+    /// Separate captures remain the default on every platform.
+    pub candidate_observation: CandidateObservationPolicy,
 }
 
 impl Default for LocalContextConfig {
@@ -116,6 +169,10 @@ impl Default for LocalContextConfig {
             max_entry_bytes: 0,
             max_read_bytes: 16_384,
             checkpoint_every_completed_batch: true,
+            reuse_checkpoint_pages: true,
+            read_only_plans: ReadOnlyPlanExecution::Disabled,
+            decision_view: DecisionViewPolicy::History,
+            candidate_observation: CandidateObservationPolicy::Separate,
         }
     }
 }

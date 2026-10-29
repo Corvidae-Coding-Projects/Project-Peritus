@@ -43,6 +43,24 @@ Hosts supply verified, redacted inputs; these reducers perform no storage or pro
 The product runner integrates this engine through its local-context storage, checkpoint, recovery,
 assembly, and memory-tool adapters; those effectful adapters remain outside this pure crate.
 
+Host-owned `WorkingEvent::HostDelta` conjoins a proposal's dependencies with the originating
+request's host constraints. Unknown/changed inputs retain structurally valid entries as stale;
+ordinary model deltas keep their stricter rejection rules. `HostInvalidate` makes legacy
+unproven conclusions stale without deleting progress or exact sources. Model updates cannot
+set host bindings, stale/superseded status or revive a host-bound entry through a plain delta.
+
+Working codec versions 1–3 remain readable. Ordinary events/snapshots/pages retain version-2
+encoding. Version 3 adds event tags 4/5 for host delta/invalidation. Version 4 bound entries retain
+the source prefix/request fingerprint and original declared investigation status, separately
+from effective freshness. Older bound-entry status is inferred only when known.
+A snapshot uses version 4 only if bound entries
+exist; an entry page uses it only if that page contains a bound entry. Observation, header and
+protocol pages keep their existing bytes. Unknown versions/tags, invalid bindings and
+noncanonical mixed frames reject. The product host commits a version-6 checkpoint reader floor
+before writing a new host event, and preserves that floor when switching back to history views.
+Older product readers refuse that lineage before replaying its tail. See the
+[I4 qualification report](../../../docs/testing/execution-efficiency-i4-decision-views.md).
+
 ## Behavioral work
 
 Use the [project real-testing policy](../../../README.md#real-testing) and the actual interfaces owned by this crate. The [local map](AGENTS.md) identifies entrypoints and implementation owners.

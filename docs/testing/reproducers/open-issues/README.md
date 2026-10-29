@@ -4,6 +4,56 @@ These consumers operate actual daemon IPC, native terminal rendering and public 
 `readiness.py` uses an absent session D-Bus, inert credential references, isolated application
 directories and real `peritusd`; it never impersonates an AI service or reads user credentials.
 
+For issue #160, build the actual tool/context consumer and replay failed-read recovery:
+
+```sh
+REPLAY_ROOT="$(mktemp -d "$HOME/.cache/peritus-task-continuity.XXXXXX")"
+mkdir -p "$REPLAY_ROOT/tmp"
+export TMPDIR="$REPLAY_ROOT/tmp"
+export CARGO_TARGET_DIR="$REPLAY_ROOT/target"
+python3 docs/testing/reproducers/open-issues/build-task-continuity.py "$REPLAY_ROOT/consumer"
+python3 docs/testing/reproducers/open-issues/task-continuity.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/cases"
+python3 docs/testing/reproducers/open-issues/task-continuity.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/live-codex" --live
+```
+
+The final command uses the official Codex executable and its existing authorized account.
+For OpenCode Zen, set `PERITUS_REAL_KEY_FILE` to an authorized key file and add `--zen --live`
+with a fresh output directory. Live runs use actual inference, not a response substitute.
+The consumer seeds history using real rejected host calls, then delegates continued execution
+to the actual developer loop, memory tools, and durable context. It does not require the model
+to spontaneously make a malformed call. Every case retains its commands, exact visible views,
+and output under the selected disposable directory. Expected behavior and observed baseline/
+fixed results are in [the issue #160 record](../../task-continuity-real-2026-10-26.md).
+
+The upstream malformed-call campaign uses that same built consumer with actual OpenCode Zen
+inference. Set `PERITUS_REAL_KEY_FILE` to an authorized Zen key file, then run:
+
+```sh
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-missing"
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-null" \
+  --arguments '{"path":null}'
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-markup" --dsml
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-repeat" --fault-count 2
+python3 docs/testing/reproducers/open-issues/read-argument-repair.py \
+  "$CARGO_TARGET_DIR/debug/peritus-task-continuity-replay" "$REPLAY_ROOT/argument-valid-empty" --valid-empty
+```
+
+The driver first grounds the real host in the disposable workspace. Its wrapper temporarily
+changes **only the disposable inference instructions** to ask the actual model to emit a bad
+call. No response is synthesized: the official executable, real model, native tool denials,
+credentials, output bytes, and exit status remain real. The next request receives the original
+task and Peritus's actual correction. The oracle requires captured model output to contain the
+requested proposal and correction input to name the argument issue; otherwise the branch is
+reported unexercised. `--fault-count 0` provides the ordinary control. `--baseline` expects a
+failed host read on the pre-fix consumer. See the
+[upstream correction record](../../read-argument-repair-real-2026-10-27.md) for scope and results.
+
 Build `peritus-cli`, `peritus-daemon`, and `peritus-web` with one job, debug symbols disabled,
 and `--message-format=json`. Give `link.py` that complete Cargo log to link `readiness.rs`
 and `ui.rs` to the exact same artifact cohort. Seed the fixture with the public
@@ -49,6 +99,33 @@ The consumer creates a Make-owned modpack-data workspace, requires complete cove
 uncovered paths, proves that `make check` rather than the cheaper `check-fast` target was selected,
 reads every changed file, and executes the selected full check. It never runs a default or unknown
 Make target.
+
+Issue #159's `pipeline-handoff.rs` operates the actual ProductRunner with official provider
+inference and disposable log/lock fixtures. It uses the existing official Codex account by default;
+`--zen` selects the actual OpenCode Zen/DeepSeek transport and reads the explicitly selected
+`PERITUS_REAL_KEY_FILE`. It consumes provider usage. Build and run it outside the checkout:
+
+```sh
+python3 docs/testing/reproducers/open-issues/build-pipeline-handoff.py /absolute/new/consumer
+/absolute/new/consumer/target/debug/peritus-pipeline-handoff-replay \
+  /absolute/new/approved-case docs/testing/reproducers/open-issues/pipeline-authorized.txt
+/absolute/new/consumer/target/debug/peritus-pipeline-handoff-replay \
+  /absolute/new/readonly-case docs/testing/reproducers/open-issues/pipeline-readonly.txt
+```
+
+The approved case must enter the pipeline and produce a matching `identity-report.md`; the
+read-only case must answer without entering design or writing a report. Both must preserve the
+input files and `keep.txt`. `--plan` selects read-only Plan mode. With `--zen`, a private transparent
+vendor capture wrapper can be selected through `PERITUS_REAL_CAPTURE` and the existing capture
+driver's environment; it must relay unchanged official vendor input/output, never replace results.
+See [the campaign report](../../pipeline-handoff-real-2026-10-26.md) for the observed SQLite
+storage failure, real runtime-directory recovery, and coverage limits.
+
+`pipeline-promise.rs` is a narrower component replay which compiles the exact host reply check
+and reads one proposed public reply from stdin. A `true` result means correction is required
+before a promise can finish the conversation. It does not launch a pipeline and does not by itself
+establish successful model correction. Build it with `rustc --edition=2024` and pass the screenshot's
+promise, quotations/code, conditional offers, and informational explanations through stdin.
 
 `context-display.py` performs a real-account source read and archived-source retrieval, retaining
 an isolated fixture JSON. Pass that fixture to `read-preview.py --fixture FIXTURE.json` along

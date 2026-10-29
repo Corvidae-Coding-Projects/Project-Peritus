@@ -10,6 +10,26 @@ use peritus_codec::{CanonicalReader, CanonicalWriter};
 use peritus_role::HarnessRole;
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
+pub(super) fn write_host_binding(
+    w: &mut CanonicalWriter,
+    binding: super::super::WorkingHostBinding,
+) -> Result<(), WorkingCodecError> {
+    w.write_u64(binding.through_observation())?;
+    w.write_option_tag(binding.request().is_some())?;
+    if let Some(request) = binding.request() {
+        w.write_fixed(request.as_bytes())?;
+    }
+    Ok(())
+}
+pub(super) fn read_host_binding(
+    r: &mut CanonicalReader<'_>,
+) -> Result<super::super::WorkingHostBinding, WorkingCodecError> {
+    let through = r.read_u64()?;
+    let request =
+        if r.read_option_tag()? { Some(Sha256Digest::new(r.read_fixed()?)) } else { None };
+    Ok(super::super::WorkingHostBinding::new(through, request))
+}
+
 pub(super) fn write_binding(
     w: &mut CanonicalWriter,
     b: WorkingBinding,

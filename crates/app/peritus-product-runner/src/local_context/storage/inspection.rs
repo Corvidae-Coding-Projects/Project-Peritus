@@ -3,8 +3,9 @@
 use super::super::{
     checkpoint_validation, error,
     record::{
-        CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, LEGACY_CHECKPOINT_SCHEMA_VERSION,
-        TranscriptManifest, ViewValidation, decode,
+        CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, DEPENDENCY_CHECKPOINT_SCHEMA_VERSION,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION, LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION,
+        PLAN_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
     },
     tools::hex,
     view_binding,
@@ -37,7 +38,12 @@ pub(in crate::local_context) fn inspect(
     let manifest: CheckpointManifest = decode(row.bytes())?;
     if !matches!(
         manifest.schema_version,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION | 2 | CHECKPOINT_SCHEMA_VERSION
+        LEGACY_CHECKPOINT_SCHEMA_VERSION
+            | 2
+            | CHECKPOINT_SCHEMA_VERSION
+            | PLAN_CHECKPOINT_SCHEMA_VERSION
+            | LEGACY_DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
+            | DEPENDENCY_CHECKPOINT_SCHEMA_VERSION
     ) || manifest.scope != identity.scope.into_bytes()
         || manifest.generation != row.revision()
     {
