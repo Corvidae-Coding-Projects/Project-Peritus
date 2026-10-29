@@ -8,6 +8,8 @@ workspaces, keep independent expected values, and preserve actual failure inputs
 
 | File | Role |
 | --- | --- |
+| [context-defaults-consumer.rs](context-defaults-consumer.rs) | Public enum/config defaults and actual daemon configuration loading. |
+| [context-defaults.py](context-defaults.py) | Seven independent omitted/partial/explicit opt-out configuration cases. |
 | [cost-ledger-replay.py](cost-ledger-replay.py) | Real chat/review on/off pairs, failure/cancellation and accepted managed edit with independent canonical usage audit and content-free diagnostic checks. |
 | [indexed-projections.py](indexed-projections.py) | Same-build reference/index comparisons across large retained histories, exact views and rejections, live read restrictions, fresh-process recovery, and optional actual-provider continuation. |
 | [source-index-trace.py](source-index-trace.py) | Replays actual native C7 tool observations across index selections; rejects altered outcomes and sequence gaps on owned copies without changing committed roots. |

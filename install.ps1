@@ -1,11 +1,42 @@
 #Requires -Version 5.1
 [CmdletBinding()]
-param()
+param([switch]$Source)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'Use install.sh on Linux and macOS.' }
 if (-not [Environment]::Is64BitProcess) { throw 'Run this installer from 64-bit PowerShell.' }
+
+if ($Source) {
+    if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'xtask/Cargo.toml') -PathType Leaf)) {
+        throw 'Source installation requires the complete Peritus checkout.'
+    }
+    $savedWrapper = $env:RUSTC_WRAPPER
+    $savedWorkspaceWrapper = $env:RUSTC_WORKSPACE_WRAPPER
+    $savedBuildWrapper = $env:CARGO_BUILD_RUSTC_WRAPPER
+    $savedBuildWorkspaceWrapper = $env:CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER
+    $wrapperConfig = [IO.Path]::GetTempFileName()
+    Push-Location $PSScriptRoot
+    try {
+        # Windows PowerShell removes empty environment values, so command-line
+        # configuration also overrides wrappers selected in user Cargo files.
+        $env:RUSTC_WRAPPER = $null
+        $env:RUSTC_WORKSPACE_WRAPPER = $null
+        $env:CARGO_BUILD_RUSTC_WRAPPER = $null
+        $env:CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER = $null
+        [IO.File]::WriteAllText($wrapperConfig, "[build]`nrustc-wrapper = `"`"`nrustc-workspace-wrapper = `"`"`n")
+        & cargo --config $wrapperConfig run --locked --jobs 2 --package xtask -- product-install
+        if ($LASTEXITCODE -ne 0) { throw "Source installation failed (exit $LASTEXITCODE)." }
+    } finally {
+        Pop-Location
+        Remove-Item -LiteralPath $wrapperConfig -Force -ErrorAction SilentlyContinue
+        $env:RUSTC_WRAPPER = $savedWrapper
+        $env:RUSTC_WORKSPACE_WRAPPER = $savedWorkspaceWrapper
+        $env:CARGO_BUILD_RUSTC_WRAPPER = $savedBuildWrapper
+        $env:CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER = $savedBuildWorkspaceWrapper
+    }
+    return
+}
 
 $repository = if ($env:PERITUS_REPOSITORY) { $env:PERITUS_REPOSITORY } else { 'Corvidae-Coding-Projects/Project-Peritus' }
 $releaseBase = if ($env:PERITUS_RELEASE_BASE_URL) { $env:PERITUS_RELEASE_BASE_URL.TrimEnd('/') } else { "https://github.com/$repository/releases/download" }

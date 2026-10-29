@@ -13,14 +13,14 @@ categories = ["development-tools"]
 
 [dependencies]
 base64.workspace = true
-peritus-codec = { version = "=0.1.13", path = "../../foundation/peritus-codec" }
-peritus-artifact-store = { version = "=0.1.13", path = "../../state/peritus-artifact-store" }
-peritus-git = { version = "=0.1.13", path = "../../runtime/peritus-git" }
-peritus-policy = { version = "=0.1.13", path = "../../foundation/peritus-policy" }
-peritus-tool-protocol = { version = "=0.1.13", path = "../peritus-tool-protocol" }
-peritus-tool-router = { version = "=0.1.13", path = "../peritus-tool-router" }
-peritus-types = { version = "=0.1.13", path = "../../foundation/peritus-types" }
-peritus-workspace = { version = "=0.1.13", path = "../../runtime/peritus-workspace" }
+peritus-codec = { version = "=0.1.14", path = "../../foundation/peritus-codec" }
+peritus-artifact-store = { version = "=0.1.14", path = "../../state/peritus-artifact-store" }
+peritus-git = { version = "=0.1.14", path = "../../runtime/peritus-git" }
+peritus-policy = { version = "=0.1.14", path = "../../foundation/peritus-policy" }
+peritus-tool-protocol = { version = "=0.1.14", path = "../peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.1.14", path = "../peritus-tool-router" }
+peritus-types = { version = "=0.1.14", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.1.14", path = "../../runtime/peritus-workspace" }
 
 [package.metadata.peritus]
 owner = "C4"

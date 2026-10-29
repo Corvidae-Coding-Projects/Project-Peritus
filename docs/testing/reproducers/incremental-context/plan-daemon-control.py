@@ -66,6 +66,7 @@ def main():
     p.add_argument('--client', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--expect-before-edit-bug', action='store_true')
+    p.add_argument('--use-defaults', action='store_true', help='omit the daemon context policy so actual default admission is exercised')
     p.add_argument('--cases', nargs='+', default=['plan-steer', 'plan-deny-read', 'plan-pause', 'plan-clear',
                                                'wait-steer', 'wait-deny-process', 'wait-pause', 'wait-clear'])
     a = p.parse_args(); root = a.output.resolve(); root.mkdir(parents=True)
@@ -113,7 +114,8 @@ def main():
             config += name + '_root=' + q(str(state / (name+'s'))) + '\n'
         config += f'[approval_registry]\npayload_file={q(spec["registry"])}\ngeneration=1\n[human]\nactor_id="' + '31'*16 + '"\n'
         config += '[telemetry]\nmode="disabled"\n[tools]\nallow=["shell.exec","fs.read","fs.discover","fs.search"]\n'
-        config += '[context.local]\nread_only_plans="sequential"\ndecision_view="conservative"\n'
+        if not a.use_defaults:
+            config += '[context.local]\nread_only_plans="sequential"\ndecision_view="conservative"\n'
         config += '[[folders]]\nworkspace_id="'+'82'*16+f'"\nroot={q(str(workspace))}\nidentity={q(folder)}\nwritable=true\nprotected_paths=[]\n'
         config += '[[providers]]\nkind="codex-runtime"\n[providers.profile]\nprofile_id="'+'95'*16+'"\nrevision=1\nmodel="gpt-6.1-sol"\n'
         config += 'capabilities=["tool-calls","parallel-tool-calls","usage-detail"]\nmax_input_tokens=200000\nmax_output_tokens=16000\nmax_tools=64\nmax_parallel_tool_calls=8\nmax_inline_media_bytes=1\n'

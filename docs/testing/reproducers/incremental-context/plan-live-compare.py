@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--rounds', type=int, default=1)
     parser.add_argument('--model', default='gpt-6.1-sol')
     parser.add_argument('--opencode-key-file', type=Path)
+    parser.add_argument('--use-defaults', action='store_true', help='exercise one unconfigured run instead of explicit policy pairs')
     args = parser.parse_args()
     assert args.rounds > 0
     root = args.output.resolve()
@@ -54,7 +55,9 @@ def main():
                 lines[2] = 'INDEPENDENT-LOOKUP-825744'
                 lines[17] = expected
             files[name] = '\n'.join(lines) + '\n'
-        for selected in (['disabled', 'sequential'] if pair % 2 == 0 else ['sequential', 'disabled']):
+        selections = (['default'] if args.use_defaults else
+                      ['disabled', 'sequential'] if pair % 2 == 0 else ['sequential', 'disabled'])
+        for selected in selections:
             case = root / f'{pair:02}-{selected}'
             source = case / 'workspace/src'
             source.mkdir(parents=True)
@@ -66,6 +69,8 @@ def main():
                     'command_state': str(private / 'commands'), 'conversation_mode': 'chat',
                     'model': args.model, 'capacity': 200000, 'task': task,
                     'local_context': {'read_only_plans': selected}}
+            if args.use_defaults:
+                spec.pop('local_context')
             if args.opencode_key_file:
                 spec.update(opencode=True,key_file=str(args.opencode_key_file.resolve()))
             spec_path = case / 'spec.json'
@@ -84,7 +89,7 @@ def main():
                 assert (source / name).read_bytes() == body.encode()
             calls = observations(private / 'run.trace')
             assert not any(call['is_error'] for call in calls), (case, 'tool failure')
-            if selected == 'sequential':
+            if selected in ['sequential', 'default']:
                 assert len(calls) == 1 and calls[0]['name'] == 'inspection_plan'
                 plan = json.loads(calls[0]['output'])
                 assert plan['status'] == 'completed' and plan['completed_nodes'] == 2
@@ -92,6 +97,8 @@ def main():
             else:
                 assert [call['name'] for call in calls] == ['workspace_search', 'workspace_read']
             events = [json.loads(line) for line in (private / 'run.efficiency.jsonl').read_text().splitlines()]
+            if args.use_defaults:
+                assert any(event.get('event') == 'decision-view' for event in events), 'default decision compiler was not observed'
             accounting = [event for event in events if event.get('event') == 'provider-accounting']
             requests = [event for event in events if event.get('event') == 'provider-attempt-work']
             counters = accounting[-1]

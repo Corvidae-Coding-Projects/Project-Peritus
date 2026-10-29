@@ -15,6 +15,7 @@ p.add_argument('--provider-output', type=Path)
 p.add_argument('--config-output', type=Path)
 p.add_argument('--control-output', type=Path)
 p.add_argument('--command-output', type=Path)
+p.add_argument('--defaults-output', type=Path)
 a = p.parse_args()
 libraries = ['peritus_daemon', 'peritus_agent', 'peritus_product_runner', 'peritus_process', 'peritus_role', 'peritus_provider_core', 'peritus_provider_openai', 'peritus_provider_opencode', 'peritus_model_protocol', 'peritus_types', 'serde_json', 'tokio', 'zeroize']
 if a.candidate_output:
@@ -31,6 +32,10 @@ subprocess.run(command, check=True)
 if a.ordinary_output:
     command[command.index(str(Path(__file__).with_name('reuse-consumer.rs')))] = str(Path(__file__).resolve().parent.parent / 'checkpoint-cache/context-consumer.rs')
     command[command.index('-o') + 1] = str(a.ordinary_output)
+    subprocess.run(command, check=True)
+if a.defaults_output:
+    command[command.index('-C') + 2] = str(Path(__file__).with_name('context-defaults-consumer.rs'))
+    command[command.index('-o') + 1] = str(a.defaults_output)
     subprocess.run(command, check=True)
 if a.command_output:
     command[command.index('-C') + 2] = str(Path(__file__).with_name('command-owner-consumer.rs'))

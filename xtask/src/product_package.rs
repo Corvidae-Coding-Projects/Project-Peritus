@@ -8,7 +8,7 @@ use std::{
 use crate::XtaskError;
 
 pub fn build(root: &Path) -> Result<PathBuf, XtaskError> {
-    assemble(root, false)?;
+    assemble(root, false, false)?;
     Ok(package_path(root))
 }
 
@@ -18,12 +18,13 @@ pub fn build_from_release_artifacts(root: &Path) -> Result<PathBuf, XtaskError> 
 }
 
 pub fn install(root: &Path) -> Result<PathBuf, XtaskError> {
-    let package = build(root)?;
+    assemble(root, false, true)?;
+    let package = package_path(root);
     run_installer(&package, None, NativeAction::Install)?;
     Ok(package)
 }
 
-fn assemble(root: &Path, use_debug_artifacts: bool) -> Result<(), XtaskError> {
+fn assemble(root: &Path, use_debug_artifacts: bool, installing: bool) -> Result<(), XtaskError> {
     let mut command = Command::new("cargo");
     command.current_dir(root).env("CARGO_BUILD_JOBS", "2").args([
         "run",
@@ -34,6 +35,9 @@ fn assemble(root: &Path, use_debug_artifacts: bool) -> Result<(), XtaskError> {
         "peritus-package",
         "--",
     ]);
+    if installing {
+        command.env("RUSTC_WRAPPER", "").env("RUSTC_WORKSPACE_WRAPPER", "");
+    }
     if use_debug_artifacts {
         command.arg("--use-debug-artifacts");
     }

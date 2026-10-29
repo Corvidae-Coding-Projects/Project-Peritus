@@ -16,6 +16,7 @@ import struct
 import subprocess
 import termios
 import time
+import tomllib
 
 
 def main():
@@ -27,7 +28,6 @@ def main():
     repo = Path(__file__).resolve().parent.parent
     record = json.loads((repo / "dist/peritus-native-package.json").read_text())
     archive = repo / record["archive"]
-    bundle = archive.with_name(archive.name.removesuffix(".tar.gz"))
     user_home = Path(os.environ["HOME"])
     application = user_home / "Library/Application Support/Peritus"
     state = (application / "State" if system == "Darwin" else
@@ -44,8 +44,18 @@ def main():
     workspace.mkdir()
     # Exercise normal dependency setup on both platforms: Macs also need the
     # private Python/Playwright/Chromium runtime, even when Git is preinstalled.
-    environment = dict(os.environ, PERITUS_INSTALL_DEPS="1")
-    installed = subprocess.run(["sh", str(bundle / "Install-Peritus.sh"), str(bundle)],
+    version = tomllib.loads((repo / "Cargo.toml").read_text())["workspace"]["package"]["version"]
+    mirror = repo / "dist/startup-mirror" / ("v" + version)
+    mirror.mkdir(parents=True)
+    for source in (archive, archive.with_name(archive.name + ".sha256")):
+        os.link(source, mirror / source.name)
+    broken_wrapper = evidence / "non-executable-sccache"
+    broken_wrapper.write_text("#!/bin/sh\nexec \"$@\"\n")
+    broken_wrapper.chmod(0o600)
+    environment = dict(os.environ, PERITUS_INSTALL_DEPS="1", PERITUS_VERSION="v" + version,
+                       PERITUS_RELEASE_BASE_URL=(repo / "dist/startup-mirror").as_uri(),
+                       RUSTC_WRAPPER=str(broken_wrapper), RUSTC_WORKSPACE_WRAPPER=str(broken_wrapper))
+    installed = subprocess.run(["sh", str(repo / "install.sh")],
                                env=environment, capture_output=True, text=True, timeout=300)
     (evidence / "install.log").write_text(installed.stdout + installed.stderr)
     if installed.returncode:
@@ -114,7 +124,7 @@ def main():
             clean = False
     result = {"platform": system, "command_is_symlink": command.is_symlink(),
               "offline_setup": provider_answered, "connected": connected,
-              "client_exit": client_exit, "clean_shutdown": clean}
+              "client_exit": client_exit, "clean_shutdown": clean, "bootstrap_install_with_broken_wrappers": installed.returncode == 0}
     (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, sort_keys=True))
     if not (provider_answered and connected and client_exit == 0 and clean):

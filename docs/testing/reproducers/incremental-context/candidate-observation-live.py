@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--model', default='gpt-6.1-sol')
     parser.add_argument('--candidate-policy', choices=['separate', 'shared', 'both'], default='both')
     parser.add_argument('--workspace-kind', choices=['managed', 'in-place'], default='managed')
+    parser.add_argument('--use-defaults', action='store_true', help='omit both optimization fields in the actual managed pipeline')
     args = parser.parse_args()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -53,6 +54,8 @@ def main():
                 'model': args.model, 'capacity': 200000, 'task': task,
                 'local_context': {'candidate_observation': policy,
                                   'decision_view': 'conservative', 'read_only_plans': 'disabled'}}
+        if args.use_defaults:
+            spec['local_context'] = {'candidate_observation': policy}
         path = case / 'spec.json'
         path.write_text(json.dumps(spec))
         (case / 'expected.csv').write_text(expected)
@@ -73,7 +76,10 @@ def main():
         calls = helpers['observations'](private / 'run.trace')
         assert not any(row['is_error'] for row in calls), (policy, 'actual tool error')
         assert any(row['name'] in ['workspace_write', 'workspace_patch'] for row in calls)
-        assert any(row['name'] == 'workspace_read' for row in calls)
+        assert any(row['name'] == 'workspace_read' or
+                   (args.use_defaults and row['name'] == 'inspection_plan' and
+                    any(step['tool'] == 'workspace_read' for step in json.loads(row['output'])['steps']))
+                   for row in calls)
         events = [json.loads(line) for line in (private / 'run.efficiency.jsonl').read_text().splitlines()]
         attempts, counters = helpers['account'](events)
         bindings = [row for row in events if row.get('event') == 'decision-request-binding']

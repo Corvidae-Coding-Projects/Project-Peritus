@@ -2,7 +2,7 @@
 
 mod publication;
 pub mod rebuild;
-pub use publication::stage_draft;
+pub use publication::{stage_draft, stage_native_draft};
 
 use std::{
     env, fs,

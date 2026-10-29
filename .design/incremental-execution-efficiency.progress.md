@@ -13,7 +13,7 @@ below; historical campaign entries retain the status they had when recorded.
 - Starting branch: `develop`.
 - Starting HEAD: `d58ccbed426fba0a361a6533bb4ddb80726ba2ce`.
 - Original design SHA-256: `5cb00c34f2fb568636d37dd913580a4180f70d14ba675e955d752a7e256e0915`.
-- Current design SHA-256: `e540f7bdaf5c60159dfd958d8b28d471ef39bf2b629540f6b706a4798c029b43` (qualified I4 v6 dependency/progress guard and I5 plan/wait permission-revision/reference contract and I6 delivery boundary; requirements retained).
+- Current design SHA-256: `ce1d8ee9d13ed3f7f645628e73ca9a725ea17cb3e3fbcd32308a35a364d106bd` (qualified I4 v6 dependency/progress guard and I5 plan/wait permission-revision/reference contract and I6 delivery boundary; requirements retained).
 - The worktree contains preexisting navigation, CLI, computer-tool, lockfile, and documentation
   edits. They are retained; this work does not reset, stage, commit, or discard them.
 - The first actual baseline build uses the pinned Rust 1.97.1 toolchain and
@@ -656,3 +656,12 @@ mode or whole-codebase coverage. Each linked report states its exact qualified b
 No required increment work remains. All changes remain local and uncommitted; unrelated work,
 Git HEAD, live service configuration and credentials are preserved. No release or deployment
 is part of this completion.
+
+
+### v0.1.14 default-policy follow-through
+
+Both decision views and read-only plans now default on. Seven actual configuration cases,
+eight decision groups, nine plan groups, two official-provider plan journeys, and an accepted
+managed CSV journey exercised omitted settings. Explicit opt-outs and separate candidate
+captures are preserved. See `docs/testing/efficiency-defaults-and-install-v0.1.14.md` for scope
+and installation evidence; this amendment does not rewrite historical measurements.

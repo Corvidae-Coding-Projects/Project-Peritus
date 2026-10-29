@@ -99,6 +99,13 @@ pub fn execute(
         Some("release-create") => crate::release::create(root),
         Some("release-package-stage") => crate::release::package_stage(root),
         Some("release-package-assemble") => crate::release::package_assemble(root),
+        Some("release-native-stage") => {
+            crate::release::stage_native_draft(root)?;
+            write_output(
+                output,
+                "Native release draft staged; publication remains a separate action.\n",
+            )
+        }
         Some("release-stage") => {
             crate::release::stage_draft(root)?;
             write_output(output, "Release draft staged; publication remains a separate action.\n")

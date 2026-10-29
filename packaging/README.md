@@ -306,7 +306,9 @@ Install the Rust toolchain specified in `rust-toolchain.toml`.
 From the repository root, run:
 
 ```sh
-cargo xtask product-install
+sh install.sh --source
+# Native Windows PowerShell:
+# powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Source
 ```
 
 This command builds a release package and runs the same native installer.

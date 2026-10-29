@@ -70,9 +70,9 @@ pub struct LocalProcessConfig {
 #[serde(rename_all = "snake_case")]
 pub enum ReadOnlyPlanExecution {
     /// Keep ordinary direct tools; do not admit inspection plans.
-    #[default]
     Disabled,
     /// Admit bounded sequential read-only plans through ordinary child tool checks.
+    #[default]
     Sequential,
 }
 
@@ -89,9 +89,9 @@ impl ReadOnlyPlanExecution {
 #[serde(rename_all = "snake_case")]
 pub enum DecisionViewPolicy {
     /// Existing complete-exchange history selection.
-    #[default]
     History,
     /// Exact evidence with conservative dependencies and the current protocol closure.
+    #[default]
     Conservative,
 }
 
@@ -144,10 +144,10 @@ pub struct LocalContextConfig {
     /// Reuses immutable checkpoint pages and verified existing artifacts without rewriting them.
     /// False retains the original encoding/publication work for qualification and rollback.
     pub reuse_checkpoint_pages: bool,
-    /// Enables versioned sequential read-only inspection plans and exact child-result reads.
+    /// Enables sequential read-only plans by default, with exact child-result reads.
     /// Using a plan publishes a version-4 reader guard before storing any child evidence.
     pub read_only_plans: ReadOnlyPlanExecution,
-    /// Experimental next-decision compilation; defaults to the existing history selector.
+    /// Conservative next-decision compilation by default; history is an explicit opt-out.
     pub decision_view: DecisionViewPolicy,
     /// Opt-in same-capture managed identities on Linux; other platforms use separate captures.
     /// Separate captures remain the default on every platform.
@@ -170,8 +170,8 @@ impl Default for LocalContextConfig {
             max_read_bytes: 16_384,
             checkpoint_every_completed_batch: true,
             reuse_checkpoint_pages: true,
-            read_only_plans: ReadOnlyPlanExecution::Disabled,
-            decision_view: DecisionViewPolicy::History,
+            read_only_plans: ReadOnlyPlanExecution::Sequential,
+            decision_view: DecisionViewPolicy::Conservative,
             candidate_observation: CandidateObservationPolicy::Separate,
         }
     }

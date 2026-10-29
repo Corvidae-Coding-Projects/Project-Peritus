@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [efficiency-defaults-and-install-v0.1.14.md](efficiency-defaults-and-install-v0.1.14.md) | Omitted-setting defaults, official provider/daemon journeys and compiler-wrapper installation boundary. |
 | [execution-efficiency-i0-cost-baseline.md](execution-efficiency-i0-cost-baseline.md) | I0 completion contract, seven real-provider cost-ledger cases, independent usage reconciliation, diagnostic isolation, and bounded qualification evidence. |
 | [execution-efficiency-i1-indexed-projections.md](execution-efficiency-i1-indexed-projections.md) | I1 completion, exact reference/index correspondence, measured large-history lookup work, real provider continuation and bounded recovery evidence. |
 | [execution-efficiency-i2-checkpoint-pages.md](execution-efficiency-i2-checkpoint-pages.md) | I2 completion, default-enabled verified page reuse, syscall/write measurements, corruption/interruption recovery and real accepted product journeys. |

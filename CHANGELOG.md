@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.1.14
+
+### Changed
+
+- Enable conservative decision views and sequential read-only inspection plans by default, including omitted and partial daemon configurations. Explicit history and disabled settings remain available; shared candidate captures remain opt-in.
+
+### Fixed
+
+- Enter source installation through an uncompiled bootstrap that bypasses inherited compiler caches before Cargo probes rustc. Confine wrapper overrides to the installer process tree and preserve ordinary compiler/build failures.
+- Stage version-bound Unix and Windows bootstrap installers and their checksums after all six native packages succeed, without requiring the disabled distribution-package pipeline.
+
+### Real testing
+
+- Seven default/opt-out configuration cases, eight decision-view groups and nine plan groups passed through production APIs. Actual Codex and Zen/DeepSeek search/read plans used omitted settings; an actual managed CSV change passed independent review and settlement.
+- Source installation is checked against non-executable compiler wrappers through the real build and native installer. Native package startup, checksums and signed provenance are checked separately for the release.
+
 ## 0.1.13
 
 ### Changed

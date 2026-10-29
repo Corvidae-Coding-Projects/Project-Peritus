@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--legacy-consumer', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--decision-view', choices=['history', 'conservative'], default='history')
+    parser.add_argument('--use-defaults', action='store_true', help='omit both policy fields to exercise application defaults')
     args = parser.parse_args()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -32,6 +33,8 @@ def main():
             'task': 'Inspect the exact facts in alpha.txt, beta.txt and large.txt; retain real read outcomes.',
             'local_context': {'read_only_plans': 'sequential', 'decision_view': args.decision_view},
             'include_memory_tools': True}
+    if args.use_defaults:
+        spec['local_context'] = {}
     path = root / 'spec.json'
     path.write_text(json.dumps(spec))
     transcript = (root / 'interface.jsonl').open('w')

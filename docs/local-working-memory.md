@@ -87,10 +87,10 @@ Its cursor is scope-bound, and current permissions and source restrictions are r
 every page. It returns source handles and original byte identities; use the named retrieval
 tool for exact bytes. New observations do not restart an in-progress descriptor scan.
 
-### Experimental decision views
+### Decision views
 
-Set `[context.local] decision_view = "conservative"` to select the decision compiler. The
-default is `"history"`. This is an opt-in projection. Host-bound entries require a committed
+`[context.local] decision_view = "conservative"` is the default decision compiler. Set
+`decision_view = "history"` to opt out. Host-bound entries require a committed
 checkpoint-v6 reader guard; older supported state remains readable and migrates conservatively.
 Setting it back to `"history"` retains that guard, current committed progress and exact sources.
 
@@ -119,8 +119,12 @@ inputs make dependent conclusions stale without deleting their exact text or dec
 Model declarations cannot narrow those constraints or restore freshness. Ordinary events keep
 their existing encoding; host events use version 3 and bound-entry pages use version 4. Actual
 continuation, migration, recovery and rollback evidence is recorded in the
-[I4 report](testing/execution-efficiency-i4-decision-views.md). The compiler remains opt-in
-because measured benefit varies by workload.
+[I4 report](testing/execution-efficiency-i4-decision-views.md). Measured benefit varies by workload.
+
+Sequential read-only plans are also enabled by default with `read_only_plans = "sequential"`.
+Set `read_only_plans = "disabled"` to opt out while retaining direct tools and exact retrieval
+of prior plan results. Omitted policy fields use these defaults; explicit settings take
+precedence. Existing automatic decision-view fallback and all authority checks remain.
 
 ### Experimental shared candidate observations
 

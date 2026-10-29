@@ -10,6 +10,7 @@ Commands:
   release-create           Create a tag-bound draft GitHub release
   release-package-stage    Build, archive, and checksum this host's package
   release-package-assemble Assemble a package from native release binaries
+  release-native-stage     Complete the native draft with tag-bound installers
   release-stage            Complete the release draft without publishing it
   release-rebuild-record   Retain native assembly observations
   release-daemon-library   Build the native daemon library
