@@ -17,7 +17,11 @@ Package `peritus-tcb` is a member of the root Cargo workspace; architectural own
 
 | Folder | Role / next waypoint |
 | --- | --- |
-| [src/](src/AGENTS.md) | Compatibility exports naming historical verification-manifest paths; no manifests or proof runner are present in this package. |
+| [src/](src/AGENTS.md) | Audited policy anchor and stable repository-relative names for the five trust-boundary manifest classes; the package declares policy locations but does not execute a proof runner. |
+
+## Working in this area
+
+Use [`Cargo.toml`](Cargo.toml) to confirm targets and dependency boundaries, then enter through the declared target entry point and trace public callers before changing behavior. Root workspace membership determines whether this package is active; nearby designs and retained evidence do not override the compiled interfaces.
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 

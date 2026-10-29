@@ -22,6 +22,10 @@ Local dependency waypoints: [peritus-model-protocol](../../../model/peritus-mode
 | [src/](src/AGENTS.md) | Native, noninteractive external-benchmark entry point for Peritus. |
 | [tests/](tests/AGENTS.md) | Historical fixture organization retained beneath the active benchmark package; this subtree currently contains documentation rather than runnable test targets. |
 
+## Working in this area
+
+Use [`Cargo.toml`](Cargo.toml) to confirm targets and dependency boundaries, then enter through the declared target entry point and trace public callers before changing behavior. Root workspace membership determines whether this package is active; nearby designs and retained evidence do not override the compiled interfaces.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

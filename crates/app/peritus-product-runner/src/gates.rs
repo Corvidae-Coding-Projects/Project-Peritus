@@ -224,11 +224,16 @@ fn execute_internal(
     request_context: &str,
     cancellation: &GateCancellation,
 ) -> GateOutcome {
+    let changed_paths = if specification.project().kind() == peritus_gates::ProjectKind::Generic {
+        plan.fallback_paths()
+    } else {
+        plan.changed_paths()
+    };
     match specification.arguments().first().map(String::as_str) {
         Some("source-readability") => GateOutcome::Required(source_layout::run(
             root,
             specification.project().root(),
-            plan.changed_paths(),
+            changed_paths,
             specification.project().kind(),
             specification.display(),
             ownership,
@@ -237,7 +242,7 @@ fn execute_internal(
         Some("artifact-csv-structure") => artifact_csv::run(
             root,
             specification.project().root(),
-            plan.changed_paths(),
+            changed_paths,
             specification.display(),
             request_context,
             cancellation,
@@ -245,14 +250,14 @@ fn execute_internal(
         Some("json-structure") => GateOutcome::Required(json_structure::run(
             root,
             specification.project().root(),
-            plan.changed_paths(),
+            changed_paths,
             specification.display(),
             cancellation,
         )),
         Some("sqlite-migration") => sqlite_migration::run(
             root,
             specification.project().root(),
-            plan.changed_paths(),
+            changed_paths,
             specification.display(),
             request_context,
             cancellation,
@@ -260,7 +265,7 @@ fn execute_internal(
         Some("yaml-structure") => GateOutcome::Required(yaml_structure::run(
             root,
             specification.project().root(),
-            plan.changed_paths(),
+            changed_paths,
             specification.display(),
             cancellation,
         )),

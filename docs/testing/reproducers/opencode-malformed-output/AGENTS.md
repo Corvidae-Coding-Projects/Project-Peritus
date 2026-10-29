@@ -1,5 +1,7 @@
 # OpenCode malformed-turn real replay
 
+## Responsibility
+
 | File | Role |
 | --- | --- |
 | [README.md](README.md) | Ordinary credentials/configuration prerequisites, real-service commands, independent expectations, and scope. |
@@ -10,4 +12,8 @@
 
 Implementation owner: [OpenCode adapter](../../../../crates/model/peritus-provider-opencode/src/AGENTS.md).
 Campaign: [issue 127 report](../../opencode-malformed-output-real-2026-10-15.md).
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent](../AGENTS.md) · [Repository](../../../../AGENTS.md).

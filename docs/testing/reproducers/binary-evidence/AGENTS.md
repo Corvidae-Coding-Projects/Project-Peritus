@@ -1,5 +1,7 @@
 # Binary evidence replay waypoint
 
+## Responsibility
+
 This folder preserves real library and full-product reproduction of NUL-bearing binary previews entering model text. Start with [README.md](README.md) for the independent contract and bounded replay commands. The production owners are scoped comparison in `workspace_delivery/scope.rs`, repository diff assembly in `bundle.rs`, and role evidence projection in `turn/evidence.rs` under `peritus-product-runner`.
 
 | File | Responsibility |
@@ -11,3 +13,6 @@ This folder preserves real library and full-product reproduction of NUL-bearing 
 | [README.md](README.md) | Contract, original failure, replay steps, provenance requirements, and limits. |
 
 Inputs are ordinary fixture data, never substitute implementations of Peritus or its provider. Preserve exact retained source identities and readback when changing presentation. Keep private live diffs, credentials, and raw user project data outside this folder. Always start with a fresh fixture path.
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.

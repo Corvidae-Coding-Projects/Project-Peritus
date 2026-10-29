@@ -302,28 +302,25 @@ impl OpenCodeRuntimeProvider {
         // Native framing and failures stay authoritative. Only a completed, successful,
         // tool-disabled inference with a rejected model envelope can be regenerated.
         let decoded = super::output::decode(output.stdout(), request, runtime);
-        if let Some(projection) = projection.as_mut() {
-            match &decoded {
-                Ok(super::output::Decoded::Turn(turn)) => projection.observe_native_result(
-                    if output.exit().success() { "completed" } else { "incomplete_exit" },
-                    Some(turn.usage),
-                ),
-                Ok(super::output::Decoded::Rejected { usage, .. }) => {
-                    projection.observe_native_result("rejected_envelope", Some(*usage));
+        observe_decoded_output(&decoded, output.exit().success(), projection.as_deref_mut());
+        let decoded = match decoded {
+            Ok(super::output::Decoded::ArgumentCorrection { turn, detail, rejected })
+                if output.exit().success() =>
+            {
+                if state.correct_arguments(runtime, turn.usage, &detail, &rejected)? {
+                    return Ok(OutputDisposition::Retry);
                 }
-                Ok(super::output::Decoded::Failure(_)) => {
-                    projection.observe_native_result("failed", None);
-                }
-                Err(_) => projection.observe_native_result("malformed", None),
+                // A model that still makes a valid-envelope argument mistake must get the
+                // ordinary host's actionable rejection, not a new terminal provider blocker.
+                Ok(super::output::Decoded::Turn(turn))
             }
-        }
+            Ok(super::output::Decoded::ArgumentCorrection { .. }) => Err(super::malformed()),
+            decoded => decoded,
+        };
         match decoded {
             Ok(super::output::Decoded::Rejected { reason, usage, rejected })
                 if output.exit().success() =>
             {
-                if let Some(projection) = projection.as_mut() {
-                    projection.observe_native_result("rejected_envelope", Some(usage));
-                }
                 state.corrections.push(
                     reason.audit(if state.rejected_usage.is_some() { 2 } else { 1 }, &rejected)?,
                 );
@@ -345,19 +342,15 @@ impl OpenCodeRuntimeProvider {
                 )
                 .map(OutputDisposition::Complete)
             }
-            Ok(super::output::Decoded::Failure(error)) => {
-                if let Some(projection) = projection.as_mut() {
-                    projection.observe_native_result("failed", None);
-                }
-                self.failed(
+            Ok(super::output::Decoded::Failure(error)) => self
+                .failed(
                     request,
                     cancellation.clone(),
                     &error,
                     OutcomeCertainty::Terminal,
                     std::mem::take(&mut state.corrections),
                 )
-                .map(OutputDisposition::Complete)
-            }
+                .map(OutputDisposition::Complete),
             Ok(super::output::Decoded::Turn(mut turn)) if output.exit().success() => {
                 if let Some(projection) = projection.as_mut() {
                     projection.observe_native_result("completed", Some(turn.usage));
@@ -387,7 +380,11 @@ impl OpenCodeRuntimeProvider {
                     std::mem::take(&mut state.corrections),
                 )
                 .map(OutputDisposition::Complete),
-            Ok(super::output::Decoded::Rejected { .. }) | Err(_) => self
+            Ok(
+                super::output::Decoded::Rejected { .. }
+                | super::output::Decoded::ArgumentCorrection { .. },
+            )
+            | Err(_) => self
                 .failed(
                     request,
                     cancellation.clone(),
@@ -583,4 +580,51 @@ fn model_id<'a>(model: &'a ModelName, service: &str) -> Result<&'a str, Provider
 
 const fn catalog_error() -> ProviderCoreError {
     peritus_provider_core::catalog::unavailable("OpenCode catalog state is unavailable")
+}
+
+// Record each actual adapter inference before a correction can return early. Combined logical
+// usage is kept in TurnState; per-inference projection usage must never include that sum.
+const fn observe_decoded_output(
+    decoded: &Result<super::output::Decoded, ProviderCoreError>,
+    successful_exit: bool,
+    projection: Option<&mut peritus_provider_core::RequestProjection>,
+) {
+    let Some(projection) = projection else { return };
+    match decoded {
+        Ok(super::output::Decoded::Turn(turn)) => projection.observe_native_result(
+            if successful_exit { "completed" } else { "incomplete_exit" },
+            Some(turn.usage),
+        ),
+        Ok(super::output::Decoded::Rejected { usage, .. }) => {
+            projection.observe_native_result("rejected_envelope", Some(*usage));
+        }
+        Ok(super::output::Decoded::ArgumentCorrection { turn, .. }) => {
+            projection.observe_native_result("rejected_arguments", Some(turn.usage));
+        }
+        Ok(super::output::Decoded::Failure(_)) => projection.observe_native_result("failed", None),
+        Err(_) => projection.observe_native_result("malformed", None),
+    }
+}
+
+impl TurnState {
+    fn correct_arguments(
+        &mut self,
+        runtime: &super::request::RuntimeRequest,
+        usage: UsageCounters,
+        detail: &str,
+        rejected: &str,
+    ) -> Result<bool, ProviderCoreError> {
+        let reason = super::recovery::TurnRejection::Arguments;
+        self.corrections
+            .push(reason.audit(if self.rejected_usage.is_some() { 2 } else { 1 }, rejected)?);
+        if self.rejected_usage.is_some() {
+            return Ok(false);
+        }
+        self.rejected_usage = Some(usage);
+        self.prompt = reason.correction(&runtime.prompt);
+        self.prompt.extend_from_slice(format!(
+            "\nArgument correction required: {detail}. Supply the value from the current task and observed workspace paths. Do not invent a default, copy a different call's arguments, or return to an earlier task. If the target is unknown, request an authorized discovery tool with valid arguments.\n"
+        ).as_bytes());
+        Ok(true)
+    }
 }

@@ -28,6 +28,8 @@ const SCHEMA: u16 = 1;
 const MAX_MANIFEST_ENTRIES: u16 = 512;
 const MAX_RANGE_BYTES: u64 = 1024 * 1024;
 const ARTIFACT_LIMIT: u64 = i64::MAX as u64;
+const MAX_SOURCE_FILES: u64 = 100_000;
+const MAX_SOURCE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -183,9 +185,9 @@ impl<'a> Broker<'a> {
         maximum_total_bytes: u64,
     ) -> Result<MaterializedSourceTree, BrokerError> {
         if maximum_files == 0
-            || maximum_files > 100_000
+            || maximum_files > MAX_SOURCE_FILES
             || maximum_total_bytes == 0
-            || maximum_total_bytes > 2 * 1024 * 1024 * 1024
+            || maximum_total_bytes > MAX_SOURCE_BYTES
         {
             return Err(rejected(
                 "source_materialization_limits",
@@ -209,60 +211,12 @@ impl<'a> Broker<'a> {
                 "the immutable source snapshot exceeds the admitted disposable-copy limits",
             ));
         }
-        fs::create_dir_all(destination).map_err(|_| {
-            failed("job_materialization", "source-tree root could not be created", true)
+        fs::create_dir_all(destination).map_err(|error| {
+            io_failure("job_materialization", "source-tree root could not be created", &error, true)
         })?;
         let store = self.artifacts()?;
         for entry in &manifest.entries {
-            validate_relative_path(&entry.path)?;
-            let target = destination.join(&entry.path);
-            let parent = target.parent().ok_or_else(|| {
-                failed("job_materialization", "source-tree file has no parent", false)
-            })?;
-            fs::create_dir_all(parent).map_err(|_| {
-                failed("job_materialization", "source-tree parent could not be created", true)
-            })?;
-            let digest = parse_digest(&entry.digest)?;
-            let mut reader = store.open_read(digest).map_err(|_| {
-                failed(
-                    "artifact_integrity",
-                    "an immutable source artifact required by the disposable tree is absent or corrupt",
-                    false,
-                )
-            })?;
-            let mut options = fs::OpenOptions::new();
-            options.create_new(true).write(true);
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::OpenOptionsExt as _;
-                options.mode(if entry.executable { 0o700 } else { 0o600 });
-            }
-            let mut output = options.open(&target).map_err(|_| {
-                failed("job_materialization", "source-tree file could not be created", true)
-            })?;
-            let mut observed = 0_u64;
-            let mut hasher = Sha256::new();
-            while let Some(chunk) = reader.read_chunk(64 * 1024).map_err(|_| {
-                failed("artifact_integrity", "source-tree artifact verification failed", false)
-            })? {
-                output.write_all(chunk.bytes()).map_err(|_| {
-                    failed("job_materialization", "source-tree bytes could not be written", true)
-                })?;
-                observed = observed
-                    .checked_add(u64::try_from(chunk.bytes().len()).map_err(|_| overflow())?)
-                    .ok_or_else(overflow)?;
-                hasher.update(chunk.bytes());
-            }
-            output.sync_all().map_err(|_| {
-                failed("job_materialization", "source-tree bytes could not be synchronized", true)
-            })?;
-            if observed != entry.bytes || encode_hex(&hasher.finalize()) != entry.digest {
-                return Err(failed(
-                    "artifact_integrity",
-                    "materialized source-tree bytes differ from the immutable manifest",
-                    false,
-                ));
-            }
+            materialize_entry(&store, destination, entry)?;
         }
         Ok(MaterializedSourceTree {
             snapshot_digest: scope.snapshot_digest.clone(),
@@ -1113,6 +1067,73 @@ fn source_entry<'manifest>(
         })
 }
 
+fn materialize_entry(
+    store: &ArtifactStore,
+    destination: &Path,
+    entry: &ManifestEntry,
+) -> Result<(), BrokerError> {
+    validate_relative_path(&entry.path)?;
+    let target = destination.join(&entry.path);
+    let parent = target
+        .parent()
+        .ok_or_else(|| failed("job_materialization", "source-tree file has no parent", false))?;
+    fs::create_dir_all(parent).map_err(|error| {
+        io_failure("job_materialization", "source-tree parent could not be created", &error, true)
+    })?;
+    let digest = parse_digest(&entry.digest)?;
+    let mut reader = store.open_read(digest).map_err(|_| {
+        failed(
+            "artifact_integrity",
+            "an immutable source artifact required by the disposable tree is absent or corrupt",
+            false,
+        )
+    })?;
+    let mut options = fs::OpenOptions::new();
+    options.create_new(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(if entry.executable { 0o700 } else { 0o600 });
+    }
+    let mut output = options.open(&target).map_err(|error| {
+        io_failure("job_materialization", "source-tree file could not be created", &error, true)
+    })?;
+    let mut observed = 0_u64;
+    let mut hasher = Sha256::new();
+    while let Some(chunk) = reader.read_chunk(64 * 1024).map_err(|_| {
+        failed("artifact_integrity", "source-tree artifact verification failed", false)
+    })? {
+        output.write_all(chunk.bytes()).map_err(|error| {
+            io_failure(
+                "job_materialization",
+                "source-tree bytes could not be written",
+                &error,
+                true,
+            )
+        })?;
+        observed = observed
+            .checked_add(u64::try_from(chunk.bytes().len()).map_err(|_| overflow())?)
+            .ok_or_else(overflow)?;
+        hasher.update(chunk.bytes());
+    }
+    output.sync_all().map_err(|error| {
+        io_failure(
+            "job_materialization",
+            "source-tree bytes could not be synchronized",
+            &error,
+            true,
+        )
+    })?;
+    if observed != entry.bytes || encode_hex(&hasher.finalize()) != entry.digest {
+        return Err(failed(
+            "artifact_integrity",
+            "materialized source-tree bytes differ from the immutable manifest",
+            false,
+        ));
+    }
+    Ok(())
+}
+
 fn validate_capture_request(request: &ScopedSourceRequest) -> Result<(), BrokerError> {
     if request.schema != SCHEMA
         || !request.immutable_snapshot
@@ -1167,6 +1188,10 @@ fn failed(code: &str, detail: &str, retryable: bool) -> BrokerError {
     BrokerError::Failed { code: code.into(), detail: detail.into(), retryable }
 }
 
+fn io_failure(code: &str, action: &str, error: &std::io::Error, retryable: bool) -> BrokerError {
+    failed(code, &format!("{action}: {error}"), retryable)
+}
+
 fn overflow() -> BrokerError {
     failed("representation_overflow", "source capture exceeds durable representation", false)
 }
@@ -1217,64 +1242,88 @@ fn inventory(
     exclusions: &[String],
     mut cancelled: impl FnMut() -> bool,
 ) -> Result<Inventory, BrokerError> {
-    let mut pending = vec![(root.to_path_buf(), String::new())];
+    let filter_root = root.to_path_buf();
+    let filter_exclusions = exclusions.to_vec();
+    let mut builder = ignore::WalkBuilder::new(root);
+    builder
+        .hidden(false)
+        .parents(false)
+        .ignore(true)
+        .git_global(false)
+        .git_ignore(true)
+        .git_exclude(true)
+        .require_git(false)
+        .follow_links(false)
+        .sort_by_file_name(Ord::cmp)
+        .filter_entry(move |entry| {
+            let Ok(relative) = entry.path().strip_prefix(&filter_root) else {
+                return true;
+            };
+            let Some(relative) = relative.to_str() else {
+                return true;
+            };
+            if relative.is_empty() {
+                return true;
+            }
+            let relative = relative.replace(std::path::MAIN_SEPARATOR, "/");
+            !excluded(&relative, &filter_exclusions)
+        });
     let mut files = Vec::new();
     let mut directories = Vec::new();
-    while let Some((directory, relative)) = pending.pop() {
+    let mut total_bytes = 0_u64;
+    for entry in builder.build() {
         if cancelled() {
             return Err(failed("source_cancelled", "source inventory was cancelled", true));
         }
-        let metadata = fs::symlink_metadata(&directory).map_err(|_| {
-            failed("mixed_source_revision", "source directory changed during inventory", true)
+        let entry = entry.map_err(|_| {
+            failed("mixed_source_revision", "source entry changed during inventory", true)
         })?;
-        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        let relative = entry.path().strip_prefix(root).map_err(|_| {
+            rejected("unsafe_source_path", "source inventory escaped the selected root")
+        })?;
+        if relative.as_os_str().is_empty() {
+            continue;
+        }
+        let path = relative
+            .to_str()
+            .ok_or_else(|| {
+                rejected("unsafe_source_name", "source contains a non-UTF-8 path component")
+            })?
+            .replace(std::path::MAIN_SEPARATOR, "/");
+        validate_relative_path(&path)?;
+        if excluded(&path, exclusions) {
+            continue;
+        }
+        let metadata = fs::symlink_metadata(entry.path()).map_err(|_| {
+            failed("mixed_source_revision", "source entry changed during inventory", true)
+        })?;
+        let kind = metadata.file_type();
+        if kind.is_symlink() {
             return Err(rejected(
                 "unsafe_source_link",
-                "source inventory refuses linked or non-directory traversal",
+                "source contains a symbolic link outside the explicit exclusion set",
             ));
         }
-        if !relative.is_empty() {
-            directories.push(DirectoryEntry {
-                path: relative.clone(),
-                version: version_stamp(&metadata)?,
-            });
-        }
-        let mut children = fs::read_dir(&directory)
-            .map_err(|_| failed("source_unavailable", "source directory cannot be listed", true))?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|_| {
-                failed("source_unavailable", "source directory entry is unavailable", true)
-            })?;
-        children.sort_unstable_by_key(fs::DirEntry::file_name);
-        for child in children.into_iter().rev() {
-            let name = child.file_name().into_string().map_err(|_| {
-                rejected("unsafe_source_name", "source contains a non-UTF-8 path component")
-            })?;
-            let path = if relative.is_empty() { name } else { format!("{relative}/{name}") };
-            validate_relative_path(&path)?;
-            if excluded(&path, exclusions) {
-                continue;
-            }
-            let metadata = fs::symlink_metadata(child.path()).map_err(|_| {
-                failed("mixed_source_revision", "source entry changed during inventory", true)
-            })?;
-            let kind = metadata.file_type();
-            if kind.is_symlink() {
+        if metadata.is_dir() {
+            directories.push(DirectoryEntry { path, version: version_stamp(&metadata)? });
+        } else if metadata.is_file() {
+            let file_count = u64::try_from(files.len())
+                .map_err(|_| overflow())?
+                .checked_add(1)
+                .ok_or_else(overflow)?;
+            total_bytes = total_bytes.checked_add(metadata.len()).ok_or_else(overflow)?;
+            if file_count > MAX_SOURCE_FILES || total_bytes > MAX_SOURCE_BYTES {
                 return Err(rejected(
-                    "unsafe_source_link",
-                    "source contains a symbolic link outside the explicit exclusion set",
+                    "source_scope_limits",
+                    "included source exceeds 100000 files or 2 GiB; exclude generated data and retry",
                 ));
             }
-            if metadata.is_dir() {
-                pending.push((child.path(), path));
-            } else if metadata.is_file() {
-                files.push((path, version_stamp(&metadata)?));
-            } else {
-                return Err(rejected(
-                    "unsafe_source_special_file",
-                    "source contains a special file outside the explicit exclusion set",
-                ));
-            }
+            files.push((path, version_stamp(&metadata)?));
+        } else {
+            return Err(rejected(
+                "unsafe_source_special_file",
+                "source contains a special file outside the explicit exclusion set",
+            ));
         }
     }
     files.sort_unstable_by(|left, right| left.0.cmp(&right.0));

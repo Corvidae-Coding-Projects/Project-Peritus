@@ -108,6 +108,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
+    fn response_blocker(&self, reply: &str) -> Option<String> {
+        self.base.response_blocker(reply)
+    }
     fn required_tool_name(&self) -> Option<&str> {
         self.base.required_tool_name()
     }

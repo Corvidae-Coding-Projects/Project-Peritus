@@ -31,6 +31,10 @@ Historical evidence for release output correspondence; recorded inputs, outputs 
 | [verus-parent.txt](verus-parent.txt) | Retained evidence/output for verus parent. |
 | [verus-worker.txt](verus-worker.txt) | Retained evidence/output for verus worker. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

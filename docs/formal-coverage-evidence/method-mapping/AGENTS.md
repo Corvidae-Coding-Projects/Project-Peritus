@@ -25,6 +25,10 @@ Historical evidence for method mapping; recorded inputs, outputs and source iden
 | [source-recheck.json](source-recheck.json) | Structured source recheck data with fields `captured_files`, `changed`, `matches_committed_sources`. |
 | [tests.log.txt](tests.log.txt) | Retained evidence/output for tests.log. |
 
+## Working in this area
+
+Treat this directory as retained evidence tied to the source identity and environment recorded by its owning report. Do not infer current behavior from an old log alone; follow the parent waypoint to the active implementation or replay and preserve original evidence bytes when adding newer observations.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

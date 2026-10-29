@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+## 0.1.13
+
+### Changed
+
+- Reuse unchanged immutable checkpoint pages and indexed source projections while preserving exact evidence, complete dependency roots, source checks, and both durable checkpoint boundaries.
+- Deliver full OpenCode tool schemas once per request by default. Preserve all tools, argument validation, explicit legacy layout rollback, and complete cached-input accounting.
+- Add opt-in conservative decision views, sequential read-only inspection plans with exact result retrieval, and host-owned waits on existing command handles. Direct tools, independent review, and current authority remain available.
+- Add opt-in managed Linux capture sharing: two fresh matching full captures replace three source enumerations. Other platforms retain the original path.
+
+### Fixed
+
+- Invalidate derived conclusions using host-bound originating request dependencies, including undeclared, ignored, changed or unknown inputs. Preserve exact historical evidence and declared progress across reconstruction and restart.
+- End command waits after permission changes, including revoke-and-restore, without restarting or implicitly cancelling the original command. Preserve read admission under BeforeEdit pauses and block mutation at the existing reservation boundary.
+- Preserve rejected-read exchanges and task continuity, require completed handoff receipts, and correct malformed OpenCode tool arguments before host dispatch. Repeated valid-envelope mistakes still reach normal actionable host rejection.
+- Reject non-regular artifact objects during verification instead of accepting a symlink to matching content.
+
+### Compatibility and real testing
+
+- Current readers retain supported historical checkpoints. Host-bound entries require a v6 reader guard; older readers refuse unsupported data explicitly. Rollback uses current committed state and never restores an older checkpoint or redispatches a command.
+- The I0–I6 reports record actual provider/API/daemon campaigns, page integrity, publication failures, native process kills, source amendments, current controls, independent review, and accepted deliveries. Paired task input reductions and local write/capture savings are workload-specific, not universal speedup claims.
+- Decision views, plans, and shared candidate captures remain opt-in. Strict affected Clippy, workspace builds/checks, formatting, and Windows cross-compilation passed; native release packages receive their own same-tag build and startup evidence. No unit, mock, formal-verification, or repository qualification suites are part of this release workflow.
+
+## 0.1.12
+
+### Fixed
+
+- Recognize Make-owned projects during candidate acceptance and select an explicitly declared `check`, `verify`, or `validate` target. Makefile/data workspaces no longer stop with a missing check-contract error (#155).
+- Apply scoped file-readability and JSON/YAML structural checks to otherwise unrecognized candidate files. Keep existing language-specific checks and avoid duplicate Make commands inside recognized projects.
+- Prepare source-built module dependencies and application runtimes in isolated laboratories, including Bun when requested by a module. Keep runtime access within the generic module interface.
+
+### Changed
+
+- Refresh recursive agent navigation guides and exclude private local Chrome-extension files and red-team campaign artifacts from source control.
+
+### Real testing
+
+- Reproduced issue #155's uncovered Makefile/data failure, then linked the saved public-interface replay against a complete daemon build and executed the selected `make check` target successfully.
+- Exercised generic-file fallback, Makefiles without recognized check targets, and Rust workspaces containing Makefiles. Arbitrary/default Make targets and duplicate Make checks were not scheduled.
+- Targeted build/check, formatting, and strict Clippy passed for the affected gate and product-runner packages. Native release packages additionally exercise installation and offline terminal startup on Unix. No unit, mock, formal-verification, or repository qualification suites are part of this release workflow.
+
 ## 0.1.11
 
 ### Changed

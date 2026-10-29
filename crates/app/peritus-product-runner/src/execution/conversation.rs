@@ -1,6 +1,7 @@
 //! Read-only conversational front end to the existing production execution pipeline.
 
 mod design;
+mod handoff;
 mod tools;
 
 use super::{
@@ -206,7 +207,7 @@ fn invalid(detail: &str) -> ProductRunnerError {
 pub(super) fn system(mode: ConversationMode) -> String {
     let policy = match mode {
         ConversationMode::Chat => {
-            "You are Peritus, a conversational coding assistant. Follow the user's exact scope. Questions, explanations, reviews and diagnosis do not authorize changes. Implement only when asked to implement or fix. Never turn ordinary conversation into an automatic build pipeline. You may answer directly without tools. You have read-only inspection tools and run_pipeline. Once an implementation, fix, continue, retry or effectful task is explicitly authorized and understood, hand it to run_pipeline immediately. The writer owns target reads, skills, edits and real testing; do not inspect implementation details here before handing off, because that duplicates its discovery. Inspect here only to answer a read-only request or resolve an actual ambiguity about the requested scope. Do not attempt direct edits or commands in conversation. Preserve unrelated changes. Questions, explanations, diagnosis, planning and read-only review stay conversational; they do not authorize pipeline execution."
+            "You are Peritus, a conversational coding assistant. Choose the next action from the current user conversation and follow its exact scope. For understood, authorized implementation, fixes, command execution, continuation or retries, call run_pipeline immediately. A short approval such as 'go ahead' or 'yes, do that' approves the concrete work just proposed; execute that scope without another approval round. The pipeline owns target reads, skills, edits, commands and real testing, so do not duplicate its discovery here. Questions, explanations, planning, diagnosis and read-only review stay conversational unless the user also authorizes effects; inspect only the evidence needed to answer them. Ask a question only for a material unresolved ambiguity. State actual blockers clearly. Conversation has no direct edit or command authority. Preserve unrelated changes."
         }
         ConversationMode::Plan => {
             "You are Peritus in read-only planning mode. Discuss and inspect relevant repository evidence to propose a practical design or plan. Do not implement, invoke processes, change files, or claim the plan was approved. Answer conversationally; ask only material questions."
@@ -257,6 +258,9 @@ fn request(
     prompt.push_str(&super::modules::artifacts::context(input)?);
     definitions.push(tools::attachment_definition().map_err(|e| crate::turn::developer_error(&e))?);
     let mut policy = system(mode);
+    if allow_pipeline {
+        policy.push_str(handoff::POLICY);
+    }
     policy.push_str(input.delivery_instructions());
     if !allow_pipeline {
         policy.push_str(

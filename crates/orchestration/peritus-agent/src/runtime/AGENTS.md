@@ -23,6 +23,10 @@ Ordinary effect composition around the verified agent reducer.
 | [budget/](budget/AGENTS.md) | Implementation pieces for `budget.rs`: B1 reservation planning and cumulative model/tool usage settlement. |
 | [driver/](driver/AGENTS.md) | Implementation pieces for `driver.rs`: Cooperative durable composition of the pure reducer and ordinary effect adapters. |
 
+## Working in this area
+
+Start at [`mod.rs`](mod.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Package map](../../AGENTS.md) · [Repository map](../../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

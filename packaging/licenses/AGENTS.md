@@ -18,6 +18,10 @@ Supplemental upstream license notices shipped with source bundles. Preserve the 
 | [jni-MIT.txt](jni-MIT.txt) | Upstream license/notice text for jni MIT. |
 | [verus-MIT.txt](verus-MIT.txt) | Upstream license/notice text for verus MIT. |
 
+## Working in this area
+
+Start with [`README.md`](README.md) and trace the corresponding `xtask` or installer caller before changing an artifact. Preserve platform-specific install, upgrade, uninstall, ownership, and complete-package behavior together; a recipe or retained report is not proof of a published release.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

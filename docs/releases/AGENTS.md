@@ -17,6 +17,11 @@ Release-specific human notes; each version records changes and delivery context,
 | [0.1.9.md](0.1.9.md) | Route-specific token capacities, shared-context output headroom, explicit overrides, and real provider evidence. |
 | [0.1.10.md](0.1.10.md) | Hosted-configuration upgrade, retained-run provider recovery, OpenCode planning normalization and expandable TUI reads, with real-interface evidence boundaries. |
 | [0.1.11.md](0.1.11.md) | Generic source-built module workers, Red Team module separation, persistent-run improvements, and final real-interface browser/laboratory evidence. |
+| [0.1.12.md](0.1.12.md) | Make-owned candidate acceptance, scoped generic file checks, isolated module runtime preparation, and native release scope. |
+
+## Working in this area
+
+Start with the responsibility and file table above, then follow implementation links before treating a design, contract, or operations note as current behavior. Keep historical evidence, proposed architecture, and live user guidance visibly distinct, and update cross-references when ownership moves.
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 

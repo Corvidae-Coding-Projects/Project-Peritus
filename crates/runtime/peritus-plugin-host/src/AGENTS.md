@@ -18,6 +18,16 @@ Host for untrusted out-of-process and Wasm Peritus plugins.
 | [transport.rs](transport.rs) | Owned process/Wasm subprocess and bounded framed exchange. |
 | [trust.rs](trust.rs) | Explicit exact-digest plugin trust policy. |
 
+## Child areas
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [transport/](transport/AGENTS.md) | Native-plugin child ownership, framed transport I/O, bounded diagnostics, deadline handling, cancellation, and joined process cleanup. |
+
+## Working in this area
+
+Start at [`lib.rs`](lib.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

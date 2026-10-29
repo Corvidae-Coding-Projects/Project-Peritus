@@ -108,7 +108,7 @@ impl LocalContextHandle {
         if !config.enabled {
             return Ok(None);
         }
-        let mut identity = b"peritus-module-stage-context-v1\0".to_vec();
+        let mut identity = b"peritus-module-stage-context-v2\0".to_vec();
         identity.extend_from_slice(input.run_id.as_bytes());
         identity.extend_from_slice(job_key.as_bytes());
         identity.push(0);
@@ -133,9 +133,11 @@ impl LocalContextHandle {
         let binding = WorkingBinding::new(input.run_id, input.workspace_id, task, role, revision);
         let namespace = crate::encode_hex(hash.as_bytes());
         let root = input.trace_path.with_extension("context").join("modules").join(namespace);
-        let protected =
-            input.workspace_kind.is_in_place().then(|| input.workspace_kind.protected_paths());
-        Self::open_bound(input, &root, binding, config, protected)
+        // A native module role receives only the module's prompt and declared tools. Its durable
+        // coordinator owns source observations, so enrolling or fingerprinting the host workspace
+        // here both duplicates that evidence and accidentally exposes ambient coding context.
+        // Keep the context lineage and transcript, but bind it to an empty explicit file scope.
+        Self::open_bound(input, &root, binding, config, Some(&[]))
     }
 
     fn open_scoped(

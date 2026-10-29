@@ -60,6 +60,10 @@ Feature designs and investigation records. Designs explain intent; current calle
 | [workbench-dependency-review.md](workbench-dependency-review.md) | Document: Workbench dependency execution review. |
 | [workbench-formal-api-review.md](workbench-formal-api-review.md) | Document: Workbench ordinary-API checker repair. |
 
+## Working in this area
+
+Use the design that matches the requested capability to recover intent, boundaries, and acceptance expectations, then verify every implementation claim against current manifests and callers. Designs may be proposed, partially delivered, or historical; record status explicitly rather than treating file presence as completion.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

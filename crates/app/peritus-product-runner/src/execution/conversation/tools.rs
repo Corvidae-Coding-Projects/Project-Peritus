@@ -144,6 +144,12 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
     fn yields_to_host(&self) -> bool {
         self.requested_revision.is_some()
     }
+    fn response_blocker(&self, reply: &str) -> Option<String> {
+        (self.allow_pipeline
+            && self.requested_revision.is_none()
+            && super::handoff::promises_execution(reply))
+        .then(|| super::handoff::CORRECTION.to_owned())
+    }
     // Conversation reads have no delivery obligations. All effects live in the pipeline executor,
     // which retains its normal grounding, gate, review and progress checks.
 }

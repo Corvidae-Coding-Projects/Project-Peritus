@@ -86,7 +86,7 @@ default-members = ["xtask"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.11"
+version = "0.1.13"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"
@@ -106,6 +106,7 @@ getrandom = "=0.4.3"
 half = { version = "=2.4.1", default-features = false, features = ["std"] }
 html5ever = "=0.39.0"
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+ignore = "=0.4.25"
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }
 landlock = { version = "=0.4.7", default-features = false }

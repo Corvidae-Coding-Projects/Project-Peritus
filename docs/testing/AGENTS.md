@@ -15,6 +15,9 @@ Real-interface campaign reports and reproducible defects. These document observe
 | [execution-efficiency-i4-decision-views.md](execution-efficiency-i4-decision-views.md) | I4 completion, exact decision views, originating request dependencies, v6 reader guard and declared progress, native closure fixes, recovery and real provider qualification. |
 | [execution-efficiency-i5-plans-waits.md](execution-efficiency-i5-plans-waits.md) | I5 completion, sequential plans, owned waits, live control and permission revisions, exact publication/recovery evidence and paired native-provider observations. |
 | [execution-efficiency-i6-freshness.md](execution-efficiency-i6-freshness.md) | I6 shared full-capture qualification, platform fallback, real managed continuation/rollback, exact identity correspondence and bounded local savings. |
+| [pipeline-handoff-real-2026-10-26.md](pipeline-handoff-real-2026-10-26.md) | Issue #159 promise/receipt checks, actual Codex/DeepSeek handoffs, read-only boundaries, and OpenCode SQLite quota failure/recovery. |
+| [task-continuity-real-2026-10-26.md](task-continuity-real-2026-10-26.md) | Issue #160 lost failed-read exchange, 24 real tool/context recovery journeys, source-admission boundaries, and live Codex/DeepSeek continuation. |
+| [read-argument-repair-real-2026-10-27.md](read-argument-repair-real-2026-10-27.md) | Issue #160 upstream argument correction, real OpenCode/DeepSeek fault prompting, baseline host rejection, repeated-error recovery, and Codex control. |
 | [red-team-phase8-real-2026-10-24.md](red-team-phase8-real-2026-10-24.md) | Final adversarial containment, corruption recovery, actual-provider brownfield repair, clean source-build/install/launch, and source-publication campaign. |
 | [red-team-phase8-evidence.json](red-team-phase8-evidence.json) | Exact Phase 8 market, source-build, hostile replay, state recovery, brownfield, artifact, original-preservation, and check identities. |
 | [red-team-phase8-acceptance-ledger.md](red-team-phase8-acceptance-ledger.md) | Bounded A1–A14 final-program mapping with explicit platform, adapter, coverage, and claim limits. |
@@ -112,6 +115,10 @@ Real-interface campaign reports and reproducible defects. These document observe
 | --- | --- |
 | [evidence/](evidence/AGENTS.md) | Retained real-interface observations grouped by boundaries, framing, varied inputs, mutations, and recovery campaigns. |
 | [reproducers/](reproducers/AGENTS.md) | Retained drivers/consumers for replaying actual program defects with disposable state and independently stated expectations. |
+
+## Working in this area
+
+Use each report together with its named reproducer, source identity, and independent observation boundary. Separate historical results from current behavior, keep new mutable artifacts outside the repository unless they are intentionally retained evidence, and route implementation changes through the linked code owner.
 
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 

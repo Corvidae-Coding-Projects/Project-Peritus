@@ -18,6 +18,10 @@ JSON contracts for benchmark reports, profile inputs, comparison baselines, and 
 | [terminalbench-campaign-report-v1.schema.json](terminalbench-campaign-report-v1.schema.json) | Peritus Terminal-Bench campaign report v1 |
 | [workload-catalog-v1.schema.json](workload-catalog-v1.schema.json) | Peritus H3 workload catalog v1 |
 
+## Working in this area
+
+Read the profile or workload definition together with the runner that consumes it and the baseline metadata that identifies the compared build. Benchmark artifacts measure the stated scenario only; keep them separate from product acceptance and refresh provenance whenever inputs or methodology change.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

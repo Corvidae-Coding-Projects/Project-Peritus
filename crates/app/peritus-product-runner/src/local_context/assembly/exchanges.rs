@@ -267,28 +267,32 @@ impl IndexedExchange {
             }
         }
         self.settled_mutations = effects.iter().map(|(_, path)| path.clone()).collect();
-        let mut reads = BTreeSet::new();
+        let mut reads = std::collections::BTreeMap::new();
         for block in messages.iter().flat_map(Message::content) {
             if let ContentBlock::ToolCall(call) = block
                 && call.name().as_str() == "workspace_read"
             {
                 let arguments: serde_json::Value =
                     serde_json::from_slice(call.arguments().canonical_bytes()).unwrap_or_default();
-                self.read_targets.push(
+                reads.insert(
+                    call.id().expose_for_wire(),
                     arguments.get("path").and_then(serde_json::Value::as_str).map(str::to_owned),
                 );
-                reads.insert(call.id().expose_for_wire());
             }
         }
         for (message_index, message) in messages.iter().enumerate() {
             for (block_index, block) in message.content().iter().enumerate() {
                 if let ContentBlock::ToolResult(result) = block
                     && !result.is_error()
-                    && reads.contains(result.call_id().expose_for_wire())
+                    && let Some(target) = reads.get(result.call_id().expose_for_wire())
                     && let Ok(value) = serde_json::from_slice::<serde_json::Value>(
                         result.output().canonical_bytes(),
                     )
                 {
+                    // Only successful reads can carry source bytes requiring renewed admission.
+                    // A rejected proposal is recovery evidence, not a source observation. Dropping
+                    // it also drops its assistant plan and successful siblings from the next turn.
+                    self.read_targets.push(target.clone());
                     let original = memory
                         .sources
                         .iter()

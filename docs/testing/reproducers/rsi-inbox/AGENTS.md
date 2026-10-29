@@ -15,6 +15,10 @@ Real-interface replay resources for rsi inbox; start with the local README/drive
 | [observer.rs](observer.rs) | Local implementation for docs / testing / reproducers / rsi-inbox. |
 | [plan.rs](plan.rs) | Actual consumer of the candidate plan discovered from a real checked-out workspace. |
 
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

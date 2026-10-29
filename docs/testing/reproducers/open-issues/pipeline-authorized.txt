@@ -1,0 +1,8 @@
+User:
+I've run the pack again and put the contents of the logs directory at data/runtime/logs (which didn't exist).
+
+Peritus:
+The logs are now in place. I'll have the pipeline parse the discovered mod jars from those logs, diff them against the filenames pinned in pack_lock.json, and write identity-report.md stating whether this is a match, a drift with the exact extra/missing buckets, or unverified because the log has no discovery lines. Preserve unrelated files; use actual report readback and no unit tests.
+
+User:
+go ahead

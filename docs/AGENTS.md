@@ -77,6 +77,10 @@ Human architecture, contracts, operations, and recorded evidence. Current interf
 | [releases/](releases/AGENTS.md) | Release-specific human notes; each version records changes and delivery context, rather than current runtime state. |
 | [testing/](testing/AGENTS.md) | Real-interface campaign reports and reproducible defects. These document observed behavior and its limits; they are not runtime modules. |
 
+## Working in this area
+
+Start with [`README.md`](README.md), then follow implementation links before treating a design, contract, or operations note as current behavior. Keep historical evidence, proposed architecture, and live user guidance visibly distinct, and update cross-references when ownership moves.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

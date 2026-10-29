@@ -45,6 +45,10 @@ MacOS 15+ native sandbox preparation.
 | [runner/](runner/AGENTS.md) | Implementation pieces for `runner.rs`: Reserved helper exits and target handoff. |
 | [session/](session/AGENTS.md) | Implementation pieces for `session.rs`: Supervised native session lifecycle. |
 
+## Working in this area
+
+Start at [`lib.rs`](lib.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

@@ -5,6 +5,7 @@ use reqwest::{StatusCode, blocking::Client, redirect::Policy};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::{
+    collections::BTreeMap,
     fmt::Write as _,
     io::Read as _,
     net::{IpAddr, SocketAddr, ToSocketAddrs as _},
@@ -17,7 +18,9 @@ use std::{
 use url::{Host, Url};
 
 const MAX_REDIRECTS: usize = 5;
+const MAX_TRANSFER_ATTEMPTS: usize = 3;
 const MAX_DEPENDENCY_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_SESSION_ORIGINS: usize = 8;
 
 /// One bounded public-HTTPS object. A digest is mandatory for module dependencies and optional
 /// only when a separately pinned source-tree digest is checked after archive extraction.
@@ -48,6 +51,11 @@ pub struct Completed {
     pub digest: String,
 }
 
+enum Transfer {
+    Redirect(String),
+    Complete { bytes: Vec<u8>, digest: String },
+}
+
 /// Preparation failure class; no caller may turn one into a successful proof or installation.
 pub enum Failure {
     /// The owner revoked the operation.
@@ -56,6 +64,16 @@ pub enum Failure {
     Rejected(String),
     /// DNS, TLS, transport, or local client setup failed.
     Infrastructure(String),
+}
+
+/// One bounded preparation session that reuses credential-free HTTPS clients by origin.
+///
+/// Reuse avoids creating a fresh TLS/runtime stack for every object in a dependency set. DNS is
+/// still resolved and classified before every request; an address change replaces the pinned
+/// client before that request is sent.
+#[derive(Default)]
+pub struct Fetcher {
+    clients: BTreeMap<String, (Vec<SocketAddr>, Client)>,
 }
 
 /// Validates the bounded URL and optional exact byte identity.
@@ -89,91 +107,175 @@ pub fn fetch(
     specification: &Specification,
     cancellation: &Arc<AtomicBool>,
 ) -> Result<Completed, Failure> {
-    let requested =
-        validate(specification, specification.maximum_bytes).map_err(Failure::Rejected)?;
-    let mut current = requested.clone();
-    let mut redirects = Vec::new();
-    let mut observed_addresses = Vec::new();
-    for redirect_count in 0..=MAX_REDIRECTS {
-        cancelled(cancellation)?;
-        let (host, addresses) = resolve_public(&current).map_err(Failure::Rejected)?;
-        observed_addresses.extend(addresses.iter().map(ToString::to_string));
-        let client = client(&host, &addresses).map_err(Failure::Infrastructure)?;
-        let mut response = client
-            .get(current.clone())
-            .header(reqwest::header::ACCEPT_ENCODING, "identity")
-            .send()
-            .map_err(|error| Failure::Infrastructure(format!("HTTPS request failed: {error}")))?;
-        cancelled(cancellation)?;
-        if response.status().is_redirection() {
-            if redirect_count == MAX_REDIRECTS {
-                return Err(Failure::Rejected("dependency exceeded five HTTPS redirects".into()));
+    std::thread::scope(|scope| {
+        scope
+            .spawn(|| Fetcher::default().fetch(specification, cancellation))
+            .join()
+            .map_err(|_| Failure::Infrastructure("dependency transfer worker panicked".into()))?
+    })
+}
+
+impl Fetcher {
+    /// Fetches one validated object while retaining bounded same-origin transport state.
+    ///
+    /// # Errors
+    ///
+    /// Returns a classified preparation error for invalid input, cancellation, or infrastructure
+    /// failure.
+    pub fn fetch(
+        &mut self,
+        specification: &Specification,
+        cancellation: &Arc<AtomicBool>,
+    ) -> Result<Completed, Failure> {
+        let requested =
+            validate(specification, specification.maximum_bytes).map_err(Failure::Rejected)?;
+        let mut current = requested.clone();
+        let mut redirects = Vec::new();
+        let mut observed_addresses = Vec::new();
+        for redirect_count in 0..=MAX_REDIRECTS {
+            cancelled(cancellation)?;
+            let (host, addresses) = resolve_public(&current).map_err(Failure::Rejected)?;
+            observed_addresses.extend(addresses.iter().map(ToString::to_string));
+            match self.transfer(&host, &addresses, &current, specification, cancellation)? {
+                Transfer::Redirect(location) => {
+                    if redirect_count == MAX_REDIRECTS {
+                        return Err(Failure::Rejected(
+                            "dependency exceeded five HTTPS redirects".into(),
+                        ));
+                    }
+                    let next = current.join(&location).map_err(|_| {
+                        Failure::Rejected("HTTPS redirect Location is invalid".into())
+                    })?;
+                    current = checked_url(next.as_str()).map_err(Failure::Rejected)?;
+                    redirects.push(current.to_string());
+                }
+                Transfer::Complete { bytes, digest } => {
+                    observed_addresses.sort();
+                    observed_addresses.dedup();
+                    return Ok(Completed {
+                        requested_url: requested.to_string(),
+                        final_url: current.to_string(),
+                        redirects,
+                        resolved_addresses: observed_addresses,
+                        bytes,
+                        digest,
+                    });
+                }
             }
-            let location = response
-                .headers()
-                .get(reqwest::header::LOCATION)
-                .and_then(|value| value.to_str().ok())
-                .ok_or_else(|| Failure::Rejected("HTTPS redirect has no valid Location".into()))?;
-            let next = current
-                .join(location)
-                .map_err(|_| Failure::Rejected("HTTPS redirect Location is invalid".into()))?;
-            current = checked_url(next.as_str()).map_err(Failure::Rejected)?;
-            redirects.push(current.to_string());
-            continue;
         }
-        if response.status() != StatusCode::OK {
-            return Err(Failure::Rejected(format!(
-                "dependency origin returned HTTP {}",
-                response.status().as_u16()
-            )));
+        Err(Failure::Rejected("dependency redirect state is invalid".into()))
+    }
+
+    fn transfer(
+        &mut self,
+        host: &str,
+        addresses: &[SocketAddr],
+        url: &Url,
+        specification: &Specification,
+        cancellation: &Arc<AtomicBool>,
+    ) -> Result<Transfer, Failure> {
+        let mut last_error = None;
+        for attempt in 1..=MAX_TRANSFER_ATTEMPTS {
+            cancelled(cancellation)?;
+            let client = self.client(host, addresses).map_err(Failure::Infrastructure)?;
+            match transfer_once(&client, url, specification, cancellation) {
+                Ok(transfer) => return Ok(transfer),
+                Err(Failure::Infrastructure(detail)) => {
+                    self.clients.remove(host);
+                    last_error = Some(detail);
+                    if attempt == MAX_TRANSFER_ATTEMPTS {
+                        break;
+                    }
+                }
+                Err(error) => return Err(error),
+            }
         }
-        if response.content_length().is_some_and(|bytes| bytes > specification.maximum_bytes) {
+        Err(Failure::Infrastructure(format!(
+            "dependency transfer failed after {MAX_TRANSFER_ATTEMPTS} attempts: {}",
+            last_error.unwrap_or_else(|| "transport failed without a diagnostic".into())
+        )))
+    }
+
+    fn client(&mut self, host: &str, addresses: &[SocketAddr]) -> Result<Client, String> {
+        let must_replace = self.clients.get(host).is_some_and(|(pinned, _)| pinned != addresses);
+        if must_replace {
+            self.clients.remove(host);
+        }
+        if !self.clients.contains_key(host) {
+            if self.clients.len() == MAX_SESSION_ORIGINS {
+                self.clients.clear();
+            }
+            self.clients.insert(host.to_owned(), (addresses.to_vec(), client(host, addresses)?));
+        }
+        self.clients
+            .get(host)
+            .map(|(_, client)| client.clone())
+            .ok_or_else(|| "dependency HTTPS client was not retained".into())
+    }
+}
+
+fn transfer_once(
+    client: &Client,
+    url: &Url,
+    specification: &Specification,
+    cancellation: &Arc<AtomicBool>,
+) -> Result<Transfer, Failure> {
+    let mut response = client
+        .get(url.clone())
+        .header(reqwest::header::ACCEPT_ENCODING, "identity")
+        .send()
+        .map_err(|error| Failure::Infrastructure(format!("HTTPS request failed: {error}")))?;
+    cancelled(cancellation)?;
+    if response.status().is_redirection() {
+        let location = response
+            .headers()
+            .get(reqwest::header::LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| Failure::Rejected("HTTPS redirect has no valid Location".into()))?;
+        return Ok(Transfer::Redirect(location.into()));
+    }
+    if response.status() != StatusCode::OK {
+        return Err(Failure::Rejected(format!(
+            "dependency origin returned HTTP {}",
+            response.status().as_u16()
+        )));
+    }
+    if response.content_length().is_some_and(|bytes| bytes > specification.maximum_bytes) {
+        return Err(Failure::Rejected(
+            "declared dependency exceeds maximum_bytes before transfer".into(),
+        ));
+    }
+    let capacity = usize::try_from(specification.maximum_bytes.min(1024 * 1024))
+        .map_err(|_| Failure::Rejected("dependency size exceeds this platform".into()))?;
+    let mut bytes = Vec::with_capacity(capacity);
+    let mut chunk = [0_u8; 16 * 1024];
+    loop {
+        cancelled(cancellation)?;
+        let count = response.read(&mut chunk).map_err(|error| {
+            Failure::Infrastructure(format!("dependency response read failed: {error}"))
+        })?;
+        if count == 0 {
+            break;
+        }
+        let next = u64::try_from(bytes.len())
+            .ok()
+            .and_then(|current| current.checked_add(u64::try_from(count).ok()?))
+            .ok_or_else(|| Failure::Rejected("dependency byte count overflowed".into()))?;
+        if next > specification.maximum_bytes {
             return Err(Failure::Rejected(
-                "declared dependency exceeds maximum_bytes before transfer".into(),
+                "declared dependency exceeded maximum_bytes during transfer".into(),
             ));
         }
-        let capacity = usize::try_from(specification.maximum_bytes.min(1024 * 1024))
-            .map_err(|_| Failure::Rejected("dependency size exceeds this platform".into()))?;
-        let mut bytes = Vec::with_capacity(capacity);
-        let mut chunk = [0_u8; 16 * 1024];
-        loop {
-            cancelled(cancellation)?;
-            let count = response.read(&mut chunk).map_err(|error| {
-                Failure::Infrastructure(format!("dependency transfer failed: {error}"))
-            })?;
-            if count == 0 {
-                break;
-            }
-            let next = u64::try_from(bytes.len())
-                .ok()
-                .and_then(|current| current.checked_add(u64::try_from(count).ok()?))
-                .ok_or_else(|| Failure::Rejected("dependency byte count overflowed".into()))?;
-            if next > specification.maximum_bytes {
-                return Err(Failure::Rejected(
-                    "declared dependency exceeded maximum_bytes during transfer".into(),
-                ));
-            }
-            bytes.extend_from_slice(&chunk[..count]);
-        }
-        let digest = hex(&Sha256::digest(&bytes));
-        if specification.expected_sha256.as_ref().is_some_and(|expected| expected != &digest) {
-            return Err(Failure::Rejected(format!(
-                "dependency SHA-256 mismatch: expected {}, observed {digest}",
-                specification.expected_sha256.as_deref().unwrap_or_default()
-            )));
-        }
-        observed_addresses.sort();
-        observed_addresses.dedup();
-        return Ok(Completed {
-            requested_url: requested.to_string(),
-            final_url: current.to_string(),
-            redirects,
-            resolved_addresses: observed_addresses,
-            bytes,
-            digest,
-        });
+        bytes.extend_from_slice(&chunk[..count]);
     }
-    Err(Failure::Rejected("dependency redirect state is invalid".into()))
+    let digest = hex(&Sha256::digest(&bytes));
+    if specification.expected_sha256.as_ref().is_some_and(|expected| expected != &digest) {
+        return Err(Failure::Rejected(format!(
+            "dependency SHA-256 mismatch: expected {}, observed {digest}",
+            specification.expected_sha256.as_deref().unwrap_or_default()
+        )));
+    }
+    Ok(Transfer::Complete { bytes, digest })
 }
 
 fn checked_url(value: &str) -> Result<Url, String> {
@@ -230,8 +332,10 @@ fn client(host: &str, addresses: &[SocketAddr]) -> Result<Client, String> {
         .https_only(true)
         .no_proxy()
         .redirect(Policy::none())
+        .http1_only()
+        .pool_max_idle_per_host(0)
         .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_mins(2))
+        .timeout(Duration::from_mins(1))
         .resolve_to_addrs(host, addresses)
         .build()
         .map_err(|error| format!("dependency HTTPS client could not start: {error}"))

@@ -254,7 +254,7 @@ impl DeveloperLoop {
                     )?;
                     continue;
                 }
-                if let Some(blocker) = tools.completion_blocker() {
+                if let Some(blocker) = tools.response_blocker(&final_text) {
                     context.append(
                         &mut messages,
                         Message::new(Role::Assistant, assistant, protocol_limits)?,

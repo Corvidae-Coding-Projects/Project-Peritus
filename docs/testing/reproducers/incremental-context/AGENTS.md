@@ -1,5 +1,7 @@
 # Incremental-context replay waypoint
 
+## Responsibility
+
 This folder operates production APIs to check reuse without changing source/permission semantics.
 It is separate from Cargo tests. Build/relink after production changes; use disposable disk-backed
 workspaces, keep independent expected values, and preserve actual failure inputs and results.
@@ -51,3 +53,6 @@ workspaces, keep independent expected values, and preserve actual failure inputs
 
 Production owners: `peritus-product-runner` inspection and local-context assembly; the composable
 estimator belongs to `peritus-agent`. See [parent waypoint](../AGENTS.md).
+## Working in this area
+
+Start with [`README.md`](README.md) to recover prerequisites, disposable-state rules, and the independent oracle before running anything. Keep generated binaries and mutable run state outside the repository, and treat a replay as evidence for the exact observed build and scenario rather than universal product coverage.

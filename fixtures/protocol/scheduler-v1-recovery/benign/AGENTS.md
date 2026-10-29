@@ -24,6 +24,10 @@ Retained scheduler checkpoint and event bytes for benign recovery/replay.
 | [event-07.bin](event-07.bin) | Retained binary/archive data for event 07; not a source-code entrypoint. |
 | [event-08.bin](event-08.bin) | Retained binary/archive data for event 08; not a source-code entrypoint. |
 
+## Working in this area
+
+Choose the exact version and recovery disposition through the child waypoints before inspecting retained bytes. These directories organize inputs and expected observations; follow the parent map to the active codec, scheduler, or recovery implementation.
+
 Navigation: [Parent waypoint](../AGENTS.md) · [Repository map](../../../../AGENTS.md).
 
 Keep this waypoint aligned when local files or child responsibilities change. Descriptions are orientation, not a substitute for reading the current implementation.

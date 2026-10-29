@@ -2,7 +2,6 @@
 
 use std::{
     collections::{BinaryHeap, VecDeque},
-    ffi::OsStr,
     fmt::Write as _,
     io,
     path::{Path, PathBuf},
@@ -10,6 +9,9 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime},
 };
+
+#[cfg(unix)]
+use std::ffi::OsStr;
 
 use tokio::{io::AsyncReadExt as _, process::Command, task::JoinSet, time::Instant};
 

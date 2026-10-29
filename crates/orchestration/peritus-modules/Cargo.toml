@@ -21,8 +21,8 @@ toml.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 flate2.workspace = true
-peritus-network = { version = "=0.1.11", path = "../../runtime/peritus-network" }
-peritus-plugin-sdk = { version = "=0.1.11", path = "../../foundation/peritus-plugin-sdk" }
+peritus-network = { version = "=0.1.13", path = "../../runtime/peritus-network" }
+peritus-plugin-sdk = { version = "=0.1.13", path = "../../foundation/peritus-plugin-sdk" }
 tar.workspace = true
 url.workspace = true
 

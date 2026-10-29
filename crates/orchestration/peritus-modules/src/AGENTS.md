@@ -1,5 +1,7 @@
 # src — navigation
 
+## Responsibility
+
 Strict module metadata, atomic registry and digest-bound durable jobs.
 
 ## Files
@@ -17,3 +19,6 @@ Strict module metadata, atomic registry and digest-bound durable jobs.
 | [source_build](source_build/AGENTS.md) | Pinned source capture, bounded build-process execution and atomic disabled packaging. |
 
 Read callers for exact behavior. This map adds no testing or approval gates.
+## Working in this area
+
+Start at [`lib.rs`](lib.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.
