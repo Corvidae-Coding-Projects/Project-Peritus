@@ -117,7 +117,7 @@ that a model can never invent a budget or mishandle a prompt. No task-wide token
 
 Architecture verdict: the optional direct route is implemented and working through real login,
 generation, tools, independent coding acceptance, streaming steering and token renewal on Linux.
-Codex remains available and existing selections remain unchanged. No commit, push, installation
-switch, or release has been performed for this feature. Source and binary hashes are recorded in
+Codex remains available and existing selections remain unchanged. Publication and installation
+are tracked separately in the release record. Qualification source and binary hashes are recorded in
 the evidence root's `qualification-manifest.json`; HEAD alone does not identify this uncommitted
 implementation.
