@@ -20,6 +20,25 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 These drivers operate the actual program. They contain no unit tests or substituted application implementations.
 
+## Short text paste and output selection
+
+`paste-replay.py --binary /absolute/path/to/peritus --fixture /absolute/private/fixture`
+replays the reported text `Shared https://doc.qt.io for reading.` through the real terminal
+input parser, launcher, TUI and daemon. Prepare a fresh fixture with a committed Git repository
+in `project/` and `owned-fixture.json` containing `{"owned_disposable_fixture":true}`. It selects
+offline provider `0`, so none of these checks invokes a model or submits the draft.
+
+The same text must remain editable after ordinary paste, paste during F2 output selection,
+and fragmented bracketed-paste delivery. The last check enters selection mode and presses
+Ctrl-Q: it must exit promptly. `--expect-old-quit` records the old swallowed quit key and then
+uses Esc to leave selection before exiting. Use a fresh fixture for a different binary cohort;
+launcher configuration generations are immutable. Reuse installed automation dependencies with
+`PERITUS_AUTOMATION_PYTHON` and `PLAYWRIGHT_BROWSERS_PATH` when appropriate.
+
+The reported short paste succeeded in all three delivery cases before the repair as well as
+after it. The independently reproduced defect was Ctrl-Q being ignored during output selection.
+This replay does not establish the cause of a freeze in an unobserved terminal session.
+
 ## Build
 
 From the repository root:

@@ -53,3 +53,16 @@ a public example does not establish universal unblockability.
 
 The 2026-10-29 campaign receipts and exact Chrome UI driver are retained outside the repository at
 `/home/doll/.cache/peritus-web-recovery-_94c9pm_/`; this is local evidence, not a required runtime path.
+# Chrome open/share diagnostics
+
+`replay-extension-open.py` installs the real embedded extension into an owned Chromium profile
+and communicates through its real native-messaging bridge. Pass `--cli`, `--driver-dir` (the
+production Python driver sources), `--browser` (the Chromium executable), and a fresh private
+`--output` directory. Run it with the installed automation Python; Xvfb must be available.
+No existing Chrome profile or desktop clipboard is used.
+
+Opening `https://doc.qt.io/` without sharing the new tab must preserve
+`browser_tab_selection_required`, the opened URL, and the popup share instructions. Before
+the repair, `--expect-old` reproduces the generic `Chrome extension action failed` exception
+which discarded those instructions. The same replay requires a successful loopback read and
+rejection of external HTTP. It never grants access to an unselected HTTPS tab.

@@ -10,5 +10,6 @@ Real consumers of the web-source library, owned browser runtime, and public term
 | [replay-browser.py](replay-browser.py) | Real browser navigation, challenge and failure cases against disposable HTTP inputs. |
 | [replay-product.py](replay-product.py) | Real terminal/daemon/provider default API and rendering recovery. |
 | [replay-selected-product.py](replay-selected-product.py) | Real daemon selected-tab read after explicit disposable Chrome selection. |
+| [replay-extension-open.py](replay-extension-open.py) | Real Chromium extension open/share diagnostics, loopback reading, and external HTTP rejection. |
 
 Keep generated state and binaries outside the repository. Read README.md before executing. These checks establish the observed scenarios, not universal access to protected sites.

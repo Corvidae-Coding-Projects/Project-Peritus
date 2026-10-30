@@ -56,6 +56,10 @@ class ExtensionBrowsers:
             raise ValueError('Chrome extension response was oversized or interrupted')
         response = json.loads(chunks)
         if not response.get('success'):
+            # Opening an external tab requires a separate user share. Preserve that
+            # known outcome and its next action instead of reporting an ambiguous failure.
+            if response.get('failure') == 'browser_tab_selection_required':
+                return response
             raise ValueError(response.get('error', 'Chrome extension action failed'))
         return response
 
