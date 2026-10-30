@@ -10,13 +10,13 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-artifact-store = { version = "=0.1.15", path = "../../state/peritus-artifact-store" }
-peritus-policy = { version = "=0.1.15", path = "../../foundation/peritus-policy" }
-peritus-process = { version = "=0.1.15", path = "../../runtime/peritus-process" }
-peritus-sandbox = { version = "=0.1.15", path = "../../runtime/peritus-sandbox" }
-peritus-tool-protocol = { version = "=0.1.15", path = "../peritus-tool-protocol" }
-peritus-tool-router = { version = "=0.1.15", path = "../peritus-tool-router" }
-peritus-types = { version = "=0.1.15", path = "../../foundation/peritus-types" }
+peritus-artifact-store = { version = "=0.1.16", path = "../../state/peritus-artifact-store" }
+peritus-policy = { version = "=0.1.16", path = "../../foundation/peritus-policy" }
+peritus-process = { version = "=0.1.16", path = "../../runtime/peritus-process" }
+peritus-sandbox = { version = "=0.1.16", path = "../../runtime/peritus-sandbox" }
+peritus-tool-protocol = { version = "=0.1.16", path = "../peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.1.16", path = "../peritus-tool-router" }
+peritus-types = { version = "=0.1.16", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 
 [package.metadata.peritus]

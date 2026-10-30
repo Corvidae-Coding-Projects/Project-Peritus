@@ -12,7 +12,7 @@ keywords = ["budgeting", "formal-verification", "resource-management", "rust"]
 categories = ["algorithms", "data-structures"]
 
 [dependencies]
-peritus-types = { version = "=0.1.15", path = "../peritus-types" }
+peritus-types = { version = "=0.1.16", path = "../peritus-types" }
 
 [package.metadata.peritus]
 owner = "B1"

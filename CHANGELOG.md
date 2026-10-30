@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.1.16
+
+### Fixed
+
+- Prioritize new questions and steering during active work, honor requests to wait, and retain the waiting input revision across recovery.
+- Use the explicitly selected reasoning effort for every turn, including replies. If a reasoning-capable role has no effort selected, ask the user to choose before sending a model request.
+- Recover public web reads through official Stack Exchange content and isolated browser rendering, retaining exact source pages, final HTTP status, access-denial details, and rate-limit cooldowns.
+- Read explicitly shared HTTPS tabs through the private Chrome bridge and preserve the share/attach instructions when a newly opened tab needs user selection.
+- Keep mouse paste in the live composer. Right-click opens Copy/Paste; Linux middle-click uses the primary selection. Preserve Unicode selections, insertion positions and newer edits while clipboard reads are pending, and keep Ctrl-Q available during explicit F2 output selection.
+
+### Real testing
+
+- Replayed actual Codex steering and selected-effort requests, missing-selection prompts, and selection/resume recovery without workspace or process tools.
+- Exercised real web-source, browser-navigation and native Chrome-extension paths, including the previously discarded HTTPS-sharing outcome.
+- Reproduced the mouse freeze on the previous binary, then passed 20 clipboard and mouse scenarios on each of isolated X11 and Wayland services, including the installed binaries. Checked stale replies, timeouts, inert pasted commands, Unicode Copy/Paste, and existing image previews without model inference.
+- Formatting and strict workspace Clippy passed. Windows target compilation passed; local macOS cross-compilation was unavailable without the Apple C toolchain. Native release builds and startup receipts qualify their own platforms.
+
 ## 0.1.15
 
 ### Added
