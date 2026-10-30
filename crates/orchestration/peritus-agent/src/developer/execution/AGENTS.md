@@ -10,7 +10,7 @@ Provider-turn execution and current invocation/retry policy. Preserve current po
 | --- | --- |
 | [invocation.rs](invocation.rs) | Stable system policy and separate current developer guidance, including executor prerequisites and retries; counters stay out of the cacheable policy prefix. |
 | [provider_turn.rs](provider_turn.rs) | Bounded provider retries and durable public-text delivery. |
-| [state.rs](state.rs) | Current input fencing, message construction, and provider-terminal classification. |
+| [state.rs](state.rs) | Current input fencing, bounded reply/continue decoding, message construction, and provider-terminal classification. |
 
 ## Child areas
 

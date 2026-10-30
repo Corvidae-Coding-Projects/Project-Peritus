@@ -235,6 +235,11 @@ impl ProductRunService {
                 .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
             let cancelled = Arc::new(AtomicBool::new(false));
             let token = CancellationToken::new();
+            let retry_revision = if message.is_none() && !self.pending_record_input(record)? {
+                Some(self.record_input_revision(record)?)
+            } else {
+                None
+            };
             let previous = record.clone();
             if let Some(operation) = goal_resume {
                 record.goal_resume = Some(operation.id());
@@ -245,6 +250,7 @@ impl ProductRunService {
             record.cancelled = Arc::clone(&cancelled);
             record.user_cancelled = false;
             record.provider_cancellation = token.clone();
+            record.interaction.retry_revision = retry_revision;
             record.snapshot =
                 super::snapshot::retry_snapshot(&record.request, record.resume.as_deref())?;
             record.progress.begin_attempt();

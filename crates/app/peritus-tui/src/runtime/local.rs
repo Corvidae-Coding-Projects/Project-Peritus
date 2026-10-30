@@ -63,6 +63,9 @@ impl LocalOperations {
                     find_files(root, &query).await.map(|files| (LocalReply::Files(files), None))
                 }
                 LocalOperation::ReadClipboardImage => clipboard_image().await,
+                LocalOperation::ReadClipboardText(source) => super::clipboard_read::read(source)
+                    .await
+                    .map(|text| (LocalReply::ClipboardText(text), None)),
                 LocalOperation::SearchTranscript { scope, query } => {
                     crate::transcript_archive::search(&scope, &query)
                         .await
@@ -436,7 +439,7 @@ const MAC_CLIPBOARD: &str = r#"ObjC.import('AppKit'); function run(args) { const
 #[cfg(windows)]
 const WINDOWS_CLIPBOARD: &str = r#"Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $image = [System.Windows.Forms.Clipboard]::GetImage(); if ($null -eq $image) { exit 2 }; $stream = New-Object System.IO.MemoryStream; try { if ([long]$image.Width * $image.Height -gt 16777216) { exit 3 }; $image.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png); if ($stream.Length -gt 33554432) { exit 3 }; [System.IO.File]::WriteAllBytes($env:PERITUS_CLIPBOARD_IMAGE, $stream.ToArray()) } finally { $stream.Dispose(); $image.Dispose() }"#;
 
-async fn helper_output(
+pub(super) async fn helper_output(
     command: &mut Command,
     limit: usize,
     timeout: Duration,
@@ -444,7 +447,7 @@ async fn helper_output(
     let mut child = command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).kill_on_drop(true)
         .spawn().map_err(|error| {
             if error.kind() == io::ErrorKind::NotFound {
-                "The desktop clipboard helper is unavailable. Install wl-clipboard (Wayland) or xclip (X11), or use /images PATH.".to_owned()
+                "The desktop clipboard helper is unavailable. Install wl-clipboard (Wayland) or xclip (X11).".to_owned()
             } else {
                 format!("Cannot start the desktop clipboard helper: {error}")
             }
@@ -457,16 +460,17 @@ async fn helper_output(
             .take(limit as u64 + 1)
             .read_to_end(&mut bytes)
             .await
-            .map_err(|error| format!("Cannot read clipboard image: {error}"))?;
+            .map_err(|error| format!("Cannot read clipboard data: {error}"))?;
         if bytes.len() > limit {
-            return Err("Clipboard image exceeds 32 MiB; save it and use /images PATH.".to_owned());
+            return Err("Clipboard data exceeds the 32 MiB limit.".to_owned());
         }
         let status = child
             .wait()
             .await
             .map_err(|error| format!("Cannot collect clipboard helper: {error}"))?;
         if !status.success() {
-            return Err("The clipboard does not contain an accessible image. Copy a screenshot or use /images PATH.".to_owned());
+            return Err("The clipboard does not contain accessible data in the requested format."
+                .to_owned());
         }
         Ok(bytes)
     };

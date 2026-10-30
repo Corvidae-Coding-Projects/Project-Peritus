@@ -90,6 +90,19 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     }
     draw_composer(frame, regions[3], model, draft);
     status::draw(frame, regions[4], model);
+    if let Some(menu) = model.chat.composer_menu {
+        frame.render_widget(ratatui::widgets::Clear, menu);
+        let copy_style =
+            Style::default().fg(if model.chat.selection().is_some() { ACCENT } else { MUTED });
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::styled(" Copy", copy_style),
+                Line::styled(" Paste", Style::default().fg(ACCENT)),
+            ])
+            .block(Block::default().borders(Borders::ALL)),
+            menu,
+        );
+    }
     if let Some(selection) = &model.chat.output_selection
         && selection.area == regions[1]
         && let Some(menu) = selection.menu

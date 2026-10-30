@@ -99,9 +99,10 @@ It works even if model discovery is unavailable.
 Levels are `default`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
 They are requested values, not a claim that every provider/model supports all levels.
 Unsupported adapter mappings reject before saving; model-specific provider rejections remain
-visible. No nearby level is substituted by Peritus. `default` preserves the prior policy:
-high when controls are negotiated, otherwise no reasoning control. Defaults do not read or
-modify an external runtime's global configuration.
+visible. No nearby level is substituted by Peritus. `default` clears the explicit selection:
+reasoning-capable turns pause and ask you to choose an effort before any model request is sent.
+Models without reasoning controls need no effort selection. Peritus does not read or modify an
+external runtime's global effort configuration.
 
 Effort is retained separately for each role, survives model changes, and shares model selection's
 durable acknowledgement, next-turn boundary, rollback, and saved-conversation restoration.
@@ -131,6 +132,9 @@ selection, and typed notices. The Help view describes the live key map.
 - `1` through `7` select Runs, Diff, Review, Trace, Evolution, Terminal, or Approvals.
 - `Tab` and `Shift-Tab` cycle views; `j`/`k` or arrows move the selection.
 - `PageUp` and `PageDown` move by a page; `r` requests a refresh.
+- Right-click the message composer for Copy/Paste. On Linux, middle-click pastes the primary
+  selection. These reads stay asynchronous, preserve the insertion point and selection, and
+  never submit the draft. A changed draft or destination rejects a late clipboard result.
 - In conversation view, drag across output, right-click, then click Copy. The selection stays
   still while daemon work continues. Copy uses a desktop clipboard helper or terminal OSC 52; `Ctrl-C`
   also copies selected output without stopping work. `Esc`, scrolling, typing, or a composer click

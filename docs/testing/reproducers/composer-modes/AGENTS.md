@@ -15,6 +15,8 @@ Real-interface replay resources for composer modes; start with the local README/
 | [replay-webui.mjs](replay-webui.mjs) | Browser client module for replay webui. |
 | [shared_callers_replay.py](shared_callers_replay.py) | Replay shared-editor routing through real Peritus/daemon/PTY interfaces. |
 | [tui_replay.py](tui_replay.py) | Operate actual Peritus via PTY, decode its screen, and replay human editing. |
+| [paste-replay.py](paste-replay.py) | Exact Qt-link text paste, fragmented terminal delivery, output-selection recovery, and the explicit quit key. |
+| [mouse-paste.py](mouse-paste.py) | Real mouse events, isolated X11/Wayland clipboard services, Unicode replacement, stale reads, timeout recovery, and image-paste preservation. |
 
 ## Working in this area
 

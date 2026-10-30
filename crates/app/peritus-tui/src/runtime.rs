@@ -2,6 +2,7 @@
 
 mod candidate;
 mod clipboard;
+mod clipboard_read;
 mod connection;
 mod diagnostics;
 mod editor;

@@ -103,13 +103,31 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
         }
         "automation" => {
             let operation = parser.command("automation operation")?;
-            let setup = match operation.as_str() {
-                "setup" => true,
-                "status" => false,
-                _ => return Err(CliError::usage("usage: peritus automation <setup|status>")),
+            let operation = match operation.as_str() {
+                "setup" => AutomationArgs::Setup,
+                "status" => AutomationArgs::Status,
+                "chrome-extension" => {
+                    let operation = parser.command("Chrome extension operation")?;
+                    let operation = match operation.as_str() {
+                        "install" => ChromeExtensionArgs::Install,
+                        "status" => ChromeExtensionArgs::Status,
+                        "uninstall" => ChromeExtensionArgs::Uninstall,
+                        _ => {
+                            return Err(CliError::usage(
+                                "usage: peritus automation chrome-extension <install|status|uninstall>",
+                            ));
+                        }
+                    };
+                    AutomationArgs::ChromeExtension(operation)
+                }
+                _ => {
+                    return Err(CliError::usage(
+                        "usage: peritus automation <setup|status|chrome-extension>",
+                    ));
+                }
             };
             parser.finish()?;
-            Ok(Command::Automation { setup })
+            Ok(Command::Automation(operation))
         }
         "providers" => {
             parser.finish()?;

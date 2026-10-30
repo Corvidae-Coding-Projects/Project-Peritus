@@ -27,6 +27,9 @@ pub(super) struct InteractionOptions {
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
     pub(super) incorporated: u64,
+    // Shared live presentation hint; never authority or part of the durable record format.
+    pub(super) answered_input: Arc<std::sync::atomic::AtomicU64>,
+    pub(super) retry_revision: Option<u64>,
     pub(super) public_input_count: usize,
     pub(super) activities: Vec<ProductActivity>,
     pub(super) observed_images: Vec<crate::product_control::ToolImageObservation>,
@@ -50,6 +53,8 @@ impl InteractionOptions {
             mode,
             models,
             incorporated: 0,
+            answered_input: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            retry_revision: None,
             public_input_count: 0,
             activities: Vec::new(),
             observed_images: Vec::new(),
@@ -200,7 +205,11 @@ impl InteractionOptions {
 }
 
 impl ProductRunService {
-    pub(super) fn pending_interactive_input(&self, run_id: RunId) -> bool {
+    pub(super) fn pending_interactive_input(
+        &self,
+        run_id: RunId,
+        waiting_revision: Option<u64>,
+    ) -> bool {
         self.inner
             .records
             .read()
@@ -210,6 +219,11 @@ impl ProductRunService {
                     record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
                         && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
                         && self.pending_record_input(record).unwrap_or(false)
+                        // A configuration prompt can precede inference admission. Its original
+                        // input remains pending, but only newer input should restart it.
+                        && waiting_revision.is_none_or(|revision| {
+                            self.record_input_revision(record).is_ok_and(|current| current > revision)
+                        })
                         && !record
                             .interaction
                             .persistence_failed

@@ -29,7 +29,7 @@ cohort using `incremental-context/link.py --control-output /tmp/control-client` 
 ```sh
 python3 docs/testing/reproducers/chatgpt-oauth/steering.py \
   --daemon target/debug/peritusd --cli target/debug/peritus --client /tmp/control-client \
-  --output /absolute/fresh/evidence --case question --question
+  --output /absolute/fresh/evidence --case question --question --effort xhigh
 ```
 
 The fixture admits a real long text request, submits a question while it is pending, and checks
@@ -41,6 +41,18 @@ three-second observation. `--old` observes the previous binary for 12 seconds an
 replacement request; that is a bounded reproduction of the old delay, not an inference canary.
 All daemon state and fixture content stay under the fresh evidence root. Cleanup targets only
 that disposable daemon's endpoint. Existing user runs are never selected.
+
+Effort is never selected automatically. The screenshot regression is reproduced with
+`--question --effort xhigh`: the old reply path requested Low, then failed with
+`PERITUS-PROVIDER-CORE-010 selected_effort`. The fixed replay requires both requests to retain
+xhigh and the actual answer to arrive without workspace or process tools. High and Low can
+also be exercised with `--effort`.
+
+Omit `--effort` to verify that a missing selection produces one visible prompt, waits without
+restarting or making a model request, and preserves the pending input. Add
+`--question --select-after-missing high` to save High through the public model-selection API,
+queue a question, explicitly resume the goal and require a real answer using High.
+Each replay needs a fresh `--case`.
 
 To exercise the same steering boundary through the new direct route, pass the saved non-secret
 `peritus-chatgpt-oauth-v1:/absolute/path/to/registration.json` reference with `--oauth-reference`.
@@ -62,6 +74,21 @@ python3 docs/testing/reproducers/chatgpt-oauth/tools.py \
 ```
 
 The replay creates its own random task value and verifies the actual module against that value.
+Add `--question-during-coding` to submit a question after the writer has read the target file.
+It requires the correct public answer within 30 seconds, no tool activity between the durable
+user message and that answer, and subsequent completion of the original edit and independent
+review. The answer is a response to the question, never proof that the task is complete.
+Add `--wait-after-reply` to instead require idle state, unchanged files and settled accounting
+after an explicit request to wait. Omit `--oauth-reference` to exercise the retained Codex route.
+`--resume-after-wait` then submits a fresh continuation and resumes the same goal; it requires
+the original edit, actual verification and independent review to complete after the safe pause.
+These are full coding-pipeline probes; the text-only steering replay does not cover this path.
+`--status-question` uses the reported message, `what are you currently working on`, with no
+extra instruction to continue. It requires an answer about the current greeting change before
+further tools, followed by completion of that original task.
+Activity ordering is checked in the durable stream because one poll can see both a reply and
+a later tool; a later tool must not be mislabeled as occurring before the reply.
+
 `--case command` is retained as a negative
 scope probe: daemon goal handoff currently uses WorkspaceChanges, so a command-only task can
 execute correctly yet fail empty-candidate qualification. Its native command receipt does not

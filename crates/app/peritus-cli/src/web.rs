@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 pub fn execute(arguments: &[String]) -> Result<Value, CliError> {
     let usage = || {
         CliError::usage(
-            "usage: peritus web <setup [SEARXNG_URL]|status|stop|search QUERY|open URL [--refresh]|read SOURCE [OFFSET] [MAX_BYTES]|find SOURCE QUERY [OFFSET]>",
+            "usage: peritus web <setup [SEARXNG_URL]|status|stop|search QUERY|open URL [--refresh] [--http]|read SOURCE [OFFSET] [MAX_BYTES]|find SOURCE QUERY [OFFSET]>",
         )
     };
     let operation = arguments.first().ok_or_else(usage)?;
@@ -17,8 +17,7 @@ pub fn execute(arguments: &[String]) -> Result<Value, CliError> {
     let maximum = match operation.as_str() {
         "setup" | "search" => 2,
         "status" | "stop" => 1,
-        "open" => 3,
-        "read" | "find" => 4,
+        "open" | "read" | "find" => 4,
         _ => return Err(usage()),
     };
     if arguments.len() > maximum {
@@ -36,8 +35,8 @@ pub fn execute(arguments: &[String]) -> Result<Value, CliError> {
             match name {
                 "search" => store.search(&json!({"query":required(1)?}), &|| false),
                 "open" => {
-                    if arguments.get(2).is_some_and(|v| v != "--refresh") { return Err(usage()); }
-                    store.open(&json!({"url":required(1)?, "refresh":arguments.len() == 3}), &|| false)
+                    if arguments[2..].iter().any(|v| v != "--refresh" && v != "--http") { return Err(usage()); }
+                    store.open(&json!({"url":required(1)?, "refresh":arguments.iter().any(|v| v == "--refresh"), "mode":if arguments.iter().any(|v| v == "--http") { "http" } else { "auto" }}), &|| false)
                 },
                 "read" => store.read(&json!({"source":required(1)?, "offset":number(2,0)?, "max_bytes":number(3,32768)?})),
                 "find" => store.find(&json!({"source":required(1)?, "query":required(2)?, "offset":number(3,0)?})),

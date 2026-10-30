@@ -3,6 +3,7 @@
 mod binding;
 mod catalog;
 mod commands;
+mod context_menu;
 pub mod convenience;
 mod doctor;
 mod history;
@@ -46,6 +47,7 @@ pub struct ChatUi {
     pub(crate) expanded: bool,
     pub(crate) output_mode: navigation::OutputMode,
     pub(crate) output_selection: Option<crate::input::output::OutputSelection>,
+    pub(crate) composer_menu: Option<ratatui::layout::Rect>,
     pub(crate) working: WorkingIndicator,
     pub(crate) command_selection: usize,
     pub(crate) catalog: Option<ProductModelCatalog>,
@@ -89,6 +91,7 @@ impl Default for ChatUi {
             expanded: false,
             output_mode: navigation::OutputMode::Live,
             output_selection: None,
+            composer_menu: None,
             working: WorkingIndicator::default(),
             command_selection: 0,
             catalog: None,

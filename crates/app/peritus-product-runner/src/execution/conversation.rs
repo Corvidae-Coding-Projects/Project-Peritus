@@ -108,21 +108,21 @@ impl ProductRunner {
                         drop(memory);
                         return Box::pin(Self::run_accounted(input, observe, accounting)).await;
                     }
-                    (SettlementCause::UserWait, Some(result.text), None)
+                    (
+                        SettlementCause::UserWait,
+                        Some(ProductRunQuestion {
+                            message: result.text,
+                            conversation_revision: input.conversation.incorporated_revision(),
+                        }),
+                        None,
+                    )
                 }
                 Ok(Err(peritus_agent::DeveloperLoopError::SegmentExhausted)) => {
                     accounting.record_role_retry()?;
                     continuing_segment = true;
                     continue;
                 }
-                Ok(Err(error)) => {
-                    let error = crate::turn::developer_error(&error);
-                    (
-                        super::settlement::cause_from_error(&error, false),
-                        None,
-                        Some(error.to_string()),
-                    )
-                }
+                Ok(Err(error)) => settle_developer_error(&error),
                 Err(_) => {
                     input.cancelled.store(true, std::sync::atomic::Ordering::Release);
                     let _ = input.provider_cancellation.cancel();
@@ -137,6 +137,20 @@ impl ProductRunner {
             return settle(&input, cause, reply, detail);
         }
     }
+}
+
+fn settle_developer_error(
+    error: &peritus_agent::DeveloperLoopError,
+) -> (SettlementCause, Option<ProductRunQuestion>, Option<String>) {
+    if let peritus_agent::DeveloperLoopError::AwaitingUser { message, revision } = error {
+        return (
+            SettlementCause::UserWait,
+            Some(ProductRunQuestion { message: message.clone(), conversation_revision: *revision }),
+            None,
+        );
+    }
+    let error = crate::turn::developer_error(error);
+    (super::settlement::cause_from_error(&error, false), None, Some(error.to_string()))
 }
 
 fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {
@@ -158,10 +172,9 @@ fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {
 pub(super) fn settle(
     input: &ProductRunInput,
     cause: SettlementCause,
-    reply: Option<String>,
+    question: Option<ProductRunQuestion>,
     detail: Option<String>,
 ) -> Result<ProductRunOutcome, ProductRunnerError> {
-    let revision = input.conversation.incorporated_revision();
     if input.resume.is_some() {
         // Discussing interrupted work does not throw away its continuation. The same production
         // finalizer refreshes its scoped identity and invalidates stale qualification, without
@@ -178,7 +191,7 @@ pub(super) fn settle(
             review: &execution.evidence.review,
             gate_report: execution.gate_report.as_ref(),
             cause,
-            question: reply.map(|message| (message, revision)),
+            question: question.map(|question| (question.message, question.conversation_revision)),
             detail,
             next_phase: execution.next_phase,
         });
@@ -188,8 +201,7 @@ pub(super) fn settle(
             .settle(cause)
             .map_err(|_| invalid("conversation settlement invariant failed"))?,
         candidate: None,
-        question: reply
-            .map(|message| ProductRunQuestion { message, conversation_revision: revision }),
+        question,
         detail,
         remaining_work: Vec::new(),
         resume: None,

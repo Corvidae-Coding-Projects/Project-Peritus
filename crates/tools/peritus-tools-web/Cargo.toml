@@ -11,6 +11,7 @@ publish = false
 [dependencies]
 encoding_rs = "=0.8.35"
 html5ever.workspace = true
+httpdate = "=1.0.3"
 markup5ever_rcdom.workspace = true
 metadata-search-engine-rs = "=0.3.1"
 search-http = { package = "reqwest", version = "=0.12.28", default-features = false, features = ["rustls-tls"] }

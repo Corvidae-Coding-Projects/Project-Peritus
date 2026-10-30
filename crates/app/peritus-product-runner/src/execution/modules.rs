@@ -4,8 +4,8 @@ mod interaction;
 mod native;
 mod tools;
 use super::{
-    ProductRunInput, ProductRunOutcome, ProductRunPhase, ProductRunUpdate, RunObserver,
-    check_cancelled,
+    ProductRunInput, ProductRunOutcome, ProductRunPhase, ProductRunQuestion, ProductRunUpdate,
+    RunObserver, check_cancelled,
 };
 use crate::budget::RunAccounting;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -55,7 +55,15 @@ pub(super) async fn execute(
     match outcome {
         Ok(text) => {
             input.conversation.present_host_reply(&text).map_err(error)?;
-            super::conversation::settle(input, SettlementCause::UserWait, Some(text), None)
+            super::conversation::settle(
+                input,
+                SettlementCause::UserWait,
+                Some(ProductRunQuestion {
+                    message: text,
+                    conversation_revision: input.conversation.incorporated_revision(),
+                }),
+                None,
+            )
         }
         Err(failure) => super::conversation::settle(
             input,

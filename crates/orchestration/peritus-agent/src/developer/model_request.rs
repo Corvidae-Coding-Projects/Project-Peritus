@@ -3,15 +3,19 @@
 use peritus_model_protocol::{
     CachePolicy, CanonicalJson, Capability, ExtensionName, GenerationConfig, JsonBounds, Message,
     ModelRequest, ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ProviderExtension,
-    ReasoningEffort, ReasoningPolicy, RequestId, RequestOptions, StructuredOutput, SummaryPolicy,
-    ToolChoice, WireDialect,
+    ReasoningPolicy, RequestId, RequestOptions, StructuredOutput, SummaryPolicy, ToolChoice,
+    WireDialect,
 };
 
-use super::{DeveloperCyberAccessProgram, DeveloperLoopError, DeveloperLoopRequest};
+use super::{
+    DeveloperActivity, DeveloperCyberAccessProgram, DeveloperInteraction, DeveloperLoopError,
+    DeveloperLoopRequest, DeveloperModelRole,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ModelTurnKind {
     Developer,
+    UserResponse,
     SemanticCompaction,
 }
 
@@ -48,8 +52,8 @@ pub(super) fn build_model_request(
     kind: ModelTurnKind,
     required_tool: Option<&str>,
     provider: &dyn peritus_provider_core::ModelProvider,
+    reasoning: ReasoningPolicy,
 ) -> Result<ModelRequest, DeveloperLoopError> {
-    let selected_effort = provider.reasoning_effort();
     let parallel_tools = if kind == ModelTurnKind::Developer
         && !request.tools.is_empty()
         && required_tool.is_none()
@@ -58,23 +62,6 @@ pub(super) fn build_model_request(
         ParallelToolPolicy::Allowed(negotiated.limits().max_parallel_tool_calls())
     } else {
         ParallelToolPolicy::Disabled
-    };
-    let reasoning = if negotiated.includes(Capability::ReasoningControls) {
-        ReasoningPolicy::Effort {
-            effort: selected_effort.unwrap_or(ReasoningEffort::High),
-            summary: if negotiated.includes(Capability::ReasoningSummaries) {
-                SummaryPolicy::Auto
-            } else {
-                SummaryPolicy::None
-            },
-        }
-    } else {
-        if selected_effort.is_some() {
-            return Err(DeveloperLoopError::Context(
-                "selected reasoning effort is not supported by negotiated capabilities".to_owned(),
-            ));
-        }
-        ReasoningPolicy::Disabled
     };
     let developer_tool_choice = match required_tool {
         Some(required) => request
@@ -99,6 +86,12 @@ pub(super) fn build_model_request(
         ),
         ModelTurnKind::SemanticCompaction => (
             format!("{}-semantic-compaction-{turn}-attempt-{attempt}", request.request_prefix),
+            Vec::new(),
+            ToolChoice::None,
+            request.limits.max_output_tokens(),
+        ),
+        ModelTurnKind::UserResponse => (
+            format!("{}-user-response-{turn}-attempt-{attempt}", request.request_prefix),
             Vec::new(),
             ToolChoice::None,
             request.limits.max_output_tokens(),
@@ -140,4 +133,44 @@ pub(super) fn build_model_request(
         ),
         protocol_limits,
     )?)
+}
+
+pub(super) fn reasoning_policy(
+    provider: &dyn peritus_provider_core::ModelProvider,
+    negotiated: peritus_model_protocol::NegotiatedCapabilities,
+    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+) -> Result<ReasoningPolicy, DeveloperLoopError> {
+    let selected_effort = provider.reasoning_effort();
+    if negotiated.includes(Capability::ReasoningControls) {
+        let Some(effort) = selected_effort else {
+            let role = interaction.map_or_else(
+                || "the selected model".to_owned(),
+                |(_, role, _)| format!("the {role:?} role").to_lowercase(),
+            );
+            let message = format!(
+                "Choose a reasoning effort for {role} in model settings, then resume. No model request was sent."
+            );
+            if let Some((port, _, _)) = interaction {
+                port.observe(DeveloperActivity::Text(message.as_bytes()))?;
+            }
+            return Err(DeveloperLoopError::AwaitingUser {
+                message,
+                revision: interaction.map_or(0, |(_, _, revision)| revision),
+            });
+        };
+        Ok(ReasoningPolicy::Effort {
+            effort,
+            summary: if negotiated.includes(Capability::ReasoningSummaries) {
+                SummaryPolicy::Auto
+            } else {
+                SummaryPolicy::None
+            },
+        })
+    } else if selected_effort.is_some() {
+        Err(DeveloperLoopError::Context(
+            "selected reasoning effort is not supported by negotiated capabilities".to_owned(),
+        ))
+    } else {
+        Ok(ReasoningPolicy::Disabled)
+    }
 }

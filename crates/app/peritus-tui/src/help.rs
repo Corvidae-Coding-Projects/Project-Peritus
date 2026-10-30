@@ -22,6 +22,8 @@ const LINES: &[&str] = &[
     "  In an ordinary folder, use /chat for changes; /build requires a managed Git workspace.",
     "",
     "Message editing",
+    "  Right-click the composer for Copy/Paste; Linux middle-click pastes the primary selection.",
+    "  Mouse paste edits the draft only. F2 explicitly enters native terminal output selection.",
     "  Home/End, Ctrl-A/E, Cmd/Super-Left/Right: current line start/end; Ctrl-Home/End: message start/end.",
     "  Left/Right or Ctrl-B: move by character; Ctrl-P/N: move by row.",
     "  Up/Down: move by row; at the first/last row, recall older/newer messages. Esc restores the draft.",

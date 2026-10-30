@@ -162,6 +162,33 @@ pub trait DeveloperInteraction: Send + Sync {
         self.input().map(|input| input.revision)
     }
 
+    /// Last input revision admitted by this host, or zero before initial admission.
+    /// Seeds communication fencing when input arrives between role invocations.
+    ///
+    /// # Errors
+    /// Returns an unavailable live-run state error.
+    fn admitted_input_revision(&self) -> Result<u64, DeveloperLoopError> {
+        Ok(0)
+    }
+
+    /// Latest input given a dedicated public reply in this live run, if the host retains it.
+    /// This is a presentation hint, never input admission, authority, or task completion.
+    ///
+    /// # Errors
+    /// Returns an unavailable live-run state error.
+    fn answered_input_revision(&self) -> Result<Option<u64>, DeveloperLoopError> {
+        Ok(None)
+    }
+
+    /// Retains a public-reply hint across role invocation retries. Called only after the
+    /// assistant reply was received and appended to the conversation context.
+    ///
+    /// # Errors
+    /// Returns an unavailable or inconsistent live-run state error.
+    fn input_answered(&self, _revision: u64) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
     /// Observes control during an already admitted tool without reserving or completing it.
     /// Long waits must yield when input changes or execution is paused. No effect is admitted.
     ///

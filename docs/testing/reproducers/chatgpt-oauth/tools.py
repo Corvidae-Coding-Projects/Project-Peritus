@@ -6,12 +6,17 @@ import json
 import secrets
 import subprocess
 import time
+import re
 from pathlib import Path
 
 p = argparse.ArgumentParser()
 for name in ['daemon', 'cli', 'client', 'output']:
     p.add_argument('--' + name, type=Path, required=True)
-p.add_argument('--oauth-reference', required=True)
+p.add_argument('--oauth-reference')
+p.add_argument('--question-during-coding', action='store_true')
+p.add_argument('--wait-after-reply', action='store_true')
+p.add_argument('--resume-after-wait', action='store_true')
+p.add_argument('--status-question', action='store_true')
 p.add_argument('--case', choices=['read-plan', 'command', 'coding'], required=True)
 a = p.parse_args()
 case = a.output.resolve() / a.case
@@ -49,6 +54,22 @@ if a.case == 'coding':
             'and verify the actual module using python3 -B -c with an assertion on greeting() and print CODE-VERIFIED on success. '
             'Use purpose verification. Do not edit other files. Complete normal independent review and report the actual result.')
 spec = dict(mode='plan', root=str(workspace), registry=str(case / 'registry.bin'), endpoint=endpoint, task=task)
+if a.question_during_coding:
+    if a.case != 'coding':
+        raise ValueError('the interruption replay requires a real coding pipeline')
+    spec['steering'] = ('Before continuing, what is 17 times 23? Answer me now in one sentence, '
+                        + ('then wait for my next message. Do not change files or run commands.'
+                           if a.wait_after_reply else
+                           'then continue the original change without restarting it.'))
+elif a.wait_after_reply:
+    raise ValueError('--wait-after-reply requires --question-during-coding')
+if a.resume_after_wait and not a.wait_after_reply:
+    raise ValueError('--resume-after-wait requires --wait-after-reply')
+if a.status_question:
+    if not a.question_during_coding or a.wait_after_reply:
+        raise ValueError('--status-question requires a coding question without a wait request')
+    spec['steering'] = 'what are you currently working on'
+reply_pattern = r'\bgreeting(?:\.py)?\b' if a.status_question else r'\b391\b'
 spec_path = case / 'spec.json'
 spec_path.write_text(json.dumps(spec))
 
@@ -68,6 +89,10 @@ for name in ['artifact', 'evidence', 'workspace', 'process', 'transaction', 'bac
 config += '[approval_registry]\npayload_file=' + q(spec['registry']) + '\ngeneration=1\n[human]\nactor_id="' + '31' * 16 + '"\n[telemetry]\nmode="disabled"\n[tools]\nallow=["fs.read","fs.discover","fs.search","shell.exec","fs.write","fs.patch"]\n'
 config += '[[folders]]\nworkspace_id="' + '82' * 16 + '"\nroot=' + q(str(workspace)) + '\nidentity=' + q(folder) + '\nwritable=' + ('true' if a.case in ['command', 'coding'] else 'false') + '\nprotected_paths=[]\n'
 config += '[[providers]]\nkind="chatgpt-oauth"\ncredential_reference=' + q(a.oauth_reference) + '\n[providers.profile]\nprofile_id="' + '95' * 16 + '"\nrevision=1\nmodel="gpt-6.1-sol"\ncapabilities=["tool-calls","parallel-tool-calls","usage-detail","streaming","reasoning-controls","reasoning-summaries","reasoning-replay","prompt-caching"]\nmax_input_tokens=200000\nmax_output_tokens=16000\nmax_tools=64\nmax_parallel_tool_calls=8\nmax_inline_media_bytes=1\n'
+if not a.oauth_reference:
+    config = config.replace('kind="chatgpt-oauth"\ncredential_reference=null\n',
+                            'kind="codex-runtime"\n')
+    config = config.replace(',"reasoning-replay"', '')
 configuration = case / 'daemon.toml'
 configuration.write_text(config)
 stdout = (case / 'daemon.stdout').open('w')
@@ -97,10 +122,48 @@ try:
         time.sleep(.1)
     call('start')
     started = time.monotonic()
-    deadline = started + 150
+    deadline = started + 240
+    steered = None
+    reply_seconds = None
+    tools_before_reply = None
+    reply_texts = set()
+    paused_safely = False
+    resumed = False
     while True:
         after = call('inspect')
         usage = after['usage']
+        if a.question_during_coding:
+            if steered is None and 'Writing' in after['interaction'] and any(
+                    row['name'] == 'workspace_read' and 'greeting.py' in row['arguments']
+                    for row in observations()):
+                reply_texts = {v['text'] for v in after['activities'] if v['kind'] == 'Assistant'}
+                call('steer')
+                steered = time.monotonic()
+                print('Question accepted during the actual writing pipeline', flush=True)
+            if steered is not None and reply_seconds is None and any(
+                    v['kind'] == 'Assistant' and v['text'] not in reply_texts
+                    and re.search(reply_pattern, v['text']) for v in after['activities']):
+                reply_seconds = time.monotonic() - steered
+                # Polling can observe a reply and a later tool together. Use their durable
+                # activity order, never count all tools present by the time of the poll.
+                activities = after['activities']
+                received = max(i for i, v in enumerate(activities)
+                               if v['kind'] == 'User' and v['text'] == spec['steering'])
+                replied = next(i for i, v in enumerate(activities) if i > received
+                               and v['kind'] == 'Assistant' and re.search(reply_pattern, v['text']))
+                tools_before_reply = sum(v['kind'] == 'Tool' for v in activities[received + 1:replied])
+        if (a.resume_after_wait and not resumed and reply_seconds is not None
+                and usage and usage['state'] == 'WaitingForUser'):
+            paused_safely = all(hashlib.sha256((workspace / name).read_bytes()).hexdigest() == digest
+                                for name, digest in before.items())
+            if not paused_safely:
+                raise RuntimeError('files changed after the request to wait')
+            spec['steering'] = 'Continue the original greeting.py change and verification now.'
+            spec_path.write_text(json.dumps(spec))
+            call('steer')
+            call('resume')
+            resumed = True
+            continue
         if usage and usage['state'] in ['WaitingForUser', 'Completed', 'Achieved', 'Blocked', 'Cancelled', 'Failed']:
             break
         if time.monotonic() > deadline:
@@ -122,7 +185,14 @@ try:
     reviewed = any(role['role']=='Reviewer' and role['completed_requests']>0 for role in usage['roles'])
     terminal = usage['state']=='Achieved' and reviewed if a.case=='coding' else usage['state'] in ['WaitingForUser', 'Completed', 'Achieved']
     passed = actual_tool and all(v in answer for v in expected) and unchanged and terminal and settled and (a.case=='coding' or not any(n in ['workspace_write', 'workspace_patch', 'workspace_remove'] for n in names))
-    receipt = dict(case=a.case, passed=passed, actual_direct_oauth=True, actual_tools=names, actual_tool_evidence=actual_tool, exact_answer=all(v in answer for v in expected), workspace_unchanged=unchanged, requests_settled=settled, independent_review=reviewed, usage=usage, seconds=time.monotonic()-started, final_details=after['activities'][-2:])
+    if a.wait_after_reply and not a.resume_after_wait:
+        # A requested pause preserves the original file and never claims task completion.
+        passed = current == before and usage['state'] == 'WaitingForUser' and settled
+    if a.resume_after_wait:
+        passed = passed and paused_safely and resumed
+    if a.question_during_coding:
+        passed = passed and steered is not None and reply_seconds is not None and reply_seconds < 30 and tools_before_reply == 0
+    receipt = dict(case=a.case, passed=passed, actual_direct_oauth=bool(a.oauth_reference), actual_tools=names, actual_tool_evidence=actual_tool, exact_answer=all(v in answer for v in expected), workspace_unchanged=unchanged, requests_settled=settled, independent_review=reviewed, usage=usage, seconds=time.monotonic()-started, final_details=after['activities'][-2:], question_during_coding=a.question_during_coding, seconds_to_reply=reply_seconds, tools_before_reply=tools_before_reply, wait_after_reply=a.wait_after_reply, paused_safely=paused_safely, resumed=resumed)
     (case / 'result.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(json.dumps(receipt), flush=True)
     if not passed:

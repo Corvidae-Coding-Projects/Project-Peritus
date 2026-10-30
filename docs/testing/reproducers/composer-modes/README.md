@@ -20,6 +20,56 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 
 These drivers operate the actual program. They contain no unit tests or substituted application implementations.
 
+## Short text paste and output selection
+
+`paste-replay.py --binary /absolute/path/to/peritus --fixture /absolute/private/fixture`
+replays the reported text `Shared https://doc.qt.io for reading.` through the real terminal
+input parser, launcher, TUI and daemon. Prepare a fresh fixture with a committed Git repository
+in `project/` and `owned-fixture.json` containing `{"owned_disposable_fixture":true}`. It selects
+offline provider `0`, so none of these checks invokes a model or submits the draft.
+
+The same text must remain editable after ordinary paste, paste during F2 output selection,
+and fragmented bracketed-paste delivery. The last check enters selection mode and presses
+Ctrl-Q: it must exit promptly. `--expect-old-quit` records the old swallowed quit key and then
+uses Esc to leave selection before exiting. Use a fresh fixture for a different binary cohort;
+launcher configuration generations are immutable. Reuse installed automation dependencies with
+`PERITUS_AUTOMATION_PYTHON` and `PLAYWRIGHT_BROWSERS_PATH` when appropriate.
+
+The keyboard-paste replay passed before and after the earlier Ctrl-Q repair. The subsequently
+reported mouse action exposed a separate defect: a right-click in the composer entered frozen
+terminal-selection mode, swallowing subsequent typing until Esc. `mouse-paste.py --expect-old`
+reproduces that sequence through the real terminal mouse protocol.
+
+## Mouse clipboard replay
+
+Run `mouse-paste.py --binary /absolute/path/to/peritus --output /fresh/private/fixture --backend x11`
+with the replay Python environment (`pyte` required), Xvfb and xclip installed. The driver creates
+and owns its Git workspace, daemon, X display and clipboard owners. It never changes the desktop
+clipboard. Installed automation can be reused with the same environment variables described above.
+
+For Wayland, use an owned virtual compositor and pass `--backend wayland --runtime-dir DIR
+--wayland-display SOCKET`; the private runtime directory must contain `.peritus-clipboard-replay`
+with the text `owned`. Qualification used KWin's virtual backend on a separate D-Bus session,
+with private configuration/runtime directories, no lock screen and no global shortcuts. The actual
+wl-copy and wl-paste processes communicate with that compositor. The driver leaves compositor
+lifecycle to its owner and cleans up its own clipboard processes and exact daemon endpoint.
+
+The mouse replay checks right-click menu responsiveness, the reported Qt link, caret insertion,
+Unicode Copy and replacement, distinct clipboard/primary values, typing and caret motion during
+a delayed read, the five-second timeout, terminal paste, inert pasted commands, dismissal and
+resize, nontext rejection and the existing image preview. Delayed reads stop and resume an owned
+real clipboard process; no helper or application response is substituted. It also asserts that
+no model trace or coding run was created and the workspace source is unchanged.
+
+The fix keeps clipboard ownership in the client and uses its existing bounded local-operation
+runner. Temporarily releasing terminal mouse capture cannot deliver the original right-click
+back to the terminal, so a live Copy/Paste menu replaces that implicit mode switch. F2 remains the
+explicit native-output-selection action. No persisted or wire format changes are required.
+
+Both X11 and isolated Wayland campaigns passed on the fixed program. Windows target compilation
+also passed. macOS cross-compilation was blocked in aws-lc by the unavailable Apple C toolchain;
+macOS runtime clipboard behavior was not exercised on this Linux host.
+
 ## Build
 
 From the repository root:

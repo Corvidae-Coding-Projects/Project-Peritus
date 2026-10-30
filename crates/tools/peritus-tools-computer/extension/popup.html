@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Peritus browser bridge</title>
+    <style>
+      body { background: #17191d; color: #eceff4; font: 13px system-ui, sans-serif; margin: 0; min-width: 280px; padding: 16px; }
+      h1 { color: #c678dd; font-size: 15px; margin: 0 0 12px; }
+      p { line-height: 1.4; margin: 8px 0; }
+      code { color: #98c379; }
+      button { background: #2c313a; border: 1px solid #5c6370; border-radius: 4px; color: #eceff4; cursor: pointer; margin-top: 10px; padding: 7px 10px; }
+      .ok { color: #98c379; }
+      .off { color: #e06c75; }
+    </style>
+  </head>
+  <body>
+    <h1>Peritus Local Browser Bridge</h1>
+    <p id="state">Checking local bridge…</p>
+    <p>Local development pages support browser control. Share the current HTTPS tab to let Peritus read it. Access ends on a different origin, tab close, or revocation.</p>
+    <button id="share" type="button">Share this HTTPS tab</button>
+    <button id="revoke" type="button">Revoke this tab</button>
+    <button id="toggle" type="button">Pause</button>
+    <script src="popup.js"></script>
+  </body>
+</html>

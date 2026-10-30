@@ -25,6 +25,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) -> Vec<Effect> {
+        self.chat.composer_menu = None;
         self.chat.output_selection = None;
         self.chat.output_mode.resume_for_paste();
         if self.chat.history.search.is_some() {
@@ -77,6 +78,16 @@ impl AppModel {
     }
 
     pub(in crate::model) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        // The explicit exit key remains available while the terminal owns output selection.
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q') {
+            self.quitting = true;
+            return vec![Effect::Quit];
+        }
+        if self.chat.composer_menu.take().is_some()
+            && matches!(key.code, KeyCode::Esc | KeyCode::Enter)
+        {
+            return Vec::new();
+        }
         if let Some(effects) = self.output_selection_key(key) {
             return effects;
         }
@@ -241,10 +252,6 @@ impl AppModel {
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
                 KeyCode::Char('r') => return Some(self.request_reconnect()),
-                KeyCode::Char('q') => {
-                    self.quitting = true;
-                    return Some(vec![Effect::Quit]);
-                }
                 KeyCode::Char('c') => {
                     if self.chat_work_active() && !self.chat.interrupt_requested {
                         self.chat.interrupt_requested = true;

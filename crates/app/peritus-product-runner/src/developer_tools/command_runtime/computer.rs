@@ -164,6 +164,18 @@ impl CommandRuntime {
             "PLAYWRIGHT_BROWSERS_PATH".into(),
             peritus_tools_computer::browser_cache().map_err(tool)?.to_string_lossy().into_owned(),
         ));
+        if let Ok((socket, token_file)) =
+            peritus_tools_computer::chrome_extension_bridge_environment()
+        {
+            environment.push((
+                "PERITUS_CHROME_EXTENSION_SOCKET".into(),
+                socket.to_string_lossy().into_owned(),
+            ));
+            environment.push((
+                "PERITUS_CHROME_EXTENSION_TOKEN_FILE".into(),
+                token_file.to_string_lossy().into_owned(),
+            ));
+        }
         let started = self.start(StartCommand {
             program: python,
             arguments: &arguments,
