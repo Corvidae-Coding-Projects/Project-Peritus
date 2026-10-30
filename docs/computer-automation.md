@@ -27,6 +27,34 @@ peritus automation status  # inspect installed capabilities
 peritus automation setup   # resume or repair setup
 ```
 
+### Optional private extension for ordinary Chrome
+
+The default browser remains an isolated Playwright profile. To let Peritus operate explicitly
+loopback development pages or explicitly selected HTTPS sources in the user's ordinary Chrome profile, install the private
+unpacked extension once:
+
+```sh
+peritus automation chrome-extension install
+peritus automation chrome-extension status
+```
+
+Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the
+printed `unpacked_directory`. This is a local developer integration: it is not published, does not
+use the Chrome Web Store, and has host permissions only for HTTP(S) `localhost`, `127.0.0.1`, and
+`[::1]`. Temporary `activeTab` permission allows reading an HTTPS tab explicitly shared in its popup. The popup also provides immediate revocation and pause. The install
+command registers the per-user `com.corvidae.peritus` native host; it does not alter Chrome policy
+or another extension. Chrome displays the extension's debugger permission because Peritus uses a
+short attach/capture/detach operation to return real screenshot pixels; code and host permissions
+keep external HTTPS access limited to explicitly shared tabs and read/observe operations.
+
+Ask Peritus to use `extension_open` when it should open a loopback URL in ordinary Chrome, or
+`extension_tabs` followed by `extension_attach` when it should preserve and use an existing user tab.
+The ordinary-Chrome backend supports observation, navigation, click, fill, press, select, check,
+scroll, tab selection, history, reload, and close/detach. It intentionally excludes arbitrary
+JavaScript evaluation, upload/download handling, dialogs, cross-origin frames, files, embedded
+credentials and interaction on external sites. Selected external HTTPS sources can be read with
+`web_open browser_session`; use isolated Playwright for separately authorized external interaction.
+
 The managed runtime uses Peritus's user data directory; concurrent setup commands serialize.
 Interrupted downloads can be retried. Existing legacy automation environments remain intact.
 An unavailable network or dependency does not disable ordinary coding for portable launches;
@@ -99,6 +127,13 @@ separate debugging-enabled profile for testing, and select the intended tab; Per
 retrofit debugging into the user's current profile. Disconnecting preserves the existing browser
 and its tabs.
 
+Browser `extension_open` and `extension_attach` use the optional private Chrome extension instead
+of CDP. Extension-opened tabs are owned and closed during cleanup. Attached user tabs are detached
+and preserved. Each state-changing action requires the newest observation token, and a redirect
+outside loopback ends control without exposing the destination page to Peritus. Because Chrome's
+debugger API supplies screenshot pixels, each capture attaches only for that command and detaches
+before returning the observation.
+
 Native `open` launches a program and arguments. `isolated=true` uses a private Xvfb display and
 separate application configuration, cache, and data directories. Isolated child apps disable KDE
 global-menu export so their menus remain on the private display. This isolates the display and
@@ -149,3 +184,21 @@ The implementation uses [Playwright](https://playwright.dev/python/docs/intro), 
 [CDP connection interface](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect-over-cdp),
 and native [AT-SPI actions](https://docs.gtk.org/atspi2/method.Action.do_action.html) and
 [editable text](https://docs.gtk.org/atspi2/method.EditableText.set_text_contents.html).
+
+
+### Selected external HTTPS sources
+
+The private Chrome bridge retains loopback development control and also supports reading
+explicitly shared external HTTPS tabs. Its popup offers **Share this HTTPS tab**, **Revoke this
+tab**, and the existing global **Pause**. Sharing uses Chrome's temporary `activeTab` permission;
+there is no host permission for all websites and no cookie/profile export. Access is limited to
+the selected tab and origin and is removed on tab closure, a different origin, or revocation.
+External plain HTTP and embedded credentials remain rejected.
+
+After sharing, `extension_tabs` lists the eligible tab, `extension_attach` selects it, and
+`web_open` with `browser_session` and its matching URL retains an immutable document. External
+sessions permit observation, reading and detachment. They do not permit clicks, form filling,
+script evaluation, uploads or other existing loopback control actions. A read rechecks URL and
+selection after collecting the document; navigation during collection fails instead of retaining
+a different source. The bridge bounds one HTML transfer to 2 MiB; larger documents can use the
+native/API route. The observed DOM has no known HTTP status and is labeled accordingly.

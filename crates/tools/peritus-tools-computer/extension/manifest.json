@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Peritus Local Browser Bridge",
+  "description": "Peritus browser control for loopback development pages and explicitly selected HTTPS source tabs.",
+  "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwcSpSvA2IgRk/quHsGBWfUim1eW9+VUn1kG+YCa8QkH21lJpQpFznCP5qCjpOY0dSPATUE3eJaZt2EPK892a+gx+NjOFT8VylqdbhQMFfOdVxsmgBsk6J/MOoOjApQ5U+vpLtRzQY6VQnomBh3ofnWdezMp0eooiNGyufY8JOQCuhn8xndv1rLhlb2eMntNHjEy/fxRJNdGKNeuU5PIJlRpbp3AoOoPG544Etkz2Yb5RDKPBhgz+uu3gOSZdl2Sq7+t85cKeVW8EX7/Cvp4mSGjIiNv8+O7KKU8VOR4NHwjy3T4Oa1rRSOlZPQQRtosKLhYCMRub2CAgJwowya8RYwIDAQAB",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "alarms",
+    "debugger",
+    "nativeMessaging",
+    "scripting",
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://127.0.0.1/*",
+    "http://localhost/*",
+    "https://localhost/*",
+    "http://[::1]/*",
+    "https://[::1]/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "Peritus Local Browser Bridge",
+    "default_popup": "popup.html"
+  }
+}

@@ -11,7 +11,15 @@ use std::{
 
 use serde_json::{Value, json};
 
+mod chrome_extension;
 mod setup;
+pub use chrome_extension::{
+    CHROME_EXTENSION_ID, bridge_environment as chrome_extension_bridge_environment,
+    bridge_socket as chrome_extension_socket, bridge_token_file as chrome_extension_token_file,
+    install as install_chrome_extension, native_host_requested,
+    run_native_host as run_chrome_native_host, status as chrome_extension_status,
+    uninstall as uninstall_chrome_extension, unpacked_directory as chrome_extension_directory,
+};
 pub use setup::{ensure_setup, setup};
 
 /// Maximum controller observation size, excluding separately retained image bytes.
@@ -117,6 +125,7 @@ pub fn prepare_driver(directory: &Path) -> Result<PathBuf, String> {
     for (name, source) in [
         ("driver.py", include_str!("driver.py")),
         ("browser.py", include_str!("browser.py")),
+        ("extension_browser.py", include_str!("extension_browser.py")),
         ("desktop.py", include_str!("desktop.py")),
     ] {
         let path = directory.join(name);
@@ -143,7 +152,12 @@ pub fn status() -> Result<Value, String> {
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).into_owned());
     }
-    serde_json::from_slice(&output.stdout).map_err(|error| error.to_string())
+    let mut value: Value =
+        serde_json::from_slice(&output.stdout).map_err(|error| error.to_string())?;
+    value["chrome_extension"] = chrome_extension_status().unwrap_or_else(|error| {
+        json!({"success":false,"error":error,"setup":"peritus automation chrome-extension install"})
+    });
+    Ok(value)
 }
 
 fn require_success(command: &mut Command, operation: &str) -> Result<(), String> {

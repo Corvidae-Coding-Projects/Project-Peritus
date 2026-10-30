@@ -53,11 +53,8 @@ __pycache__/
 /.impeccable/review/
 /.impeccable/*.webp
 
-# Private local Chrome bridge and its retained real-interface evidence.
+# Local Chrome bridge design and retained real-interface evidence.
 /.design/local-chrome-extension.md
-/crates/tools/peritus-tools-computer/extension/
-/crates/tools/peritus-tools-computer/src/chrome_extension.rs
-/crates/tools/peritus-tools-computer/src/extension_browser.py
 /docs/testing/local-chrome-extension-real-*.md
 
 # Local red-team campaign evidence and phase replay drivers.

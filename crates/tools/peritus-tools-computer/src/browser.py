@@ -4,8 +4,11 @@ import inspect
 import json
 from pathlib import Path
 import shutil
+import time
 from urllib.parse import unquote, urlparse
 import uuid
+
+from extension_browser import ExtensionBrowsers
 
 
 class Browsers:
@@ -16,6 +19,7 @@ class Browsers:
         self.playwright = None
         self.sessions = {}
         self.reader = None
+        self.extension = ExtensionBrowsers(root, screenshot)
 
     def engine(self):
         if self.playwright is None:
@@ -40,6 +44,16 @@ class Browsers:
 
     def read_web(self, args):
         """Read a public page in a temporary context, without user profiles or file access."""
+        if args.get('browser_session'):
+            result = self.extension.request({'action': 'read', 'session': args['browser_session'], 'url': args['url']})
+            html = result.pop('html').encode('utf-8')
+            directory = self.root / 'web-readings'
+            directory.mkdir(mode=0o700, exist_ok=True)
+            path = directory / (uuid.uuid4().hex + '.html')
+            path.write_bytes(html)
+            return {'success': True, 'path': str(path), 'bytes': len(html),
+                    'sha256': hashlib.sha256(html).hexdigest(), 'url': result['url'],
+                    'status': 0, 'method': 'browser_tab'}
         from playwright.sync_api import TimeoutError as PlaywrightTimeout
         value = args['url']
         parsed = urlparse(value)
@@ -62,16 +76,61 @@ class Browsers:
             page = context.new_page()
             context.on('page', lambda extra: extra.close())
             page.on('dialog', lambda dialog: dialog.dismiss())
-            response = page.goto(value, wait_until='domcontentloaded', timeout=20000)
+            navigation = []
+            state = {'response': None, 'committed': None, 'epoch': 0}
+            def response_seen(response):
+                if response.frame == page.main_frame and response.request.is_navigation_request():
+                    state['response'] = response
+                    navigation.append({'url': response.url, 'status': response.status,
+                                       'cf_mitigated': response.headers.get('cf-mitigated')})
+                    del navigation[:-16]
+            def committed(frame):
+                if frame == page.main_frame:
+                    state['committed'] = state['response']
+                    state['epoch'] += 1
+            page.on('response', response_seen)
+            page.on('framenavigated', committed)
+            deadline = time.monotonic() + 25
+            page.goto(value, wait_until='domcontentloaded', timeout=20000)
             try:
                 page.wait_for_load_state('networkidle', timeout=3000)
             except PlaywrightTimeout:
-                pass  # Polling pages need not become network-idle to be readable.
+                pass  # Polling pages can still be read after their bounded settlement wait.
             page.wait_for_timeout(min(5000, max(0, args.get('wait_ms', 500))))
-            final = urlparse(page.url)
+            while True:
+                epoch = state['epoch']
+                response = state['committed']
+                try:
+                    snapshot = page.evaluate("({url:location.href, html:document.documentElement.outerHTML, ready:document.readyState})")
+                except PlaywrightTimeout:
+                    raise
+                except Exception:
+                    if time.monotonic() >= deadline or page.is_closed():
+                        raise
+                    page.wait_for_timeout(100)
+                    continue
+                if epoch != state['epoch'] or snapshot['ready'] == 'loading':
+                    if time.monotonic() >= deadline:
+                        raise ValueError('Web document kept navigating; no mismatched source retained')
+                    page.wait_for_timeout(100)
+                    continue
+                lower = snapshot['html'].lower()
+                challenged = ((response is not None and response.headers.get('cf-mitigated') == 'challenge') or
+                              ('<title>just a moment' in lower and '/cdn-cgi/challenge-platform/' in lower))
+                if challenged and time.monotonic() < deadline:
+                    page.wait_for_timeout(250)
+                    continue
+                break
+            final = urlparse(snapshot['url'])
             if final.scheme not in ('http', 'https') or final.username or final.password:
                 raise ValueError('Unsafe web navigation was rejected')
-            html = page.content().encode('utf-8')
+            status = response.status if response else 0
+            if challenged or not 200 <= status < 300:
+                kind = ('challenge_required' if challenged else 'authentication_required' if status == 401 else
+                        'forbidden' if status == 403 else 'rate_limited' if status == 429 else 'http')
+                return {'success': False, 'failure': kind, 'http_status': status, 'url': snapshot['url'],
+                        'navigation': navigation, 'retry_after': response.headers.get('retry-after') if response else None, 'next_action': 'Select an authorized browser tab for challenges or login; honor rate limits and access denials.'}
+            html = snapshot['html'].encode('utf-8')
             if len(html) > 64 * 1024 * 1024:
                 raise ValueError('Rendered source exceeds the 64 MiB resource bound')
             directory = self.root / 'web-readings'
@@ -79,8 +138,8 @@ class Browsers:
             path = directory / (uuid.uuid4().hex + '.html')
             path.write_bytes(html)
             return {'success': True, 'path': str(path), 'bytes': len(html),
-                    'sha256': hashlib.sha256(html).hexdigest(), 'url': page.url,
-                    'status': response.status if response else 0}
+                    'sha256': hashlib.sha256(html).hexdigest(), 'url': snapshot['url'],
+                    'status': status, 'navigation': navigation}
         finally:
             try:
                 if context is not None:
@@ -91,6 +150,8 @@ class Browsers:
 
     def control(self, args):
         action = args['action']
+        if action in ('extension_tabs', 'extension_open', 'extension_attach') or str(args.get('session', '')).startswith('extension:'):
+            return self.extension.control(args)
         if action == 'open':
             identifier = uuid.uuid4().hex
             directory = self.root / identifier
@@ -292,6 +353,7 @@ class Browsers:
             session['browser'].close()  # CDP connection disconnects; existing browser stays alive.
 
     def shutdown(self):
+        self.extension.shutdown()
         for identifier in list(self.sessions):
             try:
                 self.close(identifier)

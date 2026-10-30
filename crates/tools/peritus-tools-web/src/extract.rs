@@ -15,7 +15,7 @@ pub fn html(input: &str, final_url: &url::Url) -> Extracted {
     let dom = parse_document(RcDom::default(), html5ever::ParseOpts::default()).one(input);
     let mut result =
         Extracted { title: String::new(), text: String::new(), links: Vec::new(), scripts: false };
-    let mut stack: Vec<(Handle, bool, bool)> = vec![(dom.document, false, false)];
+    let mut stack: Vec<(Handle, bool, bool)> = vec![(dom.document.clone(), false, false)];
     let mut base = final_url.clone();
     while let Some((node, exiting, title)) = stack.pop() {
         match &node.data {
@@ -36,6 +36,7 @@ pub fn html(input: &str, final_url: &url::Url) -> Extracted {
                     continue;
                 }
                 if name == "head" && !exiting {
+                    result.scripts |= node.children.borrow().iter().any(|child| matches!(&child.data, NodeData::Element { name, .. } if name.local.as_ref() == "script"));
                     // Keep title/base metadata but omit head text from the body.
                     for child in node.children.borrow().iter().rev() {
                         if matches!(&child.data, NodeData::Element { name, .. } if matches!(name.local.as_ref(), "title" | "base"))
@@ -101,6 +102,9 @@ pub fn html(input: &str, final_url: &url::Url) -> Extracted {
             _ => {}
         }
     }
+    // RcDom nodes clear descendant child lists when their final owner drops.
+    // Keep the document owner alive until every queued descendant has been visited.
+    drop(dom);
     normalize(&mut result);
     result
 }

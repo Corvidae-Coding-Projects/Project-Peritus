@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    args::{Cli, Command},
+    args::{AutomationArgs, ChromeExtensionArgs, Cli, Command},
     artifact, completion,
     error::CliError,
     events, operation, output, product_run, prompt, terminal,
@@ -86,11 +86,19 @@ fn run_informational_command(cli: &Cli) -> Option<ExitCode> {
 
 fn run_local_command(cli: &Cli) -> Option<ExitCode> {
     match &cli.command {
-        Command::Automation { setup } => {
-            let result = if *setup {
-                peritus_tools_computer::setup()
-            } else {
-                peritus_tools_computer::status()
+        Command::Automation(operation) => {
+            let result = match operation {
+                AutomationArgs::Setup => peritus_tools_computer::setup(),
+                AutomationArgs::Status => peritus_tools_computer::status(),
+                AutomationArgs::ChromeExtension(ChromeExtensionArgs::Install) => {
+                    peritus_tools_computer::install_chrome_extension()
+                }
+                AutomationArgs::ChromeExtension(ChromeExtensionArgs::Status) => {
+                    peritus_tools_computer::chrome_extension_status()
+                }
+                AutomationArgs::ChromeExtension(ChromeExtensionArgs::Uninstall) => {
+                    peritus_tools_computer::uninstall_chrome_extension()
+                }
             };
             Some(match result {
                 Ok(value) => write_stdout(format!("{value}\n").as_bytes()).map_or_else(
@@ -322,7 +330,7 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         | Command::Providers
         | Command::Modules { .. }
         | Command::Web { .. }
-        | Command::Automation { .. }
+        | Command::Automation(_)
         | Command::Workspaces
         | Command::Open { .. }
         | Command::ProductRunTrace { .. }

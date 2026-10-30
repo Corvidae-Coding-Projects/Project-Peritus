@@ -10,6 +10,7 @@ publish = false
 readme = "README.md"
 
 [dependencies]
+getrandom.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true

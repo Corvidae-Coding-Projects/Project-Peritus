@@ -119,3 +119,5 @@ Grounding efficiency: [grounding-efficiency.rs](grounding-efficiency.rs) is an o
 [Single grounding replay](single-grounding.py) drives fresh-process startup checks, changed-file and scope cases, and an authenticated designer handoff on a disposable Peritus copy.
 
 - [read-loop-recovery/](read-loop-recovery/AGENTS.md): native public-API read/recovery, scope, generated-range, and official-provider pipeline replays.
+
+[Web recovery](web-recovery/README.md) covers public Store consumers, exact source paging, failure/cooldown classification, real browser navigation, default daemon recovery and explicitly selected HTTPS sources.

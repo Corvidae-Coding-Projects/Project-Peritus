@@ -67,3 +67,5 @@ evidence documents; they do not replace the owning regressions.
 See [module-foundation.md](module-foundation.md) for the module registry, public API,
 terminal/browser/provider, cancellation, role-isolation and restart replays. All
 execution uses disposable state and real program interfaces.
+
+[Web recovery](web-recovery/README.md) covers public Store consumers, exact source paging, failure/cooldown classification, real browser navigation, default daemon recovery and explicitly selected HTTPS sources.

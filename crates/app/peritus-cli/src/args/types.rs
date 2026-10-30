@@ -28,7 +28,9 @@ COMMANDS:
   providers                    Open provider settings
   modules <list|market|refresh|show|install|install-market|build-install-market|cancel-build|enable|disable|remove>  Manage workflow modules
   web <setup|status|stop|search|open|read|find>  Keyless search and native page reading
-  automation <setup|status>     Install or inspect browser/native automation dependencies
+  automation <setup|status>     Install or inspect isolated browser/native dependencies
+  automation chrome-extension <install|status|uninstall>
+                               Manage the private Chrome bridge and selected HTTPS reads
   workspaces                   Switch, add, trust, repair, or forget workspaces
   open [PATH] [--run ID | --conversation ID]
                                Launch PATH and select an exact run or durable conversation
@@ -96,9 +98,7 @@ pub enum Command {
     Web {
         arguments: Vec<String>,
     },
-    Automation {
-        setup: bool,
-    },
+    Automation(AutomationArgs),
     Workspaces,
     Open {
         path: Option<PathBuf>,
@@ -130,6 +130,18 @@ pub enum Command {
         run_id: Option<RunId>,
         extensions_only: bool,
     },
+}
+
+pub enum AutomationArgs {
+    Setup,
+    Status,
+    ChromeExtension(ChromeExtensionArgs),
+}
+
+pub enum ChromeExtensionArgs {
+    Install,
+    Status,
+    Uninstall,
 }
 
 pub enum ProductRunArgs {

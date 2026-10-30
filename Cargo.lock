@@ -3748,6 +3748,7 @@ dependencies = [
 name = "peritus-tools-computer"
 version = "0.1.15"
 dependencies = [
+ "getrandom 0.4.3",
  "reqwest 0.13.4",
  "serde",
  "serde_json",
@@ -3827,6 +3828,7 @@ version = "0.1.15"
 dependencies = [
  "encoding_rs",
  "html5ever 0.39.0",
+ "httpdate",
  "markup5ever_rcdom",
  "metadata-search-engine-rs",
  "openssl",

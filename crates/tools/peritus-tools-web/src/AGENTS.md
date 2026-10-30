@@ -5,6 +5,8 @@
 | File | Responsibility |
 | --- | --- |
 | [lib.rs](lib.rs) | Public API, typed errors, data directory and HTTP URL admission. |
+| [failure.rs](failure.rs) | Classified unsuccessful page observations and bounded recovery hints. |
+| [stackexchange.rs](stackexchange.rs) | Official public post/answer/comment reads with attribution, API metadata and continuations. |
 | [http.rs](http.rs) | GET/decode/resource bounds, redirects and SearXNG JSON transport. |
 | [extract.rs](extract.rs) | Nonexecuting HTML5 text/title/link extraction. |
 | [source.rs](source.rs) | Immutable source identity, integrity, exact paging/find and expendable query cache. |

@@ -1,19 +1,25 @@
 //! Provider-neutral native web access. Call blocking operations outside an async executor thread.
 
 mod extract;
+mod failure;
 mod http;
 mod search;
 mod setup;
 mod source;
+mod stackexchange;
 
 use std::{env, path::PathBuf};
 
+pub use failure::{FailureKind, PageFailure};
 pub use setup::{configure, setup_local, status, stop};
 pub use source::Store;
 
 /// A failed web operation; no unsuccessful response is represented as a read source.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// A classified unsuccessful page response with recovery guidance.
+    #[error("{0}")]
+    Page(#[from] PageFailure),
     /// Invalid input or actionable service failure.
     #[error("{0}")]
     Message(String),
@@ -26,6 +32,23 @@ pub enum Error {
     /// Invalid persisted or upstream JSON.
     #[error("web JSON: {0}")]
     Json(#[from] serde_json::Error),
+}
+
+impl Error {
+    /// Returns classified page/network failure details, preserving storage and input errors separately.
+    #[must_use]
+    pub fn page_failure(&self) -> Option<PageFailure> {
+        match self {
+            Self::Page(failure) => Some(failure.clone()),
+            Self::Http(error) => Some(PageFailure::new(
+                FailureKind::Transient,
+                error.url().map_or("unknown", url::Url::as_str),
+                error.status().map_or(0, |status| status.as_u16()),
+                "Network request did not complete; no source was retained",
+            )),
+            _ => None,
+        }
+    }
 }
 
 pub(crate) fn invalid(message: impl Into<String>) -> Error {
