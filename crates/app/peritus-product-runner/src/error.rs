@@ -21,6 +21,8 @@ pub enum ProductRunnerErrorKind {
     Budget,
     /// The user cancelled the run.
     Cancelled,
+    /// Current user input requests waiting; no task completion is claimed.
+    AwaitingUser,
     /// A supposedly impossible internal state transition was rejected.
     InternalInvariant,
 }
@@ -31,6 +33,7 @@ pub struct ProductRunnerError {
     kind: ProductRunnerErrorKind,
     operation: &'static str,
     detail: String,
+    wait_revision: Option<u64>,
 }
 
 impl ProductRunnerError {
@@ -39,7 +42,20 @@ impl ProductRunnerError {
         operation: &'static str,
         detail: impl Into<String>,
     ) -> Self {
-        Self { kind, operation, detail: detail.into() }
+        Self { kind, operation, detail: detail.into(), wait_revision: None }
+    }
+
+    pub(crate) const fn awaiting_user(message: String, revision: u64) -> Self {
+        Self {
+            kind: ProductRunnerErrorKind::AwaitingUser,
+            operation: "await user input",
+            detail: message,
+            wait_revision: Some(revision),
+        }
+    }
+
+    pub(crate) fn user_wait(&self) -> Option<(&str, u64)> {
+        self.wait_revision.map(|revision| (self.detail.as_str(), revision))
     }
 
     /// Stable failure category.

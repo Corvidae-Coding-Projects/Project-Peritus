@@ -18,6 +18,24 @@ impl InvocationPolicy {
     }
 }
 
+pub(super) fn input_response_policy(
+    request: &DeveloperLoopRequest,
+) -> Result<InvocationPolicy, DeveloperLoopError> {
+    Ok(InvocationPolicy {
+        system: text(
+            Role::System,
+            format!(
+                "{}\n\nCURRENT USER RESPONSE TURN\nA new user message interrupted the ongoing task. For this one turn, answer the latest question or acknowledge the requested change before further work. Use the retained observations; do not invent results or claim new inspection. No tools are available. Return exactly one JSON object with only these fields: {{\"message\":\"brief ordinary public reply\",\"continue_work\":true}}. Set continue_work=false when the user asks to pause, wait, stop, or cancel; the host will stop without more inspection or coding. An ordinary question or status request keeps continue_work=true unless the user also asks to wait; preserve the original task under current restrictions. This control object is private; the host displays only message. It is not the coding role's terminal result. Do not repeat the answer on later coding turns unless asked again.",
+                request.system,
+            ),
+        )?,
+        state: text(
+            Role::Developer,
+            "CURRENT HOST INVOCATION STATE\nrequired_tool=none\nReply to the latest user message now. Executor prerequisites apply when authorized tool use resumes, not to this conversational reply.".to_owned(),
+        )?,
+    })
+}
+
 pub(super) fn retry_policy(
     request: &DeveloperLoopRequest,
     step: u16,

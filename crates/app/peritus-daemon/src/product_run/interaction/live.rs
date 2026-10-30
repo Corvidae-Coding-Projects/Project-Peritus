@@ -332,9 +332,14 @@ impl DeveloperInteraction for LiveConversation {
         let record = records.get(&self.run_id).ok_or_else(|| {
             port_internal("read the governing conversation", "the product-run record was not found")
         })?;
-        self.service
+        let mut input = self
+            .service
             .record_input(record)
-            .map_err(|error| port_error("read the governing conversation", error))
+            .map_err(|error| port_error("read the governing conversation", error))?;
+        if record.interaction.retry_revision == Some(input.revision) {
+            input.conversation.push_str("\n\nHost control: This is an explicitly retried existing run. Continue the unfinished authorized task under the current user restrictions. A historical handoff or completed operation is not currently running; do not repeat settled effects. During conversation coordination, call the available run_pipeline tool to resume the pipeline when effects remain authorized. This retry adds no authority beyond the user's task.");
+        }
+        Ok(input)
     }
     fn current_input_revision(&self) -> Result<u64, DeveloperLoopError> {
         let start = self.workbench_start()?;
@@ -343,6 +348,41 @@ impl DeveloperInteraction for LiveConversation {
                 Ok(store.capture_execution(&start)?.inputs().generation())
             })
             .map_err(|error| port_error("observe current provider input generation", error.into()))
+    }
+
+    fn admitted_input_revision(&self) -> Result<u64, DeveloperLoopError> {
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal("read input admission state", "the product-run record lock was poisoned")
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("read input admission state", "the product-run record was not found")
+        })?;
+        Ok(record.interaction.incorporated)
+    }
+
+    fn answered_input_revision(&self) -> Result<Option<u64>, DeveloperLoopError> {
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal("read public reply state", "the product-run record lock was poisoned")
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("read public reply state", "the product-run record was not found")
+        })?;
+        let revision = record.interaction.answered_input.load(std::sync::atomic::Ordering::Acquire);
+        Ok((revision != 0).then_some(revision))
+    }
+
+    fn input_answered(&self, revision: u64) -> Result<(), DeveloperLoopError> {
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal("retain public reply state", "the product-run record lock was poisoned")
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("retain public reply state", "the product-run record was not found")
+        })?;
+        if revision > record.interaction.incorporated {
+            return Err(port_internal("retain public reply state", "the input was not admitted"));
+        }
+        record.interaction.answered_input.fetch_max(revision, std::sync::atomic::Ordering::Release);
+        Ok(())
     }
 
     fn prepare_request(

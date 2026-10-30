@@ -80,7 +80,10 @@ pub(super) fn from_initial_error(
     Ok(ProductRunOutcome {
         settlement,
         candidate,
-        question: None,
+        question: error.user_wait().map(|(message, conversation_revision)| ProductRunQuestion {
+            message: message.to_owned(),
+            conversation_revision,
+        }),
         detail: Some(format!("{}: {}", error.operation(), error.detail())),
         remaining_work: remaining_work(checkpoint.as_ref(), cause),
         resume: input.resume.clone(),
@@ -303,6 +306,7 @@ pub(super) fn cause_from_error(
         ProductRunnerErrorKind::Gate => SettlementCause::Gate,
         ProductRunnerErrorKind::Budget => SettlementCause::Deadline,
         ProductRunnerErrorKind::Cancelled => SettlementCause::Cancellation,
+        ProductRunnerErrorKind::AwaitingUser => SettlementCause::UserWait,
     }
 }
 

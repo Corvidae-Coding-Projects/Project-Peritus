@@ -38,6 +38,13 @@ pub enum DeveloperLoopError {
     SegmentExhausted,
     /// The request was cancelled.
     Cancelled,
+    /// Current input requires waiting without further task execution.
+    AwaitingUser {
+        /// Public assistant reply to the current user message.
+        message: String,
+        /// Exact admitted input revision whose request to wait was answered.
+        revision: u64,
+    },
     /// A host deadline or effect boundary requires explicit exact-run recovery.
     RecoveryRequired(String),
     /// A terminal provider response contained no usable result.
@@ -69,6 +76,7 @@ impl fmt::Display for DeveloperLoopError {
                 formatter.write_str("developer invocation segment reached its local boundary")
             }
             Self::Cancelled => formatter.write_str("developer loop was cancelled"),
+            Self::AwaitingUser { .. } => formatter.write_str("waiting for user input"),
             Self::RecoveryRequired(detail) => formatter.write_str(detail),
             Self::EmptyResponse => {
                 formatter.write_str("provider returned no tool calls or usable final response")
@@ -90,6 +98,7 @@ impl std::error::Error for DeveloperLoopError {
             | Self::LimitExceeded
             | Self::SegmentExhausted
             | Self::Cancelled
+            | Self::AwaitingUser { .. }
             | Self::RecoveryRequired(_)
             | Self::EmptyResponse => None,
         }

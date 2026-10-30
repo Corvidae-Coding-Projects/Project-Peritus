@@ -115,14 +115,7 @@ impl ProductRunner {
                     continuing_segment = true;
                     continue;
                 }
-                Ok(Err(error)) => {
-                    let error = crate::turn::developer_error(&error);
-                    (
-                        super::settlement::cause_from_error(&error, false),
-                        None,
-                        Some(error.to_string()),
-                    )
-                }
+                Ok(Err(error)) => settle_developer_error(&error),
                 Err(_) => {
                     input.cancelled.store(true, std::sync::atomic::Ordering::Release);
                     let _ = input.provider_cancellation.cancel();
@@ -137,6 +130,16 @@ impl ProductRunner {
             return settle(&input, cause, reply, detail);
         }
     }
+}
+
+fn settle_developer_error(
+    error: &peritus_agent::DeveloperLoopError,
+) -> (SettlementCause, Option<String>, Option<String>) {
+    if let peritus_agent::DeveloperLoopError::AwaitingUser { message, .. } = error {
+        return (SettlementCause::UserWait, Some(message.clone()), None);
+    }
+    let error = crate::turn::developer_error(error);
+    (super::settlement::cause_from_error(&error, false), None, Some(error.to_string()))
 }
 
 fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {

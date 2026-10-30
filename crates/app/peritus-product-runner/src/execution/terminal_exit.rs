@@ -56,6 +56,9 @@ impl ActiveExit {
         deadline: bool,
         next_phase: ProductRunPhase,
     ) -> Self {
+        if let Some((message, revision)) = error.user_wait() {
+            return Self::waiting(message.to_owned(), revision, next_phase);
+        }
         let cause = settlement::cause_from_error(error, deadline);
         Self::stopped(cause, format!("{}: {}", error.operation(), error.detail()), next_phase)
     }

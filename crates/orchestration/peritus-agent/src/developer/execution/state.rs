@@ -2,7 +2,8 @@
 
 use crate::{DeveloperInteraction, DeveloperLoopError, ModelSession};
 use peritus_model_protocol::{
-    BoundedText, ContentBlock, Message, ProtocolLimits, ReducedItem, Role, TerminalOutcome,
+    BoundedText, CanonicalJson, ContentBlock, JsonBounds, Message, ProtocolLimits, ReducedItem,
+    Role, TerminalOutcome,
 };
 
 pub(super) fn input_changed(
@@ -10,6 +11,27 @@ pub(super) fn input_changed(
     revision: u64,
 ) -> Result<bool, DeveloperLoopError> {
     interaction.map_or(Ok(false), |port| port.input().map(|input| input.revision != revision))
+}
+
+pub(super) struct UserResponse {
+    pub(super) message: String,
+    pub(super) continue_work: bool,
+}
+
+pub(super) fn user_response(text: &str) -> Result<UserResponse, DeveloperLoopError> {
+    let invalid = || DeveloperLoopError::Context("invalid user-response control object".to_owned());
+    let checked = CanonicalJson::parse(text, JsonBounds::value(ProtocolLimits::PRODUCTION))?;
+    let value: serde_json::Value =
+        serde_json::from_slice(checked.canonical_bytes()).map_err(|_| invalid())?;
+    let object = value.as_object().filter(|object| object.len() == 2).ok_or_else(invalid)?;
+    let message = object.get("message").and_then(serde_json::Value::as_str).ok_or_else(invalid)?;
+    let continue_work =
+        object.get("continue_work").and_then(serde_json::Value::as_bool).ok_or_else(invalid)?;
+    if message.trim().is_empty() {
+        return Err(invalid());
+    }
+    drop(BoundedText::new(message.to_owned(), ProtocolLimits::PRODUCTION)?);
+    Ok(UserResponse { message: message.to_owned(), continue_work })
 }
 
 pub(super) const fn successful(terminal: Option<&TerminalOutcome>) -> bool {

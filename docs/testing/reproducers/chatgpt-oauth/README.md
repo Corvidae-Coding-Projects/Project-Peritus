@@ -62,6 +62,21 @@ python3 docs/testing/reproducers/chatgpt-oauth/tools.py \
 ```
 
 The replay creates its own random task value and verifies the actual module against that value.
+Add `--question-during-coding` to submit a question after the writer has read the target file.
+It requires the correct public answer within 30 seconds, no tool activity between the durable
+user message and that answer, and subsequent completion of the original edit and independent
+review. The answer is a response to the question, never proof that the task is complete.
+Add `--wait-after-reply` to instead require idle state, unchanged files and settled accounting
+after an explicit request to wait. Omit `--oauth-reference` to exercise the retained Codex route.
+`--resume-after-wait` then submits a fresh continuation and resumes the same goal; it requires
+the original edit, actual verification and independent review to complete after the safe pause.
+These are full coding-pipeline probes; the text-only steering replay does not cover this path.
+`--status-question` uses the reported message, `what are you currently working on`, with no
+extra instruction to continue. It requires an answer about the current greeting change before
+further tools, followed by completion of that original task.
+Activity ordering is checked in the durable stream because one poll can see both a reply and
+a later tool; a later tool must not be mislabeled as occurring before the reply.
+
 `--case command` is retained as a negative
 scope probe: daemon goal handoff currently uses WorkspaceChanges, so a command-only task can
 execute correctly yet fail empty-candidate qualification. Its native command receipt does not

@@ -126,6 +126,7 @@ pub(super) async fn complete_turn(
     let maximum = request.limits.max_attempts_per_turn();
     let retry_prefix = match kind {
         ModelTurnKind::Developer => request.request_prefix.clone(),
+        ModelTurnKind::UserResponse => format!("{}-user-response", request.request_prefix),
         ModelTurnKind::SemanticCompaction => {
             format!("{}-semantic-compaction", request.request_prefix)
         }
@@ -282,10 +283,10 @@ async fn measured_drive(
 ) -> Result<DrivenTurn, DeveloperLoopError> {
     let started = std::time::Instant::now();
     let mut metrics = DeveloperRequestMetrics {
-        reason: Some(if position.0 == ModelTurnKind::Developer {
-            "developer"
-        } else {
-            "semantic_compaction"
+        reason: Some(match position.0 {
+            ModelTurnKind::Developer => "developer",
+            ModelTurnKind::UserResponse => "user_response",
+            ModelTurnKind::SemanticCompaction => "semantic_compaction",
         }),
         turn: position.1,
         attempt: position.2,
@@ -294,7 +295,7 @@ async fn measured_drive(
     };
     let result = cancel_first(
         cancellation,
-        drive(provider, request, limits, trace, interaction, &mut metrics, started),
+        drive(provider, request, limits, trace, interaction, &mut metrics, (started, position.0)),
     )
     .await
     .unwrap_or(Err(DeveloperLoopError::Cancelled));
@@ -311,8 +312,9 @@ async fn drive(
     trace: &mut dyn DeveloperTrace,
     interaction: Option<(&dyn DeveloperInteraction, u64)>,
     metrics: &mut DeveloperRequestMetrics,
-    started: std::time::Instant,
+    position: (std::time::Instant, ModelTurnKind),
 ) -> Result<DrivenTurn, DeveloperLoopError> {
+    let (started, kind) = position;
     // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
     // stop only this attempt, leaving the caller's token active for bounded automatic retries.
     let attempt = AttemptCancellation(CancellationToken::new());
@@ -385,7 +387,9 @@ async fn drive(
                         trace
                             .account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
                     }
-                    if let (Some(port), Some((summary, text))) = (interaction, public_text) {
+                    if kind != ModelTurnKind::UserResponse
+                        && let (Some(port), Some((summary, text))) = (interaction, public_text)
+                    {
                         // Never insert waiting messages between fragments of public assistant text.
                         if summary {
                             progress.summary_received();

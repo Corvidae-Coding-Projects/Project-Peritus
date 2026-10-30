@@ -121,6 +121,16 @@ pub async fn complete_developer_turn(
         if let Err(error) = check_cancelled(input) {
             return Ok(AppliedTurn::Rejected { error, host });
         }
+        if let Err(DeveloperLoopError::AwaitingUser { message, revision }) = &result
+            && input.conversation.revision() == *revision
+        {
+            host.conversation_revision = *revision;
+            return Ok(AppliedTurn::Waiting {
+                question: message.clone(),
+                conversation_revision: *revision,
+                host,
+            });
+        }
         if input.conversation.revision() != revision {
             checkpoint = match input.checkpoint() {
                 Ok(checkpoint) => checkpoint,
@@ -398,6 +408,9 @@ const fn retry_unverified_question(
 }
 
 pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
+    if let DeveloperLoopError::AwaitingUser { message, revision } = error {
+        return ProductRunnerError::awaiting_user(message.clone(), *revision);
+    }
     let kind = match error {
         DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
         DeveloperLoopError::LimitExceeded | DeveloperLoopError::SegmentExhausted => {

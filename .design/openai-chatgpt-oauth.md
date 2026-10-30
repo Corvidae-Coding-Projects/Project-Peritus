@@ -121,3 +121,37 @@ Codex remains available and existing selections remain unchanged. Publication an
 are tracked separately in the release record. Qualification source and binary hashes are recorded in
 the evidence root's `qualification-manifest.json`; HEAD alone does not identify this uncommitted
 implementation.
+
+## Follow-up: replies during coding (local hotfix after v0.1.15)
+
+The live coding report exposed a gap in the earlier text-only steering qualification. The
+question reached the model, but appeared near the beginning of a roughly 600 KB coding
+request. The native adapter returned its answer with the rest of a long structured coding
+turn. Retained questions could also elicit repeated status instead of a distinct reply.
+
+New input now gets a tool-free response turn before further tool admission. The same selected
+model uses low reasoning when supported for this short turn; normal coding effort is retained.
+The host validates a private, bounded reply/continue object and publishes only its actual
+message. A request to wait unwinds through typed UserWait settlement immediately, avoiding
+forced grounding or coding-terminal repair loops. Completion, permissions, grounding and
+independent review keep their existing gates. Current governing input follows historical
+exchanges. Live answer hints survive invocation retries without changing persisted formats;
+the last admitted input also seeds fencing across role boundaries.
+
+Real Linux qualification passed native and direct-OAuth coding questions, a text-only
+interruption, waiting without file changes, waiting followed by continuation and acceptance,
+and graceful daemon restart followed by completion under the same run ID. The installed
+optimized daemon also answered the reported unadorned status question in 7.4 seconds before
+further tool activity, then finished the original edit, verification and independent review.
+These are bounded live-provider results, not a universal response-time guarantee or new
+Windows/macOS runtime qualification. Strict workspace Clippy and formatting passed.
+
+Preserved failed replays showed why ordinary question output was insufficient: a forced
+grounding choice could repeatedly reject a requested wait. Typed wait control avoids that
+path without relaxing deliverable qualification. A separate restart replay caught historical
+handoff confusion; explicit retry context now identifies the current coordinator and retains
+the existing authorization scope. The original working run and all 17 retained run IDs were
+preserved during local installation. A stripped-environment launch produced a wrong derived
+runtime configuration; the final running configuration was corrected and checked to preserve
+the original Codex executable and native RSI settings exactly. Saved configurations and the
+Peritus OAuth registration were preserved. This follow-up has not been published as a release.

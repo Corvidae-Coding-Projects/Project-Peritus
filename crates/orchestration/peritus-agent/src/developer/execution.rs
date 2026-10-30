@@ -46,8 +46,14 @@ impl DeveloperLoop {
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
         let mut usage = DeveloperUsage::default();
-        let mut input_revision = 0;
+        let mut input_revision = interaction
+            .map(DeveloperInteraction::admitted_input_revision)
+            .transpose()?
+            .unwrap_or(0);
+        let mut pending_response = None;
         let mut governing_installed = false;
+        let mut answered_input =
+            interaction.map(DeveloperInteraction::answered_input_revision).transpose()?.flatten();
 
         for turn in 1..=request.limits.max_model_turns() {
             if request.cancellation.is_cancelled() {
@@ -105,10 +111,21 @@ impl DeveloperLoop {
             )?;
             let negotiated = negotiate(profile, requested)?;
             let governing_input = if let Some(input) = input {
+                if (input_revision != 0 && input.revision != input_revision)
+                    || (input_revision == 0
+                        && answered_input.is_some_and(|answered| input.revision > answered))
+                {
+                    pending_response = Some(input.revision);
+                }
                 input_revision = input.revision;
+                let answered = if answered_input == Some(input_revision) {
+                    "\n\nHost observation: the latest input already received a public reply. Apply its remaining instructions, including any request to wait, but do not repeat the answer or unchanged status merely because this conversation is replayed."
+                } else {
+                    ""
+                };
                 Some(user_message(
                     format!(
-                        "Current governing conversation (revision {}); incorporate the latest user message and respect its scope:\n{}",
+                        "Current governing conversation (revision {}); incorporate the latest user message and respect its scope:\n{}{answered}",
                         input.revision, input.conversation
                     ),
                     input.images,
@@ -117,10 +134,17 @@ impl DeveloperLoop {
             } else {
                 None
             };
-            let required_tool = tools.required_tool_name().map(str::to_owned);
-            let guidance = tools.system_guidance();
-            let invocation_policy =
-                invocation::policy(&request, turn, required_tool.as_deref(), guidance.as_deref())?;
+            let responding = pending_response == Some(input_revision);
+            let (required_tool, invocation_policy) = if responding {
+                request.tools.clear();
+                (None, invocation::input_response_policy(&request)?)
+            } else {
+                let required = tools.required_tool_name().map(str::to_owned);
+                let guidance = tools.system_guidance();
+                let policy =
+                    invocation::policy(&request, turn, required.as_deref(), guidance.as_deref())?;
+                (required, policy)
+            };
             if context.is_local() {
                 if context.prepare(
                     &mut messages,
@@ -215,21 +239,33 @@ impl DeveloperLoop {
                     )
                     .ok_or(DeveloperLoopError::LimitExceeded)?;
             }
+            // Legacy storage keeps the replaceable governing slot at index two. Submit that
+            // current input after history, as the local-context assembler also does, without
+            // changing the transcript's stable slot or any completed tool exchange.
+            let mut projection;
+            let submitted = if !context.is_local() && governing_installed {
+                projection = messages.clone();
+                let current = projection.remove(2);
+                projection.push(current);
+                &mut projection
+            } else {
+                &mut messages
+            };
             let Some(session) = complete_turn(
                 provider,
                 &request,
-                &mut messages,
+                submitted,
                 profile,
                 negotiated,
                 protocol_limits,
                 turn,
-                ModelTurnKind::Developer,
+                if responding { ModelTurnKind::UserResponse } else { ModelTurnKind::Developer },
                 required_tool.as_deref(),
                 &mut retries,
                 &mut usage,
                 trace,
                 live.map(|(port, role)| (port, role, input_revision)),
-                Some(RetryContext {
+                (!responding).then_some(RetryContext {
                     context: &mut context,
                     tools,
                     governing_input: governing_input.as_ref(),
@@ -243,6 +279,29 @@ impl DeveloperLoop {
 
             let (assistant, calls, final_text) =
                 state::assistant_items(session.completed_items(), protocol_limits)?;
+            if responding {
+                if final_text.trim().is_empty() || !calls.is_empty() {
+                    return Err(DeveloperLoopError::EmptyResponse);
+                }
+                let response = state::user_response(&final_text)?;
+                context.append(
+                    &mut messages,
+                    Message::new(Role::Assistant, assistant, protocol_limits)?,
+                )?;
+                if let Some(port) = interaction {
+                    port.input_answered(input_revision)?;
+                    port.observe(DeveloperActivity::Text(response.message.as_bytes()))?;
+                }
+                answered_input = Some(input_revision);
+                pending_response = None;
+                if !response.continue_work && !input_changed(interaction, input_revision)? {
+                    return Err(DeveloperLoopError::AwaitingUser {
+                        message: response.message,
+                        revision: input_revision,
+                    });
+                }
+                continue;
+            }
             if calls.is_empty() {
                 if final_text.trim().is_empty() {
                     return Err(DeveloperLoopError::EmptyResponse);

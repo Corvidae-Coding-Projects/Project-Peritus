@@ -49,7 +49,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
         if self.allow_pipeline {
             // This phase can only inspect or hand off. Its optional inspection must not impose
             // another startup discovery phase before the executor that actually owns edits.
-            Some("Conversation is read-only. For understood, explicitly authorized implementation or continuation, call run_pipeline directly; its executor owns the one grounding check and target reads. A pending workspace grounding check is not a prerequisite to this handoff. For questions or read-only requests, inspect only the exact evidence needed to answer; do not start the pipeline.".to_owned())
+            Some("Conversation is read-only. This conversation coordinator owns the current invocation; no pipeline is running here. A historical run_pipeline result is not an active handoff. For understood, explicitly authorized implementation, continuation or retry, call run_pipeline directly, even when an earlier invocation handed off before interruption. This is a new coordinator handoff, not redispatch of an already completed workspace operation. Its executor owns the one grounding check and target reads. A pending workspace grounding check is not a prerequisite to this handoff. For questions or read-only requests, inspect only the exact evidence needed to answer; do not start the pipeline.".to_owned())
         } else {
             self.workspace.system_guidance()
         }

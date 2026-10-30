@@ -27,6 +27,9 @@ pub(super) struct InteractionOptions {
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
     pub(super) incorporated: u64,
+    // Shared live presentation hint; never authority or part of the durable record format.
+    pub(super) answered_input: Arc<std::sync::atomic::AtomicU64>,
+    pub(super) retry_revision: Option<u64>,
     pub(super) public_input_count: usize,
     pub(super) activities: Vec<ProductActivity>,
     pub(super) observed_images: Vec<crate::product_control::ToolImageObservation>,
@@ -50,6 +53,8 @@ impl InteractionOptions {
             mode,
             models,
             incorporated: 0,
+            answered_input: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            retry_revision: None,
             public_input_count: 0,
             activities: Vec::new(),
             observed_images: Vec::new(),

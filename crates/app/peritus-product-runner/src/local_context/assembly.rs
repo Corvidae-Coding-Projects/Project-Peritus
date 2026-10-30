@@ -144,7 +144,7 @@ impl LocalMemory {
             } else {
                 self.append_history(&mut messages, &mut selected, tools, capacity)?
             };
-        cache_order(&mut messages, protected_prefix);
+        cache_order(&mut messages, protected_prefix, governing_input.is_some());
         if let Some(provider) = provider
             && transport::fit(self, &mut messages, tools, provider)?
         {
@@ -370,7 +370,7 @@ pub(super) fn text_message(role: Role, text: String) -> Result<Message, Develope
 
 // Policy/requirements stay first. Current memory/pending metadata does not invalidate the
 // cacheable prefix of unchanged evidence, and completed current tool results remain last.
-fn cache_order(messages: &mut Vec<Message>, protected_prefix: usize) {
+fn cache_order(messages: &mut Vec<Message>, protected_prefix: usize, governing_input: bool) {
     let mut volatile = Vec::new();
     let mut index = 0;
     messages.retain(|message| {
@@ -388,4 +388,10 @@ fn cache_order(messages: &mut Vec<Message>, protected_prefix: usize) {
         .rposition(|message| message.role() == Role::Assistant)
         .unwrap_or(messages.len());
     messages.splice(tail..tail, volatile);
+    // Current user input follows historical task framing and complete exchanges. It was
+    // pinned before selection so its full contents remain reserved without duplication.
+    if governing_input {
+        let current = messages.remove(1);
+        messages.push(current);
+    }
 }

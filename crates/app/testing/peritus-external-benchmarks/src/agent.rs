@@ -298,6 +298,7 @@ fn product_error_cause(error: &ProductRunnerError) -> SettlementCause {
         ProductRunnerErrorKind::Provider => SettlementCause::Provider,
         ProductRunnerErrorKind::Gate => SettlementCause::Gate,
         ProductRunnerErrorKind::Cancelled => SettlementCause::Cancellation,
+        ProductRunnerErrorKind::AwaitingUser => SettlementCause::UserWait,
         ProductRunnerErrorKind::InvalidModelOutput
             if error.operation().to_ascii_lowercase().contains("review") =>
         {
