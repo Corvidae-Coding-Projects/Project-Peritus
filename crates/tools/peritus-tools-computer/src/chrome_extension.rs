@@ -148,7 +148,7 @@ pub fn bridge_environment() -> Result<(PathBuf, PathBuf), String> {
 fn browser_manifest_directories() -> Result<Vec<PathBuf>, String> {
     let home = env::var_os("HOME").map(PathBuf::from).ok_or("HOME is unavailable")?;
     #[cfg(target_os = "macos")]
-    let roots = vec![
+    let mut roots = vec![
         home.join("Library/Application Support/Google/Chrome/NativeMessagingHosts"),
         home.join("Library/Application Support/Chromium/NativeMessagingHosts"),
     ];

@@ -22,10 +22,10 @@ subtle.workspace = true
 tokio.workspace = true
 url.workspace = true
 zeroize.workspace = true
-peritus-codec = { version = "=0.1.16", path = "../../foundation/peritus-codec" }
-peritus-model-protocol = { version = "=0.1.16", path = "../peritus-model-protocol" }
-peritus-provider-core = { version = "=0.1.16", path = "../peritus-provider-core" }
-peritus-types = { version = "=0.1.16", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.1.17", path = "../../foundation/peritus-codec" }
+peritus-model-protocol = { version = "=0.1.17", path = "../peritus-model-protocol" }
+peritus-provider-core = { version = "=0.1.17", path = "../peritus-provider-core" }
+peritus-types = { version = "=0.1.17", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

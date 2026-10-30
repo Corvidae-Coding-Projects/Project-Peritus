@@ -2,10 +2,13 @@
 
 ## Unreleased
 
-## 0.1.16
+## 0.1.17
+
+Version 0.1.16 was not published after native macOS compilation caught a Chrome registration error.
 
 ### Fixed
 
+- Compile Chrome native-host registration on macOS while retaining sorted, deduplicated browser directories.
 - Prioritize new questions and steering during active work, honor requests to wait, and retain the waiting input revision across recovery.
 - Use the explicitly selected reasoning effort for every turn, including replies. If a reasoning-capable role has no effort selected, ask the user to choose before sending a model request.
 - Recover public web reads through official Stack Exchange content and isolated browser rendering, retaining exact source pages, final HTTP status, access-denial details, and rate-limit cooldowns.
