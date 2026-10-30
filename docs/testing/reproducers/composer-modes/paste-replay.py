@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Operate the real launcher, TUI and daemon; paste never submits a message."""
-import argparse, codecs, fcntl, json, os, pathlib, pty, select, struct, subprocess, termios, time
+import argparse, codecs, fcntl, hashlib, json, os, pathlib, pty, re, select, struct, subprocess, termios, time
 import pyte
 
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--binary',type=pathlib.Path,required=True);p.add_argument('--fixture',type=pathlib.Path,required=True);p.add_argument('--expect-old-quit',action='store_true');a=p.parse_args()
@@ -80,6 +80,13 @@ finally:
         d=tomllib.loads(config.read_text())
         state=pathlib.Path(d['paths']['state_root'])
         if state.is_relative_to(root):
-            for sock in state.glob('*.sock'):
-                subprocess.run([str(a.binary.resolve()),'--endpoint',str(sock),'shutdown','--wait'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+            instance=state/'daemon.instance'
+            if not instance.is_file():continue
+            fields=dict(line.split('=',1) for line in instance.read_text().splitlines())
+            name=fields.get('endpoint','')
+            assert re.fullmatch(r'peritus-[0-9a-f]{32}',name), 'Unexpected fixture endpoint'
+            original=str(state/(name+'.sock'))
+            endpoint=original if len(original.encode())<=107 else '/tmp/peritus-'+hashlib.sha256(b'peritus/unix-runtime-endpoint/v1\0'+original.encode()).hexdigest()[:32]+'/daemon.sock'
+            if pathlib.Path(endpoint).exists():
+                subprocess.run([str(a.binary.resolve()),'--endpoint',endpoint,'shutdown','--wait'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30,check=True)
     os.close(master)
