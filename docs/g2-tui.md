@@ -132,6 +132,9 @@ selection, and typed notices. The Help view describes the live key map.
 - `1` through `7` select Runs, Diff, Review, Trace, Evolution, Terminal, or Approvals.
 - `Tab` and `Shift-Tab` cycle views; `j`/`k` or arrows move the selection.
 - `PageUp` and `PageDown` move by a page; `r` requests a refresh.
+- Right-click the message composer for Copy/Paste. On Linux, middle-click pastes the primary
+  selection. These reads stay asynchronous, preserve the insertion point and selection, and
+  never submit the draft. A changed draft or destination rejects a late clipboard result.
 - In conversation view, drag across output, right-click, then click Copy. The selection stays
   still while daemon work continues. Copy uses a desktop clipboard helper or terminal OSC 52; `Ctrl-C`
   also copies selected output without stopping work. `Esc`, scrolling, typing, or a composer click

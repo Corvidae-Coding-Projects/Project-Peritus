@@ -11,6 +11,7 @@ Implementation pieces for `runtime.rs`: Orderly terminal ownership and asynchron
 | [modules.rs](modules.rs) | One owned asynchronous local catalog/installation operation at a time. |
 | [candidate.rs](candidate.rs) | Foreground execution of a selected candidate's documented run command. |
 | [clipboard.rs](clipboard.rs) | One owned clipboard write at a time, using desktop helpers or terminal OSC 52. |
+| [clipboard_read.rs](clipboard_read.rs) | Bounded asynchronous text reads from the clipboard or Linux primary selection. |
 | [connection.rs](connection.rs) | Owns transport handles, ordered sends, and automatic reconnection with bounded backoff while input stays responsive. |
 | [diagnostics.rs](diagnostics.rs) | Private bounded connection-stage/error log that excludes messages and drafts. |
 | [files.rs](files.rs) | One owned bounded external-text read at a time; the event loop stays interactive. |

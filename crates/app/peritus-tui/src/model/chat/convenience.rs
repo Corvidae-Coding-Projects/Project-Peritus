@@ -24,6 +24,8 @@ struct PendingLocal {
     generation: u64,
     query: String,
     draft: String,
+    cursor: usize,
+    selection_anchor: Option<usize>,
     target: (Option<peritus_types::RunId>, Option<peritus_app_protocol::WorkbenchQuery>),
 }
 
@@ -199,7 +201,7 @@ impl AppModel {
         self.search_local()
     }
 
-    fn start_local(&mut self, operation: LocalOperation) -> Vec<Effect> {
+    pub(in crate::model) fn start_local(&mut self, operation: LocalOperation) -> Vec<Effect> {
         if self.chat.convenience.pending.is_some() {
             return Vec::new();
         }
@@ -210,6 +212,8 @@ impl AppModel {
             generation: ui.generation,
             query: ui.query.clone(),
             draft: self.chat.buffer.clone(),
+            cursor: self.chat.cursor,
+            selection_anchor: self.chat.selection_anchor,
             target: (self.chat.run_id, self.chat.workbench.selected),
         });
         vec![Effect::LocalOperation { generation: ui.generation, operation }]
@@ -304,6 +308,9 @@ impl AppModel {
                     "Editor draft restored. Review it and press Enter to send.",
                 );
             }
+            Ok(LocalReply::ClipboardText(text)) => {
+                return self.clipboard_text_reply(&pending, &text);
+            }
             Ok(LocalReply::ClipboardImage(path)) => {
                 if self.chat.buffer != pending.draft {
                     self.notice(
@@ -328,6 +335,26 @@ impl AppModel {
             return self.search_local();
         }
         Vec::new()
+    }
+
+    fn clipboard_text_reply(&mut self, pending: &PendingLocal, text: &str) -> Vec<Effect> {
+        if !self.composer_available()
+            || self.chat.buffer != pending.draft
+            || self.chat.cursor != pending.cursor
+            || self.chat.selection_anchor != pending.selection_anchor
+        {
+            self.notice(
+                NoticeLevel::Warning,
+                "Paste destination changed while reading the clipboard; newer draft retained.",
+            );
+            return self.search_local();
+        }
+        if text.is_empty() {
+            self.notice(NoticeLevel::Info, "Clipboard contains no text; draft retained.");
+            return Vec::new();
+        }
+        self.notice(NoticeLevel::Info, "Text pasted into the draft.");
+        self.paste_chat_event(text)
     }
 
     pub(in crate::model) fn paste_convenience(&mut self, text: &str) -> bool {

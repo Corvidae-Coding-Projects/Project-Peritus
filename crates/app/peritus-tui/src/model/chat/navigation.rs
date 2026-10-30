@@ -15,10 +15,6 @@ pub enum OutputMode {
 }
 
 impl OutputMode {
-    pub(super) const fn begin_terminal_selection(&mut self) {
-        *self = Self::Selecting;
-    }
-
     pub(super) fn resume_for_paste(&mut self) {
         if *self == Self::Selecting {
             *self = Self::Live;
@@ -52,6 +48,9 @@ impl ChatUi {
 
 impl AppModel {
     pub(in crate::model) fn handle_chat_mouse(&mut self, mouse: MouseEvent) -> Vec<Effect> {
+        if let Some(effects) = self.handle_composer_menu(mouse) {
+            return effects;
+        }
         if let Some(effects) = self.handle_output_mouse(mouse) {
             return effects;
         }
@@ -60,17 +59,22 @@ impl AppModel {
     }
 
     pub(in crate::model) fn output_available(&self) -> bool {
+        self.composer_available()
+            && !self.chat.selecting_output()
+            && self.chat.matching_commands().is_empty()
+    }
+
+    pub(super) fn composer_available(&self) -> bool {
         self.view == View::Conversation
             && self.editor.is_none()
-            && !self.chat.selecting_output()
             && self.chat.doctor.is_none()
             && self.chat.history.search.is_none()
             && self.chat.convenience.panel.is_none()
+            && self.chat.module_menu.is_none()
             && !self.chat.workbench.open
             && !self.chat.effort_picker()
             && !self.chat.model_picker()
             && !self.chat.provider_picker()
-            && self.chat.matching_commands().is_empty()
     }
 
     pub(in crate::model) fn copy_selected_output(&mut self) -> Vec<Effect> {
@@ -121,7 +125,7 @@ impl AppModel {
         let viewport = self.chat.viewport?;
         let area = crate::render::transcript_area(self, viewport);
         match mouse.kind {
-            MouseEventKind::Down(MouseButton::Right) => {
+            MouseEventKind::Down(MouseButton::Right) if area.contains(position) => {
                 if let Some(selection) = &mut self.chat.output_selection
                     && selection.selected_text().is_some()
                 {
@@ -183,27 +187,11 @@ impl AppModel {
     }
 
     fn handle_composer_mouse(&mut self, mouse: MouseEvent) {
-        if self.view == View::Conversation
-            && self.editor.is_none()
-            && matches!(mouse.kind, MouseEventKind::Down(MouseButton::Right))
-        {
-            self.chat.mouse_anchor = None;
-            self.chat.output_mode.begin_terminal_selection();
-            return;
-        }
         if matches!(mouse.kind, MouseEventKind::Up(MouseButton::Left)) {
             self.chat.mouse_anchor = None;
             return;
         }
-        if self.view != View::Conversation
-            || self.chat.selecting_output()
-            || self.editor.is_some()
-            || self.chat.doctor.is_some()
-            || self.chat.convenience.panel.is_some()
-            || self.chat.workbench.open
-            || self.chat.effort_picker()
-            || self.chat.model_picker()
-        {
+        if !self.composer_available() || self.chat.selecting_output() {
             self.chat.mouse_anchor = None;
             return;
         }

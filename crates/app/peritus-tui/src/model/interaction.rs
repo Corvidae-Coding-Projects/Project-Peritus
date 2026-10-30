@@ -27,6 +27,7 @@ impl AppModel {
             Event::Resize(columns, rows) => {
                 self.chat.viewport = None;
                 self.chat.output_selection = None;
+                self.chat.composer_menu = None;
                 self.send_terminal_resize(columns, rows)
             }
             Event::Mouse(mouse) => self.handle_chat_mouse(mouse),

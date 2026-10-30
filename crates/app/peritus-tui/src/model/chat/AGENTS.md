@@ -13,6 +13,7 @@ Implementation pieces for `chat.rs`: Persistent conversational composer, explici
 | [catalog.rs](catalog.rs) | Typed local command metadata. Only directly entered commands are executable intents. |
 | [commands.rs](commands.rs) | Small discoverable command vocabulary; unknown commands never reach the model. |
 | [convenience.rs](convenience.rs) | Draft-preserving transcript/file search, clipboard and editor handoffs, copying, and presentation settings. |
+| [context_menu.rs](context_menu.rs) | Live composer Copy/Paste menu and explicit clipboard or primary-selection paste. |
 | [doctor.rs](doctor.rs) | Focused diagnostic panel; opening or navigating it never starts inference. |
 | [history.rs](history.rs) | Scoped durable message recall/search, draft restoration, paging, and stale-response protection; reads never submit inputs. |
 | [keys.rs](keys.rs) | Keyboard and deliberate-paste ownership for the persistent composer. |

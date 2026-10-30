@@ -25,6 +25,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) -> Vec<Effect> {
+        self.chat.composer_menu = None;
         self.chat.output_selection = None;
         self.chat.output_mode.resume_for_paste();
         if self.chat.history.search.is_some() {
@@ -81,6 +82,11 @@ impl AppModel {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q') {
             self.quitting = true;
             return vec![Effect::Quit];
+        }
+        if self.chat.composer_menu.take().is_some()
+            && matches!(key.code, KeyCode::Esc | KeyCode::Enter)
+        {
+            return Vec::new();
         }
         if let Some(effects) = self.output_selection_key(key) {
             return effects;
