@@ -29,7 +29,7 @@ cohort using `incremental-context/link.py --control-output /tmp/control-client` 
 ```sh
 python3 docs/testing/reproducers/chatgpt-oauth/steering.py \
   --daemon target/debug/peritusd --cli target/debug/peritus --client /tmp/control-client \
-  --output /absolute/fresh/evidence --case question --question
+  --output /absolute/fresh/evidence --case question --question --effort xhigh
 ```
 
 The fixture admits a real long text request, submits a question while it is pending, and checks
@@ -41,6 +41,18 @@ three-second observation. `--old` observes the previous binary for 12 seconds an
 replacement request; that is a bounded reproduction of the old delay, not an inference canary.
 All daemon state and fixture content stay under the fresh evidence root. Cleanup targets only
 that disposable daemon's endpoint. Existing user runs are never selected.
+
+Effort is never selected automatically. The screenshot regression is reproduced with
+`--question --effort xhigh`: the old reply path requested Low, then failed with
+`PERITUS-PROVIDER-CORE-010 selected_effort`. The fixed replay requires both requests to retain
+xhigh and the actual answer to arrive without workspace or process tools. High and Low can
+also be exercised with `--effort`.
+
+Omit `--effort` to verify that a missing selection produces one visible prompt, waits without
+restarting or making a model request, and preserves the pending input. Add
+`--question --select-after-missing high` to save High through the public model-selection API,
+queue a question, explicitly resume the goal and require a real answer using High.
+Each replay needs a fresh `--case`.
 
 To exercise the same steering boundary through the new direct route, pass the saved non-secret
 `peritus-chatgpt-oauth-v1:/absolute/path/to/registration.json` reference with `--oauth-reference`.

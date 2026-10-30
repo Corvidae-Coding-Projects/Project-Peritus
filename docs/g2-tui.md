@@ -99,9 +99,10 @@ It works even if model discovery is unavailable.
 Levels are `default`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
 They are requested values, not a claim that every provider/model supports all levels.
 Unsupported adapter mappings reject before saving; model-specific provider rejections remain
-visible. No nearby level is substituted by Peritus. `default` preserves the prior policy:
-high when controls are negotiated, otherwise no reasoning control. Defaults do not read or
-modify an external runtime's global configuration.
+visible. No nearby level is substituted by Peritus. `default` clears the explicit selection:
+reasoning-capable turns pause and ask you to choose an effort before any model request is sent.
+Models without reasoning controls need no effort selection. Peritus does not read or modify an
+external runtime's global effort configuration.
 
 Effort is retained separately for each role, survives model changes, and shares model selection's
 durable acknowledgement, next-turn boundary, rollback, and saved-conversation restoration.

@@ -15,7 +15,11 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         Paragraph::new(format!(
             "Reasoning effort for {}\nCurrent selection: {}\nModel: {}",
             model.chat.model_role.label(),
-            choice.effort().label(),
+            if choice.effort() == ProductModelEffort::Default {
+                "not selected"
+            } else {
+                choice.effort().label()
+            },
             if choice.id().is_empty() { "configured model" } else { choice.id() },
         ))
         .wrap(Wrap { trim: false }),
@@ -25,7 +29,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         .into_iter()
         .map(|effort| {
             ListItem::new(if effort == ProductModelEffort::Default {
-                "default — high when supported; otherwise no control".to_owned()
+                "not selected — choose an effort before sending".to_owned()
             } else {
                 effort.label().to_owned()
             })
@@ -39,6 +43,6 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         &mut state,
     );
     frame.render_widget(Paragraph::new(
-        "Enter saves · Tab changes role · Esc cancels\nSupport depends on provider/model; unsupported values are not substituted.\nSaved changes apply to the next model turn.",
+        "Enter saves · Tab changes role · Esc cancels\nSupport depends on provider/model; unsupported values are not substituted.\nSaved changes apply to the next model turn; no effort is chosen automatically.",
     ).wrap(Wrap { trim: false }), regions[2]);
 }

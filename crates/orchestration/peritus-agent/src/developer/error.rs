@@ -38,11 +38,11 @@ pub enum DeveloperLoopError {
     SegmentExhausted,
     /// The request was cancelled.
     Cancelled,
-    /// Current input requires waiting without further task execution.
+    /// Current input or a required user selection needs a pause before further task execution.
     AwaitingUser {
-        /// Public assistant reply to the current user message.
+        /// Public assistant reply or host prompt for a required selection.
         message: String,
-        /// Exact admitted input revision whose request to wait was answered.
+        /// Exact admitted input revision associated with the waiting boundary.
         revision: u64,
     },
     /// A host deadline or effect boundary requires explicit exact-run recovery.

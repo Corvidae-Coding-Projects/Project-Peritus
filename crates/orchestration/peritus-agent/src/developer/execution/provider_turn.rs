@@ -5,7 +5,7 @@ use super::super::{
     DeveloperRequestMetrics, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperTrace,
     DeveloperTraceEvent, DeveloperUsage,
     context_port::DeveloperContextPreparation,
-    model_request::{ModelTurnKind, build_model_request},
+    model_request::{ModelTurnKind, build_model_request, reasoning_policy},
     retry::DeveloperRetryPlanner,
 };
 use super::{ContextSession, prepare_messages, successful, terminal_error, usable};
@@ -143,6 +143,8 @@ pub(super) async fn complete_turn(
             // outer context owner before building another request from the stale transcript.
             return Ok(None);
         }
+        // Validate explicit selection before context preparation can invoke a compactor.
+        let reasoning = reasoning_policy(provider, negotiated, interaction)?;
         if let Some(prepared) = RetryContext::prepare(
             retry_context.as_mut(),
             request,
@@ -165,6 +167,7 @@ pub(super) async fn complete_turn(
             kind,
             required_tool,
             provider,
+            reasoning,
         )?;
         if let Some(owner) = retry_context.as_mut() {
             owner.context.bind_request(&model_request)?;

@@ -11,7 +11,7 @@ use peritus_provider_core::ModelProvider;
 
 use super::context::prepare_messages;
 use super::context_port::{ContextSession, DeveloperContextPreparation};
-use super::model_request::ModelTurnKind;
+use super::model_request::{ModelTurnKind, reasoning_policy};
 use super::observation::model_visible_tool_output;
 use super::semantic::SemanticCompaction;
 use super::{
@@ -110,6 +110,14 @@ impl DeveloperLoop {
                 profile.limits(),
             )?;
             let negotiated = negotiate(profile, requested)?;
+            // Ask before projecting context, which may invoke an auxiliary model.
+            reasoning_policy(
+                provider,
+                negotiated,
+                live.map(|(port, role)| {
+                    (port, role, input.as_ref().map_or(input_revision, |input| input.revision))
+                }),
+            )?;
             let governing_input = if let Some(input) = input {
                 if (input_revision != 0 && input.revision != input_revision)
                     || (input_revision == 0

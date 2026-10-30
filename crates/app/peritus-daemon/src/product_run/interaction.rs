@@ -205,7 +205,11 @@ impl InteractionOptions {
 }
 
 impl ProductRunService {
-    pub(super) fn pending_interactive_input(&self, run_id: RunId) -> bool {
+    pub(super) fn pending_interactive_input(
+        &self,
+        run_id: RunId,
+        waiting_revision: Option<u64>,
+    ) -> bool {
         self.inner
             .records
             .read()
@@ -215,6 +219,11 @@ impl ProductRunService {
                     record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
                         && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
                         && self.pending_record_input(record).unwrap_or(false)
+                        // A configuration prompt can precede inference admission. Its original
+                        // input remains pending, but only newer input should restart it.
+                        && waiting_revision.is_none_or(|revision| {
+                            self.record_input_revision(record).is_ok_and(|current| current > revision)
+                        })
                         && !record
                             .interaction
                             .persistence_failed

@@ -107,7 +107,9 @@ async fn main() -> Result<(), Error> {
                 )?),
             )
             .await?;
-            let model = ProductModelChoice::new("gpt-6.1-sol".to_owned(), false)?;
+            let effort = ProductModelEffort::parse(spec["effort"].as_str().unwrap_or("default"))
+                .ok_or("unsupported effort spelling")?;
+            let model = ProductModelChoice::new("gpt-6.1-sol".to_owned(), false)?.with_effort(effort);
             let profile = ProviderProfileId::new([0x95; 16]).map_err(|e| format!("{e:?}"))?;
             let settings = WorkbenchExecutionSettings::new(
                 run,
@@ -148,6 +150,20 @@ async fn main() -> Result<(), Error> {
                 WorkbenchIntent::StartGoal { definition, settings },
             )
             .await?
+        }
+        "select-effort" => {
+            let effort = ProductModelEffort::parse(spec["effort"].as_str().ok_or("effort required")?)
+                .ok_or("unsupported effort spelling")?;
+            let model = ProductModelChoice::new("gpt-6.1-sol".to_owned(), false)?.with_effort(effort);
+            let response = request(
+                &mut client,
+                AppRequestPayload::UpdateModels(ProductModelUpdate::new(
+                    run,
+                    ProductRoleModels::new(model.clone(), model.clone(), model),
+                )),
+            )
+            .await?;
+            json!({"response":format!("{response:?}")})
         }
         "inspect" => {
             let interaction = request(

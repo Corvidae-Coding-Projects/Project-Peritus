@@ -3,7 +3,7 @@
 /// Requested effort. Provider/model support is checked separately, never silently coerced.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProductModelEffort {
-    /// Preserve Peritus's existing policy: high when reasoning controls are available.
+    /// No explicit effort selection; reasoning-capable requests wait for the user to choose.
     Default,
     /// Minimal reasoning.
     Minimal,
