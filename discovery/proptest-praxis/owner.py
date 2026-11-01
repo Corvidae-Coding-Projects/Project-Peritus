@@ -85,21 +85,7 @@ def main():
         if a.case: env["PRAXIS_CASE"]=str(a.case.resolve())
         stage=5 if t=="openai_http" else 3 if t in ("inputs","daemon") else 2
         result=campaign.command([str(exe),f"praxis_stage{stage}_{t}","--nocapture","--test-threads=1"],folder,a.timeout,env)
-        report=folder/"case-output/report.json"
-        if report.exists():
-            result["report"]=json.loads(report.read_text())
-            reported=result["report"].get("status")
-            # The Rust test runner exits 101 for an ordinary failed assertion. A
-            # report written before a timeout, signal or abnormal exit cannot
-            # qualify that process as a successful behavioral check.
-            native_ok=not result["timed_out"] and result["exit_code"]==0
-            ordinary_failure=not result["timed_out"] and result["exit_code"]==101
-            if reported=="pass" and native_ok:result["status"]="pass"
-            elif reported=="fail" and ordinary_failure:result["status"]="fail"
-            else:
-                result["status"]="incomplete"
-                result["reason"]="behavioral report and native process outcome do not agree"
-        else:result["status"]="incomplete"
+        campaign.qualify_report(result, folder/"case-output/report.json", failure_exit=101)
         result["target"]=t;results.append(result)
     status="incomplete" if any(r["status"]=="incomplete" for r in results) else "fail" if any(r["status"]=="fail" for r in results) else "pass"
     campaign.save(a.output/"summary.json",{"status":status,"results":results})

@@ -396,12 +396,67 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         1 => Just(Operation::RejectDuplicateIdentity),
         5 => query_strategy().prop_map(Operation::Retrieve),
     ];
-    (
+    let mixed = (
         proptest::collection::vec(record_strategy(), 1..=8),
-        proptest::collection::vec(operation, 0..=max_steps.min(128)),
+        proptest::collection::vec(operation.clone(), 0..=max_steps.min(128)),
     )
-        .prop_map(|(initial, operations)| Case { initial, operations })
-        .boxed()
+        .prop_map(|(initial, operations)| Case { initial, operations });
+    if max_steps < 13 {
+        return mixed.boxed();
+    }
+    let correlated = (
+        proptest::collection::vec(record_strategy(), 2..=8),
+        query_strategy(),
+        any::<u8>(),
+        proptest::collection::vec(operation, 0..=max_steps.saturating_sub(13).min(115)),
+    )
+        .prop_map(|(mut initial, mut query, selector, mut suffix)| {
+            // Make several candidates genuinely eligible, so ranking/budget/posting assertions
+            // cannot pass solely because unrelated random scopes and filters excluded everything.
+            let scope = project_scope(initial[0].scope.project);
+            for record in &mut initial {
+                record.scope = scope.clone();
+                record.lifetime = None;
+                record.supporting = record.supporting.max(1);
+                record.reviewed = true;
+            }
+            query.scope = scope;
+            query.role = Role::Writer;
+            query.broader = false;
+            query.accepted_claims = 127;
+            query.required_features = 0;
+            query.minimum_confidence = 0;
+            query.max_review_age = None;
+            query.negative_at = None;
+            query.contradiction_at = None;
+            query.later_epoch = false;
+            query.now_delta = 0;
+            let selected = usize::from(selector) % initial.len();
+            let mut warm = query.clone();
+            warm.budget = Budget::Absolute(1000);
+            warm.max_results = 8;
+            let mut restored = initial[selected].clone();
+            restored.text.push_str(" fresh");
+            // Preserve the selected identity through quarantine/release and deletion/import.
+            let mut operations = vec![
+                Operation::Retrieve(warm),
+                Operation::Retrieve(query.clone()),
+                Operation::Quarantine { selector, freshness: Freshness::Fresh },
+                Operation::Retrieve(query.clone()),
+                Operation::Release { selector, freshness: Freshness::Fresh },
+                Operation::Retrieve(query.clone()),
+                Operation::ReplaceSameSize { selector },
+                Operation::Retrieve(query.clone()),
+                Operation::Delete { selector, freshness: Freshness::Fresh },
+                Operation::Retrieve(query.clone()),
+                Operation::Publish { selector, record: restored },
+                Operation::Rebuild,
+                Operation::Retrieve(query),
+            ];
+            operations.append(&mut suffix);
+            Case { initial, operations }
+        });
+    prop_oneof![2 => mixed, 1 => correlated].boxed()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1106,6 +1161,9 @@ fn probe(
         clock + query.now_delta as u64
     };
     let inputs = model_candidates(machine, &machine.model, query, now, false);
+    let eligible = inputs.iter().filter(|candidate| candidate.reason.is_none()).count();
+    bump(metrics, "queries_with_eligible_candidates", u64::from(eligible > 0));
+    bump(metrics, "queries_with_competing_candidates", u64::from(eligible > 1));
     let budget = capacity(query, &machine.model, &inputs);
     let policy = actual_policy(query)?;
     let actual_query = actual_query(query, now, budget)?;

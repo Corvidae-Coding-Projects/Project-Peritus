@@ -92,7 +92,37 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         case.events = case.events.max(1);
         case
     });
-    prop_oneof![5 => broad, 2 => window_boundary].boxed()
+    let live_lifecycle = (broad.clone(), 0_u8..=4, 0_u8..=4, any::<bool>()).prop_map(
+        |(mut case, first_reason, later_reason, spawn_failed)| {
+            // Reach live states before injecting competing stops. Independent
+            // random phases spent most cases rejecting operations at Authorized.
+            case.chunk = case.chunk.max(1);
+            case.window = case.window.max(case.chunk);
+            case.spool = case.spool.max(case.chunk);
+            case.events = case.events.max(1);
+            case.lifecycle = if spawn_failed {
+                vec![
+                    LifecycleStep::Advance(1),
+                    LifecycleStep::SpawnFailed,
+                    LifecycleStep::Advance(6),
+                    LifecycleStep::Advance(6),
+                ]
+            } else {
+                vec![
+                    LifecycleStep::Advance(1),
+                    LifecycleStep::Advance(2),
+                    LifecycleStep::Stop { sequence: 10, reason: first_reason },
+                    LifecycleStep::Stop { sequence: 1, reason: later_reason },
+                    LifecycleStep::Advance(4),
+                    LifecycleStep::Advance(5),
+                    LifecycleStep::Advance(6),
+                    LifecycleStep::Advance(6),
+                ]
+            };
+            case
+        },
+    );
+    prop_oneof![5 => broad, 2 => window_boundary, 3 => live_lifecycle].boxed()
 }
 
 pub fn expected(case: &Case) -> ExpectedOutput {

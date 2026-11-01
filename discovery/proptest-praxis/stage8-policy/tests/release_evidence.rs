@@ -156,7 +156,7 @@ fn fixed_boundaries() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 1024, max_shrink_iters: 20_000, .. ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig { cases: 1024, max_shrink_iters: 20_000, failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))), .. ProptestConfig::default() })]
     #[test]
     fn generated_evidence_histories(rows in prop::collection::vec((0u8..10, 1u8..5), 0..24)) {
         check(&rows);

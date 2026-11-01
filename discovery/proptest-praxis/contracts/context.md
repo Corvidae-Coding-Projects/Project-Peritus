@@ -96,3 +96,5 @@ the oracle. This is correctness discovery, not a context/token efficiency benchm
 ## Stage 1 execution
 
 Fixed cases, smoke and two standard generated searches passed. The required-Plan classification mutation compiled, failed the explicit and generated cases, and shrank; both witnesses passed after restoration. Exact reports, compiler/source identities, timing and counters are in `../REPORT.md` and `../evidence/stage1.json`. These observations do not qualify the separate product request-assembly path.
+
+The follow-up generator and oracle review is recorded in [state-strengthening.md](state-strengthening.md).

@@ -2,7 +2,9 @@
 
 use crate::Metrics;
 use peritus_local_socket::bounded_path;
-use peritus_sandbox::{EnvironmentName, SecretDelivery, SecretReference};
+use peritus_sandbox::{
+    BrokeredHandleLabel, EnvironmentName, SandboxPath, SecretDelivery, SecretReference,
+};
 use peritus_secrets::{SecretLease, SecretLeaseId, SecretLeaseState};
 use peritus_types::{EnvironmentId, ProcessId, ResourceId, Sha256Digest};
 use proptest::prelude::*;
@@ -28,7 +30,7 @@ fn bump(metrics: &mut Metrics, key: &str) {
 
 pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
     let operation = prop_oneof![
-        8 => (0_u8..=6, 0_u16..=200).prop_map(|(binding, at)| LeaseOperation::Use { binding, at }),
+        8 => (0_u8..=9, 0_u16..=200).prop_map(|(binding, at)| LeaseOperation::Use { binding, at }),
         2 => Just(LeaseOperation::Revoke),
         1 => Just(LeaseOperation::Observe),
     ];
@@ -63,7 +65,18 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         };
         Case::Socket { original, maximum }
     });
-    prop_oneof![5 => general, 3 => exhaustion, 3 => socket].boxed()
+    // Keep the lease live through every binding check before exhausting it.
+    // Random histories usually expire/revoke before reaching most drift dimensions.
+    let binding_probe = (1_u8..=8, 1_u16..=100).prop_map(|(uses, expires)| {
+        let mut operations = (1..=9)
+            .map(|binding| LeaseOperation::Use { binding, at: expires - 1 })
+            .collect::<Vec<_>>();
+        operations.extend((0..=uses).map(|_| LeaseOperation::Use { binding: 0, at: expires - 1 }));
+        operations.push(LeaseOperation::Revoke);
+        operations.push(LeaseOperation::Observe);
+        Case::Lease { uses, expires, operations }
+    });
+    prop_oneof![5 => general, 3 => exhaustion, 3 => binding_probe, 3 => socket].boxed()
 }
 
 fn id(byte: u8) -> [u8; 16] {
@@ -127,18 +140,28 @@ fn lease(case: &Case, metrics: &mut Metrics) -> Result<(), String> {
                     if *binding == 3 { Sha256Digest::new([13; 32]) } else { sandbox };
                 let chosen_execution =
                     if *binding == 4 { Sha256Digest::new([14; 32]) } else { execution };
-                let chosen_reference = if *binding == 5 {
-                    SecretReference::new(reference.resource_id(), Sha256Digest::new([15; 32]))
-                } else {
-                    reference
+                let chosen_reference = match *binding {
+                    5 => SecretReference::new(reference.resource_id(), Sha256Digest::new([15; 32])),
+                    7 => SecretReference::new(
+                        ResourceId::new(id(16)).map_err(|e| format!("resource: {e:?}"))?,
+                        reference.version(),
+                    ),
+                    _ => reference,
                 };
-                let chosen_delivery = if *binding == 6 {
-                    SecretDelivery::Environment(
+                let chosen_delivery = match *binding {
+                    6 => SecretDelivery::Environment(
                         EnvironmentName::new("OTHER_SECRET")
                             .map_err(|e| format!("delivery: {e:?}"))?,
-                    )
-                } else {
-                    delivery.clone()
+                    ),
+                    8 => SecretDelivery::File(
+                        SandboxPath::new("/synthetic/secret".to_owned())
+                            .map_err(|e| format!("delivery: {e:?}"))?,
+                    ),
+                    9 => SecretDelivery::BrokeredHandle(
+                        BrokeredHandleLabel::new("synthetic-secret".to_owned())
+                            .map_err(|e| format!("delivery: {e:?}"))?,
+                    ),
+                    _ => delivery.clone(),
                 };
                 // The reference model uses a closed lifecycle table, independent of the
                 // production lease's condition chain. Expiry is half-open and observed before
@@ -177,6 +200,9 @@ fn lease(case: &Case, metrics: &mut Metrics) -> Result<(), String> {
                 }
                 if *binding != 0 {
                     bump(metrics, "lease_binding_drift_attempts");
+                    if state == SecretLeaseState::Active && *at < *expires {
+                        bump(metrics, &format!("live_binding_drift_{binding}"));
+                    }
                 }
             }
         }
@@ -228,6 +254,18 @@ fn socket(case: &Case, metrics: &mut Metrics) -> Result<(), String> {
             {
                 return Err("long Unix endpoint did not use private runtime shape".into());
             }
+            // Identity must include both the parent path and the final component.
+            // A constant/final-name-only hash passed the previous stability oracle.
+            for alternate in [format!("/other-root{original}"), format!("{original}a")] {
+                let alternate = bounded_path(Path::new(&alternate), max)
+                    .map_err(|error| format!("alternate long socket path rejected: {error}"))?;
+                if alternate == first {
+                    return Err(
+                        "distinct endpoint identities collapsed to one socket address".into()
+                    );
+                }
+                bump(metrics, "socket_identity_separation_checks");
+            }
             bump(metrics, "socket_bounded_paths");
         }
     } else {
@@ -270,6 +308,17 @@ pub fn examples() -> Vec<Case> {
             uses: 2,
             expires: 10,
             operations: vec![LeaseOperation::Revoke, LeaseOperation::Use { binding: 0, at: 1 }],
+        },
+        Case::Lease {
+            uses: 1,
+            expires: 10,
+            operations: (1..=9)
+                .map(|binding| LeaseOperation::Use { binding, at: 9 })
+                .chain([
+                    LeaseOperation::Use { binding: 0, at: 9 },
+                    LeaseOperation::Use { binding: 0, at: 9 },
+                ])
+                .collect(),
         },
         Case::Socket { original: "/tmp/short.sock".into(), maximum: 107 },
         Case::Socket { original: format!("/tmp/{}/daemon.sock", "a".repeat(150)), maximum: 107 },

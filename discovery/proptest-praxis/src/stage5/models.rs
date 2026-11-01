@@ -20,6 +20,15 @@ pub enum Case {
         event_limit: u16,
         output_limit: u16,
     },
+    ForkReplay {
+        prefix: String,
+        suffix: String,
+        cut: u8,
+        chunk: u8,
+        repeats: u8,
+        fresh_sequence: bool,
+        tool: bool,
+    },
     Usage {
         observations: Vec<(u8, [Option<u64>; 8])>,
     },
@@ -68,7 +77,19 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
     let usage =
         prop::collection::vec((0_u8..3, prop::array::uniform8(count)), 0..=max_steps.min(64))
             .prop_map(|observations| Case::Usage { observations });
-    prop_oneof![8=>stream,3=>usage,2=>(0_u8..10,0_u8..7,any::<u16>()).prop_map(|(index,drift,cut)|Case::Corpus{index,drift,cut}),1=>(0_u8..11).prop_map(|tag|Case::Dialect{tag})].boxed()
+    let fork = (
+        "[a-zé界🦀]{0,16}",
+        "[a-zé界🦀]{0,12}",
+        any::<u8>(),
+        1_u8..16,
+        1_u8..5,
+        any::<bool>(),
+        any::<bool>(),
+    )
+        .prop_map(|(prefix, suffix, cut, chunk, repeats, fresh_sequence, tool)| {
+            Case::ForkReplay { prefix, suffix, cut, chunk, repeats, fresh_sequence, tool }
+        });
+    prop_oneof![8=>stream,5=>fork,3=>usage,2=>(0_u8..10,0_u8..7,any::<u16>()).prop_map(|(index,drift,cut)|Case::Corpus{index,drift,cut}),1=>(0_u8..11).prop_map(|tag|Case::Dialect{tag})].boxed()
 }
 fn error(e: impl std::fmt::Debug) -> String {
     format!("{e:?}")
@@ -911,10 +932,190 @@ pub fn check(c: &Case) -> Result<crate::Metrics, String> {
             *event_limit,
             *output_limit,
         ),
+        Case::ForkReplay { prefix, suffix, cut, chunk, repeats, fresh_sequence, tool } => {
+            fork_replay(prefix, suffix, *cut, *chunk, *repeats, *fresh_sequence, *tool)
+        }
         Case::Usage { observations } => usage(observations),
         Case::Corpus { index, drift, cut } => corpus(*index, *drift, *cut, None),
         Case::Dialect { tag } => corpus(0, 0, 0, Some(*tag)),
     }
+}
+// Two different continuations branch from the same partially assembled response. Expected
+// bytes come from the inputs, never from either reducer branch. Retransmissions reuse provider
+// identity/digest but exercise both original and fresh local envelope sequences.
+#[allow(clippy::too_many_arguments)]
+fn fork_replay(
+    prefix: &str,
+    suffix: &str,
+    cut: u8,
+    chunk: u8,
+    repeats: u8,
+    fresh_sequence: bool,
+    tool: bool,
+) -> Result<crate::Metrics, String> {
+    let limits = ProtocolLimits::PRODUCTION;
+    let payloads = [format!("{prefix}-left:{suffix}"), format!("{prefix}-right:{suffix}")];
+    let bytes = payloads
+        .iter()
+        .map(|text| {
+            if tool {
+                serde_json::to_vec(&json!({"text": text})).map_err(error)
+            } else {
+                Ok(text.as_bytes().to_vec())
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let shared = bytes[0].iter().zip(&bytes[1]).take_while(|(a, b)| a == b).count();
+    let split = usize::from(cut) % (shared + 1);
+    let mut base =
+        ResponseReducer::new(ProviderName::new("fixture".into()).map_err(error)?, limits);
+    let mut sequence = 0_u64;
+    let mut identity = 0_u64;
+    let mut metrics = crate::Metrics::new();
+    let mut emit = |reducer: &mut ResponseReducer,
+                    sequence: &mut u64,
+                    identity: &mut u64,
+                    event: ModelEvent,
+                    replay: bool|
+     -> Result<(), String> {
+        *sequence += 1;
+        *identity += 1;
+        let envelope = EventEnvelope::new(
+            *sequence,
+            Some(*identity),
+            Some(EventId::new(format!("fork-{identity}")).map_err(error)?),
+            Sha256Digest::new([(*identity % 251) as u8; 32]),
+            event.clone(),
+        )
+        .map_err(error)?;
+        reducer.push(envelope.clone()).map_err(error)?;
+        if replay {
+            for _ in 0..repeats {
+                let duplicate = if fresh_sequence {
+                    *sequence += 1;
+                    EventEnvelope::new(
+                        *sequence,
+                        envelope.provider_sequence(),
+                        envelope.provider_event_id().cloned(),
+                        envelope.provider_digest(),
+                        event.clone(),
+                    )
+                    .map_err(error)?
+                } else {
+                    envelope.clone()
+                };
+                if reducer.push(duplicate).map_err(error)? != ReducerTransition::DuplicateIgnored {
+                    return Err("output-bearing retransmission was not ignored".into());
+                }
+                bump(&mut metrics, "replayed_output_fragments");
+            }
+        }
+        Ok(())
+    };
+    emit(
+        &mut base,
+        &mut sequence,
+        &mut identity,
+        ModelEvent::ResponseStarted {
+            response_id: Some(ResponseId::new("fork-response".into()).map_err(error)?),
+            model: None,
+        },
+        false,
+    )?;
+    emit(
+        &mut base,
+        &mut sequence,
+        &mut identity,
+        ModelEvent::ItemStarted {
+            item_id: item(0)?,
+            index: 7,
+            kind: if tool { ItemKind::ToolCall } else { ItemKind::Message },
+        },
+        false,
+    )?;
+    if tool {
+        emit(
+            &mut base,
+            &mut sequence,
+            &mut identity,
+            ModelEvent::ToolCallStarted {
+                item_id: item(0)?,
+                call_id: call(0)?,
+                name: ToolName::new("inspect".into()).map_err(error)?,
+            },
+            false,
+        )?;
+    }
+    let delta = |bytes: &[u8]| -> Result<ModelEvent, String> {
+        let fragment = StreamFragment::new(bytes.to_vec(), limits).map_err(error)?;
+        Ok(if tool {
+            ModelEvent::ToolArgumentDelta { call_id: call(0)?, fragment }
+        } else {
+            ModelEvent::TextDelta { item_id: item(0)?, fragment }
+        })
+    };
+    if split > 0 {
+        emit(&mut base, &mut sequence, &mut identity, delta(&bytes[0][..split])?, true)?;
+    }
+    let mut branches = [base.clone(), base.clone()];
+    if base.finish_eof().is_ok() || terminal(base.terminal()) != "failed" {
+        return Err("unfinished source branch did not fail on EOF".into());
+    }
+    for (index, branch) in branches.iter_mut().enumerate() {
+        let mut branch_sequence = sequence;
+        let mut branch_identity = identity;
+        for fragment in bytes[index][split..].chunks(usize::from(chunk.max(1))) {
+            emit(branch, &mut branch_sequence, &mut branch_identity, delta(fragment)?, true)?;
+        }
+        emit(
+            branch,
+            &mut branch_sequence,
+            &mut branch_identity,
+            ModelEvent::ItemCompleted(item(0)?),
+            false,
+        )?;
+        emit(
+            branch,
+            &mut branch_sequence,
+            &mut branch_identity,
+            ModelEvent::Finish(if tool { FinishReason::ToolCalls } else { FinishReason::Stop }),
+            false,
+        )?;
+        emit(
+            branch,
+            &mut branch_sequence,
+            &mut branch_identity,
+            ModelEvent::ResponseCompleted,
+            false,
+        )?;
+        let expected = if tool {
+            json!([2,"item-0",7,"call-0","inspect",{"text":payloads[index]}])
+        } else {
+            json!([0, "item-0", 7, payloads[index]])
+        };
+        if view(branch.completed_items()) != vec![expected]
+            || terminal(branch.terminal()) != if tool { "action" } else { "success" }
+        {
+            return Err("forked response lost exact branch payload or terminal".into());
+        }
+    }
+    if !base.completed_items().is_empty() || terminal(base.terminal()) != "failed" {
+        return Err("finishing a clone changed the failed source response".into());
+    }
+    bump(&mut metrics, "independent_response_forks");
+    bump(
+        &mut metrics,
+        if fresh_sequence {
+            "replay_fresh_local_sequence"
+        } else {
+            "replay_original_local_sequence"
+        },
+    );
+    bump(&mut metrics, if tool { "forked_tool_arguments" } else { "forked_text" });
+    if split > 0 && std::str::from_utf8(&bytes[0][..split]).is_err() {
+        bump(&mut metrics, "fork_inside_utf8");
+    }
+    Ok(metrics)
 }
 fn stream_case(defect: u8) -> Case {
     Case::Stream {
@@ -931,6 +1132,21 @@ fn stream_case(defect: u8) -> Case {
 }
 pub fn examples() -> Vec<Case> {
     let mut cases = (0..17).map(stream_case).collect::<Vec<_>>();
+    for tool in [false, true] {
+        for fresh_sequence in [false, true] {
+            for cut in [0, 1, 2, 3, 4, 5, 10, 11, 12] {
+                cases.push(Case::ForkReplay {
+                    prefix: "é🦀".into(),
+                    suffix: "tail".into(),
+                    cut,
+                    chunk: 1,
+                    repeats: 3,
+                    fresh_sequence,
+                    tool,
+                });
+            }
+        }
+    }
     for finish in 0..12 {
         let mut c = stream_case(0);
         if let Case::Stream { finish: f, .. } = &mut c {

@@ -35,3 +35,13 @@ Metrics include actual pushes, bytes fed, empty pushes, schedules, emitted items
 ## Explicit gaps
 
 This pilot does not yet exercise provider JSON semantics, HTTP cancellation/backpressure, process crashes, arbitrary raw-byte acceptance beyond the targeted malformed family, parser behavior after a failed `push` (the API specifies no continued-use contract), maximum production-size allocations, all SSE field overwrite/unknown-field combinations, or exhaustive multisplit partition enumeration for long wires. It does not prove the repository or the parser bug-free. Mutation sensitivity and observed generated distribution require actual run evidence before this target can be marked qualified.
+
+## Strengthened assembly search
+
+`SseAssembly` composes repeated event fields, a valid ID followed by an ignored NUL ID, empty
+colonless data/event fields, comments inside a pending event, and unknown fields. Its expected
+metadata and data are known before serialization. The total non-comment field bytes are set to
+one below, exactly at, or one above the configured frame allowance, so a per-line-only check
+cannot pass. A following event checks metadata and accumulated-size reset. The existing chunk
+schedules apply to every assembly, including splits inside Unicode and CRLF. Exact `[DONE]`
+and a whitespace-prefixed near sentinel are distinguished.

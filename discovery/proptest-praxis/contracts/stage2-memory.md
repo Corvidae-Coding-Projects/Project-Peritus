@@ -37,3 +37,5 @@ Counters distinguish actual index rebuilds, active records checked, postings che
 ## Explicit limits
 
 This is a bounded public-library correctness pilot. It does not exercise durability, unauthorized memory updates, artifact deletion/privacy, evidence authenticity, cross-process state, index serialization hashing independently, maximum production allocations, larger feature sets, every possible role/scope combination, all constructor rejection classes, overlap/digest-conflicting tombstone input, or real model behavior. All generated observations use epoch 1; queries additionally use epoch 2. Material replacements import later legal snapshots rather than claiming a missing mutable material-update API. Scope dimensions are input-bound, never ambient filesystem paths. No bugs or campaign pass are claimed until actual build/search/calibration evidence exists.
+
+The follow-up generator and oracle review is recorded in [state-strengthening.md](state-strengthening.md).

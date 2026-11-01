@@ -25,6 +25,13 @@ fn check(case: &Case) -> Result<Metrics, String> {
     if case.mode != Mode::OpenAi {
         return Err("foreign owner-provider mode".into());
     }
+    let mut metrics = if let Some(control) = common::positive_control(case) {
+        let mut metrics = check(&control)?;
+        common::bump(&mut metrics, "paired_valid_transport_controls");
+        metrics
+    } else {
+        Metrics::new()
+    };
     let server = common::Server::new(case)?;
     let config = super::OpenAiConfig::from_endpoint(server.endpoint.clone(), common::credential()?)
         .map_err(|e| e.to_string())?
@@ -41,7 +48,6 @@ fn check(case: &Case) -> Result<Metrics, String> {
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    let mut metrics = Metrics::new();
     runtime.block_on(common::drive(provider, case, &mut metrics))?;
     common::inspect_http(case, &server.finish()?, &mut metrics)?;
     Ok(metrics)

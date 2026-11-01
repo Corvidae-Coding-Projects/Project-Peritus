@@ -55,6 +55,25 @@ def command(command, output, timeout, overrides=None):
     return result
 
 
+def qualify_report(result, path, failure_exit):
+    """Require agreement between the native process and its behavioral report."""
+    try:
+        report = json.loads(path.read_text())
+    except (OSError, ValueError) as error:
+        result.update(status="incomplete", reason=f"missing or invalid behavioral report: {error}")
+        return
+    result["report"] = report
+    reported = report.get("status") if isinstance(report, dict) else None
+    native_ok = not result["timed_out"] and result["exit_code"] == 0
+    ordinary_failure = not result["timed_out"] and result["exit_code"] == failure_exit
+    if reported == "pass" and native_ok:
+        result["status"] = "pass"
+    elif reported == "fail" and ordinary_failure:
+        result["status"] = "fail"
+    else:
+        result.update(status="incomplete", reason="behavioral report and native process outcome do not agree")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("build", "workspace-check", "lint", "search", "examples", "calibration", "replay"))
@@ -104,12 +123,7 @@ def main():
             invocation.extend(["--max-steps", str(args.max_steps)])
         result = command(invocation, folder, args.timeout)
         result["target"] = target
-        report = folder / "case-output/report.json"
-        if report.exists():
-            result["report"] = json.loads(report.read_text())
-        elif result["status"] == "pass":
-            result["status"] = "incomplete"
-            result["reason"] = "child returned success without a report"
+        qualify_report(result, folder / "case-output/report.json", failure_exit=1)
         results.append(result)
     status = "incomplete" if any(r["status"] == "incomplete" for r in results) else "fail" if any(r["status"] == "fail" for r in results) else "pass"
     summary = {"schema_version": 1, "status": status, "results": results}

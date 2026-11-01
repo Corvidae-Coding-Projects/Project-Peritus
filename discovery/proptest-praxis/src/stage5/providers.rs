@@ -45,5 +45,16 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
     {
         return Err("provider case exceeds fixture bounds".into());
     }
-    if case.mode.runtime() { runtime::check(case) } else { http::check(case) }
+    let mut metrics = if let Some(control) = common::positive_control(case) {
+        let mut metrics = check(&control)?;
+        common::bump(&mut metrics, "paired_valid_transport_controls");
+        metrics
+    } else {
+        crate::Metrics::new()
+    };
+    let result = if case.mode.runtime() { runtime::check(case)? } else { http::check(case)? };
+    for (name, count) in result {
+        *metrics.entry(name).or_default() += count;
+    }
+    Ok(metrics)
 }

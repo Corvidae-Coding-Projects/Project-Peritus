@@ -288,7 +288,7 @@ fn write_json(path: &Path, value: &impl Serialize) -> Result<(), String> {
 
 fn witness(case: Case, seed: Option<u64>, provenance: &Value) -> Witness {
     Witness {
-        schema_version: SCHEMA_VERSION, generator_version: "stage7-v1".into(),
+        schema_version: SCHEMA_VERSION, generator_version: "strengthening-v1".into(),
         provenance: provenance.clone(), seed,
         expected: "The independent oracle and the actual public Peritus API must agree on this exact input.".into(),
         case,
@@ -524,6 +524,8 @@ fn execute(options: Options) -> Result<bool, String> {
             cases: options.cases,
             rng_seed: RngSeed::Fixed(options.seed),
             rng_algorithm: RngAlgorithm::ChaCha,
+            // Setup failures are missing execution, never discardable input cases.
+            max_global_rejects: 0,
             max_shrink_iters: 10_000,
             max_shrink_time: 30_000,
             failure_persistence: Some(Box::new(FileFailurePersistence::Direct(Box::leak(
@@ -541,6 +543,11 @@ fn execute(options: Options) -> Result<bool, String> {
                 }
                 Err(reason) => {
                     if reason.starts_with("setup-incomplete:") {
+                        write_json(
+                            &options.output.join("incomplete-case.json"),
+                            &witness(case.clone(), Some(options.seed), &provenance),
+                        )
+                        .map_err(TestCaseError::fail)?;
                         return Err(TestCaseError::reject(reason));
                     }
                     if !*saved_first.borrow() {
@@ -585,6 +592,7 @@ fn execute(options: Options) -> Result<bool, String> {
                         | "stage5-v1"
                         | "stage6-v1"
                         | "stage7-v1"
+                        | "strengthening-v1"
                 )
             {
                 return Err("unsupported replay schema/generator version".into());
@@ -617,7 +625,7 @@ fn execute(options: Options) -> Result<bool, String> {
     }
     let passed = failure.borrow().is_none();
     let report = json!({
-        "schema_version": SCHEMA_VERSION, "generator_version": "stage7-v1",
+        "schema_version": SCHEMA_VERSION, "generator_version": "strengthening-v1",
         "command": options.command, "subject": options.subject, "profile": options.profile,
         "seed": options.seed, "requested_cases": options.cases, "max_steps": options.steps,
         "status": if passed {"pass"} else {"fail"}, "completed_cases": passes,

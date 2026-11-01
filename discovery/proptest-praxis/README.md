@@ -2,6 +2,8 @@
 
 This optional, nested Rust workspace exercises real Peritus library interfaces with independent reference models and reproducible generated histories. It is not a root Cargo workspace member, release dependency, or hosted CI gate. The code under `src/` covers the Stage 1–7 public mechanisms; `owner/` and `support/` exercise test-only owner boundaries, including Stage 8 context flow. Focused regressions also live as ordinary package examples and provider loopback consumers under `docs/testing/reproducers/`.
 
+See [the strengthening review](STRENGTHENING.md) for the current generator/oracle audit, new failure families, calibration evidence, and bounded results.
+
 Run from the repository root with the pinned Rust toolchain and locally cached dependencies. Each `--output` directory must be new. The controller records exact case data, seed, source fingerprint, process outcome, and shrink results in that directory. Exit statuses are 0 for pass, 1 for a behavioral mismatch, and 2 for incomplete setup or execution. Test-only owner hooks are enabled only by `cargo test`.
 
 ```sh

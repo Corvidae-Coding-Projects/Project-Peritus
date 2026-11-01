@@ -12,7 +12,7 @@ use peritus_trace::{
     CausalBinding, DiagnosticCode, Observation, ObservationKind, ObservedTime, SpanId, SpanKind,
     TraceId, TraceProjectionState,
 };
-use peritus_types::{EventId, SessionId};
+use peritus_types::{EventId, SessionId, Sha256Digest};
 use proptest::prelude::*;
 use proptest::test_runner::{FileFailurePersistence, TestCaseError};
 
@@ -111,7 +111,7 @@ impl Model {
 enum Mode {
     Accept,
     Fail,
-    WrongAck,
+    WrongAck(u8),
 }
 
 struct Probe {
@@ -126,12 +126,18 @@ impl Exporter for Probe {
         match self.mode {
             Mode::Accept => Ok(ExportAck::accept(batch)),
             Mode::Fail => Err(ExporterError::new(ExporterErrorCode::Unavailable, true)),
-            Mode::WrongAck => Ok(ExportAck::new(
-                batch.stream_id(),
-                batch.batch_id(),
-                batch.first_sequence(),
-                batch.last_sequence(),
-                batch.len() + 1,
+            Mode::WrongAck(field) => Ok(ExportAck::new(
+                if field == 0 { ExportStreamId::new([9; 16]).unwrap() } else { batch.stream_id() },
+                if field == 1 {
+                    let mut bytes = *batch.batch_id().as_bytes();
+                    bytes[0] ^= 1;
+                    Sha256Digest::new(bytes)
+                } else {
+                    batch.batch_id()
+                },
+                batch.first_sequence() + u64::from(field == 2),
+                batch.last_sequence() + u64::from(field == 3),
+                batch.len() + usize::from(field == 4),
             )),
         }
     }
@@ -185,7 +191,7 @@ proptest! {
                     prop_assert_eq!(observed, expected, "operation {}", index);
                 }
                 2 | 3 => {
-                    let mode = match payload % 3 { 0 => Mode::Accept, 1 => Mode::Fail, _ => Mode::WrongAck };
+                    let mode = match payload % 7 { 0 => Mode::Accept, 1 => Mode::Fail, field => Mode::WrongAck(field - 2) };
                     let mut probe = Probe { mode, observed: None, shutdown_calls: 0 };
                     let pending = model.queue.iter().take(batch_size).copied().collect::<Vec<_>>();
                     let outcome = pump.flush_one(&mut probe);
@@ -211,7 +217,7 @@ proptest! {
                                 }
                             }
                             Mode::Fail => prop_assert_eq!(outcome.unwrap_err().kind(), TelemetryErrorKind::ExportFailed),
-                            Mode::WrongAck => prop_assert_eq!(outcome.unwrap_err().kind(), TelemetryErrorKind::AckMismatch),
+                            Mode::WrongAck(_) => prop_assert_eq!(outcome.unwrap_err().kind(), TelemetryErrorKind::AckMismatch),
                         }
                     }
                 }
@@ -402,5 +408,36 @@ proptest! {
                 through_sequence: u64::try_from(*expected.last().unwrap()).unwrap() + 1,
             });
         }
+    }
+}
+
+#[test]
+fn every_ack_identity_field_is_checked_before_dequeue_and_retry() {
+    for field in 0..5 {
+        let config = BufferConfig::new(
+            NonZeroUsize::new(3).unwrap(),
+            NonZeroUsize::new(2).unwrap(),
+            BackpressurePolicy::RejectNewest,
+        )
+        .unwrap();
+        let mut pump =
+            TelemetryPump::new(ExportStreamId::new([2; 16]).unwrap(), TelemetryBuffer::new(config));
+        pump.buffer_mut().enqueue(record(1, 73)).unwrap();
+        pump.buffer_mut().enqueue(record(2, 91)).unwrap();
+        let counters = pump.buffer().counters();
+        let mut bad = Probe { mode: Mode::WrongAck(field), observed: None, shutdown_calls: 0 };
+        assert_eq!(pump.flush_one(&mut bad).unwrap_err().kind(), TelemetryErrorKind::AckMismatch);
+        assert_eq!(pump.buffer().len(), 2);
+        assert_eq!(pump.buffer().counters(), counters);
+        let mut retry = Probe { mode: Mode::Accept, observed: None, shutdown_calls: 0 };
+        assert_eq!(
+            pump.flush_one(&mut retry).unwrap(),
+            FlushOutcome::Exported { count: 2, through_sequence: 2 }
+        );
+        assert_eq!(
+            retry.observed, bad.observed,
+            "retry changed exact pending batch for field {field}"
+        );
+        assert!(pump.buffer().is_empty());
     }
 }

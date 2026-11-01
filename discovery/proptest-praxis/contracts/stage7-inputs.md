@@ -80,3 +80,15 @@ The pre/post reports embed both the exact CLI binary SHA256 and `web.rs` SHA256:
 The probe checks malformed grammar and side effects only. Valid web searches,
 source reads, and network behavior remain outside this lane; browser/web
 operations have a separate Stage 7 lane.
+
+## Strengthening pass after v0.1.18
+
+The paste strategy now exercises each editor's own byte ceiling, including narrowed valid
+negotiated prompt/signature limits and all three base64 frame remainder classes. Boundary
+states deliberately leave zero through four bytes of room, then insert one- through four-byte
+Unicode characters, rejected follow-ups, filtered controls, and cursor repositioning. General
+histories honor the requested step budget (up to 64), with weighted beginning/interior/end
+cursor positions. The independent model uses Unicode scalar vectors and computes byte counts
+separately instead of duplicating the production String insertion algorithm. Counters separate
+rejection and exact-cap events by editor, and count successful operations after rejection.
+This is still the real insertion method mounted in a minimal shell, not native key routing.

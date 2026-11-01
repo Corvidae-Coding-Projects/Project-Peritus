@@ -102,7 +102,7 @@ impl ModelProvider for Recording {
                 ReasoningPolicy::Adaptive { .. } => "adaptive",
                 ReasoningPolicy::Effort { effort, .. } => effort.as_str(),
             };
-            let body = json!({"turn":turn,"model":request.model().as_str(),"effort":effort,"request_id":request.request_id().expose_for_wire(),"messages":messages});
+            let body = json!({"turn":turn,"model":request.model().as_str(),"effort":effort,"request_id":request.request_id().expose_for_wire(),"tool_count":request.tools().len(),"messages":messages});
             super::fixture::save(&self.root.join(format!("request-{turn}.json")), &body)
                 .map_err(fail)?;
             let mut f = OpenOptions::new()

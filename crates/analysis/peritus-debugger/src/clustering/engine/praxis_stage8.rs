@@ -54,7 +54,13 @@ fn member(index: u8, class: u8, signature: u8, component: u8) -> PatternMember {
 }
 
 fn key(member: &PatternMember) -> Key {
-    (pattern_kind(member.outcome), member.category, member.analyzer, member.component_kind)
+    // Do not call production's classifier: a classification defect must not change the oracle.
+    let kind = match member.outcome {
+        OutcomeClass::Task(TaskOutcome::Success) => PatternKind::Success,
+        OutcomeClass::Task(_) => PatternKind::TaskFailure,
+        OutcomeClass::Infrastructure(_) => PatternKind::InfrastructureFailure,
+    };
+    (kind, member.category, member.analyzer, member.component_kind)
 }
 
 proptest! {
@@ -72,18 +78,32 @@ proptest! {
             expected.entry(key(item)).or_default().push(item.subject_id);
         }
         for subjects in expected.values_mut() { subjects.sort(); }
-        let mut groups: Vec<_> = members.into_iter().map(|item| vec![item]).collect();
-        agglomerate(&mut groups);
-        let mut actual: BTreeMap<Key, Vec<SubjectId>> = BTreeMap::new();
-        for group in groups {
-            let representative = key(&group[0]);
-            for item in group {
-                prop_assert_eq!(key(&item), representative);
-                actual.entry(representative).or_default().push(item.subject_id);
+        // Check multiple construction histories and repeated application. In particular,
+        // don't silently coalesce separate returned groups in the oracle itself.
+        for reverse in [false, true] {
+            let mut ordered = members.clone();
+            if reverse { ordered.reverse(); }
+            let mut groups: Vec<_> = ordered.into_iter().map(|item| vec![item]).collect();
+            for _ in 0..2 {
+                agglomerate(&mut groups);
+                prop_assert_eq!(groups.len(), expected.len(), "split or merged equivalence classes");
+                let mut actual: BTreeMap<Key, Vec<SubjectId>> = BTreeMap::new();
+                for group in &groups {
+                    prop_assert!(!group.is_empty());
+                    let representative = key(&group[0]);
+                    let mut subjects = Vec::new();
+                    for item in group {
+                        prop_assert_eq!(key(item), representative);
+                        let original = members.iter().find(|original| original.subject_id == item.subject_id).unwrap();
+                        prop_assert_eq!(item, original, "clustering changed member payload");
+                        subjects.push(item.subject_id);
+                    }
+                    subjects.sort();
+                    prop_assert!(actual.insert(representative, subjects).is_none(), "equivalent members remained split");
+                }
+                prop_assert_eq!(&actual, &expected);
             }
         }
-        for subjects in actual.values_mut() { subjects.sort(); }
-        prop_assert_eq!(actual, expected);
     }
 }
 
@@ -92,4 +112,12 @@ fn analyzer_signature_is_a_cluster_boundary() {
     let mut groups = vec![vec![member(1, 1, 0, 1)], vec![member(2, 1, 1, 1)]];
     agglomerate(&mut groups);
     assert_eq!(groups.len(), 2);
+}
+
+#[test]
+fn equivalent_members_must_form_one_group() {
+    let mut groups = vec![vec![member(1, 1, 0, 1)], vec![member(2, 1, 0, 1)]];
+    agglomerate(&mut groups);
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0].len(), 2);
 }
