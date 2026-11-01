@@ -204,9 +204,20 @@ class Browsers:
         if action == 'close':
             self.close(identifier)
             return {'success': True, 'closed': identifier, 'existing_browser_preserved': not session['owned']}
+        page = session['page']
+        if page.is_closed():
+            if session.get('document_identity') is not None:
+                self.invalidate(session)
+        elif session.get('observation') is not None:
+            try:
+                identity = page.evaluate('() => [location.href, performance.timeOrigin]')
+            except Exception as error:
+                self.invalidate(session)
+                raise ValueError('Selected tab changed; observe again') from error
+            if identity != session.get('document_identity'):
+                self.invalidate(session)
         if args.get('observation') != session.get('observation'):
             raise ValueError('Stale or missing observation; observe this session before acting')
-        page = session['page']
         node = None
         if args.get('ref'):
             node = session['refs'].get(args['ref'])
@@ -272,10 +283,21 @@ class Browsers:
             return
         page._peritus_watched = True
         page.set_default_timeout(10000)
+        page.on('framenavigated', lambda frame: self.invalidate(session)
+                if frame == page.main_frame and session.get('page') is page else None)
+        page.on('close', lambda: self.invalidate(session)
+                if session.get('page') is page else None)
         page.on('console', lambda event: self.event(session, {'kind': 'console', 'level': event.type, 'text': event.text[:2000]}))
         page.on('pageerror', lambda error: self.event(session, {'kind': 'pageerror', 'text': str(error)[:2000]}))
         page.on('dialog', lambda dialog: self.dialog(session, dialog))
         page.on('download', lambda download: self.download(session, download))
+
+    def invalidate(self, session):
+        # A selected tab can navigate outside a control call, including through user input.
+        # Its old screenshot coordinates and element references no longer describe the page.
+        session['observation'] = None
+        session['document_identity'] = None
+        session['generation'] = session.get('generation', 0) + 1
 
     def event(self, session, value):
         session['events'].append(value)
@@ -296,6 +318,7 @@ class Browsers:
 
     def observe(self, identifier, selector=None):
         session = self.sessions[identifier]
+        generation = session.get('generation', 0)
         for handle in session['refs'].values():
             try:
                 handle.dispose()
@@ -306,6 +329,7 @@ class Browsers:
         observation = uuid.uuid4().hex
         if page.is_closed():
             session['observation'] = observation
+            session['document_identity'] = None
             return {'success': True, 'kind': 'browser', 'session': identifier,
                     'state': 'closed', 'owned': session['owned'], 'observation': observation,
                     'elements': [], 'image': None,
@@ -336,7 +360,11 @@ class Browsers:
         raw = session['directory'] / ('raw-' + observation + '.png')
         page.screenshot(path=str(raw), timeout=10000)
         image = self.screenshot(raw, session['directory'] / (observation + '.png'))
-        session.update(refs=refs, observation=observation, scale=image['scale'], image_width=image['width'], image_height=image['height'])
+        identity = page.evaluate('() => [location.href, performance.timeOrigin]')
+        if session.get('generation', 0) != generation:
+            raise ValueError('Selected tab changed during observation; observe again')
+        session.update(refs=refs, observation=observation, document_identity=identity,
+                       scale=image['scale'], image_width=image['width'], image_height=image['height'])
         dialog = session.get('dialog')
         return {'success': True, 'kind': 'browser', 'session': identifier, 'observation': observation,
                 'owned': session['owned'], 'url': page.url, 'title': page.title(),

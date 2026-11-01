@@ -173,7 +173,13 @@ impl ResponseReducer {
             return self.reject_unit("tool arguments preceded call start");
         };
         let item_id = item_id.clone();
-        let Some(call) = self.items.get_mut(&item_id).and_then(|item| item.call.as_mut()) else {
+        let Some(item) = self.items.get_mut(&item_id) else {
+            return self.reject_unit("tool-call assembly is missing");
+        };
+        if item.complete {
+            return self.reject_unit("tool arguments targeted a completed item");
+        }
+        let Some(call) = item.call.as_mut() else {
             return self.reject_unit("tool-call assembly is missing");
         };
         if call.arguments.len().saturating_add(bytes.len()) > self.limits.max_tool_argument_bytes()

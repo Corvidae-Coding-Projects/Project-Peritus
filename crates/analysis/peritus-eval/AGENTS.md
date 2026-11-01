@@ -20,6 +20,7 @@ Local dependency waypoints: [peritus-artifact-store](../../state/peritus-artifac
 | Folder | Role / next waypoint |
 | --- | --- |
 | [src/](src/AGENTS.md) | Durable reproducible harness evaluation for Peritus. |
+| [tests/](tests/stage8_statistics.rs) | Independent generated pass-at-k and distribution statistics checks. |
 
 ## Working in this area
 

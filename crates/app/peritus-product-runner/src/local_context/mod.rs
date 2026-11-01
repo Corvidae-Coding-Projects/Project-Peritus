@@ -17,6 +17,17 @@ mod storage;
 mod tools;
 mod view_binding;
 
+#[cfg(test)]
+#[path = "../../../../../discovery/proptest-praxis/support/owner.rs"]
+mod praxis_support;
+
+#[cfg(test)]
+#[path = "../../../../../discovery/proptest-praxis/owner/inputs.rs"]
+mod praxis_inputs;
+#[cfg(test)]
+#[path = "../../../../../discovery/proptest-praxis/support/stage3_owner.rs"]
+mod praxis_stage3_support;
+
 pub use driver::{InvocationAccounting, run_live_invocation};
 pub use port::LocalContextHandle;
 pub use tools::MemoryTools;

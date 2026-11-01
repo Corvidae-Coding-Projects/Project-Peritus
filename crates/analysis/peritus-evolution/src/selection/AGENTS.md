@@ -13,6 +13,12 @@ Deny-wins eligibility and deterministic stable multi-objective selection.
 | [engine.rs](engine.rs) | Pure deny-wins assessment and stable lexicographic selection. |
 | [mod.rs](mod.rs) | Deny-wins eligibility and deterministic stable multi-objective selection. |
 
+## Child areas
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [engine/](engine/praxis_stage8.rs) | Generated eligibility and objective-order checks for the private selector. |
+
 ## Working in this area
 
 Start at [`mod.rs`](mod.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.

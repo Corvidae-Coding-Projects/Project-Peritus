@@ -60,6 +60,7 @@ These maps explain ownership and navigation. Read the linked implementation and 
 | [benchmarks/](benchmarks/AGENTS.md) | Benchmark profiles, baseline records, and external-suite integration notes. These are separate from routine real-testing workflows. |
 | [compat/](compat/AGENTS.md) | Versioned protocol compatibility data. Surface/version/case directories pair manifests, input bytes, and expected decoder outcomes. |
 | [crates/](crates/AGENTS.md) | Rust implementation grouped by architectural responsibility. Choose a layer by the behavior you need, then follow its package and module maps. |
+| [discovery/](discovery/AGENTS.md) | Optional property-testing workspace, independent oracles, and reproducible generated histories. |
 | [docs/](docs/AGENTS.md) | Human architecture, contracts, operations, and recorded evidence. Current interface guides and historical proof/qualification archives have different roles. |
 | [fixtures/](fixtures/AGENTS.md) | Checked-in runtime/configuration examples and recovery inputs. Keep fixture data distinct from executable owners and live user state. |
 | [packaging/](packaging/AGENTS.md) | Install/distribution assets: native package recipes, launch/service assets, notices, manual pages, and platform entrypoints. |

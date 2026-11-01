@@ -212,7 +212,10 @@ fn send_message(
         u32::try_from(task_messages.len()).ok().and_then(|value| value.checked_add(1)).ok_or_else(
             || reject(CollaborationErrorKind::LimitExceeded, "message ordinal overflowed"),
         )?;
-    let predecessor = task_messages.last().map(|delivery| delivery.message().id());
+    let predecessor = task_messages
+        .iter()
+        .max_by_key(|delivery| delivery.message().ordinal())
+        .map(|delivery| delivery.message().id());
     if message.ordinal() != expected || message.predecessor() != predecessor {
         return Err(reject(
             CollaborationErrorKind::CausalityViolation,

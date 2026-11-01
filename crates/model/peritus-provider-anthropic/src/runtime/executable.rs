@@ -20,8 +20,10 @@ impl ClaudeExecutable {
         for directory in std::env::split_paths(&path) {
             for name in candidate_names() {
                 let candidate = directory.join(name);
-                if candidate.is_file() {
-                    return Self::pin(candidate);
+                if candidate.is_file()
+                    && let Ok(executable) = Self::pin(candidate)
+                {
+                    return Ok(executable);
                 }
             }
         }

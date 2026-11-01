@@ -147,7 +147,7 @@ async function sendMessage(hostCommand:boolean) {
   const attachments=[...(ui.attachments[id]??[])];
   ui.pending[id]=true;
   try{
-    const value=await api.action<Conversation>('send',{session:id,text,attachments:attachments.map(file=>file.id),mode:ui.modes[id]??'chat',models:ui.conversations[id]?.models??session()?.settings?.models??{},providers:ui.conversations[id]?.run?.providers??session()?.settings?.providers??{}});
+    const value=await api.action<Conversation>('send',{session:id,text,attachments:attachments.map(file=>file.id),mode:ui.modes[id]??'chat',models:ui.conversations[id]?.models??session()?.settings?.models??{},providers:ui.conversations[id]?.run?.providers??session()?.settings?.providers??{}},{draftOriginal:original});
     observeConversation(id,value);if(ui.drafts[id]===original)ui.drafts[id]='';
     ui.attachments[id]=(ui.attachments[id]??[]).filter(file=>!attachments.some(sent=>sent.id===file.id));
     if(ui.workspace.sessions.find(s=>s.id===id)?.title==='New conversation')await editSession(id,{title:text.slice(0,60)});
@@ -181,7 +181,7 @@ export async function reconcileOperations(operation?:string){
     forgetOperation(item.operation);
     if(item.command==='send'&&item.session&&!record.result.error){
       observeConversation(item.session,record.result);
-      if(ui.drafts[item.session]?.trim()===record.input.text)ui.drafts[item.session]='';
+      if(item.draftOriginal!==undefined&&ui.drafts[item.session]===item.draftOriginal)ui.drafts[item.session]='';
       const sent=Array.isArray(record.input.attachments)?record.input.attachments:[];
       ui.attachments[item.session]=(ui.attachments[item.session]??[]).filter(file=>!sent.includes(file.id));
     }

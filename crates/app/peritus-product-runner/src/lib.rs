@@ -87,3 +87,6 @@ pub(crate) fn encode_hex(bytes: &[u8]) -> String {
     }
     encoded
 }
+#[cfg(test)]
+#[path = "../../../../discovery/proptest-praxis/src/fingerprint.rs"]
+mod praxis_fingerprint;

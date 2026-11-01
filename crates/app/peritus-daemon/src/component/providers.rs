@@ -90,6 +90,22 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    #[cfg(test)]
+    pub(super) fn praxis_override(self, root: &std::path::Path) -> Self {
+        let Some(providers) = crate::praxis_daemon::providers(root) else { return self };
+        Self {
+            entries: providers
+                .into_iter()
+                .map(|provider| {
+                    (
+                        ProviderProfileKey::from_profile(provider.profile()),
+                        ProviderRegistration { kind: ProviderAdapterKind::Compatible, provider },
+                    )
+                })
+                .collect(),
+        }
+    }
+
     /// Constructs every explicitly declared provider exactly once.
     ///
     /// API-key routes require a credential broker. The broker remains behind `C5`'s

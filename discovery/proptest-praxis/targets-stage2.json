@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "stage": 2,
+  "targets": [
+    {
+      "target": "invalidation",
+      "packages": [
+        "peritus-context"
+      ],
+      "status": [
+        "contract-read",
+        "harness-runnable",
+        "calibrated",
+        "searched"
+      ],
+      "contract": "contracts/stage2-domain.md",
+      "harness": "src/invalidation.rs",
+      "harness_source_sha256": "745f24819ee6930092b5fc04f1771a1517eaeb95b08668854970db8c3544554b",
+      "qualification_report": "discovery/proptest-praxis/runs/stage2-final-invalidation-search/invalidation/case-output/report.json",
+      "calibration_report": "discovery/proptest-praxis/runs/stage2-final-canary-invalidation/report.json",
+      "final_cases": 10000,
+      "platform": "Linux x86_64",
+      "limits": "See target contract; mechanism coverage does not qualify the whole package or later native integration."
+    },
+    {
+      "target": "knowledge",
+      "packages": [
+        "peritus-run-knowledge"
+      ],
+      "status": [
+        "contract-read",
+        "harness-runnable",
+        "calibrated",
+        "searched"
+      ],
+      "contract": "contracts/stage2-domain.md",
+      "harness": "src/knowledge.rs",
+      "harness_source_sha256": "65c61568baef00d0df4ac61fbd368387b0d4d6aa7cf76b71d238518e800b1b76",
+      "qualification_report": "discovery/proptest-praxis/runs/stage2-final-knowledge-search/knowledge/case-output/report.json",
+      "calibration_report": "discovery/proptest-praxis/runs/stage2-final-canary-knowledge/report.json",
+      "final_cases": 10000,
+      "platform": "Linux x86_64",
+      "limits": "See target contract; mechanism coverage does not qualify the whole package or later native integration."
+    },
+    {
+      "target": "memory",
+      "packages": [
+        "peritus-memory"
+      ],
+      "status": [
+        "contract-read",
+        "harness-runnable",
+        "calibrated",
+        "searched"
+      ],
+      "contract": "contracts/stage2-memory.md",
+      "harness": "src/memory.rs",
+      "harness_source_sha256": "1baaf8d96d1d1420a9fc93da020b50a69355e9bdf23a2d1e8ece928717e25e98",
+      "qualification_report": "discovery/proptest-praxis/runs/stage2-final-memory-search/memory/case-output/report.json",
+      "calibration_report": "discovery/proptest-praxis/runs/stage2-final-canary-memory/report.json",
+      "final_cases": 10000,
+      "platform": "Linux x86_64",
+      "limits": "See target contract; mechanism coverage does not qualify the whole package or later native integration."
+    },
+    {
+      "target": "reads",
+      "packages": [
+        "peritus-product-runner"
+      ],
+      "status": [
+        "contract-read",
+        "harness-runnable",
+        "calibrated",
+        "searched"
+      ],
+      "contract": "contracts/stage2-owner.md",
+      "harness": "owner/reads.rs",
+      "harness_source_sha256": "892fa44f0a96ea26f3b9cdd107e6db2f4a193955cccc8cc9357031a9875bffcd",
+      "qualification_report": "discovery/proptest-praxis/runs/stage2-final-owner-search/reads/case-output/report.json",
+      "calibration_report": "discovery/proptest-praxis/runs/stage2-final-canary-reads/report.json",
+      "final_cases": 1000,
+      "platform": "Linux x86_64",
+      "limits": "See target contract; mechanism coverage does not qualify the whole package or later native integration."
+    },
+    {
+      "target": "decision",
+      "packages": [
+        "peritus-product-runner"
+      ],
+      "status": [
+        "contract-read",
+        "harness-runnable",
+        "calibrated",
+        "searched"
+      ],
+      "contract": "contracts/stage2-owner.md",
+      "harness": "owner/decision.rs",
+      "harness_source_sha256": "18022cea3b198f3930d9ee5de1621990fd6454074b685d4d9ec760a6a1f91137",
+      "qualification_report": "discovery/proptest-praxis/runs/stage2-final-owner-search/decision/case-output/report.json",
+      "calibration_report": "discovery/proptest-praxis/runs/stage2-final-canary-decision/report.json",
+      "final_cases": 1000,
+      "platform": "Linux x86_64",
+      "limits": "See target contract; mechanism coverage does not qualify the whole package or later native integration."
+    },
+    {
+      "target": "plans",
+      "packages": [
+        "peritus-product-runner"
+      ],
+      "status": [
+        "contract-read",
+        "harness-runnable",
+        "calibrated",
+        "searched"
+      ],
+      "contract": "contracts/stage2-plans.md",
+      "harness": "owner/plans.rs",
+      "harness_source_sha256": "8558d49bc22fc93d69dc50c6739cb8f12f77ed46947aa6881b51c0a1c87a6151",
+      "qualification_report": "discovery/proptest-praxis/runs/stage2-final-owner-search/plans/case-output/report.json",
+      "calibration_report": "discovery/proptest-praxis/runs/stage2-final-canary-plans/report.json",
+      "final_cases": 1000,
+      "platform": "Linux x86_64",
+      "limits": "See target contract; mechanism coverage does not qualify the whole package or later native integration."
+    }
+  ],
+  "remaining_stages": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ]
+}

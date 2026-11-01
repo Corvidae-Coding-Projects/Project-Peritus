@@ -1,0 +1,39 @@
+# Stage 5 closed application-wire consumer
+
+The `wire` target calls current public `decode_app_message` and `encode_app_message` with complete native A3 byte frames. No production decoder/encoder runs during fixture preparation. All checks operate the actual public library; they do not create daemon authority or execute a request.
+
+## Closed coverage map
+
+Six top-level PRTS families are covered: ClientHello94, ServerHello95, Request96, Response97, Event98 and Control99. The frozen `wire_tags.json` enumerates all138 currently assigned outer tag forms:63 request,53 response,15 event and7 control. Legacy/additive UpdateModels and Interaction forms remain separate tags even where they yield one typed variant. `wire_labels.rs` exhaustively matches the actual public payload enums, so a newly added payload variant requires an explicit coverage update rather than a catch-all success.
+
+The ordinary WorkbenchCommand/QueryWorkbenchReceipt payloads additionally cover all42 WorkbenchIntent variants, using an exhaustive public enum label match and frozen stable intent tags. This prevents the single outer workbench tag from hiding an omitted mutation family. Both SubscriptionControl pause/resume forms are represented. This is not a claim that every nested DTO enum or every collection entry/optional-field cross-product is exhaustively enumerated.
+
+`wire_cases.json` contains212 exact grammar inputs: all160 checked-in compatibility cases, plus52 small independently assembled supplemental forms. The preparation script `wire_corpus.py` verifies each retained fixture manifest's declared expectation/payload SHA-256 and never imports or invokes a production encoder. The retained corpus has four explicit negative expectations. The supplemental bytes fill actual missing tag forms (legacy artifact/prompt/terminal/subscription/control/error operations, new improvement inbox forms and recent diff views), plus absent brief-acceptance/context-preference intents. The static JSON and label tables are runtime source inputs and must be included in source fingerprinting; the preparation script is provenance, not a runtime oracle.
+
+## Independent observable expectations
+
+The expected family, exact typed variant and workbench intent are frozen independently from the running dispatcher. The consumer reads scalar byte offsets directly using ordinary slices and big-endian arithmetic, not CanonicalReader or any production semantic decoder. It independently checks every post-negotiation context (protocol/version/session), request/response identity and correlation, control correlation, workbench operation/query/revision, role model/provider/effort choices, artifact metadata/chunk/completion fields, exact terminal binding/input/output/dimensions, embedded at-least-once event frame/cursor/attempt bytes, prompt acceptance, acknowledgement and heartbeat echoes. Complex retained workbench projections receive envelope/variant/intent checks and exact retained canonical-byte correspondence; complete independent reimplementation of all their semantic fields is not claimed.
+
+Re-encoding must reproduce exact canonical input after those semantic checks. This supplements rather than supplies the semantic oracle. It retains historical legacy encodings and embedded B3 bytes without normalization. Positive protocol-identity substitutions independently test that the public decoder preserves the supplied nominal identity; this DTO operation does not authenticate a relationship.
+
+Grammar-aware malformed mutations are applied to valid seeds: truncation, trailing outer and declared-payload bytes, foreign family, future schema, unknown closed tag, unsupported primitive format, reserved flags, zero protocol/session/request/correlation identities and unrepresentable declared payload. Hello's closed-tag location differs from request/event/control and is independently located. Known retained corrupt/adversarial cases are checked against their declared stable error category.
+
+Duplicated binding scenarios use a positive control before changing exactly one outer request/session/correlation identity while leaving its inner terminal/artifact/prompt/ack binding unchanged. Valid nominal IDs must not excuse that mismatch. Negotiated diagnostic cases compare UTF-8 byte length at a small selected bound, including empty, below/exact/above and multibyte/combining input. Limits are constructed through the real public AppProtocolLimits API rather than bypassed.
+
+## Source and callers
+
+Read root/current manifest membership, codec and app-protocol maps, wire/request/workbench/intent waypoints, family constants, public envelopes and their constructors/getters, complete dispatcher, request tag/binding routing, response/event/control tag and envelope-binding routes, scalar/context encoding, and selected exact artifact/terminal/subscription/prompt/daemon/product/interaction/improvement/review helper paths used by supplemental inputs. Read the retained corpus layout and actual fixture/expectation/payload hashes. Source preparation records the explicit outer/intent tag assignments; it does not call runtime tag helpers as the expected result.
+
+Current transport callers inspected: app-client `frame.rs` reads a fixed header, bounds the length and passes the complete frame through the dispatcher; daemon `ipc/frame.rs::read_or_eof` retains partial input across cancellation, then calls the same decoder and resets framing after a complete result. The wire campaign exercises complete decoder inputs, not those actual async stream owners, negotiated authentication, host effects or native IPC reconnect. Stage1 framing and the separate Stage5 provider/extension lanes remain distinct.
+
+## Replay, metrics and sensitivity
+
+Every case is serde data. Corpus selection uses a stable frozen index with explicit out-of-range refusal, not silent skipping. Fixed examples enumerate every frozen seed, the five duplicated-binding mismatches and diagnostic UTF-8 boundaries. Generated cases combine those seeds with grammar mutations, positive protocol-ID substitutions, repeated binding scenarios and varied diagnostic prose/limits. These are bounded single-frame cases rather than operation histories, so max_steps does not inflate work.
+
+Counters identify exact family/tag and workbench-intent forms actually reached, retained positive/negative cases, constructed forms, each malformed partition, each binding mismatch and diagnostic acceptance/rejection. Parent must reconcile those counters against the frozen coverage map and separately retain unresolved setup/fixture failures. Source parsing, rustfmt and patch applicability do not establish native passing behavior.
+
+`stage5-wire.patch` deliberately skips the real terminal attachment's originating-request binding check. `calibration()` changes only the outer request ID of a valid attachment; the constructor still sees valid nominal identities, but the independent binding expectation must reject. A dedicated broad generator branch reaches this same case, so calibration must demonstrate fixed and generated detection under two seeds, then restored exact/shrunk replay.
+
+## Explicit bounds and gaps
+
+Frozen compatibility bytes are small controlled source fixtures, not arbitrary captured private traffic. Supplemental operations are inert descriptions. The target does not qualify every nested collection maximum, every nested enum cross-product, native stream cancellation/reconnect, authentication, OS enforcement, host execution, million-byte allocations or all malformed nested payload positions. It does not infer current server support merely from an archived fixture: an actual disagreement remains a failure to investigate, never an automatically updated expectation. No Cargo or production edits were performed while preparing this source; parent owns coordinated build, strict lint, search and calibration evidence.

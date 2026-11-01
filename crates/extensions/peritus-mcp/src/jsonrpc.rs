@@ -149,7 +149,7 @@ impl JsonRpcResponse {
     #[must_use]
     pub fn failure(id: Option<RpcId>, code: i32, message: impl Into<String>) -> Self {
         let mut message = message.into();
-        message.truncate(512);
+        message.truncate(message.floor_char_boundary(512));
         Self {
             jsonrpc: "2.0",
             id,

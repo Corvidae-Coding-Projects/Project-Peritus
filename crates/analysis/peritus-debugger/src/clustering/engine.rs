@@ -272,3 +272,7 @@ fn cluster_error(detail: &'static str) -> DebuggerError {
         detail,
     )
 }
+
+#[cfg(test)]
+#[path = "engine/praxis_stage8.rs"]
+mod praxis_stage8;

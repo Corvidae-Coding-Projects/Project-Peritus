@@ -19,6 +19,7 @@ Local dependency waypoints: [peritus-plugin-sdk](../../foundation/peritus-plugin
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [examples/](examples/startup_trust_drift.rs) | Disposable-process plugin startup trust regression. |
 | [src/](src/AGENTS.md) | Host for untrusted out-of-process and Wasm Peritus plugins. |
 
 ## Working in this area

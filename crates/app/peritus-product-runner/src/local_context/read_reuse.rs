@@ -3,6 +3,10 @@
 mod page;
 mod view;
 
+#[cfg(test)]
+#[path = "../../../../../discovery/proptest-praxis/owner/reads.rs"]
+mod praxis_reads;
+
 use super::{memory::LocalMemory, record::ArchiveKind, tools::source_handle};
 use peritus_agent::{DeveloperLoopError, DeveloperToolObservation};
 use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};

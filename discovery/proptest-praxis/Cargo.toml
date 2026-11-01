@@ -1,0 +1,92 @@
+[package]
+name = "peritus-praxis"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+publish = false
+
+[workspace]
+
+[dependencies]
+peritus-provider-openai = { path = "../../crates/model/peritus-provider-openai" }
+peritus-provider-onboarding = { path = "../../crates/app/peritus-provider-onboarding" }
+peritus-product-state = { path = "../../crates/app/peritus-product-state" }
+peritus-provider-anthropic = { path = "../../crates/model/peritus-provider-anthropic" }
+peritus-provider-google = { path = "../../crates/model/peritus-provider-google" }
+peritus-provider-compatible = { path = "../../crates/model/peritus-provider-compatible" }
+peritus-provider-opencode = { path = "../../crates/model/peritus-provider-opencode" }
+peritus-plugin-sdk = { path = "../../crates/foundation/peritus-plugin-sdk" }
+peritus-plugin-host = { path = "../../crates/runtime/peritus-plugin-host" }
+peritus-mcp = { path = "../../crates/extensions/peritus-mcp" }
+peritus-app-protocol = { path = "../../crates/app/peritus-app-protocol" }
+proptest = { version = "=1.12.0", default-features = false, features = ["std", "bit-set", "handle-panics"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.149"
+reqwest = { version = "=0.13.4", default-features = false, features = ["http2", "rustls", "stream"] }
+sha2 = { version = "=0.11.0", default-features = false }
+peritus-codec = { path = "../../crates/foundation/peritus-codec" }
+peritus-context = { path = "../../crates/orchestration/peritus-context" }
+peritus-memory = { path = "../../crates/orchestration/peritus-memory" }
+peritus-policy = { path = "../../crates/foundation/peritus-policy" }
+peritus-run-knowledge = { path = "../../crates/orchestration/peritus-run-knowledge" }
+peritus-review = { path = "../../crates/orchestration/peritus-review" }
+peritus-run-settlement = { path = "../../crates/orchestration/peritus-run-settlement" }
+peritus-provider-core = { path = "../../crates/model/peritus-provider-core" }
+peritus-role = { path = "../../crates/orchestration/peritus-role" }
+peritus-telemetry = { path = "../../crates/observe/peritus-telemetry" }
+peritus-trace = { path = "../../crates/observe/peritus-trace" }
+peritus-types = { path = "../../crates/foundation/peritus-types" }
+peritus-agent = { path = "../../crates/orchestration/peritus-agent" }
+peritus-journal = { path = "../../crates/state/peritus-journal" }
+peritus-budget = { path = "../../crates/foundation/peritus-budget" }
+peritus-model-protocol = { path = "../../crates/model/peritus-model-protocol" }
+peritus-tool-protocol = { path = "../../crates/tools/peritus-tool-protocol" }
+peritus-tool-router = { path = "../../crates/tools/peritus-tool-router" }
+peritus-protocol = { path = "../../crates/foundation/peritus-protocol" }
+peritus-spec = { path = "../../crates/foundation/peritus-spec" }
+peritus-kernel = { path = "../../crates/foundation/peritus-kernel" }
+peritus-security-policy = { path = "../../crates/foundation/peritus-security-policy" }
+peritus-evidence = { path = "../../crates/state/peritus-evidence" }
+peritus-artifact-store = { path = "../../crates/state/peritus-artifact-store" }
+peritus-projection = { path = "../../crates/state/peritus-projection" }
+peritus-leases = { path = "../../crates/state/peritus-leases" }
+peritus-approval = { path = "../../crates/state/peritus-approval" }
+peritus-migrations = { path = "../../crates/state/peritus-migrations" }
+peritus-scheduler = { path = "../../crates/orchestration/peritus-scheduler" }
+peritus-collaboration = { path = "../../crates/orchestration/peritus-collaboration" }
+peritus-harness = { path = "../../crates/orchestration/peritus-harness" }
+peritus-modules = { path = "../../crates/orchestration/peritus-modules" }
+peritus-product-runner = { path = "../../crates/app/peritus-product-runner" }
+peritus-git = { path = "../../crates/runtime/peritus-git" }
+peritus-patch = { path = "../../crates/runtime/peritus-patch" }
+peritus-workspace = { path = "../../crates/runtime/peritus-workspace" }
+peritus-tools-fs = { path = "../../crates/tools/peritus-tools-fs" }
+peritus-tools-web = { path = "../../crates/tools/peritus-tools-web" }
+peritus-secrets = { path = "../../crates/runtime/peritus-secrets" }
+peritus-local-socket = { path = "../../crates/runtime/peritus-local-socket" }
+peritus-sandbox = { path = "../../crates/runtime/peritus-sandbox" }
+peritus-sandbox-linux = { path = "../../crates/runtime/peritus-sandbox-linux" }
+peritus-process = { path = "../../crates/runtime/peritus-process" }
+rusqlite = { version = "=0.40.2", default-features = false, features = ["backup", "bundled"] }
+ed25519-dalek = { version = "=3.0.0", default-features = false }
+tokio = { version = "=1.53.1", default-features = false, features = ["rt", "time", "sync", "io-util"] }
+tempfile = "=3.27.0"
+
+[build-dependencies]
+serde_json = "=1.0.149"
+sha2 = { version = "=0.11.0", default-features = false }
+
+[profile.dev]
+debug = 0
+incremental = false
+overflow-checks = true
+
+[profile.release]
+debug = 0
+overflow-checks = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"

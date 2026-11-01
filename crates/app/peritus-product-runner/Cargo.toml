@@ -73,6 +73,7 @@ url.workspace = true
 yaml-rust2.workspace = true
 
 [dev-dependencies]
+proptest = { version = "=1.12.0", default-features = false, features = ["std", "bit-set", "handle-panics"] }
 peritus-provider-anthropic = { version = "=0.1.17", path = "../../model/peritus-provider-anthropic" }
 peritus-provider-openai = { version = "=0.1.17", path = "../../model/peritus-provider-openai" }
 

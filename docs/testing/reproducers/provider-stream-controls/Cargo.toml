@@ -1,0 +1,17 @@
+[package]
+name = "provider-stream-controls-regression"
+version = "0.0.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+peritus-provider-anthropic = { path = "../../../../crates/model/peritus-provider-anthropic" }
+peritus-provider-google = { path = "../../../../crates/model/peritus-provider-google" }
+peritus-provider-core = { path = "../../../../crates/model/peritus-provider-core" }
+peritus-model-protocol = { path = "../../../../crates/model/peritus-model-protocol" }
+peritus-types = { path = "../../../../crates/foundation/peritus-types" }
+tokio = { version = "=1.53.1", default-features = false, features = ["rt", "time"] }
+
+peritus-provider-compatible = { path = "../../../../crates/model/peritus-provider-compatible" }
+serde_json = "=1.0.149"

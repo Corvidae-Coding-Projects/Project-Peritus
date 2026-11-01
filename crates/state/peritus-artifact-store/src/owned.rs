@@ -38,11 +38,17 @@ impl ArtifactReadChunk {
 }
 
 /// Owned preverified reader for one immutable finalized artifact.
+///
+/// The complete returned stream is checked again before successful completion. Earlier chunks
+/// are not authenticated individually; callers must retain them provisionally until completion.
 pub struct ArtifactReadHandle {
     file: File,
     metadata: ArtifactMetadata,
     next_offset: u64,
     maximum_chunk_bytes: u64,
+    hasher: Sha256,
+    failed: bool,
+    completed: bool,
 }
 
 impl ArtifactReadHandle {
@@ -65,7 +71,15 @@ impl ArtifactReadHandle {
         let mut file =
             File::open(path).map_err(|error| io(StoreOperation::InspectObject, error))?;
         verify_open_file(&mut file, metadata.digest(), metadata.size())?;
-        Ok(Self { file, metadata, next_offset: 0, maximum_chunk_bytes })
+        Ok(Self {
+            file,
+            metadata,
+            next_offset: 0,
+            maximum_chunk_bytes,
+            hasher: Sha256::new(),
+            failed: false,
+            completed: false,
+        })
     }
 
     /// Borrows the exact durable metadata verified before streaming.
@@ -88,6 +102,10 @@ impl ArtifactReadHandle {
 
     /// Reads the next nonempty bounded contiguous chunk, or `None` at exact completion.
     ///
+    /// A zero/oversized bound does not advance or invalidate the reader. Any stream I/O or
+    /// integrity failure makes the handle unusable, including after external repair. Successful
+    /// completion authenticates the returned stream, not a snapshot of later filesystem changes.
+    ///
     /// # Errors
     ///
     /// Rejects a zero/oversized bound, allocation overflow, I/O failure, or content mutation.
@@ -103,12 +121,24 @@ impl ArtifactReadHandle {
                 self.maximum_chunk_bytes,
             ));
         }
+        if self.failed {
+            return Err(corrupt("artifact reader is unusable after a prior stream failure"));
+        }
+        if self.completed {
+            return Ok(None);
+        }
         let remaining = self.remaining_bytes();
         if remaining == 0 {
+            self.failed = true;
+            self.verify_completion()?;
+            self.completed = true;
+            self.failed = false;
             return Ok(None);
         }
         let count = usize::try_from(remaining.min(maximum_u64)).map_err(|_| overflow())?;
         let mut bytes = vec![0_u8; count];
+        // A failed read may consume a partial chunk, so it cannot safely be retried.
+        self.failed = true;
         if let Err(error) = self.file.read_exact(&mut bytes) {
             return Err(if error.kind() == std::io::ErrorKind::UnexpectedEof {
                 corrupt("artifact bytes ended before the verified durable size")
@@ -116,23 +146,37 @@ impl ArtifactReadHandle {
                 io(StoreOperation::InspectObject, error)
             });
         }
+        self.hasher.update(&bytes);
         let offset = self.next_offset;
         self.next_offset = self
             .next_offset
             .checked_add(u64::try_from(count).map_err(|_| overflow())?)
             .ok_or_else(overflow)?;
         if self.next_offset == self.metadata.size() {
-            let mut trailing = [0_u8; 1];
-            if self
-                .file
-                .read(&mut trailing)
-                .map_err(|error| io(StoreOperation::InspectObject, error))?
-                != 0
-            {
-                return Err(corrupt("artifact bytes grew after stream verification"));
-            }
+            self.verify_completion()?;
+            self.completed = true;
         }
+        self.failed = false;
         Ok(Some(ArtifactReadChunk { offset, bytes }))
+    }
+
+    fn verify_completion(&mut self) -> Result<(), ArtifactStoreError> {
+        let mut trailing = [0_u8; 1];
+        if self
+            .file
+            .read(&mut trailing)
+            .map_err(|error| io(StoreOperation::InspectObject, error))?
+            != 0
+        {
+            return Err(corrupt("artifact bytes grew after stream verification"));
+        }
+        let observed = ArtifactDigest::new(self.hasher.clone().finalize().into());
+        if observed != self.metadata.digest() {
+            return Err(corrupt(
+                "streamed artifact bytes disagree with the verified durable digest",
+            ));
+        }
+        Ok(())
     }
 }
 

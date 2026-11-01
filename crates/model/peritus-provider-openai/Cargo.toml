@@ -41,6 +41,11 @@ required-features = ["test-runtime-fake"]
 libc.workspace = true
 nix = { workspace = true, features = ["user"] }
 
+[dev-dependencies]
+proptest = { version = "=1.12.0", default-features = false, features = ["std", "bit-set", "handle-panics"] }
+sha2.workspace = true
+tokio = { workspace = true, features = ["rt", "time", "net", "io-util"] }
+
 [package.metadata.peritus]
 owner = "C5"
 layer = "model"

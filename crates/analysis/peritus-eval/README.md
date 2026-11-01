@@ -20,6 +20,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | Folder | Role / next waypoint |
 | --- | --- |
 | [src/](src/AGENTS.md) | Durable reproducible harness evaluation for Peritus. |
+| [tests/](tests/stage8_statistics.rs) | Independent generated pass-at-k and distribution statistics checks. |
 
 `peritus-eval` is the durable E3 boundary for reproducible harness evaluation. It freezes exact
 dataset, E1 harness, C5 provider, execution, resource, seed, retry, metric, and infrastructure

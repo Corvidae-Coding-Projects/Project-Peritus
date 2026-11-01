@@ -64,13 +64,13 @@ impl ProductFindingLedger {
     /// make an untouched finding disappear by omitting it from a later response.
     ///
     /// # Errors
-    /// Rejects nonmonotonic cycles or findings constructed for another cycle.
+    /// Rejects nonmonotonic or exhausted cycles, or findings constructed for another cycle.
     pub fn admit_review(
         &mut self,
         cycle: u32,
         submission: ProductReviewSubmission,
     ) -> Result<(), ProductReviewError> {
-        if cycle != self.cycle.saturating_add(1)
+        if self.cycle.checked_add(1) != Some(cycle)
             || submission.findings().iter().any(|finding| finding.first_cycle() != cycle)
         {
             return Err(ProductReviewError::new("review cycle is stale or nonmonotonic"));

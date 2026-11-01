@@ -96,5 +96,9 @@ path = "src/bin/peritusd.rs"
 owner = "G0"
 layer = "app"
 
+[dev-dependencies]
+proptest = { version = "=1.12.0", default-features = false, features = ["std", "bit-set", "handle-panics"] }
+peritus-app-client = { path = "../peritus-app-client" }
+
 [lints]
 workspace = true

@@ -332,3 +332,7 @@ const fn binding(detail: &'static str) -> EvolutionError {
         detail,
     )
 }
+
+#[cfg(test)]
+#[path = "engine/praxis_stage8.rs"]
+mod praxis_stage8;

@@ -51,6 +51,8 @@ pub(super) struct NormalizeState {
     pub(super) next_block: u32,
     pub(super) usage: UsageState,
     sequence: u64,
+    // One raw identity cannot identify every event derived from that frame.
+    frame_identity_emitted: bool,
     pending: VecDeque<EventEnvelope>,
     seen: BTreeSet<(String, [u8; 32])>,
     metadata: Vec<ModelEvent>,
@@ -71,6 +73,7 @@ impl NormalizeState {
             next_block: 0,
             usage: UsageState { input: None, cache_read: None, cache_creation: None, output: None },
             sequence: 0,
+            frame_identity_emitted: false,
             pending: VecDeque::new(),
             seen: BTreeSet::new(),
             metadata: metadata_events(headers)?,
@@ -91,6 +94,21 @@ impl NormalizeState {
 
     pub(super) fn push_synthetic(&mut self, event: ModelEvent) -> Result<(), ProviderCoreError> {
         self.push(event, peritus_types::Sha256Digest::new([0; 32]), None)
+    }
+
+    // Cancel promptly without leaving holes where unobserved queued events were discarded.
+    pub(super) fn cancel_pending(
+        &mut self,
+        pending: &mut VecDeque<EventEnvelope>,
+    ) -> Result<(), ProviderCoreError> {
+        if let Some(first) = pending.front() {
+            self.sequence = first
+                .sequence()
+                .checked_sub(1)
+                .ok_or_else(|| invalid("queued normalized event sequence was invalid"))?;
+        }
+        pending.clear();
+        self.push_synthetic(ModelEvent::ResponseCancelled)
     }
 
     pub(super) fn take_pending(&mut self) -> VecDeque<EventEnvelope> {
@@ -143,6 +161,7 @@ impl NormalizeState {
             }
             self.seen.insert(key);
         }
+        self.frame_identity_emitted = false;
         let value: Value = serde_json::from_str(frame.data())
             .map_err(|_| invalid("Anthropic SSE data is not valid JSON"))?;
         let kind = value
@@ -201,9 +220,11 @@ impl NormalizeState {
             )
         })?;
         let provider_event_id = event_id
+            .filter(|_| !self.frame_identity_emitted)
             .map(|id| EventId::new(id.to_owned()))
             .transpose()
             .map_err(|_| invalid("Anthropic SSE event ID is invalid"))?;
+        self.frame_identity_emitted |= provider_event_id.is_some();
         self.observed_semantics |= !matches!(event, ModelEvent::Heartbeat);
         self.terminal = matches!(
             event,

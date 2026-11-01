@@ -116,8 +116,7 @@ impl ModelStream for GoogleStream {
     ) -> BoxFuture<'a, Result<Option<EventEnvelope>, ProviderCoreError>> {
         Box::pin(async move {
             if cancellation.is_cancelled() && !self.state.is_terminal() {
-                self.pending.clear();
-                self.state.push_synthetic(ModelEvent::ResponseCancelled)?;
+                self.state.cancel_pending(&mut self.pending)?;
                 self.drain_state();
             }
             if let Some(event) = self.pending.pop_front() {

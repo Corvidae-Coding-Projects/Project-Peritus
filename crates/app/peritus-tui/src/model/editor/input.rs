@@ -4,7 +4,9 @@ use crate::model::{AppModel, EditorKind, NoticeLevel};
 
 impl AppModel {
     pub(in crate::model) fn paste_editor_event(&mut self, text: &str) {
-        self.paste_editor(text);
+        if !self.paste_editor(text) {
+            return;
+        }
         if let Some(editor) = &mut self.editor
             && matches!(editor.kind, EditorKind::ProductMessage(_))
             && editor.buffer.trim_start().starts_with('/')
@@ -13,8 +15,8 @@ impl AppModel {
         }
     }
 
-    pub(in crate::model) fn paste_editor(&mut self, text: &str) {
-        let Some(editor) = &mut self.editor else { return };
+    pub(in crate::model) fn paste_editor(&mut self, text: &str) -> bool {
+        let Some(editor) = &mut self.editor else { return false };
         let maximum = match editor.kind {
             EditorKind::ProductMessage(_) | EditorKind::ReviewFeedback(_) => {
                 peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES
@@ -33,9 +35,10 @@ impl AppModel {
             .collect::<String>();
         if editor.buffer.len().saturating_add(text.len()) > maximum {
             self.notice(NoticeLevel::Warning, format!("Input exceeds {maximum} bytes; existing draft retained. Paste a smaller selection."));
-            return;
+            return false;
         }
         editor.buffer.insert_str(editor.cursor, &text);
         editor.cursor += text.len();
+        true
     }
 }
