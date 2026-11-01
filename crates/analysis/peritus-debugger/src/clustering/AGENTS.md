@@ -12,6 +12,12 @@ Deterministic exact-fingerprint and bounded agglomerative clustering.
 | [fingerprint.rs](fingerprint.rs) | Stable pattern fingerprints derived only from typed facts. |
 | [mod.rs](mod.rs) | Deterministic exact-fingerprint and bounded agglomerative clustering. |
 
+## Child areas
+
+| Folder | Role / next waypoint |
+| --- | --- |
+| [engine/](engine/praxis_stage8.rs) | Independent generated clustering checks for the private engine. |
+
 ## Working in this area
 
 Start at [`mod.rs`](mod.rs) for the module surface, then follow its declarations into the focused files and child waypoints above. Trace at least one caller and the relevant error or recovery path before moving responsibilities; the parent package map identifies the public boundary and adjacent owners.

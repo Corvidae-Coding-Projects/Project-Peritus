@@ -28,6 +28,14 @@ pub struct LocalContextHandle {
 }
 
 impl LocalContextHandle {
+    #[cfg(test)]
+    pub(in crate::local_context) fn praxis_from_memory(
+        memory: LocalMemory,
+        conversation: Arc<dyn ConversationView>,
+    ) -> Self {
+        Self { inner: Arc::new(Mutex::new(memory)), conversation }
+    }
+
     /// Recovers the same lineage selected by the production run's delivery adapter.
     ///
     /// In-place writer and fixer invocations share the writer lineage. This may append

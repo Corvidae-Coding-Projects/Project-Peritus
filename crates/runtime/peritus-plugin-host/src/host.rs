@@ -153,6 +153,9 @@ impl PluginHost {
                 "requested plugin identity and version were not discovered",
             )
         })?;
+        if !discovered.matches_current_files()? {
+            return Err(trust_error("plugin files changed since discovery"));
+        }
         let trust_anchor = match self.trust.verify(&discovered) {
             TrustDecision::Trusted { anchor } => anchor,
             TrustDecision::Unknown => {

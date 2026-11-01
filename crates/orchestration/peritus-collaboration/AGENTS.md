@@ -19,6 +19,7 @@ Local dependency waypoints: [peritus-codec](../../foundation/peritus-codec/AGENT
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [examples/](examples/causal_message_identity_order.rs) | Public causal message-order regression. |
 | [src/](src/AGENTS.md) | Durable deterministic causal collaboration for Peritus. |
 
 ## Working in this area

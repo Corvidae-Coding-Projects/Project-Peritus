@@ -11,6 +11,10 @@ use peritus_provider_core::{
 const OPENAI_ENDPOINT: &str = "https://api.openai.com";
 const MAX_ROUTING_ID_BYTES: usize = 512;
 
+#[cfg(test)]
+#[path = "../../../../discovery/proptest-praxis/owner/stage5_openai_http.rs"]
+mod praxis_stage5_openai_http;
+
 #[derive(Clone, Eq, PartialEq)]
 struct RoutingId(String);
 

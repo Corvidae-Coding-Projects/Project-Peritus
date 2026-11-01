@@ -19,6 +19,7 @@ Local dependency waypoints: [peritus-codec](../../foundation/peritus-codec/AGENT
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [examples/](examples/review_cycle_exhaustion.rs) | Public review-cycle exhaustion regression. |
 | [src/](src/AGENTS.md) | Durable deterministic review cycles and finding lifecycle for Peritus. |
 
 ## Working in this area

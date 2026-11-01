@@ -146,6 +146,10 @@ impl GcPlan {
         }
         let mut actions = Vec::new();
         for entry in entries.into_values() {
+            if matches!(entry.quarantine, QuarantineState::Quarantined { since } if since > generation)
+            {
+                return Err(invalid_plan("quarantine generation is newer than the plan"));
+            }
             let is_marked = marked.contains(&entry.digest);
             match (entry.quarantine, is_marked) {
                 (QuarantineState::Active, false) => actions.push(GcAction::Quarantine {
@@ -161,9 +165,6 @@ impl GcPlan {
                     });
                 }
                 (QuarantineState::Quarantined { since }, false) => {
-                    if since > generation {
-                        return Err(invalid_plan("quarantine generation is newer than the plan"));
-                    }
                     if sweep_is_later(since.get(), generation.get()) {
                         actions.push(GcAction::Delete {
                             digest: entry.digest,

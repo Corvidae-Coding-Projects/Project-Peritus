@@ -24,6 +24,7 @@ pub struct CapturedConversation {
     revision: u64,
     inputs: InputCapture,
     user_context: String,
+    latest_user_text: Option<String>,
     replies: Vec<peritus_product_runner::control::PublicReplyReference>,
     sources: Vec<manifest::InputSource>,
     brief: Vec<peritus_product_runner::control::BriefBinding>,
@@ -48,6 +49,11 @@ impl CapturedConversation {
     #[must_use]
     pub fn reference_authority_context(&self) -> &str {
         &self.user_context
+    }
+    /// Borrows the latest exact user input selected in this atomic capture.
+    #[must_use]
+    pub fn latest_user_text(&self) -> Option<&str> {
+        self.latest_user_text.as_deref()
     }
     /// Borrows the complete explicitly selected immutable image input, in source order.
     #[must_use]
@@ -227,6 +233,13 @@ impl ControlStore {
                     .ok_or(Error::Corrupt("captured source revision missing"))
             })
             .collect::<Result<_, _>>()?;
+        let latest_user_text = record
+            .inputs()
+            .revisions()
+            .iter()
+            .rev()
+            .find(|item| inputs.included().contains(&item.selection()))
+            .map(|item| item.text().to_owned());
         let brief = record
             .brief()
             .bindings()
@@ -263,6 +276,7 @@ impl ControlStore {
             revision: record.revision(),
             inputs,
             user_context,
+            latest_user_text,
             replies,
             sources,
             brief,

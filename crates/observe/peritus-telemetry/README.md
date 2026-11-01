@@ -20,6 +20,7 @@ Use [AGENTS.md](AGENTS.md) for file-level responsibilities, child modules, paren
 | Folder | Role / next waypoint |
 | --- | --- |
 | [src/](src/AGENTS.md) | Bounded OpenTelemetry-compatible projections and exporters for Peritus. |
+| [tests/](tests/proptest_buffer.rs) | Generated independent queue, export, checkpoint, and trace-recovery histories. |
 
 `peritus-telemetry` derives stable metrics and OpenTelemetry-compatible records from checked C7
 trace projections. It owns deterministic bounded queues, explicit exporter acknowledgement,

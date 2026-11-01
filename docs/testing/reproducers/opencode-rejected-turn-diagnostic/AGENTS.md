@@ -3,7 +3,7 @@
 ## Responsibility
 
 Scripted-vendor replay resources for OpenCode turn refusal: retained rejected text, the private-trace
-reader, and the developer loop's refusal/retry narration; start with the local README and its
+reader, and the developer loop's refusal/retry narration and user-response continuation; start with the local README and its
 documented sandbox-free prerequisite.
 
 ## Files in this folder
@@ -12,9 +12,9 @@ documented sandbox-free prerequisite.
 | --- | --- |
 | [README.md](README.md) | Human guide, expectations table, and operating/limit notes for this folder; AGENTS.md provides the local navigation map. |
 | [consumer.rs](consumer.rs) | Provider-level consumer over the production registry and scripted stand-in; checks the bounded correction extension and terminal outcome. |
-| [agent.rs](agent.rs) | Developer-loop consumer with a recording interaction; counts the public activities one refused turn publishes. |
+| [agent.rs](agent.rs) | Developer-loop consumer with a recording interaction; checks refusal, continuation, and pause activities. |
 | [scripted-opencode.py](scripted-opencode.py) | Scripted OpenCode stand-in that answers the adapter's `--version`, `models`, and `run` commands from a fixed reply script. |
-| [replay.py](replay.py) | Builds both consumers offline and runs the fifteen scenarios with disposable configuration, key, reply script, and prompt capture. |
+| [replay.py](replay.py) | Builds both consumers offline and runs the nineteen scenarios with disposable configuration, key, reply script, and prompt capture. |
 | [observed-baseline.txt](observed-baseline.txt) | Verbatim transcripts of the recorded run and its check outcomes. |
 
 ## Working in this area

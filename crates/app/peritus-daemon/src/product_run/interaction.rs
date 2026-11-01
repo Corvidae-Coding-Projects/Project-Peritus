@@ -313,6 +313,7 @@ impl ProductRunService {
         Ok(DeveloperInput {
             revision: captured.inputs().generation(),
             conversation: captured.conversation_with_guidance()?,
+            latest_user_text: captured.latest_user_text().map(str::to_owned),
             images: captured.images().to_vec(),
         })
     }

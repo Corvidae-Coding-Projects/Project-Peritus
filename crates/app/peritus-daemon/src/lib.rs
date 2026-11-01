@@ -59,3 +59,14 @@ mod worker;
 
 mod api;
 pub use api::*;
+
+#[cfg(test)]
+#[path = "../../../../discovery/proptest-praxis/owner/daemon.rs"]
+mod praxis_daemon;
+#[cfg(test)]
+#[path = "../../../../discovery/proptest-praxis/support/stage3_owner.rs"]
+mod praxis_support;
+
+#[cfg(test)]
+#[path = "../../../../discovery/proptest-praxis/src/fingerprint.rs"]
+mod praxis_fingerprint;

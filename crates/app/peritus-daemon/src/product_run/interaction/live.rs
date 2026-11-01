@@ -447,6 +447,8 @@ impl DeveloperInteraction for LiveConversation {
         input_revision: u64,
         effect: DeveloperToolEffect,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
+        #[cfg(test)]
+        crate::praxis_daemon::admission_barrier(invocation, sequence, input_revision)?;
         let start = self.workbench_start()?;
         let admission = self
             .service

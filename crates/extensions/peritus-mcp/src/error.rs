@@ -57,8 +57,8 @@ impl BridgeError {
         mut detail: String,
         source: Option<Box<dyn Error + Send + Sync>>,
     ) -> Self {
-        code.truncate(128);
-        detail.truncate(1024);
+        code.truncate(code.floor_char_boundary(128));
+        detail.truncate(detail.floor_char_boundary(1024));
         Self { class, code, detail, source }
     }
 
@@ -140,7 +140,7 @@ impl McpError {
         mut detail: String,
         source: Option<Box<dyn Error + Send + Sync>>,
     ) -> Self {
-        detail.truncate(1024);
+        detail.truncate(detail.floor_char_boundary(1024));
         Self { class, operation, detail, source }
     }
 

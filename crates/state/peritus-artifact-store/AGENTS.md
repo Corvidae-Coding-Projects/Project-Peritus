@@ -19,6 +19,8 @@ Local dependency waypoints: [peritus-types](../../foundation/peritus-types/AGENT
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [examples/](examples/owned_read_integrity.rs) | Public artifact-stream integrity regression. |
+| [gc_future_generation.rs](examples/gc_future_generation.rs) | Public GC future-generation regression. |
 | [src/](src/AGENTS.md) | Streaming content-addressed artifact storage for Peritus. |
 
 ## Working in this area

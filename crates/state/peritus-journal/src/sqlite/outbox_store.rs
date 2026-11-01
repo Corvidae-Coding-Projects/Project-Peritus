@@ -86,8 +86,8 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("begin outbox claim", error))?;
         transaction
             .execute(
-                "UPDATE outbox SET state = 4, lease_until = NULL WHERE state IN (1, 2) AND attempts >= max_attempts",
-                [],
+                "UPDATE outbox SET state = 4, lease_until = NULL WHERE attempts >= max_attempts AND (state = 1 OR (state = 2 AND lease_until <= ?1))",
+                params![now_i64],
             )
             .map_err(|error| JournalError::sqlite("mark exhausted outbox rows", error))?;
         let selected: Option<OutboxClaimRow> = transaction

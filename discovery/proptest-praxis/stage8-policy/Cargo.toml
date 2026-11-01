@@ -1,0 +1,16 @@
+[package]
+name = "peritus-stage8-policy-properties"
+version = "0.0.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+peritus-gates = { path = "../../../crates/orchestration/peritus-gates" }
+peritus-obligations = { path = "../../../crates/orchestration/peritus-obligations" }
+peritus-quality-policy = { path = "../../../crates/foundation/peritus-quality-policy" }
+peritus-release-policy = { path = "../../../crates/foundation/peritus-release-policy" }
+peritus-run-settlement = { path = "../../../crates/orchestration/peritus-run-settlement" }
+peritus-spec = { path = "../../../crates/foundation/peritus-spec" }
+peritus-types = { path = "../../../crates/foundation/peritus-types" }
+proptest = { version = "=1.12.0", default-features = false, features = ["std", "bit-set", "handle-panics"] }

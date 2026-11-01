@@ -19,6 +19,7 @@ Local dependency waypoints: [peritus-approval](../peritus-approval/AGENTS.md), [
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [examples/](examples/outbox_final_claim.rs) | Disposable SQLite final-lease regression. |
 | [src/](src/AGENTS.md) | Transactional exact-byte event persistence for Peritus. |
 
 ## Working in this area

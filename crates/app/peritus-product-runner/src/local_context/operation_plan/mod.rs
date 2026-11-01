@@ -63,3 +63,7 @@ fn rejected(detail: &str) -> Result<DeveloperToolObservation, DeveloperLoopError
 pub(super) fn ensure_reader(memory: &mut LocalMemory) -> Result<(), DeveloperLoopError> {
     memory.ensure_reader_guard(super::record::PLAN_CHECKPOINT_SCHEMA_VERSION)
 }
+
+#[cfg(test)]
+#[path = "../../../../../../discovery/proptest-praxis/owner/plans.rs"]
+mod praxis_plans;

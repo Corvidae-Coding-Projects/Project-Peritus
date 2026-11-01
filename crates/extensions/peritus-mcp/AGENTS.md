@@ -19,6 +19,7 @@ Local dependency waypoints: [peritus-policy](../../foundation/peritus-policy/AGE
 
 | Folder | Role / next waypoint |
 | --- | --- |
+| [examples/](examples/utf8_diagnostic_bounds.rs) | Public Unicode diagnostic-bound regression. |
 | [src/](src/AGENTS.md) | Bounded MCP server and non-authoritative bridge for Peritus. |
 
 ## Working in this area

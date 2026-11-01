@@ -7,6 +7,9 @@ pub struct DeveloperInput {
     pub revision: u64,
     /// Current user-visible conversation, without private reasoning or credentials.
     pub conversation: String,
+    /// Exact latest user-authored input from the same captured revision. Used only for a
+    /// conservative host pause override when the user explicitly asks to wait.
+    pub latest_user_text: Option<String>,
     /// Exact image inputs selected in the same revision as the conversation. The host resolves
     /// immutable bytes; D0 never discovers files from text. Empty means no live image selection.
     pub images: Vec<peritus_model_protocol::MediaInput>,

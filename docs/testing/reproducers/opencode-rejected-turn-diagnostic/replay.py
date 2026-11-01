@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Build public consumers and replay scripted vendor turns for the rejected-turn diagnostic.
 
-Fifteen scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
+Nineteen scenarios run against a scripted OpenCode stand-in: one refused reply followed by a valid
 corrected reply, two refused replies, a rate-limited turn followed by a valid reply, a long-envelope
 shape with literal control characters, an omitted empty `tool_calls`, a duplicated trailing
 `tool_calls` fragment, unenveloped planning prose that remains inert, refused pseudo-tool prose,
 turns whose plain prelude contains an inline code span or quoted pseudo-tool markup, a turn whose
 envelope sits inside a `json` fence, accepted and refused DSML tool markup, and one refused reply
-through the developer loop. The provider scenarios must publish the bounded
+through the developer loop, and four user-response continuation/pause cases. The provider scenarios must publish the bounded
 `peritus.opencode_turn_correction` extension carrying the rejected model text, or a
 `peritus.response_healing` or `peritus.opencode_turn_normalization` audit when a repair is
 accepted; the agent scenarios must announce their model request once and report the bounded retry.
@@ -42,6 +42,10 @@ parser.add_argument(
         "dsml",
         "dsml_unknown_tool",
         "dsml_malformed",
+        "control_recovery",
+        "control_pause",
+        "control_plain",
+        "control_marker_pause",
     ),
     default="all",
 )
@@ -106,6 +110,26 @@ vendor.chmod(0o755)
 )
 
 scenarios = {
+    "control_recovery": {
+        "binary": "agent",
+        "script": ["control_invalid", "valid"],
+        "required": ["ACTIVITY Text 42 bytes", "RESULT control_recovery checks passed"],
+    },
+    "control_pause": {
+        "binary": "agent",
+        "script": ["control_invalid"],
+        "required": ["OUTCOME error", "RESULT control_pause checks passed"],
+    },
+    "control_plain": {
+        "binary": "agent",
+        "script": ["control_plain", "valid"],
+        "required": ["ACTIVITY Text 16 bytes", "RESULT control_plain checks passed"],
+    },
+    "control_marker_pause": {
+        "binary": "agent",
+        "script": ["control_wait"],
+        "required": ["OUTCOME error", "RESULT control_marker_pause checks passed"],
+    },
     "accepted": {
         "binary": "provider",
         "script": ["invalid", "valid"],
@@ -246,6 +270,10 @@ selected = (
         "dsml",
         "dsml_unknown_tool",
         "dsml_malformed",
+        "control_recovery",
+        "control_pause",
+        "control_plain",
+        "control_marker_pause",
     ]
 )
 failures = []

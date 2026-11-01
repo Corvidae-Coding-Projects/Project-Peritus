@@ -45,6 +45,8 @@ impl DaemonComponents {
                 error,
             )
         })?;
+        #[cfg(test)]
+        let providers = providers.praxis_override(config.paths().state_root());
         let tool_limits =
             RouterLimits::new(config.limits().maximum_workers(), config.limits().authority_queue())
                 .map_err(|error| {

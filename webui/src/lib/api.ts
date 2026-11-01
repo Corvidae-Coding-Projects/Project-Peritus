@@ -21,10 +21,10 @@ export function query<T>(kind: string, args: Record<string, string | number> = {
   const params = new URLSearchParams({ kind, ...Object.fromEntries(Object.entries(args).map(([key, value]) => [key, String(value)])) });
   return request(`/api/query?${params}`);
 }
-export async function action<T = Record<string, unknown>>(command: string, args: Record<string, unknown> = {}): Promise<T> {
+export async function action<T = Record<string, unknown>>(command: string, args: Record<string, unknown> = {}, client?:{draftOriginal?:string}): Promise<T> {
   const operation = crypto.randomUUID();
   const payload = { command, operation, ...args };
-  retainOperation({command,operation,at:Date.now(),...(typeof args.session==='string'?{session:args.session}:{}),...(typeof args.project==='string'?{project:args.project}:{})});
+  retainOperation({command,operation,at:Date.now(),...(typeof args.session==='string'?{session:args.session}:{}),...(typeof args.project==='string'?{project:args.project}:{}),...(typeof client?.draftOriginal==='string'?{draftOriginal:client.draftOriginal}:{})});
   try {
     const result = await request<T>('/api/action', payload);
     forgetOperation(operation); return result;

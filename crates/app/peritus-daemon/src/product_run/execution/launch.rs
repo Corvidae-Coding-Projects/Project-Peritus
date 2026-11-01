@@ -129,6 +129,8 @@ impl ProductRunService {
                     .ok()
                     .and_then(|outcome| outcome.question())
                     .map(peritus_product_runner::ProductRunQuestion::conversation_revision);
+                #[cfg(test)]
+                crate::praxis_daemon::finalization_barrier();
                 service.finish(run_id, result);
                 if service.pending_interactive_input(run_id, waiting_revision) {
                     let _ = service.retry(run_id).await;

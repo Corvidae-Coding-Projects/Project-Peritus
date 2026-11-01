@@ -51,9 +51,10 @@ fn provider(value: serde_json::Value) -> Result<Arc<dyn ModelProvider>> {
     Ok(registry.current_provider(id).ok_or("no provider")?)
 }
 
-#[derive(Default)]
 struct Activities {
     observed: Mutex<Vec<String>>,
+    control_reply: bool,
+    pause: bool,
 }
 
 impl Activities {
@@ -73,9 +74,14 @@ impl DeveloperInteraction for Activities {
     fn input(&self) -> std::result::Result<DeveloperInput, DeveloperLoopError> {
         Ok(DeveloperInput {
             revision: 1,
-            conversation: "Reply with the scripted vendor turn.".to_owned(),
+            conversation: if self.pause { "wait for my next message" } else if self.control_reply { "yes do that" } else { "Reply with the scripted vendor turn." }.to_owned(),
+            latest_user_text: self.control_reply.then(|| if self.pause { "wait for my next message" } else { "yes do that" }.to_owned()),
             images: Vec::new(),
         })
+    }
+
+    fn answered_input_revision(&self) -> std::result::Result<Option<u64>, DeveloperLoopError> {
+        Ok(self.control_reply.then_some(0))
     }
 
     fn prepare_request(
@@ -211,12 +217,18 @@ async fn main() -> Result<()> {
         request_prefix: "scripted-agent-narration".to_owned(),
         system: "You are the scripted replay role. Never invoke provider-native tools.".to_owned(),
         prompt: "Reply with the scripted vendor turn.".to_owned(),
+        cyber_access_program: None,
         attachments: Vec::new(),
         tools: Vec::new(),
         limits: DeveloperLoopLimits::new(4, 8)?,
         cancellation: CancellationToken::new(),
     };
-    let activities = Activities::default();
+    let control_reply = expectation.starts_with("control_");
+    let activities = Activities {
+        observed: Mutex::new(Vec::new()),
+        control_reply,
+        pause: expectation == "control_pause",
+    };
     let outcome = DeveloperLoop::run_interactive(
         provider.as_ref(),
         request,
@@ -238,10 +250,45 @@ async fn main() -> Result<()> {
         Ok(outcome) => println!("OUTCOME ok turns={} retries={} text={:?}", outcome.model_turns, outcome.retries, outcome.text),
         Err(error) => println!("OUTCOME error {error}"),
     }
-    if started != 1 {
+    let expected_started = match expectation.as_str() {
+        "control_recovery" | "control_plain" => 2,
+        "control_pause" | "control_marker_pause" => 1,
+        _ => 1,
+    };
+    if started != expected_started {
         return Err(format!("one logical turn announced {started} model requests").into());
     }
     match expectation.as_str() {
+        "control_recovery" => {
+            let outcome = outcome?;
+            if outcome.text != "Scripted reply for the rejected-turn diagnostic replay."
+                || retries != 0
+                || rejected != 0
+                || !observed.iter().any(|line| line == "Text 42 bytes")
+            {
+                return Err(format!("invalid control reply did not recover: {observed:?}").into());
+            }
+        }
+        "control_plain" => {
+            let outcome = outcome?;
+            if outcome.text != "Scripted reply for the rejected-turn diagnostic replay."
+                || !observed.iter().any(|line| line == "Text 16 bytes")
+            {
+                return Err(format!("plain reply did not continue: {observed:?}").into());
+            }
+        }
+        "control_pause" => {
+            let error = outcome.err().ok_or("pause did not stop the run")?;
+            if !matches!(error, DeveloperLoopError::AwaitingUser { ref message, .. } if message == "I will wait for your next message.") || retries != 0 {
+                return Err(format!("pause was not preserved: {error}").into());
+            }
+        }
+        "control_marker_pause" => {
+            let error = outcome.err().ok_or("WAIT marker did not stop the run")?;
+            if !matches!(error, DeveloperLoopError::AwaitingUser { ref message, .. } if message == "I will wait.") {
+                return Err(format!("unexpected WAIT marker result: {error}").into());
+            }
+        }
         "retry" => {
             let outcome = outcome?;
             if retries != 1 || rejected != 0 || outcome.retries != 1 {

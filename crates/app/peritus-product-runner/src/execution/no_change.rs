@@ -84,7 +84,13 @@ pub(super) async fn review(
         accounting.remaining(),
         OpenEndedPhase::Reviewer,
     )?;
-    let review_cycle = state.findings.cycle().saturating_add(1);
+    let review_cycle = state.findings.cycle().checked_add(1).ok_or_else(|| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidPrecondition,
+            "review no-patch investigation",
+            "review cycle counter is exhausted; no fresh review can be requested",
+        )
+    })?;
     let conversation = input.conversation.render();
     let submission = reviewer_turn::complete(
         input,

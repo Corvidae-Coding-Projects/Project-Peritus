@@ -2,6 +2,9 @@
 
 use crate::LauncherError;
 
+mod version;
+use version::Version;
+
 const LATEST_RELEASE: &str =
     "https://api.github.com/repos/Corvidae-Coding-Projects/Project-Peritus/releases/latest";
 const MAX_RELEASE_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
@@ -14,7 +17,7 @@ pub(super) struct Release {
 
 impl Release {
     pub(super) fn from_tag(tag: &str) -> Result<Self, LauncherError> {
-        let version = Version::parse(tag.strip_prefix('v').ok_or_else(|| malformed(tag))?)?;
+        let version = Version::from_tag(tag)?;
         Ok(Self { tag: tag.to_owned(), version })
     }
 
@@ -28,30 +31,6 @@ impl Release {
 
     pub(super) fn is_newer(&self) -> bool {
         Version::parse(env!("CARGO_PKG_VERSION")).is_ok_and(|current| self.version > current)
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-struct Version {
-    major: u64,
-    minor: u64,
-    patch: u64,
-}
-
-impl Version {
-    fn parse(value: &str) -> Result<Self, LauncherError> {
-        let mut parts = value.split('.');
-        let major = component(parts.next(), value)?;
-        let minor = component(parts.next(), value)?;
-        let patch = component(parts.next(), value)?;
-        if parts.next().is_some() {
-            return Err(malformed(value));
-        }
-        Ok(Self { major, minor, patch })
-    }
-
-    fn render(self) -> String {
-        format!("{}.{}.{}", self.major, self.minor, self.patch)
     }
 }
 
@@ -96,18 +75,6 @@ pub(super) async fn latest_from(url: &str) -> Result<Option<Release>, LauncherEr
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| LauncherError::Update("current release omitted tag_name".to_owned()))?;
     Release::from_tag(tag).map(Some)
-}
-
-fn component(value: Option<&str>, version: &str) -> Result<u64, LauncherError> {
-    let value = value.ok_or_else(|| malformed(version))?;
-    if value.is_empty() || !value.bytes().all(|byte| byte.is_ascii_digit()) {
-        return Err(malformed(version));
-    }
-    value.parse().map_err(|_| malformed(version))
-}
-
-fn malformed(value: &str) -> LauncherError {
-    LauncherError::Update(format!("release version is not vMAJOR.MINOR.PATCH: {value}"))
 }
 
 fn update(operation: &'static str, error: &reqwest::Error) -> LauncherError {

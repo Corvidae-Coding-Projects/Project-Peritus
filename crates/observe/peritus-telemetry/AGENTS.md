@@ -20,6 +20,7 @@ Local dependency waypoints: [peritus-codec](../../foundation/peritus-codec/AGENT
 | Folder | Role / next waypoint |
 | --- | --- |
 | [src/](src/AGENTS.md) | Bounded OpenTelemetry-compatible projections and exporters for Peritus. |
+| [tests/](tests/proptest_buffer.rs) | Generated independent queue, export, checkpoint, and trace-recovery histories. |
 
 ## Working in this area
 

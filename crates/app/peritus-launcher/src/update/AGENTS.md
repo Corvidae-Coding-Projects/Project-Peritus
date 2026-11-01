@@ -11,7 +11,7 @@ Implementation pieces for `update.rs`: Cached public release discovery and nativ
 | [download.rs](download.rs) | Resumable checksum-bound release download and cancellable native extraction. |
 | [install.rs](install.rs) | Transactional native installer invocation and installed-version verification. |
 | [process.rs](process.rs) | Cancellable native update helpers without an execution deadline. |
-| [release.rs](release.rs) | Exact release identity and current GitHub release discovery. |
+| [release.rs](release.rs) | Release identity composition and bounded GitHub release discovery. |
 
 ## Child areas
 
@@ -19,6 +19,7 @@ Implementation pieces for `update.rs`: Cached public release discovery and nativ
 | --- | --- |
 | [install/](install/AGENTS.md) | Implementation pieces for `install.rs`: Transactional native installer invocation and installed-version verification. |
 | [process/](process/AGENTS.md) | Implementation pieces for `process.rs`: Cancellable native update helpers without an execution deadline. |
+| [release/](release/version.rs) | Pure decimal release version parsing shared with the property probe. |
 
 Owning module: [update.rs](../update.rs). Inspect that parent before changing the local pieces.
 

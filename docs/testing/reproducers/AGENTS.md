@@ -90,6 +90,8 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | [macos-command-path/](macos-command-path/AGENTS.md) | Real-interface replay resources for macos command path; start with the local README/driver and its documented disposable-state prerequisites. |
 | [opencode-quoted-report/](opencode-quoted-report/AGENTS.md) | Real-interface replay resources for opencode quoted report; start with the local README/driver and its documented disposable-state prerequisites. |
 | [prompt-skills/](prompt-skills/AGENTS.md) | Real-interface replay resources for prompt skills; start with the local README/driver and its documented disposable-state prerequisites. |
+| [provider-derived-event-identities/](provider-derived-event-identities/Cargo.toml) | Loopback Anthropic and Google streams checked through the response reducer for derived event identity preservation. |
+| [provider-stream-controls/](provider-stream-controls/Cargo.toml) | Loopback provider cancellation and duplicate-frame replay through the response reducer. |
 | [readline/](readline/AGENTS.md) | Real-interface replay resources for readline; start with the local README/driver and its documented disposable-state prerequisites. |
 | [rsi-f0/](rsi-f0/AGENTS.md) | Real-interface replay resources for rsi f0; start with the local README/driver and its documented disposable-state prerequisites. |
 | [rsi-inbox/](rsi-inbox/AGENTS.md) | Real-interface replay resources for rsi inbox; start with the local README/driver and its documented disposable-state prerequisites. |

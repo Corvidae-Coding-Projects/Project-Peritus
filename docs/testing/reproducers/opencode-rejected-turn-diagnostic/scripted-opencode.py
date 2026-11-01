@@ -30,6 +30,11 @@ MODEL = "scripted-reply-model"
 SESSION = "ses_scripted_rejected_turn"
 MESSAGE = "msg_scripted_rejected_turn"
 ENVELOPE = '{"content":"Scripted reply for the rejected-turn diagnostic replay.","tool_calls":[]}'
+CONTROL_INVALID = '{"content":"I will continue.","continue_work":tru'
+CONTROL_VALID = '{"content":"{\\"message\\":\\"I will continue.\\",\\"continue_work\\":true}","tool_calls":[]}'
+CONTROL_PAUSE = '{"content":"{\\"message\\":\\"I will wait.\\",\\"continue_work\\":false}","tool_calls":[]}'
+CONTROL_PLAIN = json.dumps({"content": "CONTINUE\nI will continue.", "tool_calls": []})
+CONTROL_WAIT = json.dumps({"content": "WAIT\nI will wait.", "tool_calls": []})
 RAW_NEWLINES = (
     '{"content":"First planning step.\n\nSecond step.\tEvidence is in `PROJECT_PLAN.md`.",'
     '"tool_calls":[]}'
@@ -81,6 +86,16 @@ DSML_MALFORMED = (
 def reply_text(reply: str) -> str:
     if reply == "valid":
         return ENVELOPE
+    if reply == "control_invalid":
+        return json.dumps({"content": CONTROL_INVALID, "tool_calls": []})
+    if reply == "control_valid":
+        return CONTROL_VALID
+    if reply == "control_pause":
+        return CONTROL_PAUSE
+    if reply == "control_plain":
+        return CONTROL_PLAIN
+    if reply == "control_wait":
+        return CONTROL_WAIT
     if reply == "invalid":
         return ENVELOPE + "}"
     if reply == "raw_newlines":

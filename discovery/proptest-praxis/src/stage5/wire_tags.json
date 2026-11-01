@@ -1,0 +1,692 @@
+[
+  {
+    "family": 96,
+    "tag": 1,
+    "variant": "SubmitCommand"
+  },
+  {
+    "family": 96,
+    "tag": 2,
+    "variant": "Subscribe"
+  },
+  {
+    "family": 96,
+    "tag": 3,
+    "variant": "OpenArtifact"
+  },
+  {
+    "family": 96,
+    "tag": 4,
+    "variant": "CancelArtifact"
+  },
+  {
+    "family": 96,
+    "tag": 5,
+    "variant": "AnswerPrompt"
+  },
+  {
+    "family": 96,
+    "tag": 6,
+    "variant": "CancelPrompt"
+  },
+  {
+    "family": 96,
+    "tag": 7,
+    "variant": "AttachTerminal"
+  },
+  {
+    "family": 96,
+    "tag": 8,
+    "variant": "TerminalInput"
+  },
+  {
+    "family": 96,
+    "tag": 9,
+    "variant": "TerminalResize"
+  },
+  {
+    "family": 96,
+    "tag": 10,
+    "variant": "DetachTerminal"
+  },
+  {
+    "family": 96,
+    "tag": 11,
+    "variant": "CancelTerminal"
+  },
+  {
+    "family": 96,
+    "tag": 12,
+    "variant": "DaemonStatus"
+  },
+  {
+    "family": 96,
+    "tag": 13,
+    "variant": "Shutdown"
+  },
+  {
+    "family": 96,
+    "tag": 14,
+    "variant": "BeginArtifactUpload"
+  },
+  {
+    "family": 96,
+    "tag": 15,
+    "variant": "UploadArtifactChunk"
+  },
+  {
+    "family": 96,
+    "tag": 16,
+    "variant": "CompleteArtifactUpload"
+  },
+  {
+    "family": 96,
+    "tag": 18,
+    "variant": "ControlProductRun"
+  },
+  {
+    "family": 96,
+    "tag": 23,
+    "variant": "QueryInteraction"
+  },
+  {
+    "family": 96,
+    "tag": 24,
+    "variant": "QueryModels"
+  },
+  {
+    "family": 96,
+    "tag": 25,
+    "variant": "UpdateModels"
+  },
+  {
+    "family": 96,
+    "tag": 27,
+    "variant": "UpdateModels"
+  },
+  {
+    "family": 96,
+    "tag": 28,
+    "variant": "Doctor"
+  },
+  {
+    "family": 96,
+    "tag": 29,
+    "variant": "WorkbenchCommand"
+  },
+  {
+    "family": 96,
+    "tag": 30,
+    "variant": "QueryWorkbench"
+  },
+  {
+    "family": 96,
+    "tag": 31,
+    "variant": "QueryWorkbenchReceipt"
+  },
+  {
+    "family": 96,
+    "tag": 32,
+    "variant": "QueryWorkbenchQueue"
+  },
+  {
+    "family": 96,
+    "tag": 33,
+    "variant": "QueryWorkbenchContext"
+  },
+  {
+    "family": 96,
+    "tag": 34,
+    "variant": "QueryWorkbenchBrief"
+  },
+  {
+    "family": 96,
+    "tag": 35,
+    "variant": "BeginWorkbenchImageUpload"
+  },
+  {
+    "family": 96,
+    "tag": 36,
+    "variant": "PreviewWorkbenchImage"
+  },
+  {
+    "family": 96,
+    "tag": 37,
+    "variant": "QueryWorkbenchImages"
+  },
+  {
+    "family": 96,
+    "tag": 38,
+    "variant": "PreviewWorkbenchFile"
+  },
+  {
+    "family": 96,
+    "tag": 39,
+    "variant": "QueryWorkbenchFiles"
+  },
+  {
+    "family": 96,
+    "tag": 40,
+    "variant": "BeginWorkbenchFileUpload"
+  },
+  {
+    "family": 96,
+    "tag": 41,
+    "variant": "PreviewWorkbenchFileImport"
+  },
+  {
+    "family": 96,
+    "tag": 42,
+    "variant": "PreviewWorkbenchCompaction"
+  },
+  {
+    "family": 96,
+    "tag": 43,
+    "variant": "QueryWorkbenchExecution"
+  },
+  {
+    "family": 96,
+    "tag": 44,
+    "variant": "ContinueWorkbenchExecution"
+  },
+  {
+    "family": 96,
+    "tag": 45,
+    "variant": "QueryInteractionBinding"
+  },
+  {
+    "family": 96,
+    "tag": 46,
+    "variant": "ContinueWorkbenchExecution"
+  },
+  {
+    "family": 96,
+    "tag": 47,
+    "variant": "QueryWorkbenchBriefPage"
+  },
+  {
+    "family": 96,
+    "tag": 48,
+    "variant": "QueryWorkbenchBriefProposal"
+  },
+  {
+    "family": 96,
+    "tag": 60,
+    "variant": "QueryWorkbenchGoal"
+  },
+  {
+    "family": 96,
+    "tag": 61,
+    "variant": "UpdateModels"
+  },
+  {
+    "family": 96,
+    "tag": 80,
+    "variant": "QueryWorkbenchReview"
+  },
+  {
+    "family": 96,
+    "tag": 100,
+    "variant": "QueryWorkbenchResult"
+  },
+  {
+    "family": 96,
+    "tag": 101,
+    "variant": "QueryWorkbenchPreview"
+  },
+  {
+    "family": 96,
+    "tag": 102,
+    "variant": "QueryProductRunObservations"
+  },
+  {
+    "family": 96,
+    "tag": 103,
+    "variant": "QueryWorkbenchPreviewOutput"
+  },
+  {
+    "family": 96,
+    "tag": 105,
+    "variant": "QueryWorkbenchReviewDiff"
+  },
+  {
+    "family": 96,
+    "tag": 107,
+    "variant": "QueryWorkbenchReviewDiffBytes"
+  },
+  {
+    "family": 96,
+    "tag": 109,
+    "variant": "QueryWorkbenchReviewSummary"
+  },
+  {
+    "family": 96,
+    "tag": 120,
+    "variant": "PreviewWorkbenchRewind"
+  },
+  {
+    "family": 96,
+    "tag": 121,
+    "variant": "InspectWorkbenchCheckpoint"
+  },
+  {
+    "family": 96,
+    "tag": 122,
+    "variant": "QueryWorkbenchCheckpointPage"
+  },
+  {
+    "family": 96,
+    "tag": 123,
+    "variant": "QueryWorkbenchRewindPage"
+  },
+  {
+    "family": 96,
+    "tag": 140,
+    "variant": "QueryConversationLibrary"
+  },
+  {
+    "family": 96,
+    "tag": 160,
+    "variant": "QueryWorkbenchPermissions"
+  },
+  {
+    "family": 96,
+    "tag": 161,
+    "variant": "QueryWorkbenchMemory"
+  },
+  {
+    "family": 96,
+    "tag": 162,
+    "variant": "DiscoverInit"
+  },
+  {
+    "family": 96,
+    "tag": 164,
+    "variant": "DiscoverInitArtifacts"
+  },
+  {
+    "family": 96,
+    "tag": 165,
+    "variant": "QueryInitArtifactPage"
+  },
+  {
+    "family": 96,
+    "tag": 180,
+    "variant": "Improvements"
+  },
+  {
+    "family": 97,
+    "tag": 1,
+    "variant": "CommandResult"
+  },
+  {
+    "family": 97,
+    "tag": 2,
+    "variant": "SubscriptionStarted"
+  },
+  {
+    "family": 97,
+    "tag": 3,
+    "variant": "ArtifactOpened"
+  },
+  {
+    "family": 97,
+    "tag": 4,
+    "variant": "PromptAccepted"
+  },
+  {
+    "family": 97,
+    "tag": 5,
+    "variant": "TerminalAttached"
+  },
+  {
+    "family": 97,
+    "tag": 6,
+    "variant": "Acknowledged"
+  },
+  {
+    "family": 97,
+    "tag": 7,
+    "variant": "DaemonStatus"
+  },
+  {
+    "family": 97,
+    "tag": 8,
+    "variant": "ShutdownAccepted"
+  },
+  {
+    "family": 97,
+    "tag": 9,
+    "variant": "Error"
+  },
+  {
+    "family": 97,
+    "tag": 10,
+    "variant": "ProductRunAccepted"
+  },
+  {
+    "family": 97,
+    "tag": 13,
+    "variant": "ProductRunSettled"
+  },
+  {
+    "family": 97,
+    "tag": 15,
+    "variant": "Interaction"
+  },
+  {
+    "family": 97,
+    "tag": 16,
+    "variant": "Models"
+  },
+  {
+    "family": 97,
+    "tag": 17,
+    "variant": "Interaction"
+  },
+  {
+    "family": 97,
+    "tag": 18,
+    "variant": "Doctor"
+  },
+  {
+    "family": 97,
+    "tag": 19,
+    "variant": "Workbench"
+  },
+  {
+    "family": 97,
+    "tag": 20,
+    "variant": "WorkbenchReceipt"
+  },
+  {
+    "family": 97,
+    "tag": 21,
+    "variant": "WorkbenchQueue"
+  },
+  {
+    "family": 97,
+    "tag": 22,
+    "variant": "WorkbenchContext"
+  },
+  {
+    "family": 97,
+    "tag": 23,
+    "variant": "WorkbenchBrief"
+  },
+  {
+    "family": 97,
+    "tag": 24,
+    "variant": "WorkbenchImagePreview"
+  },
+  {
+    "family": 97,
+    "tag": 25,
+    "variant": "WorkbenchImages"
+  },
+  {
+    "family": 97,
+    "tag": 26,
+    "variant": "WorkbenchFilePreview"
+  },
+  {
+    "family": 97,
+    "tag": 27,
+    "variant": "WorkbenchFiles"
+  },
+  {
+    "family": 97,
+    "tag": 28,
+    "variant": "WorkbenchFileImportPreview"
+  },
+  {
+    "family": 97,
+    "tag": 29,
+    "variant": "WorkbenchCompactionPreview"
+  },
+  {
+    "family": 97,
+    "tag": 43,
+    "variant": "WorkbenchExecution"
+  },
+  {
+    "family": 97,
+    "tag": 44,
+    "variant": "InteractionBinding"
+  },
+  {
+    "family": 97,
+    "tag": 45,
+    "variant": "WorkbenchBriefPage"
+  },
+  {
+    "family": 97,
+    "tag": 46,
+    "variant": "WorkbenchBriefProposal"
+  },
+  {
+    "family": 97,
+    "tag": 60,
+    "variant": "WorkbenchGoal"
+  },
+  {
+    "family": 97,
+    "tag": 80,
+    "variant": "WorkbenchReview"
+  },
+  {
+    "family": 97,
+    "tag": 100,
+    "variant": "WorkbenchResult"
+  },
+  {
+    "family": 97,
+    "tag": 101,
+    "variant": "WorkbenchPreview"
+  },
+  {
+    "family": 97,
+    "tag": 102,
+    "variant": "ProductRunObservations"
+  },
+  {
+    "family": 97,
+    "tag": 104,
+    "variant": "WorkbenchPreviewOutput"
+  },
+  {
+    "family": 97,
+    "tag": 106,
+    "variant": "WorkbenchReviewDiff"
+  },
+  {
+    "family": 97,
+    "tag": 108,
+    "variant": "WorkbenchReviewDiffBytes"
+  },
+  {
+    "family": 97,
+    "tag": 110,
+    "variant": "WorkbenchReviewSummary"
+  },
+  {
+    "family": 97,
+    "tag": 120,
+    "variant": "WorkbenchCheckpoint"
+  },
+  {
+    "family": 97,
+    "tag": 121,
+    "variant": "WorkbenchRewindPreview"
+  },
+  {
+    "family": 97,
+    "tag": 122,
+    "variant": "WorkbenchRestore"
+  },
+  {
+    "family": 97,
+    "tag": 123,
+    "variant": "WorkbenchCheckpointPage"
+  },
+  {
+    "family": 97,
+    "tag": 124,
+    "variant": "WorkbenchRewindPage"
+  },
+  {
+    "family": 97,
+    "tag": 125,
+    "variant": "WorkbenchRestoreSummary"
+  },
+  {
+    "family": 97,
+    "tag": 140,
+    "variant": "ConversationLibrary"
+  },
+  {
+    "family": 97,
+    "tag": 160,
+    "variant": "WorkbenchPermissions"
+  },
+  {
+    "family": 97,
+    "tag": 161,
+    "variant": "WorkbenchMemory"
+  },
+  {
+    "family": 97,
+    "tag": 162,
+    "variant": "InitProposal"
+  },
+  {
+    "family": 97,
+    "tag": 164,
+    "variant": "InitArtifactProposal"
+  },
+  {
+    "family": 97,
+    "tag": 165,
+    "variant": "InitArtifactPage"
+  },
+  {
+    "family": 97,
+    "tag": 180,
+    "variant": "Improvements"
+  },
+  {
+    "family": 97,
+    "tag": 181,
+    "variant": "TerminalPipeAttached"
+  },
+  {
+    "family": 98,
+    "tag": 1,
+    "variant": "DomainEvent"
+  },
+  {
+    "family": 98,
+    "tag": 2,
+    "variant": "SubscriptionGap"
+  },
+  {
+    "family": 98,
+    "tag": 3,
+    "variant": "Backpressure"
+  },
+  {
+    "family": 98,
+    "tag": 4,
+    "variant": "ArtifactMetadata"
+  },
+  {
+    "family": 98,
+    "tag": 5,
+    "variant": "ArtifactChunk"
+  },
+  {
+    "family": 98,
+    "tag": 6,
+    "variant": "ArtifactComplete"
+  },
+  {
+    "family": 98,
+    "tag": 7,
+    "variant": "PromptRequested"
+  },
+  {
+    "family": 98,
+    "tag": 8,
+    "variant": "TerminalOutput"
+  },
+  {
+    "family": 98,
+    "tag": 9,
+    "variant": "TerminalExited"
+  },
+  {
+    "family": 98,
+    "tag": 10,
+    "variant": "ReadinessChanged"
+  },
+  {
+    "family": 98,
+    "tag": 11,
+    "variant": "Diagnostic"
+  },
+  {
+    "family": 98,
+    "tag": 12,
+    "variant": "Heartbeat"
+  },
+  {
+    "family": 98,
+    "tag": 13,
+    "variant": "ShutdownProgress"
+  },
+  {
+    "family": 98,
+    "tag": 14,
+    "variant": "ShutdownComplete"
+  },
+  {
+    "family": 98,
+    "tag": 15,
+    "variant": "TerminalUnavailable"
+  },
+  {
+    "family": 99,
+    "tag": 1,
+    "variant": "Acknowledge"
+  },
+  {
+    "family": 99,
+    "tag": 2,
+    "variant": "CancelSubscription"
+  },
+  {
+    "family": 99,
+    "tag": 3,
+    "variant": "CancelArtifact"
+  },
+  {
+    "family": 99,
+    "tag": 4,
+    "variant": "CancelPrompt"
+  },
+  {
+    "family": 99,
+    "tag": 5,
+    "variant": "CancelTerminal"
+  },
+  {
+    "family": 99,
+    "tag": 6,
+    "variant": "Subscription"
+  },
+  {
+    "family": 99,
+    "tag": 7,
+    "variant": "HeartbeatReply"
+  }
+]

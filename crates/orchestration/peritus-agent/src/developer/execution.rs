@@ -72,6 +72,7 @@ impl DeveloperLoop {
                 })?;
             let profile = &resolved_profile;
             let input = interaction.map(DeveloperInteraction::input).transpose()?;
+            let latest_user_text = input.as_ref().and_then(|input| input.latest_user_text.clone());
             // A terminal-only phase still carries completed tool exchanges in its history.
             // Keep their capability negotiated even though no new tools are advertised.
             let mut required_capabilities = vec![Capability::ToolCalls];
@@ -291,10 +292,15 @@ impl DeveloperLoop {
                 if final_text.trim().is_empty() || !calls.is_empty() {
                     return Err(DeveloperLoopError::EmptyResponse);
                 }
-                let response = state::user_response(&final_text)?;
+                if input_changed(interaction, input_revision)? {
+                    // The reply was superseded while inference was in flight. Rebuild from the
+                    // latest input rather than correcting an obsolete control response.
+                    continue;
+                }
+                let response = state::user_response(&final_text, latest_user_text.as_deref())?;
                 context.append(
                     &mut messages,
-                    Message::new(Role::Assistant, assistant, protocol_limits)?,
+                    message(Role::Assistant, response.message.clone(), protocol_limits)?,
                 )?;
                 if let Some(port) = interaction {
                     port.input_answered(input_revision)?;

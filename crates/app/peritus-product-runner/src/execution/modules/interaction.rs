@@ -33,6 +33,7 @@ impl DeveloperInteraction for StageInteraction<'_> {
         input.conversation =
             "The current module command and accepted steering are already represented in the module-owned prompt. Continue only that bounded module stage."
                 .into();
+        input.latest_user_text = None;
         Ok(input)
     }
     fn current_input_revision(&self) -> Result<u64, DeveloperLoopError> {

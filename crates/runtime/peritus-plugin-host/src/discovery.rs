@@ -49,6 +49,17 @@ pub struct DiscoveredPlugin {
 }
 
 impl DiscoveredPlugin {
+    /// Re-reads the launch inputs so a cached catalog cannot authorize changed files.
+    pub(crate) fn matches_current_files(&self) -> Result<bool, HostError> {
+        reject_symlink(&self.root, "plugin directory is a symlink")?;
+        let current = load_plugin(&self.root, &self.manifest_path, DiscoveryLimits::PRODUCTION)?;
+        Ok(current.root == self.root
+            && current.manifest_path == self.manifest_path
+            && current.artifact_path == self.artifact_path
+            && current.manifest_digest == self.manifest_digest
+            && current.artifact_sha256 == self.artifact_sha256)
+    }
+
     /// Borrows the validated manifest.
     #[must_use]
     pub const fn manifest(&self) -> &PluginManifest {

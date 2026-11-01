@@ -30,16 +30,31 @@ pub fn execute(arguments: &[String]) -> Result<Value, CliError> {
         "status" => peritus_tools_web::status(),
         "stop" => peritus_tools_web::stop(),
         name => {
+            let input = match name {
+                "search" => json!({"query": required(1)?}),
+                "open" => {
+                    let url = required(1)?;
+                    let flags = &arguments[2..];
+                    if flags.iter().any(|flag| flag != "--refresh" && flag != "--http") {
+                        return Err(usage());
+                    }
+                    json!({"url": url,
+                           "refresh": flags.iter().any(|flag| flag == "--refresh"),
+                           "mode": if flags.iter().any(|flag| flag == "--http") { "http" } else { "auto" }})
+                }
+                "read" => json!({"source": required(1)?, "offset": number(2, 0)?,
+                                 "max_bytes": number(3, 32768)?}),
+                "find" => json!({"source": required(1)?, "query": required(2)?,
+                                 "offset": number(3, 0)?}),
+                _ => return Err(usage()),
+            };
             let store = peritus_tools_web::Store::for_user()
                 .map_err(|e| CliError::runtime("open web store", e.to_string()))?;
             match name {
-                "search" => store.search(&json!({"query":required(1)?}), &|| false),
-                "open" => {
-                    if arguments[2..].iter().any(|v| v != "--refresh" && v != "--http") { return Err(usage()); }
-                    store.open(&json!({"url":required(1)?, "refresh":arguments.iter().any(|v| v == "--refresh"), "mode":if arguments.iter().any(|v| v == "--http") { "http" } else { "auto" }}), &|| false)
-                },
-                "read" => store.read(&json!({"source":required(1)?, "offset":number(2,0)?, "max_bytes":number(3,32768)?})),
-                "find" => store.find(&json!({"source":required(1)?, "query":required(2)?, "offset":number(3,0)?})),
+                "search" => store.search(&input, &|| false),
+                "open" => store.open(&input, &|| false),
+                "read" => store.read(&input),
+                "find" => store.find(&input),
                 _ => return Err(usage()),
             }
         }

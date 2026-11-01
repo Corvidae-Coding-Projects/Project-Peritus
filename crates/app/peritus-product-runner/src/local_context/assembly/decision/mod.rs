@@ -9,6 +9,10 @@ mod key;
 mod plan;
 mod render;
 
+#[cfg(test)]
+#[path = "../../../../../../../discovery/proptest-praxis/owner/decision.rs"]
+mod praxis_decision;
+
 use crate::local_context::{error, memory::LocalMemory};
 pub(in crate::local_context) use dependencies::capture as request_dependencies;
 pub(in crate::local_context) use index::Index;

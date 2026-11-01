@@ -41,6 +41,7 @@ pub(super) struct ChatDecoder {
     tools: BTreeMap<u32, ToolState>,
     finish: Option<hosted::CompletedChoice>,
     usage: Option<Box<UsageCounters>>,
+    seen: BTreeMap<EventId, peritus_types::Sha256Digest>,
 }
 
 impl ChatDecoder {
@@ -71,6 +72,7 @@ impl ChatDecoder {
             tools: BTreeMap::new(),
             finish: None,
             usage: None,
+            seen: BTreeMap::new(),
         }
     }
 
@@ -116,6 +118,14 @@ impl ChatDecoder {
             .map(|value| EventId::new(value.to_owned()))
             .transpose()
             .map_err(|_| error::malformed("Chat-compatible SSE event identity was invalid"))?;
+        if self.repeated_frame(event_id.as_ref(), digest)? {
+            return Ok(FrameEvents {
+                provider_sequence: None,
+                provider_event_id: event_id,
+                digest,
+                events: Vec::new(),
+            });
+        }
         let mut events = Vec::new();
         if self.response_id.is_none() {
             self.actual_model = Some(model.clone());
@@ -170,6 +180,26 @@ impl ChatDecoder {
             events.push(ModelEvent::Heartbeat);
         }
         Ok(FrameEvents { provider_sequence: None, provider_event_id: event_id, digest, events })
+    }
+
+    fn repeated_frame(
+        &mut self,
+        id: Option<&EventId>,
+        digest: peritus_types::Sha256Digest,
+    ) -> Result<bool, ProviderCoreError> {
+        let Some(id) = id else { return Ok(false) };
+        if let Some(previous) = self.seen.get(id) {
+            return if *previous == digest {
+                Ok(true)
+            } else {
+                Err(error::malformed("Chat-compatible SSE identity was reused with different data"))
+            };
+        }
+        if self.seen.len() >= self.limits.max_events() {
+            return Err(error::limit("Chat-compatible event identities exceeded their bound"));
+        }
+        self.seen.insert(id.clone(), digest);
+        Ok(false)
     }
 
     pub fn done(&self) -> Result<Vec<ModelEvent>, ProviderCoreError> {
