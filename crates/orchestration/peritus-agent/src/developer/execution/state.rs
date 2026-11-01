@@ -18,20 +18,77 @@ pub(super) struct UserResponse {
     pub(super) continue_work: bool,
 }
 
-pub(super) fn user_response(text: &str) -> Result<UserResponse, DeveloperLoopError> {
-    let invalid = || DeveloperLoopError::Context("invalid user-response control object".to_owned());
-    let checked = CanonicalJson::parse(text, JsonBounds::value(ProtocolLimits::PRODUCTION))?;
-    let value: serde_json::Value =
-        serde_json::from_slice(checked.canonical_bytes()).map_err(|_| invalid())?;
-    let object = value.as_object().filter(|object| object.len() == 2).ok_or_else(invalid)?;
-    let message = object.get("message").and_then(serde_json::Value::as_str).ok_or_else(invalid)?;
-    let continue_work =
-        object.get("continue_work").and_then(serde_json::Value::as_bool).ok_or_else(invalid)?;
-    if message.trim().is_empty() {
-        return Err(invalid());
+pub(super) fn user_response(
+    text: &str,
+    latest_user_text: Option<&str>,
+) -> Result<UserResponse, DeveloperLoopError> {
+    let host_wait = latest_user_text.is_some_and(explicit_wait_request);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err(DeveloperLoopError::EmptyResponse);
     }
+    // Accept the old private control object when replaying an in-flight provider turn.
+    if let Ok(checked) =
+        CanonicalJson::parse(trimmed, JsonBounds::value(ProtocolLimits::PRODUCTION))
+        && let Ok(value) = serde_json::from_slice::<serde_json::Value>(checked.canonical_bytes())
+        && let Some(object) = value.as_object().filter(|object| object.len() == 2)
+        && let (Some(message), Some(continue_work)) = (
+            object.get("message").and_then(serde_json::Value::as_str),
+            object.get("continue_work").and_then(serde_json::Value::as_bool),
+        )
+        && !message.trim().is_empty()
+    {
+        return bounded_response(message.trim(), continue_work && !host_wait);
+    }
+    let (marker, body) = trimmed.split_once('\n').unwrap_or(("", trimmed));
+    let (continue_work, message) = if marker.trim().eq_ignore_ascii_case("WAIT") {
+        (false, body.trim())
+    } else if marker.trim().eq_ignore_ascii_case("CONTINUE") {
+        (true, body.trim())
+    } else {
+        (true, trimmed)
+    };
+    // A model may still replay an incomplete old control object. Its private syntax is never
+    // shown to the user and cannot decide whether work resumes.
+    let message =
+        if message.is_empty() || (message.starts_with('{') && message.contains("continue_work")) {
+            if host_wait || !continue_work {
+                "I will wait for your next message."
+            } else {
+                "I received your message and will continue."
+            }
+        } else {
+            message
+        };
+    bounded_response(message, continue_work && !host_wait)
+}
+
+fn bounded_response(
+    message: &str,
+    continue_work: bool,
+) -> Result<UserResponse, DeveloperLoopError> {
     drop(BoundedText::new(message.to_owned(), ProtocolLimits::PRODUCTION)?);
     Ok(UserResponse { message: message.to_owned(), continue_work })
+}
+
+fn explicit_wait_request(input: &str) -> bool {
+    let lower = input.trim().to_ascii_lowercase();
+    matches!(lower.as_str(), "wait" | "pause" | "stop" | "cancel" | "hold on")
+        || [
+            "wait for ",
+            "wait until ",
+            "pause ",
+            "stop ",
+            "cancel ",
+            "hold on ",
+            "do not continue",
+            "don't continue",
+            "do not proceed",
+            "don't proceed",
+        ]
+        .iter()
+        .any(|prefix| lower.starts_with(prefix))
+        || lower.ends_with(" then wait")
 }
 
 pub(super) const fn successful(terminal: Option<&TerminalOutcome>) -> bool {

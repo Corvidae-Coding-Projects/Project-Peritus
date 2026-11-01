@@ -13,9 +13,9 @@ file-level responsibilities.
 | [README.md](README.md) | Human guide and operating/background notes for this folder. |
 | [AGENTS.md](AGENTS.md) | Local navigation map and file responsibilities. |
 | [consumer.rs](consumer.rs) | Provider-level public-library consumer; asserts the retained rejected text and the terminal outcome. |
-| [agent.rs](agent.rs) | Developer-loop consumer; records the public activities the loop publishes for one refused turn. |
+| [agent.rs](agent.rs) | Developer-loop consumer; records refusal, continuation, and pause behavior. |
 | [scripted-opencode.py](scripted-opencode.py) | Scripted OpenCode stand-in answering `--version`, `models`, and `run` from a fixed reply script. |
-| [replay.py](replay.py) | Builds both consumers and runs the fifteen scenarios with disposable state. |
+| [replay.py](replay.py) | Builds both consumers and runs the nineteen scenarios with disposable state. |
 | [observed-baseline.txt](observed-baseline.txt) | Verbatim transcripts of the recorded run and its check outcomes. |
 
 ## What this case shows
@@ -49,6 +49,9 @@ The repaired behavior:
   is refused rather than partially interpreted.
 - The loop announces its model request once per logical turn and reports each refusal and retry
   as its own transition.
+- User-response turns accept ordinary text with an optional WAIT or CONTINUE line. A malformed
+  legacy control object is never shown as the reply and cannot stop a continuing instruction;
+  an explicit wait request still stops work.
 
 ## Prerequisites
 
@@ -88,6 +91,10 @@ commit, and any failed check. The script exits non-zero if any check fails.
 | `dsml` | provider | `dsml` | One `dsml-v1` normalization for two declared calls, no refusal, `requires_action`. |
 | `dsml_unknown_tool` | provider | `dsml_unknown_tool`, `valid` | One refusal naming the undeclared tool, then a succeeded turn. |
 | `dsml_malformed` | provider | `dsml_malformed`, `valid` | One JSON refusal, then a succeeded turn. |
+| `control_recovery` | agent | `control_invalid`, `valid` | A malformed old control object produces a safe acknowledgement, then the same run continues. |
+| `control_pause` | agent | `control_invalid` | An explicit user wait stops work even when the old control object is malformed. |
+| `control_plain` | agent | `control_plain`, `valid` | A plain CONTINUE reply reaches the user and the run continues. |
+| `control_marker_pause` | agent | `control_wait` | A plain WAIT reply stops the run. |
 
 ## Limits
 

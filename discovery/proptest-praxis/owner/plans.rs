@@ -318,6 +318,7 @@ impl DeveloperInteraction for Control {
         Ok(DeveloperInput {
             revision: self.revision(),
             conversation: self.render(),
+            latest_user_text: Some(self.render()),
             images: Vec::new(),
         })
     }
