@@ -164,6 +164,23 @@ fn selector_matches(selector: &NetworkSelector, host: &NetworkHost) -> Result<bo
     })
 }
 
+fn prefix_neighbors<const N: usize>(address: [u8; N], prefix: u8) -> Vec<[u8; N]> {
+    // Flip the last network bit (outside) and first host bit (inside). The
+    // previous generator flipped only the final address bit, missing most masks.
+    let bits = usize::from(prefix);
+    let mut neighbors = Vec::new();
+    for bit in
+        [bits.checked_sub(1), (bits < N * 8).then_some(bits), Some(N * 8 - 1)].into_iter().flatten()
+    {
+        let mut adjacent = address;
+        adjacent[bit / 8] ^= 1 << (7 - bit % 8);
+        if !neighbors.contains(&adjacent) {
+            neighbors.push(adjacent);
+        }
+    }
+    neighbors
+}
+
 fn network(case: &Case, metrics: &mut Metrics) -> Result<(), String> {
     let Case::Network { rules } = case else { return Err("network case mismatch".into()) };
     if rules.len() > 32 {
@@ -197,24 +214,39 @@ fn network(case: &Case, metrics: &mut Metrics) -> Result<(), String> {
     hosts.push(NetworkHost::Ip(IpAddr::V6(Ipv6Addr::LOCALHOST)));
     for rule in rules {
         match &rule.selector {
-            NetworkSelector::V4 { address, .. } => {
+            NetworkSelector::V4 { address, prefix } => {
                 hosts.push(NetworkHost::Ip(IpAddr::V4(Ipv4Addr::from(*address))));
-                let mut adjacent = *address;
-                adjacent[3] ^= 1;
-                hosts.push(NetworkHost::Ip(IpAddr::V4(Ipv4Addr::from(adjacent))));
+                for adjacent in prefix_neighbors(*address, *prefix) {
+                    hosts.push(NetworkHost::Ip(IpAddr::V4(Ipv4Addr::from(adjacent))));
+                    bump(metrics, "ipv4_prefix_boundary_queries");
+                }
             }
-            NetworkSelector::V6 { address, .. } => {
+            NetworkSelector::V6 { address, prefix } => {
                 hosts.push(NetworkHost::Ip(IpAddr::V6(Ipv6Addr::from(*address))));
-                let mut adjacent = *address;
-                adjacent[15] ^= 1;
-                hosts.push(NetworkHost::Ip(IpAddr::V6(Ipv6Addr::from(adjacent))));
+                for adjacent in prefix_neighbors(*address, *prefix) {
+                    hosts.push(NetworkHost::Ip(IpAddr::V6(Ipv6Addr::from(adjacent))));
+                    bump(metrics, "ipv6_prefix_boundary_queries");
+                }
             }
             _ => {}
         }
     }
+    // Probe immediately inside and outside all port endpoints, not only the six
+    // configured endpoints. Endpoint-only queries cannot expose an off-by-one range.
+    let mut ports = Vec::from(PORTS);
+    for port in PORTS {
+        if port > 1 {
+            ports.push(port - 1);
+        }
+        if port < u16::MAX {
+            ports.push(port + 1);
+        }
+    }
+    ports.sort_unstable();
+    ports.dedup();
     for host in hosts {
         for transport in [Transport::Tcp, Transport::Udp] {
-            for port in PORTS {
+            for &port in &ports {
                 let mut allow = false;
                 let mut deny = false;
                 for rule in rules {

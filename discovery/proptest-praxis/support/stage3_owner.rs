@@ -92,6 +92,8 @@ fn execute<C: Clone + Debug + Serialize + DeserializeOwned>(
         match runner.run(&strategy(steps), |case| {
             checked(&case).map_err(|reason| {
                 if reason.starts_with("setup-incomplete:") {
+                    save(&output.join("incomplete-case.json"), &witness(&case))
+                        .expect("persist incomplete case");
                     return TestCaseError::reject(reason);
                 }
                 if !*first.borrow() {
@@ -180,6 +182,7 @@ fn runner(output: &Path, cases: u32, seed: u64) -> TestRunner {
         cases,
         rng_seed: RngSeed::Fixed(seed),
         rng_algorithm: RngAlgorithm::ChaCha,
+        max_global_rejects: 0,
         max_shrink_iters: 10_000,
         max_shrink_time: 30_000,
         failure_persistence: Some(Box::new(FileFailurePersistence::Direct(Box::leak(

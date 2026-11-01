@@ -12,11 +12,25 @@ pub enum Case {
     Registry { operations: Vec<RegistryOperation> },
     CheckpointFailure { text: String },
     DamagedOutput { text: String, damage: u8 },
+    DamagedWhileOpen { text: String, stages: u8, selected: u8, damage: u8 },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Operation {
-    Complete { stage: u8, text: String },
-    Read { stage: u8, allowed: bool, offset: u16, limit: u8 },
+    Complete {
+        stage: u8,
+        text: String,
+    },
+    Read {
+        stage: u8,
+        allowed: bool,
+        offset: u16,
+        limit: u8,
+    },
+    /// Follow every continuation and independently reconstruct the complete output.
+    ReadAll {
+        stage: u8,
+        limit: u8,
+    },
     Reopen,
     Contend,
     Inspect(u16),
@@ -45,6 +59,7 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
     let operation = prop_oneof![
         7 => (0_u8..6, text()).prop_map(|(stage,text)|Operation::Complete{stage,text}),
         4 => (0_u8..6,any::<bool>(),0_u16..48,0_u8..32).prop_map(|(stage,allowed,offset,limit)|Operation::Read{stage,allowed,offset,limit}),
+        3 => (0_u8..6,0_u8..32).prop_map(|(stage,limit)|Operation::ReadAll{stage,limit}),
         3 => Just(Operation::Reopen),
         2 => Just(Operation::Contend),
         2 => (0_u16..48).prop_map(Operation::Inspect),
@@ -52,6 +67,20 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
     ];
     let jobs = (1_u8..5, prop::collection::vec(operation, 0..=max_steps.min(96)))
         .prop_map(|(stages, operations)| Case::Jobs { stages, operations });
+    let completed_jobs = (1_u8..5, text(), 0_u8..32).prop_map(move |(stages, text, limit)| {
+        let operations = (0..stages)
+            .flat_map(|stage| {
+                [
+                    Operation::Complete { stage, text: format!("stage-{stage}: {text} é🙂") },
+                    Operation::ReadAll { stage, limit },
+                    Operation::Reopen,
+                    Operation::ReadAll { stage, limit: limit.wrapping_add(1) },
+                ]
+            })
+            .take(max_steps.min(96))
+            .collect();
+        Case::Jobs { stages, operations }
+    });
     let registry_operation = prop_oneof![
         5 => (0_u8..3,0_u8..4).prop_map(|(version,payload)|RegistryOperation::Install{version,payload}),
         3 => any::<bool>().prop_map(RegistryOperation::Enable),
@@ -63,9 +92,11 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         .prop_map(|operations| Case::Registry { operations });
     prop_oneof![
         6 => jobs,
+        3 => completed_jobs,
         4 => registry,
         1 => "[a-z]{1,24}".prop_map(|text|Case::CheckpointFailure{text}),
         1 => ("[a-z]{1,24}",0_u8..3).prop_map(|(text,damage)|Case::DamagedOutput{text,damage}),
+        2 => (text(),1_u8..5,any::<u8>(),0_u8..3).prop_map(|(text,stages,selected,damage)|Case::DamagedWhileOpen{text:format!("output: {text}"),stages,selected,damage}),
     ]
     .boxed()
 }
@@ -207,6 +238,18 @@ fn jobs(stages: u8, operations: &[Operation], metrics: &mut Metrics) -> Result<(
                         bump(metrics, "rejected_dependency_pages");
                     }
                 }
+                Operation::ReadAll { stage: which, limit } => {
+                    let id = stage(usize::from(*which));
+                    if let Some(text) = model.get(usize::from(*which)) {
+                        read_all(&job, &id, text, usize::from(*limit), metrics)?;
+                    } else {
+                        if job.read(std::slice::from_ref(&id), &id, 0, usize::from(*limit)).is_ok()
+                        {
+                            return Err("page walk accepted an uncommitted stage".into());
+                        }
+                        bump(metrics, "uncommitted_walk_rejections");
+                    }
+                }
                 Operation::Reopen => {
                     drop(job);
                     job = Job::open(&root, definition.clone(), 3, "exact task μ")
@@ -270,6 +313,96 @@ fn jobs(stages: u8, operations: &[Operation], metrics: &mut Metrics) -> Result<(
     }
     Ok(())
 }
+fn read_all(
+    job: &Job,
+    id: &str,
+    expected: &str,
+    limit: usize,
+    metrics: &mut Metrics,
+) -> Result<(), String> {
+    let mut reconstructed = String::new();
+    let mut offset = 0_u64;
+    loop {
+        let page = job.read(&[id.to_owned()], id, offset, limit).map_err(|e| e.to_string())?;
+        verify_page(&page, id, expected, offset, limit)?;
+        let text = page["text"].as_str().ok_or("missing page text")?;
+        reconstructed.push_str(text);
+        bump(metrics, "continuation_pages");
+        if page["next_offset"].is_null() {
+            break;
+        }
+        let next = page["next_offset"].as_u64().ok_or("invalid continuation offset")?;
+        if next <= offset || next > expected.len() as u64 {
+            return Err("continuation failed to make bounded forward progress".into());
+        }
+        offset = next;
+    }
+    if reconstructed != expected {
+        return Err("page traversal lost, duplicated, or reordered output bytes".into());
+    }
+    bump(metrics, "complete_output_walks");
+    Ok(())
+}
+
+fn damaged_while_open(
+    text: &str,
+    stages: u8,
+    selected: u8,
+    damage: u8,
+    metrics: &mut Metrics,
+) -> Result<(), String> {
+    if !(1..=4).contains(&stages) || text.trim().is_empty() || text.len() > 256 {
+        return Err("invalid live corruption fixture".into());
+    }
+    let temporary = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let definition = package(&temporary.path().join("source"), stages, 0, 0)?;
+    let root = temporary.path().join("jobs");
+    let mut job =
+        Job::open(&root, definition.clone(), 1, "live integrity").map_err(|e| e.to_string())?;
+    let outputs: Vec<_> = (0..stages).map(|index| format!("{index}: {text} é🙂")).collect();
+    for (index, output) in outputs.iter().enumerate() {
+        job.complete(&stage(index), output).map_err(|e| e.to_string())?;
+    }
+    let selected = usize::from(selected % stages);
+    let row = &job.state().completed[selected];
+    let path = job.root().join(format!("{}-{}.txt", row.stage, row.sha256));
+    let id = stage(selected);
+    // Warm both the exact-page and final-output interfaces before altering retained bytes.
+    read_all(&job, &id, &outputs[selected], 4, metrics)?;
+    verify_job(&job, &outputs, stages)?;
+    let before = fs::read(job.root().join("job.json")).map_err(|e| e.to_string())?;
+    match damage % 3 {
+        0 => fs::write(&path, vec![b'!'; outputs[selected].len()]),
+        1 => fs::write(&path, b""),
+        _ => fs::remove_file(&path),
+    }
+    .map_err(|e| e.to_string())?;
+    for offset in [0, outputs[selected].len() as u64] {
+        if job.read(std::slice::from_ref(&id), &id, offset, 4).is_ok() {
+            return Err(
+                "already-open job returned damaged output (including empty end page)".into()
+            );
+        }
+        bump(metrics, "live_integrity_read_rejections");
+    }
+    if Job::inspect(&root, definition, 1, "live integrity", 0).is_ok() {
+        return Err("inspection accepted a damaged predecessor output".into());
+    }
+    if selected + 1 == usize::from(stages) && job.result().is_ok() {
+        return Err("final output remained cached after artifact drift".into());
+    }
+    if fs::read(job.root().join("job.json")).map_err(|e| e.to_string())? != before {
+        return Err("read integrity failure mutated durable checkpoint".into());
+    }
+    fs::write(path, &outputs[selected]).map_err(|e| e.to_string())?;
+    for (index, output) in outputs.iter().enumerate() {
+        read_all(&job, &stage(index), output, 4, metrics)?;
+    }
+    verify_job(&job, &outputs, stages)?;
+    bump(metrics, "use_after_live_integrity_restoration");
+    Ok(())
+}
+
 fn checkpoint_failure(text: &str, metrics: &mut Metrics) -> Result<(), String> {
     if text.trim().is_empty() || text.len() > 256 {
         return Err("invalid bounded failure fixture".into());
@@ -480,6 +613,9 @@ pub fn check(case: &Case) -> Result<Metrics, String> {
         Case::Registry { operations } => registry(operations, &mut metrics)?,
         Case::CheckpointFailure { text } => checkpoint_failure(text, &mut metrics)?,
         Case::DamagedOutput { text, damage } => damaged_output(text, *damage, &mut metrics)?,
+        Case::DamagedWhileOpen { text, stages, selected, damage } => {
+            damaged_while_open(text, *stages, *selected, *damage, &mut metrics)?
+        }
     }
     Ok(metrics)
 }
@@ -498,6 +634,14 @@ pub fn examples() -> Vec<Case> {
         vec![calibration_case(), Case::CheckpointFailure { text: "uncommitted orphan μ🙂".into() }];
     for damage in 0..3 {
         cases.push(Case::DamagedOutput { text: "exact committed output μ🙂".into(), damage });
+        for selected in 0..3 {
+            cases.push(Case::DamagedWhileOpen {
+                text: "exact committed output μ🙂".into(),
+                stages: 3,
+                selected,
+                damage,
+            });
+        }
     }
     cases.push(Case::Jobs {
         stages: 2,

@@ -24,24 +24,33 @@ def run_case(probe: Path, kind: str, states: tuple[str, ...], index: int) -> dic
     name = {"codex": "codex", "claude": "claude"}[kind]
     with tempfile.TemporaryDirectory(prefix="peritus-stage7-provider-") as raw:
         root = Path(raw)
-        directories = [root / f"bin{i}" for i in range(len(states))]
+        directories = [root / f"bin {i} é" for i in range(len(states))]
         for directory in directories:
             directory.mkdir()
         for directory, state in zip(directories, states):
             if state == "absent":
                 continue
             path = directory / name
-            path.write_text("#!/bin/sh\nexit 0\n")
-            path.chmod(0o755 if state == "valid" else 0o644)
+            if state == "directory":
+                path.mkdir()
+                continue
+            if state == "dangling":
+                path.symlink_to(directory / "missing-target")
+                continue
+            target = directory / "actual executable" if state.startswith("symlink_") else path
+            target.write_text("#!/bin/sh\nexit 0\n")
+            target.chmod(0o755 if state in ("valid", "symlink_valid") else 0o644)
+            if target != path:
+                path.symlink_to(target.name)
         home = root / "home"
         home.mkdir()
         env = os.environ.copy()
         env.update(PATH=os.pathsep.join(map(str, directories)), HOME=str(home))
-        execution = subprocess.run([str(probe), kind], env=env, text=True, capture_output=True, check=False)
+        execution = subprocess.run([str(probe), kind], env=env, text=True, capture_output=True, check=False, timeout=10)
         if execution.returncode:
             raise RuntimeError(f"probe failed ({execution.returncode}): {execution.stderr}")
         observed = json.loads(execution.stdout)
-        expected = next((str((directory / name).resolve()) for directory, state in zip(directories, states) if state == "valid"), None)
+        expected = next((str((directory / name).resolve()) for directory, state in zip(directories, states) if state in ("valid", "symlink_valid")), None)
         actual_raw = observed["raw"]
         actual_onboarding = observed["onboarding"]
         # Normalize temp roots so the retained case is path independent.
@@ -63,7 +72,10 @@ def main() -> int:
     rng = random.Random(7319)
     fixed = [("valid",), ("invalid", "valid"), ("absent", "valid"),
              ("invalid", "absent"), ("valid", "valid")]
-    generated = [tuple(rng.choice(("absent", "invalid", "valid")) for _ in range(3)) for _ in range(256)]
+    classes = ("absent", "invalid", "valid", "directory", "dangling", "symlink_valid", "symlink_invalid")
+    # Exhaust the small interaction space; deeper histories separately vary growth and shadowing.
+    fixed += list(itertools.product(classes, repeat=2))
+    generated = [tuple(rng.choice(classes) for _ in range(rng.randrange(7))) for _ in range(256)]
     cases = [(kind, states) for kind in ("codex", "claude") for states in fixed + generated]
     first = None
     failures = 0
@@ -76,11 +88,21 @@ def main() -> int:
             failures += 1
             first = first or observed
             by_kind.setdefault(kind, observed)
-    minimized = run_case(probe, first["kind"], ("invalid", "valid"), -1) if first else None
+    minimized = None
+    if first:
+        # Preserve the actual failure family; remove entries only while disagreement remains.
+        states = tuple(first["states"])
+        for index in range(len(states) - 1, -1, -1):
+            shorter = states[:index] + states[index + 1:]
+            candidate = run_case(probe, first["kind"], shorter, -1)
+            if not candidate["valid"]:
+                states = shorter
+        minimized = run_case(probe, first["kind"], states, -1)
     report = {
         "status": "fail" if first else "pass", "seed": 7319,
         "requested": len(cases), "completed": completed,
         "source": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in SOURCES},
+        "path_state_counts": {state: sum(states.count(state) for _, states in cases) for state in classes},
         "failures": failures, "first_by_kind": by_kind,
         "first": first, "minimized": minimized,
     }

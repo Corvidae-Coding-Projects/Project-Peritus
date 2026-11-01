@@ -21,3 +21,13 @@ Native source owners: `peritus-model-protocol/src/reducer/{events,stream,termina
 `event_codec/{encode,decode}.rs`, and `canonical_decode.rs`. The finite generator does not prove
 all possible provider payloads or OS transport behavior; provider-specific bytes are in the
 `providers` target and the owner-only OpenAI HTTP hook.
+
+## Strengthened history search
+
+`ForkReplay` clones a live response with a partially assembled text or tool item, including
+inside UTF-8 and JSON. The source response fails on EOF; two clones receive different suffixes
+and must independently complete to exact input-derived values. Output-bearing fragments are
+retransmitted repeatedly with identical provider identity/digest under both original and fresh
+local envelope sequences. This reaches mutable item state that the original duplicate identity
+event family never touched. Metrics distinguish tool/text branches, interior UTF-8 splits, and
+both local sequence forms.

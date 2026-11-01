@@ -137,3 +137,17 @@ The standalone examples-only consumer reported unused campaign exports and nine 
 style diagnostics; those fixture style diagnostics were repaired. Its unused exports are consumed
 by the central campaign runner. The central cold runner and owner test hook both passed strict
 lint and native qualification.
+
+## Strengthened outbound request oracle
+
+Captured HTTP requests now require the exact generated user text and user role at each dialect's
+message location, in addition to model/effort and retry equality. Text varies Unicode and JSON
+escaping, so a correct scripted response cannot hide a dropped or altered prompt. The shared
+fixture also verifies that selecting a model leaves the original provider's model unchanged.
+These checks cover the public HTTP adapters and the private first-party Responses owner; native
+runtime prompt serialization remains covered only by its preexisting checks.
+
+Every admitted malformed generated transcript is now paired with the same clean payload and
+configuration before its negative check. Both are run through the actual adapter and downstream
+reducer. An unrelated baseline failure can no longer count as a successful malformed-input
+rejection. `paired_valid_transport_controls` records controls actually completed.

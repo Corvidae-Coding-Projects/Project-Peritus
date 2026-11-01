@@ -17,3 +17,13 @@ Native source owners: `peritus-tool-protocol/src/{json,schema,descriptor,call,pr
 progress,artifact,result,wire}.rs`. These are protocol checks, not authorization of a real host
 effect. Stage 6 owns filesystem/process/authority enforcement. The `Header` oracle accepts
 nonzero extension families in v1 by contract; only the known C4 family has a v2 form.
+
+## Strengthened constructive validation
+
+`SchemaMutation` builds a valid schema/value pair recursively, then changes exactly one leaf
+value or removes one required property. Arrays are nonempty and homogeneous; nested objects
+include escaped Unicode property names and optional siblings. Tight integer and UTF-8 byte
+bounds and same-type enum violations avoid easy root type rejection. Each case requires both
+positive acceptance and negative rejection, then checks the exact nested error path derived
+from the changed input location. Depth counters confirm that generation reaches nested
+validation. Unconstrained malformed-schema and random-type cases remain separate.

@@ -154,7 +154,7 @@ fn fixed_cross_system_truth_table() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 1024, max_shrink_iters: 20_000, .. ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig { cases: 1024, max_shrink_iters: 20_000, failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))), .. ProptestConfig::default() })]
     #[test]
     fn generated_cross_system_outcomes(gate in any::<bool>(), requirement in 0u8..4,
         review in any::<bool>()) {

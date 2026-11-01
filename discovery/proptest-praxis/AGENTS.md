@@ -4,6 +4,7 @@
 
 | Area | Role |
 | --- | --- |
+| [STRENGTHENING.md](STRENGTHENING.md) | Generator/oracle review, strengthened mechanisms, calibration, and rerun evidence. |
 | [Cargo.toml](Cargo.toml), [Cargo.lock](Cargo.lock) | Pinned property-runner dependency graph. |
 | [src/](src/) | Public API strategies, independent models, exact replays, and source fingerprint checks. |
 | [owner/](owner/), [support/](support/) | Test-only private owner consumers and disposable fixtures. |

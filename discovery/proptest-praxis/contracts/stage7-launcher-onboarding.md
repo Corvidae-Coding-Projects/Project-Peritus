@@ -35,3 +35,13 @@ Use a fresh output directory for each replay. Do not run the deliberate release 
 ## Limits
 
 The release probe covers tag parsing/rendering; its source mount has the discovery crate's `CARGO_PKG_VERSION`, so it does not establish the installed launcher's `is_newer` behavior. HTTP release discovery, download/checksum/range handling, native install, real provider login, account status, model discovery, and connection checks are outside this bounded target. These sources were inspected to identify callers and boundaries, not covered by the property runs.
+
+## Strengthening pass after v0.1.18
+
+Executable discovery now covers seven entry types: absent, executable, non-executable,
+directory, dangling symlink, executable symlink, and non-executable symlink. It exhausts all
+49 ordered pairs and generates zero- through six-entry PATH searches, using Unicode/spaced
+directory names. Both APIs must select the first valid canonical target. Each child has a
+10-second bound. Minimization deletes entries only while the original mismatch persists;
+it no longer substitutes an unrelated hardcoded candidate. Seed 7319 passed all 620 cases
+in this pass, with every type represented more than 200 times across provider kinds.

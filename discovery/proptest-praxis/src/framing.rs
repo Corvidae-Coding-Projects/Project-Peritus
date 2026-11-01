@@ -12,6 +12,16 @@ use serde::{Deserialize, Serialize};
 pub enum Case {
     /// Valid SSE blocks, including comments, ignored fields, and the done sentinel.
     Sse { records: Vec<SseRecord>, crlf: bool, final_separator: bool, chunks: Vec<u16> },
+    /// Repeated metadata, ignored fields, comments and multiline aggregate frame limits.
+    SseAssembly {
+        event: String,
+        id: String,
+        lines: Vec<String>,
+        crlf: bool,
+        final_separator: bool,
+        relation: Relation,
+        chunks: Vec<u16>,
+    },
     /// Valid JSON string records; the framing layer itself does not parse JSON.
     Ndjson {
         records: Vec<String>,
@@ -105,6 +115,9 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
                 records, crlf, final_separator, chunks,
             },
         ),
+        5 => (text(), text(), proptest::collection::vec(prop_oneof![text(), Just("[DONE]".into()), Just(" [DONE]".into())], 1..=4), any::<bool>(), any::<bool>(),
+            prop_oneof![Just(Relation::Below), Just(Relation::At), Just(Relation::Above)], chunks()).prop_map(
+            |(event,id,lines,crlf,final_separator,relation,chunks)| Case::SseAssembly{event,id,lines,crlf,final_separator,relation,chunks}),
         4 => (
             proptest::collection::vec(text(), 0..=steps),
             any::<bool>(), any::<bool>(), any::<bool>(), chunks(),
@@ -171,6 +184,82 @@ pub fn check(case: &Case) -> Result<Metrics, String> {
             partitions(&mut metrics, Format::Sse, *crlf, !final_separator);
             exercise(Format::Sse, &bytes, limits, chunks, Some(&expected), None, &mut metrics)?;
             add(&mut metrics, "constructed_sse_blocks", records.len() as u64);
+        }
+        Case::SseAssembly { event, id, lines, crlf, final_separator, relation, chunks } => {
+            if lines.is_empty()
+                || event.contains(['\n', '\r'])
+                || id.contains(['\n', '\r'])
+                || lines.iter().any(|line| line.contains(['\n', '\r']))
+            {
+                return Err(
+                    "invalid replay: SSE assembly needs delimiter-free fields and data".into()
+                );
+            }
+            let delimiter = if *crlf { "\r\n" } else { "\n" };
+            let mut fields =
+                vec!["event:obsolete".to_owned(), format!("id: {id}"), "unknown".into()];
+            // A NUL-bearing identity must be ignored without deleting the earlier valid identity.
+            fields.push("id:invalid\0identity".into());
+            fields.push(if event.is_empty() { "event".into() } else { format!("event: {event}") });
+            fields.extend(
+                lines.iter().map(|line| {
+                    if line.is_empty() { "data".into() } else { format!("data: {line}") }
+                }),
+            );
+            let frame_bytes = fields.iter().map(String::len).sum::<usize>();
+            let maximum = match relation {
+                Relation::Below => frame_bytes + 1,
+                Relation::At => frame_bytes,
+                Relation::Above => frame_bytes - 1,
+            };
+            // Comments are observable immediately, independent of the accumulated event budget.
+            fields.insert(2, ": keepalive".into());
+            let mut wire = fields.join(delimiter);
+            if *final_separator {
+                wire.push_str(delimiter);
+                wire.push_str(delimiter);
+                wire.push_str("data:next");
+                wire.push_str(delimiter);
+                wire.push_str(delimiter);
+            }
+            let data = lines.join("\n");
+            let event = if data == "[DONE]" {
+                Expected::Done
+            } else {
+                Expected::Event {
+                    event: Some(event.clone()),
+                    id: (!id.contains('\0')).then(|| id.clone()),
+                    data,
+                }
+            };
+            let mut expected = vec![Expected::Comment("keepalive".into()), event];
+            if *final_separator {
+                expected.push(Expected::Event { event: None, id: None, data: "next".into() });
+            }
+            let limits = FramingLimits::new(maximum, wire.len().max(maximum) + 16)
+                .map_err(|e| e.to_string())?;
+            let rejected = matches!(relation, Relation::Above);
+            exercise(
+                Format::Sse,
+                wire.as_bytes(),
+                limits,
+                chunks,
+                (!rejected).then_some(expected.as_slice()),
+                rejected.then_some(ProviderCoreErrorKind::LimitExceeded),
+                &mut metrics,
+            )?;
+            add(&mut metrics, "sse_overwritten_metadata", 1);
+            add(&mut metrics, "sse_ignored_nul_after_identity", 1);
+            add(&mut metrics, "sse_multiline_aggregate_bound", 1);
+            add(
+                &mut metrics,
+                match relation {
+                    Relation::Below => "aggregate_below",
+                    Relation::At => "aggregate_at",
+                    Relation::Above => "aggregate_above",
+                },
+                1,
+            );
         }
         Case::Ndjson { records, crlf, final_newline, blank_lines, chunks } => {
             let delimiter = if *crlf { "\r\n" } else { "\n" };
@@ -351,10 +440,15 @@ fn sse_bytes(
                     lines.push(format!("id: {id}"));
                 }
                 lines.extend(data.iter().map(|line| format!("data: {line}")));
-                expected.push(Expected::Event {
-                    event: event.clone(),
-                    id: id.clone().filter(|value| !value.contains('\0')),
-                    data: data.join("\n"),
+                let data = data.join("\n");
+                expected.push(if data == "[DONE]" {
+                    Expected::Done
+                } else {
+                    Expected::Event {
+                        event: event.clone(),
+                        id: id.clone().filter(|value| !value.contains('\0')),
+                        data,
+                    }
                 });
             }
             SseRecord::Comment(comment) => {
@@ -592,6 +686,30 @@ pub fn examples() -> Vec<Case> {
             chunks: vec![0, 1, 2, 3],
         },
     ];
+    for relation in [Relation::Below, Relation::At, Relation::Above] {
+        for crlf in [false, true] {
+            for final_separator in [false, true] {
+                cases.push(Case::SseAssembly {
+                    event: "".into(),
+                    id: "retained".into(),
+                    lines: vec!["é🦀".into(), "".into(), " [DONE]".into()],
+                    crlf,
+                    final_separator,
+                    relation,
+                    chunks: vec![0, 1, 2, 3],
+                });
+            }
+        }
+    }
+    cases.push(Case::SseAssembly {
+        event: "message".into(),
+        id: "id".into(),
+        lines: vec!["[DONE]".into()],
+        crlf: true,
+        final_separator: true,
+        relation: Relation::At,
+        chunks: vec![1],
+    });
     for format in [Format::Sse, Format::Ndjson] {
         for relation in [Relation::Below, Relation::At, Relation::Above] {
             for crlf in [false, true] {

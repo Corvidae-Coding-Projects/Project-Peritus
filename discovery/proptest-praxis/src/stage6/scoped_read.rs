@@ -27,6 +27,8 @@ pub enum Operation {
     Rewrite(Vec<u8>),
     Scan { cancel_before: bool },
     Symlink,
+    CancelAfterFirstChunk,
+    MutateDuringScan { replace_path: bool },
 }
 
 fn bump(metrics: &mut Metrics, name: &str) {
@@ -80,7 +82,20 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
                 }],
             }
         });
-    prop_oneof![4 => mixed, 2 => eof, 2 => continued_line].boxed()
+    let interrupted = (
+        prop::sample::select(vec![1_usize, 65_535, 65_536, 65_537, 131_072]),
+        any::<u8>(),
+        any::<bool>(),
+    )
+        .prop_map(|(length, byte, replace_path)| Case {
+            initial: vec![byte; length],
+            operations: vec![
+                Operation::CancelAfterFirstChunk,
+                Operation::MutateDuringScan { replace_path },
+                Operation::Scan { cancel_before: false },
+            ],
+        });
+    prop_oneof![4 => mixed, 2 => eof, 2 => continued_line, 2 => interrupted].boxed()
 }
 
 fn sha256(bytes: &[u8]) -> Sha256Digest {
@@ -277,6 +292,80 @@ pub fn check(case: &Case) -> Result<Metrics, String> {
                     bump(&mut metrics, "completed_scans");
                 }
             }
+            Operation::CancelAfterFirstChunk => {
+                let visited = std::cell::Cell::new(0_usize);
+                let mut bytes = Vec::new();
+                let observed = inspection
+                    .scan_file_chunks(
+                        &path,
+                        || visited.get() > 0,
+                        |offset, chunk| {
+                            assert_eq!(offset, bytes.len() as u64);
+                            bytes.extend_from_slice(chunk);
+                            visited.set(visited.get() + 1);
+                        },
+                    )
+                    .map_err(|error| error.to_string())?;
+                if source.is_empty() {
+                    if observed != Some((0, sha256(&[]))) || !bytes.is_empty() {
+                        return Err("empty cancelled scan published inconsistent content".into());
+                    }
+                } else if observed.is_some()
+                    || visited.get() != 1
+                    || bytes.is_empty()
+                    || !source.starts_with(&bytes)
+                {
+                    return Err(
+                        "mid-scan cancellation published a final digest or kept visiting".into()
+                    );
+                } else {
+                    bump(&mut metrics, "mid_scan_cancellations");
+                }
+            }
+            Operation::MutateDuringScan { replace_path } => {
+                if source.is_empty() {
+                    continue;
+                }
+                let mut replacement = source.clone();
+                replacement[0] ^= 0xff; // same-size change, never an equal rewrite
+                let mut changed = false;
+                let mut mutation_error = None;
+                let observed = inspection.scan_file_chunks(
+                    &path,
+                    || false,
+                    |_, _| {
+                        if changed {
+                            return;
+                        }
+                        changed = true;
+                        let written = if *replace_path {
+                            let alternate = root.join("replacement.bin");
+                            fs::write(&alternate, &replacement)
+                                .and_then(|()| fs::rename(&alternate, &file))
+                        } else {
+                            fs::write(&file, &replacement)
+                        };
+                        mutation_error = written.err();
+                    },
+                );
+                if let Some(error) = mutation_error {
+                    return Err(error.to_string());
+                }
+                if !changed || observed.is_ok() {
+                    return Err(
+                        "scan published a digest after its source changed during visitation".into(),
+                    );
+                }
+                source = replacement;
+                bump(
+                    &mut metrics,
+                    if *replace_path {
+                        "scan_path_replacement_rejections"
+                    } else {
+                        "scan_in_place_mutation_rejections"
+                    },
+                );
+            }
             Operation::Symlink => {
                 #[cfg(unix)]
                 {
@@ -346,6 +435,9 @@ pub fn examples() -> Vec<Case> {
         Case {
             initial: vec![b'x'; 65_537],
             operations: vec![
+                Operation::CancelAfterFirstChunk,
+                Operation::MutateDuringScan { replace_path: false },
+                Operation::MutateDuringScan { replace_path: true },
                 Operation::Scan { cancel_before: false },
                 Operation::Bytes { start: 65_530, end: 65_535, maximum: 5 },
             ],

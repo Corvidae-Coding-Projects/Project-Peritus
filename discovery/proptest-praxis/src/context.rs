@@ -95,8 +95,22 @@ pub enum Basis {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Operation {
-    Probe { basis: Basis, preferred_delta: i8, available_delta: i8, headroom: bool },
-    Replace { index: usize, importance: Importance, text: String },
+    Probe {
+        basis: Basis,
+        preferred_delta: i8,
+        available_delta: i8,
+        headroom: bool,
+    },
+    Replace {
+        index: usize,
+        importance: Importance,
+        text: String,
+    },
+    /// Replace graph edges after prior renders, including rejected multi-node cycles.
+    Rewire {
+        index: usize,
+        edges: u16,
+    },
     RejectRevision,
     RejectForeignBinding,
     RejectDependencyCycle,
@@ -136,6 +150,9 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         ),
         4 => (0_usize..max_nodes, importance_strategy(), text_strategy()).prop_map(
             |(index, importance, text)| Operation::Replace { index, importance, text },
+        ),
+        4 => (0_usize..max_nodes, any::<u16>()).prop_map(
+            |(index, edges)| Operation::Rewire { index, edges },
         ),
         1 => Just(Operation::RejectRevision),
         1 => Just(Operation::RejectForeignBinding),
@@ -316,6 +333,29 @@ fn complete_costs(
     state: &WorkingState,
     metrics: &mut crate::Metrics,
 ) -> Result<BTreeMap<usize, u64>, String> {
+    let entries = state.entries(state.binding()).map_err(|error| error.to_string())?;
+    if entries.len() != case.nodes.len() {
+        return Err("retained entry count changed".into());
+    }
+    for (index, node) in case.nodes.iter().enumerate() {
+        let expected_id = node_id(index)?;
+        let entry = entries
+            .iter()
+            .find(|entry| entry.id() == expected_id)
+            .ok_or("retained entry identity disappeared")?;
+        let dependencies =
+            node.dependencies.iter().map(|index| node_id(*index)).collect::<Result<Vec<_>, _>>()?;
+        let (kind, status) = node.importance.production();
+        if entry.links().depends_on() != dependencies
+            || entry.content().bytes() != node.text.as_bytes()
+            || entry.kind() != kind
+            || entry.status() != status
+        {
+            return Err(format!(
+                "retained entry {index} lost exact content or rewired dependencies"
+            ));
+        }
+    }
     let view = render_working_state_complete(state, state.binding())
         .map_err(|error| format!("complete working render failed: {error}"))?;
     let ids = rendered_ids(&view)?;
@@ -630,6 +670,61 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
                 }
                 complete_costs(&current, &state, &mut metrics).map(|_| ())
             }
+            Operation::Rewire { index, edges } => {
+                let index = *index % current.nodes.len();
+                let mut proposed = current.clone();
+                proposed.nodes[index].dependencies = (0..current.nodes.len())
+                    .filter(|dependency| (u32::from(*edges) & (1_u32 << dependency)) != 0)
+                    .collect();
+                let cyclic =
+                    closure(&proposed.nodes, proposed.nodes[index].dependencies.iter().copied())
+                        .contains(&index);
+                let before = state.clone();
+                let entry = make_entry(index, &proposed.nodes[index], limits()?)?;
+                let delta =
+                    WorkingDelta::new(state.binding(), state.revision(), vec![entry], limits()?)
+                        .map_err(|error| error.to_string())?;
+                let actual = apply_working_delta(&state, &delta);
+                if cyclic {
+                    if !matches!(actual, Err(WorkingError::DependencyCycle)) || state != before {
+                        return Err("cyclic edge replacement accepted or changed old state".into());
+                    }
+                    bump(&mut metrics, "rewire_cycle_rejections", 1);
+                } else {
+                    state = actual.map_err(|error| format!("acyclic rewire rejected: {error}"))?;
+                    let old = &current.nodes[index].dependencies;
+                    let new = &proposed.nodes[index].dependencies;
+                    bump(
+                        &mut metrics,
+                        "rewired_edges_added",
+                        new.iter().filter(|id| !old.contains(id)).count() as u64,
+                    );
+                    bump(
+                        &mut metrics,
+                        "rewired_edges_removed",
+                        old.iter().filter(|id| !new.contains(id)).count() as u64,
+                    );
+                    current.nodes[index] = proposed.nodes[index].clone();
+                    bump(&mut metrics, "successful_rewires", 1);
+                    // Equivalent logical graphs reached through update and fresh batch insertion
+                    // must select the same closures; rebuild is not the reference for membership.
+                    let mut rebuilt_case = current.clone();
+                    rebuilt_case.batch_insert = true;
+                    let rebuilt = build_state(&rebuilt_case)?;
+                    for delta in [-1, 0, 1] {
+                        let request = Operation::Probe {
+                            basis: Basis::RequiredClosure,
+                            preferred_delta: delta,
+                            available_delta: 1,
+                            headroom: true,
+                        };
+                        probe(&current, &state, &request, &mut metrics)?;
+                        probe(&rebuilt_case, &rebuilt, &request, &mut metrics)?;
+                    }
+                    bump(&mut metrics, "rewire_rebuild_equivalence_checks", 1);
+                }
+                complete_costs(&current, &state, &mut metrics).map(|_| ())
+            }
             Operation::RejectRevision
             | Operation::RejectForeignBinding
             | Operation::RejectDependencyCycle => {
@@ -760,6 +855,15 @@ pub fn examples() -> Vec<Case> {
         importance: Importance::Optional,
         text: "rght".into(),
     });
+    let mut rewiring = calibration_case();
+    rewiring.operations = vec![
+        Operation::Rewire { index: 2, edges: 0b001 },
+        Operation::Rewire { index: 0, edges: 0b100 }, // two-node cycle
+        Operation::Rewire { index: 2, edges: 0 },
+        Operation::Rewire { index: 0, edges: 0b100 }, // legal after removing the old edge
+        Operation::Rewire { index: 1, edges: 0b001 },
+        Operation::Rewire { index: 2, edges: 0b010 }, // three-node cycle
+    ];
     let empty = Case {
         role: Role::Writer,
         nodes: Vec::new(),
@@ -780,6 +884,7 @@ pub fn examples() -> Vec<Case> {
         reviewer,
         forward_diamond,
         replacement,
+        rewiring,
         empty,
         empty_reviewer,
     ]

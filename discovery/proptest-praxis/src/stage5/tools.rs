@@ -44,6 +44,11 @@ pub enum Case {
         shape: Shape,
         node: Node,
     },
+    SchemaMutation {
+        shape: Shape,
+        valid: Node,
+        invalid: Node,
+    },
     Compatibility {
         before: Shape,
         after: Shape,
@@ -121,6 +126,83 @@ fn shape_strategy() -> BoxedStrategy<Shape> {
     })
     .boxed()
 }
+// Construct related values together so deep validators are reached. Independent random
+// schema/value pairs mostly stop at a root type mismatch; matching() cannot model heterogeneous
+// arrays. Each invalid value changes one nested value or removes one required field.
+fn schema_mutations() -> BoxedStrategy<(Shape, Node, Node)> {
+    prop_oneof![
+        any::<bool>().prop_map(|value| (
+            Shape::Enum(Box::new(Shape::Bool), vec![Node::Bool(value)]),
+            Node::Bool(value),
+            Node::Bool(!value)
+        )),
+        (-1000_i64..1000).prop_map(|value| (
+            Shape::Int(Some(value), Some(value)),
+            Node::Int(value),
+            Node::Int(value + 1)
+        )),
+        "[a-zé界🦀]{0,8}".prop_map(|value| (
+            Shape::Text(value.len() as u32, value.len() as u32),
+            Node::Text(value.clone()),
+            Node::Text(format!("{value}x"))
+        )),
+    ]
+    .prop_recursive(5, 64, 3, |inner| {
+        prop_oneof![
+            (inner.clone(), 1_usize..4, any::<usize>()).prop_map(
+                |((shape, valid, invalid), count, position)| {
+                    let mut bad = vec![valid.clone(); count];
+                    bad[position % count] = invalid;
+                    (
+                        Shape::Array(Box::new(shape), count as u32, count as u32),
+                        Node::Array(vec![valid; count]),
+                        Node::Array(bad),
+                    )
+                }
+            ),
+            (inner, any::<bool>(), any::<bool>()).prop_map(
+                |((shape, valid, invalid), remove, extra)| {
+                    let schema = Shape::Object(
+                        vec![("a".into(), false, Shape::Null), ("é/~".into(), true, shape)],
+                        extra,
+                    );
+                    let good = Node::Object(vec![("é/~".into(), valid)]);
+                    let bad = if remove {
+                        Node::Object(vec![])
+                    } else {
+                        Node::Object(vec![("é/~".into(), invalid)])
+                    };
+                    (schema, good, bad)
+                }
+            ),
+        ]
+    })
+    .boxed()
+}
+fn mutation_path(valid: &Node, invalid: &Node, path: String) -> String {
+    match (valid, invalid) {
+        (Node::Array(a), Node::Array(b)) if a.len() == b.len() => a
+            .iter()
+            .zip(b)
+            .enumerate()
+            .find(|(_, (a, b))| a != b)
+            .map_or(path.clone(), |(index, (a, b))| mutation_path(a, b, format!("{path}/{index}"))),
+        (Node::Object(a), Node::Object(b)) if a.len() == b.len() => {
+            a.iter().zip(b).find(|(a, b)| a != b).map_or(path.clone(), |((key, a), (_, b))| {
+                let escaped = key
+                    .chars()
+                    .map(|c| match c {
+                        '~' => "~0".into(),
+                        '/' => "~1".into(),
+                        c => c.to_string(),
+                    })
+                    .collect::<String>();
+                mutation_path(a, b, format!("{path}/{escaped}"))
+            })
+        }
+        _ => path,
+    }
+}
 fn matching(n: &Node) -> Shape {
     match n {
         Node::Null => Shape::Null,
@@ -141,6 +223,7 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
     prop_oneof![
  5=>(nodes.clone(),prop::array::uniform4(1_u16..128),any::<bool>()).prop_map(|(node,bounds,whitespace)|Case::Json{node,bounds,whitespace}),
  5=>(schemas.clone(),nodes.clone()).prop_map(|(shape,node)|Case::Schema{shape,node}),
+ 6=>schema_mutations().prop_map(|(shape,valid,invalid)|Case::SchemaMutation{shape,valid,invalid}),
  2=>(prop::sample::select(vec!["a","required","x/~"]),any::<bool>()).prop_map(|(name,extra)|Case::Schema{shape:Shape::Object(vec![(name.into(),true,Shape::Bool)],extra),node:Node::Object(vec![])}),
  4=>nodes.prop_map(|node|Case::Schema{shape:matching(&node),node}),
  2=>(schemas.clone(),schemas).prop_map(|(before,after)|Case::Compatibility{before,after}),
@@ -988,6 +1071,50 @@ pub fn check(c: &Case) -> Result<crate::Metrics, String> {
             }
         }
         Case::Schema { shape, node } => schema_case(shape, node),
+        Case::SchemaMutation { shape, valid, invalid } => {
+            let mut good = schema_case(shape, valid)?;
+            let bad = schema_case(shape, invalid)?;
+            if good.get("accepted_schema_values") != Some(&1)
+                || bad.get("rejected_schema_values") != Some(&1)
+            {
+                return Err(
+                    "constructive schema family failed to reach valid and near-valid validation"
+                        .into(),
+                );
+            }
+            let native = native_shape(shape).map_err(err)?;
+            let failure = native
+                .validate(&construct(invalid, JsonLimits::PRODUCTION).map_err(err)?)
+                .expect_err("checked rejection above");
+            let expected_path = mutation_path(valid, invalid, "$".into());
+            if failure.kind() != ProtocolErrorKind::SchemaViolation
+                || failure.path() != expected_path
+            {
+                return Err(format!(
+                    "near-valid value reported wrong violation path: expected {expected_path}, actual {failure:?}"
+                ));
+            }
+            bump(&mut good, "exact_nested_schema_error_paths");
+            for (key, count) in bad {
+                *good.entry(key).or_default() += count;
+            }
+            bump(&mut good, "constructive_schema_mutations");
+            let mut pending = vec![(shape, 1)];
+            let mut depth = 0;
+            while let Some((shape, d)) = pending.pop() {
+                depth = depth.max(d);
+                match shape {
+                    Shape::Array(child, _, _) => pending.push((child, d + 1)),
+                    Shape::Object(properties, _) => {
+                        pending.extend(properties.iter().map(|(_, _, child)| (child, d + 1)))
+                    }
+                    Shape::Enum(child, _) => pending.push((child, d)),
+                    _ => (),
+                }
+            }
+            bump(&mut good, format!("constructive_schema_depth_{depth}"));
+            Ok(good)
+        }
         Case::Compatibility { before, after } => compatibility(before, after),
         Case::Envelope {
             seed,
@@ -1040,6 +1167,20 @@ pub fn calibration() -> Case {
 }
 pub fn examples() -> Vec<Case> {
     let mut v = vec![calibration()];
+    let leaf = Shape::Text(6, 6);
+    let nested =
+        Shape::Object(vec![("é/~".into(), true, Shape::Array(Box::new(leaf), 2, 2))], false);
+    v.push(Case::SchemaMutation {
+        shape: nested,
+        valid: Node::Object(vec![(
+            "é/~".into(),
+            Node::Array(vec![Node::Text("é🦀".into()), Node::Text("é🦀".into())]),
+        )]),
+        invalid: Node::Object(vec![(
+            "é/~".into(),
+            Node::Array(vec![Node::Text("é🦀".into()), Node::Text("é🦀x".into())]),
+        )]),
+    });
     for s in [
         Shape::Null,
         Shape::Bool,

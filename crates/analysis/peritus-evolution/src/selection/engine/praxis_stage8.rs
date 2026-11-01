@@ -34,6 +34,10 @@ const CRITERIA: [Criterion; 14] = [
 ];
 
 fn policy(objective: Objective) -> PromotionPolicy {
+    ordered_policy(vec![objective])
+}
+
+fn ordered_policy(objectives: Vec<Objective>) -> PromotionPolicy {
     let thresholds = PromotionThresholds::new(
         -1_000_000,
         u32::MAX,
@@ -48,15 +52,8 @@ fn policy(objective: Objective) -> PromotionPolicy {
         false,
     )
     .unwrap();
-    PromotionPolicy::new(
-        thresholds,
-        vec![objective],
-        vec![],
-        true,
-        128,
-        EvolutionLimits::compiled(),
-    )
-    .unwrap()
+    PromotionPolicy::new(thresholds, objectives, vec![], true, 128, EvolutionLimits::compiled())
+        .unwrap()
 }
 
 fn assessment(
@@ -65,16 +62,30 @@ fn assessment(
     eligible: bool,
     policy_digest: Sha256Digest,
 ) -> VariantAssessment {
+    let mut outcomes = [0; 14];
+    if !eligible {
+        outcomes[2] = 1;
+    }
+    assessment_outcomes(id, scores, outcomes, policy_digest)
+}
+
+fn assessment_outcomes(
+    id: u8,
+    scores: [u16; 9],
+    outcomes: [u8; 14],
+    policy_digest: Sha256Digest,
+) -> VariantAssessment {
     let evidence = Sha256Digest::new([3; 32]);
     let criteria = CRITERIA
         .into_iter()
-        .map(|criterion| {
+        .enumerate()
+        .map(|(index, criterion)| {
             CriterionResult::new(
                 criterion,
-                if !eligible && criterion == Criterion::Safety {
-                    CriterionOutcome::Failed
-                } else {
-                    CriterionOutcome::Passed
+                match outcomes[index] {
+                    0 => CriterionOutcome::Passed,
+                    1 => CriterionOutcome::Failed,
+                    _ => CriterionOutcome::Unavailable,
                 },
                 None,
                 evidence,
@@ -145,6 +156,54 @@ proptest! {
             (other, expected) => prop_assert!(false, "selection mismatch: {other:?} vs {expected:?}"),
         }
     }
+
+    #[test]
+    fn selection_uses_every_ordered_objective_and_preserves_rejection_causes(
+        cases in prop::collection::vec((prop::array::uniform9(0_u16..=2),
+            any::<bool>(), prop::array::uniform14(0_u8..=2)), 1..25),
+        order in prop::sample::subsequence(OBJECTIVES.to_vec(), 1..=9)
+            .prop_shuffle(),
+    ) {
+        let policy = ordered_policy(order.clone());
+        let inputs = cases.iter().enumerate().map(|(index, (scores, eligible, faults))| {
+            let mut outcomes = if *eligible { [0; 14] } else { *faults };
+            if !eligible && outcomes.iter().all(|value| *value == 0) { outcomes[0] = 2; }
+            (u8::try_from(index * 2 + 1).unwrap(), *scores, outcomes)
+        }).collect::<Vec<_>>();
+        let assessments = inputs.iter().map(|(id, scores, outcomes)|
+            assessment_outcomes(*id, *scores, *outcomes, policy.digest())).collect::<Vec<_>>();
+        let expected = inputs.iter().filter(|(_, _, outcomes)| outcomes.iter().all(|value| *value == 0))
+            .min_by_key(|(id, scores, _)| (order.iter().map(|objective| independent_rank(*objective, *scores))
+                .collect::<Vec<_>>(), *id));
+        let observed = select_variant(&policy, &assessments).unwrap();
+        match (observed.decision(), expected) {
+            (SelectionDecision::Selected(actual), Some((id, _, _))) =>
+                prop_assert_eq!(*actual, VariantId::new([*id; 16]).unwrap()),
+            (SelectionDecision::NoEligibleVariant(rejections), None) => {
+                prop_assert_eq!(rejections.len(), inputs.len());
+                for (rejection, (id, _, outcomes)) in rejections.iter().zip(&inputs) {
+                    let failed = CRITERIA.iter().enumerate().filter(|(i, _)| outcomes[*i] == 1)
+                        .map(|(_, criterion)| *criterion).collect::<Vec<_>>();
+                    let unavailable = CRITERIA.iter().enumerate().filter(|(i, _)| outcomes[*i] == 2)
+                        .map(|(_, criterion)| *criterion).collect::<Vec<_>>();
+                    prop_assert_eq!(rejection.variant_id(), VariantId::new([*id; 16]).unwrap());
+                    prop_assert_eq!(rejection.failed(), failed.as_slice());
+                    prop_assert_eq!(rejection.unavailable(), unavailable.as_slice());
+                }
+            }
+            (actual, expected) => prop_assert!(false, "selection mismatch: {actual:?} vs {expected:?}"),
+        }
+        // Legal selection must remain possible after rejecting malformed input order/identity.
+        if assessments.len() > 1 {
+            let mut reversed = assessments.clone();
+            reversed.reverse();
+            prop_assert!(select_variant(&policy, &reversed).is_err());
+        }
+        let duplicate = vec![assessments[0].clone(), assessments[0].clone()];
+        prop_assert!(select_variant(&policy, &duplicate).is_err());
+        prop_assert_eq!(select_variant(&policy, &assessments).unwrap(), observed);
+    }
+
 }
 
 #[test]

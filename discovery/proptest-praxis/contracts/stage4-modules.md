@@ -61,3 +61,5 @@ and source identity, not just the seed or configured history flag, determine the
 Final reports record actual installs, owner conflicts, retained removals, commits, exact pages,
 reopen operations and reached failure/retry windows. Linux is the current native environment;
 other OS locking/persistence behavior and hostile package path races remain separate coverage.
+
+The follow-up generator and oracle review is recorded in [state-strengthening.md](state-strengthening.md).

@@ -5,6 +5,8 @@ use super::{
 use peritus_app_protocol::*;
 use serde_json::json;
 use std::{collections::BTreeMap, fs};
+const STEERING_ACK: &str = "The latest input is acknowledged; continuing the unfinished task.";
+
 fn bump(m: &mut BTreeMap<String, u64>, key: &str) {
     *m.entry(key.into()).or_default() += 1;
 }
@@ -51,6 +53,14 @@ async fn execute(f: &mut Fixture, case: &Case) -> Result<BTreeMap<String, u64>, 
     }
     if case.scenario == Scenario::SteerBeforeTool {
         fs::write(f.root.join("enable-admission-barrier"), b"once").map_err(|e| e.to_string())?;
+    }
+    if matches!(
+        case.scenario,
+        Scenario::SteerBeforeTool | Scenario::SteerBeforeFinal | Scenario::ModelChange
+    ) {
+        // Steering is answered publicly before the original task resumes. This script must
+        // exist before that request starts; changing it after admission would race the provider.
+        f.script(1, &json!({"text":format!("CONTINUE\n{STEERING_ACK}")}))?;
     }
     f.begin().await?;
     let rows = f.wait_requests(1).await?;
@@ -148,7 +158,13 @@ async fn steer(f: &mut Fixture, case: &Case, m: &mut BTreeMap<String, u64>) -> R
     {
         return Err("held/withdrawn input reached actual request".into());
     }
-    f.release(1)?;
+    let resumed = resume_after_public_reply(f, 1, &requests[1], &text, m).await?;
+    if resumed["messages"].to_string().contains("HELD_INPUT_SENTINEL")
+        || resumed["messages"].to_string().contains("WITHDRAWN_INPUT_SENTINEL")
+    {
+        return Err("held/withdrawn input reached resumed work request".into());
+    }
+    f.release(2)?;
     let done = f.wait_phase(ProductRunPhase::WaitingForUser).await?;
     verify_committed_reply(f, m).await?;
     if done.received() != done.incorporated() {
@@ -182,6 +198,7 @@ async fn steer(f: &mut Fixture, case: &Case, m: &mut BTreeMap<String, u64>) -> R
     }) {
         return Err("held or withdrawn state was not conserved".into());
     }
+    f.script(3, &json!({"text":format!("CONTINUE\n{STEERING_ACK}")}))?;
     f.command(WorkbenchIntent::Queue(WorkbenchQueueIntent::Hold {
         selected: WorkbenchInputSelection::new(
             WorkbenchInputId::new([84; 16]).map_err(|e| format!("{e:?}"))?,
@@ -196,13 +213,14 @@ async fn steer(f: &mut Fixture, case: &Case, m: &mut BTreeMap<String, u64>) -> R
         ProductInteractionMode::Chat,
     )))
     .await?;
-    let rows = f.wait_requests(3).await?;
-    if !rows[2]["messages"].to_string().contains("HELD_INPUT_SENTINEL")
-        || rows[2]["messages"].to_string().contains("WITHDRAWN_INPUT_SENTINEL")
+    let rows = f.wait_requests(4).await?;
+    if !rows[3]["messages"].to_string().contains("HELD_INPUT_SENTINEL")
+        || rows[3]["messages"].to_string().contains("WITHDRAWN_INPUT_SENTINEL")
     {
         return Err("unhold/withdraw visibility on next request is incorrect".into());
     }
-    f.release(2)?;
+    resume_after_public_reply(f, 3, &rows[3], "HELD_INPUT_SENTINEL", m).await?;
+    f.release(4)?;
     f.wait_phase(ProductRunPhase::WaitingForUser).await?;
     bump(m, "unheld_inputs_incorporated");
     bump(m, "steering_dispatch_schedules");
@@ -237,7 +255,8 @@ async fn model_change(f: &mut Fixture, m: &mut BTreeMap<String, u64>) -> Result<
     {
         return Err("same-invocation immutable model/effort boundary violated".into());
     }
-    f.release(1)?;
+    resume_after_public_reply(f, 1, &requests[1], active_text, m).await?;
+    f.release(2)?;
     f.wait_phase(ProductRunPhase::WaitingForUser).await?;
     input_accounted(f, 84, active_text).await?;
     verify_committed_reply(f, m).await?;
@@ -247,27 +266,75 @@ async fn model_change(f: &mut Fixture, m: &mut BTreeMap<String, u64>) -> Result<
     )))
     .await?;
     let idle_text = "A later idle continuation retains the next selected model.";
+    f.script(3, &json!({"text":format!("CONTINUE\n{STEERING_ACK}")}))?;
     f.enqueue(88, idle_text).await?;
     f.request(AppRequestPayload::ContinueWorkbenchExecution(WorkbenchContinuation::new(
         fixture::query(),
         ProductInteractionMode::Chat,
     )))
     .await?;
-    let rows = f.wait_requests(3).await?;
-    if rows[2]["model"] != "fixture-a"
-        || rows[2]["effort"] != "low"
-        || !rows[2]["messages"].as_array().is_some_and(|messages| {
+    let rows = f.wait_requests(4).await?;
+    if rows[3]["model"] != "fixture-a"
+        || rows[3]["effort"] != "low"
+        || !rows[3]["messages"].as_array().is_some_and(|messages| {
             messages.iter().any(|message| message.as_str().is_some_and(|s| s.contains(idle_text)))
         })
     {
         return Err("idle continuation model selection was substituted".into());
     }
-    f.release(2)?;
+    resume_after_public_reply(f, 3, &rows[3], idle_text, m).await?;
+    f.release(4)?;
     f.wait_phase(ProductRunPhase::WaitingForUser).await?;
     input_accounted(f, 88, idle_text).await?;
     bump(m, "active_model_update_boundaries");
     bump(m, "idle_model_update_boundaries");
     Ok(())
+}
+
+async fn resume_after_public_reply(
+    f: &mut Fixture,
+    reply_turn: usize,
+    reply: &serde_json::Value,
+    latest_text: &str,
+    m: &mut BTreeMap<String, u64>,
+) -> Result<serde_json::Value, String> {
+    if reply["turn"] != reply_turn
+        || !reply["request_id"].as_str().is_some_and(|id| id.contains("-user-response-"))
+        || reply["tool_count"] != 0
+        || !reply["messages"].to_string().contains("CURRENT USER RESPONSE TURN")
+        || !reply["messages"].as_array().is_some_and(|messages| {
+            messages.iter().any(|message| message.as_str().is_some_and(|s| s.contains(latest_text)))
+        })
+    {
+        return Err("active steering skipped the dedicated public, tool-free reply turn".into());
+    }
+    f.release(u64::try_from(reply_turn).map_err(|error| error.to_string())?)?;
+    let requests = f.wait_requests(reply_turn + 2).await?;
+    let resumed = &requests[reply_turn + 1];
+    let messages = resumed["messages"].to_string();
+    if resumed["request_id"].as_str().is_none_or(|id| id.contains("-user-response-"))
+        || invocation_prefix(reply)? != invocation_prefix(resumed)?
+        || resumed["model"] != reply["model"]
+        || resumed["effort"] != reply["effort"]
+        || !resumed["messages"].as_array().is_some_and(|messages| {
+            messages.iter().any(|message| message.as_str().is_some_and(|s| s.contains(latest_text)))
+        })
+        || !messages.contains(STEERING_ACK)
+        || messages.contains("CURRENT USER RESPONSE TURN")
+    {
+        return Err(
+            "resumed task lost latest input, public reply, invocation, or model choice".into()
+        );
+    }
+    let snapshot = f.interaction().await?;
+    if !snapshot.activities().iter().any(|activity| activity.text() == STEERING_ACK)
+        || snapshot.activities().iter().any(|activity| activity.text().contains("CONTINUE\n"))
+    {
+        return Err("steering reply was not publicly delivered without its private marker".into());
+    }
+    bump(m, "dedicated_public_steering_replies");
+    bump(m, "same_invocation_resumptions_after_reply");
+    Ok(resumed.clone())
 }
 
 fn invocation_prefix(row: &serde_json::Value) -> Result<&str, String> {
@@ -278,7 +345,7 @@ fn invocation_prefix(row: &serde_json::Value) -> Result<&str, String> {
     let (prefix, turn) = head.rsplit_once('-').ok_or("request identity missing turn suffix")?;
     attempt.parse::<u8>().map_err(|error| error.to_string())?;
     turn.parse::<u16>().map_err(|error| error.to_string())?;
-    Ok(prefix)
+    Ok(prefix.strip_suffix("-user-response").unwrap_or(prefix))
 }
 
 async fn input_accounted(f: &mut Fixture, id: u8, text: &str) -> Result<(), String> {
@@ -422,7 +489,9 @@ async fn unsupported(f: &mut Fixture, m: &mut BTreeMap<String, u64>) -> Result<(
     if f.interaction().await?.models() != &fixture::models("fixture-a", false)? {
         return Err("failed choice mutated durable model selections".into());
     }
-    f.enqueue(89, "Continue after rejected selection with the previous model.").await?;
+    let prior_text = "Continue after rejected selection with the previous model.";
+    f.script(1, &json!({"text":format!("CONTINUE\n{STEERING_ACK}")}))?;
+    f.enqueue(89, prior_text).await?;
     f.request(AppRequestPayload::ContinueWorkbenchExecution(WorkbenchContinuation::new(
         fixture::query(),
         ProductInteractionMode::Chat,
@@ -432,7 +501,8 @@ async fn unsupported(f: &mut Fixture, m: &mut BTreeMap<String, u64>) -> Result<(
     if prior[1]["model"] != "fixture-a" || prior[1]["effort"] != "low" {
         return Err("invalid selection changed subsequent request model or effort".into());
     }
-    f.release(1)?;
+    resume_after_public_reply(f, 1, &prior[1], prior_text, m).await?;
+    f.release(2)?;
     f.wait_phase(ProductRunPhase::WaitingForUser).await?;
     let defaults = f
         .request(AppRequestPayload::UpdateModels(ProductModelUpdate::new(
@@ -443,18 +513,49 @@ async fn unsupported(f: &mut Fixture, m: &mut BTreeMap<String, u64>) -> Result<(
     if !matches!(defaults, AppResponsePayload::Interaction(_)) {
         return Err("documented configured-model default was rejected".into());
     }
-    f.enqueue(90, "Configured profile choice remains explicit provider authority.").await?;
+    let configured_text = "Configured profile choice remains explicit provider authority.";
+    f.script(3, &json!({"text":format!("CONTINUE\n{STEERING_ACK}")}))?;
+    f.enqueue(90, configured_text).await?;
     f.request(AppRequestPayload::ContinueWorkbenchExecution(WorkbenchContinuation::new(
         fixture::query(),
         ProductInteractionMode::Chat,
     )))
     .await?;
-    let configured = f.wait_requests(3).await?;
-    if configured[2]["model"] != "fixture-a" {
+    let waiting = f.wait_phase(ProductRunPhase::WaitingForUser).await?;
+    if f.requests()?.len() != 3
+        || waiting.models() != &ProductRoleModels::default()
+        || !waiting.activities().iter().any(|activity| {
+            activity.text().contains("Choose a reasoning effort")
+                && activity.text().contains("No model request was sent.")
+        })
+    {
+        return Err(
+            "unset reasoning effort did not pause visibly without substitute inference".into()
+        );
+    }
+    let choice = ProductModelChoice::default().with_effort(ProductModelEffort::Low);
+    let selected = f
+        .request(AppRequestPayload::UpdateModels(ProductModelUpdate::new(
+            fixture::run(),
+            ProductRoleModels::new(choice.clone(), choice.clone(), choice),
+        )))
+        .await?;
+    if !matches!(selected, AppResponsePayload::Interaction(_)) {
+        return Err("explicit reasoning effort for configured model was rejected".into());
+    }
+    f.request(AppRequestPayload::ContinueWorkbenchExecution(WorkbenchContinuation::new(
+        fixture::query(),
+        ProductInteractionMode::Chat,
+    )))
+    .await?;
+    let configured = f.wait_requests(4).await?;
+    if configured[3]["model"] != "fixture-a" || configured[3]["effort"] != "low" {
         return Err("configured profile default was substituted".into());
     }
-    f.release(2)?;
+    resume_after_public_reply(f, 3, &configured[3], configured_text, m).await?;
+    f.release(4)?;
     f.wait_phase(ProductRunPhase::WaitingForUser).await?;
+    bump(m, "missing_effort_waits_without_inference");
     bump(m, "configured_profile_defaults");
     bump(m, "unsupported_choices_rejected");
     Ok(())
@@ -509,6 +610,7 @@ async fn late_finalization(
     m: &mut BTreeMap<String, u64>,
 ) -> Result<(), String> {
     f.script(0, &json!({"text":"initial answer"}))?;
+    f.script(1, &json!({"text":format!("CONTINUE\n{STEERING_ACK}")}))?;
     fs::write(f.root.join("enable-finalization-barrier"), b"once").map_err(|e| e.to_string())?;
     f.begin().await?;
     f.wait_requests(1).await?;
@@ -532,7 +634,8 @@ async fn late_finalization(
     }) {
         return Err("late accepted input was lost between finish and automatic retry".into());
     }
-    f.release(1)?;
+    resume_after_public_reply(f, 1, &rows[1], &case.text, m).await?;
+    f.release(2)?;
     let idle = f.wait_phase(ProductRunPhase::WaitingForUser).await?;
     if idle.received() != idle.incorporated() {
         return Err("late input remained unaccounted after automatic continuation".into());

@@ -160,6 +160,15 @@ pub fn strategy(modes: &[Mode], max_steps: usize) -> BoxedStrategy<Case> {
         .boxed()
 }
 
+/// Pair each admitted malformed transcript with the same clean request/response payload. This
+/// prevents arbitrary generated setup or normal decoding failures from qualifying a negative case.
+pub fn positive_control(case: &Case) -> Option<Case> {
+    (case.fault != Fault::None
+        && case.cancel_after.is_none()
+        && case.mode.effort_supported(case.effort))
+    .then(|| Case { fault: Fault::None, ..case.clone() })
+}
+
 pub fn example(mode: Mode) -> Case {
     Case {
         mode,
@@ -277,6 +286,10 @@ pub fn profile(mode: Mode) -> Result<ProviderProfile, String> {
     .map_err(|e| e.to_string())
 }
 
+fn request_text(case: &Case) -> String {
+    format!("Synthetic provider request {}. Preserve this exact text: {}", case.model, case.payload)
+}
+
 pub fn request(profile: &ProviderProfile, case: &Case) -> Result<ModelRequest, String> {
     let limits = ProtocolLimits::PRODUCTION;
     let negotiated = negotiate(
@@ -310,12 +323,7 @@ pub fn request(profile: &ProviderProfile, case: &Case) -> Result<ModelRequest, S
             Message::new(
                 Role::User,
                 vec![ContentBlock::Text(
-                    BoundedText::new(
-                        "Synthetic provider-boundary request. Return the scripted inert result."
-                            .into(),
-                        limits,
-                    )
-                    .map_err(|e| e.to_string())?,
+                    BoundedText::new(request_text(case), limits).map_err(|e| e.to_string())?,
                 )],
                 limits,
             )
@@ -859,12 +867,18 @@ pub async fn drive_owned(
     metrics: &mut Metrics,
     ready: Option<std::path::PathBuf>,
 ) -> Result<(), String> {
+    let initial_model = provider.profile().model().as_str().to_owned();
+    let initial = Arc::clone(&provider);
     let provider = provider
         .select_model(ModelName::new(model(case)).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
     if provider.profile().model().as_str() != model(case) {
         return Err("explicit model selection was not retained by provider".into());
     }
+    if initial.profile().model().as_str() != initial_model {
+        return Err("selecting a new provider changed the original provider profile".into());
+    }
+    bump(metrics, "immutable_model_selections");
     let request = match request(provider.profile(), case) {
         Ok(request) => request,
         Err(_error) if !case.mode.effort_supported(case.effort) => {
@@ -1263,6 +1277,25 @@ pub fn inspect_http(
                 "selected model missing from actual HTTP request: {route} {value}"
             ));
         }
+        let (role_path, text_path, role) = match case.mode {
+            Mode::GoogleGenerate => ("/contents/0/role", "/contents/0/parts/0/text", "user"),
+            Mode::GoogleInteractions => ("/input/0/type", "/input/0/content/0/text", "user_input"),
+            Mode::Anthropic | Mode::CompatibleChat => {
+                ("/messages/0/role", "/messages/0/content/0/text", "user")
+            }
+            Mode::OpenAi | Mode::CompatibleResponses => {
+                ("/input/0/role", "/input/0/content/0/text", "user")
+            }
+            _ => return Err("non-HTTP provider passed to HTTP request oracle".into()),
+        };
+        if value.pointer(role_path).and_then(Value::as_str) != Some(role)
+            || value.pointer(text_path).and_then(Value::as_str) != Some(request_text(case).as_str())
+        {
+            return Err(format!(
+                "outbound request changed user role or exact Unicode/escaped text: {value}"
+            ));
+        }
+        bump(metrics, "preserved_request_role_and_text");
         if case.effort != 0 {
             let effort = if case.effort == 1 {
                 "low"

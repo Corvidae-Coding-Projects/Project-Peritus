@@ -10,8 +10,16 @@ use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Case {
-    History { operations: Vec<Operation> },
+    History {
+        operations: Vec<Operation>,
+    },
     ExhaustedCycle,
+    /// Legacy rows can share identity while representing different observations and states.
+    RestoreRows {
+        category: u8,
+        key: u8,
+        rows: Vec<(u8, u8, u8)>,
+    },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Finding {
@@ -55,7 +63,43 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         1=>finding_strategy().prop_map(|finding|Operation::RejectDuplicate{finding}),
         1=>Just(Operation::RejectRestore),1=>Just(Operation::Read),
     ];
-    prop_oneof![20=>prop::collection::vec(operation,0..=max_steps.min(256)).prop_map(|operations|Case::History{operations}),1=>Just(Case::ExhaustedCycle)].boxed()
+    let general = prop::collection::vec(operation, 0..=max_steps.min(256))
+        .prop_map(|operations| Case::History { operations });
+    let restore =
+        (0_u8..7, 0_u8..8, prop::collection::vec((1_u8..9, any::<u8>(), 0_u8..3), 1..=16))
+            .prop_map(|(category, key, raw)| Case::RestoreRows {
+                category,
+                key,
+                rows: raw
+                    .into_iter()
+                    .map(|(last, first, state)| (1 + first % last, last, state))
+                    .collect(),
+            });
+    // A recurring identity is deliberate: broad random reviews rarely reopen the exact row
+    // after fixer -> omission -> restore, despite individually covering each operation.
+    let recurrence = finding_strategy().prop_map(|finding| {
+        let mut repeated = finding.clone();
+        repeated.variant = (repeated.variant + 1) % 3;
+        repeated.detail = repeated.detail.wrapping_add(1);
+        repeated.location = repeated.location.wrapping_add(1);
+        Case::History {
+            operations: vec![
+                Operation::Review { findings: vec![finding] },
+                Operation::Review { findings: vec![] },
+                Operation::Fix,
+                Operation::Restore { duplicate: true, reverse: true },
+                Operation::Review { findings: vec![] },
+                Operation::Restore { duplicate: true, reverse: false },
+                Operation::Review { findings: vec![repeated] },
+                Operation::Read,
+            ],
+        }
+    });
+    if max_steps < 8 {
+        prop_oneof![20=>general,4=>restore,1=>Just(Case::ExhaustedCycle)].boxed()
+    } else {
+        prop_oneof![12=>general,4=>restore,4=>recurrence,1=>Just(Case::ExhaustedCycle)].boxed()
+    }
 }
 fn category(value: u8) -> ProductFindingCategory {
     match value {
@@ -301,6 +345,11 @@ fn admit(
 
 pub fn check(case: &Case) -> Result<crate::Metrics, String> {
     let mut metrics = crate::Metrics::new();
+    if let Case::RestoreRows { category, key, rows } = case {
+        check_restore_rows(*category, *key, rows, &mut metrics)?;
+        bump(&mut metrics, "cases", 1);
+        return Ok(metrics);
+    }
     let Case::History { operations } = case else {
         let mut ledger =
             ProductFindingLedger::restore(u32::MAX, "exhausted head".into(), Vec::new())
@@ -449,6 +498,93 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
     Ok(metrics)
 }
 
+fn check_restore_rows(
+    category_id: u8,
+    key: u8,
+    rows: &[(u8, u8, u8)],
+    metrics: &mut crate::Metrics,
+) -> Result<(), String> {
+    if category_id >= 7
+        || key >= 8
+        || rows.is_empty()
+        || rows.len() > 32
+        || rows
+            .iter()
+            .any(|(first, last, state)| *first == 0 || first > last || *last > 8 || *state > 2)
+    {
+        return Err("invalid bounded legacy-row fixture".into());
+    }
+    let material = |last: u8, phase: u8| Finding {
+        category: category_id,
+        key,
+        variant: 0,
+        severity: (last + phase) % 5,
+        detail: last * 3 + phase,
+        location: last,
+    };
+    let lifecycle = |last: u8, phase: u8| match phase {
+        0 => State::Open,
+        1 => State::Proposed(u32::from(last)),
+        _ => State::Resolved(u32::from(last)),
+    };
+    let first = rows.iter().map(|(first, _, _)| *first).min().ok_or("no first row")?;
+    // Contract ordering: newest observation wins; same-cycle unresolved/proposed records
+    // dominate resolved ones. Equal rank rows intentionally have identical payloads because
+    // arbitrary conflicting payload precedence is not specified by this API.
+    let (_, last, phase) = *rows
+        .iter()
+        .max_by_key(|(_, last, phase)| (*last, [2_u8, 3, 1][usize::from(*phase)]))
+        .ok_or("no winning row")?;
+    let expected_finding = material(last, phase);
+    let expected = Entry {
+        title: title(&expected_finding),
+        finding: expected_finding,
+        first: u32::from(first),
+        last: u32::from(last),
+        state: lifecycle(last, phase),
+    };
+    let cycle = u32::from(last);
+    let model = Model {
+        cycle,
+        fixes: 0,
+        summary: "restored legacy review".into(),
+        entries: BTreeMap::from([((category_id, key), expected)]),
+    };
+    let input: Vec<_> = rows
+        .iter()
+        .map(|(first, last, phase)| {
+            let finding = material(*last, *phase);
+            restored(&Entry {
+                title: title(&finding),
+                finding,
+                first: u32::from(*first),
+                last: u32::from(*last),
+                state: lifecycle(*last, *phase),
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let mut baseline = None;
+    for rotation in 0..input.len() {
+        let mut permutation = input.clone();
+        permutation.rotate_left(rotation);
+        if rotation % 2 == 1 {
+            permutation.reverse();
+        }
+        // Exact duplicates must also be idempotent after coalescing unlike lifecycle rows.
+        permutation.extend(permutation.clone());
+        let ledger = ProductFindingLedger::restore(cycle, model.summary.clone(), permutation)
+            .map_err(|error| error.to_string())?;
+        compare(&model, &ledger, metrics)?;
+        if baseline.as_ref().is_some_and(|prior| prior != &ledger) {
+            return Err("legacy restoration depended on row order or duplicate multiplicity".into());
+        }
+        baseline = Some(ledger);
+        bump(metrics, "legacy_restore_permutations", 1);
+    }
+    bump(metrics, "nonidentical_legacy_rows", rows.len() as u64);
+    Ok(())
+}
+
 pub fn calibration_case() -> Case {
     Case::History {
         operations: vec![
@@ -469,7 +605,7 @@ pub fn calibration_case() -> Case {
 pub fn examples() -> Vec<Case> {
     let mut broad = match calibration_case() {
         Case::History { operations } => operations,
-        Case::ExhaustedCycle => Vec::new(),
+        Case::ExhaustedCycle | Case::RestoreRows { .. } => Vec::new(),
     };
     broad.extend([
         Operation::Fix,
@@ -550,5 +686,11 @@ pub fn examples() -> Vec<Case> {
         policy,
         aliases,
         Case::ExhaustedCycle,
+        Case::RestoreRows {
+            category: 0,
+            key: 0,
+            rows: vec![(1, 1, 0), (2, 4, 2), (3, 4, 0), (3, 4, 1)],
+        },
+        Case::RestoreRows { category: 0, key: 0, rows: vec![(1, 3, 1), (2, 4, 2)] },
     ]
 }

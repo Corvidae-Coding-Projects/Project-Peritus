@@ -22,7 +22,7 @@ proptest! {
     #![proptest_config(ProptestConfig {
         cases: 512,
         failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::Direct(
-            "crates/analysis/peritus-eval/tests/stage8_statistics.proptest-regressions",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stage8_statistics.proptest-regressions"),
         ))),
         ..ProptestConfig::default()
     })]
@@ -76,6 +76,37 @@ proptest! {
         if u32::from(k) < n && k < u16::MAX {
             let more_draws = pass_at_k(n, c, k + 1).unwrap().estimate().get();
             prop_assert!(more_draws >= observed);
+        }
+    }
+
+    #[test]
+    fn distribution_checks_wide_totals_and_exact_overflow_boundary(
+        left in 4_u64..=u64::MAX - 3,
+        delta in -3_i8..=3,
+        zeros in 0_usize..=120,
+        missing in any::<u32>(),
+    ) {
+        let expected_total = u128::from(u64::MAX).checked_add_signed(i128::from(delta)).unwrap();
+        let right = u64::try_from(expected_total - u128::from(left)).unwrap();
+        let mut values = vec![left, right];
+        values.resize(zeros + 2, 0);
+        let observed = DistributionSummary::new(values.clone(), missing);
+        if expected_total > u128::from(u64::MAX) {
+            prop_assert!(observed.is_err(), "overflow was accepted: {expected_total}");
+        } else {
+            let observed = observed.unwrap();
+            prop_assert_eq!(u128::from(observed.total()), expected_total);
+            prop_assert_eq!(u128::from(observed.mean()), expected_total / values.len() as u128);
+            prop_assert_eq!(observed.missing(), missing);
+            // Independent cumulative-frequency oracle, including many tied zero samples.
+            for (percent, actual) in [(50, observed.p50()), (95, observed.p95()), (99, observed.p99())] {
+                let expected = values.iter().copied().filter(|candidate|
+                    values.iter().filter(|value| *value <= candidate).count() * 100 >= values.len() * percent
+                ).min().unwrap();
+                prop_assert_eq!(actual, expected);
+            }
+            values.reverse();
+            prop_assert_eq!(DistributionSummary::new(values, missing).unwrap(), observed);
         }
     }
 }

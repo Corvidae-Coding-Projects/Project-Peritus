@@ -152,3 +152,5 @@ metrics, failure artifacts and baseline/mutant/restored evidence.
 The separate early evidence directory is also preserved in the coordinating snapshot at
 `runs/stage3-independent-early-02/`. Its older absolute source/command paths remain provenance;
 it does not substitute for the final exact-source reports selected by `evidence/stage3.json`.
+
+The follow-up generator and oracle review is recorded in [state-strengthening.md](state-strengthening.md).

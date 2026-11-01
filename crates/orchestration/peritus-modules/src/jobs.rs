@@ -143,8 +143,13 @@ impl Job {
             }
         }
         let job = Self { root, state, _lock: None, definition };
-        let page = match job.state.completed.last() {
-            Some(output) => {
+        let page = match job.state.completed.split_last() {
+            Some((output, predecessors)) => {
+                // The snapshot exposes every completed stage, so each retained predecessor
+                // must be intact even when only the final output is being paged.
+                for predecessor in predecessors {
+                    job.verify(predecessor)?;
+                }
                 job.read(std::slice::from_ref(&output.stage), &output.stage, offset, 32768)?
             }
             None => json!(null),

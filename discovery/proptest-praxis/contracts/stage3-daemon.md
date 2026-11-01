@@ -9,7 +9,7 @@ The parent operates `peritus-app-client::Client` over the actual Unix socket, in
 - **Before tool admission:** release the provider response, pause at a test-only barrier immediately before `LiveConversation::admit_tool` checks C0 generation, accept/edit/hold/withdraw inputs through IPC, then release admission. The stale child must yield. Actual host activity must not show the stale tool as executed; current eligible bytes must reach the following request. Held/withdrawn sentinels must remain excluded, and unholding must restore only that exact input on a subsequent turn. This is host-boundary evidence; the read-only tool has no external mutation counter.
 - **Before response finalization:** accept inputs while the old provider stream is blocked. The subsequent real request must contain the latest exact eligible revision. At idle, accepted/incorporated generations must agree. The brief-page/proposal APIs must expose exactly one immutable committed reply, with exact expected bytes, size and digest. Already streamed Assistant activity is permitted and is not mistaken for a terminal C0 reply.
 - **After runner return:** pause immediately before daemon terminal publication, accept another input, then release. The coordinator must automatically retry accepted pending work; the next real request must contain it and eventual incorporated state must account for it. This supplements the earlier response boundary and the domain-driver completion crash cuts.
-- **Model/effort changes:** an in-flight request retains its initial selection; an update plus steering in that same active invocation affects the next request. A later idle continuation preserves the newly selected model/effort. A rejected unsupported choice cannot mutate durable role selections or substitute a future request. The current public empty-choice contract explicitly selects the configured profile; this is tested as documented behavior, not silently changed into another policy.
+- **Model/effort changes:** an in-flight request retains its initial selection; an update plus steering in that same active invocation affects the next request. A later idle continuation preserves the newly selected model/effort. A rejected unsupported choice cannot mutate durable role selections or substitute a future request. The current public empty-model choice retains the configured profile independently of reasoning effort. Missing effort must pause with an actionable selection message and send no inference request; selecting Low explicitly must resume with that exact configured model and effort.
 - **Cancellation/retry:** current cancellation reaches an honest Cancelled state, then an explicit retry creates a new request and reaches idle. Cancellation is not inferred from a transport EOF.
 - **Provider crash:** terminate the actual owned daemon process, start a fresh daemon against the same state, reconnect a fresh IPC client and inspect RecoveryRequired. Startup itself must not issue a new provider request. Explicit retry must resume work truthfully.
 - **Completed ordinary effect:** direct folders enter through ordinary Chat `run_pipeline`, with real grounding, design handoff and exact `workspace_scope`. The real command uses literal `dd` arguments, an immutable fixture input and an append target. Both successful C2 metadata and exact independent output bytes are required. Kill after a subsequent provider boundary, reopen and explicitly retry; ordinary source inspection must preserve exactly one counter line. The recovery tail establishes retained effects/read behavior, not acceptance of a fully reviewed original pipeline deliverable.
@@ -31,7 +31,35 @@ The model-change case records canonical effort values and compares exact `low`/`
 `xhigh` cannot satisfy `high`. It verifies both steering sentinels in actual requests, exact
 incorporated queue revisions, received/incorporated accounting and the first immutable final
 reply. Request identities must share their invocation prefix after parsing only the documented
-turn/attempt suffix. Live selection assertions exercise the writer; assigning the same choices
+turn/attempt suffix and the dedicated `-user-response` role suffix. Live selection assertions exercise the writer; assigning the same choices
 to all roles does not establish independent reviewer/fixer selection or switching provider
 implementations. The schedule selector ignores the generic history-length flag: its nine
 explicit finite scenario families, edits and reconnect choices are the actual generation bounds.
+
+
+## Strengthened continuation schedules (2026-11-01)
+
+The current protocol separates a new-input public reply from the unfinished task's terminal reply.
+Active steering, unhold, idle continuation, model changes and finalization retry therefore use
+explicit two-turn schedules: a tool-free `UserResponse` with `CONTINUE` and a public acknowledgement,
+then an ordinary resumed request. The fixture checks exact latest input in both requests, retained
+invocation/model/effort, retained acknowledgement, and public activity with the control marker
+removed before releasing the final response. The existing queue-revision, held/withdrawn-input,
+stale-tool and immutable-final-reply oracles remain in place. Numeric turn releases are fixed per
+scenario; the fixture never releases arbitrary additional requests until idle.
+
+The prior schedule timed out because it released only the public acknowledgement while the real
+daemon correctly requested the resumed work turn. The old configured-profile scenario also expected
+inference with unset effort. Both were stale fixture expectations; this correction changes no
+production code. After verifying the missing-effort pause and absence of a provider request, that
+scenario sets Low explicitly and checks the exact configured model and effort in both subsequent
+requests.
+
+Validation in the isolated policy worktree passed all **9 fixed scenarios** and **64 generated
+histories** with seed **32189**, with no rejected or shrunk cases. Combined, these runs checked
+81 public-reply/resumption pairs, 12 missing-effort pauses without inference, 11 actual daemon-kill
+recoveries, and 4 retained ordinary-effect recoveries. Strict daemon Clippy (`-D warnings`), rustfmt
+for the changed fixture files, and `git diff --check` passed. Attested local evidence is retained in
+`/home/doll/.cache/peritus-praxis-strengthen/policy-runs/daemon-build5`, `daemon-examples5`,
+`daemon-search64`, and `daemon-lint`. These are bounded Linux daemon/IPC checks with a recording
+inference dependency; the grounding and coverage limits above still apply.
