@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.1.18
+
+### Fixed
+
+- Accept ordinary replies to new messages during an active run without requiring the model to produce a private JSON control object. A malformed legacy object no longer stops a continuing instruction; explicit wait requests still pause the run (#159).
+- Include the production corrections found by the Stage 1–7 property campaigns across protocol, provider, runtime, state, and application boundaries.
+
+### Verification
+
+- Integrate 42 fixed property campaign targets, focused regressions, and Stage 8 analysis, context-flow, and policy/settlement suites. The Stage 8 checked cases found no new production defect.
+- Replay 19 scripted OpenCode adapter scenarios, including malformed legacy replies, plain continuation, and explicit wait. A live DeepSeek run is not part of that replay.
+- Workspace formatting and strict Clippy passed for the v0.1.18 source.
+
 ## 0.1.17
 
 Version 0.1.16 was not published after native macOS compilation caught a Chrome registration error.
