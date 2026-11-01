@@ -495,7 +495,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "peritus-approval"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "ed25519-dalek",
  "peritus-policy",
@@ -505,7 +505,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-artifact-store"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "fs4",
  "peritus-types",
@@ -515,14 +515,14 @@ dependencies = [
 
 [[package]]
 name = "peritus-budget"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-types",
 ]
 
 [[package]]
 name = "peritus-codec"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-types",
  "sha2",
@@ -530,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-evidence"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "fs4",
  "peritus-artifact-store",
@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-gates"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -567,7 +567,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-git"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "libc",
  "peritus-codec",
@@ -577,7 +577,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-journal"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-approval",
  "peritus-artifact-store",
@@ -594,7 +594,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-kernel"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-budget",
  "peritus-policy",
@@ -605,7 +605,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-leases"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-policy",
  "peritus-types",
@@ -613,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-obligations"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-run-settlement",
  "peritus-spec",
@@ -623,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-patch"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -632,14 +632,14 @@ dependencies = [
 
 [[package]]
 name = "peritus-policy"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-types",
 ]
 
 [[package]]
 name = "peritus-process"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "libc",
  "nix 0.31.3",
@@ -663,7 +663,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-projection"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-approval",
  "peritus-budget",
@@ -680,7 +680,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-protocol"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-budget",
  "peritus-codec",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-quality-policy"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-spec",
  "peritus-types",
@@ -701,21 +701,21 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-policy"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-types",
 ]
 
 [[package]]
 name = "peritus-run-settlement"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-types",
 ]
 
 [[package]]
 name = "peritus-sandbox"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-spec"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-types",
 ]
@@ -744,7 +744,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tool-protocol"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -754,7 +754,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tool-router"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-budget",
  "peritus-codec",
@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-quality"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -790,11 +790,11 @@ dependencies = [
 
 [[package]]
 name = "peritus-types"
-version = "0.1.18"
+version = "0.1.19"
 
 [[package]]
 name = "peritus-workspace"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "cap-fs-ext",
  "cap-std",

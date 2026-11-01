@@ -16,12 +16,12 @@ owner = "C3"
 layer = "runtime"
 
 [dependencies]
-peritus-codec = { version = "=0.1.18", path = "../../foundation/peritus-codec" }
-peritus-network = { version = "=0.1.18", path = "../peritus-network" }
-peritus-process = { version = "=0.1.18", path = "../peritus-process" }
-peritus-sandbox = { version = "=0.1.18", path = "../peritus-sandbox" }
-peritus-secrets = { version = "=0.1.18", path = "../peritus-secrets" }
-peritus-types = { version = "=0.1.18", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.1.19", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.1.19", path = "../peritus-network" }
+peritus-process = { version = "=0.1.19", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.1.19", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.1.19", path = "../peritus-secrets" }
+peritus-types = { version = "=0.1.19", path = "../../foundation/peritus-types" }
 zeroize.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]

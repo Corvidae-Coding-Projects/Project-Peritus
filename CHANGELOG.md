@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.1.19
+
+### Fixed
+
+- Reject module-job inspection when an earlier completed stage's retained output is missing or corrupted. Inspection continues to work while the job is active and recovers when the exact output bytes are restored.
+
+### Verification
+
+- Strengthen property generators and independent reference models for state histories, provider streams, schema validation, policy acceptance, UI boundaries, telemetry, and daemon steering. Ten deliberately introduced defects were detected during calibration and removed afterward.
+- Pass 10,752 generated histories and 1,206 fixed cases across all 42 public campaign targets, plus focused campaigns and 96 generated real-daemon histories. The module inspection regression fails before the fix and passes afterward.
+- Correct campaign success reporting, saved-failure paths, and daemon fixtures for public steering replies and explicit reasoning-effort selection. These test changes preserve the runtime's existing model-selection policy.
+- Formatting and strict Clippy passed for the changed packages and property harnesses. Detailed local scope and replay commands are recorded in `discovery/proptest-praxis/STRENGTHENING.md`.
+
 ## 0.1.18
 
 ### Fixed
