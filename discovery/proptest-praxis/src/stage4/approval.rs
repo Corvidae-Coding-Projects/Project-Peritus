@@ -2,11 +2,11 @@
 
 use ed25519_dalek::{Signer, SigningKey};
 use peritus_approval::{
-    ActionDigest, ApprovalAggregate, ApprovalChoice, ApprovalDecision, ApprovalKeyId,
-    ApprovalPhase, ApprovalPublicKey, ApprovalRequest, ApprovalSignature, ApproverCredential,
-    CredentialRegistrySnapshot, CredentialStatus, ParticipantSet, SignedApprovalDecision,
-    decode_approval_request, decode_signed_decision, encode_approval_request,
-    encode_signed_decision, verify_signed_decision,
+    ActionDigest, AmendmentIdentity, ApprovalAggregate, ApprovalChoice, ApprovalDecision,
+    ApprovalKeyId, ApprovalPhase, ApprovalPublicKey, ApprovalRequest, ApprovalSignature,
+    ApproverCredential, CredentialRegistrySnapshot, CredentialStatus, ParticipantSet,
+    SignedApprovalDecision, decode_approval_request, decode_signed_decision,
+    encode_approval_request, encode_signed_decision, verify_signed_decision,
 };
 use peritus_policy::{
     ActorRole, ActorSelector, ApprovalRequirement, AuthorityBoundary, AuthorityCeiling,
@@ -47,6 +47,7 @@ pub enum Defect {
 #[serde(rename_all = "snake_case")]
 pub enum Kind {
     Approve,
+    Amend,
     Deny,
     Consume,
     Cancel,
@@ -65,6 +66,9 @@ pub struct Case {
     pub decision_expiry: u8,
     pub independence: u8,
     pub responder: u8,
+    pub unlimited_scope: bool,
+    pub all_approver_roles: bool,
+    pub all_risks: bool,
     pub operations: Vec<Operation>,
 }
 
@@ -75,11 +79,14 @@ fn base() -> Case {
         decision_expiry: 60,
         independence: 15,
         responder: 5,
+        unlimited_scope: false,
+        all_approver_roles: false,
+        all_risks: false,
         operations: Vec::new(),
     }
 }
 pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
-    let op=(prop_oneof![Just(Kind::Approve),Just(Kind::Deny),Just(Kind::Consume),Just(Kind::Cancel),Just(Kind::Expire)],
+    let op=(prop_oneof![Just(Kind::Approve),Just(Kind::Amend),Just(Kind::Deny),Just(Kind::Consume),Just(Kind::Cancel),Just(Kind::Expire)],
         prop_oneof![4=>Just(Defect::None),1=>Just(Defect::Signature),1=>Just(Defect::WrongSigner),
         1=>Just(Defect::RequestId),1=>Just(Defect::RequestDigest),1=>Just(Defect::RegistryRevision),
         1=>Just(Defect::Generation),1=>Just(Defect::Disabled),1=>Just(Defect::Environment),
@@ -92,6 +99,9 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
         21_u8..=110,
         0_u8..=15,
         1_u8..=5,
+        any::<bool>(),
+        any::<bool>(),
+        any::<bool>(),
         proptest::collection::vec(op.clone(), 0..=max_steps.min(128)),
     )
         .prop_map(
@@ -101,6 +111,9 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
                 decision_expiry,
                 independence,
                 responder,
+                unlimited_scope,
+                all_approver_roles,
+                all_risks,
                 operations,
             )| Case {
                 request_expiry,
@@ -108,6 +121,9 @@ pub fn strategy(max_steps: usize) -> BoxedStrategy<Case> {
                 decision_expiry,
                 independence,
                 responder,
+                unlimited_scope,
+                all_approver_roles,
+                all_risks,
                 operations,
             },
         )
@@ -156,6 +172,8 @@ pub fn examples() -> Vec<Case> {
             operations: vec![op(Kind::Expire, Defect::None, 4), op(Kind::Approve, Defect::None, 0)],
             ..base()
         },
+        Case { operations: vec![op(Kind::Amend, Defect::None, 0)], ..base() },
+        Case { unlimited_scope: true, all_approver_roles: true, all_risks: true, ..base() },
     ];
     for defect in [
         Defect::Signature,
@@ -235,6 +253,16 @@ fn permissions() -> Result<PermissionSet, String> {
 pub fn fixture_request(case: &Case) -> Result<ApprovalRequest, String> {
     let revision = revision()?;
     let environment = EnvironmentId::new(bytes(37)).map_err(err)?;
+    let boundary_uses = if case.unlimited_scope {
+        UseLimit::unlimited()
+    } else {
+        UseLimit::limited(2).map_err(err)?
+    };
+    let scope_uses = if case.unlimited_scope {
+        UseLimit::unlimited()
+    } else {
+        UseLimit::limited(1).map_err(err)?
+    };
     let bound = AuthorityBoundary::new(
         vec![actor(2)?],
         vec![ActorRole::Writer],
@@ -242,17 +270,12 @@ pub fn fixture_request(case: &Case) -> Result<ApprovalRequest, String> {
         permissions()?,
         revision,
         window(0, 200)?,
-        UseLimit::limited(2).map_err(err)?,
+        boundary_uses,
     )
     .map_err(err)?;
     let ceiling = AuthorityCeiling::new(
         bound,
-        vec![CeilingGrant::new(
-            digest(41),
-            selector(revision),
-            window(0, 200)?,
-            UseLimit::limited(1).map_err(err)?,
-        )],
+        vec![CeilingGrant::new(digest(41), selector(revision), window(0, 200)?, scope_uses)],
         Vec::new(),
     )
     .map_err(err)?;
@@ -266,9 +289,26 @@ pub fn fixture_request(case: &Case) -> Result<ApprovalRequest, String> {
     .enumerate()
     .filter_map(|(i, requirement)| ((case.independence & (1 << i)) != 0).then_some(requirement))
     .collect();
+    let approver_roles = if case.all_approver_roles {
+        vec![
+            ActorRole::Writer,
+            ActorRole::Fixer,
+            ActorRole::Reviewer,
+            ActorRole::Evaluator,
+            ActorRole::GateRunner,
+            ActorRole::Orchestrator,
+            ActorRole::EvolutionAgent,
+            ActorRole::HumanAuthority,
+            ActorRole::DaemonService,
+            ActorRole::ProviderToolWorker,
+            ActorRole::Plugin,
+        ]
+    } else {
+        vec![ActorRole::HumanAuthority]
+    };
     let requirement = ApprovalRequirement::new(
         AuthorityTier::User,
-        vec![ActorRole::HumanAuthority],
+        approver_roles,
         IndependenceSet::new(independent).map_err(err)?,
         window(10, 150)?,
     )
@@ -278,10 +318,26 @@ pub fn fixture_request(case: &Case) -> Result<ApprovalRequest, String> {
         vec![RestrictionRule::require_approval(digest(42), selector(revision), requirement)],
     )
     .map_err(err)?;
+    let risks = if case.all_risks {
+        vec![
+            RiskClass::Read,
+            RiskClass::ScopedWrite,
+            RiskClass::Execution,
+            RiskClass::Network,
+            RiskClass::DependencyEnvironment,
+            RiskClass::RepositoryHistoryMutation,
+            RiskClass::SecretUse,
+            RiskClass::ExternalSideEffect,
+            RiskClass::PolicyAuthority,
+            RiskClass::HarnessPromotion,
+        ]
+    } else {
+        vec![RiskClass::ScopedWrite]
+    };
     let descriptor = OperationDescriptor::new(
         CapabilityName::new("workspace.patch".into()).map_err(err)?,
         OperationClass::WorkspaceMutation,
-        RiskSet::new(vec![RiskClass::ScopedWrite]).map_err(err)?,
+        RiskSet::new(risks).map_err(err)?,
     )
     .map_err(err)?;
     let policy = PolicyDefinition::new(
@@ -298,7 +354,7 @@ pub fn fixture_request(case: &Case) -> Result<ApprovalRequest, String> {
         permissions()?,
         revision,
         window(0, 200)?,
-        UseLimit::limited(1).map_err(err)?,
+        scope_uses,
     );
     let challenge = policy
         .evaluate(
@@ -389,10 +445,21 @@ pub fn fixture_signed(
     Ok(SignedApprovalDecision::new(decision, ApprovalSignature::new(signature)))
 }
 
+fn amendment(request: &ApprovalRequest) -> Result<AmendmentIdentity, String> {
+    AmendmentIdentity::new(
+        request.scope().revision().policy_id(),
+        PolicyId::new(bytes(98)).map_err(err)?,
+        PolicyTier::Project,
+        digest(97),
+    )
+    .map_err(err)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Pending,
     Approved,
+    AmendmentAuthorized,
     Denied,
     Consumed,
     Cancelled,
@@ -401,7 +468,7 @@ enum Phase {
 struct Model {
     phase: Phase,
     floor: u64,
-    resolution: Option<bool>,
+    resolution: Option<ApprovalChoice>,
 }
 fn observed(case: &Case, selector: u8, floor: u64) -> (u64, u64) {
     let expiry = u64::from(
@@ -457,6 +524,7 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
         return Err("approval request codec accepted trailing/truncated bytes".into());
     }
     let mut aggregate = ApprovalAggregate::new(request);
+    super::approval_render::check(&aggregate)?;
     let mut model = Model { phase: Phase::Pending, floor: 10, resolution: None };
     let mut accepted = 0;
     let mut rejected = 0;
@@ -464,6 +532,7 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
     let mut invalid_signatures = 0;
     let mut consumed = 0;
     let mut replays = 0;
+    let mut render_checks = 1;
     for (index, op) in case.operations.iter().enumerate() {
         let before = format!("{aggregate:?}");
         let (epoch, tick) = observed(case, op.time, model.floor);
@@ -472,11 +541,12 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
         let mut next_phase = model.phase;
         let mut next_floor = model.floor;
         match op.kind {
-            Kind::Approve | Kind::Deny => {
-                let choice = if matches!(op.kind, Kind::Deny) {
-                    ApprovalChoice::Deny
-                } else {
-                    ApprovalChoice::ApproveOnce
+            Kind::Approve | Kind::Amend | Kind::Deny => {
+                let choice = match op.kind {
+                    Kind::Approve => ApprovalChoice::ApproveOnce,
+                    Kind::Amend => ApprovalChoice::Amend(amendment(aggregate.request())?),
+                    Kind::Deny => ApprovalChoice::Deny,
+                    Kind::Consume | Kind::Cancel | Kind::Expire => unreachable!(),
                 };
                 let registry = fixture_registry(case, op.defect)?;
                 let signed = fixture_signed(aggregate.request(), case, choice, op.defect)?;
@@ -494,11 +564,14 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
                 }
                 if let Ok(observation) = authentication {
                     verified += 1;
-                    let approve = choice == ApprovalChoice::ApproveOnce;
                     expect_accept =
-                        model.phase == Phase::Pending || model.resolution == Some(approve);
+                        model.phase == Phase::Pending || model.resolution == Some(choice);
                     if model.phase == Phase::Pending {
-                        next_phase = if approve { Phase::Approved } else { Phase::Denied };
+                        next_phase = match choice {
+                            ApprovalChoice::Deny => Phase::Denied,
+                            ApprovalChoice::ApproveOnce => Phase::Approved,
+                            ApprovalChoice::Amend(_) => Phase::AmendmentAuthorized,
+                        };
                         next_floor = tick;
                     }
                     let outcome = aggregate.resolve(observation, &registry);
@@ -510,7 +583,7 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
                             if model.phase != Phase::Pending {
                                 replays += 1;
                             } else {
-                                model.resolution = Some(approve);
+                                model.resolution = Some(choice);
                             }
                             value.into_parts().0
                         }
@@ -601,7 +674,8 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
                 };
             }
             Kind::Expire => {
-                let expiry = if model.phase == Phase::Approved {
+                let expiry = if matches!(model.phase, Phase::Approved | Phase::AmendmentAuthorized)
+                {
                     case.request_expiry
                         .min(case.credential_expiry)
                         .min(case.decision_expiry)
@@ -609,8 +683,10 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
                 } else {
                     case.request_expiry.min(150)
                 };
-                expect_accept = matches!(model.phase, Phase::Pending | Phase::Approved)
-                    && epoch == 1
+                expect_accept = matches!(
+                    model.phase,
+                    Phase::Pending | Phase::Approved | Phase::AmendmentAuthorized
+                ) && epoch == 1
                     && tick >= model.floor
                     && tick >= u64::from(expiry);
                 aggregate = match aggregate.expire(now) {
@@ -647,6 +723,7 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
         let expected_phase = match model.phase {
             Phase::Pending => ApprovalPhase::Pending,
             Phase::Approved => ApprovalPhase::ApprovedOnce,
+            Phase::AmendmentAuthorized => ApprovalPhase::AmendmentAuthorized,
             Phase::Denied => ApprovalPhase::Denied,
             Phase::Consumed => ApprovalPhase::Consumed,
             Phase::Cancelled => ApprovalPhase::Cancelled,
@@ -657,6 +734,8 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
         {
             return Err(format!("approval lifecycle differs after {index}: {op:?}"));
         }
+        super::approval_render::check(&aggregate)?;
+        render_checks += 1;
     }
     Ok(crate::Metrics::from([
         ("accepted".into(), accepted),
@@ -666,6 +745,7 @@ pub fn check(case: &Case) -> Result<crate::Metrics, String> {
         ("consumed".into(), consumed),
         ("idempotent_replays".into(), replays),
         ("codec_checks".into(), 4),
+        ("render_checks".into(), render_checks),
     ]))
 }
 

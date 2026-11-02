@@ -10,6 +10,7 @@ evidence parsing, and isolation from ambient compiler caches;
 current root package and names source associations without claiming execution.
 `fuzz/` contains the primary libFuzzer harnesses and retained seed inputs;
 `fuzz-libafl/` runs the same harnesses with the alternate LibAFL engine.
-`mutation/` stages disposable source and connects cargo-mutants to actual property checks.
+`mutation/` stages disposable source, connects cargo-mutants to actual property checks,
+and proves exact distributed-shard accounting with an independent aggregate controller.
 Keep campaign evidence outside source; never treat inventory, a zero-test baseline,
 an expired budget, or a missing report as a passing behavioral check.

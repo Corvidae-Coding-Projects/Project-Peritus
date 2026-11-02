@@ -69,3 +69,81 @@ pub(super) fn render(
         review_omitted,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use peritus_policy::{Permission, PermissionSet};
+    use peritus_types::{ActorId, CapabilityName, ResourceId};
+    use std::fmt::Write;
+
+    fn actor(value: u8) -> ActorId {
+        ActorId::new([value; 16]).expect("repeated bytes form an actor id")
+    }
+
+    fn permission(value: u8, capability: &str) -> Permission {
+        Permission::new(
+            ResourceId::new([value; 16]).expect("repeated bytes form a resource id"),
+            CapabilityName::new(capability.to_owned()).expect("test capability is valid"),
+        )
+    }
+
+    fn reference_hex(bytes: &[u8]) -> String {
+        let mut output = String::new();
+        for byte in bytes {
+            write!(&mut output, "{byte:02x}").expect("writing to a string cannot fail");
+        }
+        output
+    }
+
+    #[test]
+    fn participant_rendering_caps_complete_fields_and_counts_every_omission() {
+        let values: Vec<_> = (1..=65).map(actor).collect();
+        let mut builder = Builder::new();
+        let omitted = participants(&mut builder, "producing-participant", &values)
+            .expect("canonical actors render safely");
+
+        assert_eq!(omitted, 1);
+        let mut expected = String::new();
+        for value in &values[..MAX_RENDERED_PARTICIPANTS] {
+            write!(&mut expected, "producing-participant={};", reference_hex(value.as_bytes()))
+                .expect("writing to a string cannot fail");
+        }
+        assert_eq!(builder.text, expected);
+        assert!(!builder.truncated);
+    }
+
+    #[test]
+    fn permission_rendering_can_skip_a_long_item_then_admit_a_shorter_item() {
+        let values = vec![permission(1, &"a".repeat(128)), permission(2, "a")];
+        let available = 64;
+        let capacity = super::super::MAX_RENDERED_APPROVAL_BYTES
+            - super::super::RENDER_TRUNCATION_SUFFIX_BYTES;
+        let prefix = "x".repeat(capacity - available);
+        let mut builder = Builder { text: prefix.clone(), truncated: false };
+        let omitted = permissions(&mut builder, &values).expect("typed permissions render safely");
+
+        assert_eq!(omitted, 1);
+        assert!(builder.truncated);
+        let short_value = reference_hex(values[1].resource_id().as_bytes());
+        assert_eq!(builder.text, format!("{prefix}permission={short_value}:a;"));
+    }
+
+    #[test]
+    fn permission_rendering_caps_at_sixty_four_whole_items() {
+        let values: Vec<_> = (1..=65).map(|value| permission(value, "read")).collect();
+        PermissionSet::new(
+            values
+                .iter()
+                .map(|value| permission(value.resource_id().as_bytes()[0], "read"))
+                .collect(),
+        )
+        .expect("fixture order is canonical");
+        let mut builder = Builder::new();
+        let omitted = permissions(&mut builder, &values).expect("typed permissions render safely");
+
+        assert_eq!(omitted, 1);
+        assert_eq!(builder.text.matches("permission=").count(), MAX_RENDERED_PERMISSIONS);
+        assert!(!builder.truncated);
+    }
+}

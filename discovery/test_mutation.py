@@ -1,6 +1,10 @@
 import os
+import json
+from pathlib import Path
+import tempfile
 from unittest import TestCase, main, mock
 
+from mutation.aggregate import aggregate
 from mutation.run import (
     DEFAULT_FILES,
     compiler_env,
@@ -88,6 +92,84 @@ class MutationControllerTests(TestCase):
 
         self.assertEqual(command, ["cargo", "metadata", "--format-version=1"])
         self.assertNotIn("--offline", command)
+
+
+class MutationAggregateTests(TestCase):
+    def write_json(self, path, value):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+
+    def fixture(self, root, reports):
+        preflight = root / "preflight"
+        shards = root / "shards"
+        names = [name for report in reports for name in report["names"]]
+        self.write_json(preflight / "inventory/mutants.json", [{"name": name} for name in names])
+        self.write_json(preflight / "inventory/inventory.json", {"source_head": "abc123"})
+        for report in reports:
+            folder = shards / f"shard-{report['index']}"
+            self.write_json(folder / "request.json", {"shard": f"{report['index']}/{len(reports)}"})
+            self.write_json(folder / "mutants.json", [{"name": name} for name in report["names"]])
+            counts = report["counts"]
+            self.write_json(
+                folder / "report.json",
+                {
+                    "status": report["status"],
+                    "source_head": report.get("source_head", "abc123"),
+                    "source_manifest_sha256": report.get("source_manifest_sha256", "1" * 64),
+                    "mutation_candidates": len(report["names"]),
+                    "counts": counts,
+                    "unexecuted_candidates": 0,
+                    "completeness_problems": [],
+                },
+            )
+        return preflight, shards
+
+    def test_complete_findings_are_failure_not_incomplete_coverage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            preflight, shards = self.fixture(
+                Path(temporary),
+                [
+                    {"index": 0, "names": ["a"], "counts": {"CaughtMutant": 1}, "status": "pass"},
+                    {"index": 1, "names": ["b"], "counts": {"MissedMutant": 1}, "status": "fail"},
+                ],
+            )
+            summary = aggregate(preflight, shards, 2)
+
+        self.assertEqual(summary["status"], "fail")
+        self.assertEqual(summary["problems"], [])
+        self.assertEqual(summary["observed_candidates"], 2)
+
+    def test_missing_shard_is_incomplete_even_when_candidates_match(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            preflight, shards = self.fixture(
+                Path(temporary),
+                [{"index": 0, "names": ["a"], "counts": {"CaughtMutant": 1}, "status": "pass"}],
+            )
+            summary = aggregate(preflight, shards, 2)
+
+        self.assertEqual(summary["status"], "incomplete")
+        self.assertTrue(any("missing shard indices" in problem for problem in summary["problems"]))
+
+    def test_source_drift_and_duplicate_candidates_are_incomplete(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            preflight, shards = self.fixture(
+                Path(temporary),
+                [
+                    {
+                        "index": 0,
+                        "names": ["a"],
+                        "counts": {"CaughtMutant": 1},
+                        "status": "pass",
+                        "source_head": "wrong",
+                    },
+                    {"index": 1, "names": ["a"], "counts": {"CaughtMutant": 1}, "status": "pass"},
+                ],
+            )
+            summary = aggregate(preflight, shards, 2)
+
+        self.assertEqual(summary["status"], "incomplete")
+        self.assertTrue(any("source revision drift" in problem for problem in summary["problems"]))
+        self.assertTrue(any("duplicate" in problem for problem in summary["problems"]))
 
 
 if __name__ == "__main__":

@@ -75,3 +75,55 @@ impl Builder {
         Ok(true)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn printable_ascii_includes_both_contract_boundaries() {
+        assert!(safe_ascii(b" ~"));
+        assert!(!safe_ascii(&[0x1f]));
+        assert!(!safe_ascii(&[0x7f]));
+    }
+
+    #[test]
+    fn raw_fields_enforce_exact_field_and_projection_boundaries() {
+        let mut exact_field = Builder::new();
+        let exact_value = vec![b'x'; MAX_RENDERED_FIELD_BYTES - 3];
+        assert_eq!(exact_field.raw_field(b"n", &exact_value), Ok(true));
+        assert_eq!(exact_field.text.len(), MAX_RENDERED_FIELD_BYTES);
+
+        let mut oversized_field = Builder::new();
+        let oversized_value = vec![b'x'; MAX_RENDERED_FIELD_BYTES - 2];
+        assert_eq!(
+            oversized_field.raw_field(b"n", &oversized_value),
+            Err(crate::ApprovalError::UnsafeRenderingInput)
+        );
+        assert!(oversized_field.text.is_empty());
+        assert!(!oversized_field.truncated);
+
+        let capacity = MAX_RENDERED_APPROVAL_BYTES - RENDER_TRUNCATION_SUFFIX_BYTES;
+        let mut exact_projection = Builder { text: "x".repeat(capacity - 4), truncated: false };
+        assert_eq!(exact_projection.raw_field(b"n", b"v"), Ok(true));
+        assert_eq!(exact_projection.text.len(), capacity);
+        assert_eq!(exact_projection.raw_field(b"n", b"v"), Ok(false));
+        assert!(exact_projection.truncated);
+        assert_eq!(exact_projection.text.len(), capacity);
+    }
+
+    #[test]
+    fn raw_fields_reject_unsafe_names_and_values_independently() {
+        let mut builder = Builder::new();
+        assert_eq!(
+            builder.raw_field(&[0x1f], b"safe"),
+            Err(crate::ApprovalError::UnsafeRenderingInput)
+        );
+        assert_eq!(
+            builder.raw_field(b"safe", &[0x7f]),
+            Err(crate::ApprovalError::UnsafeRenderingInput)
+        );
+        assert!(builder.text.is_empty());
+        assert!(!builder.truncated);
+    }
+}

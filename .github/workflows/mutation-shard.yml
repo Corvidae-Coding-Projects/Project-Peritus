@@ -1,0 +1,136 @@
+name: Mutation sweep shard batch
+
+on:
+  workflow_call:
+    inputs:
+      shards:
+        description: JSON array of zero-based shard indices
+        required: true
+        type: string
+      shard_total:
+        description: Stable denominator shared by every batch
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+env:
+  CARGO_BUILD_JOBS: "2"
+  RUSTC_WRAPPER: ""
+  RUSTC_WORKSPACE_WRAPPER: ""
+  SHARD_TOTAL: ${{ inputs.shard_total }}
+
+jobs:
+  mutate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        shard: ${{ fromJSON(inputs.shards) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.97.1
+      - name: Download the pinned mutation tool
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mutation-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/preflight
+      - name: Activate the mutation tool
+        run: |
+          chmod +x "$RUNNER_TEMP/preflight/bin/cargo-mutants"
+          echo "$RUNNER_TEMP/preflight/bin" >> "$GITHUB_PATH"
+      - name: Execute disjoint mutation shard ${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
+        continue-on-error: true
+        run: >-
+          python3 discovery/mutation/run.py run
+          --output "$RUNNER_TEMP/campaign"
+          --shard "${{ matrix.shard }}/${SHARD_TOTAL}"
+          --jobs 2 --build-jobs 2
+          --campaign-seconds 18000
+      - name: Retain only actionable detailed mutant logs
+        if: ${{ always() }}
+        env:
+          CAMPAIGN_DIR: ${{ runner.temp }}/campaign
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          campaign = Path(os.environ["CAMPAIGN_DIR"])
+          root = campaign / "mutants.out"
+          outcomes_path = root / "outcomes.json"
+          if outcomes_path.is_file():
+              outcomes = json.loads(outcomes_path.read_text()).get("outcomes", [])
+              keep = set()
+              for outcome in outcomes:
+                  summary = outcome.get("summary")
+                  if summary == "MissedMutant" and outcome.get("diff_path"):
+                      keep.add(outcome["diff_path"])
+                  if summary == "Timeout":
+                      for key in ("log_path", "diff_path"):
+                          if outcome.get(key):
+                              keep.add(outcome[key])
+              for folder in (root / "log", root / "diff"):
+                  if folder.is_dir():
+                      for path in folder.iterdir():
+                          if path.relative_to(root).as_posix() not in keep:
+                              path.unlink()
+          report_path = campaign / "report.json"
+          if report_path.is_file() and json.loads(report_path.read_text()).get("status") != "incomplete":
+              for name in ("lock.log", "baseline.log", "source-manifest.json"):
+                  (campaign / name).unlink(missing_ok=True)
+          PY
+      - name: Require a complete classified shard
+        if: ${{ always() }}
+        env:
+          REPORT: ${{ runner.temp }}/campaign/report.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["REPORT"])
+          if not path.is_file():
+              raise SystemExit("mutation shard produced no report")
+          report = json.loads(path.read_text())
+          if report.get("status") not in {"pass", "fail"}:
+              raise SystemExit(f"mutation shard is incomplete: {report}")
+          if report.get("unexecuted_candidates") != 0 or report.get("completeness_problems"):
+              raise SystemExit(f"mutation shard lacks complete accounting: {report}")
+          print(json.dumps({key: report.get(key) for key in ("status", "mutation_candidates", "counts")}, indent=2))
+          PY
+      - name: Retain shard receipts and actionable failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-shard-${{ matrix.shard }}-of-${{ env.SHARD_TOTAL }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/campaign/report.json
+            ${{ runner.temp }}/campaign/request.json
+            ${{ runner.temp }}/campaign/inventory.json
+            ${{ runner.temp }}/campaign/mutants.json
+            ${{ runner.temp }}/campaign/execution.json
+            ${{ runner.temp }}/campaign/baseline.json
+            ${{ runner.temp }}/campaign/test-budget.json
+            ${{ runner.temp }}/campaign/lock-verification.json
+            ${{ runner.temp }}/campaign/source-manifest.json
+            ${{ runner.temp }}/campaign/lock.log
+            ${{ runner.temp }}/campaign/baseline.log
+            ${{ runner.temp }}/campaign/campaign.log
+            ${{ runner.temp }}/campaign/mutants.out/outcomes.json
+            ${{ runner.temp }}/campaign/mutants.out/caught.txt
+            ${{ runner.temp }}/campaign/mutants.out/missed.txt
+            ${{ runner.temp }}/campaign/mutants.out/timeout.txt
+            ${{ runner.temp }}/campaign/mutants.out/unviable.txt
+            ${{ runner.temp }}/campaign/mutants.out/log/
+            ${{ runner.temp }}/campaign/mutants.out/diff/
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 30

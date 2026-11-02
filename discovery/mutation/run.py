@@ -325,6 +325,7 @@ def main():
     mutation_packages = selected_mutation_packages(args.package, report["mutants_by_package"])
     test_packages = selected_test_packages(mutation_packages)
     source = stage(output, mutation_packages)
+    source_manifest_sha256 = hashlib.sha256((output / "source-manifest.json").read_bytes()).hexdigest()
     env = compiler_env()
     env.pop("PERITUS_MUTATION_TARGETS", None)
     env.update({"CARGO_BUILD_JOBS": str(args.build_jobs), "CARGO_PROFILE_TEST_DEBUG": "0",
@@ -394,10 +395,13 @@ def main():
         command += ["--shard", args.shard]
     write(output / "execution.json", {"command":command,"cases_per_model":args.cases,"steps":args.steps,"seed":args.seed,"targets":args.target or targets})
     code = execute(command, cwd=source, env=env, log=output / "campaign.log", timeout=args.campaign_seconds)
-    outcomes, counts, problems, complete = inspect_outcomes(output, expected_targets, test_packages)
+    _outcomes, counts, problems, complete = inspect_outcomes(
+        output, expected_targets, test_packages
+    )
     result = {"status":"incomplete" if not complete else "pass" if code==0 and not counts.get("MissedMutant") and not counts.get("Timeout") else "fail", "exit_code":code, "seconds":time.time()-started,
               "mutation_candidates":report["mutation_candidates"],"source_head":report["source_head"],
-              "outcomes":outcomes, "baseline":baseline_report, "counts":counts,"completeness_problems":problems,
+              "source_manifest_sha256":source_manifest_sha256,
+              "baseline":baseline_report, "counts":counts,"completeness_problems":problems,
               "unexecuted_candidates":report["mutation_candidates"]-sum(counts.values()),
               "limits":report["limits"],"output":str(output)}
     write(output / "report.json",result)

@@ -1,5 +1,6 @@
 //! Stage 4 actual durable storage and domain coordination consumers.
 pub mod approval;
+pub mod approval_render;
 pub mod artifact_stream;
 pub mod artifacts;
 pub mod collaboration;

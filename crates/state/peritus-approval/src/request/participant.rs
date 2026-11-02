@@ -87,3 +87,83 @@ impl super::ParticipantSet {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn actor(bytes: [u8; 16]) -> ActorId {
+        ActorId::new(bytes).expect("all fixed-width actor bytes are valid")
+    }
+
+    fn indexed_actor(index: usize) -> ActorId {
+        let mut bytes = [0; 16];
+        let encoded = u16::try_from(index + 1).expect("test actor index fits in two bytes");
+        bytes[..2].copy_from_slice(&encoded.to_be_bytes());
+        actor(bytes)
+    }
+
+    #[test]
+    fn canonical_order_observes_every_actor_byte() {
+        for differing_index in 0..16 {
+            let mut left = [7; 16];
+            let mut right = [7; 16];
+            left[differing_index] = 1;
+            right[differing_index] = 2;
+            left[differing_index + 1..].fill(255);
+            right[differing_index + 1..].fill(0);
+            let left = actor(left);
+            let right = actor(right);
+
+            let accepted = super::super::ParticipantSet::producing(vec![left, right])
+                .expect("first differing byte establishes canonical order");
+            assert_eq!(accepted.as_slice(), &[left, right]);
+            assert!(accepted.contains(left));
+            assert!(accepted.contains(right));
+
+            assert_eq!(
+                super::super::ParticipantSet::review(vec![right, left]),
+                Err(crate::ApprovalError::NonCanonicalOrder(
+                    crate::CanonicalCollection::ReviewParticipants
+                ))
+            );
+            assert_eq!(
+                super::super::ParticipantSet::producing(vec![left, left]),
+                Err(crate::ApprovalError::DuplicateCanonicalValue(
+                    crate::CanonicalCollection::ProducingParticipants
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn participant_bounds_accept_exact_limit_and_reject_one_over() {
+        let exact: Vec<_> =
+            (0..super::super::MAX_PRODUCING_PARTICIPANTS).map(indexed_actor).collect();
+        let over: Vec<_> = (0..=super::super::MAX_REVIEW_PARTICIPANTS).map(indexed_actor).collect();
+
+        let accepted = super::super::ParticipantSet::producing(exact)
+            .expect("the documented maximum is inclusive");
+        assert_eq!(accepted.as_slice().len(), super::super::MAX_PRODUCING_PARTICIPANTS);
+        assert_eq!(
+            super::super::ParticipantSet::review(over),
+            Err(crate::ApprovalError::CollectionTooLarge(
+                crate::CanonicalCollection::ReviewParticipants
+            ))
+        );
+    }
+
+    #[test]
+    fn empty_and_singleton_sets_have_exact_membership() {
+        let empty = super::super::ParticipantSet::producing(Vec::new())
+            .expect("empty provenance sets are valid");
+        let only = indexed_actor(42);
+        let singleton = super::super::ParticipantSet::review(vec![only])
+            .expect("singleton provenance sets are valid");
+
+        assert!(empty.as_slice().is_empty());
+        assert!(!empty.contains(only));
+        assert!(singleton.contains(only));
+        assert!(!singleton.contains(indexed_actor(43)));
+    }
+}
