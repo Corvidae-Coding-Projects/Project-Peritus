@@ -41,8 +41,31 @@ def selected_files(requested):
 
 def matches_file(path, patterns):
     """Match cargo-mutants file globs against a workspace-relative source path."""
-    return any(fnmatch.fnmatchcase(path if "/" in pattern else Path(path).name, pattern)
-               for pattern in patterns)
+    return any(matches_path_glob(path, pattern) for pattern in patterns)
+
+
+def matches_path_glob(path, pattern):
+    """Match slash-delimited globs with `**` spanning zero or more path segments."""
+    if "/" not in pattern:
+        return fnmatch.fnmatchcase(Path(path).name, pattern)
+    path_parts = tuple(path.split("/"))
+    pattern_parts = tuple(pattern.split("/"))
+
+    def match(path_index, pattern_index):
+        if pattern_index == len(pattern_parts):
+            return path_index == len(path_parts)
+        part = pattern_parts[pattern_index]
+        if part == "**":
+            return match(path_index, pattern_index + 1) or (
+                path_index < len(path_parts) and match(path_index + 1, pattern_index)
+            )
+        return (
+            path_index < len(path_parts)
+            and fnmatch.fnmatchcase(path_parts[path_index], part)
+            and match(path_index + 1, pattern_index + 1)
+        )
+
+    return match(0, 0)
 
 
 def selected_test_packages(mutation_packages):

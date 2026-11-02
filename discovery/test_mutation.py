@@ -25,6 +25,14 @@ class MutationControllerTests(TestCase):
         self.assertTrue(matches_file(path, ["crates/**/*.rs"]))
         self.assertFalse(matches_file(path, ["crates/**/bounds.rs"]))
 
+    def test_recursive_glob_matches_zero_or_more_directories(self):
+        pattern = ["xtask/src/**/*.rs"]
+
+        self.assertTrue(matches_file("xtask/src/cli.rs", pattern))
+        self.assertTrue(matches_file("xtask/src/package/linux.rs", pattern))
+        self.assertFalse(matches_file("xtask/tests/cli.rs", pattern))
+        self.assertFalse(matches_file("xtask/src/fixture.toml", pattern))
+
     def test_mutated_packages_are_included_once_ahead_of_discovery_tests(self):
         packages = selected_test_packages(["peritus-model-protocol", "peritus-mutation-tests"])
 
