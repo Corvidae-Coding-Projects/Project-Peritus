@@ -9,6 +9,7 @@ Cargo configuration for workspace builds and tool routing.
 | File | Role |
 | --- | --- |
 | [config.toml](config.toml) | Configuration/contract data for config. Sections: `alias`, `build`, `net`. |
+| [mutants.toml](mutants.toml) | Mutation defaults used by the isolated discovery runner; see `discovery/mutation/`. |
 
 ## Working in this area
 

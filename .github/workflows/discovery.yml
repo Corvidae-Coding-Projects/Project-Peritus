@@ -1,0 +1,90 @@
+name: Optional Rust discovery campaigns
+
+# Explicit dispatch only: these searches are separate from release qualification.
+on:
+  workflow_dispatch:
+    inputs:
+      campaign:
+        description: Campaign to execute
+        type: choice
+        options: [fuzz, mutants, baseline]
+        default: fuzz
+      engine:
+        description: Fuzz search engine
+        type: choice
+        options: [libfuzzer, libafl]
+        default: libfuzzer
+      seconds:
+        description: Search seconds per target (LibAFL watchdog budget)
+        default: "60"
+      mutation_shard:
+        description: One mutation shard; run every index for a complete sweep
+        default: "0/64"
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CARGO_BUILD_JOBS: "2"
+      RUSTC_WRAPPER: ""
+      RUSTC_WORKSPACE_WRAPPER: ""
+      CAMPAIGN: ${{ inputs.campaign }}
+      ENGINE: ${{ inputs.engine }}
+      SECONDS_PER_TARGET: ${{ inputs.seconds }}
+      MUTATION_SHARD: ${{ inputs.mutation_shard }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.97.1
+      - name: Verify discovery controller semantics
+        run: python3 -m unittest discover -s discovery -p 'test_*.py'
+      - name: Install pinned optional tools
+        run: python3 discovery/checks.py setup --output "$RUNNER_TEMP/tool-setup" --jobs 2
+      - name: Account for every active package
+        run: python3 discovery/coverage.py --output "$RUNNER_TEMP/package-coverage.json"
+      - name: Run bounded fuzz search with saved crash inputs
+        if: ${{ inputs.campaign == 'fuzz' }}
+        run: >-
+          python3 discovery/checks.py fuzz --engine "$ENGINE"
+          --output "$RUNNER_TEMP/campaign" --seconds "$SECONDS_PER_TARGET" --jobs 2
+      - name: Run selected mutation shard against real models
+        if: ${{ inputs.campaign == 'mutants' }}
+        run: >-
+          python3 discovery/mutation/run.py run --output "$RUNNER_TEMP/campaign"
+          --shard "$MUTATION_SHARD" --jobs 1 --build-jobs 2
+      - name: Run root and property baseline
+        if: ${{ inputs.campaign == 'baseline' }}
+        run: >-
+          python3 discovery/checks.py baseline --output "$RUNNER_TEMP/campaign"
+          --jobs 2 --cases 256
+      - name: Retain receipts, corpora, crashes, and mutation outcomes
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: discovery-${{ inputs.campaign }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/tool-setup/
+            ${{ runner.temp }}/package-coverage.json
+            ${{ runner.temp }}/campaign/**/summary.json
+            ${{ runner.temp }}/campaign/**/report.json
+            ${{ runner.temp }}/campaign/**/inputs.json
+            ${{ runner.temp }}/campaign/**/process.json
+            ${{ runner.temp }}/campaign/**/tool-versions.json
+            ${{ runner.temp }}/campaign/**/baseline.json
+            ${{ runner.temp }}/campaign/**/inventory.json
+            ${{ runner.temp }}/campaign/**/mutants.json
+            ${{ runner.temp }}/campaign/**/execution.json
+            ${{ runner.temp }}/campaign/**/lock-verification.json
+            ${{ runner.temp }}/campaign/**/*.log
+            ${{ runner.temp }}/campaign/**/corpus/
+            ${{ runner.temp }}/campaign/**/artifacts/
+            ${{ runner.temp }}/campaign/**/failures/
+            ${{ runner.temp }}/campaign/mutants.out/
+            ${{ runner.temp }}/campaign/runtime-*.Cargo.lock
+          if-no-files-found: warn
+          retention-days: 14

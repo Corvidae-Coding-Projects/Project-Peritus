@@ -308,6 +308,18 @@ impl Drop for OwnedChild {
 
 /// Runs a real owned process; all effect logs survive outside its memory and are fsynced.
 pub fn check(case: &Case) -> Result<Metrics, String> {
+    let executable = std::env::current_exe().map_err(debug)?;
+    check_with_child(case, &executable)
+}
+
+/// Runs the crash/reopen check with an executable that dispatches
+/// `stage3-driver-child` to [`child_main`].
+///
+/// The ordinary praxis binary can use [`check`]. Embedders such as Cargo
+/// integration tests must supply a real child executable rather than spawning
+/// their test harness, which otherwise accepts the arguments and exits without
+/// reaching a crash boundary.
+pub fn check_with_child(case: &Case, child_executable: &Path) -> Result<Metrics, String> {
     validate(case)?;
     let directory =
         tempfile::Builder::new().prefix("peritus-stage3-driver-").tempdir().map_err(debug)?;
@@ -316,7 +328,7 @@ pub fn check(case: &Case) -> Result<Metrics, String> {
     let stderr_path = directory.path().join("child.stderr");
     let stderr = File::create(&stderr_path).map_err(debug)?;
     let mut child = OwnedChild(
-        Command::new(std::env::current_exe().map_err(debug)?)
+        Command::new(child_executable)
             .arg("stage3-driver-child")
             .arg(&input)
             .arg(directory.path())

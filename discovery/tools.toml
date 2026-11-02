@@ -1,0 +1,4 @@
+# Optional discovery tools; these do not change the product compiler or dependencies.
+cargo_fuzz = "0.13.2"
+cargo_mutants = "27.1.0"
+fuzz_toolchain = "nightly-2026-08-09"

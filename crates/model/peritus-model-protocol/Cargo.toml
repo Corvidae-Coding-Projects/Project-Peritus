@@ -13,7 +13,7 @@ readme = "README.md"
 peritus-codec = { version = "=0.1.19", path = "../../foundation/peritus-codec" }
 peritus-types = { version = "=0.1.19", path = "../../foundation/peritus-types" }
 serde.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 
 [package.metadata.peritus]
 owner = "C5"
