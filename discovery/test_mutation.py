@@ -9,6 +9,7 @@ from mutation.run import (
     selected_files,
     selected_mutation_packages,
     selected_test_packages,
+    staged_lock_command,
 )
 
 
@@ -81,6 +82,12 @@ class MutationControllerTests(TestCase):
         self.assertNotIn("CARGO_TARGET_DIR", environment)
         self.assertEqual(environment["CCACHE_DISABLE"], "1")
         self.assertEqual(environment["SCCACHE_DISABLE"], "1")
+
+    def test_staged_lock_resolution_supports_clean_cargo_caches(self):
+        command = staged_lock_command()
+
+        self.assertEqual(command, ["cargo", "metadata", "--format-version=1"])
+        self.assertNotIn("--offline", command)
 
 
 if __name__ == "__main__":

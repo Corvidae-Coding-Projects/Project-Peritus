@@ -125,6 +125,7 @@ jobs:
             ${{ runner.temp }}/campaign/test-budget.json
             ${{ runner.temp }}/campaign/lock-verification.json
             ${{ runner.temp }}/campaign/source-manifest.json
+            ${{ runner.temp }}/campaign/lock.log
             ${{ runner.temp }}/campaign/baseline.log
             ${{ runner.temp }}/campaign/campaign.log
             ${{ runner.temp }}/campaign/mutants.out/outcomes.json

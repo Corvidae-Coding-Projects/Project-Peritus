@@ -135,6 +135,11 @@ def metadata(root):
     return json.loads(execute(["cargo", "metadata", "--locked", "--offline", "--no-deps", "--format-version=1"], cwd=root))
 
 
+def staged_lock_command():
+    """Resolve the staged workspace without assuming a pre-populated Cargo cache."""
+    return ["cargo", "metadata", "--format-version=1"]
+
+
 def inventory(output, args):
     meta = metadata(ROOT)
     members = set(meta["workspace_members"])
@@ -328,9 +333,10 @@ def main():
                 "PROPTEST_CASES": str(args.cases), "PROPTEST_RNG_SEED": str(args.seed)})
     if args.target:
         env["PERITUS_MUTATION_TARGETS"] = ",".join(args.target)
-    # No third-party dependency updates: the source lock is reconciled only for
-    # adding the already-pinned optional discovery dependency graph.
-    lock = ["cargo", "metadata", "--offline", "--format-version=1"]
+    # A clean runner must be allowed to fetch registry data for the optional
+    # discovery graph. The exact comparison below still rejects changes to any
+    # external dependency already present in the source lockfile.
+    lock = staged_lock_command()
     code = execute(lock, cwd=source, env=env, log=output / "lock.log")
     if code:
         raise RuntimeError("cannot resolve staged workspace; inspect lock.log")
