@@ -10,6 +10,7 @@ Hosted workflow declarations, including native release packaging.
 | --- | --- |
 | [release.yml](release.yml) | YAML workflow/action declaration for release. |
 | [discovery.yml](discovery.yml) | Manually dispatched mutation, sanitizer fuzzing, and property baseline campaigns; separate from releases. |
+| [mutation-sweep.yml](mutation-sweep.yml) | One-time branch-triggered 128-shard whole-workspace mutation sweep with exact aggregate candidate accounting. |
 
 ## Working in this area
 

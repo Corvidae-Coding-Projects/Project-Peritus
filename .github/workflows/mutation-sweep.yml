@@ -1,0 +1,235 @@
+name: Complete Rust mutation sweep
+
+# One-time branch trigger for the explicitly requested whole-workspace sweep.
+on:
+  push:
+    branches: [mutation-sweep-20261102]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_BUILD_JOBS: "2"
+  RUSTC_WRAPPER: ""
+  RUSTC_WORKSPACE_WRAPPER: ""
+  SHARD_TOTAL: "128"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      shards: ${{ steps.matrix.outputs.shards }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.97.1
+      - name: Verify discovery controller semantics
+        run: python3 -m unittest discover -s discovery -p 'test_*.py'
+      - name: Build pinned mutation tool
+        run: |
+          cargo install --locked cargo-mutants --version 27.1.0
+          mkdir -p "$RUNNER_TEMP/preflight/bin"
+          cp "$(command -v cargo-mutants)" "$RUNNER_TEMP/preflight/bin/cargo-mutants"
+          cargo mutants --version > "$RUNNER_TEMP/preflight/tool-version.txt"
+      - name: Inventory the exact production mutation set
+        run: >-
+          python3 discovery/mutation/run.py inventory
+          --output "$RUNNER_TEMP/preflight/inventory"
+      - name: Build the complete shard matrix
+        id: matrix
+        run: >-
+          python3 -c 'import json; print("shards=" + json.dumps(list(range(128))))'
+          >> "$GITHUB_OUTPUT"
+      - name: Retain the canonical inventory and pinned tool
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/preflight/
+          if-no-files-found: error
+          retention-days: 30
+
+  mutate:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: ${{ fromJSON(needs.prepare.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.97.1
+      - name: Download the pinned mutation tool
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mutation-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/preflight
+      - name: Activate the mutation tool
+        run: |
+          chmod +x "$RUNNER_TEMP/preflight/bin/cargo-mutants"
+          echo "$RUNNER_TEMP/preflight/bin" >> "$GITHUB_PATH"
+      - name: Execute disjoint mutation shard ${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
+        run: >-
+          python3 discovery/mutation/run.py run
+          --output "$RUNNER_TEMP/campaign"
+          --shard "${{ matrix.shard }}/${SHARD_TOTAL}"
+          --jobs 2 --build-jobs 2
+          --campaign-seconds 18000
+      - name: Retain only actionable detailed mutant logs
+        if: ${{ always() }}
+        env:
+          CAMPAIGN_DIR: ${{ runner.temp }}/campaign
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["CAMPAIGN_DIR"]) / "mutants.out"
+          outcomes_path = root / "outcomes.json"
+          if not outcomes_path.is_file():
+              raise SystemExit(0)
+          outcomes = json.loads(outcomes_path.read_text()).get("outcomes", [])
+          keep = set()
+          for outcome in outcomes:
+              if outcome.get("summary") in {"MissedMutant", "Timeout"}:
+                  for key in ("log_path", "diff_path"):
+                      value = outcome.get(key)
+                      if value:
+                          keep.add(value)
+          for folder in (root / "log", root / "diff"):
+              if not folder.is_dir():
+                  continue
+              for path in folder.iterdir():
+                  if path.relative_to(root).as_posix() not in keep:
+                      path.unlink()
+          PY
+      - name: Retain shard receipts and actionable failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-shard-${{ matrix.shard }}-of-${{ env.SHARD_TOTAL }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/campaign/report.json
+            ${{ runner.temp }}/campaign/request.json
+            ${{ runner.temp }}/campaign/inventory.json
+            ${{ runner.temp }}/campaign/mutants.json
+            ${{ runner.temp }}/campaign/execution.json
+            ${{ runner.temp }}/campaign/baseline.json
+            ${{ runner.temp }}/campaign/test-budget.json
+            ${{ runner.temp }}/campaign/lock-verification.json
+            ${{ runner.temp }}/campaign/source-manifest.json
+            ${{ runner.temp }}/campaign/baseline.log
+            ${{ runner.temp }}/campaign/campaign.log
+            ${{ runner.temp }}/campaign/mutants.out/outcomes.json
+            ${{ runner.temp }}/campaign/mutants.out/caught.txt
+            ${{ runner.temp }}/campaign/mutants.out/missed.txt
+            ${{ runner.temp }}/campaign/mutants.out/timeout.txt
+            ${{ runner.temp }}/campaign/mutants.out/unviable.txt
+            ${{ runner.temp }}/campaign/mutants.out/log/
+            ${{ runner.temp }}/campaign/mutants.out/diff/
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    if: ${{ always() }}
+    needs: [prepare, mutate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Download the canonical inventory
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mutation-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/preflight
+      - name: Download every shard receipt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: mutation-shard-*-of-${{ env.SHARD_TOTAL }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/shards
+      - name: Prove complete, disjoint candidate accounting
+        env:
+          PREFLIGHT_DIR: ${{ runner.temp }}/preflight
+          SHARD_DIR: ${{ runner.temp }}/shards
+          SUMMARY_PATH: ${{ runner.temp }}/mutation-sweep-summary.json
+        run: |
+          python3 - <<'PY'
+          from collections import Counter
+          import json
+          import os
+          from pathlib import Path
+
+          expected_shards = int(os.environ["SHARD_TOTAL"])
+          expected_path = Path(os.environ["PREFLIGHT_DIR"]) / "inventory" / "mutants.json"
+          shard_root = Path(os.environ["SHARD_DIR"])
+          summary_path = Path(os.environ["SUMMARY_PATH"])
+          expected = [item["name"] for item in json.loads(expected_path.read_text())]
+          reports = sorted(shard_root.glob("*/report.json"))
+          problems = []
+          totals = Counter()
+          observed = []
+          statuses = Counter()
+          for report_path in reports:
+              report = json.loads(report_path.read_text())
+              mutants_path = report_path.with_name("mutants.json")
+              if not mutants_path.is_file():
+                  problems.append(f"missing mutants.json beside {report_path}")
+                  continue
+              names = [item["name"] for item in json.loads(mutants_path.read_text())]
+              observed.extend(names)
+              statuses[report.get("status", "missing")] += 1
+              totals.update(report.get("counts", {}))
+              if report.get("mutation_candidates") != len(names):
+                  problems.append(f"candidate count mismatch in {report_path.parent.name}")
+              if report.get("unexecuted_candidates") != 0:
+                  problems.append(f"unexecuted candidates in {report_path.parent.name}")
+              if report.get("completeness_problems"):
+                  problems.append(f"controller completeness failure in {report_path.parent.name}")
+          if len(reports) != expected_shards:
+              problems.append(f"expected {expected_shards} shard reports, found {len(reports)}")
+          counts = Counter(observed)
+          duplicates = sorted(name for name, count in counts.items() if count != 1)
+          missing = sorted(set(expected) - set(observed))
+          unexpected = sorted(set(observed) - set(expected))
+          if len(expected) != len(set(expected)):
+              problems.append("canonical inventory contains duplicate mutant names")
+          if duplicates:
+              problems.append(f"{len(duplicates)} duplicated shard candidates")
+          if missing:
+              problems.append(f"{len(missing)} canonical candidates were not selected")
+          if unexpected:
+              problems.append(f"{len(unexpected)} unexpected candidates were selected")
+          failing = totals.get("MissedMutant", 0) + totals.get("Timeout", 0)
+          if problems:
+              status = "incomplete"
+          elif failing or statuses != Counter({"pass": expected_shards}):
+              status = "fail"
+          else:
+              status = "pass"
+          summary = {
+              "status": status,
+              "expected_shards": expected_shards,
+              "observed_shards": len(reports),
+              "canonical_candidates": len(expected),
+              "observed_candidates": len(observed),
+              "outcomes": dict(sorted(totals.items())),
+              "shard_statuses": dict(sorted(statuses.items())),
+              "problems": problems,
+          }
+          summary_path.write_text(json.dumps(summary, indent=2) + "\n")
+          print(json.dumps(summary, indent=2))
+          raise SystemExit(0 if status == "pass" else 1)
+          PY
+      - name: Retain the whole-sweep verdict
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-sweep-summary-${{ github.run_id }}
+          path: ${{ runner.temp }}/mutation-sweep-summary.json
+          if-no-files-found: warn
+          retention-days: 30
