@@ -11,6 +11,10 @@ mod profile;
 mod request;
 mod stream;
 
+#[cfg(test)]
+#[path = "../../provider_policy_test_support.rs"]
+mod provider_policy_test_support;
+
 pub use client::CompatibleClient;
 pub use config::{
     CompatibleAuth, CompatibleConfig, CompatibleHeader, CompatibleRateHeaders, CompatibleResetUnit,

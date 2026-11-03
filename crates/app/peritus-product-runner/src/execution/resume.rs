@@ -25,6 +25,7 @@ pub struct ProductRunResume {
     design_path: PathBuf,
     design_markdown: String,
     design_revision: u64,
+    design_expansion: Option<crate::design::ExpansionReceiptIdentity>,
     task_summary: String,
     run_instructions: String,
     fix_summaries: Vec<String>,
@@ -48,6 +49,7 @@ pub(super) struct ResumeCapture {
     pub(super) design_path: PathBuf,
     pub(super) design_markdown: String,
     pub(super) design_revision: u64,
+    pub(super) design_expansion: Option<crate::design::ExpansionReceiptIdentity>,
     pub(super) task_summary: String,
     pub(super) run_instructions: String,
     pub(super) fix_summaries: Vec<String>,
@@ -79,6 +81,7 @@ impl ProductRunResume {
             design_path: values.design_path,
             design_markdown: values.design_markdown,
             design_revision: values.design_revision,
+            design_expansion: values.design_expansion,
             task_summary: values.task_summary,
             run_instructions: values.run_instructions,
             fix_summaries: values.fix_summaries,
@@ -189,6 +192,12 @@ impl ProductRunResume {
 
     pub(super) const fn design_revision(&self) -> u64 {
         self.design_revision
+    }
+
+    pub(super) const fn design_expansion(
+        &self,
+    ) -> Option<&crate::design::ExpansionReceiptIdentity> {
+        self.design_expansion.as_ref()
     }
 
     pub(super) fn task_summary(&self) -> &str {

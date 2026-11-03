@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added
+
+- Expand fresh software designs by default into a separate, source-backed contract with applicable domain obligations, failure and recovery behavior, acceptance mappings, retained evidence identities, and an explicit change ledger.
+- Let terminal and browser clients inspect the expanded design, unchanged source, and source-to-expansion changes independently.
+
+### Changed
+
+- Ask design questions only for evidence-linked material decisions without a supported default. Critical unavailable research now remains explicitly limited instead of becoming a false ready state.
+- Bind implementation and independent review to the same accepted expansion identity while preserving exact reuse, source-change invalidation, and active-run recovery.
+- Let a complete `publish_ready` call persist every missing validated design checkpoint in order, avoiding repeated model turns that resend the same complete ledger while retaining crash-safe intermediate recovery.
+- Serve exact Expanded, Source, and Changes client actions from retained artifacts without provider inference or state mutation; historical views remain readable after implementation changes repository evidence, while corrupt retained state still fails closed.
+
+### Recovery
+
+- Default new domain expansion on for fresh runs. An internal fail-closed recovery marker can stop only new expansion creation without deleting or reinterpreting retained source, manifests, expanded designs, receipts, or active work.
+
+### Verification
+
+- Freeze and pass 12 representative domain-design fixtures and eight mandatory rubric dimensions, including hostile evidence, unavailable critical research, one material question, source editing, corruption, restart, stale state, and rollback.
+- Pass credentialed zero-question, one-question/resume, receiptless zero-request reuse, TUI source-to-build/restart, authenticated browser gateway, independent review, six real CLI operations, and a mutation slice with seven caught viable mutants and one unviable mutant.
+- Live inference is qualified only for the configured OpenAI Codex runtime with `gpt-6.1-sol` on Linux. Anthropic, Google, compatible, ChatGPT-direct, Windows, macOS, and pixel-level browser automation remain unqualified.
+
 ## 0.1.19
 
 ### Fixed

@@ -9,6 +9,7 @@ Direct native consumers of ProductRunner, including credentialed disposable-work
 | File | Role |
 | --- | --- |
 | [live_account_product_run.rs](live_account_product_run.rs) | Credentialed end-to-end writer/reviewer/fixer qualification on a temporary Rust repository. |
+| [live_design_expansion.rs](live_design_expansion.rs) | Credentialed Stage 6/7 qualification for zero-question expansion, zero-request exact reuse, and one material question with exact restart-safe answer resumption. |
 
 ## Working in this area
 

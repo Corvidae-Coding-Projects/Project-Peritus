@@ -1,7 +1,26 @@
 //! Mandatory repository-grounded design document produced before implementation.
 
 mod artifact;
+mod expansion;
+#[cfg(test)]
+mod qualification;
+pub mod research;
 mod reuse;
+mod rollout;
+mod source;
+
+use crate::engineering_workflow::vitamins::DOMAIN_DESIGN_POLICY_VERSION as DESIGN_EXPANSION_POLICY_VERSION;
+pub use expansion::{
+    ExpansionRecords, ExpansionSnapshot, ExpansionStage, advance_design_expansion,
+    capture_design_expansion, publish_partial_design_expansion, publish_ready_design_expansion,
+    read_design_expansion,
+};
+
+pub use source::{
+    MAX_SOURCE_DESIGN_BYTES, MAX_SOURCE_DESIGN_PAGE_BYTES, SourceDesignAttachment,
+    SourceDesignCaptureRequest, SourceDesignMetadata, SourceDesignOrigin, SourceDesignPage,
+    SourceDesignPrior, SourceDesignSnapshot, SourceDesignWorkspace, capture_source_design,
+};
 
 use std::{
     fs::{self, OpenOptions},
@@ -12,9 +31,10 @@ use std::{
 
 use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_provider_core::ModelProvider;
+use serde::{Deserialize, Serialize};
 
 use crate::budget::RunAccounting;
-use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
+use crate::developer_tools::read_only_definitions;
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
@@ -31,6 +51,86 @@ pub struct DesignDocument {
     path: PathBuf,
     markdown: String,
     conversation_revision: u64,
+    expansion: Option<ExpansionReceiptIdentity>,
+}
+
+/// Host-owned boundary between a complete implementation design and one necessary user decision.
+pub enum DesignExpansionOutcome {
+    Ready(Box<DesignDocument>),
+    Waiting { question: String, conversation_revision: u64 },
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+/// Internal receipt identity preserved across durable run continuation.
+pub struct ExpansionReceiptIdentity {
+    source_sha256: [u8; 32],
+    manifest_sha256: [u8; 32],
+    #[serde(default)]
+    expanded_sha256: [u8; 32],
+    #[serde(default)]
+    task_sha256: [u8; 32],
+    #[serde(default)]
+    evidence_sha256: [u8; 32],
+    #[serde(default)]
+    input_revision: u64,
+    policy_version: String,
+}
+
+impl ExpansionReceiptIdentity {
+    fn ready(
+        input: &ProductRunInput,
+        source: &SourceDesignSnapshot,
+        expansion: &ExpansionSnapshot,
+        markdown: &str,
+    ) -> Result<Self, ProductRunnerError> {
+        let Some((bytes, digest)) = expansion.ready_design_identity() else {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::Repository,
+                "bind expanded implementation design",
+                "design expansion is not ready",
+            ));
+        };
+        if bytes != markdown.len() as u64 || digest != peritus_codec::sha256(markdown.as_bytes()) {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::Repository,
+                "bind expanded implementation design",
+                "expanded design bytes differ from the ready manifest",
+            ));
+        }
+        Ok(Self {
+            source_sha256: source.metadata().sha256().into_bytes(),
+            manifest_sha256: expansion.digest().into_bytes(),
+            expanded_sha256: digest.into_bytes(),
+            task_sha256: peritus_codec::sha256(input.task.as_bytes()).into_bytes(),
+            evidence_sha256: expansion.evidence_digest()?.into_bytes(),
+            input_revision: expansion.input_revision(),
+            policy_version: DESIGN_EXPANSION_POLICY_VERSION.to_owned(),
+        })
+    }
+
+    fn is_complete(&self) -> bool {
+        self.source_sha256 != [0; 32]
+            && self.manifest_sha256 != [0; 32]
+            && self.expanded_sha256 != [0; 32]
+            && self.task_sha256 != [0; 32]
+            && self.evidence_sha256 != [0; 32]
+            && self.input_revision != 0
+            && self.policy_version == DESIGN_EXPANSION_POLICY_VERSION
+    }
+
+    pub(crate) fn marker(&self) -> String {
+        format!(
+            "source_sha256={} manifest_sha256={} expanded_sha256={} task_sha256={} evidence_sha256={} input_revision={} policy={}",
+            crate::encode_hex(&self.source_sha256),
+            crate::encode_hex(&self.manifest_sha256),
+            crate::encode_hex(&self.expanded_sha256),
+            crate::encode_hex(&self.task_sha256),
+            crate::encode_hex(&self.evidence_sha256),
+            self.input_revision,
+            self.policy_version,
+        )
+    }
 }
 
 impl DesignDocument {
@@ -46,36 +146,71 @@ impl DesignDocument {
         self.conversation_revision
     }
 
+    pub(crate) const fn expansion_identity(&self) -> Option<&ExpansionReceiptIdentity> {
+        self.expansion.as_ref()
+    }
+
+    pub(crate) fn contract_marker(&self) -> String {
+        self.expansion.as_ref().map_or_else(
+            || {
+                format!(
+                    "legacy_or_deterministic=true expanded_sha256={} input_revision={}",
+                    crate::encode_hex(peritus_codec::sha256(self.markdown.as_bytes()).as_bytes()),
+                    self.conversation_revision,
+                )
+            },
+            ExpansionReceiptIdentity::marker,
+        )
+    }
+
     pub(crate) const fn restored(
         path: PathBuf,
         markdown: String,
         conversation_revision: u64,
     ) -> Self {
-        Self { path, markdown, conversation_revision }
+        Self { path, markdown, conversation_revision, expansion: None }
+    }
+
+    pub(crate) const fn restored_expanded(
+        path: PathBuf,
+        markdown: String,
+        conversation_revision: u64,
+        expansion: ExpansionReceiptIdentity,
+    ) -> Self {
+        Self { path, markdown, conversation_revision, expansion: Some(expansion) }
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "provider failover, durable research state, and publication order remain explicit"
+)]
 pub async fn create(
     input: &ProductRunInput,
     primary: &Arc<dyn ModelProvider>,
     fallbacks: &[Arc<dyn ModelProvider>],
     cycle: u32,
     accounting: &mut RunAccounting,
-) -> Result<DesignDocument, ProductRunnerError> {
-    if let Some(document) = reuse::load(input)? {
-        return Ok(document);
+) -> Result<DesignExpansionOutcome, ProductRunnerError> {
+    if let Some(document) = reuse::load(input) {
+        return Ok(DesignExpansionOutcome::Ready(Box::new(document)));
+    }
+    if let Some(document) = reuse::load_ready_expansion(input) {
+        return Ok(DesignExpansionOutcome::Ready(Box::new(document)));
     }
     if design_scope(&input.workspace_root) == DesignScope::Artifact
         && !input.workspace_kind.is_in_place()
     {
-        return artifact::create(input);
+        return artifact::create(input).map(Box::new).map(DesignExpansionOutcome::Ready);
     }
+    rollout::require_new_expansion(&input.trace_path)?;
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
     let memory = input.working_memory("designer")?;
     let mut invocation = 0_u32;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
-    let mut tools = input.read_only_workspace_tools().for_design();
+    let workspace_tools = input.read_only_workspace_tools().for_design_expansion();
+    let mut tools = research::DesignTools::new(input, workspace_tools)?;
     loop {
         check_cancelled(input)?;
         crate::failover::bypass_open_circuit(input, "designer", cycle, accounting, &mut providers)?;
@@ -90,7 +225,8 @@ pub async fn create(
             }
             Err(error) => return Err(error),
         };
-        let prompt = invocation_prompt(input, correction.as_deref())?;
+        let mut prompt = invocation_prompt(input, correction.as_deref())?;
+        prompt.push_str(&tools.context());
         let (prompt, attachments) = media.into_parts(prompt);
         let result = crate::local_context::run_live_invocation(
             providers.current(),
@@ -106,7 +242,7 @@ pub async fn create(
                 prompt,
                 cyber_access_program: None,
                 attachments,
-                tools: read_only_definitions()?,
+                tools: design_definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)
                     .map_err(|error| crate::turn::developer_error(&error))?,
                 cancellation: input.provider_cancellation.clone(),
@@ -150,16 +286,21 @@ pub async fn create(
             correction = None;
             continue;
         }
-        let markdown = match grounded_markdown(&tools, &result.text) {
-            Ok(markdown) => markdown,
-            Err(error) => {
+        match tools.finish(&result.text) {
+            Ok(outcome) => return Ok(outcome),
+            Err(error) if error.kind() == ProductRunnerErrorKind::InvalidModelOutput => {
                 accounting.record_role_retry()?;
                 correction = Some(correction_prompt(&error));
-                continue;
             }
-        };
-        return publish_design(input, markdown, revision);
+            Err(error) => return Err(error),
+        }
     }
+}
+
+fn design_definitions() -> Result<Vec<peritus_model_protocol::ToolDefinition>, ProductRunnerError> {
+    let mut definitions = read_only_definitions()?;
+    definitions.push(research::definition().map_err(|error| crate::turn::developer_error(&error))?);
+    Ok(definitions)
 }
 
 fn checked_invocation(
@@ -182,44 +323,21 @@ fn invocation_prompt(
     Ok(user_prompt(&stable_context, correction))
 }
 
-fn publish_design(
-    input: &ProductRunInput,
-    markdown: String,
-    conversation_revision: u64,
-) -> Result<DesignDocument, ProductRunnerError> {
-    let path = input.trace_path.with_extension("design.md");
-    publish(&path, markdown.as_bytes())?;
-    let document = DesignDocument { path, markdown, conversation_revision };
-    if let Err(error) = reuse::save(input, &document) {
-        eprintln!("peritus: design reuse receipt unavailable: {error}");
-    }
-    Ok(document)
-}
-
-fn grounded_markdown(
-    tools: &WorkspaceDeveloperTools,
-    text: &str,
-) -> Result<String, ProductRunnerError> {
-    tools.grounding().validate().map_err(grounding)?;
-    let mut markdown = normalize(text)?;
-    markdown.push_str(&tools.grounding().markdown());
-    Ok(markdown)
-}
-
-fn system_prompt(remaining: Option<std::time::Duration>) -> String {
-    let proportionality = "Scale the design to the actual change. This phase has one startup grounding check, reused if already complete. After that check return the task plan; the host closes further tools for this phase. Do not attempt a discovery loop or demand complete source knowledge before handing off. Use the request and retained observations, distinguish known contracts from proposed paths, and put specific source questions in the first implementation slice. The writer reads those exact targets while implementing. Preserve all requested outcomes without repeating requirements or inventing source facts.";
-    let instructions = format!(
-        "You are the design architect in a serious coding harness. Use existing host-verified observations or inspect only the relevant repository contracts before designing. Return only a proportional Markdown task plan, not JSON and not a code fence. A title is optional; the host supplies a missing heading without another request. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Use observed paths and contracts when available; label proposed paths and unresolved source questions honestly. Do not require repository-wide inspection before returning a plan. For a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Cover the objective, exact acceptance criteria, affected paths/contracts, next implementation slices, and real behavioral checks. Use additional architecture, data-flow and risk sections only when the change needs those decisions. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
+pub fn system_prompt(remaining: Option<std::time::Duration>) -> String {
+    let mut instructions = format!(
+        "{}\n\n# Automatic architect contract\n\nYou are the design architect in a serious coding harness. Produce a proportional Markdown task plan, not JSON and not a code fence. A title is optional; the host supplies a missing heading without another request. Preserve the requested ambition and cover the complete requested capability rather than proposing an MVP or literal happy-path approximation. Use host-verified observations and inspect the relevant repository contracts during the single startup grounding check. The host retains the current design-tool lifecycle after that check; do not reopen broad discovery, claim unavailable research occurred, or treat an inaccessible critical obligation as resolved. Use design_research_state to record applicable domains and exact evidence-to-obligation bindings. When the complete records and base Markdown are available, call publish_ready directly; the host validates and durably records every missing primary checkpoint in order. Use individual primary transitions only to retain incomplete recoverable work. publish_ready must carry the complete base Markdown; the host appends the structured provenance, acceptance, failure-behavior, and change-ledger record and atomically binds the derived artifact. Do not return before publish_ready succeeds. If critical evidence is genuinely unavailable, record research_limited and return a useful partial Markdown plan; the host retains it without authorizing implementation. Search snippets are discovery only; externally derived material claims require an opened primary or official retained source. A demonstrably internal mechanical change may instead record a repository-supported no-network decision. Label observed facts, inferred domain obligations, recommendations, conflicts, and unresolved critical unknowns honestly. Preserve explicit prototype/mock limitations. Never classify a recommendation as an original user requirement. Do not defer a necessary requirement merely because the writer can inspect source later.\n\nFor a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Cover the objective, applicable domain obligations, exact acceptance criteria, affected paths and contracts, ordered implementation slices, necessary failure and recovery behavior, and real behavioral checks. Use additional architecture, data-flow, evidence, and risk sections when the change needs those decisions. Make slices independently actionable where practical. Scale detail to the actual change without weakening semantic completeness. Do not edit files, run commands, implement code, or commit.",
         crate::engineering_workflow::architect(),
     );
     if let Some(remaining) = remaining {
-        format!(
-            "The complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.\n\n{instructions}",
-            remaining.as_secs()
+        use std::fmt::Write as _;
+        write!(
+            instructions,
+            "\n\n# Dynamic run context\n\nThe complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.",
+            remaining.as_secs(),
         )
-    } else {
-        instructions
+        .expect("writing to a String cannot fail");
     }
+    instructions
 }
 
 fn design_scope(workspace_root: &Path) -> DesignScope {
@@ -247,7 +365,7 @@ fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
         format!("\n\nHarness correction from the previous rejected design:\n{value}")
     });
     format!(
-        "Conversation and requested outcome:\n{transcript}\n\nUse the single grounding check and retained evidence to write the task plan now. Hand unresolved source questions to the writer's next implementation slice; do not restart repository discovery.{correction}"
+        "Conversation and requested outcome:\n{transcript}\n\nUse the single startup grounding check and retained evidence to expand the task plan now. Do not restart broad repository discovery. Preserve critical unknowns and their consequences explicitly instead of silently guessing or handing necessary design obligations to the writer as completed work. When complete records and the final base Markdown are available, call publish_ready directly; the host persists the validated draft and review checkpoints. Do not spend separate model turns replaying identical complete records through those checkpoints.{correction}"
     )
 }
 
@@ -315,4 +433,41 @@ fn grounding(detail: &'static str) -> ProductRunnerError {
         "ground implementation design in repository evidence",
         detail,
     )
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+
+    #[test]
+    fn expanded_contract_marker_carries_every_stage_seven_identity() {
+        let identity = ExpansionReceiptIdentity {
+            source_sha256: [0x11; 32],
+            manifest_sha256: [0x22; 32],
+            expanded_sha256: [0x33; 32],
+            task_sha256: [0x44; 32],
+            evidence_sha256: [0x55; 32],
+            input_revision: 7,
+            policy_version: DESIGN_EXPANSION_POLICY_VERSION.to_owned(),
+        };
+        assert!(identity.is_complete());
+        let marker = identity.marker();
+        for expected in [
+            "source_sha256=1111",
+            "manifest_sha256=2222",
+            "expanded_sha256=3333",
+            "task_sha256=4444",
+            "evidence_sha256=5555",
+            "input_revision=7",
+            DESIGN_EXPANSION_POLICY_VERSION,
+        ] {
+            assert!(marker.contains(expected), "marker omitted {expected}");
+        }
+
+        let legacy: ExpansionReceiptIdentity = serde_json::from_str(&format!(
+            r#"{{"source_sha256":[17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17],"manifest_sha256":[34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34],"policy_version":"{DESIGN_EXPANSION_POLICY_VERSION}"}}"#,
+        ))
+        .expect("stage-five identity remains readable");
+        assert!(!legacy.is_complete());
+    }
 }

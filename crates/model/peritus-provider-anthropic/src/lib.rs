@@ -12,6 +12,10 @@ mod runtime;
 mod stream;
 mod wire;
 
+#[cfg(test)]
+#[path = "../../provider_policy_test_support.rs"]
+mod provider_policy_test_support;
+
 pub use client::AnthropicClient;
 pub use config::{AnthropicBeta, AnthropicConfig};
 pub use profile::validate_anthropic_profile;

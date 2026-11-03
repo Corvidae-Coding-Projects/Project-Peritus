@@ -8,7 +8,7 @@ Implementation pieces for `resume.rs`: Digest-valid phase resume planning over r
 
 | File | Role |
 | --- | --- |
-| [durable.rs](durable.rs) | Canonical persistence for the otherwise opaque product-run continuation. |
+| [durable.rs](durable.rs) | Canonical persistence for the otherwise opaque product-run continuation, including complete schema-3 expansion identity in durable v4 and active durable v2/v3 recovery without redesign. |
 | [hashing.rs](hashing.rs) | Canonical length-delimited digests for retained knowledge inputs. |
 | [knowledge.rs](knowledge.rs) | Role-specific, digest-bound knowledge retained for safe continuation. |
 

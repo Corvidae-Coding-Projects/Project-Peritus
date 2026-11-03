@@ -9,29 +9,34 @@ use peritus_model_protocol::{
 
 impl LiveConversation {
     pub(super) fn admit_module_command(&self) -> Result<Option<String>, DeveloperLoopError> {
-        self.admit_module_command_for(None)
+        self.admit_local_command_for(None, false)
     }
 
     pub(super) fn admit_active_module_command(
         &self,
         module_id: &str,
     ) -> Result<Option<String>, DeveloperLoopError> {
-        self.admit_module_command_for(Some(module_id))
+        self.admit_local_command_for(Some(module_id), false)
     }
 
-    fn admit_module_command_for(
+    pub(super) fn admit_design_view_command(&self) -> Result<Option<String>, DeveloperLoopError> {
+        self.admit_local_command_for(None, true)
+    }
+
+    fn admit_local_command_for(
         &self,
         active_module: Option<&str>,
+        design_view: bool,
     ) -> Result<Option<String>, DeveloperLoopError> {
         let mut records = self
             .service
             .inner
             .records
             .write()
-            .map_err(|_| super::port_internal("admit module command", "run lock poisoned"))?;
+            .map_err(|_| super::port_internal("admit local command", "run lock poisoned"))?;
         let record = records
             .get_mut(&self.run_id)
-            .ok_or_else(|| super::port_internal("admit module command", "run missing"))?;
+            .ok_or_else(|| super::port_internal("admit local command", "run missing"))?;
         let result = self
             .service
             .with_controls(false, |store| {
@@ -46,18 +51,29 @@ impl LiveConversation {
                     .find(|i| i.selection() == *selected)
                     .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
                 let command = selected_input.text().trim();
-                if !(command == "/modules"
-                    || command == "/module"
-                    || command.starts_with("/module "))
-                {
-                    return Ok(None);
-                }
-                let admitted = if let Some(module_id) = active_module {
+                let admitted = if design_view {
+                    if ![
+                        peritus_product_runner::GUIDED_DESIGN_SHOW_EXPANDED_REQUEST,
+                        peritus_product_runner::GUIDED_DESIGN_SHOW_SOURCE_REQUEST,
+                        peritus_product_runner::GUIDED_DESIGN_SHOW_CHANGES_REQUEST,
+                    ]
+                    .contains(&command)
+                    {
+                        return Ok(None);
+                    }
+                    command.to_owned()
+                } else if let Some(module_id) = active_module {
                     let Some(control) = active_control(command, module_id) else {
                         return Ok(None);
                     };
                     control
                 } else {
+                    if !(command == "/modules"
+                        || command == "/module"
+                        || command.starts_with("/module "))
+                    {
+                        return Ok(None);
+                    }
                     command.to_owned()
                 };
                 let captured = store.capture_execution(&record.interaction.workbench)?;
@@ -91,7 +107,8 @@ impl LiveConversation {
                         profile,
                         negotiated,
                         RequestId::new(format!(
-                            "host-module-command-{}-{}",
+                            "host-{}-command-{}-{}",
+                            if design_view { "design-view" } else { "module" },
                             crate::product_run::deliverable::run_hex(self.run_id),
                             captured.revision()
                         ))?,
@@ -125,7 +142,7 @@ impl LiveConversation {
                 }
                 Ok(Some((admitted, captured.inputs().generation())))
             })
-            .map_err(|e| port_error("persist local module command admission", e.into()))?;
+            .map_err(|e| port_error("persist local command admission", e.into()))?;
         let Some((command, revision)) = result else { return Ok(None) };
         let mut next = record.clone();
         self.service
@@ -135,8 +152,12 @@ impl LiveConversation {
         next.interaction
             .append(
                 ProductActivityKind::Status,
-                "Module command accepted",
-                "Handled locally; no provider inference was requested by command admission.",
+                if design_view { "Design view opened" } else { "Module command accepted" },
+                if design_view {
+                    "Read from retained design artifacts; no provider inference was requested."
+                } else {
+                    "Handled locally; no provider inference was requested by command admission."
+                },
             )
             .map_err(|e| port_error("record host command admission", e))?;
         crate::product_run::persistence::write_record(&self.service.inner.directory, &next)
@@ -160,5 +181,5 @@ fn active_control(command: &str, module_id: &str) -> Option<String> {
 }
 
 fn storage_error(error: impl std::fmt::Display) -> crate::product_control::ControlStoreError {
-    std::io::Error::other(format!("archive local module command: {error}")).into()
+    std::io::Error::other(format!("archive local command: {error}")).into()
 }

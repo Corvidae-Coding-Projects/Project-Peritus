@@ -105,10 +105,51 @@ fn is_inspection(name: &str) -> bool {
 }
 
 fn fingerprint(name: &str, arguments: &Value, result: &Value) -> Sha256Digest {
+    let mut arguments = arguments.clone();
+    if name == "web_search"
+        && let Some(object) = arguments.as_object_mut()
+    {
+        if let Some(query) = object.get_mut("query")
+            && let Some(text) = query.as_str()
+        {
+            *query = Value::String(
+                text.split_whitespace().collect::<Vec<_>>().join(" ").to_ascii_lowercase(),
+            );
+        }
+        object.remove("max_results");
+    }
     let mut output = result.clone();
     if let Some(object) = output.as_object_mut() {
         object.remove("local_context");
         object.remove("execution_resources");
+        if name == "web_search"
+            && let Some(query) = object.get_mut("query")
+            && let Some(text) = query.as_str()
+        {
+            *query = Value::String(
+                text.split_whitespace().collect::<Vec<_>>().join(" ").to_ascii_lowercase(),
+            );
+        }
     }
     peritus_codec::sha256(format!("{name}\n{arguments}\n{output}").as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn equivalent_search_queries_are_one_research_observation() {
+        let first = fingerprint(
+            "web_search",
+            &serde_json::json!({"query":"RFC 9110 HTTP", "max_results":10}),
+            &serde_json::json!({"query":"RFC 9110 HTTP", "results":[]}),
+        );
+        let repeated = fingerprint(
+            "web_search",
+            &serde_json::json!({"query":"  rfc   9110 http  ", "max_results":30}),
+            &serde_json::json!({"query":"rfc 9110 http", "results":[]}),
+        );
+        assert_eq!(first, repeated);
+    }
 }

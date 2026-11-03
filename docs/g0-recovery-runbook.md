@@ -112,6 +112,19 @@ inserted into the catalog manually. A catalog/object digest disagreement is corr
 Local telemetry export is non-authoritative. Preserve its checkpoint and sequence-named files, but
 telemetry failure must not be used to infer domain failure or success.
 
+## Domain-expansion recovery-only control
+
+Fresh design expansion is enabled when no internal control exists. To stop only creation of new
+domain expansions during a bounded recovery, place a regular file named
+`.domain-expansion-rollout-v1` in the directory that owns the product-run trace. Its exact bytes
+must be `recovery-only-v1` followed by one newline. Any other contents or file type fail closed.
+
+The control does not delete or reinterpret retained source, expansion manifests, expanded designs,
+receipts, or active-run state. Exact ready-result reuse, artifact-only deterministic work, and
+recovery of already accepted active runs remain available. Remove only that exact marker after the
+incident is resolved to restore the default for new expansion creation. Do not replace a blocked
+expansion with a legacy draft and represent it as domain-expanded.
+
 ## Recovery completion
 
 Recovery is complete only when the daemon reports `ready-read-write`, the singleton endpoint is

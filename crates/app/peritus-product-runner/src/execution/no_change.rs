@@ -84,13 +84,7 @@ pub(super) async fn review(
         accounting.remaining(),
         OpenEndedPhase::Reviewer,
     )?;
-    let review_cycle = state.findings.cycle().checked_add(1).ok_or_else(|| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidPrecondition,
-            "review no-patch investigation",
-            "review cycle counter is exhausted; no fresh review can be requested",
-        )
-    })?;
+    let review_cycle = next_review_cycle(state)?;
     let conversation = input.conversation.render();
     let submission = reviewer_turn::complete(
         input,
@@ -98,6 +92,7 @@ pub(super) async fn review(
         review_cycle,
         reviewer_turn::ReviewEvidence {
             conversation: &conversation,
+            design: &state.design,
             diff: &evidence.diff,
             gates: &evidence.gates,
             developer_commands: &evidence.developer_commands,
@@ -139,6 +134,16 @@ pub(super) async fn review(
     state.task_summary =
         format!("Investigation complete; no patch candidate generated. {}", state.task_summary);
     Ok(ReviewResult::Complete)
+}
+
+fn next_review_cycle(state: &RunState) -> Result<u32, ProductRunnerError> {
+    state.findings.cycle().checked_add(1).ok_or_else(|| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidPrecondition,
+            "review no-patch investigation",
+            "review cycle counter is exhausted; no fresh review can be requested",
+        )
+    })
 }
 
 fn incomplete(detail: &str) -> ProductRunnerError {

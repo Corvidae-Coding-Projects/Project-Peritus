@@ -5,6 +5,11 @@ mod cancellation;
 mod candidate_digest;
 mod checkpoint;
 mod conversation;
+
+#[cfg(test)]
+pub fn conversation_system(mode: crate::ConversationMode) -> String {
+    conversation::system(mode)
+}
 mod cycle;
 mod deadline;
 mod folder;
@@ -54,11 +59,11 @@ impl ProductRunner {
         accounting: &mut RunAccounting,
     ) -> Result<ActiveExit, ProductRunnerError> {
         let mut workspace_ownership = input.ownership();
-        if let Some((question, revision)) = execution
+        if let Some((question, revision, phase)) = execution
             .prepare_active_state(input, observe, &mut workspace_ownership, accounting)
             .await?
         {
-            return Ok(ActiveExit::waiting(question, revision, ProductRunPhase::Writing));
+            return Ok(ActiveExit::waiting(question, revision, phase));
         }
 
         loop {
@@ -74,13 +79,26 @@ impl ProductRunner {
             })?;
             if input.conversation.revision() != state.conversation_revision {
                 execution.next_phase = ProductRunPhase::Designing;
-                state.design = create_design(
+                let design = create_design(
                     input,
                     observe,
                     state.coordinator.completed_fixer_cycles() + 2,
                     accounting,
                 )
                 .await?;
+                state.design = match design {
+                    crate::design::DesignExpansionOutcome::Ready(document) => *document,
+                    crate::design::DesignExpansionOutcome::Waiting {
+                        question,
+                        conversation_revision,
+                    } => {
+                        return Ok(ActiveExit::waiting(
+                            question,
+                            conversation_revision,
+                            ProductRunPhase::Designing,
+                        ));
+                    }
+                };
                 execution.design = Some(state.design.clone());
                 execution.next_phase = ProductRunPhase::Writing;
                 let prior = review::render(&state.findings);
@@ -89,7 +107,7 @@ impl ProductRunner {
                     &input.providers.writer,
                     "writer-follow-up",
                     state.coordinator.completed_fixer_cycles() + 2,
-                    state.design.markdown(),
+                    &state.design,
                     Some(&prior),
                     None,
                     &mut workspace_ownership,

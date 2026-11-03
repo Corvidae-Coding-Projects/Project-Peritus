@@ -15,7 +15,7 @@ impl WorkspaceDeveloperTools {
         let ownership = WorkspaceOwnership::direct();
         Self {
             grounding: GroundingEvidence::new(root.clone()),
-            design_grounding_only: false,
+            design_policy: super::DesignToolPolicy::Ordinary,
             root,
             access_policy: WorkspaceAccessPolicy::default(),
             references: ExplicitReferences::default(),
@@ -51,7 +51,7 @@ impl WorkspaceDeveloperTools {
     ) -> Self {
         Self {
             grounding: GroundingEvidence::new(root.clone()),
-            design_grounding_only: false,
+            design_policy: super::DesignToolPolicy::Ordinary,
             root,
             access_policy: WorkspaceAccessPolicy::default(),
             references: ExplicitReferences::default(),

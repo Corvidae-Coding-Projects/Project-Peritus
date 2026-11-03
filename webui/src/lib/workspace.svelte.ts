@@ -234,7 +234,9 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
     ui.modes[ui.sessionId]=text==='build'?'chat':'design';ui.activeFile='';
     ui.drafts[ui.sessionId]=text==='build'
       ?'Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.'
-      :text==='show'?'Show the complete current saved design draft. If none exists, help me start one.'
+      :text==='show'||text==='show expanded'?'Show the complete current expanded design using the design_draft expanded view. If none exists, help me start one.'
+      :text==='show source'?'Show the unchanged source design using the design_draft source view.'
+      :text==='show changes'?'Show the deterministic source-to-expanded change ledger using the design_draft changes view.'
       :text||'Help me create or continue a design.';
     await send();return;
   }

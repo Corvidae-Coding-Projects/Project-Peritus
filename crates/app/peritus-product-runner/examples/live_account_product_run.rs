@@ -4,20 +4,22 @@ use std::{
     error::Error,
     fs, io,
     process::Command,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{Arc, Mutex, atomic::AtomicBool},
     time::Duration,
 };
 
 use peritus_model_protocol::{
-    CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
-    OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
+    CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ContentBlock,
+    ModelLimits, ModelName, OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind,
+    StateMode, WireDialect,
 };
 use peritus_product_runner::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
     RunObserver,
 };
-use peritus_provider_anthropic::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
-use peritus_provider_core::{CancellationToken, ModelProvider, ProcessLimits};
+use peritus_provider_core::{
+    BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProcessLimits, ProviderCoreError,
+};
 use peritus_provider_openai::{CodexExecutable, CodexRuntimeConfig, CodexRuntimeProvider};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
@@ -35,11 +37,11 @@ async fn run() -> Result<(), Box<dyn Error>> {
     initialize_repository(repository.path())?;
     let cancellation = CancellationToken::new();
     let writer = codex_provider()?;
-    let reviewer = claude_provider()?;
     writer.require_authenticated(&cancellation).await?;
-    reviewer.require_authenticated(&cancellation).await?;
     let writer: Arc<dyn ModelProvider> = writer;
-    let reviewer: Arc<dyn ModelProvider> = reviewer;
+    let captured = Arc::new(CapturingProvider::new(writer));
+    let writer: Arc<dyn ModelProvider> = captured.clone();
+    let reviewer = Arc::clone(&writer);
     let observer: RunObserver = Arc::new(|_| {});
     let task = "Add a documented public function named answer that returns u32 value 42, and add a unit test that proves it. Keep the existing function.".to_owned();
     let run_id = RunId::new([0xE4; 16]).expect("nonzero qualification run id");
@@ -60,7 +62,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             workspace_id: WorkspaceId::new([0xE5; 16]).expect("nonzero workspace id"),
             workspace_root: repository.path().to_owned(),
             source_root: repository.path().to_owned(),
-            trace_path: repository.path().join("peritus-run.trace"),
+            trace_path: command_state.path().join("peritus-run.trace"),
             command_runtime,
             module_jobs: None,
             finding_state: String::new(),
@@ -83,8 +85,11 @@ async fn run() -> Result<(), Box<dyn Error>> {
     .await?;
     if !output.settlement().is_accepted() {
         return Err(io::Error::other(format!(
-            "product run was not accepted: {:?}",
-            output.settlement().disposition()
+            "product run was not accepted: {:?}; detail={:?}; remaining={:?}; question={:?}",
+            output.settlement().disposition(),
+            output.detail(),
+            output.remaining_work(),
+            output.question().map(peritus_product_runner::ProductRunQuestion::message),
         ))
         .into());
     }
@@ -97,8 +102,142 @@ async fn run() -> Result<(), Box<dyn Error>> {
             io::Error::other("product run did not produce the requested tested change").into()
         );
     }
+    let design = fs::read_to_string(command_state.path().join("peritus-run.design.md"))?;
+    captured.verify_shared_design_contract(&design)?;
     let _ = (output.changed_files(), output.fixer_cycles);
+    eprintln!("live account product-run and shared design-contract qualification passed");
     Ok(())
+}
+
+struct CapturingProvider {
+    inner: Arc<dyn ModelProvider>,
+    requests: Mutex<Vec<String>>,
+}
+
+impl CapturingProvider {
+    fn new(inner: Arc<dyn ModelProvider>) -> Self {
+        Self { inner, requests: Mutex::new(Vec::new()) }
+    }
+
+    fn verify_shared_design_contract(&self, design: &str) -> Result<(), io::Error> {
+        let (writer, reviewer) = {
+            let requests = self.requests.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let writer = requests
+                .iter()
+                .find(|value| value.contains("Accepted implementation design identity"))
+                .ok_or_else(|| {
+                    io::Error::other("writer request did not carry the design identity")
+                })?
+                .clone();
+            let reviewer = requests
+                .iter()
+                .find(|value| value.contains("Accepted expanded implementation design identity"))
+                .ok_or_else(|| {
+                    io::Error::other("reviewer request did not carry the design identity")
+                })?
+                .clone();
+            drop(requests);
+            (writer, reviewer)
+        };
+        if !writer.contains(design) || !reviewer.contains(design) {
+            return Err(io::Error::other(
+                "writer and reviewer did not both receive the exact expanded Markdown",
+            ));
+        }
+        let writer_identity = expansion_identity_line(&writer)?;
+        let reviewer_identity = expansion_identity_line(&reviewer)?;
+        if writer_identity != reviewer_identity {
+            return Err(io::Error::other(format!(
+                "writer/reviewer expansion identities differ: writer={writer_identity}; reviewer={reviewer_identity}",
+            )));
+        }
+        for field in [
+            "source_sha256=",
+            "manifest_sha256=",
+            "expanded_sha256=",
+            "task_sha256=",
+            "evidence_sha256=",
+            "input_revision=",
+            "policy=",
+        ] {
+            if !writer_identity.contains(field) {
+                return Err(io::Error::other(format!("shared expansion identity omitted {field}")));
+            }
+        }
+        if !reviewer.contains("independent of the writer's report") {
+            return Err(io::Error::other(
+                "reviewer request did not preserve independent design authority",
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn expansion_identity_line(request: &str) -> Result<&str, io::Error> {
+    request
+        .lines()
+        .find(|line| line.starts_with("source_sha256="))
+        .ok_or_else(|| io::Error::other("request omitted the complete expansion identity line"))
+}
+
+impl ModelProvider for CapturingProvider {
+    fn profile(&self) -> &ProviderProfile {
+        self.inner.profile()
+    }
+
+    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
+        self.inner.request_profile(output_tokens)
+    }
+
+    fn context_input_target(&self) -> u64 {
+        self.inner.context_input_target()
+    }
+
+    fn prepare_context<'a>(
+        &'a self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+        self.inner.prepare_context(cancellation)
+    }
+
+    fn context_input_fits(
+        &self,
+        messages: &[peritus_model_protocol::Message],
+        tools: &[peritus_model_protocol::ToolDefinition],
+    ) -> Result<bool, ProviderCoreError> {
+        self.inner.context_input_fits(messages, tools)
+    }
+
+    fn reasoning_effort(&self) -> Option<peritus_model_protocol::ReasoningEffort> {
+        self.inner.reasoning_effort()
+    }
+
+    fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.inner.supports_reasoning_effort(effort)
+    }
+
+    fn availability(&self) -> peritus_provider_core::ProviderAvailability {
+        self.inner.availability()
+    }
+
+    fn start(
+        &self,
+        request: peritus_model_protocol::ModelRequest,
+        cancellation: CancellationToken,
+    ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
+        let text = request
+            .messages()
+            .iter()
+            .flat_map(peritus_model_protocol::Message::content)
+            .filter_map(|block| match block {
+                ContentBlock::Text(value) => Some(value.expose_for_wire()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.requests.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(text);
+        self.inner.start(request, cancellation)
+    }
 }
 
 struct FixedConversation(String);
@@ -111,26 +250,24 @@ impl ConversationView for FixedConversation {
     fn render(&self) -> String {
         format!("User:\n{}", self.0)
     }
+
+    fn source_design_user_text(&self, input_revision: u64) -> Result<Option<String>, String> {
+        if input_revision == 1 {
+            Ok(Some(self.0.clone()))
+        } else {
+            Err("qualification conversation revision is stale".to_owned())
+        }
+    }
 }
 
 fn codex_provider() -> Result<Arc<CodexRuntimeProvider>, Box<dyn Error>> {
     let executable = CodexExecutable::discover()?;
     let config = CodexRuntimeConfig::new(
         executable,
-        profile([0xA1; 16], "openai", "gpt-5.6-sol", WireDialect::OpenAiCodexRuntime)?,
+        profile([0xA1; 16], "openai", "gpt-6.1-sol", WireDialect::OpenAiCodexRuntime)?,
         process_limits(2 * 1024 * 1024)?,
     )?;
     Ok(Arc::new(CodexRuntimeProvider::new(config)))
-}
-
-fn claude_provider() -> Result<Arc<ClaudeRuntimeProvider>, Box<dyn Error>> {
-    let executable = ClaudeExecutable::discover()?;
-    let config = ClaudeRuntimeConfig::new(
-        executable,
-        profile([0xA2; 16], "anthropic", "sonnet", WireDialect::AnthropicClaudeRuntime)?,
-        process_limits(16 * 1024 * 1024)?,
-    )?;
-    Ok(Arc::new(ClaudeRuntimeProvider::new(config)))
 }
 
 fn profile(
@@ -151,7 +288,7 @@ fn profile(
             &[],
         )?,
         CapabilityProvenance::Profiled,
-        ModelLimits::new(200_000, 32_000, 32, 8, 1)?,
+        ModelLimits::new(200_000, 32_000, 128, 8, 1)?,
         OutputLimitEnforcement::Advisory,
         StateMode::StatelessReplay,
         ResumeKind::Unsupported,

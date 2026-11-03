@@ -15,6 +15,7 @@ const MAX_REVIEWER_TOOL_CALLS: u32 = 256;
 
 pub struct ReviewEvidence<'a> {
     pub conversation: &'a str,
+    pub design: &'a crate::design::DesignDocument,
     pub diff: &'a str,
     pub gates: &'a str,
     pub developer_commands: &'a str,
@@ -29,6 +30,7 @@ impl ReviewEvidence<'_> {
     ) -> ReviewerEvidenceSources {
         ReviewerEvidenceSources::new(
             transcript,
+            self.design.markdown().to_owned(),
             self.diff.to_owned(),
             self.gates.to_owned(),
             self.developer_commands.to_owned(),
@@ -230,6 +232,7 @@ fn prepare_request(
     let system = turn::reviewer_system(remaining) + input.delivery_instructions();
     let mut transcript = input.conversation.stable_request_context();
     transcript.push_str(&crate::guided_design::implementation_context(input)?);
+    let design_identity = evidence.design.contract_marker();
     let tools = reviewer_definitions()?;
     let mut budget_tools = tools.clone();
     if let Some(memory) = memory {
@@ -240,6 +243,8 @@ fn prepare_request(
         system: &system,
         tools: &budget_tools,
         transcript: &transcript,
+        design: evidence.design.markdown(),
+        design_identity: &design_identity,
         diff: evidence.diff,
         gates: evidence.gates,
         developer_evidence: evidence.developer_commands,

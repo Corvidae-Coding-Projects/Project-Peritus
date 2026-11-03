@@ -88,6 +88,11 @@ name = "live-account-product-run"
 path = "examples/live_account_product_run.rs"
 test = false
 
+[[example]]
+name = "live-design-expansion"
+path = "examples/live_design_expansion.rs"
+test = false
+
 [package.metadata.peritus]
 owner = "G4"
 layer = "app"

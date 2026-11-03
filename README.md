@@ -172,9 +172,9 @@ Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
 | --- | --- |
-| `/design [idea]` | Create a design together: one question at a time, suggested answers, and a saved Markdown draft. |
-| `/design show` | Show the current draft. Reply with changes or paste replacement Markdown to revise it. |
-| `/design build` | Explicitly start implementation using this conversation's saved design. |
+| `/design [idea]` | Create a design together. Peritus preserves the exact source and asks only for material decisions that lack a supported default. |
+| `/design show [expanded\|source\|changes]` | Show the expanded design (default), unchanged source, or deterministic source-to-expansion change ledger. |
+| `/design build` | Expand the saved source against applicable repository and authoritative domain evidence, then explicitly start implementation. |
 | `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools, including an exact absolute reference path named in your request. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
 | `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
@@ -186,12 +186,16 @@ Type `/` to discover commands; Tab completes them.
 
 Design mode helps you work out the goal, users, important journeys, scope, approach, and
 acceptance through real use. Say “not sure” to leave a decision open, or change an earlier
-answer at any time. The draft and next question are saved with the conversation, so you can
-return after closing the client or restarting the daemon. The Markdown artifact lives beside
-the run trace as `<run-id>.guided-design.md`; Peritus shows its path when the design is ready.
-Design mode can inspect the project but cannot edit its files or run commands. Approving a
-design keeps you in the interview; `/design build` is the separate implementation action.
-The browser's **Design** mode offers **Show draft**, **Revise draft**, and **Start implementation**.
+answer at any time. The source draft and next question are saved with the conversation, so you
+can return after closing the client or restarting the daemon. Before implementation, Peritus
+preserves that exact source separately and expands it with applicable domain obligations,
+failure behavior, acceptance criteria, and retained evidence. It does not silently treat a
+derived expansion as user-authored source. Research that is critical but unavailable leaves the
+design explicitly limited instead of ready, and external research remains subject to current
+tool permissions. Design mode can inspect the project but cannot edit its files or run commands.
+Approving a design keeps you in the interview; `/design build` is the separate implementation
+action. The browser's **Design** mode offers **Expanded**, **Source**, **Changes**, **Revise**, and
+**Start implementation**.
 
 Use Shift+Enter for a new line. The mouse wheel or PageUp/PageDown scrolls the conversation.
 In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,

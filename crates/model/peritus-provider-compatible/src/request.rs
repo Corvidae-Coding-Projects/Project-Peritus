@@ -85,3 +85,48 @@ pub fn http_request(
         config.http_limits(),
     )
 }
+
+#[cfg(test)]
+mod policy_projection {
+    use peritus_model_protocol::{OutputLimitEnforcement, WireDialect};
+    use serde_json::Value;
+
+    use crate::provider_policy_test_support as support;
+
+    fn encode(dialect: WireDialect) -> Value {
+        let profile =
+            support::profile("compatible", dialect, OutputLimitEnforcement::ProviderEnforced);
+        let request = support::request(&profile);
+        let profile = match dialect {
+            WireDialect::CompatibleResponses => {
+                crate::CompatibleProfile::responses(profile).expect("compatible Responses profile")
+            }
+            WireDialect::CompatibleChatCompletions => {
+                crate::CompatibleProfile::chat_completions(profile)
+                    .expect("compatible Chat profile")
+            }
+            _ => unreachable!("fixture selects a compatible dialect"),
+        };
+        serde_json::from_slice(
+            &super::encode(&profile, &request).expect("encode compatible request"),
+        )
+        .expect("parse compatible request")
+    }
+
+    #[test]
+    fn system_policy_remains_a_system_message_in_both_compatible_dialects() {
+        let responses = encode(WireDialect::CompatibleResponses);
+        assert_eq!(responses["input"][0]["role"], "system");
+        assert_eq!(responses["input"][0]["content"][0]["text"], support::POLICY_TEXT);
+        assert_eq!(responses["input"][1]["role"], "user");
+        assert_eq!(responses["input"][1]["content"][0]["text"], support::TASK_TEXT);
+        assert_eq!(support::count(&responses.to_string(), support::POLICY_MARKER), 1);
+
+        let chat = encode(WireDialect::CompatibleChatCompletions);
+        assert_eq!(chat["messages"][0]["role"], "system");
+        assert_eq!(chat["messages"][0]["content"][0]["text"], support::POLICY_TEXT);
+        assert_eq!(chat["messages"][1]["role"], "user");
+        assert_eq!(chat["messages"][1]["content"][0]["text"], support::TASK_TEXT);
+        assert_eq!(support::count(&chat.to_string(), support::POLICY_MARKER), 1);
+    }
+}

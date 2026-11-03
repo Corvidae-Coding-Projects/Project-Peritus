@@ -17,7 +17,7 @@ mod removals;
 use extraction::extract;
 use language::{
     clause_start, conditional_clause, explicitly_delimited, negation, normalized, output_context,
-    output_verb, path_context, path_noun_context,
+    output_verb, path_context, path_noun_context, relative_path_context,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -215,7 +215,11 @@ fn parse_path(
         return None;
     }
     let token = trim_delimiters(raw);
-    let token = token.strip_suffix('.').unwrap_or(token);
+    let token = if explicitly_delimited(raw) {
+        token.strip_suffix('.').unwrap_or(token)
+    } else {
+        token.trim_end_matches(['.', ',', ';', ':', '?', '!'])
+    };
     let token = trim_delimiters(token);
     if token.is_empty()
         || token.contains("://")
@@ -237,6 +241,7 @@ fn parse_path(
             && !token.contains('.')
             && !explicitly_delimited(raw)
             && !relative_path_context
+            && !relative_path_anchor_exists(root, token)
         {
             return None;
         }
@@ -254,6 +259,19 @@ fn parse_path(
         .filter(|component| *component != Component::CurDir)
         .collect::<PathBuf>();
     (!relative.as_os_str().is_empty()).then_some(relative)
+}
+
+fn relative_path_anchor_exists(root: &Path, token: &str) -> bool {
+    Path::new(token)
+        .components()
+        .find_map(|component| match component {
+            Component::Normal(name) => Some(root.join(name)),
+            Component::CurDir => None,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                Some(PathBuf::new())
+            }
+        })
+        .is_some_and(|path| !path.as_os_str().is_empty() && fs::symlink_metadata(path).is_ok())
 }
 
 fn unresolved_placeholder(raw: &str) -> bool {
@@ -309,7 +327,49 @@ fn path_token(raw: &str) -> &str {
         return raw;
     };
     let end = opening.len_utf8() + closing + opening.len_utf8();
-    // A prose dash after a closed literal is not part of its path. Dashes inside the
+    let trailing = &raw[end..];
+    // Prose punctuation after a closed literal is not part of its path. Dashes inside the
     // delimiters, unclosed literals, and concatenated path suffixes keep their bytes.
-    if raw[end..].starts_with(['—', '–']) { &raw[..end] } else { raw }
+    if trailing.starts_with(['—', '–'])
+        || !trailing.is_empty()
+            && trailing
+                .chars()
+                .all(|character| matches!(character, '.' | ',' | ';' | ':' | '?' | '!'))
+    {
+        &raw[..end]
+    } else {
+        raw
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn design_acceptance_prose_does_not_become_required_output_paths() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("greet.py"), "print('hello')\n").expect("fixture");
+        let transcript = "Modify `greet.py`. The output must reject an `alias.`. \
+            Output exactly one `newline.`. Output excludes the former spelling as alias.. \
+            Produce usage/error on stderr. Project guidance: preserve output and use actual CLI \
+            operations without prohibited gates: repository `AGENTS.md` at its retained source \
+            identity.";
+
+        let analysis = analyze(root.path(), transcript);
+
+        assert_eq!(analysis.required_outputs(), vec![PathBuf::from("greet.py")]);
+    }
+
+    #[test]
+    fn extensionless_paths_still_require_a_path_cue_or_existing_anchor() {
+        let root = tempfile::tempdir().expect("root");
+        fs::create_dir_all(root.path().join("artifacts/release")).expect("fixture");
+
+        let cued = analyze(root.path(), "Write the output to future/release.");
+        let anchored = analyze(root.path(), "Create artifacts/release.");
+
+        assert_eq!(cued.required_outputs(), vec![PathBuf::from("future/release")]);
+        assert_eq!(anchored.required_outputs(), vec![PathBuf::from("artifacts/release")]);
+    }
 }

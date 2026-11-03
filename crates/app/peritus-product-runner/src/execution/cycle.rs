@@ -83,7 +83,7 @@ pub(super) struct GateInspection {
 pub(super) async fn initial_write(
     input: &ProductRunInput,
     observe: &RunObserver,
-    design: &str,
+    design: &design::DesignDocument,
     findings: Option<&str>,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
@@ -95,6 +95,14 @@ pub(super) async fn initial_write(
         OpenEndedPhase::Writer,
     )?;
     check_cancelled(input)?;
+    crate::efficiency::event(
+        &input.trace_path,
+        serde_json::json!({
+            "event":"implementation-phase-start",
+            "input_revision":design.conversation_revision(),
+            "design":design.contract_marker(),
+        }),
+    );
     emit(
         observe,
         ProductRunPhase::Writing,
@@ -125,7 +133,7 @@ pub(super) async fn create_design(
     observe: &RunObserver,
     cycle: u32,
     accounting: &mut RunAccounting,
-) -> Result<design::DesignDocument, ProductRunnerError> {
+) -> Result<design::DesignExpansionOutcome, ProductRunnerError> {
     deadline::require_phase_window(
         input.max_elapsed,
         accounting.remaining(),
@@ -142,7 +150,7 @@ pub(super) async fn create_design(
         None,
         accounting,
     )?;
-    let document = design::create(
+    let outcome = design::create(
         input,
         &input.providers.writer,
         &input.providers.fallbacks,
@@ -150,11 +158,21 @@ pub(super) async fn create_design(
         accounting,
     )
     .await?;
-    let status = format!("Detailed design ready at {}", document.path().display());
-    let summary = format!(
-        "Retained plan from revision {} is ready; the writer applies current user instructions as amendments.",
-        document.conversation_revision()
-    );
+    let (status, summary) = match &outcome {
+        design::DesignExpansionOutcome::Ready(document) => (
+            format!("Detailed design ready at {}", document.path().display()),
+            format!(
+                "Retained plan from revision {} is ready; the writer applies current user instructions as amendments.",
+                document.conversation_revision()
+            ),
+        ),
+        design::DesignExpansionOutcome::Waiting { conversation_revision, .. } => (
+            "Design expansion is waiting on one material user decision".to_owned(),
+            format!(
+                "The question is bound to source and input revision {conversation_revision}; implementation has not started."
+            ),
+        ),
+    };
     emit(
         observe,
         ProductRunPhase::Designing,
@@ -165,7 +183,7 @@ pub(super) async fn create_design(
         None,
         accounting,
     )?;
-    Ok(document)
+    Ok(outcome)
 }
 
 #[allow(clippy::too_many_arguments, reason = "gate execution binds one exact run boundary")]
@@ -306,7 +324,7 @@ pub(super) async fn apply_fix(
         &input.providers.fixer,
         "fixer",
         fixer_cycle,
-        state.design.markdown(),
+        &state.design,
         Some(&evidence.review),
         Some(crate::turn::DeveloperEvidence { diff: &evidence.diff, gates: &evidence.gates }),
         ownership,

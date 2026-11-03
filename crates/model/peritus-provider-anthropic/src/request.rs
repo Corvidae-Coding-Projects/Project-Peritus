@@ -374,3 +374,46 @@ fn apply_cache(
 const fn invalid(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::invalid_request("anthropic_request", detail)
 }
+
+#[cfg(test)]
+mod policy_projection {
+    use peritus_model_protocol::{OutputLimitEnforcement, WireDialect};
+    use serde_json::Value;
+
+    use crate::provider_policy_test_support as support;
+
+    #[test]
+    fn system_policy_remains_in_anthropic_system_blocks() {
+        let profile = support::profile(
+            "anthropic",
+            WireDialect::AnthropicMessages,
+            OutputLimitEnforcement::ProviderEnforced,
+        );
+        let request = support::request(&profile);
+        let config = crate::config::AnthropicConfig::new(
+            peritus_provider_core::Endpoint::new("https://fixture.invalid".to_owned())
+                .expect("fixture endpoint"),
+            peritus_provider_core::CredentialReference::new("fixture".to_owned())
+                .expect("fixture credential reference"),
+            profile,
+            Vec::new(),
+            peritus_provider_core::HttpLimits::PRODUCTION,
+            peritus_provider_core::FramingLimits::PRODUCTION,
+            peritus_provider_core::RetryPolicy::new(
+                1,
+                [std::time::Duration::from_millis(1); 4],
+                1_048_576,
+            )
+            .expect("fixture retry policy"),
+        )
+        .expect("fixture Anthropic config");
+        let body: Value = serde_json::from_slice(
+            &super::encode(&request, &config).expect("encode Anthropic request"),
+        )
+        .expect("parse Anthropic request");
+        assert_eq!(body["system"][0]["text"], support::POLICY_TEXT);
+        assert_eq!(body["messages"][0]["role"], "user");
+        assert_eq!(body["messages"][0]["content"][0]["text"], support::TASK_TEXT);
+        assert_eq!(support::count(&body.to_string(), support::POLICY_MARKER), 1);
+    }
+}

@@ -234,7 +234,8 @@ impl Fixture {
                 }
                 if Instant::now() > deadline {
                     return Err(format!(
-                        "no request {count}; daemon log {}",
+                        "no request {count}; observed requests {}; daemon log {}",
+                        Value::Array(rows),
                         fs::read_to_string(root.join("child.log")).unwrap_or_default()
                     ));
                 }

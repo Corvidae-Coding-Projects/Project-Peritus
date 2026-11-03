@@ -9,6 +9,7 @@ Provider-neutral requests/events and transport adapters for account runtimes and
 | File | Role |
 | --- | --- |
 | [README.md](README.md) | Human overview and linked directory map for this architectural area. |
+| [provider_policy_test_support.rs](provider_policy_test_support.rs) | Shared test-only request fixture for checking system-policy projection across provider adapters. |
 
 ## Child areas
 

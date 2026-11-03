@@ -18,7 +18,7 @@ Host-owned model tools: schemas, argument admission, workspace grounding, permis
 | [computer.rs](computer.rs) | Provider-neutral browser, native app, and actual image tool integration. |
 | [effect.rs](effect.rs) | Shared developer-tool effect mechanics. |
 | [evidence.rs](evidence.rs) | Bounded developer-command observations carried into independent review. |
-| [executor.rs](executor.rs) | Concrete bounded filesystem and structured-command developer tools. |
+| [executor.rs](executor.rs) | Concrete bounded filesystem and structured-command developer tools, including the post-grounding focused design-research policy and pre-network query privacy guard. |
 | [folder_patch_request.rs](folder_patch_request.rs) | Effect-free target identity for a separately authenticated registered-folder patch. |
 | [grounding.rs](grounding.rs) | One startup check per run/workspace, its durable completion marker, and independently hash-validated target observations. |
 | [inspection.rs](inspection.rs) | Bounded read-only workspace inspection operations. |

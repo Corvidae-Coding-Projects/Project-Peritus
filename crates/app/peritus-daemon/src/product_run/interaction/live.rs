@@ -109,6 +109,20 @@ impl ConversationView for LiveConversation {
             "Governing conversation unavailable; execution must stop.".to_owned()
         })
     }
+    fn source_design_user_text(&self, input_revision: u64) -> Result<Option<String>, String> {
+        if self.revision() != input_revision || self.incorporated_revision() != input_revision {
+            return Err("source-design input revision is stale or not incorporated".to_owned());
+        }
+        let records =
+            self.service.inner.records.read().map_err(|_| "conversation unavailable".to_owned())?;
+        let record =
+            records.get(&self.run_id).ok_or_else(|| "conversation unavailable".to_owned())?;
+        let start = &record.interaction.workbench;
+        self.service
+            .with_controls(false, |store| store.capture_execution(start))
+            .map(|capture| capture.latest_user_text().map(str::to_owned))
+            .map_err(|_| "authenticated user source input is unavailable".to_owned())
+    }
     fn reference_authority_context(&self) -> String {
         let result = (|| {
             let records = self
@@ -129,6 +143,9 @@ impl ConversationView for LiveConversation {
     fn take_module_command(&self) -> Result<Option<String>, String> {
         self.admit_module_command().map_err(|e| e.to_string())
     }
+    fn take_design_view_command(&self) -> Result<Option<String>, String> {
+        self.admit_design_view_command().map_err(|error| error.to_string())
+    }
     fn take_active_module_command(&self, module_id: &str) -> Result<Option<String>, String> {
         self.admit_active_module_command(module_id).map_err(|e| e.to_string())
     }
@@ -141,7 +158,7 @@ impl ConversationView for LiveConversation {
                 options.append(
                     ProductActivityKind::Assistant,
                     &remaining[..end],
-                    "Local module result",
+                    "Local host result",
                 )?;
                 remaining = &remaining[end..];
             }

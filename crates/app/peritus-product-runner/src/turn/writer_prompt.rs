@@ -69,7 +69,7 @@ pub fn project_developer_evidence(
     let projected = super::evidence::project(
         prompt.max_input_tokens,
         framing_tokens,
-        ["", prompt.diff, prompt.gates, "", "", ""],
+        ["", "", prompt.diff, prompt.gates, "", "", ""],
     );
     Ok(render(&projected.diff, &projected.gates))
 }
@@ -119,7 +119,7 @@ pub(super) fn writer_system(
 
 pub(super) fn writer_user(
     transcript: &str,
-    design: &str,
+    design: &crate::design::DesignDocument,
     findings: Option<&str>,
     correction: Option<&str>,
 ) -> String {
@@ -130,6 +130,8 @@ pub(super) fn writer_user(
         format!("\n\nHarness correction from the previous rejected turn:\n{value}")
     });
     format!(
-        "Current conversation and task:\n{transcript}\n\nRetained implementation plan (prior evidence, subordinate to current user instructions):\n{design}\n\nContinue implementing the current task in the managed workspace. Reuse this plan and retained source observations. Apply current steering as amendments directly; do not restart discovery or regenerate a plan for continue/retry. Read only a changed target or the exact missing body needed for the next edit, then make that edit. Current requirements and independent review still govern completion.{findings}{correction}"
+        "Current conversation and task:\n{transcript}\n\nAccepted implementation design identity (host-bound task evidence, subordinate to current user instructions):\n{}\nThe exact UTF-8 design is retained as developer_evidence_read section=design with total SHA-256 equal to expanded_sha256 above. Reconstruct any omitted or decision-relevant range by exact byte pages instead of relying on a writer summary.\n\nRetained implementation plan:\n{}\n\nContinue implementing the current task in the managed workspace. Reuse this plan and retained source observations. Apply current steering as amendments directly; do not restart discovery or regenerate a plan for continue/retry. Read only a changed target or the exact missing body needed for the next edit, then make that edit. Current requirements and independent review still govern completion.{findings}{correction}",
+        design.contract_marker(),
+        design.markdown(),
     )
 }

@@ -144,6 +144,15 @@ pub trait ConversationView: Send + Sync {
     fn take_module_command(&self) -> Result<Option<String>, String> {
         Ok(None)
     }
+    /// Durably admits an exact host-generated design presentation command without inference.
+    /// Returns none for ordinary natural-language Design input. Held, withdrawn, blocked, and
+    /// near-matching input cannot be selected.
+    ///
+    /// # Errors
+    /// Returns an error when durable input state cannot be authenticated and advanced atomically.
+    fn take_design_view_command(&self) -> Result<Option<String>, String> {
+        Ok(None)
+    }
     /// Durably admits a pause, resume, or steer command for the named module while that module's
     /// agent role is active. Other input remains pending for ordinary supersession handling.
     ///
@@ -171,6 +180,19 @@ pub trait ConversationView: Send + Sync {
     /// pending inputs here and supply their current exact view through the D0 interaction port.
     fn stable_request_context(&self) -> String {
         self.render()
+    }
+    /// Returns the latest exact user-authored text for an explicitly designated direct source
+    /// design at one already incorporated revision.
+    ///
+    /// Governed hosts must read their authenticated immutable input ledger rather than recover
+    /// text from a rendered transcript. Provider replies, host guidance, and tool output are never
+    /// eligible. Legacy/static hosts return none unless they implement this exact source boundary.
+    ///
+    /// # Errors
+    /// Returns a redaction-safe reason when the requested revision is stale or durable source
+    /// input cannot be authenticated.
+    fn source_design_user_text(&self, _input_revision: u64) -> Result<Option<String>, String> {
+        Ok(None)
     }
     /// Exact user-authored text allowed to grant read-only access to explicitly named external
     /// references. Governed hosts must exclude provider replies, tool output, and host guidance.

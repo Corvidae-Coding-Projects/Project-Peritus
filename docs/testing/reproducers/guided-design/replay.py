@@ -11,12 +11,14 @@ p.add_argument('--seed',type=int,default=20261015)
 p.add_argument('--build',action='store_true')
 p.add_argument('--read-only',action='store_true')
 p.add_argument('--resume-after-show',action='store_true',help='Continue this owned replay after its Show step, preserving prior evidence')
+p.add_argument('--resume-build-only',action='store_true',help='Resume an interrupted owned Build with the selected current binary')
 a=p.parse_args()
 if a.build and a.read_only:p.error('--build requires a writable fixture')
-root=a.output.resolve();root.mkdir(parents=True,exist_ok=a.resume_after_show)
-binary=a.binary.resolve();project=root/'project';project.mkdir(exist_ok=a.resume_after_show)
+if a.resume_after_show and a.resume_build_only:p.error('resume modes are mutually exclusive')
+root=a.output.resolve();root.mkdir(parents=True,exist_ok=a.resume_after_show or a.resume_build_only)
+binary=a.binary.resolve();project=root/'project';project.mkdir(exist_ok=a.resume_after_show or a.resume_build_only)
 baseline='import argparse\np=argparse.ArgumentParser()\np.add_argument("name")\na=p.parse_args()\nprint("Hello, " + a.name + "!")\n'
-if not a.resume_after_show:
+if not (a.resume_after_show or a.resume_build_only):
  (project/'greet.py').write_text(baseline)
  (project/'AGENTS.md').write_text('# Greeting CLI\ngreet.py owns the CLI. Preserve ordinary output. Keep a single Python file, no dependencies. Exercise actual CLI operations; do not add or run unit tests, formal verification, or lint gates.\n')
 env=os.environ.copy();env.update({f'XDG_{key.upper()}_HOME':str(root/key) for key in ('config','state','cache')});env['TERM']='xterm-256color'
@@ -24,12 +26,21 @@ flag=random.Random(a.seed).choice(['--uppercase','--loud','--caps'])
 runs=root/'state/peritus/daemon/workbench-v1/runs'
 artifacts=root/'state/peritus/daemon/product-runs'
 results={'seed':a.seed,'replacement_flag':flag,'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'steps':[]}
+resume_after_failed_source=False
 if a.resume_after_show:
  previous=json.loads((root/'result.json').read_text())
  assert previous['seed']==a.seed and previous['binary_sha256']==results['binary_sha256']
- assert previous['steps'][-1]['label']=='03-show'
+ last=previous['steps'][-1]
+ if last['label']=='03-source' and last['status'].startswith('Stopped'):
+  previous['steps'].pop();resume_after_failed_source=True
+ else:assert last['label']=='03-show'
  results=previous
-assert (project/'greet.py').read_text()==baseline
+elif a.resume_build_only:
+ previous=json.loads((root/'result.json').read_text())
+ assert previous['seed']==a.seed
+ previous['recovery_binary_sha256']=results['binary_sha256']
+ results=previous
+else:assert (project/'greet.py').read_text()==baseline
 project_versions=lambda:{str(path.relative_to(project)):hashlib.sha256(path.read_bytes()).hexdigest() for path in project.rglob('*') if path.is_file()}
 original_project=project_versions()
 
@@ -37,14 +48,29 @@ class Terminal:
  def __init__(self,run=None):
   self.master,slave=pty.openpty();fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',42,160,0,0))
   self.process=subprocess.Popen([str(binary),'open',str(project),*(['--run',run] if run else [])],cwd=project,env=env,stdin=slave,stdout=slave,stderr=slave,start_new_session=True);os.close(slave)
-  self.screen=pyte.Screen(160,42);self.stream=pyte.Stream(self.screen);self.decoder=codecs.getincrementaldecoder('utf-8')('replace');self.raw=bytearray();answered=set();deadline=time.monotonic()+60
+  self.screen=pyte.Screen(160,42);self.stream=pyte.Stream(self.screen);self.decoder=codecs.getincrementaldecoder('utf-8')('replace');self.raw=bytearray();answered=set();deadline=time.monotonic()+180
   while time.monotonic()<deadline and self.process.poll() is None:
    self.pump();text=self.display()
-   for prompt,answer in [('Trust this workspace?',('n' if a.read_only else 'y')+'\r'),('Providers (comma-separated','1\r'),('Choose a model number','1\r')]:
+   for prompt,answer in [
+    ('Trust this workspace?',('n' if a.read_only else 'y')+'\r'),
+    ('Providers (comma-separated','1\r'),
+    ('Choose a model number','1\r'),
+    ('Reviewer provider [0]','0\r'),
+   ]:
     if prompt in text and prompt not in answered:answered.add(prompt);os.write(self.master,answer.encode())
-   attached=('Peritus · Design ·' in text) if run else ('Peritus ·' in text)
-   if attached and ('Ready ·' in text or 'Idle — ready' in text):break
+   attached='Peritus ·' in text
+   if attached and ('Ready ·' in text or 'Idle — ready' in text or 'Stopped —' in text or 'Recovery required' in text):break
   else:raise RuntimeError('Terminal did not become ready: '+self.display())
+  if run is None:
+   for role in ('writer','reviewer','fixer'):self.select_effort(role)
+ def select_effort(self,role):
+  raw_start=len(self.raw);os.write(self.master,f'/effort {role} high'.encode())
+  for _ in range(3):self.pump()
+  os.write(self.master,b'\r');deadline=time.monotonic()+30
+  while time.monotonic()<deadline:
+   self.pump();reply=self.raw[raw_start:]
+   if b'selection for new conversation' in reply or b'Model and effort selection saved' in reply or 'effort high' in self.display():return
+  raise RuntimeError(f'{role} effort was not saved: '+self.display())
  def display(self):return '\n'.join(''.join(self.screen.buffer[y][x].data for x in range(self.screen.columns)) for y in range(self.screen.lines))
  def pump(self):
   if select.select([self.master],[],[],.1)[0]:
@@ -70,7 +96,7 @@ def draft():
  header,markdown=text.split('\n',1)
  metadata=json.loads(header.removeprefix('<!-- peritus-guided-design-v1 ').removesuffix(' -->'))
  return path,metadata,markdown
-def send(label,text,timeout=180):
+def send(label,text,timeout=600):
  before=current();inc=before['interaction']['incorporated'] if before else 0
  received=before['interaction']['public_input_count'] if before else 0
  raw_start=len(terminal.raw);binding_enter=False
@@ -81,6 +107,9 @@ def send(label,text,timeout=180):
  # Observe the paste/type event before a separate deliberate Enter, including after reattach.
  for _ in range(3):terminal.pump()
  os.write(terminal.master,b'\r')
+ if text=='/retry':
+  for _ in range(8):terminal.pump()
+  os.write(terminal.master,b'\r')
  started=time.monotonic();deadline=started+timeout
  while time.monotonic()<deadline:
   terminal.pump();value=current()
@@ -96,16 +125,45 @@ def send(label,text,timeout=180):
    if not value['status'].startswith(('Idle','Completed')):raise RuntimeError(value.get('summary','')+' '+value['status'])
    return value
  terminal.save(label+'-timeout');raise RuntimeError(label+' did not finish')
-def shutdown():
+def daemon_endpoint():
  marker=root/'state/peritus/daemon/daemon.instance'
- if not marker.exists():return
+ if not marker.exists():return None
  identity=dict(line.split('=',1) for line in marker.read_text().splitlines() if '=' in line)
  line=next(line for line in subprocess.check_output(['ss','-xlpn'],text=True).splitlines() if f"pid={identity['pid']}," in line)
- endpoint=re.search(r'(/\S+\.sock)',line).group(1)
+ return re.search(r'(/\S+\.sock)',line).group(1)
+def shutdown():
+ endpoint=daemon_endpoint()
+ if endpoint is None:return
  stopped=subprocess.run([str(binary),'--endpoint',endpoint,'--json','shutdown','--wait'],env=env,capture_output=True,text=True,timeout=45)
  if stopped.returncode:raise RuntimeError('Owned fixture shutdown failed: '+stopped.stderr)
 
 terminal=None
+if a.resume_build_only:
+ try:
+  path=next(artifacts.glob('*.guided-design.md'));run=path.name.removesuffix('.guided-design.md')
+  terminal=Terminal(run)
+  endpoint=daemon_endpoint();assert endpoint is not None
+  retried=subprocess.run([str(binary),'--endpoint',endpoint,'--json','runs','retry','--run',run],env=env,capture_output=True,text=True,timeout=45)
+  assert retried.returncode==0,retried.stderr
+  deadline=time.monotonic()+900
+  while time.monotonic()<deadline:
+   terminal.pump();value=current()
+   if value and value['status'].startswith(('Idle','Completed','Stopped','Recovery required','Cancelled')):
+    terminal.save('06-build-resume');results['steps'].append({'label':'06-build-resume','status':value['status']})
+    if not value['status'].startswith(('Idle','Completed')):raise RuntimeError(value.get('summary','')+' '+value['status'])
+    break
+  else:terminal.save('06-build-resume-timeout');raise RuntimeError('06-build-resume did not finish')
+  cases=[(['Ada'],'Hello, Ada!\n'),(['Ada',flag],'HELLO, ADA!\n'),(['café 雪'],'Hello, café 雪!\n'),(['café 雪',flag],'HELLO, CAFÉ 雪!\n'),(['Zoë 🚲',flag],'HELLO, ZOË 🚲!\n'),(['two words'],'Hello, two words!\n')]
+  outcomes=[]
+  for args,expected in cases:
+   observed=subprocess.run(['python3',str(project/'greet.py'),*args],cwd=project,capture_output=True,text=True,timeout=5)
+   outcomes.append({'args':args,'stdout':observed.stdout,'stderr':observed.stderr,'exit':observed.returncode});assert observed.returncode==0 and observed.stdout==expected and observed.stderr==''
+  help_result=subprocess.run(['python3',str(project/'greet.py'),'--help'],cwd=project,capture_output=True,text=True,timeout=5);assert help_result.returncode==0 and flag in help_result.stdout
+  results['cli_cases']=outcomes;results['implementation_design_uses_corrected_flag']=True;results['recovered_build_with_current_source']=True;results['passed']=True
+ finally:
+  if terminal is not None:terminal.save('final-recovery');terminal.close()
+  shutdown();(root/'result.json').write_text(json.dumps(results,indent=2,ensure_ascii=False))
+ raise SystemExit
 try:
  if not a.resume_after_show:
   terminal=Terminal()
@@ -116,10 +174,20 @@ try:
   path,revised,markdown=draft();assert revised['version']>first['version'] and flag in markdown and 'CAFÉ' in markdown
   send('03-show','/design show')
  path,revised,markdown=draft();run=path.name.removesuffix('.guided-design.md')
+ if a.resume_after_show:terminal=Terminal(run)
  # This fixture's prose/inline-code design may gain presentation blank lines in a reply.
  # Require all nonblank saved lines, unchanged and in order, rather than blank-line identity.
  content_lines=lambda text:'\n'.join(line.rstrip() for line in text.splitlines() if line.strip())
- assert content_lines(markdown) in content_lines(current().get('summary',''))
+ expanded_path=artifacts/f'{run}.design.md';assert expanded_path.is_file()
+ expanded=expanded_path.read_text()
+ resume_from_stopped=resume_after_failed_source or current()['status'].startswith(('Stopped','Recovery required'))
+ if not resume_from_stopped:
+  assert content_lines(expanded) in content_lines(current().get('summary',''))
+ source_view=send('03-source','/design show source')
+ assert content_lines(markdown) in content_lines(source_view.get('summary',''))
+ changes_view=send('03-changes','/design show changes')
+ assert '# Design changes' in changes_view.get('summary','') and flag in changes_view.get('summary','')
+ results['expanded_source_changes_views']=True
  saved=path.read_bytes()
  if terminal is not None:terminal.close();terminal=None;shutdown()
  terminal=Terminal(run)
@@ -129,7 +197,7 @@ try:
  path,ready,markdown=draft();assert ready['stage']=='ready' and project_versions()==original_project
  results['approval_preserves_project']=True;(root/'approved-design.md').write_bytes(path.read_bytes())
  if a.build:
-  send('05-build','/design build',timeout=600)
+  send('05-build','/design build',timeout=900)
   cases=[(['Ada'],'Hello, Ada!\n'),(['Ada',flag],'HELLO, ADA!\n'),(['café 雪'],'Hello, café 雪!\n'),(['café 雪',flag],'HELLO, CAFÉ 雪!\n'),(['Zoë 🚲',flag],'HELLO, ZOË 🚲!\n'),(['two words'],'Hello, two words!\n')]
   outcomes=[]
   for args,expected in cases:

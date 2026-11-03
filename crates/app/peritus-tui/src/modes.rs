@@ -11,7 +11,7 @@ pub const fn description(mode: Mode) -> &'static str {
             "Read-only inspection and planning; cannot edit files or run commands. Switch explicitly to /chat or /build to request changes."
         }
         Mode::Design => {
-            "Shape an idea through a guided conversation. Revise the saved draft in plain language; /design show displays it and /design build starts implementation."
+            "Shape an idea through a guided conversation. Revise the source in plain language; /design show displays the expanded design, with source and changes views available, and /design build starts implementation."
         }
         Mode::Review => {
             "Independent read-only findings; cannot edit files or run commands. Switch explicitly to /chat or /build to request fixes."

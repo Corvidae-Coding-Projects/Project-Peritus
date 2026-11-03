@@ -6,7 +6,7 @@ use ratatui::{layout::Rect, text::Line};
 const LINES: &[&str] = &[
     "Conversation modes",
     "  /modules · /module ID TASK · /module show · /module resume",
-    "  /design · /design show · /design build",
+    "  /design · /design show [expanded|source|changes] · /design build",
     crate::modes::description(peritus_app_protocol::ProductInteractionMode::Design),
     "  /chat",
     crate::modes::description(peritus_app_protocol::ProductInteractionMode::Chat),

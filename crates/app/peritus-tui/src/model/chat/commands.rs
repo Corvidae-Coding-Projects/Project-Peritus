@@ -235,9 +235,17 @@ impl AppModel {
                 Mode::Chat,
                 "Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.",
             ),
-            "show" => (
+            "show" | "show expanded" => (
                 Mode::Design,
-                "Show the complete current saved design draft. If none exists, help me start one.",
+                "Show the complete current expanded design using the design_draft expanded view. If none exists, help me start one.",
+            ),
+            "show source" => (
+                Mode::Design,
+                "Show the unchanged source design using the design_draft source view.",
+            ),
+            "show changes" => (
+                Mode::Design,
+                "Show the deterministic source-to-expanded change ledger using the design_draft changes view.",
             ),
             "" => (Mode::Design, "Help me create or continue a design."),
             message => (Mode::Design, message),

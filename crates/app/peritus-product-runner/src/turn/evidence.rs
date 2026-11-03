@@ -5,14 +5,16 @@ use std::fmt::Write as _;
 use sha2::{Digest as _, Sha256};
 
 const TOKEN_ESTIMATE_BYTES: u64 = 3;
-const EXTRA_PRIORITY: [usize; 6] = [0, 1, 3, 2, 4, 5];
-const SOURCE_NAMES: [&str; 6] =
-    ["transcript", "diff", "gates", "developer_commands", "prior", "correction"];
+const EXTRA_PRIORITY: [usize; 7] = [0, 1, 2, 4, 3, 5, 6];
+const SOURCE_NAMES: [&str; 7] =
+    ["transcript", "design", "diff", "gates", "developer_commands", "prior", "correction"];
 
 pub struct ReviewerPrompt<'a> {
     pub system: &'a str,
     pub tools: &'a [peritus_model_protocol::ToolDefinition],
     pub transcript: &'a str,
+    pub design: &'a str,
+    pub design_identity: &'a str,
     pub diff: &'a str,
     pub gates: &'a str,
     pub developer_evidence: &'a str,
@@ -25,6 +27,7 @@ pub struct ReviewerPrompt<'a> {
 
 pub(super) struct ReviewerEvidence {
     pub(super) transcript: String,
+    pub(super) design: String,
     pub(super) diff: String,
     pub(super) gates: String,
     pub(super) developer: String,
@@ -35,12 +38,12 @@ pub(super) struct ReviewerEvidence {
 pub(super) fn project(
     max_input_tokens: u64,
     framing_tokens: u64,
-    values: [&str; 6],
+    values: [&str; 7],
 ) -> ReviewerEvidence {
     // Retained evidence from earlier versions or command output can contain NUL even when
     // it is valid UTF-8. Preserve its exact source identity and paged retrieval, but never
     // embed binary bytes in a model text block. Charge the marker's actual size to the view.
-    let binary_markers: [Option<String>; 6] = std::array::from_fn(|index| {
+    let binary_markers: [Option<String>; 7] = std::array::from_fn(|index| {
         values[index].contains('\0').then(|| {
             format!(
                 "[NUL-bearing evidence; inline preview omitted.]{}",
@@ -54,16 +57,17 @@ pub(super) fn project(
             )
         })
     });
-    let displayed: [&str; 6] =
+    let displayed: [&str; 7] =
         std::array::from_fn(|index| binary_markers[index].as_deref().unwrap_or(values[index]));
     let allocations = allocations(&displayed, evidence_budget(max_input_tokens, framing_tokens));
-    let [transcript, diff, gates, developer, prior, correction] = std::array::from_fn(|index| {
-        binary_markers[index].as_ref().map_or_else(
-            || bounded(SOURCE_NAMES[index], values[index], allocations[index]),
-            |marker| marker[..marker.len().min(allocations[index])].to_owned(),
-        )
-    });
-    ReviewerEvidence { transcript, diff, gates, developer, prior, correction }
+    let [transcript, design, diff, gates, developer, prior, correction] =
+        std::array::from_fn(|index| {
+            binary_markers[index].as_ref().map_or_else(
+                || bounded(SOURCE_NAMES[index], values[index], allocations[index]),
+                |marker| marker[..marker.len().min(allocations[index])].to_owned(),
+            )
+        });
+    ReviewerEvidence { transcript, design, diff, gates, developer, prior, correction }
 }
 
 pub(super) const fn request_target(max_input_tokens: u64) -> u64 {
@@ -132,8 +136,8 @@ fn evidence_budget(max_input_tokens: u64, framing_tokens: u64) -> usize {
     usize::try_from(tokens.saturating_mul(TOKEN_ESTIMATE_BYTES)).unwrap_or(usize::MAX)
 }
 
-fn allocations(values: &[&str; 6], budget: usize) -> [usize; 6] {
-    let mut allocated = [0; 6];
+fn allocations(values: &[&str; 7], budget: usize) -> [usize; 7] {
+    let mut allocated = [0; 7];
     let mut remaining = budget;
     let sections = EXTRA_PRIORITY.len();
     for index in EXTRA_PRIORITY {
@@ -179,7 +183,7 @@ fn bounded(source: &str, value: &str, maximum: usize) -> String {
 
 fn omission_marker(source: &str, total: usize, digest: &str, start: usize, end: usize) -> String {
     format!(
-        "\n[Peritus reviewer source={source}: original_bytes={total} sha256={digest}; exact omitted UTF-8 byte range=[{start},{end}). Retrieve this historical source with developer_evidence_read section={source}, offset pages; do not substitute current workspace files.]\n"
+        "\n[Peritus reviewer source={source}: original_bytes={total} sha256={digest}; exact omitted UTF-8 byte range=[{start},{end}). Retrieve this retained source with developer_evidence_read section={source}, offset pages; do not substitute current workspace files.]\n"
     )
 }
 

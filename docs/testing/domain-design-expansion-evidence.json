@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "base_head": "962f53f9a46d007b405eb5ac4438b6ec80b63729",
+  "branch": "develop",
+  "policy_version": "prompt-vitamins-domain-design-v2",
+  "fixtures": {
+    "count": 12,
+    "sha256": "ba0e2ea962652478e224982f0b3903ecda63c7e8bd51c4ac555959591a485316"
+  },
+  "rubric": {
+    "mandatory_dimensions": 8,
+    "sha256": "e037ccef657070ca82de9af1b8836a2a3b587e20df6d816366af3e8ba9bc12e0"
+  },
+  "live_provider": {
+    "provider": "openai-codex-runtime",
+    "model": "gpt-6.1-sol",
+    "configured": true,
+    "final_zero_question": {
+      "requests": 6,
+      "input_tokens": 159508,
+      "cached_input_tokens": 41984,
+      "output_tokens": 13376,
+      "elapsed_ms": 279166,
+      "reuse_requests": 0,
+      "terminal": "ready-then-receiptless-exact-reuse",
+      "summary_sha256": "8d956e6921466e9cb9dd83090525e6b7d35f55da5af721fd900872ac4b7e51b8"
+    },
+    "baseline": {
+      "requests": 11,
+      "input_tokens": 378097,
+      "cached_input_tokens": 73472,
+      "output_tokens": 21848,
+      "elapsed_ms": 385783
+    },
+    "unconfigured_live_paths": [
+      "anthropic",
+      "google",
+      "compatible",
+      "chatgpt-direct"
+    ]
+  },
+  "tui": {
+    "passed": true,
+    "result_sha256": "03a16598f67b2e1f310196779fc32803f24073474b8bafd2f627079c85428b70",
+    "restart_recovery": true,
+    "real_cli_cases": 6
+  },
+  "browser_gateway": {
+    "authenticated_http_route": true,
+    "visual_automation_available": false,
+    "changes_transcript_sha256": "fef0b95eb34d4ee818e18da0347864838b0769485226eae8702944bbc07fe021",
+    "source_sha256": "b9732d8f38015d211d78e518c6179ae4e954e7d13c0746fe092d62fd4a8371f3",
+    "expanded_sha256": "3455dbf4f9b2d1616ff0fd8c546f8406858c471338eeb1e97abc6b3ba8b7edf3",
+    "manifest_sha256": "9c7fe7414d97ce07fe65599357a43194febb27a45bddd498126e3af865dcf161",
+    "provider_attempts_before": 72,
+    "provider_attempts_after": 72
+  },
+  "mutation": {
+    "candidates": 8,
+    "caught": 7,
+    "unviable": 1,
+    "missed": 0,
+    "timeout": 0,
+    "report_sha256": "3a08dceb8ae57319cad389b04752f6b6c3a07e41eee830ca9a2a388a5193591a"
+  },
+  "platforms": {
+    "linux": "qualified",
+    "windows": "not-run",
+    "macos": "not-run"
+  }
+}
