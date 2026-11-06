@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+## 0.1.20
+
 ### Added
 
+- Add optional mutation-testing and sanitizer-fuzzing discovery workspaces, corpus replay tooling, and manually dispatched campaigns.
 - Expand fresh software designs by default into a separate, source-backed contract with applicable domain obligations, failure and recovery behavior, acceptance mappings, retained evidence identities, and an explicit change ledger.
 - Let terminal and browser clients inspect the expanded design, unchanged source, and source-to-expansion changes independently.
 
@@ -28,6 +31,7 @@
 
 ### Verification
 
+- Complete the installed browser design update through document checks and independent review while preserving its original design and existing source edits. The document-only planner regression fails before correction and passes afterward; all 80 runner tests, strict affected-package Clippy, workspace checks, formatting, and the Linux release build pass.
 - Freeze and pass 12 representative domain-design fixtures and eight mandatory rubric dimensions, including hostile evidence, unavailable critical research, one material question, source editing, corruption, restart, stale state, and rollback.
 - Pass credentialed zero-question, one-question/resume, receiptless zero-request reuse, TUI source-to-build/restart, authenticated browser gateway, independent review, six real CLI operations, and a mutation slice with seven caught viable mutants and one unviable mutant.
 - Live inference is qualified only for the configured OpenAI Codex runtime with `gpt-6.1-sol` on Linux. Anthropic, Google, compatible, ChatGPT-direct, Windows, macOS, and pixel-level browser automation remain unqualified.
