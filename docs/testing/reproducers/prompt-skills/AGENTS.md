@@ -9,7 +9,7 @@ Real-interface replay resources for prompt skills; start with the local README/d
 | File | Role |
 | --- | --- |
 | [README.md](README.md) | Human guide and operating/background notes for this folder; AGENTS.md provides the local navigation map. |
-| [archive_consumer.rs](archive_consumer.rs) | Real public-API consumer decoding retained canonical model messages for prompt/skill delivery inspection. |
+| [archive_consumer.rs](archive_consumer.rs) | Real public-API consumer decoding retained canonical model messages and enforcing domain-design policy role/count invariants. |
 | [readonly_tui_replay.py](readonly_tui_replay.py) | Operate the real read-only Peritus composer in an owned disposable fixture. |
 
 ## Working in this area

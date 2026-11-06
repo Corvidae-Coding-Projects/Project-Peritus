@@ -8,6 +8,13 @@ pub use crate::context_config::{
     LocalContextEngine, LocalProcessConfig, LocalSemanticBackend, ReadOnlyPlanExecution,
 };
 pub use crate::conversation_mode::ConversationMode;
+pub use crate::design::{
+    ExpansionRecords, ExpansionSnapshot, ExpansionStage, MAX_SOURCE_DESIGN_BYTES,
+    MAX_SOURCE_DESIGN_PAGE_BYTES, SourceDesignAttachment, SourceDesignCaptureRequest,
+    SourceDesignMetadata, SourceDesignOrigin, SourceDesignPage, SourceDesignPrior,
+    SourceDesignSnapshot, SourceDesignWorkspace, advance_design_expansion,
+    capture_design_expansion, capture_source_design, read_design_expansion,
+};
 
 pub use crate::developer_tools::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan,
@@ -32,5 +39,8 @@ pub use crate::execution::{
 
 pub use crate::local_context::{LocalContextHandle, MemoryTools, inspect_local_context};
 
-pub use crate::guided_design::GUIDED_DESIGN_IMPLEMENT_REQUEST;
+pub use crate::guided_design::{
+    GUIDED_DESIGN_IMPLEMENT_REQUEST, GUIDED_DESIGN_SHOW_CHANGES_REQUEST,
+    GUIDED_DESIGN_SHOW_EXPANDED_REQUEST, GUIDED_DESIGN_SHOW_SOURCE_REQUEST,
+};
 pub use crate::workspace_kind::ProductWorkspaceKind;

@@ -15,6 +15,8 @@ mod artifact_csv;
 mod cancellation;
 mod coverage;
 mod deliverable_inventory;
+#[cfg(test)]
+mod document_tests;
 mod execution_policy;
 mod explicit_paths;
 mod json_structure;

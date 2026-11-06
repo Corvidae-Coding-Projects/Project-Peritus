@@ -20,13 +20,32 @@ The campaign's Rust task changes an existing `main.rs` CLI to prefix its output 
 
 For the negative control, use read-only `/plan` in a mixed folder containing `main.rs` and `app.py`. Ask only for the exact `app.py` contents and say Rust work is unrelated. Listing the mixed folder must not by itself activate Rust. For resource checks, request exact bundled `skill_read` pages in read-only mode; reconstruct each resource from its continuation pages and compare its SHA-256 with the imported canonical file. The helper is read as source only, never executed.
 
-`archive_consumer.rs` is a small real consumer of Peritus's public `decode_messages` API. Build it outside the checkout with path dependencies on `peritus-model-protocol` and `serde_json`, then run it against only the disposable run's `*.context` directory and an external output directory. It decodes retained canonical C5 artifacts, rejecting malformed/non-message bytes, and records real role/text views that contain the vitamin marker. It neither creates nor substitutes provider responses.
+`archive_consumer.rs` is a small real consumer of Peritus's public `decode_messages` API. Build it outside the checkout with path dependencies on `peritus-model-protocol` and `serde_json`, then run it against only the disposable run's `*.context` directory and an external output directory. It decodes retained canonical C5 artifacts, rejecting malformed/non-message bytes, and records real role/text views that contain a vitamin marker. It classifies automatic architect, Plan, Design, Chat, developer, fixer, and reviewer policies; requires the complete domain-design v2 policy exactly once in `Role::System` for the first three; and rejects that policy in the other roles or any non-System message. It neither creates nor substitutes provider responses.
 
 ```sh
 /path/to/archive-consumer /path/to/disposable/run.context /tmp/prompt-views
 ```
 
-Inspect current System messages, not quoted skill text in user/tool observations. Multiple assembled views must retain a single Rust marker per System policy; a read-only role still exposes no writable/process tools. Original inner-executor-only activation produced vitamin cues but no Rust System marker. Forwarding the hook through `MemoryTools` repairs the production local-context path. Routine context assembly is covered; forced transport rejection, every long-horizon reasoning drift, and a controlled performance A/B study are separate from this bounded replay.
+Pass an optional comma-separated third argument to require complete campaign coverage. Missing roles
+then fail the consumer rather than disappearing from the report:
+
+```sh
+/path/to/archive-consumer /path/to/disposable/run.context /tmp/prompt-views \
+  automatic-architect,plan,design,chat,developer,fixer,reviewer
+```
+
+For a deterministic role-boundary replay, ask the product-runner contract check to emit the exact
+provider-neutral messages it assembled, then decode those archives with the consumer:
+
+```sh
+PERITUS_PROMPT_POLICY_ARCHIVE_OUT=/tmp/peritus-prompt-policy \
+  cargo test --locked -p peritus-product-runner \
+  prompt_policy_contract::domain_policy_has_exact_role_authority_and_canonical_archives
+/path/to/archive-consumer /tmp/peritus-prompt-policy /tmp/prompt-views \
+  automatic-architect,plan,design,chat,developer,fixer,reviewer
+```
+
+Inspect current System messages, not quoted policy or skill text in user/tool observations. The consumer enforces the domain-design marker, mandatory section count, role isolation, and optional role coverage; it deliberately does not infer model behavior from string presence. Multiple assembled views must also retain a single Rust marker per System policy; a read-only role still exposes no writable/process tools. Original inner-executor-only activation produced vitamin cues but no Rust System marker. Forwarding the hook through `MemoryTools` repairs the production local-context path. Routine context assembly is covered; forced transport rejection, every long-horizon reasoning drift, and a controlled performance A/B study are separate from this bounded replay.
 
 Preserve concise failure/replay evidence, not full successful model transcripts or personal data, in the repository. Stop only the fixture clients and daemon after the campaign.
 

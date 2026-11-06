@@ -336,3 +336,113 @@ fn escape_pointer(value: &str) -> String {
 fn invalid(path: &str, detail: &'static str) -> ProtocolError {
     ProtocolError::at(ProtocolErrorKind::InvalidSchema, path, detail)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{CanonicalJson, JsonBounds, JsonSchema, SchemaDialect};
+    use crate::ProtocolErrorKind;
+    use serde_json::Value;
+
+    fn bounds(bytes: usize, depth: usize, members: usize, string_bytes: usize) -> JsonBounds {
+        JsonBounds::new(bytes, depth, members, string_bytes).unwrap()
+    }
+
+    #[test]
+    fn bounds_accessor_reports_configured_byte_ceiling() {
+        let bounds = bounds(123, 4, 8, 64);
+
+        assert_eq!(bounds.max_bytes(), 123);
+    }
+
+    #[test]
+    fn input_and_canonical_byte_limits_are_inclusive_and_fail_closed() {
+        assert!(CanonicalJson::parse("null", bounds(4, 4, 8, 8)).is_ok());
+        assert!(CanonicalJson::parse("0", bounds(4, 4, 8, 8)).is_ok());
+        assert!(CanonicalJson::parse("null", bounds(3, 4, 8, 8)).is_err());
+
+        // serde_json normalizes this three-byte exponent to a longer number.
+        let error = CanonicalJson::parse("1e1", bounds(3, 4, 8, 8)).unwrap_err();
+        assert_eq!(error.kind(), ProtocolErrorKind::InvalidSchema);
+        assert_eq!(error.path(), "$");
+    }
+
+    #[test]
+    fn recursive_limits_accept_the_boundary_and_reject_the_next_value() {
+        assert!(CanonicalJson::parse(r#"["ab"]"#, bounds(6, 2, 1, 2)).is_ok());
+
+        assert!(CanonicalJson::parse("[[0]]", bounds(64, 2, 16, 16)).is_err());
+        assert!(CanonicalJson::parse(r#"{"a":{"b":0}}"#, bounds(64, 2, 16, 16)).is_err());
+        assert!(CanonicalJson::parse("[0,1]", bounds(64, 8, 1, 16)).is_err());
+        assert!(CanonicalJson::parse(r#"["abc"]"#, bounds(64, 8, 16, 2)).is_err());
+        assert!(CanonicalJson::parse(r#"{"abc":0}"#, bounds(64, 8, 16, 2)).is_err());
+    }
+
+    #[test]
+    fn canonical_projection_accessors_preserve_order_identity_and_redaction() {
+        let canonical = CanonicalJson::parse(
+            r#" { "z" : [true, false, null], "a" : {"n": 1} } "#,
+            bounds(128, 8, 16, 16),
+        )
+        .unwrap();
+        let expected = br#"{"a":{"n":1},"z":[true,false,null]}"#;
+
+        assert_eq!(canonical.canonical_bytes(), expected);
+        assert_eq!(canonical.to_wire_string().as_bytes(), expected);
+        assert!(canonical.is_object());
+        assert_eq!(canonical.digest(), peritus_codec::sha256(expected));
+
+        let debug = format!("{canonical:?}");
+        assert!(debug.contains("CanonicalJson"));
+        assert!(debug.contains("[redacted]"));
+        assert!(!debug.contains("true"));
+
+        let scalar = CanonicalJson::parse("null", bounds(8, 2, 2, 2)).unwrap();
+        assert!(!scalar.is_object());
+    }
+
+    #[test]
+    fn malformed_and_duplicate_json_never_reaches_canonical_output() {
+        assert!(CanonicalJson::parse("{", bounds(8, 4, 4, 4)).is_err());
+        assert!(CanonicalJson::parse(r#"{"a":1,"a":2}"#, bounds(32, 4, 4, 4)).is_err());
+    }
+
+    #[test]
+    fn schema_accessors_and_reference_policy_match_the_selected_document() {
+        let input = r##"{"$ref":"#/$defs/x","$defs":{"x":{"type":"string"}}}"##;
+        let schema =
+            JsonSchema::parse(input, SchemaDialect::Draft7, bounds(128, 8, 16, 32)).unwrap();
+        let expected = br##"{"$defs":{"x":{"type":"string"}},"$ref":"#/$defs/x"}"##;
+
+        assert_eq!(schema.dialect(), SchemaDialect::Draft7);
+        assert_eq!(schema.canonical_bytes(), expected);
+        assert_eq!(schema.digest(), peritus_codec::sha256(expected));
+
+        assert!(JsonSchema::parse("[]", SchemaDialect::Draft7, bounds(8, 4, 4, 4)).is_err());
+    }
+
+    #[test]
+    fn remote_schema_references_report_an_escaped_nested_path() {
+        let error = JsonSchema::parse(
+            r#"{"a~/":{"$ref":"https://example.invalid/schema"}}"#,
+            SchemaDialect::Draft202012,
+            bounds(128, 8, 16, 64),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.kind(), ProtocolErrorKind::InvalidSchema);
+        assert_eq!(error.path(), "$/a~0~1");
+        assert_eq!(error.detail(), "remote JSON Schema references are not supported");
+    }
+
+    #[test]
+    fn canonical_number_reparses_without_changing_value() {
+        let bounds = bounds(65_536, 32, 4_096, 32_768);
+        let input = "4341467868529652095759";
+        let original = serde_json::from_str::<Value>(input).unwrap();
+        let canonical = CanonicalJson::parse(input, bounds).unwrap();
+        let wire = canonical.to_wire_string();
+
+        assert_eq!(serde_json::from_str::<Value>(&wire).unwrap(), original);
+        assert_eq!(CanonicalJson::parse(&wire, bounds).unwrap(), canonical);
+    }
+}

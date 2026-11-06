@@ -299,3 +299,29 @@ fn number(value: usize) -> Result<Value, ProviderCoreError> {
 const fn invalid(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::invalid_request("claude_runtime_request", detail)
 }
+
+#[cfg(test)]
+mod policy_projection {
+    use peritus_model_protocol::{OutputLimitEnforcement, WireDialect};
+
+    use crate::provider_policy_test_support as support;
+
+    #[test]
+    fn system_policy_remains_in_claude_runtime_system_input() {
+        let profile = support::profile(
+            "anthropic",
+            WireDialect::AnthropicClaudeRuntime,
+            OutputLimitEnforcement::Advisory,
+        );
+        let request = support::request(&profile);
+        let encoded = super::encode(&request).expect("encode Claude runtime request");
+        let system = std::str::from_utf8(&encoded.system).expect("Claude system input is UTF-8");
+        let prompt = std::str::from_utf8(&encoded.prompt).expect("Claude prompt is UTF-8");
+        assert!(system.contains("[system]\n"));
+        assert!(system.contains(support::POLICY_TEXT));
+        assert!(!system.contains(support::TASK_TEXT));
+        assert!(prompt.contains(support::TASK_TEXT));
+        assert!(!prompt.contains(support::POLICY_MARKER));
+        assert_eq!(support::count(system, support::POLICY_MARKER), 1);
+    }
+}

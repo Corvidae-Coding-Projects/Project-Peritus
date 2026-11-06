@@ -142,7 +142,8 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
             "theme",
             "reset",
         ],
-        ["/design"] => &["show", "build"],
+        ["/design"] => &["show", "show expanded", "show source", "show changes", "build"],
+        ["/design", "show"] => &["expanded", "source", "changes"],
         ["/brief"] => &["objective", "acceptance", "constraints", "assumptions"],
         ["/goal"] => &["confirm", "clear", "criterion"],
         ["/goal", "criterion"] => &["graphical", "remove-graphical"],
@@ -194,4 +195,29 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
         .collect();
     matches.sort_by_key(|(candidate, _)| candidate != text);
     matches
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn design_view_completions_expose_expanded_source_and_changes() {
+        let root: Vec<_> =
+            completions("/design sh").into_iter().map(|(command, _)| command).collect();
+        assert!(root.contains(&"/design show expanded".to_owned()));
+        assert!(root.contains(&"/design show source".to_owned()));
+        assert!(root.contains(&"/design show changes".to_owned()));
+
+        let views: Vec<_> =
+            completions("/design show ").into_iter().map(|(command, _)| command).collect();
+        assert_eq!(
+            views,
+            [
+                "/design show expanded".to_owned(),
+                "/design show source".to_owned(),
+                "/design show changes".to_owned(),
+            ]
+        );
+    }
 }

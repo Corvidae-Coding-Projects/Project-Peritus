@@ -93,10 +93,13 @@ Distribute the complete asset directory, including `licenses/`; see
 
 Choose **Design something** or enter `/design` for a conversational design interview.
 Answer in your own words, choose a suggested answer, or ask to change an earlier decision.
-**Show draft** displays the saved Markdown; **Revise draft** prepares a change message.
-Closing a tab or restarting the daemon preserves the saved draft and next question.
-**Start implementation** explicitly sends the design to the existing build pipeline.
-Drafting itself does not change project files or execute commands.
+**Expanded** displays the current domain-aware design; **Source** preserves the exact user-authored
+brief; **Changes** shows the deterministic source-to-expansion ledger; and **Revise** prepares a
+change message. Closing a tab or restarting the daemon preserves the source, expansion state, and
+next material question. **Start implementation** completes any required source-backed expansion
+and explicitly sends the accepted result to the existing build pipeline. Critical unavailable
+research remains visibly limited rather than being presented as ready. Drafting itself does not
+change project files or execute commands, and research uses only the current permissions.
 
 Use **Focus conversation** beside the session title for a larger reading area. It hides
 workspace side panels and extra navigation, compacts the composer, and keeps the conversation

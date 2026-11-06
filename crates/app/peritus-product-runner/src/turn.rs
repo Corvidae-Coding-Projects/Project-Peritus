@@ -51,7 +51,7 @@ pub async fn complete_developer_turn(
     primary: &Arc<dyn ModelProvider>,
     role: &str,
     cycle: u32,
-    design: &str,
+    design: &crate::design::DesignDocument,
     findings: Option<&str>,
     evidence: Option<DeveloperEvidence<'_>>,
     ownership: &mut WorkspaceOwnership,
@@ -233,7 +233,7 @@ struct DeveloperInvocation<'a> {
 
 struct InvocationContext<'a> {
     memory: Option<&'a LocalContextHandle>,
-    design: &'a str,
+    design: &'a crate::design::DesignDocument,
     findings: Option<&'a str>,
     evidence: Option<DeveloperEvidence<'a>>,
     correction: Option<&'a str>,
@@ -296,39 +296,37 @@ async fn run_developer_invocation(
         context.remaining,
     ) + input.delivery_instructions();
     let mut definitions = input.developer_definitions()?;
-    let mut archive = None;
+    definitions.push(crate::developer_tools::evidence_definition()?);
+    let archive = crate::developer_tools::ReviewerEvidenceSources::new(
+        stable_context.clone(),
+        context.design.markdown().to_owned(),
+        context.evidence.map_or_else(String::new, |evidence| evidence.diff.to_owned()),
+        context.evidence.map_or_else(String::new, |evidence| evidence.gates.to_owned()),
+        String::new(),
+        context.findings.unwrap_or_default().to_owned(),
+        context.correction.unwrap_or_default().to_owned(),
+    );
     let prompt = if let Some(evidence) = context.evidence {
-        definitions.push(crate::developer_tools::evidence_definition()?);
         let mut budget_tools = definitions.clone();
         if let Some(memory) = context.memory {
             budget_tools
                 .extend(memory.tool_definitions().map_err(|error| developer_error(&error))?);
         }
-        let prompt =
-            writer_prompt::project_developer_evidence(&writer_prompt::DeveloperEvidencePrompt {
-                system: &system,
-                instructions: &instructions,
-                tools: &budget_tools,
-                diff: evidence.diff,
-                gates: evidence.gates,
-                max_input_tokens: model.context_input_target(),
-                additional_framing_tokens: context
-                    .memory
-                    .map(LocalContextHandle::additional_request_framing_tokens)
-                    .transpose()
-                    .map_err(|error| developer_error(&error))?
-                    .unwrap_or(0),
-            })
-            .map_err(|error| developer_error(&error))?;
-        archive = Some(crate::developer_tools::ReviewerEvidenceSources::new(
-            stable_context,
-            evidence.diff.to_owned(),
-            evidence.gates.to_owned(),
-            String::new(),
-            context.findings.unwrap_or_default().to_owned(),
-            context.correction.unwrap_or_default().to_owned(),
-        ));
-        prompt
+        writer_prompt::project_developer_evidence(&writer_prompt::DeveloperEvidencePrompt {
+            system: &system,
+            instructions: &instructions,
+            tools: &budget_tools,
+            diff: evidence.diff,
+            gates: evidence.gates,
+            max_input_tokens: model.context_input_target(),
+            additional_framing_tokens: context
+                .memory
+                .map(LocalContextHandle::additional_request_framing_tokens)
+                .transpose()
+                .map_err(|error| developer_error(&error))?
+                .unwrap_or(0),
+        })
+        .map_err(|error| developer_error(&error))?
     } else {
         instructions
     };
@@ -346,9 +344,7 @@ async fn run_developer_invocation(
         .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
         .with_task_contract(&transcript),
     );
-    if let Some(archive) = archive {
-        tools = tools.with_reviewer_evidence_sources(archive);
-    }
+    tools = tools.with_reviewer_evidence_sources(archive);
     if let Err(error) = preparation {
         // Feed metadata failures through the same role recovery/failover path as inference.
         return Ok((

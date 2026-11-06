@@ -315,3 +315,34 @@ pub(super) fn object(fields: Vec<(&str, Value)>) -> Value {
 pub(super) const fn invalid(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::invalid_request("codex_runtime_request", detail)
 }
+
+#[cfg(test)]
+mod policy_projection {
+    use peritus_model_protocol::{OutputLimitEnforcement, WireDialect};
+    use serde_json::Value;
+
+    use crate::provider_policy_test_support as support;
+
+    #[test]
+    fn system_policy_remains_a_system_message_in_codex_runtime_prompt() {
+        let profile = support::profile(
+            "openai",
+            WireDialect::OpenAiCodexRuntime,
+            OutputLimitEnforcement::Advisory,
+        );
+        let request = support::request(&profile);
+        let encoded = super::encode(&request).expect("encode Codex runtime request");
+        let prompt = std::str::from_utf8(&encoded.prompt).expect("Codex prompt is UTF-8");
+        let payload = prompt
+            .split_once("PERITUS_PROVIDER_REQUEST_JSON:\n")
+            .map(|(_, payload)| payload)
+            .expect("Codex prompt payload");
+        let body: Value = serde_json::from_str(payload).expect("parse Codex prompt payload");
+        let messages = body["messages"].as_array().expect("Codex messages array");
+        assert_eq!(messages[0]["role"], "system");
+        assert_eq!(messages[0]["content"][0]["text"], support::POLICY_TEXT);
+        assert_eq!(messages[1]["role"], "user");
+        assert_eq!(messages[1]["content"][0]["text"], support::TASK_TEXT);
+        assert_eq!(support::count(prompt, support::POLICY_MARKER), 1);
+    }
+}

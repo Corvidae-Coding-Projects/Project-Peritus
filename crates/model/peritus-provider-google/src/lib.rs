@@ -10,6 +10,10 @@ mod profile;
 mod request;
 mod stream;
 
+#[cfg(test)]
+#[path = "../../provider_policy_test_support.rs"]
+mod provider_policy_test_support;
+
 pub use client::GoogleClient;
 pub use config::GoogleConfig;
 pub use profile::validate_google_profile;

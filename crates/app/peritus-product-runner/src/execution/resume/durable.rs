@@ -17,7 +17,7 @@ use crate::{
     developer_tools::{CommandPurpose, SuccessfulCommand},
 };
 
-const DURABLE_VERSION: u16 = 2;
+const DURABLE_VERSION: u16 = 4;
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -33,6 +33,8 @@ struct DurableResume {
     design_path: PathBuf,
     design_markdown: String,
     design_revision: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    design_expansion: Option<crate::design::ExpansionReceiptIdentity>,
     task_summary: String,
     run_instructions: String,
     fix_summaries: Vec<String>,
@@ -97,6 +99,7 @@ pub(super) fn encode(resume: &ProductRunResume) -> Result<Vec<u8>, ProductRunner
         design_path: resume.design_path.clone(),
         design_markdown: resume.design_markdown.clone(),
         design_revision: resume.design_revision,
+        design_expansion: resume.design_expansion.clone(),
         task_summary: resume.task_summary.clone(),
         run_instructions: resume.run_instructions.clone(),
         fix_summaries: resume.fix_summaries.clone(),
@@ -137,7 +140,7 @@ fn decode_inner(
 ) -> Result<ProductRunResume, ProductRunnerError> {
     let payload: DurableResume =
         serde_json::from_slice(bytes).map_err(|error| durable_error(error.to_string()))?;
-    if payload.version != DURABLE_VERSION {
+    if !supported_version(payload.version) {
         return Err(durable_error("unsupported durable resume version"));
     }
     let checkpoint = payload.checkpoint.into_checkpoint()?;
@@ -172,6 +175,7 @@ fn decode_inner(
         design_path: payload.design_path,
         design_markdown: payload.design_markdown,
         design_revision: payload.design_revision,
+        design_expansion: payload.design_expansion,
         task_summary: payload.task_summary,
         run_instructions: payload.run_instructions,
         fix_summaries: payload.fix_summaries,
@@ -188,6 +192,10 @@ fn decode_inner(
         fixer_cycles: payload.fixer_cycles,
         knowledge,
     })
+}
+
+const fn supported_version(version: u16) -> bool {
+    matches!(version, 2 | 3 | DURABLE_VERSION)
 }
 
 impl DurableCheckpoint {
@@ -338,4 +346,18 @@ fn durable_error(detail: impl Into<String>) -> ProductRunnerError {
         "restore durable product-run continuation",
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn active_legacy_and_current_durable_versions_remain_supported() {
+        assert!(supported_version(2));
+        assert!(supported_version(3));
+        assert!(supported_version(DURABLE_VERSION));
+        assert!(!supported_version(1));
+        assert!(!supported_version(DURABLE_VERSION + 1));
+    }
 }

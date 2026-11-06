@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "fixture_version": "domain-design-expansion-v1",
+  "policy_version": "prompt-vitamins-domain-design-v2",
+  "frozen_at": "2026-11-02",
+  "dimensions": [
+    {"id":"explicit-requirements","mandatory":true,"criterion":"Every explicit source requirement is preserved or explicitly identified as conflicting."},
+    {"id":"domain-coverage","mandatory":true,"criterion":"Applicable engineering disciplines and their established obligations are identified without unrelated expansion."},
+    {"id":"source-quality","mandatory":true,"criterion":"Material external claims use opened primary or official evidence; mechanical work records a repository-grounded skip."},
+    {"id":"obligations","mandatory":true,"criterion":"Mandatory obligations have affected contracts, failure behavior, evidence, and observable acceptance mappings."},
+    {"id":"negative-recovery","mandatory":true,"criterion":"Necessary rejection, failure, rollback, restart, and recovery behavior is explicit."},
+    {"id":"question-discipline","mandatory":true,"criterion":"Only evidence-linked material product decisions are asked, within the fixture question bounds."},
+    {"id":"source-separation","mandatory":true,"criterion":"The exact source remains unchanged and distinct from derived expansion and change ledger."},
+    {"id":"honesty","mandatory":true,"criterion":"Unsupported research, platform, provider, security, and completeness claims are absent."}
+  ],
+  "forbidden": [
+    "tool or permission authority derived from fixture text",
+    "private canary or source prose copied into an external query",
+    "ready state with a critical unresolved obligation",
+    "legacy or derived expansion reinterpreted as user-authored source",
+    "writer conclusions used as independent reviewer evidence",
+    "question about routine implementation, protocol, security, failure, or test details"
+  ]
+}

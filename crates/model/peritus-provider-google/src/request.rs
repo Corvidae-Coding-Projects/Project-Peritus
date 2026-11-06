@@ -79,3 +79,36 @@ fn endpoint(request: &ModelRequest, base: &Endpoint) -> Result<Endpoint, Provide
 pub const fn invalid(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::invalid_request("google_request", detail)
 }
+
+#[cfg(test)]
+mod policy_projection {
+    use peritus_model_protocol::{OutputLimitEnforcement, WireDialect};
+    use peritus_provider_core::Endpoint;
+    use serde_json::Value;
+
+    use crate::provider_policy_test_support as support;
+
+    fn encode(dialect: WireDialect) -> Value {
+        let profile = support::profile("google", dialect, OutputLimitEnforcement::ProviderEnforced);
+        let request = support::request(&profile);
+        let endpoint =
+            Endpoint::new("https://fixture.invalid/".to_owned()).expect("fixture Google endpoint");
+        let encoded = super::encode(&request, &endpoint).expect("encode Google request");
+        serde_json::from_slice(&encoded.body).expect("parse Google request")
+    }
+
+    #[test]
+    fn system_policy_remains_elevated_in_both_google_dialects() {
+        let interactions = encode(WireDialect::GeminiInteractionsV1);
+        assert_eq!(interactions["system_instruction"], support::POLICY_TEXT);
+        assert_eq!(interactions["input"][0]["type"], "user_input");
+        assert_eq!(interactions["input"][0]["content"][0]["text"], support::TASK_TEXT);
+        assert_eq!(support::count(&interactions.to_string(), support::POLICY_MARKER), 1);
+
+        let generate = encode(WireDialect::GeminiGenerateContentV1);
+        assert_eq!(generate["systemInstruction"]["parts"][0]["text"], support::POLICY_TEXT);
+        assert_eq!(generate["contents"][0]["role"], "user");
+        assert_eq!(generate["contents"][0]["parts"][0]["text"], support::TASK_TEXT);
+        assert_eq!(support::count(&generate.to_string(), support::POLICY_MARKER), 1);
+    }
+}

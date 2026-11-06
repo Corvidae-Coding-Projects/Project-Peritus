@@ -6,7 +6,11 @@ pub(super) fn output_context(words: &[&str]) -> bool {
     // An output verb authorizes paths in its clause, not a later verification instruction.
     let start = words.len().saturating_sub(12).max(clause_start(words));
     let context = &words[start..];
-    let Some(trigger) = context.iter().rposition(|word| output_verb(word)) else {
+    let Some(trigger) = context
+        .iter()
+        .enumerate()
+        .rposition(|(index, word)| output_verb(word) && !output_noun(context, index))
+    else {
         return false;
     };
     let negation_start = trigger.saturating_sub(2);
@@ -29,6 +33,29 @@ pub(super) fn output_context(words: &[&str]) -> bool {
         || trailing.iter().any(|word| path_noun(word))
 }
 
+fn output_noun(words: &[&str], index: usize) -> bool {
+    normalized(words[index]) == "output"
+        && index.checked_sub(1).is_some_and(|previous| {
+            matches!(
+                normalized(words[previous]).as_str(),
+                "preserve"
+                    | "preserves"
+                    | "preserving"
+                    | "ordinary"
+                    | "plain"
+                    | "exact"
+                    | "expected"
+                    | "successful"
+                    | "uppercase"
+                    | "captured"
+                    | "runtime"
+                    | "actual"
+                    | "standard"
+                    | "greeting"
+            )
+        })
+}
+
 pub(super) fn path_noun_context(words: &[&str]) -> bool {
     let start = words.len().saturating_sub(6);
     words[start..].iter().any(|word| path_noun(word))
@@ -47,6 +74,21 @@ pub(super) fn path_context(words: &[&str]) -> bool {
     };
     output_verb(cue)
         || path_noun(cue)
+        || matches!(normalized(cue).as_str(), "at" | "in" | "into" | "to" | "under")
+        || matches!(normalized(last).as_str(), "named" | "called")
+            && preceding.iter().rev().take(2).any(|word| path_noun(word))
+}
+
+pub(super) fn relative_path_context(words: &[&str]) -> bool {
+    let Some((last, preceding)) = words.split_last() else {
+        return false;
+    };
+    let cue = if matches!(normalized(last).as_str(), "a" | "an" | "the") {
+        preceding.last().copied().unwrap_or(last)
+    } else {
+        last
+    };
+    path_noun(cue)
         || matches!(normalized(cue).as_str(), "at" | "in" | "into" | "to" | "under")
         || matches!(normalized(last).as_str(), "named" | "called")
             && preceding.iter().rev().take(2).any(|word| path_noun(word))

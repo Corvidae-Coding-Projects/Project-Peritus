@@ -66,6 +66,7 @@ pub(super) async fn complete(
         review_cycle,
         reviewer_turn::ReviewEvidence {
             conversation: &conversation,
+            design: &state.design,
             diff: &checked.evidence.diff,
             gates: &checked.evidence.gates,
             developer_commands: &checked.evidence.developer_commands,

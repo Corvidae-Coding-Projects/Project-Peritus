@@ -1,0 +1,15 @@
+# Use `python3 discovery/mutation/run.py run --output /absolute/new/directory`.
+# The runner stages these discovery packages and inserts the selected production
+# packages into this list in a disposable workspace, so the release dependency
+# graph stays free of discovery tools. Direct `cargo mutants` fails if the bridge
+# packages have not been staged, rather than accepting an empty production suite.
+test_package = ["peritus-mutation-tests", "peritus-stage8-policy-properties", "peritus-debugger", "peritus-eval", "peritus-evolution", "peritus-telemetry"]
+copy_vcs = true
+copy_target = false
+cap_lints = true
+skip_calls_defaults = false
+additional_cargo_args = ["--locked", "--package=peritus-mutation-tests", "--package=peritus-stage8-policy-properties"]
+additional_cargo_test_args = ["--", "--test-threads=1", "--nocapture"]
+minimum_test_timeout = 60.0
+timeout_multiplier = 3.0
+build_timeout_multiplier = 3.0

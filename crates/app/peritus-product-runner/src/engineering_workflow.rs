@@ -5,8 +5,8 @@ pub mod vitamins;
 
 pub fn architect() -> String {
     format!(
-        "{CORE}\nDesign only the requested scope. After the single grounding check, return an actionable task plan using the request and retained evidence. Name observed owners when known, distinguish proposed paths, and assign remaining source questions to the first implementation slice. Reuse accepted designs; do not run a discovery loop. Elaborate only architectural changes that need it.\n{}",
-        vitamins::designer()
+        "{}\n\n{CORE}\nDesign the complete requested capability according to its applicable domain obligations. Use the single startup grounding check and focused retained evidence without restarting broad repository discovery. Name observed owners when known, distinguish established requirements from recommendations, and make critical unknowns explicit instead of silently guessing or deferring them as completed work. Reuse accepted designs only when their governing inputs remain applicable. Elaborate only decisions whose consequences need it.",
+        vitamins::designer(),
     )
 }
 

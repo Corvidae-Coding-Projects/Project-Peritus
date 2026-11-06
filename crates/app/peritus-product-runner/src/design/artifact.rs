@@ -35,7 +35,12 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
         let markdown = render(&transcript, &inventory, requirement);
         let path = input.trace_path.with_extension("design.md");
         publish(&path, markdown.as_bytes())?;
-        return Ok(DesignDocument { path, markdown, conversation_revision: revision });
+        return Ok(DesignDocument {
+            path,
+            markdown,
+            conversation_revision: revision,
+            expansion: None,
+        });
     }
 }
 

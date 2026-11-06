@@ -115,7 +115,8 @@ pub(super) fn finalize(
     }
     let checkpoint = request.recorder.checkpoint()?;
     let remaining_work = remaining_work(checkpoint.as_ref(), cause);
-    let candidate = if let Some(checkpoint) = checkpoint.as_ref() {
+    let candidate = if let (Some(checkpoint), Some(_design)) = (checkpoint.as_ref(), request.design)
+    {
         let material = capture_candidate_material(&request);
         for error in &material.errors {
             if cause == SettlementCause::Completed {
@@ -142,6 +143,7 @@ pub(super) fn finalize(
             design_path: design.path().to_owned(),
             design_markdown: design.markdown().to_owned(),
             design_revision: design.conversation_revision(),
+            design_expansion: design.expansion_identity().cloned(),
             task_summary: request
                 .state
                 .map_or_else(String::new, |state| state.task_summary.clone()),

@@ -9,6 +9,7 @@ Hosted workflow declarations, including native release packaging.
 | File | Role |
 | --- | --- |
 | [release.yml](release.yml) | YAML workflow/action declaration for release. |
+| [discovery.yml](discovery.yml) | Manually dispatched mutation, sanitizer fuzzing, and property baseline campaigns; separate from releases. |
 
 ## Working in this area
 

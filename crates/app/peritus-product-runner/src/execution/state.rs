@@ -61,10 +61,22 @@ impl ExecutionContext {
             _ => ProductRunPhase::Designing,
         };
         let (design, state, evidence, gate_report) = if let Some(resume) = &input.resume {
-            let design = design::DesignDocument::restored(
-                resume.design_path().clone(),
-                resume.design_markdown().to_owned(),
-                resume.design_revision(),
+            let design = resume.design_expansion().map_or_else(
+                || {
+                    design::DesignDocument::restored(
+                        resume.design_path().clone(),
+                        resume.design_markdown().to_owned(),
+                        resume.design_revision(),
+                    )
+                },
+                |identity| {
+                    design::DesignDocument::restored_expanded(
+                        resume.design_path().clone(),
+                        resume.design_markdown().to_owned(),
+                        resume.design_revision(),
+                        identity.clone(),
+                    )
+                },
             );
             if next_phase == ProductRunPhase::Designing {
                 // The prior design is not reusable for execution after a conversation change,
@@ -105,10 +117,17 @@ impl ExecutionContext {
         observe: &RunObserver,
         ownership: &mut WorkspaceOwnership,
         accounting: &mut RunAccounting,
-    ) -> Result<Option<(String, u64)>, ProductRunnerError> {
+    ) -> Result<Option<(String, u64, ProductRunPhase)>, ProductRunnerError> {
         if self.next_phase == ProductRunPhase::Designing {
-            self.design = Some(create_design(input, observe, 1, accounting).await?);
-            self.next_phase = ProductRunPhase::Writing;
+            match create_design(input, observe, 1, accounting).await? {
+                design::DesignExpansionOutcome::Ready(document) => {
+                    self.design = Some(*document);
+                    self.next_phase = ProductRunPhase::Writing;
+                }
+                design::DesignExpansionOutcome::Waiting { question, conversation_revision } => {
+                    return Ok(Some((question, conversation_revision, ProductRunPhase::Designing)));
+                }
+            }
         }
         if self.next_phase != ProductRunPhase::Writing {
             return Ok(None);
@@ -128,7 +147,7 @@ impl ExecutionContext {
         let applied = match initial_write(
             input,
             observe,
-            design.markdown(),
+            design,
             prior_findings.as_deref(),
             ownership,
             accounting,
@@ -140,7 +159,7 @@ impl ExecutionContext {
             AppliedTurn::Waiting { question, conversation_revision, host } => {
                 self.state =
                     Some(RunState::interrupted(input, design.clone(), restored_findings, host));
-                return Ok(Some((question, conversation_revision)));
+                return Ok(Some((question, conversation_revision, ProductRunPhase::Writing)));
             }
             AppliedTurn::Rejected { error, host } => {
                 self.state =

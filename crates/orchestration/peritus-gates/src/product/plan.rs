@@ -157,6 +157,21 @@ impl TargetGatePlan {
         let mut fallback_paths = Vec::new();
         let uncovered_paths = Vec::new();
         for path in &changed_paths {
+            // An explicitly commissioned prose document is an artifact deliverable,
+            // even when it lives beside software. Other changed paths still discover
+            // their own projects and retain their language checks.
+            if requested_artifacts.contains(path)
+                && path.extension().and_then(std::ffi::OsStr::to_str).is_some_and(|ext| {
+                    ["md", "markdown", "rst"].iter().any(|kind| ext.eq_ignore_ascii_case(kind))
+                })
+            {
+                projects.insert(AffectedProject {
+                    kind: ProjectKind::Artifact,
+                    root: path.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
+                    manifest: None,
+                });
+                continue;
+            }
             let found = nearest_projects(workspace_root, path);
             if found.is_empty() {
                 if requested_artifacts.contains(path) {

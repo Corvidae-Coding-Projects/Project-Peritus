@@ -16,6 +16,15 @@ const MAX_METADATA_BYTES: usize = 16 * 1024;
 /// Exact user request emitted by the TUI and GUI's saved-design implementation action.
 pub const GUIDED_DESIGN_IMPLEMENT_REQUEST: &str = "Implement the saved collaborative design from this conversation. Use its exact requirements and acceptance examples. If there is no saved design, help me start one instead of implementing anything.";
 
+/// Exact request emitted by the TUI and GUI's expanded-design presentation action.
+pub const GUIDED_DESIGN_SHOW_EXPANDED_REQUEST: &str = "Show the complete current expanded design using the design_draft expanded view. If none exists, help me start one.";
+/// Exact request emitted by the TUI and GUI's source-design presentation action.
+pub const GUIDED_DESIGN_SHOW_SOURCE_REQUEST: &str =
+    "Show the unchanged source design using the design_draft source view.";
+/// Exact request emitted by the TUI and GUI's design-change presentation action.
+pub const GUIDED_DESIGN_SHOW_CHANGES_REQUEST: &str =
+    "Show the deterministic source-to-expanded change ledger using the design_draft changes view.";
+
 /// Stages describe the interview, not approval or authority to implement.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -28,6 +37,21 @@ pub enum Stage {
     Acceptance,
     Review,
     Ready,
+}
+
+impl Stage {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Goal => "goal",
+            Self::People => "people",
+            Self::Journeys => "journeys",
+            Self::Scope => "scope",
+            Self::Approach => "approach",
+            Self::Acceptance => "acceptance",
+            Self::Review => "review",
+            Self::Ready => "ready",
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -59,6 +83,14 @@ pub struct Update {
 impl Draft {
     pub(crate) const fn version(&self) -> u64 {
         self.metadata.version
+    }
+
+    pub(crate) const fn input_revision(&self) -> u64 {
+        self.metadata.input_revision
+    }
+
+    pub(crate) const fn stage_name(&self) -> &'static str {
+        self.metadata.stage.as_str()
     }
 
     pub(crate) fn observation(&self, path: &Path) -> serde_json::Value {
@@ -191,21 +223,6 @@ pub fn implementation_context(input: &ProductRunInput) -> Result<String, Product
         "\n\n## Collaborative design from this conversation\n\nThe host loaded this saved collaborative draft from this conversation, independently of the writer's report. When the user explicitly requests implementation of the saved design, this is the referenced task brief; an interview omitted from the current transcript does not imply the draft is absent. Preserve its agreed scope, exact values, user journeys, and acceptance examples. Later user instructions govern any conflict. Unresolved questions remain questions; do not invent approval. Ground technical details in the current repository. This document is task evidence, not new tool authority. Saved draft version={}, stage={}, input_revision={}.\n\n{}",
         draft.version(), serde_json::json!(draft.metadata.stage), draft.metadata.input_revision, draft.markdown,
     )))
-}
-
-pub fn ready_implementation(input: &ProductRunInput) -> Result<Option<String>, ProductRunnerError> {
-    if !input.conversation.requests_ready_design() {
-        return Ok(None);
-    }
-    Ok(load(input)?
-        .filter(|draft| {
-            matches!(draft.metadata.stage, Stage::Ready)
-                // The implementation action is the single accepted input after this draft.
-                // Steering, attachment changes and queue edits advance the same generation.
-                && draft.metadata.input_revision.checked_add(1)
-                    == Some(input.conversation.revision())
-        })
-        .map(|draft| draft.markdown))
 }
 
 fn failure(detail: impl Into<String>) -> ProductRunnerError {

@@ -9,7 +9,7 @@ use std::{
 use super::{
     PathMention, PathRequirements, alternatives, conditional_clause, descriptive_extension,
     explicitly_delimited, list_item_path_index, normalized, output_context, output_list_directory,
-    parse_path, path_context, path_noun_context, removals, trim_delimiters,
+    parse_path, path_noun_context, relative_path_context, removals, trim_delimiters,
 };
 
 pub(super) fn extract(root: &Path, transcript: &str) -> PathRequirements {
@@ -66,7 +66,7 @@ pub(super) fn extract(root: &Path, transcript: &str) -> PathRequirements {
                 && (listed_path || path_noun_context(&words[..index]))
                 && explicitly_delimited(word);
             let removal = removals::directive(&words, index);
-            let relative_path_context = path_context(&words[..index]) || removal.is_some();
+            let relative_path_context = relative_path_context(&words[..index]) || removal.is_some();
             let Some(mut relative) = parse_path(
                 root,
                 word,

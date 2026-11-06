@@ -8,9 +8,9 @@ Implementation pieces for `conversation.rs`: Read-only conversational front end 
 
 | File | Role |
 | --- | --- |
-| [design.rs](design.rs) | Conversational interview policy and private design-draft tool; cannot mutate the workspace or launch implementation. |
+| [design.rs](design.rs) | Conversational interview policy and private design-draft tool, including host-derived material questions and Expanded/Source/Changes reads; domain research uses the separate host-owned research ledger and cannot mutate the workspace or launch implementation. |
 | [handoff.rs](handoff.rs) | Checks direct pipeline-execution promises against actual handoff receipts and supplies an in-session correction without granting authority. |
-| [tools.rs](tools.rs) | A read-only conversation can hand authorized implementation to the production pipeline. |
+| [tools.rs](tools.rs) | Read-only conversation dispatch, including interactive design research state and the separately authorized implementation handoff. |
 
 Owning module: [conversation.rs](../conversation.rs). Inspect that parent before changing the local pieces.
 

@@ -224,3 +224,49 @@ fn resume_endpoint(
         base.as_str().trim_end_matches('/')
     ))
 }
+
+#[cfg(test)]
+mod policy_projection {
+    use peritus_model_protocol::{OutputLimitEnforcement, WireDialect};
+    use serde_json::Value;
+
+    use crate::provider_policy_test_support as support;
+
+    #[test]
+    fn system_policy_remains_elevated_in_openai_and_chatgpt_requests() {
+        let profile = support::profile(
+            "openai",
+            WireDialect::OpenAiResponses,
+            OutputLimitEnforcement::ProviderEnforced,
+        );
+        let request = support::request(&profile);
+        let body: Value =
+            serde_json::from_slice(&super::encode(&request).expect("encode OpenAI request"))
+                .expect("parse OpenAI request");
+        let input = body["input"].as_array().expect("OpenAI input array");
+        assert_eq!(input[0]["role"], "system");
+        assert_eq!(input[0]["content"][0]["text"], support::POLICY_TEXT);
+        assert_eq!(input[1]["role"], "user");
+        assert_eq!(input[1]["content"][0]["text"], support::TASK_TEXT);
+        let encoded = body.to_string();
+        assert_eq!(support::count(&encoded, support::POLICY_MARKER), 1);
+
+        let profile = support::profile(
+            "openai",
+            WireDialect::OpenAiResponses,
+            OutputLimitEnforcement::Advisory,
+        );
+        let request = support::request(&profile);
+        let body: Value = serde_json::from_slice(
+            &super::chatgpt::encode(&request).expect("encode ChatGPT request"),
+        )
+        .expect("parse ChatGPT request");
+        assert_eq!(body["instructions"], support::POLICY_TEXT);
+        let input = body["input"].as_array().expect("ChatGPT input array");
+        assert_eq!(input.len(), 1);
+        assert_eq!(input[0]["role"], "user");
+        assert_eq!(input[0]["content"][0]["text"], support::TASK_TEXT);
+        let encoded = body.to_string();
+        assert_eq!(support::count(&encoded, support::POLICY_MARKER), 1);
+    }
+}

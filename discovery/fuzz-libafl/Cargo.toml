@@ -1,0 +1,119 @@
+[package]
+name = "peritus-fuzz-libafl"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "peritus_fuzz"
+path = "../fuzz/src/lib.rs"
+
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { package = "libafl_libfuzzer", version = "=0.16.1" }
+serde_json = "=1.0.149"
+peritus-codec = { path = "../../crates/foundation/peritus-codec" }
+peritus-types = { path = "../../crates/foundation/peritus-types" }
+peritus-policy = { path = "../../crates/foundation/peritus-policy" }
+peritus-provider-core = { path = "../../crates/model/peritus-provider-core" }
+peritus-model-protocol = { path = "../../crates/model/peritus-model-protocol" }
+peritus-tool-protocol = { path = "../../crates/tools/peritus-tool-protocol" }
+peritus-patch = { path = "../../crates/runtime/peritus-patch" }
+peritus-context = { path = "../../crates/orchestration/peritus-context" }
+peritus-role = { path = "../../crates/orchestration/peritus-role" }
+peritus-eval = { path = "../../crates/analysis/peritus-eval" }
+
+[profile.release]
+debug = 1
+overflow-checks = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[[bin]]
+name = "codec_frame"
+path = "../fuzz/fuzz_targets/codec_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "codec_primitives"
+path = "../fuzz/fuzz_targets/codec_primitives.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sse"
+path = "../fuzz/fuzz_targets/sse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ndjson"
+path = "../fuzz/fuzz_targets/ndjson.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tool_json"
+path = "../fuzz/fuzz_targets/tool_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tool_schema"
+path = "../fuzz/fuzz_targets/tool_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "model_json"
+path = "../fuzz/fuzz_targets/model_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "json_healing"
+path = "../fuzz/fuzz_targets/json_healing.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workspace_path"
+path = "../fuzz/fuzz_targets/workspace_path.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "policy_sets"
+path = "../fuzz/fuzz_targets/policy_sets.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "context_graph"
+path = "../fuzz/fuzz_targets/context_graph.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "statistics"
+path = "../fuzz/fuzz_targets/statistics.rs"
+test = false
+doc = false
+bench = false

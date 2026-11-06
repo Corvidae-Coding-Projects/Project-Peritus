@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+## 0.1.20
+
+### Added
+
+- Add optional mutation-testing and sanitizer-fuzzing discovery workspaces, corpus replay tooling, and manually dispatched campaigns.
+- Expand fresh software designs by default into a separate, source-backed contract with applicable domain obligations, failure and recovery behavior, acceptance mappings, retained evidence identities, and an explicit change ledger.
+- Let terminal and browser clients inspect the expanded design, unchanged source, and source-to-expansion changes independently.
+
+### Changed
+
+- Run design enhancement as focused expert questions, authoritative research, and saved amendments. Assemble provenance on the host and publish the retained draft by source hash and version; recover and patch earlier proposals without resending unchanged documents or ledgers.
+- Keep automatic and guided Design context scoped to the captured source and active question while preserving exact historical readers and the complete domain policy.
+- Ask design questions only for evidence-linked material decisions without a supported default. Critical unavailable research now remains explicitly limited instead of becoming a false ready state.
+- Bind implementation and independent review to the same accepted expansion identity while preserving exact reuse, source-change invalidation, and active-run recovery.
+- Let a complete `publish_ready` call persist every missing validated design checkpoint in order, avoiding repeated model turns that resend the same complete ledger while retaining crash-safe intermediate recovery.
+- Serve exact Expanded, Source, and Changes client actions from retained artifacts without provider inference or state mutation; historical views remain readable after implementation changes repository evidence, while corrupt retained state still fails closed.
+
+### Fixed
+
+- Check explicitly requested Markdown and reStructuredText outputs as document artifacts instead of compiling their enclosing software project. Mixed source changes retain their language checks.
+- Prepare design progress requirements before model tool choice and admission. Count informed response batches rather than individual parallel calls; preserve repairable rejected evidence without granting publication approval.
+- Refresh design state after incorporated steering while preserving the original request, historical evidence, and rejected draft submissions. Expose exact source pages to the designer and require durable progress checkpoints to prevent indefinite research loops.
+
+### Recovery
+
+- Default new domain expansion on for fresh runs. An internal fail-closed recovery marker can stop only new expansion creation without deleting or reinterpreting retained source, manifests, expanded designs, receipts, or active work.
+
+### Verification
+
+- Complete the installed browser design update through document checks and independent review while preserving its original design and existing source edits. The document-only planner regression fails before correction and passes afterward; all 80 runner tests, strict affected-package Clippy, workspace checks, formatting, and the Linux release build pass.
+- Freeze and pass 12 representative domain-design fixtures and eight mandatory rubric dimensions, including hostile evidence, unavailable critical research, one material question, source editing, corruption, restart, stale state, and rollback.
+- Pass credentialed zero-question, one-question/resume, receiptless zero-request reuse, TUI source-to-build/restart, authenticated browser gateway, independent review, six real CLI operations, and a mutation slice with seven caught viable mutants and one unviable mutant.
+- Live inference is qualified only for the configured OpenAI Codex runtime with `gpt-6.1-sol` on Linux. Anthropic, Google, compatible, ChatGPT-direct, Windows, macOS, and pixel-level browser automation remain unqualified.
+
 ## 0.1.19
 
 ### Fixed

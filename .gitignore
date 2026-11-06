@@ -37,6 +37,15 @@
 /target/
 /target-verus/
 /dist/
+/mutants.out*/
+/discovery/fuzz/target/
+/discovery/fuzz/corpus/
+/discovery/fuzz/artifacts/
+/discovery/fuzz/coverage/
+/discovery/fuzz-libafl/target/
+/discovery/fuzz-libafl/corpus/
+/discovery/fuzz-libafl/artifacts/
+/discovery/fuzz-libafl/coverage/
 
 # Python cache artifacts from benchmark adapters and local tooling.
 __pycache__/

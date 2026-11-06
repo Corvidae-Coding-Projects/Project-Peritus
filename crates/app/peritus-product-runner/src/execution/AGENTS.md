@@ -28,7 +28,7 @@ Product-run and conversation entrypoints, live input contracts, phase orchestrat
 | [summary.rs](summary.rs) | Task-level completion summary conservation. |
 | [terminal_exit.rs](terminal_exit.rs) | Active-loop exit facts consumed by the protected finalization boundary. |
 | [turn_result.rs](turn_result.rs) | Completed developer-turn values shared by writer and fixer phases. |
-| [types.rs](types.rs) | Public run and conversation contracts, optional durable permission revision, and internal completed-turn values. |
+| [types.rs](types.rs) | Public run and conversation contracts, optional durable permission revision, exact authenticated direct source-design text, and internal completed-turn values. |
 
 ## Child areas
 

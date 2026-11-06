@@ -12,6 +12,10 @@ mod request;
 mod runtime;
 mod stream;
 
+#[cfg(test)]
+#[path = "../../provider_policy_test_support.rs"]
+mod provider_policy_test_support;
+
 pub use client::{OpenAiClient, OpenAiProvider};
 pub use config::OpenAiConfig;
 pub use runtime::{CodexExecutable, CodexRuntimeClient, CodexRuntimeConfig, CodexRuntimeProvider};
