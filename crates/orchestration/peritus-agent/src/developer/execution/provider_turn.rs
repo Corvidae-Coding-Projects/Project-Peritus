@@ -176,6 +176,9 @@ pub(super) async fn complete_turn(
         if !admit_role_request(interaction, profile, &model_request, attempt)? {
             return Ok(None);
         }
+        if let Some(owner) = retry_context.as_mut() {
+            owner.tools.model_request_admitted();
+        }
         let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
         trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
         let driven = measured_drive(

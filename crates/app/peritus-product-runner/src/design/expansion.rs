@@ -787,19 +787,32 @@ impl ExpansionRecords {
                 entry.obligation_ids.iter().map(String::as_str),
                 "change-ledger obligation reference",
             )?;
-            if entry.obligation_ids.is_empty()
-                || entry.source_evidence_ids.iter().any(|id| {
-                    !evidence.contains(id.as_str())
-                        || !self.evidence.iter().any(|record| {
-                            &record.id == id
-                                && matches!(record.reference, EvidenceReference::SourceRange { .. })
-                        })
-                })
-                || entry.obligation_ids.iter().any(|id| !obligations.contains(id.as_str()))
-            {
-                return Err(repository(
-                    "change ledger contains a broken source or obligation link",
-                ));
+            if entry.obligation_ids.is_empty() {
+                return Err(repository(format!(
+                    "change ledger {} has no obligation IDs",
+                    entry.id
+                )));
+            }
+            for id in &entry.source_evidence_ids {
+                if !evidence.contains(id.as_str())
+                    || !self.evidence.iter().any(|record| {
+                        &record.id == id
+                            && matches!(record.reference, EvidenceReference::SourceRange { .. })
+                    })
+                {
+                    return Err(repository(format!(
+                        "change ledger {} source_evidence_ids entry {id} must refer to source_range evidence; repository, web, and rationale evidence belong in the obligation's evidence_ids",
+                        entry.id,
+                    )));
+                }
+            }
+            for id in &entry.obligation_ids {
+                if !obligations.contains(id.as_str()) {
+                    return Err(repository(format!(
+                        "change ledger {} refers to unknown obligation {id}",
+                        entry.id
+                    )));
+                }
             }
         }
         Ok(())
@@ -1358,6 +1371,21 @@ pub(super) fn validate_direct_publication_records(
         ExpansionStage::ExpansionReview,
         expected.version(),
     )
+}
+
+pub(super) fn validate_pass_records(
+    input: &ProductRunInput,
+    source: &SourceDesignSnapshot,
+    expected: &ExpansionSnapshot,
+    records: &ExpansionRecords,
+) -> Result<(), ProductRunnerError> {
+    expected.manifest.binding.validate_current(input, source)?;
+    records.validate(
+        &expected.manifest.binding,
+        ExpansionStage::DomainAssessment,
+        expected.version(),
+    )?;
+    validate_retained_evidence(input, source, records)
 }
 
 /// Applies the exact current user answer to a retained material question and resumes the primary
@@ -2155,7 +2183,7 @@ fn write_atomic_regular(path: &Path, bytes: &[u8], label: &str) -> Result<(), Pr
     sync_parent(parent)
 }
 
-fn read_stable_regular(
+pub(super) fn read_stable_regular(
     path: &Path,
     maximum: u64,
     label: &str,

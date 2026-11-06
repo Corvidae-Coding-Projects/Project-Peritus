@@ -148,6 +148,7 @@ impl DeveloperLoop {
                 request.tools.clear();
                 (None, invocation::input_response_policy(&request)?)
             } else {
+                tools.prepare_model_request()?;
                 let required = tools.required_tool_name().map(str::to_owned);
                 let guidance = tools.system_guidance();
                 let policy =
@@ -317,6 +318,14 @@ impl DeveloperLoop {
                 continue;
             }
             if calls.is_empty() {
+                tools.model_response_completed();
+                if let Some(blocker) = tools.continuation_blocker() {
+                    context.append(
+                        &mut messages,
+                        Message::new(Role::Assistant, assistant, protocol_limits)?,
+                    )?;
+                    return Err(DeveloperLoopError::Tool(blocker));
+                }
                 if final_text.trim().is_empty() {
                     return Err(DeveloperLoopError::EmptyResponse);
                 }
@@ -503,6 +512,7 @@ impl DeveloperLoop {
             }
             // A queued warning must reach a provider turn before it can justify stopping.
             // Capturing first preserves an executor's pending-warning state for this batch.
+            tools.model_response_completed();
             let continuation_blocker = tools.continuation_blocker();
             if let Some(feedback) = tools.take_progress_feedback() {
                 context

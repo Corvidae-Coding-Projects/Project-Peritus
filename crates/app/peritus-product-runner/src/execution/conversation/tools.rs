@@ -20,6 +20,7 @@ pub(super) struct ConversationTools<'a> {
     input: &'a crate::ProductRunInput,
     allow_design: bool,
     research: Option<crate::design::research::ResearchSession>,
+    pub(super) rebind_context: bool,
 }
 
 impl<'a> ConversationTools<'a> {
@@ -39,19 +40,32 @@ impl<'a> ConversationTools<'a> {
             conversation: Arc::clone(&input.conversation),
             input,
             allow_design,
+            rebind_context: false,
             research: allow_design
                 .then(|| crate::design::research::ResearchSession::interactive(input)),
         }
     }
 
     pub(super) fn research_context(&self) -> String {
-        self.research
-            .as_ref()
-            .map_or_else(String::new, crate::design::research::ResearchSession::context)
+        self.research.as_ref().map_or_else(String::new, |research| {
+            crate::design::expert_context(self.input, research)
+                .unwrap_or_else(|error| format!("Expert state unavailable: {error}"))
+        })
     }
 }
 
 impl DeveloperToolExecutor for ConversationTools<'_> {
+    fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
+        self.rebind_context = false;
+        if let Some(research) = &mut self.research {
+            research
+                .synchronize(self.input)
+                .map_err(|error| DeveloperLoopError::Tool(error.to_string()))?;
+            crate::design::expert_context(self.input, research)
+                .map_err(|error| DeveloperLoopError::Tool(error.to_string()))?;
+        }
+        Ok(())
+    }
     fn take_host_tool_calls(&mut self) -> u32 {
         self.workspace.take_host_tool_calls()
     }
@@ -61,7 +75,11 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
             // another startup discovery phase before the executor that actually owns edits.
             Some("Conversation is read-only. This conversation coordinator owns the current invocation; no pipeline is running here. A historical run_pipeline result is not an active handoff. For understood, explicitly authorized implementation, continuation or retry, call run_pipeline directly, even when an earlier invocation handed off before interruption. This is a new coordinator handoff, not redispatch of an already completed workspace operation. Its executor owns the one grounding check and target reads. A pending workspace grounding check is not a prerequisite to this handoff. For questions or read-only requests, inspect only the exact evidence needed to answer; do not start the pipeline.".to_owned())
         } else {
-            self.workspace.system_guidance()
+            Some(format!(
+                "{}{}",
+                self.workspace.system_guidance().unwrap_or_default(),
+                self.research_context()
+            ))
         }
     }
 
@@ -98,6 +116,13 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
         self.workspace.reuse_workspace_read(call, observation)
     }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
+        if crate::design::expert_tool(call.name().as_str()) {
+            return if call.name().as_str() == "design_pass_read" {
+                DeveloperToolEffect::ReadOnly
+            } else {
+                DeveloperToolEffect::MutationCapable
+            };
+        }
         if matches!(
             call.name().as_str(),
             "run_pipeline" | "design_draft" | crate::design::research::TOOL
@@ -134,6 +159,26 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
                     true,
                 ),
             };
+        }
+        if crate::design::expert_tool(call.name().as_str())
+            && self.allow_design
+            && let Some(research) = &mut self.research
+        {
+            let before = crate::design::expert_context(self.input, research).ok();
+            let result =
+                crate::design::execute_expert(self.input, research, &mut self.workspace, call)?;
+            let after = crate::design::expert_context(self.input, research).ok();
+            self.rebind_context = !result.is_error
+                && before != after
+                && !research.is_research_limited()
+                && matches!(
+                    call.name().as_str(),
+                    "design_source_select"
+                        | "design_research_plan"
+                        | "design_amendment"
+                        | "design_recover"
+                );
+            return Ok(result);
         }
         if call.name().as_str() == "design_draft" && self.allow_design {
             let result = super::design::execute(self.input, call, self.research.as_ref())?;
@@ -178,7 +223,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
     }
 
     fn yields_to_host(&self) -> bool {
-        self.requested_revision.is_some()
+        self.requested_revision.is_some() || self.rebind_context
     }
     fn response_blocker(&self, reply: &str) -> Option<String> {
         (self.allow_pipeline

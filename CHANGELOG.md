@@ -9,10 +9,18 @@
 
 ### Changed
 
+- Run design enhancement as focused expert questions, authoritative research, and saved amendments. Assemble provenance on the host and publish the retained draft by source hash and version; recover and patch earlier proposals without resending unchanged documents or ledgers.
+- Keep automatic and guided Design context scoped to the captured source and active question while preserving exact historical readers and the complete domain policy.
 - Ask design questions only for evidence-linked material decisions without a supported default. Critical unavailable research now remains explicitly limited instead of becoming a false ready state.
 - Bind implementation and independent review to the same accepted expansion identity while preserving exact reuse, source-change invalidation, and active-run recovery.
 - Let a complete `publish_ready` call persist every missing validated design checkpoint in order, avoiding repeated model turns that resend the same complete ledger while retaining crash-safe intermediate recovery.
 - Serve exact Expanded, Source, and Changes client actions from retained artifacts without provider inference or state mutation; historical views remain readable after implementation changes repository evidence, while corrupt retained state still fails closed.
+
+### Fixed
+
+- Check explicitly requested Markdown and reStructuredText outputs as document artifacts instead of compiling their enclosing software project. Mixed source changes retain their language checks.
+- Prepare design progress requirements before model tool choice and admission. Count informed response batches rather than individual parallel calls; preserve repairable rejected evidence without granting publication approval.
+- Refresh design state after incorporated steering while preserving the original request, historical evidence, and rejected draft submissions. Expose exact source pages to the designer and require durable progress checkpoints to prevent indefinite research loops.
 
 ### Recovery
 

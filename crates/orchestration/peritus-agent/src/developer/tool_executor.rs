@@ -6,6 +6,20 @@ use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Prepares current workflow requirements before tool choice and policy are constructed.
+    ///
+    /// # Errors
+    /// Rejects unavailable or stale host state before building a provider request.
+    fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
+    /// Records an actually admitted developer request, excluding context assembly attempts.
+    fn model_request_admitted(&mut self) {}
+
+    /// Records one completed developer response after its tool batch has been retained.
+    fn model_response_completed(&mut self) {}
+
     /// Drains completed host child calls, separately from provider-proposed parent calls.
     /// Wrappers must forward this counter. It records work, never grants authority or success.
     fn take_host_tool_calls(&mut self) -> u32 {

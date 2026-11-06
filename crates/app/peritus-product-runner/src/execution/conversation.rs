@@ -60,23 +60,23 @@ impl ProductRunner {
             && input.conversation.permits_pipeline_handoff();
         // Read-only turns also need retrievable exact observations and transport-aware views.
         // Their separate reviewer lineage excludes writer-derived memory and workspace writes.
-        let memory = input.working_memory(if mode == ConversationMode::Design {
-            "design-interview"
-        } else if allow_pipeline {
-            "writer"
-        } else {
-            "reviewer"
-        })?;
+        let mut tools =
+            ConversationTools::new(&input, allow_pipeline, mode == ConversationMode::Design);
         let mut continuing_segment = false;
         loop {
             accounting.check()?;
+            let memory = input.working_memory(if mode == ConversationMode::Design {
+                "design-interview"
+            } else if allow_pipeline {
+                "writer"
+            } else {
+                "reviewer"
+            })?;
             let model = if mode == ConversationMode::Review {
                 &input.providers.reviewer
             } else {
                 &input.providers.writer
             };
-            let mut tools =
-                ConversationTools::new(&input, allow_pipeline, mode == ConversationMode::Design);
             let request = request(
                 &input,
                 mode,
@@ -110,6 +110,10 @@ impl ProductRunner {
             let (cause, reply, detail) = match result {
                 Ok(Ok(result)) => {
                     accounting.check()?;
+                    if tools.rebind_context {
+                        continuing_segment = true;
+                        continue;
+                    }
                     if let Some(revision) = tools.requested_revision {
                         // Steering after the handoff tool must return to conversation, not launch
                         // work authorized against an older user message.
@@ -125,6 +129,7 @@ impl ProductRunner {
                         // The writer reopens the same durable lineage. Release the conversation's
                         // exclusive owner before entering the shared execution pipeline.
                         drop(memory);
+                        drop(tools);
                         return Box::pin(Self::run_accounted(input, observe, accounting)).await;
                     }
                     (
@@ -275,6 +280,7 @@ fn request(
             .push(tools::definition().map_err(|error| crate::turn::developer_error(&error))?);
     }
     if mode == ConversationMode::Design {
+        prompt.push_str(crate::design::expert_policy());
         definitions
             .push(design::definition().map_err(|error| crate::turn::developer_error(&error))?);
         prompt.push_str("\n\nCurrent interview draft:\n");
@@ -282,6 +288,10 @@ fn request(
         prompt.push_str(&conversation_tools.research_context());
         definitions.push(
             crate::design::research::definition()
+                .map_err(|error| crate::turn::developer_error(&error))?,
+        );
+        definitions.extend(
+            crate::design::expert_definitions()
                 .map_err(|error| crate::turn::developer_error(&error))?,
         );
     } else if mode == ConversationMode::Chat {

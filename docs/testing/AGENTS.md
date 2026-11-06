@@ -8,6 +8,9 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [browser-design-update-live-2026-11-06.md](browser-design-update-live-2026-11-06.md) | Actual browser design update, preserved baseline, authoritative amendments, assisted steering, document gate regression/fix and final review evidence. |
+| [domain-design-expert-pass-2026-11-06.md](domain-design-expert-pass-2026-11-06.md) | Expert amendment workflow, browser-sized live research and coding handoff, retained-draft recovery, source/context/CAS regressions, and local installation evidence. |
+| [design-steering-recovery-2026-11-06.md](design-steering-recovery-2026-11-06.md) | Live stale-design diagnosis, preserved drafts, steering/source-reader repair, and bounded progress verification. |
 | [domain-design-expansion-real-2026-11-02.md](domain-design-expansion-real-2026-11-02.md) | Stage 8 frozen fixtures, live provider, TUI/browser, security, recovery, mutation, performance, and qualification boundaries for default domain-aware design expansion. |
 | [domain-design-expansion-evidence.json](domain-design-expansion-evidence.json) | Exact fixture, rubric, provider, client, artifact, mutation, and platform identities for the Stage 8 campaign. |
 | [efficiency-defaults-and-install-v0.1.14.md](efficiency-defaults-and-install-v0.1.14.md) | Omitted-setting defaults, official provider/daemon journeys and compiler-wrapper installation boundary. |

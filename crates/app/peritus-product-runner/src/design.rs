@@ -2,12 +2,41 @@
 
 mod artifact;
 mod expansion;
+mod expert_pass;
+mod expert_tools;
 #[cfg(test)]
 mod qualification;
 pub mod research;
+mod retention;
 mod reuse;
 mod rollout;
 mod source;
+
+pub use expert_tools::{
+    context as expert_context, definitions as expert_definitions, execute as execute_expert,
+    owns as expert_tool,
+};
+pub const fn expert_policy() -> &'static str {
+    expert_tools::POLICY
+}
+
+pub fn expert_context_scope(
+    input: &ProductRunInput,
+    source: &SourceDesignSnapshot,
+) -> Result<String, ProductRunnerError> {
+    let pass = expert_pass::ExpertPass::load(input, source)?;
+    Ok(pass.unresolved().first().and_then(|q| q["id"].as_str()).map_or_else(
+        || {
+            if pass.domains.is_empty() && pass.imported_records.is_none() {
+                "intake"
+            } else {
+                "review"
+            }
+            .to_owned()
+        },
+        str::to_owned,
+    ))
+}
 
 use crate::engineering_workflow::vitamins::DOMAIN_DESIGN_POLICY_VERSION as DESIGN_EXPANSION_POLICY_VERSION;
 pub use expansion::{
@@ -205,7 +234,6 @@ pub async fn create(
     }
     rollout::require_new_expansion(&input.trace_path)?;
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
-    let memory = input.working_memory("designer")?;
     let mut invocation = 0_u32;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
@@ -213,6 +241,8 @@ pub async fn create(
     let mut tools = research::DesignTools::new(input, workspace_tools)?;
     loop {
         check_cancelled(input)?;
+        tools.refresh()?;
+        let memory = input.working_memory("designer")?;
         crate::failover::bypass_open_circuit(input, "designer", cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
@@ -282,6 +312,9 @@ pub async fn create(
         };
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         check_cancelled(input)?;
+        if tools.needs_context_rebind() {
+            continue;
+        }
         if input.conversation.revision() != revision {
             correction = None;
             continue;
@@ -300,6 +333,10 @@ pub async fn create(
 fn design_definitions() -> Result<Vec<peritus_model_protocol::ToolDefinition>, ProductRunnerError> {
     let mut definitions = read_only_definitions()?;
     definitions.push(research::definition().map_err(|error| crate::turn::developer_error(&error))?);
+    definitions
+        .push(research::source_definition().map_err(|error| crate::turn::developer_error(&error))?);
+    definitions
+        .extend(expert_tools::definitions().map_err(|error| crate::turn::developer_error(&error))?);
     Ok(definitions)
 }
 
@@ -324,22 +361,14 @@ fn invocation_prompt(
 }
 
 pub fn system_prompt(remaining: Option<std::time::Duration>) -> String {
-    let mut instructions = format!(
-        "{}\n\n# Automatic architect contract\n\nYou are the design architect in a serious coding harness. Produce a proportional Markdown task plan, not JSON and not a code fence. A title is optional; the host supplies a missing heading without another request. Preserve the requested ambition and cover the complete requested capability rather than proposing an MVP or literal happy-path approximation. Use host-verified observations and inspect the relevant repository contracts during the single startup grounding check. The host retains the current design-tool lifecycle after that check; do not reopen broad discovery, claim unavailable research occurred, or treat an inaccessible critical obligation as resolved. Use design_research_state to record applicable domains and exact evidence-to-obligation bindings. When the complete records and base Markdown are available, call publish_ready directly; the host validates and durably records every missing primary checkpoint in order. Use individual primary transitions only to retain incomplete recoverable work. publish_ready must carry the complete base Markdown; the host appends the structured provenance, acceptance, failure-behavior, and change-ledger record and atomically binds the derived artifact. Do not return before publish_ready succeeds. If critical evidence is genuinely unavailable, record research_limited and return a useful partial Markdown plan; the host retains it without authorizing implementation. Search snippets are discovery only; externally derived material claims require an opened primary or official retained source. A demonstrably internal mechanical change may instead record a repository-supported no-network decision. Label observed facts, inferred domain obligations, recommendations, conflicts, and unresolved critical unknowns honestly. Preserve explicit prototype/mock limitations. Never classify a recommendation as an original user requirement. Do not defer a necessary requirement merely because the writer can inspect source later.\n\nFor a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Cover the objective, applicable domain obligations, exact acceptance criteria, affected paths and contracts, ordered implementation slices, necessary failure and recovery behavior, and real behavioral checks. Use additional architecture, data-flow, evidence, and risk sections when the change needs those decisions. Make slices independently actionable where practical. Scale detail to the actual change without weakening semantic completeness. Do not edit files, run commands, implement code, or commit.",
-        crate::engineering_workflow::architect(),
-    );
+    use std::fmt::Write as _;
+    let mut instructions =
+        format!("{}\n\n{}", crate::engineering_workflow::architect(), expert_tools::POLICY);
     if let Some(remaining) = remaining {
-        use std::fmt::Write as _;
-        write!(
-            instructions,
-            "\n\n# Dynamic run context\n\nThe complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.",
-            remaining.as_secs(),
-        )
-        .expect("writing to a String cannot fail");
+        write!(instructions, "\n\n# Dynamic run context\n\nThe caller-selected run horizon has approximately {} seconds left; preserve enough time for authorized implementation and verification.", remaining.as_secs()).expect("format String");
     }
     instructions
 }
-
 fn design_scope(workspace_root: &Path) -> DesignScope {
     let Ok(text) = fs::read_to_string(workspace_root.join("peritus-workspace.toml")) else {
         return DesignScope::Source;
@@ -365,13 +394,13 @@ fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
         format!("\n\nHarness correction from the previous rejected design:\n{value}")
     });
     format!(
-        "Conversation and requested outcome:\n{transcript}\n\nUse the single startup grounding check and retained evidence to expand the task plan now. Do not restart broad repository discovery. Preserve critical unknowns and their consequences explicitly instead of silently guessing or handing necessary design obligations to the writer as completed work. When complete records and the final base Markdown are available, call publish_ready directly; the host persists the validated draft and review checkpoints. Do not spend separate model turns replaying identical complete records through those checkpoints.{correction}"
+        "Conversation and requested outcome:\n{transcript}\n\nUse the expert pass: select the supplied design, identify focused domain questions, research authoritative answers, save useful amendments and acceptance criteria, review, and publish the retained draft by version. Keep critical unknowns explicit. The host builds the ledger; do not regenerate unchanged documents or bookkeeping.{correction}"
     )
 }
 
 fn correction_prompt(error: &ProductRunnerError) -> String {
     format!(
-        "The previous design was rejected during {}: {}. Return the full design again. Use one # title and a meaningful, proportional task plan. Small changes do not need extra sections or repeated requirements.",
+        "The retained design was rejected during {}: {}. Reconcile the current host projection, read only the affected retained draft or records, correct that amendment or apply a small design_candidate_patch, and retry design_publish at the current version. Preserve all unchanged work; do not resend the complete document or ledger.",
         error.operation(),
         error.detail(),
     )

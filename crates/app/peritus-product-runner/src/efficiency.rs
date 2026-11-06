@@ -118,6 +118,15 @@ impl<'a> MeasuredTools<'a> {
 }
 
 impl DeveloperToolExecutor for MeasuredTools<'_> {
+    fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
+        self.base.prepare_model_request()
+    }
+    fn model_request_admitted(&mut self) {
+        self.base.model_request_admitted();
+    }
+    fn model_response_completed(&mut self) {
+        self.base.model_response_completed();
+    }
     fn take_host_tool_calls(&mut self) -> u32 {
         self.base.take_host_tool_calls()
     }

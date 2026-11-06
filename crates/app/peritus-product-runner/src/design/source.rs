@@ -22,7 +22,7 @@ pub const MAX_SOURCE_DESIGN_BYTES: u64 = 1024 * 1024;
 /// Maximum source-design text returned by one verified page.
 pub const MAX_SOURCE_DESIGN_PAGE_BYTES: u32 = 32 * 1024;
 
-const MANIFEST_SCHEMA: u32 = 1;
+const MANIFEST_SCHEMA: u32 = 2;
 const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
 
 /// Provenance class for the exact source bytes.
@@ -31,6 +31,10 @@ const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
 pub enum SourceDesignOrigin {
     /// Exact current user-authored input explicitly treated as the design.
     DirectUserText,
+    /// Prior exact source followed by a separately labelled, authenticated user instruction.
+    SteeredUserText,
+    /// Exact request prefix followed by an independently identified supplied workspace design.
+    SuppliedWorkspaceDesign,
     /// Exact Markdown body from the run-owned guided-design draft.
     SavedGuidedDesign,
     /// Exact selected range from an immutable workbench text attachment.
@@ -47,6 +51,8 @@ impl SourceDesignOrigin {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::DirectUserText => "direct_user_text",
+            Self::SteeredUserText => "steered_user_text",
+            Self::SuppliedWorkspaceDesign => "supplied_workspace_design",
             Self::SavedGuidedDesign => "saved_guided_design",
             Self::ImmutableAttachment => "immutable_attachment",
             Self::WorkspaceTextFile => "workspace_text_file",
@@ -475,6 +481,96 @@ pub fn capture_source_design(
     publish(&input.trace_path, input.run_id, input.workspace_id, request.input_revision, captured)
 }
 
+/// Retains the original source prefix and appends the exact incorporated steering text.
+/// A short follow-up such as "keep compatibility" must not replace the original task brief.
+pub(super) fn capture_steered_source(
+    input: &ProductRunInput,
+    prior: &SourceDesignSnapshot,
+) -> Result<SourceDesignSnapshot, ProductRunnerError> {
+    let revision = input.conversation.incorporated_revision();
+    let current = SourceDesignSnapshot::open(&input.trace_path, input.run_id, input.workspace_id)?;
+    if revision <= prior.metadata().input_revision()
+        || revision != input.conversation.revision()
+        || current.metadata().sha256() != prior.metadata().sha256()
+        || current.metadata().input_revision() != prior.metadata().input_revision()
+    {
+        return Err(invalid("steering source or input revision changed"));
+    }
+    let steering = input
+        .conversation
+        .source_design_user_text(revision)
+        .map_err(invalid)?
+        .ok_or_else(|| invalid("exact steering input is unavailable"))?;
+    let text = format!(
+        "{}\n\n## Additional user instruction (revision {revision})\n\n{steering}",
+        prior.text()
+    );
+    publish(
+        &input.trace_path,
+        input.run_id,
+        input.workspace_id,
+        revision,
+        CapturedSource {
+            origin: SourceDesignOrigin::SteeredUserText,
+            identity: SourceIdentity::Steered {
+                input_revision: revision,
+                prior_revision: prior.metadata().input_revision(),
+                prior_sha256: prior.metadata().sha256().into_bytes(),
+                steering_sha256: peritus_codec::sha256(steering.as_bytes()).into_bytes(),
+            },
+            bytes: text.into_bytes(),
+        },
+    )
+}
+
+pub(super) fn capture_supplied_workspace(
+    input: &ProductRunInput,
+    prior: &SourceDesignSnapshot,
+    path: &str,
+    expected_digest: &str,
+) -> Result<SourceDesignSnapshot, ProductRunnerError> {
+    crate::execution::check_cancelled(input)?;
+    let revision = input.conversation.incorporated_revision();
+    if revision != input.conversation.revision() || revision != prior.metadata().input_revision() {
+        return Err(invalid("supplied design selection is stale"));
+    }
+    let folder = FolderIdentity::observe(&input.workspace_root)
+        .map_err(|error| invalid(error.to_string()))?;
+    let selection =
+        WorkspacePath::new(path.to_owned()).map_err(|_| invalid("invalid supplied design path"))?;
+    let inspection =
+        FolderInspection::open(&folder).map_err(|error| invalid(error.detail().to_owned()))?;
+    let observed = inspection
+        .read_file(&selection, FileReadSelection::all(), MAX_SOURCE_DESIGN_BYTES)
+        .map_err(|error| invalid(error.detail().to_owned()))?;
+    let digest = observed.source_digest();
+    if observed.continuation_offset().is_some()
+        || crate::encode_hex(digest.as_bytes()) != expected_digest
+    {
+        return Err(invalid("supplied design changed after observation or exceeds its size bound"));
+    }
+    let document = std::str::from_utf8(observed.bytes())
+        .map_err(|_| invalid("supplied design is not UTF-8"))?;
+    let text = format!("{}\n\n# Supplied design: {path}\n\n{document}", prior.text());
+    publish(
+        &input.trace_path,
+        input.run_id,
+        input.workspace_id,
+        revision,
+        CapturedSource {
+            origin: SourceDesignOrigin::SuppliedWorkspaceDesign,
+            identity: SourceIdentity::SuppliedWorkspace {
+                input_revision: revision,
+                prior_sha256: prior.metadata().sha256().into_bytes(),
+                path: path.to_owned(),
+                observed_sha256: digest.into_bytes(),
+                observed_bytes: observed.source_bytes(),
+            },
+            bytes: text.into_bytes(),
+        },
+    )
+}
+
 #[derive(Clone, Debug)]
 struct CapturedSource {
     origin: SourceDesignOrigin,
@@ -485,8 +581,21 @@ struct CapturedSource {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 enum SourceIdentity {
+    SuppliedWorkspace {
+        input_revision: u64,
+        prior_sha256: [u8; 32],
+        path: String,
+        observed_sha256: [u8; 32],
+        observed_bytes: u64,
+    },
     Direct {
         input_revision: u64,
+    },
+    Steered {
+        input_revision: u64,
+        prior_revision: u64,
+        prior_sha256: [u8; 32],
+        steering_sha256: [u8; 32],
     },
     Guided {
         version: u64,
@@ -519,7 +628,9 @@ enum SourceIdentity {
 impl SourceIdentity {
     const fn origin(&self) -> SourceDesignOrigin {
         match self {
+            Self::SuppliedWorkspace { .. } => SourceDesignOrigin::SuppliedWorkspaceDesign,
             Self::Direct { .. } => SourceDesignOrigin::DirectUserText,
+            Self::Steered { .. } => SourceDesignOrigin::SteeredUserText,
             Self::Guided { .. } => SourceDesignOrigin::SavedGuidedDesign,
             Self::Attachment { .. } => SourceDesignOrigin::ImmutableAttachment,
             Self::Workspace { .. } => SourceDesignOrigin::WorkspaceTextFile,
@@ -529,7 +640,24 @@ impl SourceIdentity {
 
     fn validate(&self) -> Result<(), ProductRunnerError> {
         match self {
+            Self::SuppliedWorkspace {
+                input_revision,
+                prior_sha256,
+                path,
+                observed_sha256,
+                observed_bytes,
+            } if *input_revision > 0
+                && *prior_sha256 != [0; 32]
+                && *observed_sha256 != [0; 32]
+                && *observed_bytes > 0
+                && *observed_bytes <= MAX_SOURCE_DESIGN_BYTES
+                && WorkspacePath::new(path.clone()).is_ok() => {}
             Self::Direct { input_revision } if *input_revision > 0 => {}
+            Self::Steered { input_revision, prior_revision, prior_sha256, steering_sha256 }
+                if *prior_revision > 0
+                    && input_revision > prior_revision
+                    && *prior_sha256 != [0; 32]
+                    && *steering_sha256 != [0; 32] => {}
             Self::Guided { version, draft_input_revision, stage }
                 if *version > 0 && *draft_input_revision > 0 && !stage.is_empty() => {}
             Self::Attachment {
@@ -559,7 +687,9 @@ impl SourceIdentity {
 
     fn matches_source(&self, input_revision: u64, bytes: u64, digest: [u8; 32]) -> bool {
         match self {
-            Self::Direct { input_revision: identity_revision } => {
+            Self::Direct { input_revision: identity_revision }
+            | Self::Steered { input_revision: identity_revision, .. }
+            | Self::SuppliedWorkspace { input_revision: identity_revision, .. } => {
                 *identity_revision == input_revision
             }
             Self::Guided { draft_input_revision, .. } => *draft_input_revision <= input_revision,
@@ -591,7 +721,7 @@ struct Manifest {
 
 impl Manifest {
     fn validate(&self) -> Result<(), ProductRunnerError> {
-        if self.schema != MANIFEST_SCHEMA
+        if !matches!(self.schema, 1 | MANIFEST_SCHEMA)
             || self.run == [0; 16]
             || self.workspace == [0; 16]
             || self.input_revision == 0

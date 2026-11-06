@@ -24,6 +24,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 | [keep-working-retained-state.md](keep-working-retained-state.md) | Retained-state growth, compatibility, paging, and real-operation contract. |
 | [interactive-design-mode.md](interactive-design-mode.md) | Design mode's conversational experience, durable Markdown contract, client routing, and implementation handoff. |
 | [domain-aware-design-expansion.md](domain-aware-design-expansion.md) | Default domain-obligation research, exact supplied-design expansion, material-question gating, provenance, and implementation handoff. |
+| [domain-design-expert-pass-remediation.md](domain-design-expert-pass-remediation.md) | Proposed repair for productive research-to-amendment passes, host-built provenance, supplied-document binding, context delivery, and progress scheduling. |
 | [a3-app-protocol.md](a3-app-protocol.md) | Document: Feature: A3 Application Protocol Foundation. |
 | [b0-lifecycle-kernel.md](b0-lifecycle-kernel.md) | Document: Feature: B0 Lifecycle Kernel. |
 | [b1-authority-foundation.md](b1-authority-foundation.md) | Document: B1 authority foundation. |

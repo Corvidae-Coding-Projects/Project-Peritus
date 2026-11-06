@@ -26,6 +26,9 @@ use peritus_provider_core::{
 use peritus_provider_openai::{CodexExecutable, CodexRuntimeConfig, CodexRuntimeProvider};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
+#[path = "live_design_expansion/browser.rs"]
+mod browser;
+
 fn main() -> Result<(), Box<dyn Error>> {
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -48,14 +51,90 @@ async fn run() -> Result<(), Box<dyn Error>> {
         }
         Some("zero") => qualify_zero_question(provider).await?,
         Some("question") => qualify_one_question(provider).await?,
+        Some("steering") => qualify_steering(provider).await?,
+        Some("browser") => browser::qualify(provider).await?,
+        Some("browser-recovery") => browser::recover(provider).await?,
+        Some("interactive") => qualify_interactive(provider).await?,
         Some(value) => {
             return Err(io::Error::other(format!(
-                "unknown qualification case {value:?}; expected zero or question",
+                "unknown qualification case {value:?}; expected zero, question, steering, browser, or browser-recovery",
             ))
             .into());
         }
     }
     eprintln!("live design-expansion qualification passed");
+    Ok(())
+}
+
+async fn qualify_interactive(provider: Arc<CountingProvider>) -> Result<(), Box<dyn Error>> {
+    let fixture = Fixture::new([0xD9; 16], [0xDA; 16])?;
+    let source = fs::read(fixture.repository.path().join("src/lib.rs"))?;
+    let task = "Design a documented public Rust function named answer returning the u32 value 42. Preserve initial_value and follow the existing repository conventions. Use a safe reversible default for routine choices. This is an internal mechanical change; create the ready implementation design without editing workspace source or starting implementation.";
+    provider.request_bound.store(16, Ordering::Release);
+    let conversation: Arc<dyn ConversationView> = Arc::new(FixedConversation(task.to_owned()));
+    let result = fixture.run(provider.clone(), conversation, task.into(), "interactive").await;
+    fixture.retain("interactive")?;
+    let (outcome, reached_writer) = result?;
+    eprintln!("{}", outcome_diagnostic("interactive result", &outcome));
+    require_ready_artifacts(&fixture.trace_path)?;
+    if reached_writer || fs::read(fixture.repository.path().join("src/lib.rs"))? != source {
+        return Err(io::Error::other(
+            "guided Design crossed its read-only implementation boundary",
+        )
+        .into());
+    }
+    eprintln!(
+        "guided Design published without workspace edits in {} requests",
+        provider.requests()
+    );
+    Ok(())
+}
+
+async fn qualify_steering(provider: Arc<CountingProvider>) -> Result<(), Box<dyn Error>> {
+    let fixture = Fixture::new([0xD5; 16], [0xD6; 16])?;
+    let task = "Design a documented public Rust function answer returning the u32 value 42. Preserve initial_value and follow the existing repository conventions. This is an internal mechanical change with no unresolved product choice.";
+    let conversation = Arc::new(MutableConversation::new(task));
+    *provider.steering.lock().expect("steering lock") = Some((
+        provider.requests() + 2,
+        conversation.clone(),
+        format!(
+            "{task} Additional instruction: the documentation must state that answer is deterministic."
+        ),
+    ));
+    provider.request_bound.store(provider.requests() + 24, Ordering::Release);
+    let initial = provider.requests();
+    let view: Arc<dyn ConversationView> = conversation;
+    let (outcome, reached_writer) =
+        fixture.run(provider.clone(), view, task.into(), "steering").await?;
+    fixture.retain("steering")?;
+    require_no_question(&outcome, "in-flight design steering")?;
+    if !reached_writer {
+        return Err(io::Error::other(outcome_diagnostic(
+            "steered design never reached Writing",
+            &outcome,
+        ))
+        .into());
+    }
+    require_ready_artifacts(&fixture.trace_path)?;
+    let state: serde_json::Value = serde_json::from_slice(&fs::read(
+        fixture.trace_path.with_extension("design-expansion.json"),
+    )?)?;
+    if state["binding"]["input_revision"] != 2 {
+        return Err(
+            io::Error::other("published design did not bind the incorporated steering").into()
+        );
+    }
+    let markdown = fs::read_to_string(fixture.trace_path.with_extension("design.md"))?;
+    if !markdown.contains("deterministic") || !markdown.contains("initial_value") {
+        return Err(io::Error::other(
+            "steered design omitted the new instruction or the original preservation requirement",
+        )
+        .into());
+    }
+    eprintln!(
+        "in-flight steering reached Writing with {} model requests",
+        provider.requests() - initial
+    );
     Ok(())
 }
 
@@ -193,11 +272,18 @@ async fn qualify_one_question(provider: Arc<CountingProvider>) -> Result<(), Box
 struct CountingProvider {
     inner: Arc<dyn ModelProvider>,
     requests: AtomicU64,
+    steering: Mutex<Option<(u64, Arc<MutableConversation>, String)>>,
+    request_bound: AtomicU64,
 }
 
 impl CountingProvider {
     fn new(inner: Arc<dyn ModelProvider>) -> Self {
-        Self { inner, requests: AtomicU64::new(0) }
+        Self {
+            inner,
+            requests: AtomicU64::new(0),
+            steering: Mutex::new(None),
+            request_bound: AtomicU64::new(u64::MAX),
+        }
     }
 
     fn requests(&self) -> u64 {
@@ -250,7 +336,21 @@ impl ModelProvider for CountingProvider {
         request: peritus_model_protocol::ModelRequest,
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
-        self.requests.fetch_add(1, Ordering::AcqRel);
+        let request_number = self.requests.fetch_add(1, Ordering::AcqRel) + 1;
+        if request_number > self.request_bound.load(Ordering::Acquire) {
+            return Box::pin(async {
+                Err(ProviderCoreError::configuration(
+                    "qualification_request_bound",
+                    "design did not publish within the qualification request bound",
+                ))
+            });
+        }
+        let mut steering = self.steering.lock().expect("steering lock");
+        if steering.as_ref().is_some_and(|(at, _, _)| request_number == *at) {
+            let (_, conversation, message) = steering.take().expect("selected steering");
+            conversation.answer(&message);
+        }
+        drop(steering);
         self.inner.start(request, cancellation)
     }
 }
@@ -298,6 +398,8 @@ struct Fixture {
     run_id: RunId,
     workspace_id: WorkspaceId,
     trace_path: PathBuf,
+    cancel_at_writer: bool,
+    expected_edit: Option<PathBuf>,
 }
 
 impl Fixture {
@@ -312,6 +414,8 @@ impl Fixture {
             run_id: RunId::new(run).expect("nonzero qualification run id"),
             workspace_id: WorkspaceId::new(workspace).expect("nonzero workspace id"),
             trace_path,
+            cancel_at_writer: true,
+            expected_edit: None,
         })
     }
 
@@ -324,11 +428,18 @@ impl Fixture {
     }
 
     fn provider_metrics(&self) -> Result<serde_json::Value, Box<dyn Error>> {
+        self.provider_metrics_since(0)
+    }
+
+    fn provider_metrics_since(
+        &self,
+        first_line: usize,
+    ) -> Result<serde_json::Value, Box<dyn Error>> {
         let text = fs::read_to_string(self.trace_path.with_extension("efficiency.jsonl"))?;
         let mut accounting = None;
         let mut attempts = 0_u64;
         let mut attempt_micros = 0_u64;
-        for line in text.lines() {
+        for line in text.lines().skip(first_line) {
             let value: serde_json::Value = serde_json::from_str(line)?;
             match value["event"].as_str() {
                 Some("provider-accounting") => accounting = Some(value),
@@ -390,42 +501,74 @@ impl Fixture {
         let reached_writer = Arc::new(AtomicBool::new(false));
         let observe_cancelled = Arc::clone(&cancelled);
         let observe_writer = Arc::clone(&reached_writer);
+        let cancel_at_writer = self.cancel_at_writer;
         let observer: RunObserver = Arc::new(move |update| {
             eprintln!("{:?}: {}", update.phase, update.status);
             if update.phase == ProductRunPhase::Writing {
                 observe_writer.store(true, Ordering::Release);
-                observe_cancelled.store(true, Ordering::Release);
+                if cancel_at_writer {
+                    observe_cancelled.store(true, Ordering::Release);
+                }
             }
         });
         let cancellation = CancellationToken::new();
-        let output = ProductRunner::run(
-            ProductRunInput {
-                workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
-                run_id: self.run_id,
-                workspace_id: self.workspace_id,
-                workspace_root: self.repository.path().to_owned(),
-                source_root: self.repository.path().to_owned(),
-                trace_path: self.trace_path.clone(),
-                command_runtime,
-                module_jobs: None,
-                finding_state: String::new(),
-                task,
-                max_elapsed: Some(Duration::from_mins(30)),
-                delivery_scope: ProductDeliveryScope::WorkspaceChanges,
-                conversation,
-                providers: RoleProviders {
-                    writer: Arc::clone(&provider),
-                    reviewer: Arc::clone(&provider),
-                    fixer: provider,
-                    fallbacks: Vec::new(),
-                },
-                cancelled,
-                provider_cancellation: cancellation,
-                resume: None,
+        let watch = self.expected_edit.as_ref().map(|path| {
+            let path = path.clone();
+            let cancelled = Arc::clone(&cancelled);
+            let token = cancellation.clone();
+            tokio::spawn(async move {
+                loop {
+                    if fs::read_to_string(&path).is_ok_and(|text| {
+                        text.lines().any(|line| {
+                            line.trim() == "pub const PERITUS_EXPERT_HANDOFF: bool = true;"
+                        })
+                    }) {
+                        cancelled.store(true, Ordering::Release);
+                        let _ = token.cancel();
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                }
+            })
+        });
+        let input = ProductRunInput {
+            workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
+            run_id: self.run_id,
+            workspace_id: self.workspace_id,
+            workspace_root: self.repository.path().to_owned(),
+            source_root: self.repository.path().to_owned(),
+            trace_path: self.trace_path.clone(),
+            command_runtime,
+            module_jobs: None,
+            finding_state: String::new(),
+            task,
+            max_elapsed: Some(Duration::from_mins(30)),
+            delivery_scope: ProductDeliveryScope::WorkspaceChanges,
+            conversation,
+            providers: RoleProviders {
+                writer: Arc::clone(&provider),
+                reviewer: Arc::clone(&provider),
+                fixer: provider,
+                fallbacks: Vec::new(),
             },
-            observer,
-        )
-        .await?;
+            cancelled,
+            provider_cancellation: cancellation,
+            resume: None,
+        };
+        let output = if attempt == "interactive" {
+            ProductRunner::converse(
+                input,
+                peritus_product_runner::ConversationMode::Design,
+                observer,
+            )
+            .await
+        } else {
+            ProductRunner::run(input, observer).await
+        };
+        if let Some(watch) = watch {
+            watch.abort();
+        }
+        let output = output?;
         Ok((output, reached_writer.load(Ordering::Acquire)))
     }
 }

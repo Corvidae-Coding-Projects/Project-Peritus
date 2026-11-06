@@ -12,6 +12,7 @@ Implementation pieces for `gates.rs`: Candidate-aware D1 gate execution adapter.
 | [cancellation.rs](cancellation.rs) | Cooperative cancellation for streamed host-owned gate reads. |
 | [coverage.rs](coverage.rs) | Missing check contracts are harness prerequisites, not candidate defects for a fixer. |
 | [deliverable_inventory.rs](deliverable_inventory.rs) | Deterministic reconciliation of closed deliverable requests with final changed paths. |
+| [document_tests.rs](document_tests.rs) | Real planner/adapter regression for explicit document outputs inside Cargo projects, with mixed-source and unrequested-document controls. |
 | [execution_policy.rs](execution_policy.rs) | Authoritative task restrictions fence automatic command execution before any gate starts. |
 | [explicit_paths.rs](explicit_paths.rs) | Deterministic reconciliation of literal task paths with the candidate workspace. |
 | [json_structure.rs](json_structure.rs) | Deterministic syntax validation for changed JSON files. |

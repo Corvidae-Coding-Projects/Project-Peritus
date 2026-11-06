@@ -163,6 +163,23 @@ impl LocalContextHandle {
             "reviewer" | "designer" | "design-interview" => HarnessRole::Reviewer,
             _ => return Err(crate::turn::developer_error(&error("unsupported local memory role"))),
         };
+        let design_scope = if matches!(role, "designer" | "design-interview") {
+            let source = crate::design::SourceDesignSnapshot::open(
+                &input.trace_path,
+                input.run_id,
+                input.workspace_id,
+            );
+            Some(match source {
+                Ok(source) => format!(
+                    "{}/{}",
+                    crate::encode_hex(source.metadata().sha256().as_bytes()),
+                    crate::design::expert_context_scope(input, &source)?
+                ),
+                Err(_) => "uncaptured/intake".to_owned(),
+            })
+        } else {
+            None
+        };
         // Design is a separate read-only subtask. Its handles must never resolve in the
         // independent review archive, even though both exclude writer-derived memory.
         let task_bytes = if matches!(role, "designer" | "design-interview") {
@@ -172,6 +189,10 @@ impl LocalContextHandle {
                 b"peritus-guided-design-context-v1".to_vec()
             };
             key.extend_from_slice(input.run_id.as_bytes());
+            // Scope the trace identity as well as its directory: another question's
+            // completed exchanges must not be recovered as this lineage's proposals.
+            key.extend_from_slice(b"\0expert-pass-v1\0");
+            key.extend_from_slice(design_scope.as_deref().unwrap_or_default().as_bytes());
             let digest = peritus_codec::sha256(&key);
             let mut task = [0; 16];
             task.copy_from_slice(&digest.as_bytes()[..16]);
@@ -189,7 +210,10 @@ impl LocalContextHandle {
             harness_role,
             input.conversation.revision(),
         );
-        let root = input.trace_path.with_extension("context").join(role);
+        let mut root = input.trace_path.with_extension("context").join(role);
+        if let Some(scope) = design_scope {
+            root = root.join(format!("expert-pass-v1-{scope}"));
+        }
         Self::open_bound(input, &root, binding, config, protected)
     }
 
