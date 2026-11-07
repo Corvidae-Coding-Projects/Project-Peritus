@@ -55,6 +55,17 @@ impl<'a> ConversationTools<'a> {
 }
 
 impl DeveloperToolExecutor for ConversationTools<'_> {
+    fn reject_tool_arguments(
+        &mut self,
+        call: &CompletedToolCall,
+        error: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        if crate::design::expert_tool(call.name().as_str()) {
+            crate::design::reject_expert_arguments(self.input, call, error)
+        } else {
+            self.workspace.reject_tool_arguments(call, error)
+        }
+    }
     fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
         self.rebind_context = false;
         if let Some(research) = &mut self.research {
@@ -117,7 +128,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
     }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if crate::design::expert_tool(call.name().as_str()) {
-            return if call.name().as_str() == "design_pass_read" {
+            return if matches!(call.name().as_str(), "design_pass_read" | "design_proposal_read") {
                 DeveloperToolEffect::ReadOnly
             } else {
                 DeveloperToolEffect::MutationCapable
@@ -177,6 +188,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
                         | "design_research_plan"
                         | "design_amendment"
                         | "design_recover"
+                        | "design_proposal_repair"
                 );
             return Ok(result);
         }

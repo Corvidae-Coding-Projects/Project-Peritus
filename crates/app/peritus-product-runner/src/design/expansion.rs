@@ -225,7 +225,7 @@ struct InternalMechanicalSkip {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
-enum EvidenceAuthority {
+pub(super) enum EvidenceAuthority {
     SourceDesign,
     Repository,
     Primary,
@@ -235,7 +235,7 @@ enum EvidenceAuthority {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-enum EvidenceReference {
+pub(super) enum EvidenceReference {
     SourceRange {
         start: u64,
         end: u64,

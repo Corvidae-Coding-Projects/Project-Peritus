@@ -1,11 +1,13 @@
 //! Mandatory repository-grounded design document produced before implementation.
 
 mod artifact;
+mod evidence_input;
 mod expansion;
 mod expert_pass;
 mod expert_tools;
 #[cfg(test)]
 mod qualification;
+mod rejected;
 pub mod research;
 mod retention;
 mod reuse;
@@ -14,7 +16,7 @@ mod source;
 
 pub use expert_tools::{
     context as expert_context, definitions as expert_definitions, execute as execute_expert,
-    owns as expert_tool,
+    owns as expert_tool, reject as reject_expert_arguments,
 };
 pub const fn expert_policy() -> &'static str {
     expert_tools::POLICY

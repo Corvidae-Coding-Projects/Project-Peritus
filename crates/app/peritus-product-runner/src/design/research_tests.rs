@@ -871,3 +871,114 @@ fn steering_recovers_saved_expert_amendments_without_research_restart() {
     let published=tools.execute(&expert_call(&input, crate::design::expert_tools::PUBLISH,&serde_json::json!({"expected_version":2,"review":"The retained amendment still applies, and the complete new source preserves compatibility and original durability behavior."}))).unwrap();
     assert!(!published.is_error, "{}", published.output.to_wire_string());
 }
+
+#[test]
+fn rejected_proposal_survives_restart_and_field_repair_preserves_candidate() {
+    use crate::design::expert_tools::{AMEND, PLAN, PROPOSAL_READ, REPAIR};
+    let directory = tempfile::tempdir().unwrap();
+    let conversation =
+        Arc::new(Inputs { received: AtomicU64::new(1), incorporated: AtomicU64::new(1) });
+    let input = input(directory.path(), conversation);
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    tools
+        .execute(&named_call("workspace_list", &serde_json::json!({"path":"","depth":1})))
+        .unwrap();
+    assert!(!tools.execute(&expert_call(&input, PLAN, &plan(1, false))).unwrap().is_error);
+    let accepted = std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap();
+    let mut candidate = amendment(2, &source_evidence());
+    candidate["evidence"][0]["reference"].as_object_mut().unwrap().remove("kind");
+    let submitted = expert_call(&input, AMEND, &candidate);
+    let rejected = tools.execute(&submitted).unwrap();
+    assert!(rejected.is_error);
+    let rejection: serde_json::Value =
+        serde_json::from_slice(rejected.output.canonical_bytes()).unwrap();
+    assert_eq!(rejection["error"]["path"], "/evidence/0/reference/kind");
+    assert_eq!(
+        std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+        accepted
+    );
+    drop(tools);
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    assert!(tools.context().contains("design_proposal_repair"));
+    let handle = rejection["error"]["proposal"].as_str().unwrap();
+    let mut text = String::new();
+    let mut offset = 0;
+    loop {
+        let page = tools
+            .execute(&named_call(
+                PROPOSAL_READ,
+                &serde_json::json!({"proposal":handle,"offset":offset,"max_bytes":97}),
+            ))
+            .unwrap();
+        assert!(!page.is_error, "{}", page.output.to_wire_string());
+        let page: serde_json::Value =
+            serde_json::from_slice(page.output.canonical_bytes()).unwrap();
+        text.push_str(page["text"].as_str().unwrap());
+        match page["next_offset"].as_u64() {
+            Some(next) => offset = next,
+            None => break,
+        }
+    }
+    let exact: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(
+        exact,
+        serde_json::from_slice::<serde_json::Value>(submitted.arguments().canonical_bytes())
+            .unwrap()
+    );
+    for (path, value) in [
+        ("/source_sha256", serde_json::json!("bad")),
+        ("/evidence/00/reference/kind", serde_json::json!("source_range")),
+        ("/markdown~2", serde_json::json!("bad")),
+    ] {
+        let args = serde_json::json!({"proposal":handle,"expected_version":2,"changes":[{"path":path,"value_json":value.to_string()}]});
+        assert!(tools.execute(&expert_call(&input, REPAIR, &args)).unwrap().is_error);
+        assert_eq!(
+            std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+            accepted
+        );
+    }
+    let repair = serde_json::json!({"proposal":handle,"expected_version":2,"changes":[{"path":"/evidence/0/reference/kind","value_json":"\"source_range\""}]});
+    let result = tools.execute(&expert_call(&input, REPAIR, &repair)).unwrap();
+    assert!(!result.is_error, "{}", result.output.to_wire_string());
+    let pass: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+    )
+    .unwrap();
+    for field in ["markdown", "acceptance", "heading", "rationale", "failure_behavior"] {
+        assert_eq!(pass["amendments"][0][field], candidate[field]);
+    }
+    assert!(
+        tools.execute(&expert_call(&input, REPAIR, &repair)).unwrap().is_error,
+        "predecessor cannot be repaired twice"
+    );
+}
+
+#[test]
+fn authority_version_is_admitted_before_web_resolution_and_rationale_tag_is_optional() {
+    use crate::design::expert_tools::{AMEND, PLAN};
+    let directory = tempfile::tempdir().unwrap();
+    let conversation =
+        Arc::new(Inputs { received: AtomicU64::new(1), incorporated: AtomicU64::new(1) });
+    let input = input(directory.path(), conversation);
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    tools
+        .execute(&named_call("workspace_list", &serde_json::json!({"path":"","depth":1})))
+        .unwrap();
+    assert!(!tools.execute(&expert_call(&input, PLAN, &plan(1, false))).unwrap().is_error);
+    let evidence = serde_json::json!({"authority":"official","title":"Official publication","version":null,"reference":{"kind":"web","source":"a".repeat(64),"start":0,"end":20}});
+    let result = tools.execute(&expert_call(&input, AMEND, &amendment(2, &evidence))).unwrap();
+    assert!(result.is_error);
+    let error: serde_json::Value = serde_json::from_slice(result.output.canonical_bytes()).unwrap();
+    assert_eq!(error["error"]["path"], "/evidence/0/version");
+    let rationale = serde_json::json!({"authority":"engineering_rationale","title":"Atomicity invariant","version":null,"reference":{"invariant":"A failed write preserves committed state"}});
+    let result = tools.execute(&expert_call(&input, AMEND, &amendment(2, &rationale))).unwrap();
+    assert!(!result.is_error, "{}", result.output.to_wire_string());
+    let pass: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(pass["amendments"][0]["evidence"][0]["reference"]["kind"], "engineering_rationale");
+}

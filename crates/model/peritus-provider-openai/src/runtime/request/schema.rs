@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use peritus_model_protocol::{ModelRequest, ParallelToolPolicy, ToolChoice};
+use peritus_model_protocol::{ModelRequest, ParallelToolPolicy, ToolArgumentSchema, ToolChoice};
 use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
 
@@ -40,41 +40,25 @@ pub(super) fn result_contract(request: &ModelRequest) -> Result<ResultContract, 
         request.tool_choice(),
         ToolChoice::Required | ToolChoice::Specific(_)
     ));
-    let name_schema = if names.is_empty() {
-        object(vec![
-            ("type", Value::String("string".to_owned())),
-            ("const", Value::String("__no_host_tools__".to_owned())),
-        ])
+    let mut variants = Vec::new();
+    for tool in request.tools().iter().filter(|tool| names.contains(tool.name().as_str())) {
+        let contract = ToolArgumentSchema::compile(tool.parameters()).map_err(|_| {
+            invalid("unsupported host tool schema; host admission reports field diagnostics")
+        })?;
+        // Unsupported strict projections remain explicitly host-validated.
+        let arguments = contract.provider_schema().unwrap_or_else(
+            |_| serde_json::json!({"type":"string","description":"JSON object encoded once; the host validates the selected tool schema."})
+        );
+        // The tool key is selected before its argument value, regardless of JSON map
+        // ordering in the CLI or app-server. A late name discriminator lets constrained
+        // decoding choose an argument shape first and then force an unintended tool.
+        variants.push(serde_json::json!({"type":"object","properties":{tool.name().as_str():arguments},"required":[tool.name().as_str()],"additionalProperties":false}));
+    }
+    let item_schema = if variants.is_empty() {
+        serde_json::json!({"type":"object","properties":{"__no_host_tools__":{"type":"null"}},"required":["__no_host_tools__"],"additionalProperties":false})
     } else {
-        object(vec![
-            ("type", Value::String("string".to_owned())),
-            ("enum", Value::Array(names.iter().cloned().map(Value::String).collect())),
-        ])
+        serde_json::json!({"anyOf":variants})
     };
-    let item_schema = object(vec![
-        ("type", Value::String("object".to_owned())),
-        (
-            "properties",
-            object(vec![
-                ("name", name_schema),
-                (
-                    "arguments_json",
-                    object(vec![
-                        ("type", Value::String("string".to_owned())),
-                        (
-                            "description",
-                            Value::String(
-                                "One complete JSON object serialized as text exactly once, matching the selected host tool schema. Escape quotes, newlines and backslashes correctly; no literal control characters, comments, trailing commas or truncated containers."
-                                    .to_owned(),
-                            ),
-                        ),
-                    ]),
-                ),
-            ]),
-        ),
-        ("required", strings(&["name", "arguments_json"])),
-        ("additionalProperties", Value::Bool(false)),
-    ]);
     let tool_calls = object(vec![
         ("type", Value::String("array".to_owned())),
         ("minItems", Value::Number(minimum.into())),

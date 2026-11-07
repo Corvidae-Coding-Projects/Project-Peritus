@@ -1013,7 +1013,7 @@ fn check_plan(
         let status = value["status"].as_str().ok_or("missing plan status")?;
         if result.is_error != matches!(status, "needs_judgment" | "yielded") {
             return Err(format!(
-                "parent plan error flag {} disagrees with status {status}",
+                "parent plan error flag {} disagrees with status {status}: {value}",
                 result.is_error
             ));
         }

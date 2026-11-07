@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- Validate provider tool proposals against the active invocation's complete host argument contracts before dispatch. Codex constrains typed arguments where its schema can preserve the host contract; historical and explicitly host-validated tools remain supported.
+- Retain rejected expert-design proposals privately across restart and repair individual JSON Pointer fields with source/version checks, preserving unchanged work and accepted checkpoints. Align authority-specific evidence schemas and typed records.
+- Share search backend health and request spacing across queries and processes. Preserve Retry-After, classify challenges and parser drift separately from empty results, and retain partial results and external SearXNG metadata.
+
 ## 0.1.20
 
 ### Added

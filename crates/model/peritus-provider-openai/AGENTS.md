@@ -20,6 +20,7 @@ Local dependency waypoints: [peritus-codec](../../foundation/peritus-codec/AGENT
 | Folder | Role / next waypoint |
 | --- | --- |
 | [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-provider-openai`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
+| [examples/tool_contract.rs](examples/tool_contract.rs) | Opt-in real Codex typed tool-argument consumer. |
 | [src/](src/AGENTS.md) | OpenAI HTTP Responses adapter and official Codex account runtime transport, with separate request/stream/runtime paths. |
 
 ## Working in this area

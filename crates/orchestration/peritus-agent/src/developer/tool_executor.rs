@@ -6,6 +6,23 @@ use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Retains a rejected proposal where supported, without executing its requested effect.
+    ///
+    /// # Errors
+    /// Reports private recovery-storage failures; it never grants execution authority.
+    fn reject_tool_arguments(
+        &mut self,
+        _call: &CompletedToolCall,
+        violation: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        Ok(DeveloperToolObservation {
+            output: peritus_model_protocol::CanonicalJson::parse(
+                &serde_json::json!({"error":{"code":"invalid_tool_arguments","path":violation.path(),"detail":violation.detail(),"effect_executed":false,"next_action":"Correct only these fields in this proposal; the current task and accepted checkpoints are unchanged."}}).to_string(),
+                peritus_model_protocol::JsonBounds::value(peritus_model_protocol::ProtocolLimits::PRODUCTION),
+            )?,
+            is_error: true,
+        })
+    }
     /// Prepares current workflow requirements before tool choice and policy are constructed.
     ///
     /// # Errors

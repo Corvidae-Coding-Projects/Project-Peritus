@@ -220,12 +220,17 @@ impl CodexRuntimeProvider {
                 return Ok(OwnedModelStream::new(stream, cancellation));
             }
         };
-        let decoded = decode_with_usage(
+        let mut decoded = decode_with_usage(
             output.process.stdout(),
             &runtime.allowed_tools,
             runtime.min_calls..=runtime.max_calls,
             output.final_message.as_deref().ok(),
         );
+        if let Ok(turn) = &mut decoded.turn
+            && let Err(error) = restore_typed_arguments(&request, turn)
+        {
+            decoded.turn = Err(error);
+        }
         if !output.process.exit().success() {
             let decoded_turn = super::output::reported_process_failure(output.process.stderr())
                 .map_or(decoded.turn, Err);
@@ -429,4 +434,42 @@ impl fmt::Debug for CodexRuntimeProvider {
             .field("cache_anchor", &self.cache_anchor.get().is_some())
             .finish()
     }
+}
+
+fn restore_typed_arguments(
+    request: &ModelRequest,
+    turn: &mut super::output::RuntimeTurn,
+) -> Result<(), DecodeFailure> {
+    for call in &mut turn.tool_calls {
+        if call.typed_arguments {
+            let Some(definition) =
+                request.tools().iter().find(|tool| tool.name().as_str() == call.name)
+            else {
+                return Err(DecodeFailure::InvalidToolChoice);
+            };
+            let restored = (|| {
+                let schema =
+                    peritus_model_protocol::ToolArgumentSchema::compile(definition.parameters())
+                        .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+                let mut value = serde_json::from_slice(call.arguments.canonical_bytes())
+                    .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+                schema
+                    .restore_provider_value(&mut value)
+                    .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+                peritus_model_protocol::CanonicalJson::parse(
+                    &value.to_string(),
+                    peritus_model_protocol::JsonBounds::value(
+                        peritus_model_protocol::ProtocolLimits::PRODUCTION,
+                    ),
+                )
+                .map_err(|_| DecodeFailure::InvalidToolArguments)
+            })();
+            // Invalid proposals still reach shared host admission and its retained,
+            // field-level repair path. They are never executed by this transport.
+            if let Ok(arguments) = restored {
+                call.arguments = arguments;
+            }
+        }
+    }
+    Ok(())
 }

@@ -28,6 +28,7 @@ Provider-neutral, versioned, bounded model protocol for Peritus.
 | [request.rs](request.rs) | Complete revision-bound model requests and cross-field validation. |
 | [retry.rs](retry.rs) | Deterministic bounded retry legality and delay planning. |
 | [schema.rs](schema.rs) | Bounded canonical JSON values and provider-facing JSON Schema documents. |
+| [tool_arguments.rs](tool_arguments.rs) | Shared bounded argument-schema compilation/admission, field pointers, local refs and numeric constraints; [projection](tool_arguments/projection.rs) preserves provider optional-field semantics. |
 | [tool.rs](tool.rs) | Provider-facing function tools, completed calls/results, and output/reasoning policy. |
 | [usage.rs](usage.rs) | Optional nonnegative usage counters and monotonic cumulative accounting. |
 | [verified.rs](verified.rs) | Executable invariant/refinement predicates for the local domain. Entry names: `ReducerTransitionFacts`, `reducer_transition_legal`, `DeduplicationFacts`, `deduplication_legal`, `FragmentCompletionFacts`. |

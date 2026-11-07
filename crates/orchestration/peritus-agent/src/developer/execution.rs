@@ -42,6 +42,17 @@ impl DeveloperLoop {
         ];
         context.open(&request, &messages)?;
         let tool_definitions = std::mem::take(&mut request.tools);
+        let mut argument_schemas = std::collections::BTreeMap::new();
+        for definition in &tool_definitions {
+            let schema =
+                peritus_model_protocol::ToolArgumentSchema::compile(definition.parameters())
+                    .map_err(|error| {
+                        DeveloperLoopError::Tool(format!("Invalid host tool schema: {error}"))
+                    })?;
+            if argument_schemas.insert(definition.name().as_str().to_owned(), schema).is_some() {
+                return Err(DeveloperLoopError::Tool("Duplicate host tool definition".to_owned()));
+            }
+        }
         let mut tool_calls = 0_u32;
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
@@ -431,7 +442,22 @@ impl DeveloperLoop {
                             arguments: &call.arguments().to_wire_string(),
                         })?;
                     }
-                    let executed = tools.execute(&call);
+                    let executed = match argument_schemas
+                        .get(name)
+                        .filter(|_| request.tools.iter().any(|tool| tool.name() == call.name()))
+                    {
+                        Some(schema) => match schema.validate(call.arguments()) {
+                            Ok(()) => tools.execute(&call),
+                            Err(error) => tools.reject_tool_arguments(&call, &error),
+                        },
+                        None => Ok(DeveloperToolObservation {
+                            output: CanonicalJson::parse(
+                                r#"{"error":{"code":"undeclared_tool","effect_executed":false,"next_action":"Use a tool advertised for this invocation."}}"#,
+                                JsonBounds::value(protocol_limits),
+                            )?,
+                            is_error: true,
+                        }),
+                    };
                     for _ in 0..tools.take_host_tool_calls() {
                         trace.account(DeveloperAccountingEvent::ToolCall)?;
                     }

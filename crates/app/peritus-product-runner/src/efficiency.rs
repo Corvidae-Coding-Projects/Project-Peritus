@@ -118,6 +118,13 @@ impl<'a> MeasuredTools<'a> {
 }
 
 impl DeveloperToolExecutor for MeasuredTools<'_> {
+    fn reject_tool_arguments(
+        &mut self,
+        call: &CompletedToolCall,
+        error: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        self.base.reject_tool_arguments(call, error)
+    }
     fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
         self.base.prepare_model_request()
     }

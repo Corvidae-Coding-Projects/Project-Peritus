@@ -332,7 +332,8 @@ impl Store {
             return Err(invalid("web request cancelled"));
         }
         let endpoint = setup::endpoint()?;
-        let key = format!("search:v2:{endpoint:?}:{arguments}");
+        let canonical = crate::search::canonical_arguments(arguments);
+        let key = format!("search:v3:{endpoint:?}:{canonical}");
         let file = self.root.join(format!("query-{}.json", digest(key.as_bytes())));
         if let Ok(bytes) = fs::read(&file) {
             let value: Value = serde_json::from_slice(&bytes)?;
@@ -345,15 +346,31 @@ impl Store {
                 return Ok(result);
             }
         }
-        let mut result = match endpoint {
-            Some(endpoint) => http::search(&endpoint, arguments, cancelled)?,
-            None => crate::search::search(arguments, cancelled)?,
-        };
+        let mut result =
+            crate::search::search(&self.root, endpoint.as_deref(), arguments, cancelled)?;
         result["cached"] = json!(false);
         result["fetched_at_unix"] = json!(now()?);
-        let _ = self
-            .publish(&file, &serde_json::to_vec(&json!({"fetched_at": now()?, "result": result}))?);
+        if result["success"] == true {
+            let _ = self.publish(
+                &file,
+                &serde_json::to_vec(&json!({"fetched_at": now()?, "result": result}))?,
+            );
+        }
         Ok(result)
+    }
+
+    /// Executes search against explicit host-selected endpoints using this store's persistent health.
+    /// Useful for isolated native consumers and controlled upstream conformance replays.
+    ///
+    /// # Errors
+    /// Rejects invalid inputs, cancellation or unreadable operational state.
+    pub fn search_with_backends(
+        &self,
+        backends: &[crate::SearchBackend],
+        arguments: &Value,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Value, Error> {
+        crate::search::search_with_backends(&self.root, backends, arguments, cancelled)
     }
 
     fn retain(&self, source: &Source, key: &str, arguments: &Value) -> Result<Value, Error> {

@@ -1120,6 +1120,17 @@ impl<'a> DesignTools<'a> {
 }
 
 impl DeveloperToolExecutor for DesignTools<'_> {
+    fn reject_tool_arguments(
+        &mut self,
+        call: &CompletedToolCall,
+        error: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        if super::expert_tools::owns(call.name().as_str()) {
+            super::expert_tools::reject(self.input, call, error)
+        } else {
+            self.workspace.reject_tool_arguments(call, error)
+        }
+    }
     fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
         self.refresh().map_err(|error| DeveloperLoopError::Tool(error.to_string()))?;
         super::expert_tools::context(self.input, &self.research)
@@ -1161,7 +1172,10 @@ impl DeveloperToolExecutor for DesignTools<'_> {
     }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if super::expert_tools::owns(call.name().as_str()) {
-            if call.name().as_str() == super::expert_tools::READ {
+            if matches!(
+                call.name().as_str(),
+                super::expert_tools::READ | super::expert_tools::PROPOSAL_READ
+            ) {
                 DeveloperToolEffect::ReadOnly
             } else {
                 DeveloperToolEffect::MutationCapable
@@ -1228,6 +1242,7 @@ impl DeveloperToolExecutor for DesignTools<'_> {
                     super::expert_tools::PLAN
                         | super::expert_tools::AMEND
                         | super::expert_tools::RECOVER
+                        | super::expert_tools::REPAIR
                 )
                 && !self
                     .research
@@ -1290,6 +1305,9 @@ impl DeveloperToolExecutor for DesignTools<'_> {
         self.workspace.required_tool_name().or_else(|| {
             if !self.checkpoint_required {
                 return None;
+            }
+            if super::rejected::current(self.input).ok().flatten().is_some() {
+                return Some(super::expert_tools::REPAIR);
             }
             let pass =
                 self.research.source.as_ref().and_then(|source| {
