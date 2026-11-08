@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.21
+
+### Added
+
+- Add a license-gated ARTEX v0.5.1 integration for the Red Team module. Peritus verifies pinned upstream release bytes and license identity, owns a private loopback installation and PostgreSQL instance, and exposes status, install, start, stop, and bounded logs without granting module code ambient process or network authority.
+- Add durable capability-delivery plans that map every public obligation to construction slices, rotate unfinished work before broad polish, and require independently verified positive and failure behavior before completion.
+
 ### Changed
 
 - Prepare model context through one immutable capacity snapshot, bind declarative workflow stages to their owning jobs and declared inputs, and centralize model-menu transitions and destination checks behind their owning interfaces.
@@ -15,6 +22,14 @@
 - Validate provider tool proposals against the active invocation's complete host argument contracts before dispatch. Codex constrains typed arguments where its schema can preserve the host contract; historical and explicitly host-validated tools remain supported.
 - Retain rejected expert-design proposals privately across restart and repair individual JSON Pointer fields with source/version checks, preserving unchanged work and accepted checkpoints. Align authority-specific evidence schemas and typed records.
 - Share search backend health and request spacing across queries and processes. Preserve Retry-After, classify challenges and parser drift separately from empty results, and retain partial results and external SearXNG metadata.
+- Separate operational continuation, exact retry, live conversation revision, retained requirements, workspace content, and execution phase. Continuing an interrupted implementation now resumes its durable work instead of treating its own code changes as a new design request.
+- Bound construction-only observation streaks and require the next tool batch after explicit steering to change the candidate or perform the originally required external effect. No-progress batches yield to another construction segment instead of extending an inspection loop.
+- Preserve account-advertised Codex models and the last valid exact-model capacity when optional runtime metadata is absent, stale, malformed, or temporarily unavailable.
+
+### Verification
+
+- Resume an installed live SSH rewrite directly in Fixing from retained review findings. The run changed `ssh-keygen` source, exercised its focused Cargo process test, diagnosed an unsafe-code compiler rejection, replaced the implementation with a safe dependency-backed close path, rebuilt, and continued through the remaining findings without redesigning or rereading the project from scratch.
+- Pass formatting, affected-package compilation, strict Clippy, and model-based properties for continuation identity, requirement amendments, conversation-mode retry routing, construction cadence, malformed optional model caches, and exact-model capacity histories.
 
 ## 0.1.20
 
