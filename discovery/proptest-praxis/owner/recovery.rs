@@ -3,10 +3,11 @@ use crate::local_context::{
     praxis_support::fixture::{Fixture, call, profile, result_message, text},
     record::ArchiveKind,
 };
-use peritus_agent::DeveloperToolObservation;
+use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest, DeveloperToolObservation};
 use peritus_model_protocol::{
     CanonicalJson, ContentBlock, JsonBounds, Message, ProtocolLimits, Role,
 };
+use peritus_provider_core::CancellationToken;
 use peritus_role::HarnessRole;
 use serde_json::{Value, json};
 use std::{fs, sync::atomic::Ordering};
@@ -265,6 +266,114 @@ fn current_continuation_survives_a_long_recovery_history_and_capacity_changes() 
         );
         drop(memory);
     }
+}
+
+fn begin_resumed_invocation(f: &Fixture) {
+    let request = DeveloperLoopRequest {
+        request_prefix: "praxis-resumed-invocation".into(),
+        system: "Fixture policy.".into(),
+        prompt: "Continue the same task.".into(),
+        cyber_access_program: None,
+        attachments: Vec::new(),
+        tools: Vec::new(),
+        limits: DeveloperLoopLimits::new(2, 64).unwrap(),
+        cancellation: CancellationToken::default(),
+    };
+    f.memory()
+        .unwrap()
+        .lock()
+        .unwrap()
+        .begin(
+            &request,
+            &[
+                text(Role::System, "Fixture policy.").unwrap(),
+                text(Role::User, "Continue the same task.").unwrap(),
+            ],
+        )
+        .unwrap();
+}
+
+fn resumed_view(f: &Fixture) -> Vec<Message> {
+    let mut memory = f.memory().unwrap().lock().unwrap();
+    memory
+        .prepare_view_with_governing(&profile(64_000, 256).unwrap(), &[], None, None, None, None)
+        .unwrap()
+}
+
+#[test]
+fn a_new_invocation_replays_the_prior_complete_exchange_window_after_restart() {
+    let mut f = Fixture::new(true, true, HarnessRole::Writer).unwrap();
+    fs::write(f.workspace.join("file.txt"), "PRIOR_SESSION_EXACT_CANARY").unwrap();
+    let (_, failed, _) =
+        f.execute("workspace_read", &json!({"path":"file.txt","max_bytes":4096}), true).unwrap();
+    assert!(!failed);
+    f.memory()
+        .unwrap()
+        .lock()
+        .unwrap()
+        .observe_message(
+            &text(
+                Role::Assistant,
+                "NEXT_UNFINISHED_ACTION: patch the parser using the retained file body.",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+    begin_resumed_invocation(&f);
+    // Publish once in the new invocation, then reconstruct from that checkpoint as a daemon
+    // restart does. The prior window must not depend on process-local fields.
+    {
+        let mut memory = f.memory().unwrap().lock().unwrap();
+        let messages = memory
+            .prepare_view_with_governing(
+                &profile(64_000, 256).unwrap(),
+                &[],
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        memory.publish(&messages).unwrap();
+    }
+    f.reopen().unwrap();
+
+    let messages = resumed_view(&f);
+    let rendered = messages
+        .iter()
+        .flat_map(Message::content)
+        .map(|block| match block {
+            ContentBlock::Text(text) => text.expose_for_wire().to_owned(),
+            ContentBlock::ToolResult(result) => result.output().to_wire_string(),
+            _ => String::new(),
+        })
+        .collect::<String>();
+    assert!(rendered.contains("PRIOR_SESSION_EXACT_CANARY"));
+    assert!(rendered.contains("NEXT_UNFINISHED_ACTION: patch the parser"));
+    assert_eq!(
+        messages
+            .iter()
+            .flat_map(Message::content)
+            .filter(|block| matches!(block, ContentBlock::ToolCall(call) if call.name().as_str() == "workspace_read"))
+            .count(),
+        1,
+        "the prior read should be replayed once, not rediscovered or duplicated"
+    );
+    fs::write(f.workspace.join("file.txt"), "changed after the retained read").unwrap();
+    let messages = resumed_view(&f);
+    let retained = messages
+        .iter()
+        .flat_map(Message::content)
+        .find_map(|block| match block {
+            ContentBlock::ToolResult(result) if result.call_id().expose_for_wire() == "call_1" => {
+                serde_json::from_slice::<Value>(result.output().canonical_bytes()).ok()
+            }
+            _ => None,
+        })
+        .expect("prior read result remains represented after the source changes");
+    assert_eq!(retained["cached_observation_stale"], true);
+    assert_eq!(retained["path"], "file.txt");
 }
 
 #[test]

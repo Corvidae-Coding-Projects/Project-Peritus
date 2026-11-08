@@ -328,7 +328,12 @@ impl ExchangeIndex {
         self.processed
     }
 
-    fn extend(&mut self, memory: &LocalMemory) -> Result<(), DeveloperLoopError> {
+    fn extend(
+        &mut self,
+        memory: &LocalMemory,
+        invocation: u64,
+        ids: &[u64],
+    ) -> Result<(), DeveloperLoopError> {
         let requirements = memory
             .state
             .protocol(memory.state.binding())
@@ -337,17 +342,16 @@ impl ExchangeIndex {
             .iter()
             .map(|id| id.get())
             .collect::<Vec<_>>();
-        let ids = &memory.transcript.message_ids;
-        if self.invocation != memory.transcript.invocation
+        if self.invocation != invocation
             || self.requirements != requirements
             || self.processed > ids.len()
             || self.last_message != self.processed.checked_sub(1).and_then(|n| ids.get(n)).copied()
         {
-            *self =
-                Self { invocation: memory.transcript.invocation, requirements, ..Self::default() };
+            *self = Self { invocation, requirements, ..Self::default() };
         }
         for source in &memory.sources[self.indexed_sources..] {
-            if source.kind == super::super::record::ArchiveKind::ToolOutput
+            if source.invocation == invocation
+                && source.kind == super::super::record::ArchiveKind::ToolOutput
                 && let Some(call) = &source.call
             {
                 self.tool_sources.insert(call.id.clone(), source.sequence);
@@ -365,6 +369,13 @@ impl ExchangeIndex {
                 continue;
             }
             let message = memory.message(*id)?;
+            if matches!(message.role(), Role::System | Role::Developer | Role::User)
+                && memory.archived(*id)?.kind != super::super::record::ArchiveKind::HostObservation
+            {
+                // Prior invocation instructions never become optional history. The assembler
+                // already pins the current host policy and governing user input separately.
+                continue;
+            }
             match message.role() {
                 Role::Assistant => {
                     if !pending.is_empty() {
@@ -414,16 +425,24 @@ impl ExchangeIndex {
 }
 
 pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, DeveloperLoopError> {
+    let mut indexed = Vec::new();
+    if let Some(invocation) = memory.prior_exchange_invocation {
+        let mut prior = ExchangeIndex::default();
+        prior.extend(memory, invocation, &memory.prior_message_ids)?;
+        indexed.extend(prior.complete);
+    }
     let mut index = std::mem::take(&mut memory.exchange_index);
-    let extended = index.extend(memory);
+    let extended =
+        index.extend(memory, memory.transcript.invocation, &memory.transcript.message_ids);
     memory.exchange_index = index;
     extended?;
+    indexed.extend(memory.exchange_index.complete.iter().cloned());
     // Select on small immutable topology first. Omitted old bodies must not churn the
     // decoded cache merely to rediscover that they will not be sent to the provider.
     let mut seen = BTreeSet::new();
     let mut unique = Vec::new();
     let mut later_mutations = BTreeSet::<String>::new();
-    for indexed in memory.exchange_index.complete.iter().rev() {
+    for indexed in indexed.iter().rev() {
         let mut readable = true;
         for id in &indexed.sources {
             if memory.archived(*id)?.is_memory_receipt()

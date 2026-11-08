@@ -28,6 +28,7 @@ impl LocalMemory {
         }
         self.task_contract.clone_from(&request.prompt);
         self.refresh()?;
+        self.retain_prior_exchange_window();
         let sequence = self
             .transcript
             .invocation
@@ -57,6 +58,61 @@ impl LocalMemory {
         self.sync_protocol()?;
         self.tools.clone_from(&request.tools);
         Ok(())
+    }
+
+    pub(super) fn retain_prior_exchange_window(&mut self) {
+        let has_task_exchange = self.sources.iter().any(|source| {
+            source.invocation == self.transcript.invocation
+                && matches!(
+                    source.kind,
+                    ArchiveKind::Assistant
+                        | ArchiveKind::ToolMessage
+                        | ArchiveKind::HostObservation
+                )
+        });
+        if self.transcript.invocation != 0
+            && !self.transcript.message_ids.is_empty()
+            && has_task_exchange
+        {
+            self.prior_exchange_invocation = Some(self.transcript.invocation);
+            self.prior_message_ids.clone_from(&self.transcript.message_ids);
+        }
+    }
+
+    pub(super) fn recover_prior_exchange_window(&mut self) {
+        if self.prior_exchange_invocation.is_some() {
+            return;
+        }
+        let previous = self
+            .sources
+            .iter()
+            .filter(|source| {
+                source.invocation < self.transcript.invocation
+                    && matches!(
+                        source.kind,
+                        ArchiveKind::Assistant
+                            | ArchiveKind::ToolMessage
+                            | ArchiveKind::HostObservation
+                    )
+            })
+            .map(|source| source.invocation)
+            .max();
+        let Some(previous) = previous else { return };
+        self.prior_exchange_invocation = Some(previous);
+        self.prior_message_ids = self
+            .sources
+            .iter()
+            .filter(|source| {
+                source.invocation == previous
+                    && matches!(
+                        source.kind,
+                        ArchiveKind::Assistant
+                            | ArchiveKind::ToolMessage
+                            | ArchiveKind::HostObservation
+                    )
+            })
+            .map(|source| source.sequence)
+            .collect();
     }
 
     pub(in crate::local_context) fn refresh(&mut self) -> Result<(), DeveloperLoopError> {

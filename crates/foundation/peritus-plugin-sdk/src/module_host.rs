@@ -28,6 +28,8 @@ pub const HOST_CAPABILITY_SOURCE_BUILD: &str = "module.source-build";
 pub const HOST_CAPABILITY_WORKER: &str = "module.worker";
 /// Host-owned disposable application laboratory lifecycle and observations.
 pub const HOST_CAPABILITY_APPLICATION_LABORATORY: &str = "module.application-laboratory";
+/// Host-owned installation and lifecycle for allowlisted external applications.
+pub const HOST_CAPABILITY_EXTERNAL_APPLICATION: &str = "module.external-application";
 
 /// Generic managed browser/Python runtime available to an isolated module worker.
 ///

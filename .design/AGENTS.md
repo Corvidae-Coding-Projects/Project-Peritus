@@ -21,6 +21,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 | [staged-project-execution.pipeline.json](staged-project-execution.pipeline.json) | Design content identity and unstarted delivery-pipeline metadata for the staged project proposal. |
 | [module-market.md](module-market.md) | Market/research ownership, delivery boundaries and real-interface acceptance. |
 | [module-foundation.md](module-foundation.md) | Bundled/installable workflow registry, owned execution, private state and real-interface acceptance. |
+| [artex-managed-application.md](artex-managed-application.md) | ARTEX license acceptance, pinned native installation, lifecycle authority, isolation, compatibility, and acceptance design for Red Team. |
 | [deep-research.md](deep-research.md) | Proposed durable Research mode: plan/Start, source-backed reports, recovery and versioned Design handoff. |
 | [deep-research-inquiry-loop.md](deep-research-inquiry-loop.md) | Research-quality repair: adaptive evidence models, interested-source provenance, substantive answer criteria and independent real-output acceptance. |
 | [native-web-tools.md](native-web-tools.md) | Native web feature ownership and independent real-testing scenarios. |

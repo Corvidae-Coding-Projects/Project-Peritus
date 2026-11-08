@@ -1,6 +1,8 @@
 //! Generic integration for separately compiled native Rust modules.
 #[cfg(target_os = "linux")]
 mod application_laboratory;
+#[cfg(target_os = "linux")]
+mod external_application;
 mod publication;
 mod runtime;
 mod scoped_source;
