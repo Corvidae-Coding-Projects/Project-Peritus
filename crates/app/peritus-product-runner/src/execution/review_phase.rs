@@ -39,7 +39,7 @@ pub(super) async fn complete(
         Some(&state.findings),
         accounting,
     )?;
-    if checked.conversation_changed || input.conversation.revision() != state.conversation_revision
+    if checked.conversation_changed || input.requirements_revision() != state.conversation_revision
     {
         return Ok(CycleInspection::conversation_changed(checked));
     }
@@ -60,6 +60,8 @@ pub(super) async fn complete(
         )
     })?;
     let conversation = input.conversation.render();
+    let mut delivery = crate::delivery::Delivery::load(input, &state.design)?;
+    let delivery_candidate = crate::delivery::candidate(input)?;
     let submission = reviewer_turn::complete(
         input,
         cycle,
@@ -71,14 +73,25 @@ pub(super) async fn complete(
             gates: &checked.evidence.gates,
             developer_commands: &checked.evidence.developer_commands,
             prior: &checked.evidence.review,
+            delivery: Some(reviewer_turn::DeliveryReviewContext {
+                ledger: &delivery,
+                scope_only: false,
+                candidate: &delivery_candidate,
+                commands: &state.successful_commands,
+            }),
         },
         accounting,
     )
     .await?;
-    if input.conversation.revision() != state.conversation_revision {
+    if input.requirements_revision() != state.conversation_revision {
         return Ok(CycleInspection::conversation_changed(checked));
     }
-    state.findings.admit_review(review_cycle, submission).map_err(|error| {
+    let capability_review = submission
+        .delivery
+        .ok_or_else(|| crate::delivery::invalid("candidate capability review is missing"))?;
+    let capability_qualified =
+        delivery.qualify(capability_review, &delivery_candidate, &state.successful_commands)?;
+    state.findings.admit_review(review_cycle, submission.submission).map_err(|error| {
         ProductRunnerError::new(
             ProductRunnerErrorKind::InvalidModelOutput,
             "admit D2 reviewer findings",
@@ -86,7 +99,7 @@ pub(super) async fn complete(
         )
     })?;
     let mut evidence = checked.evidence;
-    evidence.review = review::render(&state.findings);
+    evidence.review = review::render(&state.findings) + &delivery.prompt()?;
     let review_satisfied =
         !state.findings.open_findings().any(peritus_review::ProductFinding::blocking);
     let obligations_qualified = if let Some(checkpoint) = recorder.checkpoint()? {
@@ -95,6 +108,8 @@ pub(super) async fn complete(
             checked.gates_satisfied,
             review_satisfied,
             &format!("{}\n{}", evidence.gates, evidence.review),
+            &delivery,
+            &delivery_candidate,
         )?;
         RunObligations::append_report(&mut evidence.gates, &qualification);
         let _ = recorder.record(
@@ -135,7 +150,7 @@ pub(super) async fn complete(
         conversation_changed: false,
         qualification: QualificationState::new(
             checked.gates_satisfied,
-            obligations_qualified,
+            obligations_qualified && capability_qualified,
             review_satisfied,
         ),
     })

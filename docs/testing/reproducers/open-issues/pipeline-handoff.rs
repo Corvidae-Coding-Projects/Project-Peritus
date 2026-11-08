@@ -124,6 +124,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         max_elapsed: None,
         delivery_scope: ProductDeliveryScope::WorkspaceChanges,
         conversation: Arc::new(Conversation(transcript)),
+        pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
         providers: RoleProviders {
             writer: model.clone(),
             reviewer: model.clone(),

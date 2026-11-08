@@ -133,6 +133,7 @@ fn input(spec: &Value) -> Result<ProductRunInput> {
             ready: spec["ready"].as_bool().unwrap_or(false),
             denied,
         }),
+        pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
         providers: RoleProviders {
             writer: model.clone(),
             reviewer: model.clone(),

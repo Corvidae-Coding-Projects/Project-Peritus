@@ -24,6 +24,7 @@ pub mod request;
 pub mod retry;
 pub mod schema;
 pub mod tool;
+mod tool_arguments;
 pub mod usage;
 pub mod verified;
 pub mod version;
@@ -69,6 +70,7 @@ pub use tool::{
     CompletedToolCall, ParallelToolPolicy, ReasoningEffort, ReasoningPolicy, StructuredOutput,
     SummaryPolicy, ToolChoice, ToolDefinition, ToolResult,
 };
+pub use tool_arguments::{ToolArgumentSchema, ToolArgumentViolation};
 pub use usage::{UsageCounters, UsageObservation, UsageScope, UsageTracker};
 pub use verified::{
     AuthorityObservation, DeduplicationFacts, FragmentCompletionFacts, ReducerTransitionFacts,

@@ -8,8 +8,10 @@ use crate::ProductStateError;
 mod account;
 mod kind;
 mod reviewer;
+mod roles;
 pub use kind::ProviderKind;
 pub use reviewer::ReviewerSelection;
+pub use roles::{RoleEffort, RoleModelDefaults, RoleModelSelection};
 
 /// Wire family selected for an explicitly compatible endpoint.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -152,6 +154,8 @@ impl DirectProviderProfile {
 #[serde(deny_unknown_fields)]
 pub struct ProviderSelection {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    role_models: Option<RoleModelDefaults>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     reviewer: Option<ReviewerSelection>,
     #[serde(default)]
     account_models: std::collections::BTreeMap<ProviderKind, String>,
@@ -249,6 +253,7 @@ impl ProviderSelection {
             ));
         }
         Ok(Self {
+            role_models: None,
             reviewer: None,
             enabled,
             default,
@@ -305,7 +310,8 @@ impl ProviderSelection {
         )?
         .with_account_models(self.account_models.clone())?
         .with_account_executables(self.account_executables.clone())?
-        .with_reviewer(self.reviewer.clone())?;
+        .with_reviewer(self.reviewer.clone())?
+        .with_role_models(self.role_models.clone())?;
         if &canonical != self {
             return Err(ProductStateError::InvalidPayload(
                 "enabled providers are not canonical".to_owned(),

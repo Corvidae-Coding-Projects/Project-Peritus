@@ -83,6 +83,7 @@ pub async fn execute(
             max_elapsed: Some(max_elapsed),
             delivery_scope,
             conversation: Arc::new(conversation.clone()),
+            pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
             providers: authenticated.roles,
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,

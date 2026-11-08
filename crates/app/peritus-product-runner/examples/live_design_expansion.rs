@@ -296,19 +296,12 @@ impl ModelProvider for CountingProvider {
         self.inner.profile()
     }
 
-    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
-        self.inner.request_profile(output_tokens)
-    }
-
-    fn context_input_target(&self) -> u64 {
-        self.inner.context_input_target()
-    }
-
     fn prepare_context<'a>(
         &'a self,
+        output_tokens: u64,
         cancellation: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
-        self.inner.prepare_context(cancellation)
+    ) -> BoxFuture<'a, Result<peritus_provider_core::PreparedModelContext, ProviderCoreError>> {
+        self.inner.prepare_context(output_tokens, cancellation)
     }
 
     fn context_input_fits(
@@ -545,6 +538,7 @@ impl Fixture {
             max_elapsed: Some(Duration::from_mins(30)),
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation,
+            pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
             providers: RoleProviders {
                 writer: Arc::clone(&provider),
                 reviewer: Arc::clone(&provider),

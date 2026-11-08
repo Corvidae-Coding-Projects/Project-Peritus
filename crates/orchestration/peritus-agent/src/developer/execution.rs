@@ -42,6 +42,17 @@ impl DeveloperLoop {
         ];
         context.open(&request, &messages)?;
         let tool_definitions = std::mem::take(&mut request.tools);
+        let mut argument_schemas = std::collections::BTreeMap::new();
+        for definition in &tool_definitions {
+            let schema =
+                peritus_model_protocol::ToolArgumentSchema::compile(definition.parameters())
+                    .map_err(|error| {
+                        DeveloperLoopError::Tool(format!("Invalid host tool schema: {error}"))
+                    })?;
+            if argument_schemas.insert(definition.name().as_str().to_owned(), schema).is_some() {
+                return Err(DeveloperLoopError::Tool("Duplicate host tool definition".to_owned()));
+            }
+        }
         let mut tool_calls = 0_u32;
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
@@ -63,14 +74,13 @@ impl DeveloperLoop {
                 if tools.tool_calls_allowed() { tool_definitions.clone() } else { Vec::new() };
             let selected = live.map(|(port, role)| port.provider(role)).transpose()?.flatten();
             let provider = selected.as_deref().unwrap_or(provider);
-            provider.prepare_context(&request.cancellation).await.map_err(|error| {
-                DeveloperLoopError::Model(crate::ModelDriveError::Provider(error))
-            })?;
-            let resolved_profile =
-                provider.request_profile(request.limits.max_output_tokens()).map_err(|error| {
+            let model_context = provider
+                .prepare_context(request.limits.max_output_tokens(), &request.cancellation)
+                .await
+                .map_err(|error| {
                     DeveloperLoopError::Model(crate::ModelDriveError::Provider(error))
                 })?;
-            let profile = &resolved_profile;
+            let profile = model_context.profile();
             let input = interaction.map(DeveloperInteraction::input).transpose()?;
             let latest_user_text = input.as_ref().and_then(|input| input.latest_user_text.clone());
             // A terminal-only phase still carries completed tool exchanges in its history.
@@ -199,7 +209,7 @@ impl DeveloperLoop {
                         provider,
                         &request,
                         &mut semantic_messages,
-                        profile,
+                        &model_context,
                         negotiated,
                         protocol_limits,
                         turn,
@@ -265,7 +275,7 @@ impl DeveloperLoop {
                 provider,
                 &request,
                 submitted,
-                profile,
+                &model_context,
                 negotiated,
                 protocol_limits,
                 turn,
@@ -315,6 +325,7 @@ impl DeveloperLoop {
                         revision: input_revision,
                     });
                 }
+                tools.steering_continues_work();
                 continue;
             }
             if calls.is_empty() {
@@ -431,7 +442,22 @@ impl DeveloperLoop {
                             arguments: &call.arguments().to_wire_string(),
                         })?;
                     }
-                    let executed = tools.execute(&call);
+                    let executed = match argument_schemas
+                        .get(name)
+                        .filter(|_| request.tools.iter().any(|tool| tool.name() == call.name()))
+                    {
+                        Some(schema) => match schema.validate(call.arguments()) {
+                            Ok(()) => tools.execute(&call),
+                            Err(error) => tools.reject_tool_arguments(&call, &error),
+                        },
+                        None => Ok(DeveloperToolObservation {
+                            output: CanonicalJson::parse(
+                                r#"{"error":{"code":"undeclared_tool","effect_executed":false,"next_action":"Use a tool advertised for this invocation."}}"#,
+                                JsonBounds::value(protocol_limits),
+                            )?,
+                            is_error: true,
+                        }),
+                    };
                     for _ in 0..tools.take_host_tool_calls() {
                         trace.account(DeveloperAccountingEvent::ToolCall)?;
                     }
@@ -460,6 +486,9 @@ impl DeveloperLoop {
                     }
                     observation
                 };
+                if !yielded {
+                    tools.observe_tool_outcome(&call, &observation);
+                }
                 trace.record(DeveloperTraceEvent::ToolObservation {
                     call: &call,
                     observation: &observation,
@@ -519,6 +548,9 @@ impl DeveloperLoop {
                     .append_host(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
+            if tools.segment_boundary_required() {
+                return Err(DeveloperLoopError::SegmentExhausted);
+            }
             if let Some(blocker) = continuation_blocker {
                 return Err(DeveloperLoopError::Tool(blocker));
             }

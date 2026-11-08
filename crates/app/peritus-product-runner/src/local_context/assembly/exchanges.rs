@@ -16,6 +16,7 @@ pub(super) struct Exchange {
     replacements: Vec<(usize, usize, Replacement)>,
     native_replay: bool,
     has_tool_calls: bool,
+    pub(super) recovery_pages: Vec<([u8; 32], bool)>,
 }
 
 impl Exchange {
@@ -134,6 +135,7 @@ struct IndexedExchange {
     settled_mutations: Vec<String>,
     native_replay: bool,
     has_tool_calls: bool,
+    recovery_pages: Vec<([u8; 32], bool)>,
 }
 
 #[derive(Clone)]
@@ -316,6 +318,7 @@ impl IndexedExchange {
         }
         self.inspection_digest =
             inspection_key(&messages).map(|bytes| peritus_codec::sha256(&bytes).into_bytes());
+        self.recovery_pages = recovery_pages(&messages)?;
         Ok(())
     }
 }
@@ -325,7 +328,12 @@ impl ExchangeIndex {
         self.processed
     }
 
-    fn extend(&mut self, memory: &LocalMemory) -> Result<(), DeveloperLoopError> {
+    fn extend(
+        &mut self,
+        memory: &LocalMemory,
+        invocation: u64,
+        ids: &[u64],
+    ) -> Result<(), DeveloperLoopError> {
         let requirements = memory
             .state
             .protocol(memory.state.binding())
@@ -334,17 +342,16 @@ impl ExchangeIndex {
             .iter()
             .map(|id| id.get())
             .collect::<Vec<_>>();
-        let ids = &memory.transcript.message_ids;
-        if self.invocation != memory.transcript.invocation
+        if self.invocation != invocation
             || self.requirements != requirements
             || self.processed > ids.len()
             || self.last_message != self.processed.checked_sub(1).and_then(|n| ids.get(n)).copied()
         {
-            *self =
-                Self { invocation: memory.transcript.invocation, requirements, ..Self::default() };
+            *self = Self { invocation, requirements, ..Self::default() };
         }
         for source in &memory.sources[self.indexed_sources..] {
-            if source.kind == super::super::record::ArchiveKind::ToolOutput
+            if source.invocation == invocation
+                && source.kind == super::super::record::ArchiveKind::ToolOutput
                 && let Some(call) = &source.call
             {
                 self.tool_sources.insert(call.id.clone(), source.sequence);
@@ -362,6 +369,13 @@ impl ExchangeIndex {
                 continue;
             }
             let message = memory.message(*id)?;
+            if matches!(message.role(), Role::System | Role::Developer | Role::User)
+                && memory.archived(*id)?.kind != super::super::record::ArchiveKind::HostObservation
+            {
+                // Prior invocation instructions never become optional history. The assembler
+                // already pins the current host policy and governing user input separately.
+                continue;
+            }
             match message.role() {
                 Role::Assistant => {
                     if !pending.is_empty() {
@@ -411,16 +425,36 @@ impl ExchangeIndex {
 }
 
 pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, DeveloperLoopError> {
+    let mut indexed = Vec::new();
+    if let Some(invocation) = memory.prior_exchange_invocation {
+        let mut prior = ExchangeIndex::default();
+        prior.extend(memory, invocation, &memory.prior_message_ids)?;
+        indexed.extend(prior.complete);
+    }
     let mut index = std::mem::take(&mut memory.exchange_index);
-    let extended = index.extend(memory);
+    let extended =
+        index.extend(memory, memory.transcript.invocation, &memory.transcript.message_ids);
     memory.exchange_index = index;
     extended?;
+    indexed.extend(memory.exchange_index.complete.iter().cloned());
     // Select on small immutable topology first. Omitted old bodies must not churn the
     // decoded cache merely to rediscover that they will not be sent to the provider.
     let mut seen = BTreeSet::new();
     let mut unique = Vec::new();
     let mut later_mutations = BTreeSet::<String>::new();
-    for indexed in memory.exchange_index.complete.iter().rev() {
+    for indexed in indexed.iter().rev() {
+        let mut readable = true;
+        for id in &indexed.sources {
+            if memory.archived(*id)?.is_memory_receipt()
+                && !super::super::source_policy::allowed(memory, *id)?
+            {
+                readable = false;
+                break;
+            }
+        }
+        if !readable {
+            continue;
+        }
         if indexed.read_targets.iter().any(|path| {
             path.as_deref().is_none_or(|path| !super::evidence::may_reuse_read(memory, path))
         }) {
@@ -434,6 +468,7 @@ pub(super) fn groups(memory: &mut LocalMemory) -> Result<Vec<Exchange>, Develope
             replacements: Vec::new(),
             native_replay: indexed.native_replay,
             has_tool_calls: indexed.has_tool_calls,
+            recovery_pages: indexed.recovery_pages.clone(),
         };
         let mut has_unique_stale_source = false;
         for stamp in &indexed.read_stamps {
@@ -518,4 +553,38 @@ fn same_path(left: &str, right: &str) -> bool {
             .collect::<std::path::PathBuf>()
     };
     normal(left) == normal(right)
+}
+
+fn recovery_pages(messages: &[Message]) -> Result<Vec<([u8; 32], bool)>, DeveloperLoopError> {
+    let mut calls = std::collections::BTreeMap::new();
+    let mut pages = Vec::new();
+    for block in messages.iter().flat_map(Message::content) {
+        match block {
+            ContentBlock::ToolCall(call)
+                if matches!(call.name().as_str(), "context_read" | "context_recover") =>
+            {
+                let key =
+                    serde_json::json!([call.name().as_str(), call.arguments().to_wire_string()]);
+                calls.insert(
+                    call.id().expose_for_wire(),
+                    peritus_codec::sha256(key.to_string().as_bytes()).into_bytes(),
+                );
+            }
+            ContentBlock::ToolResult(result) if !result.is_error() => {
+                if let Some(key) = calls.remove(result.call_id().expose_for_wire()) {
+                    let value: serde_json::Value =
+                        serde_json::from_slice(result.output().canonical_bytes())
+                            .map_err(|_| error("decode recovery page dependency"))?;
+                    if value["representation"] == "semantic-json-v1" || value["sources"].is_array()
+                    {
+                        pages.push((key, true));
+                    } else if value["observation_reuse"]["state"] == "already_visible" {
+                        pages.push((key, false));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(pages)
 }

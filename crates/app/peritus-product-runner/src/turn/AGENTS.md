@@ -9,6 +9,7 @@ Implementation pieces for `turn.rs`: Tool-capable writer/fixer turns and indepen
 | File | Role |
 | --- | --- |
 | [correction.rs](correction.rs) | Corrective context for rejected or prematurely stopped developer turns. |
+| [delivery.rs](delivery.rs) | Read-only scope review and typed construction-stage handoffs. |
 | [evidence.rs](evidence.rs) | Provider-aware developer/reviewer evidence previews; preserve exact source identities and page retrieval when binary content cannot be embedded in model text. |
 | [provider.rs](provider.rs) | Product-role recovery after one developer invocation reaches a provider terminal. |
 | [request_name.rs](request_name.rs) | Stable provider-request identities for one product role and cycle. |

@@ -8,6 +8,7 @@ This C4 package owns native HTTP reading, retained source references and built-i
 | --- | --- |
 | [Cargo.toml](Cargo.toml) | Workspace package and HTTP/parser dependencies. |
 | [README.md](README.md) | Human entry point. |
+| [examples/search_recovery.rs](examples/search_recovery.rs) | Controlled HTTP public-consumer replay, including fresh-process backoff and partial results. |
 | [src/](src/AGENTS.md) | Native implementation and public consumer API. |
 
 Product callers: [web tool adapter](../../app/peritus-product-runner/src/developer_tools/web.rs), [CLI](../../app/peritus-cli/src/web.rs). Browser rendering is owned by the existing computer runtime.

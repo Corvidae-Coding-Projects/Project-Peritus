@@ -11,13 +11,13 @@ Implementation pieces for `chat.rs`: Persistent conversational composer, explici
 | [modules.rs](modules.rs) | Local market panel, installed/available selection, retained progress, and arbitrary-count generic plugin-supplied actions. |
 | [binding.rs](binding.rs) | Reopen exact run destinations without retaining another conversation's input routing. |
 | [catalog.rs](catalog.rs) | Typed local command metadata. Only directly entered commands are executable intents. |
-| [commands.rs](commands.rs) | Small discoverable command vocabulary; unknown commands never reach the model. |
+| [commands.rs](commands.rs) | Discoverable commands and stop-confirm-switch mode transitions with retained follow-ups, draft/destination fences and disconnect abandonment. |
 | [convenience.rs](convenience.rs) | Draft-preserving transcript/file search, clipboard and editor handoffs, copying, and presentation settings. |
 | [context_menu.rs](context_menu.rs) | Live composer Copy/Paste menu and explicit clipboard or primary-selection paste. |
 | [doctor.rs](doctor.rs) | Focused diagnostic panel; opening or navigating it never starts inference. |
 | [history.rs](history.rs) | Scoped durable message recall/search, draft restoration, paging, and stale-response protection; reads never submit inputs. |
 | [keys.rs](keys.rs) | Keyboard and deliberate-paste ownership for the persistent composer. |
-| [models.rs](models.rs) | Exact provider-discovered selection; manual identifiers are always explicitly marked. |
+| [models.rs](models.rs) | Guided agent/model/effort menus, provider catalogs, and optional exact-ID commands; final selections use the existing daemon update API. |
 | [providers.rs](providers.rs) | Configured provider picker and explicit future-turn provider/model replacement on new or retained conversations. |
 | [navigation.rs](navigation.rs) | Composer selection and mouse ownership, using the same geometry as rendering. |
 | [picker.rs](picker.rs) | Exactly one selection overlay can own conversation input at a time. |

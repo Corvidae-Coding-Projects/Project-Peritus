@@ -1,0 +1,53 @@
+# Selected-model context, semantic recovery, and mode switching
+
+Scope: develop after 44ac8d389. The active installed daemon was observed separately from the modified source. No claim is made that an already running process loads changed Rust code.
+
+## Failure reconstruction and implementation
+
+The installed writer retained a configured 200000-token profile while the official runtime advertised a 500000 default and 872000 maximum context for the selected Sol model, with a 95-percent planning fraction. Codex model/list lists account-visible models but does not supply these numbers. The bounded fresh runtime model cache supplies the numeric metadata; Peritus matches only identities actually returned by the current account query. Unknown or contradictory metadata is reported rather than replaced with a model-name table. Capacity is prepared before request assembly, and a selected-model adapter has its own numeric snapshot.
+
+Shared context, input, output and process bytes are independent constraints. With these observed numbers, usable planning context is 828400 tokens. A 256-token requested reply leaves 828144 estimated input tokens; the configured 32000-token reply allowance leaves 796400 for an uncapped caller. Output allowance metadata is absent in this runtime cache, so the configured output allowance remains explicit. The 95-percent value is a planning reserve, not a claim of exact token counting.
+
+The installed CLI rejected a 1100197-character stdin request before inference with `Input exceeds maximum length 1048576`. Normal isolated requests now use ephemeral app-server threads and injected user/data items. The selected raw window is configured explicitly. Native tools, MCP servers, workspace authority, provider storage and native memory remain disabled. Cache routing parents remain free of task data. Explicit cyber-access-program selections retain the existing CLI route because the inspected public app-server protocol has no corresponding field. That route still has its actual 1048576-character new-text ceiling; large incompatible requests report the limitation without dropping text or changing the selected program.
+
+The recovery failure had separate causes: retrieval receipts entered the task-evidence index; changing delivery metadata defeated inspection deduplication; old cards displaced current continuations; archive-enumeration instructions encouraged more recovery; and an already-visible receipt could evict the body it referred to. The compiler now separates these meanings. It retains exact immutable artifacts, projects ordinary recovery through `context_recover`, excludes successful retrieval receipts as independent facts, normalizes only known delivery fields for inspection equivalence, reserves continuation space first, and fits each optional card against the actual adapter envelope. The nearest real retrieval page remains in native protocol closure while a current reuse receipt depends on it; intervening reuse receipts do not accumulate. A subsequent task action releases that temporary dependency. Current source restrictions apply transitively to semantic results and archived tool messages.
+
+An initial installed replay exposed another error: enlarging capacity filled a request with historical cards (764400 estimated input tokens against only 11958 tokens of current invocation history). The run was paused again. Allocation now prioritizes content-matched current file evidence, which may use the full model envelope. Optional older or unproven evidence receives a budget derived from live framing, working state and current exchanges, rather than the model's entire unused capacity. This is an archive-selection preference, not a smaller model limit or a task budget. A regression generates 24 obsolete large file versions, moves to a different tool action, checks that current valid evidence remains fully visible without archive-sized automatic growth, and explicitly retrieves the first omitted version afterward.
+
+The next live replay identified overlapping current read ranges and unchanged reference-source files as additional refill sources. Selection now distinguishes the current implementation working set (the latest settled workspace-effect invocation and subsequent reads) from older reference material. Exact line/byte coverage of a file version coalesces covered pages across different inspection arguments. Only typed workspace-read outcomes seed native file coverage; lookalike output from another tool cannot substitute. No archived page or current permission check is removed.
+
+The user also could not leave Review. The live execution was mode 3 (read-only Review), had refused pipeline handoff, and stopped after empty structured responses. An authenticated daemon client queued the user's instruction to continue implementation and submitted a bound Chat continuation. The daemon acknowledged Chat/Queued, then Writing. `transport/negotiation.rs` changed afterward. The client now compares requested mode with the actual execution mode, requests cancellation, waits for a resumable stopped boundary, and submits the retained follow-up once. Edited drafts, changed destinations, explicit Stop, disconnects and persistent goals prevent unintended automatic continuation. Daemon mode acknowledgements update the displayed mode without overwriting a distinct newer local selection.
+
+## Replays and observations
+
+Commands use `CARGO_BUILD_JOBS=2`. Logs are local under `/home/doll/.cache/peritus-*`.
+
+- `cargo run --locked -p peritus-provider-openai --all-features --example context_capacity -- gpt-6.1-sol --metadata-only`: discovered 828144 estimated input capacity for a requested 256-token reply, replacing the example's 200000 bootstrap.
+- The initial actual CacheDisabled request exceeded the old CLI text ceiling and completed successfully through the isolated native path.
+- `cargo run --locked -p peritus-provider-openai --all-features --example context_capacity -- gpt-6.1-sol --cached`: final cached-route replay completed successfully, reproduced fresh start/end markers around more than one MiB of padding, and reported 832727 input tokens and 88 output tokens. The selected effort was XHigh. These measured tokens fit the advertised physical 872000 context; they are not the host's approximate token estimate. No provider tools executed. Log: `peritus-context-capacity-live-final.log`.
+- Durable recovery replays use actual context journals, immutable artifacts, workspace reads and tool dispatch. They cover all three role lineages, Unicode pages across reopening, exact binary archive preservation, receipt projection, delivery-only inspection differences, changed content/errors, transitive read restrictions, large historical receipt sets, capacity changes, and five reuse/reopen cycles retaining exactly one actual page. Log: `peritus-recovery-replay-final.log`.
+- Composer reducer replays exercise actual cancellation requests and follow-up submission, external mode acknowledgements, changed drafts/destinations, disconnects and a local Chat selection while the daemon still executes Review. These are local reducer checks; the separate live daemon transition above supplies real IPC and observed writing evidence.
+- Numeric metadata replays use real temporary cache files and independent expected arithmetic. Missing, stale, unlisted, duplicate, malformed, zero, contradictory and overflowing metadata are covered.
+
+Retained regression drivers: `discovery/proptest-praxis/owner/recovery.rs`, `recovery_coverage.rs`, `provider_capacity.rs`, and `tui_modes.rs`. These exercise the actual owners rather than replacing them with a simulated implementation. Existing decision-view, checkpoint, read-reuse, plan, policy-projection and provider replays remain part of the affected-package test command.
+
+This is bounded qualification of the changed seams, not proof that an LLM will never repeat a request, a performance benchmark for every task, a Windows execution qualification, or a claim that every provider publishes a discoverable maximum. Exact archive readers and historical checkpoint versions remain supported.
+
+Official references inspected alongside installed Codex 0.167.0 schemas:
+
+- https://learn.chatgpt.com/docs/app-server
+- https://learn.chatgpt.com/docs/config-file/config-sample
+- https://learn.chatgpt.com/docs/models?surface=web
+
+Final source checks: 91 runner tests, three numeric-capacity tests, four OpenAI provider tests and six TUI tests passed (104 affected tests total). Strict Clippy for the affected targets passed. The larger live run is separately checked after replacement; these counts do not imply exhaustive program or platform coverage.
+
+
+## Installed outcome
+
+Replaced doll's local `peritus`, `peritus-tui`, and `peritusd` binaries after clean daemon shutdown and retained-run recovery. Source qualification and live checks exposed two additional projection gaps before completion; the final daemon also includes active-work selection and exact page-coverage coalescing. The running daemon executable was independently hashed as `8c1e462464b330eeac2e6d9d20744b2b4c2d31e6afbf5ef88c20dceff9f44cb5` (PID 3069697). The launcher applied-configuration identity was synchronized with the actual executable and unchanged configuration so reopening the client does not cause an unnecessary daemon replacement. Original binaries and state snapshots are retained under `/home/doll/.cache/peritus-upgrade-live-20261107`.
+
+The same run resumed in Chat/Writing with its model and effort selections unchanged. New estimated context views were 34288 and 29987 tokens in conversation, then 135930 tokens in the writer, compared with the initial enlarged-window fill of 764400. This comparison describes the observed projection repair, not a controlled end-to-end performance benchmark. The live writer then applied three successful patches to `transport/state.rs` and `transport.rs` (public activity sequences 3688–3690) and actually ran `cargo test --workspace --all-targets` with exit code 0 (sequence 3696). It continued adding targeted regression coverage. Evidence: `verified-live.json` in the backup directory.
+
+The open client process must be reopened to load its new mode-switch code; the daemon is already using the new context and recovery implementation. Builder's installation was outside this local replacement. This report records qualification on develop before the changes were committed.
+
+Verdict: ready for the exercised Linux selected-runtime route and local mode-transition workflow, with the previously stated transport, metadata and platform boundaries.

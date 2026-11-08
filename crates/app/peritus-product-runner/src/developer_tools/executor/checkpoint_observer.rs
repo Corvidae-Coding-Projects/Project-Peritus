@@ -258,11 +258,9 @@ impl WorkspaceDeveloperTools {
         arguments: &Value,
         result: &Value,
     ) -> Result<(), DeveloperLoopError> {
-        let completed_direct_mutation = match name {
-            "workspace_write" => result.get("changed").and_then(Value::as_bool) == Some(true),
-            "workspace_patch" | "workspace_remove" => result.get("error").is_none(),
-            _ => false,
-        };
+        let completed_direct_mutation =
+            matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
+                && result.get("changed").and_then(Value::as_bool) == Some(true);
         let completed_command =
             matches!(name, "run_command" | "command_poll" | "command_wait" | "command_recover")
                 && result.get("success").and_then(Value::as_bool) == Some(true)
@@ -276,6 +274,9 @@ impl WorkspaceDeveloperTools {
             self.prepared_mutations.clear();
             Vec::new()
         };
+        if !mutations.is_empty() {
+            self.candidate_progress_pending = true;
+        }
         let observer = self.checkpoint_observer.clone();
         for mutation in mutations {
             if let Some(observer) = &observer {

@@ -8,6 +8,7 @@ use peritus_app_protocol::{
 
 impl AppModel {
     pub(super) fn provider_command(&mut self, arguments: &str) -> Vec<Effect> {
+        self.cancel_model_setup();
         let mut words = arguments.split_whitespace();
         let first = words.next();
         let (role, selection) = match first {

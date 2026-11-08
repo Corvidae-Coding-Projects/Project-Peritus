@@ -18,7 +18,7 @@ Durable working-context host: journal/artifact storage, current-policy assembly,
 | [mod.rs](mod.rs) | Local working-memory host: C0 effects around C6 deterministic state. |
 | [port.rs](port.rs) | Shared context port, including separate per-job/per-stage module lineages; locks do not cross task-provider requests or base-tool execution. |
 | [record.rs](record.rs) | Version-one host journal payloads and rebuildable transcript/source projections. |
-| [read_reuse.rs](read_reuse.rs) | Role-scoped version/range coverage and delivery reuse derived from the durable source archive. |
+| [read_reuse.rs](read_reuse.rs) | Role-scoped version/range coverage, exact page descriptors and per-view body coalescing derived from the durable source archive. |
 | [semantic.rs](semantic.rs) | Optional local inference proposes ordinary validated deltas; every failure stays local. |
 | [storage.rs](storage.rs) | Single-owner C0 journal/artifact storage and atomic checkpoint-root publication. |
 | [tools.rs](tools.rs) | Bounded memory tools; the underlying executor retains every authority and grounding gate. |

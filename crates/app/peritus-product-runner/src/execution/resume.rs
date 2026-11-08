@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use peritus_run_settlement::CandidateCheckpoint;
+use peritus_run_settlement::{CandidateCheckpoint, CandidateStage};
 
 mod durable;
 mod hashing;
@@ -246,5 +246,28 @@ impl ProductRunResume {
 
     pub(super) const fn fixer_cycles(&self) -> u32 {
         self.fixer_cycles
+    }
+
+    /// Selects the first useful execution phase from durable semantic state.
+    ///
+    /// Exact retries preserve `next_phase`. This repair is reserved for an explicit operational
+    /// continuation whose older checkpoint was invalidated by mistakenly treating the control
+    /// message as a requirements amendment. Process-local gate reports are never assumed durable;
+    /// phases that consume them restart at deterministic checking.
+    fn continuation_phase(&self) -> Result<ProductRunPhase, ProductRunnerError> {
+        if self.next_phase != ProductRunPhase::Designing {
+            return Ok(self.next_phase);
+        }
+        if crate::review::restore_ledger(&self.finding_state)?.open_findings().next().is_some() {
+            return Ok(ProductRunPhase::Fixing);
+        }
+        Ok(match self.checkpoint.stage() {
+            CandidateStage::Observed => ProductRunPhase::Writing,
+            CandidateStage::Changed
+            | CandidateStage::SelfChecked
+            | CandidateStage::GatesPassed
+            | CandidateStage::ReviewPending => ProductRunPhase::Checking,
+            CandidateStage::Qualified => ProductRunPhase::Finalizing,
+        })
     }
 }

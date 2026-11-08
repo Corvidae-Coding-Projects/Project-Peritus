@@ -21,6 +21,7 @@ The product execution coordinator: design, writer/reviewer/fixer turns, authoriz
 | [control.rs](control.rs) | Pure durable workbench records and admission decisions, independent of A3 and presentation. |
 | [conversation_mode.rs](conversation_mode.rs) | Public conversation policy shared by ordinary and verification-only API surfaces. |
 | [delivery_requirement.rs](delivery_requirement.rs) | Deterministic distinction between supporting files and requested live effects. |
+| [delivery.rs](delivery.rs) | Durable capability construction queue, accepted-design recovery, completeness proofs, and forced decomposition; see [delivery/](delivery/AGENTS.md). |
 | [design.rs](design.rs) | Mandatory repository-grounded design document produced before implementation. |
 | [diagnostic.rs](diagnostic.rs) | Best-effort diagnostics for recoverable local command-state failures. |
 | [discard_recovery.rs](discard_recovery.rs) | Compatibility re-export of the workspace runtime's read-only discard transaction state. |

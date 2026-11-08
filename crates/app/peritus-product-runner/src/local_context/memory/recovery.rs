@@ -53,6 +53,7 @@ impl LocalMemory {
         self.binding = self.state.binding();
         self.sync_protocol()?;
         self.ingest_facts()?;
+        self.recover_prior_exchange_window();
         Ok(())
     }
 
@@ -138,6 +139,7 @@ impl LocalMemory {
                 {
                     return Err(error("invalid invocation prefix"));
                 }
+                self.retain_prior_exchange_window();
                 self.transcript.invocation = sequence;
                 self.transcript.request_prefix = request_prefix;
                 self.transcript.current_inputs.clear();

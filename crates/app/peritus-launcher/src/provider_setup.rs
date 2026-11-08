@@ -13,7 +13,7 @@ mod connection;
 mod direct;
 mod install;
 mod models;
-mod reviewer;
+mod roles;
 mod selection;
 
 use crate::terminal::Terminal;
@@ -27,7 +27,20 @@ pub fn ensure_configured(prepared: PreparedProduct) -> Result<PreparedProduct, L
     if !prepared.state().provider_setup_complete() {
         return first_run(&prepared, &observations);
     }
-    repair_if_needed(prepared, &observations)
+    let prepared = repair_if_needed(prepared, &observations)?;
+    if prepared.state().providers().role_models().is_none()
+        && !prepared.state().providers().enabled().is_empty()
+    {
+        let mut terminal = Terminal::stdio();
+        let selection = roles::select(
+            &mut terminal,
+            prepared.state().providers().clone(),
+            prepared.state().providers(),
+            true,
+        )?;
+        return ProductBootstrap::new(prepared.layout().clone()).configure_providers(selection);
+    }
+    Ok(prepared)
 }
 
 fn first_run(
@@ -296,17 +309,13 @@ fn login(terminal: &mut Terminal<'_>, kind: ProviderKind) -> Result<bool, Launch
 fn persist(
     prepared: &PreparedProduct,
     selection: ProviderSelection,
-    configure_reviewer: bool,
+    configure_roles: bool,
 ) -> Result<PreparedProduct, LauncherError> {
     let mut terminal = Terminal::stdio();
     let selection =
         models::account_selections(&mut terminal, selection, prepared.state().providers())?;
-    let selection = reviewer::select(
-        &mut terminal,
-        selection,
-        prepared.state().providers(),
-        configure_reviewer,
-    )?;
+    let selection =
+        roles::select(&mut terminal, selection, prepared.state().providers(), configure_roles)?;
     let layout = prepared.layout().clone();
     ProductBootstrap::new(layout).configure_providers(selection)
 }

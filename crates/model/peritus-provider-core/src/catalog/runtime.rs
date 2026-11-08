@@ -51,7 +51,25 @@ pub async fn discover_account_models(
         .stderr(Stdio::null());
     match kind {
         AccountCatalog::Codex => {
-            command.arg("app-server");
+            command.args([
+                "app-server",
+                "--config",
+                "model_provider=\"openai\"",
+                "--config",
+                "mcp_servers={}",
+            ]);
+            for name in [
+                "OPENAI_API_KEY",
+                "CODEX_API_KEY",
+                "CODEX_ACCESS_TOKEN",
+                "OPENAI_BASE_URL",
+                "OPENAI_API_BASE",
+                "OPENAI_ORG_ID",
+                "OPENAI_ORGANIZATION",
+                "OPENAI_PROJECT_ID",
+            ] {
+                command.env_remove(name);
+            }
         }
         AccountCatalog::Claude => {
             command.env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1");
@@ -90,7 +108,7 @@ pub async fn discover_account_models(
     // This metadata process has no delegated tool children or live inference to preserve.
     let _ = child.kill().await;
     let _ = child.wait().await;
-    result
+    if kind == AccountCatalog::Codex { result.map(super::codex_limits::enrich) } else { result }
 }
 
 fn spawn_error(error: &std::io::Error) -> ProviderCoreError {

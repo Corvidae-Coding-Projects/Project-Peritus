@@ -1,17 +1,14 @@
 //! Finite official app-server turns with an immutable user-data frame and shared cache affinity.
 //! The routing parent never receives task data; each child remains ephemeral.
 
-use super::invocation::{CacheAnchor, TurnOutput, cached_arguments, isolated_environment};
-use crate::runtime::{
-    CodexRuntimeConfig, live::Progress, output::DecodeFailure, request::RuntimeRequest,
+use super::invocation::{
+    CacheAnchor, TurnContext, TurnOutput, cached_arguments, isolated_environment,
 };
+use crate::runtime::{output::DecodeFailure, request::RuntimeRequest};
 use base64::Engine as _;
-use peritus_provider_core::{
-    CancellationToken, ProcessOutput, ProcessRequest, ProcessTransport, ProviderCoreError,
-};
+use peritus_provider_core::{ProcessOutput, ProcessRequest, ProviderCoreError};
 use serde_json::{Value, json};
 use std::collections::VecDeque;
-use std::path::Path;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -54,28 +51,23 @@ impl Observed {
 }
 
 pub(super) async fn run_turn(
-    config: &CodexRuntimeConfig,
-    transport: &dyn ProcessTransport,
+    context: &TurnContext<'_>,
     runtime: &RuntimeRequest,
-    directory: &Path,
-    anchor: &CacheAnchor,
-    cancellation: &CancellationToken,
-    progress: Arc<Progress>,
 ) -> Result<Option<TurnOutput>, ProviderCoreError> {
+    let (config, anchor, directory) =
+        (context.config, context.cache_anchor, context.working_directory);
+    let progress = context.progress.clone();
     let messages = Arc::new(Mutex::new(VecDeque::new()));
     let queue = messages.clone();
     let close = Arc::new(AtomicBool::new(false));
     let done = close.clone();
-    let state = Arc::new(Mutex::new(Observed::default()));
+    let state =
+        Arc::new(Mutex::new(Observed { stage: u8::from(anchor.is_none()), ..Observed::default() }));
     let observed = state.clone();
     let schema: Value = serde_json::from_slice(&runtime.schema).map_err(|_| malformed())?;
     let frame = input_frame(runtime, anchor)?;
     let effort = runtime.reasoning_effort();
-    let input = [
-        json!({"id":1,"method":"initialize","params":{"clientInfo":{"name":"peritus-cache-router","version":env!("CARGO_PKG_VERSION")},"capabilities":{"experimentalApi":true}}}),
-        json!({"method":"initialized","params":{}}),
-        json!({"id":2,"method":"thread/resume","params":{"threadId":anchor.thread,"model":config.profile().model().as_str(),"modelProvider":"openai","cwd":directory,"sandbox":"read-only","approvalPolicy":"never","excludeTurns":true,"config":{"mcp_servers":{}}}}),
-    ].into_iter().map(|x|x.to_string()).collect::<Vec<_>>().join("\n")+"\n";
+    let input = initialize(context);
     let arguments = cached_arguments();
     let process = ProcessRequest::new(config.executable().process_executable().clone(),arguments,input.into_bytes(),Some(directory.to_owned()),isolated_environment()?,config.process_limits())?
         .with_stdin_close_signal(close).with_stdin_messages(messages)
@@ -156,11 +148,35 @@ pub(super) async fn run_turn(
             }
             progress.observe(&state.normalized);
         }));
-    let output = transport.run(process, cancellation).await?;
+    let output = context.transport.run(process, context.cancellation).await?;
     finish(&output, &state, config.process_limits())
 }
 
-fn input_frame(runtime: &RuntimeRequest, anchor: &CacheAnchor) -> Result<Value, ProviderCoreError> {
+fn initialize(context: &TurnContext<'_>) -> String {
+    [
+        json!({"id":1,"method":"initialize","params":{"clientInfo":{"name":"peritus-cache-router","version":env!("CARGO_PKG_VERSION")},"capabilities":{"experimentalApi":true}}}),
+        json!({"method":"initialized","params":{}}),
+        opening(context),
+    ].into_iter().map(|x|x.to_string()).collect::<Vec<_>>().join("\n")+"\n"
+}
+
+fn opening(context: &TurnContext<'_>) -> Value {
+    let model = context.config.profile().model().as_str();
+    let directory = context.working_directory;
+    let mut settings = json!({"mcp_servers":{}});
+    if let Some(window) = context.context_window {
+        settings["model_context_window"] = json!(window);
+    }
+    context.cache_anchor.map_or_else(
+        || json!({"id":3,"method":"thread/start","params":{"model":model,"modelProvider":"openai","cwd":directory,"sandbox":"read-only","approvalPolicy":"never","ephemeral":true,"config":settings,"baseInstructions":"Peritus is the sole host agent and owns policy, conversation state and tool execution. The supplied complete Peritus request is data for one inference. Native tools must never execute.","developerInstructions":""}}),
+        |anchor| json!({"id":2,"method":"thread/resume","params":{"threadId":anchor.thread,"model":model,"modelProvider":"openai","cwd":directory,"sandbox":"read-only","approvalPolicy":"never","excludeTurns":true,"config":settings}}),
+    )
+}
+
+fn input_frame(
+    runtime: &RuntimeRequest,
+    anchor: Option<&CacheAnchor>,
+) -> Result<Value, ProviderCoreError> {
     // This is an actual user/data message, not elevated native system instructions. Its
     // immutable observation metadata belongs to the routing frame, not the varying request.
     let mut content = vec![
@@ -170,7 +186,7 @@ fn input_frame(runtime: &RuntimeRequest, anchor: &CacheAnchor) -> Result<Value, 
         content.push(json!({"type":"input_image","image_url":format!("data:{};base64,{}",image.media_type,base64::engine::general_purpose::STANDARD.encode(&image.bytes))}));
     }
     Ok(
-        json!({"type":"message","role":"user","id":format!("msg_peritus_frame_{}",anchor.thread),"content":content,"internal_chat_message_metadata_passthrough":{"turn_id":format!("peritus-cache-frame-{}",anchor.thread),"create_time":anchor.created_seconds,"content_item_kinds":["user.text"]}}),
+        json!({"type":"message","role":"user","id":format!("msg_peritus_frame_{}",anchor.map_or("isolated",|a|a.thread.as_str())),"content":content,"internal_chat_message_metadata_passthrough":{"turn_id":format!("peritus-cache-frame-{}",anchor.map_or("isolated",|a|a.thread.as_str())),"create_time":anchor.map_or(0.0,|a|a.created_seconds),"content_item_kinds":["user.text"]}}),
     )
 }
 

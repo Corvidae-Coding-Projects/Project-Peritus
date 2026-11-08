@@ -90,6 +90,7 @@ fn input(root: &std::path::Path, conversation: Arc<Inputs>) -> ProductRunInput {
         max_elapsed: None,
         delivery_scope: crate::ProductDeliveryScope::WorkspaceChanges,
         conversation,
+        pipeline_handoff: crate::PipelineHandoff::CurrentConversation,
         providers: crate::RoleProviders {
             writer: provider.clone(),
             reviewer: provider.clone(),
@@ -144,6 +145,70 @@ fn proposal(version: u64) -> serde_json::Value {
       "material_question":null,"expanded_markdown":null,"partial_markdown":null,"limitations":[],
       "change_ledger":[{"id":"c","kind":"preserved","source_evidence_ids":["e"],"obligation_ids":["o"],"summary":"Retain the atomic-state requirement"}]
     }})
+}
+
+#[test]
+fn admitted_delivery_recovers_exact_design_but_rejects_changed_scope_and_artifact() {
+    let directory = tempfile::tempdir().unwrap();
+    let conversation =
+        Arc::new(Inputs { received: AtomicU64::new(1), incorporated: AtomicU64::new(1) });
+    let mut input = input(directory.path(), conversation.clone());
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    tools
+        .execute(&named_call("workspace_list", &serde_json::json!({"path":"","depth":1})))
+        .unwrap();
+    for (name, value) in [
+        (crate::design::expert_tools::PLAN, plan(1, false)),
+        (crate::design::expert_tools::AMEND, amendment(2, &source_evidence())),
+        (
+            crate::design::expert_tools::PUBLISH,
+            serde_json::json!({"expected_version":3,"review":"Complete source, required recovery, and actual acceptance are preserved."}),
+        ),
+    ] {
+        let result = tools.execute(&expert_call(&input, name, &value)).unwrap();
+        assert!(!result.is_error, "{}", result.output.to_wire_string());
+    }
+    drop(tools);
+    let markdown = std::fs::read_to_string(input.trace_path.with_extension("design.md")).unwrap();
+    let source = crate::delivery::digest(format!("{}\n{markdown}", input.task).as_bytes());
+    let document = crate::design::restore_admitted_delivery(&input, &source).unwrap();
+    assert!(
+        crate::delivery::Delivery::recover_design(&input).unwrap().is_none(),
+        "a Ready design without admitted work is not a delivery continuation"
+    );
+    let mut delivery = crate::delivery::Delivery::load(&input, &document).unwrap();
+    delivery.propose(serde_json::from_value(serde_json::json!([{
+        "id":"state", "requirements":crate::execution::delivery_requirements(&input).unwrap(),
+        "source_quote":"Publish atomic state", "outcome":"Publish and recover real state", "depends_on":[],
+        "kind":"behavior", "positive":"Read back committed bytes", "negative":"Failed writes preserve prior bytes"
+    }])).unwrap()).unwrap();
+    delivery
+        .review_scope(
+            &crate::delivery::DeliveryReview {
+                scope_complete: true,
+                scope_evidence: "Original state and recovery obligations are mapped.".into(),
+                capabilities: vec![],
+            },
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        crate::delivery::Delivery::recover_design(&input).unwrap().unwrap().markdown(),
+        markdown
+    );
+    assert!(crate::design::restore_admitted_delivery(&input, "wrong-source").is_none());
+    input.task.push_str(" changed scope");
+    assert!(crate::delivery::Delivery::recover_design(&input).unwrap().is_none());
+    input.task = "Publish atomic state".into();
+    conversation.received.store(2, Ordering::Release);
+    conversation.incorporated.store(2, Ordering::Release);
+    assert!(crate::delivery::Delivery::recover_design(&input).unwrap().is_none());
+    conversation.received.store(1, Ordering::Release);
+    conversation.incorporated.store(1, Ordering::Release);
+    std::fs::write(input.trace_path.with_extension("design.md"), format!("{markdown}\nchanged"))
+        .unwrap();
+    assert!(crate::delivery::Delivery::recover_design(&input).unwrap().is_none());
 }
 
 #[test]
@@ -870,4 +935,115 @@ fn steering_recovers_saved_expert_amendments_without_research_restart() {
     assert_eq!(pass["amendments"][0]["heading"], "Atomic publication and recovery");
     let published=tools.execute(&expert_call(&input, crate::design::expert_tools::PUBLISH,&serde_json::json!({"expected_version":2,"review":"The retained amendment still applies, and the complete new source preserves compatibility and original durability behavior."}))).unwrap();
     assert!(!published.is_error, "{}", published.output.to_wire_string());
+}
+
+#[test]
+fn rejected_proposal_survives_restart_and_field_repair_preserves_candidate() {
+    use crate::design::expert_tools::{AMEND, PLAN, PROPOSAL_READ, REPAIR};
+    let directory = tempfile::tempdir().unwrap();
+    let conversation =
+        Arc::new(Inputs { received: AtomicU64::new(1), incorporated: AtomicU64::new(1) });
+    let input = input(directory.path(), conversation);
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    tools
+        .execute(&named_call("workspace_list", &serde_json::json!({"path":"","depth":1})))
+        .unwrap();
+    assert!(!tools.execute(&expert_call(&input, PLAN, &plan(1, false))).unwrap().is_error);
+    let accepted = std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap();
+    let mut candidate = amendment(2, &source_evidence());
+    candidate["evidence"][0]["reference"].as_object_mut().unwrap().remove("kind");
+    let submitted = expert_call(&input, AMEND, &candidate);
+    let rejected = tools.execute(&submitted).unwrap();
+    assert!(rejected.is_error);
+    let rejection: serde_json::Value =
+        serde_json::from_slice(rejected.output.canonical_bytes()).unwrap();
+    assert_eq!(rejection["error"]["path"], "/evidence/0/reference/kind");
+    assert_eq!(
+        std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+        accepted
+    );
+    drop(tools);
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    assert!(tools.context().contains("design_proposal_repair"));
+    let handle = rejection["error"]["proposal"].as_str().unwrap();
+    let mut text = String::new();
+    let mut offset = 0;
+    loop {
+        let page = tools
+            .execute(&named_call(
+                PROPOSAL_READ,
+                &serde_json::json!({"proposal":handle,"offset":offset,"max_bytes":97}),
+            ))
+            .unwrap();
+        assert!(!page.is_error, "{}", page.output.to_wire_string());
+        let page: serde_json::Value =
+            serde_json::from_slice(page.output.canonical_bytes()).unwrap();
+        text.push_str(page["text"].as_str().unwrap());
+        match page["next_offset"].as_u64() {
+            Some(next) => offset = next,
+            None => break,
+        }
+    }
+    let exact: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(
+        exact,
+        serde_json::from_slice::<serde_json::Value>(submitted.arguments().canonical_bytes())
+            .unwrap()
+    );
+    for (path, value) in [
+        ("/source_sha256", serde_json::json!("bad")),
+        ("/evidence/00/reference/kind", serde_json::json!("source_range")),
+        ("/markdown~2", serde_json::json!("bad")),
+    ] {
+        let args = serde_json::json!({"proposal":handle,"expected_version":2,"changes":[{"path":path,"value_json":value.to_string()}]});
+        assert!(tools.execute(&expert_call(&input, REPAIR, &args)).unwrap().is_error);
+        assert_eq!(
+            std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+            accepted
+        );
+    }
+    let repair = serde_json::json!({"proposal":handle,"expected_version":2,"changes":[{"path":"/evidence/0/reference/kind","value_json":"\"source_range\""}]});
+    let result = tools.execute(&expert_call(&input, REPAIR, &repair)).unwrap();
+    assert!(!result.is_error, "{}", result.output.to_wire_string());
+    let pass: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+    )
+    .unwrap();
+    for field in ["markdown", "acceptance", "heading", "rationale", "failure_behavior"] {
+        assert_eq!(pass["amendments"][0][field], candidate[field]);
+    }
+    assert!(
+        tools.execute(&expert_call(&input, REPAIR, &repair)).unwrap().is_error,
+        "predecessor cannot be repaired twice"
+    );
+}
+
+#[test]
+fn authority_version_is_admitted_before_web_resolution_and_rationale_tag_is_optional() {
+    use crate::design::expert_tools::{AMEND, PLAN};
+    let directory = tempfile::tempdir().unwrap();
+    let conversation =
+        Arc::new(Inputs { received: AtomicU64::new(1), incorporated: AtomicU64::new(1) });
+    let input = input(directory.path(), conversation);
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    tools
+        .execute(&named_call("workspace_list", &serde_json::json!({"path":"","depth":1})))
+        .unwrap();
+    assert!(!tools.execute(&expert_call(&input, PLAN, &plan(1, false))).unwrap().is_error);
+    let evidence = serde_json::json!({"authority":"official","title":"Official publication","version":null,"reference":{"kind":"web","source":"a".repeat(64),"start":0,"end":20}});
+    let result = tools.execute(&expert_call(&input, AMEND, &amendment(2, &evidence))).unwrap();
+    assert!(result.is_error);
+    let error: serde_json::Value = serde_json::from_slice(result.output.canonical_bytes()).unwrap();
+    assert_eq!(error["error"]["path"], "/evidence/0/version");
+    let rationale = serde_json::json!({"authority":"engineering_rationale","title":"Atomicity invariant","version":null,"reference":{"invariant":"A failed write preserves committed state"}});
+    let result = tools.execute(&expert_call(&input, AMEND, &amendment(2, &rationale))).unwrap();
+    assert!(!result.is_error, "{}", result.output.to_wire_string());
+    let pass: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(input.trace_path.with_extension("design-expert.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(pass["amendments"][0]["evidence"][0]["reference"]["kind"], "engineering_rationale");
 }

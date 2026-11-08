@@ -177,8 +177,8 @@ Type `/` to discover commands; Tab completes them.
 | `/design build` | Expand the saved source against applicable repository and authoritative domain evidence, then explicitly start implementation. |
 | `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools, including an exact absolute reference path named in your request. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
-| `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
-| `/effort` | Select per-role reasoning effort; also press `e` in the model picker. |
+| `/model` or `/models` | Guided menus: choose Writer, Reviewer, or Fixer, then its model, then reasoning effort. Arrows and Enter select; Esc goes back or cancels. Model and effort save together at the final step. |
+| `/effort` | Change reasoning effort independently. |
 | `/new` | Start another conversation without deleting prior work. |
 | `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
 | `/stop` | Stop the current work and preserve effects already completed. |
@@ -260,9 +260,15 @@ to install the CLI and uses the key stored by Peritus; a separate OpenCode login
 OpenCode selects the model's provider protocol. Peritus owns tools and conversation history.
 Your key's model permissions and billing still apply; Go also requires an active Go subscription.
 
+Startup asks for writer, reviewer, and fixer provider/model/effort defaults once, including on
+existing installations that have not selected all three. Reviewer and fixer can explicitly copy
+the writer selection. Saved choices are retained on later launches; `peritus providers` reopens
+setup. Defaults apply to new conversations; existing conversations retain their own choices.
+
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
-when discovery fails; `/model manual MODEL_ID` is an explicit manual fallback.
-Model changes apply at an idle boundary. Interactive selections never silently fail over.
+when discovery fails; `/model fixer manual MODEL_ID xhigh` explicitly bypasses catalog membership.
+`/effort fixer xhigh` changes only effort. Unsupported settings are reported, never substituted.
+Model changes apply to subsequent model turns; in-flight calls retain their selection. Interactive selections never silently fail over.
 Automatic coding-run provider failover requires permission in provider settings and is off by default.
 
 ## Update

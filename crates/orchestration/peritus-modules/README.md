@@ -118,6 +118,14 @@ The host binds output digests, stage order, original task, and package identity 
 exclusively owned job. It publishes complete artifact bytes before advancing the
 small checkpoint, and checks integrity on reopening and reading.
 
+Hosts execute declarative stages through `Job::pending_stage`. The returned `PendingStage`
+binds the next stage, its role, original task, job identity, and declared predecessor reads
+to one exclusively borrowed job. `read_input` needs no caller-built allowlist; consuming
+`complete` publishes that exact stage. Dropping it leaves the checkpoint unchanged.
+Host permissions, live package selection checks, and inference remain host responsibilities.
+Run `cargo run --locked -p peritus-modules --example pending_stage` for a real-file lifecycle
+replay including undeclared-input rejection, paging, cancellation, and restart.
+
 The bundled **Source brief** exercises gathering → skeptical assessment → synthesis
 → final fact checking as a declarative baseline. The installed native **Deep Research**
 plugin implements clarification, explicit Start, a structured source/admission ledger,

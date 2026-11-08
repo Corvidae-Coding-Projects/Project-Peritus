@@ -18,6 +18,7 @@ use crate::local_context::LocalContextHandle;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 mod correction;
+mod delivery;
 mod evidence;
 mod provider;
 mod request_name;
@@ -65,14 +66,24 @@ pub async fn complete_developer_turn(
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut host = HostTurnEvidence {
         tool_calls: 0,
-        conversation_revision: input.conversation.revision(),
+        conversation_revision: input.requirements_revision(),
         verification_evidence: String::new(),
         successful_commands: Vec::new(),
     };
     let (mut correction, mut pending_question) = (None, None);
+    let mut announced = String::new();
     loop {
+        let mut delivery = crate::delivery::Delivery::load(input, design)?;
         if let Err(error) = check_cancelled(input) {
             return Ok(AppliedTurn::Rejected { error, host });
+        }
+        let status = delivery.status();
+        if status != announced {
+            if let Some(port) = input.conversation.interaction() {
+                port.observe(peritus_agent::DeveloperActivity::Text(status.as_bytes()))
+                    .map_err(|error| developer_error(&error))?;
+            }
+            announced = status;
         }
         if let Err(error) =
             crate::failover::bypass_open_circuit(input, role, cycle, accounting, &mut providers)
@@ -96,6 +107,7 @@ pub async fn complete_developer_turn(
                 remaining,
                 recorder,
                 memory: memory.as_ref(),
+                delivery: &delivery,
             },
             accounting,
         )
@@ -158,6 +170,9 @@ pub async fn complete_developer_turn(
             Ok(resolution) => resolution,
             Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
         };
+        if matches!(resolution, provider::ProviderResolution::Retry(Some("segment_boundary"))) {
+            delivery.segment_boundary()?;
+        }
         let Some(result) = provider::apply(resolution, &mut correction) else {
             continue;
         };
@@ -181,12 +196,35 @@ pub async fn complete_developer_turn(
                 continue;
             }
         };
+        let terminal = match delivery::advance(
+            input,
+            &mut delivery,
+            design,
+            terminal,
+            accounting,
+            &host.successful_commands,
+        )
+        .await
+        {
+            Ok(Some(terminal)) => terminal,
+            Ok(None) => {
+                correction = None;
+                pending_question = None;
+                continue;
+            }
+            Err(error) if error.kind() == ProductRunnerErrorKind::InvalidModelOutput => {
+                correction = Some(format!("{}: {}", error.operation(), error.detail()));
+                accounting.record_role_retry()?;
+                continue;
+            }
+            Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
+        };
         return match terminal {
             TerminalTurn::Complete(summary) => Ok(AppliedTurn::Applied(AppliedWrite {
                 summary: summary.0,
                 run_instructions: summary.1,
                 tool_calls: host.tool_calls,
-                conversation_revision: revision,
+                conversation_revision: input.requirements_revision(),
                 verification_evidence: host.verification_evidence,
                 successful_commands: host.successful_commands,
             })),
@@ -206,6 +244,11 @@ pub async fn complete_developer_turn(
                 }
                 Ok(AppliedTurn::Waiting { question, conversation_revision: revision, host })
             }
+            TerminalTurn::Plan(_) | TerminalTurn::Draft(_) => Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InternalInvariant,
+                "advance delivery handoff",
+                "stage handoff escaped the delivery coordinator",
+            )),
         };
     }
 }
@@ -232,6 +275,7 @@ struct DeveloperInvocation<'a> {
 }
 
 struct InvocationContext<'a> {
+    delivery: &'a crate::delivery::Delivery,
     memory: Option<&'a LocalContextHandle>,
     design: &'a crate::design::DesignDocument,
     findings: Option<&'a str>,
@@ -270,6 +314,41 @@ async fn run_selected_invocation(
     }
 }
 
+fn invocation_tools(
+    input: &ProductRunInput,
+    context: &InvocationContext<'_>,
+    prefix: &str,
+    transcript: &str,
+) -> WorkspaceDeveloperTools {
+    if context.delivery.planning() {
+        return input.read_only_workspace_tools();
+    }
+    let tools = input.configure_tools(
+        WorkspaceDeveloperTools::with_ownership(
+            input.workspace_root.clone(),
+            context.ownership.clone(),
+            input.trace_path.with_extension("effects.bin"),
+            prefix.to_owned(),
+            context.remaining,
+            input.command_runtime.clone(),
+        )
+        .with_capability_verification()
+        .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
+        .with_task_contract(transcript),
+    );
+    if context.delivery.constructing() {
+        tools.with_construction_progress(
+            crate::delivery_requirement::ExternalEffectRequirement::from_task(
+                input.delivery_scope,
+                &input.task,
+            )
+            .is_required(),
+        )
+    } else {
+        tools
+    }
+}
+
 async fn run_developer_invocation(
     input: &ProductRunInput,
     model: &dyn ModelProvider,
@@ -280,7 +359,7 @@ async fn run_developer_invocation(
     (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
     ProductRunnerError,
 > {
-    let preparation = model.prepare_context(&input.provider_cancellation).await;
+    let preparation = model.prepare_context(u64::MAX, &input.provider_cancellation).await;
     let transcript = input.conversation.render();
     let media = input.media(&transcript, model.profile())?;
     let stable_context = input.conversation.stable_request_context();
@@ -294,9 +373,17 @@ async fn run_developer_invocation(
             &input.task,
         ),
         context.remaining,
-    ) + input.delivery_instructions();
-    let mut definitions = input.developer_definitions()?;
-    definitions.push(crate::developer_tools::evidence_definition()?);
+    ) + input.delivery_instructions()
+        + crate::delivery::DEVELOPER_POLICY
+        + &context.delivery.prompt()?;
+    let mut definitions = if context.delivery.planning() {
+        crate::developer_tools::reviewer_definitions()?
+    } else {
+        input.developer_definitions()?
+    };
+    if !context.delivery.planning() {
+        definitions.push(crate::developer_tools::evidence_definition()?);
+    }
     let archive = crate::developer_tools::ReviewerEvidenceSources::new(
         stable_context.clone(),
         context.design.markdown().to_owned(),
@@ -306,6 +393,19 @@ async fn run_developer_invocation(
         context.findings.unwrap_or_default().to_owned(),
         context.correction.unwrap_or_default().to_owned(),
     );
+    let request_prefix = invocation_request_name(input, &identity)?;
+    let mut tools = invocation_tools(input, &context, &request_prefix, &transcript)
+        .with_reviewer_evidence_sources(archive);
+    let model_context = match preparation {
+        Ok(context) => context,
+        Err(error) => {
+            // Feed metadata failures through the same role recovery/failover path as inference.
+            return Ok((
+                Err(DeveloperLoopError::Model(peritus_agent::ModelDriveError::Provider(error))),
+                tools,
+            ));
+        }
+    };
     let prompt = if let Some(evidence) = context.evidence {
         let mut budget_tools = definitions.clone();
         if let Some(memory) = context.memory {
@@ -318,7 +418,7 @@ async fn run_developer_invocation(
             tools: &budget_tools,
             diff: evidence.diff,
             gates: evidence.gates,
-            max_input_tokens: model.context_input_target(),
+            max_input_tokens: model_context.profile().limits().max_input_tokens(),
             additional_framing_tokens: context
                 .memory
                 .map(LocalContextHandle::additional_request_framing_tokens)
@@ -331,27 +431,6 @@ async fn run_developer_invocation(
         instructions
     };
     let (prompt, attachments) = media.into_parts(prompt);
-    let request_prefix = invocation_request_name(input, &identity)?;
-    let mut tools = input.configure_tools(
-        WorkspaceDeveloperTools::with_ownership(
-            input.workspace_root.clone(),
-            context.ownership.clone(),
-            input.trace_path.with_extension("effects.bin"),
-            request_prefix.clone(),
-            context.remaining,
-            input.command_runtime.clone(),
-        )
-        .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
-        .with_task_contract(&transcript),
-    );
-    tools = tools.with_reviewer_evidence_sources(archive);
-    if let Err(error) = preparation {
-        // Feed metadata failures through the same role recovery/failover path as inference.
-        return Ok((
-            Err(DeveloperLoopError::Model(peritus_agent::ModelDriveError::Provider(error))),
-            tools,
-        ));
-    }
     let result = crate::local_context::run_live_invocation(
         model,
         DeveloperLoopRequest {
@@ -361,7 +440,12 @@ async fn run_developer_invocation(
             cyber_access_program: None,
             attachments,
             tools: definitions,
-            limits: DeveloperLoopLimits::new(48, 512).map_err(|error| developer_error(&error))?,
+            limits: if context.delivery.constructing() {
+                DeveloperLoopLimits::new(12, 128)
+            } else {
+                DeveloperLoopLimits::new(48, 512)
+            }
+            .map_err(|error| developer_error(&error))?,
             cancellation: input.provider_cancellation.clone(),
         },
         &mut tools,

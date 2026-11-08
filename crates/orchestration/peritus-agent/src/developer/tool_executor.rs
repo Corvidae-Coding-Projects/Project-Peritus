@@ -6,6 +6,23 @@ use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Retains a rejected proposal where supported, without executing its requested effect.
+    ///
+    /// # Errors
+    /// Reports private recovery-storage failures; it never grants execution authority.
+    fn reject_tool_arguments(
+        &mut self,
+        _call: &CompletedToolCall,
+        violation: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        Ok(DeveloperToolObservation {
+            output: peritus_model_protocol::CanonicalJson::parse(
+                &serde_json::json!({"error":{"code":"invalid_tool_arguments","path":violation.path(),"detail":violation.detail(),"effect_executed":false,"next_action":"Correct only these fields in this proposal; the current task and accepted checkpoints are unchanged."}}).to_string(),
+                peritus_model_protocol::JsonBounds::value(peritus_model_protocol::ProtocolLimits::PRODUCTION),
+            )?,
+            is_error: true,
+        })
+    }
     /// Prepares current workflow requirements before tool choice and policy are constructed.
     ///
     /// # Errors
@@ -19,6 +36,12 @@ pub trait DeveloperToolExecutor: Send {
 
     /// Records one completed developer response after its tool batch has been retained.
     fn model_response_completed(&mut self) {}
+
+    /// Records that a newly received user message was answered and work should continue.
+    ///
+    /// Executors may use this current control event to require concrete forward progress before
+    /// another exploratory tool batch. The event carries no new execution authority.
+    fn steering_continues_work(&mut self) {}
 
     /// Drains completed host child calls, separately from provider-proposed parent calls.
     /// Wrappers must forward this counter. It records work, never grants authority or success.
@@ -66,6 +89,18 @@ pub trait DeveloperToolExecutor: Send {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError>;
+
+    /// Observes the final result of every actually executed top-level tool call.
+    ///
+    /// This includes tools implemented by wrappers, such as durable context retrieval, so a base
+    /// executor can enforce invocation-wide progress invariants rather than seeing only its own
+    /// filesystem calls. The observation grants no authority and must not repeat the effect.
+    fn observe_tool_outcome(
+        &mut self,
+        _call: &CompletedToolCall,
+        _observation: &DeveloperToolObservation,
+    ) {
+    }
 
     /// Revalidates a host-archived workspace read before reusing its evidence or coverage.
     ///
@@ -150,5 +185,13 @@ pub trait DeveloperToolExecutor: Send {
     /// stopping until the provider has received the warning and returned another tool batch.
     fn continuation_blocker(&self) -> Option<String> {
         None
+    }
+
+    /// Whether the current bounded invocation must hand scheduling back to its caller.
+    ///
+    /// Unlike [`Self::continuation_blocker`], this is an ordinary construction segment boundary:
+    /// retained effects remain valid and the caller may select another ready delivery slice.
+    fn segment_boundary_required(&self) -> bool {
+        false
     }
 }

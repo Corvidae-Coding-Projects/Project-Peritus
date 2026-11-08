@@ -18,7 +18,9 @@ use std::{
 use url::{Host, Url};
 
 const MAX_REDIRECTS: usize = 5;
-const MAX_TRANSFER_ATTEMPTS: usize = 3;
+const MAX_TRANSFER_ATTEMPTS: usize = 8;
+const FIRST_RETRY_DELAY: Duration = Duration::from_millis(250);
+const MAX_RETRY_DELAY: Duration = Duration::from_secs(8);
 const MAX_DEPENDENCY_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_SESSION_ORIGINS: usize = 8;
 
@@ -186,6 +188,7 @@ impl Fetcher {
                     if attempt == MAX_TRANSFER_ATTEMPTS {
                         break;
                     }
+                    wait_for_retry(cancellation, retry_delay(attempt))?;
                 }
                 Err(error) => return Err(error),
             }
@@ -234,11 +237,8 @@ fn transfer_once(
             .ok_or_else(|| Failure::Rejected("HTTPS redirect has no valid Location".into()))?;
         return Ok(Transfer::Redirect(location.into()));
     }
-    if response.status() != StatusCode::OK {
-        return Err(Failure::Rejected(format!(
-            "dependency origin returned HTTP {}",
-            response.status().as_u16()
-        )));
+    if let Some(failure) = response_failure(response.status()) {
+        return Err(failure);
     }
     if response.content_length().is_some_and(|bytes| bytes > specification.maximum_bytes) {
         return Err(Failure::Rejected(
@@ -276,6 +276,41 @@ fn transfer_once(
         )));
     }
     Ok(Transfer::Complete { bytes, digest })
+}
+
+fn response_failure(status: StatusCode) -> Option<Failure> {
+    if status == StatusCode::OK {
+        None
+    } else if status.is_server_error()
+        || matches!(
+            status,
+            StatusCode::REQUEST_TIMEOUT | StatusCode::TOO_EARLY | StatusCode::TOO_MANY_REQUESTS
+        )
+    {
+        Some(Failure::Infrastructure(format!(
+            "dependency origin returned transient HTTP {}",
+            status.as_u16()
+        )))
+    } else {
+        Some(Failure::Rejected(format!("dependency origin returned HTTP {}", status.as_u16())))
+    }
+}
+
+fn retry_delay(failed_attempt: usize) -> Duration {
+    let exponent = u32::try_from(failed_attempt.saturating_sub(1)).unwrap_or(u32::MAX).min(16);
+    FIRST_RETRY_DELAY.saturating_mul(2_u32.saturating_pow(exponent)).min(MAX_RETRY_DELAY)
+}
+
+fn wait_for_retry(cancellation: &Arc<AtomicBool>, duration: Duration) -> Result<(), Failure> {
+    let deadline = std::time::Instant::now() + duration;
+    loop {
+        cancelled(cancellation)?;
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return Ok(());
+        }
+        std::thread::sleep(remaining.min(Duration::from_millis(100)));
+    }
 }
 
 fn checked_url(value: &str) -> Result<Url, String> {
@@ -356,4 +391,26 @@ fn hex(bytes: &[u8]) -> String {
         write!(&mut encoded, "{byte:02x}").expect("writing to a String cannot fail");
     }
     encoded
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transient_server_response_uses_retryable_failure_class() {
+        assert!(response_failure(StatusCode::OK).is_none());
+        assert!(matches!(
+            response_failure(StatusCode::GATEWAY_TIMEOUT),
+            Some(Failure::Infrastructure(_))
+        ));
+        assert!(matches!(response_failure(StatusCode::NOT_FOUND), Some(Failure::Rejected(_))));
+        assert!(matches!(
+            response_failure(StatusCode::TOO_MANY_REQUESTS),
+            Some(Failure::Infrastructure(_))
+        ));
+        assert_eq!(retry_delay(1), Duration::from_millis(250));
+        assert_eq!(retry_delay(6), Duration::from_secs(8));
+        assert_eq!(retry_delay(100), Duration::from_secs(8));
+    }
 }

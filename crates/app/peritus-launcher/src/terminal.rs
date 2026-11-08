@@ -15,11 +15,14 @@ pub struct Terminal<'a> {
 
 impl Terminal<'static> {
     pub fn stdio() -> Self {
-        Self { input: Box::new(io::BufReader::new(io::stdin())), output: Box::new(io::stdout()) }
+        Self::from_streams(io::BufReader::new(io::stdin()), io::stdout())
     }
 }
 
-impl Terminal<'_> {
+impl<'a> Terminal<'a> {
+    pub fn from_streams(input: impl BufRead + 'a, output: impl Write + 'a) -> Self {
+        Self { input: Box::new(input), output: Box::new(output) }
+    }
     pub fn line(&mut self, message: &str) -> Result<(), LauncherError> {
         writeln!(self.output, "{message}").map_err(|error| interaction(&error))
     }

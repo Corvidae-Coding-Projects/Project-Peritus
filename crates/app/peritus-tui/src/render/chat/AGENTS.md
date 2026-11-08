@@ -16,6 +16,7 @@ Implementation pieces for `chat.rs`: Conversation-first terminal layout with a p
 | [convenience.rs](convenience.rs) | Search results, full result previews, code-copy choices, shortcut capture, and syntax-theme previews. |
 | [doctor.rs](doctor.rs) | Responsive read-only diagnostic panel with independent scrolling and visible return action. |
 | [effort.rs](effort.rs) | Reasoning effort remains discoverable even when model discovery is unavailable. |
+| [models.rs](models.rs) | Guided agent and provider-model menus; reasoning effort is the final page before an atomic save. |
 | [files.rs](files.rs) | Exact file/range consent and current selection, with no implied provider delivery. |
 | [goal.rs](goal.rs) | Truthful goal, criterion, and usage projection. |
 | [history.rs](history.rs) | Searchable saved-message previews; selection loads the composer without sending. |

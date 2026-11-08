@@ -24,6 +24,7 @@ pub fn inspection(name: &str) -> bool {
             | "developer_evidence_read"
             | "skill_read"
             | "skill_list"
+            | "context_recover"
             | "context_read"
             | "context_sources"
             | "inspection_plan"
@@ -98,6 +99,16 @@ impl Activity {
                             ),
                             id,
                         );
+                        if call.name().as_str() == "context_recover"
+                            && !result.is_error()
+                            && value["representation"] == "semantic-json-v1"
+                            && let Ok(arguments) =
+                                serde_json::from_slice::<Value>(call.arguments().canonical_bytes())
+                            && same_source(&value["source"], &arguments["source"])
+                            && value["offset"] == arguments["offset"]
+                        {
+                            self.context_reads.insert(peritus_codec::sha256(call.arguments().canonical_bytes()).into_bytes(),json!({"observation_reuse":{"state":"already_visible","tool":"context_recover","source":arguments["source"],"offset":arguments["offset"],"instruction":"The requested semantic source page is present in this model view. Continue the unfinished task action; retrieval is not new work."}}));
+                        }
                         if call.name().as_str() == "context_read"
                             && !result.is_error()
                             && value.get("sources").is_some()
@@ -216,6 +227,15 @@ impl Activity {
     pub(super) const fn feedback(&mut self) -> Option<String> {
         self.feedback.take()
     }
+}
+
+fn same_source(value: &Value, argument: &Value) -> bool {
+    let (Some(value), Some(argument)) = (value.as_str(), argument.as_str()) else { return false };
+    let tail = |handle: &str| handle.rsplit(':').next().and_then(|id| id.parse::<u64>().ok());
+    tail(value).is_some()
+        && tail(value) == tail(argument)
+        && (argument.matches(':').count() == 1
+            || value.rsplit_once(':').map(|v| v.0) == argument.rsplit_once(':').map(|v| v.0))
 }
 
 fn key(name: &str, value: &Value, error: bool, arguments: [u8; 32]) -> [u8; 32] {

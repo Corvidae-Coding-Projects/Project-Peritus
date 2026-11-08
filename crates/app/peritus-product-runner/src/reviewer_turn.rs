@@ -1,7 +1,7 @@
 //! Fresh tool-capable, read-only independent review turns.
 
+use crate::review::ReviewedSubmission;
 use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
-use peritus_review::ProductReviewSubmission;
 
 use crate::budget::RunAccounting;
 use crate::developer_tools::{
@@ -20,6 +20,14 @@ pub struct ReviewEvidence<'a> {
     pub gates: &'a str,
     pub developer_commands: &'a str,
     pub prior: &'a str,
+    pub delivery: Option<DeliveryReviewContext<'a>>,
+}
+
+pub struct DeliveryReviewContext<'a> {
+    pub ledger: &'a crate::delivery::Delivery,
+    pub scope_only: bool,
+    pub candidate: &'a str,
+    pub commands: &'a [crate::developer_tools::SuccessfulCommand],
 }
 
 impl ReviewEvidence<'_> {
@@ -47,7 +55,7 @@ pub async fn complete(
     review_cycle: u32,
     evidence: ReviewEvidence<'_>,
     accounting: &mut RunAccounting,
-) -> Result<ProductReviewSubmission, ProductRunnerError> {
+) -> Result<ReviewedSubmission, ProductRunnerError> {
     let mut providers =
         crate::failover::ProviderCursor::new(&input.providers.reviewer, &input.providers.fallbacks);
     let mut correction = None;
@@ -58,29 +66,30 @@ pub async fn complete(
     loop {
         check_cancelled(input)?;
         crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
-        if let Err(error) = providers.current().prepare_context(&input.provider_cancellation).await
-        {
-            let error = peritus_agent::DeveloperLoopError::Model(
-                peritus_agent::ModelDriveError::Provider(error),
-            );
-            if let Some(reason) = provider_recovery.retry(&error) {
-                accounting.record_role_retry()?;
-                correction = Some(crate::failover::RoleRecovery::correction(reason));
-                continue;
-            }
-            if let Some(switch) = providers.advance(&error) {
-                crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
-                provider_recovery.reset();
-                correction = None;
-                continue;
-            }
-            return Err(turn::developer_error(&error));
-        }
+        let model_context =
+            match providers.current().prepare_context(u64::MAX, &input.provider_cancellation).await
+            {
+                Ok(context) => context,
+                Err(error) => {
+                    let error = peritus_agent::DeveloperLoopError::Model(
+                        peritus_agent::ModelDriveError::Provider(error),
+                    );
+                    correction = recover_reviewer(
+                        input,
+                        cycle,
+                        accounting,
+                        &mut providers,
+                        &mut provider_recovery,
+                        &error,
+                    )?;
+                    continue;
+                }
+            };
         invocation = invocation.saturating_add(1);
         let request = prepare_request(
             input,
             &evidence,
-            providers.current().context_input_target(),
+            model_context.profile().limits().max_input_tokens(),
             correction.as_deref(),
             accounting.remaining(),
             memory.as_ref(),
@@ -118,27 +127,22 @@ pub async fn complete(
                 continue;
             }
             Err(error) => {
-                if let Some(reason) = provider_recovery.retry(&error) {
-                    accounting.record_role_retry()?;
-                    correction = Some(crate::failover::RoleRecovery::correction(reason));
-                    continue;
-                }
-                if let Some(switch) = providers.advance(&error) {
-                    crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
-                    provider_recovery.reset();
-                    correction = None;
-                    continue;
-                }
-                return Err(turn::developer_error(&error));
+                correction = recover_reviewer(
+                    input,
+                    cycle,
+                    accounting,
+                    &mut providers,
+                    &mut provider_recovery,
+                    &error,
+                )?;
+                continue;
             }
         };
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         check_cancelled(input)?;
         if let Some(submission) = accept_submission(
             input,
-            &tools,
-            &result.text,
-            review_cycle,
+            grounded_submission(&tools, &result.text, review_cycle, evidence.delivery.as_ref()),
             &mut rejected_reviews,
             &mut correction,
             accounting,
@@ -146,6 +150,26 @@ pub async fn complete(
             return Ok(submission);
         }
     }
+}
+
+fn recover_reviewer(
+    input: &ProductRunInput,
+    cycle: u32,
+    accounting: &mut RunAccounting,
+    providers: &mut crate::failover::ProviderCursor<'_>,
+    recovery: &mut crate::failover::RoleRecovery,
+    error: &peritus_agent::DeveloperLoopError,
+) -> Result<Option<String>, ProductRunnerError> {
+    if let Some(reason) = recovery.retry(error) {
+        accounting.record_role_retry()?;
+        return Ok(Some(crate::failover::RoleRecovery::correction(reason)));
+    }
+    if let Some(switch) = providers.advance(error) {
+        crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+        recovery.reset();
+        return Ok(None);
+    }
+    Err(turn::developer_error(error))
 }
 
 fn checked_invocation(
@@ -196,14 +220,12 @@ fn reviewer_request_name(
 
 fn accept_submission(
     input: &ProductRunInput,
-    tools: &WorkspaceDeveloperTools,
-    text: &str,
-    review_cycle: u32,
+    parsed: Result<ReviewedSubmission, RejectedReview>,
     rejected_reviews: &mut u64,
     correction: &mut Option<String>,
     accounting: &mut RunAccounting,
-) -> Result<Option<ProductReviewSubmission>, ProductRunnerError> {
-    match grounded_submission(tools, text, review_cycle) {
+) -> Result<Option<ReviewedSubmission>, ProductRunnerError> {
+    match parsed {
         Ok(submission) => Ok(Some(submission)),
         Err(rejected) => {
             *rejected_reviews = rejected_reviews.saturating_add(1);
@@ -229,7 +251,29 @@ fn prepare_request(
     remaining: Option<std::time::Duration>,
     memory: Option<&crate::local_context::LocalContextHandle>,
 ) -> Result<ReviewRequest, ProductRunnerError> {
-    let system = turn::reviewer_system(remaining) + input.delivery_instructions();
+    let delivery_prompt = evidence
+        .delivery
+        .as_ref()
+        .map(|context| {
+            context.ledger.review_prompt(context.scope_only).map(|prompt| {
+                format!(
+                    "{prompt}\nCurrent-candidate successful verification references: {:?}",
+                    context
+                        .commands
+                        .iter()
+                        .filter(|command| command.observed_candidate.as_deref()
+                            == Some(context.candidate)
+                            && command.purpose
+                                == crate::developer_tools::CommandPurpose::Verification)
+                        .map(|command| (command.verification_reference(), &command.command))
+                        .collect::<Vec<_>>()
+                )
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
+    let system =
+        turn::reviewer_system(remaining) + input.delivery_instructions() + &delivery_prompt;
     let mut transcript = input.conversation.stable_request_context();
     transcript.push_str(&crate::guided_design::implementation_context(input)?);
     let design_identity = evidence.design.contract_marker();
@@ -273,15 +317,40 @@ fn grounded_submission(
     tools: &WorkspaceDeveloperTools,
     text: &str,
     cycle: u32,
-) -> Result<ProductReviewSubmission, RejectedReview> {
+    delivery: Option<&DeliveryReviewContext<'_>>,
+) -> Result<ReviewedSubmission, RejectedReview> {
     tools.grounding().validate().map_err(|detail| RejectedReview {
         error: grounding(detail),
         reason: peritus_agent::DeveloperReviewRetryReason::MissingGrounding,
     })?;
-    review::parse(text, cycle).map_err(|error| RejectedReview {
-        error,
-        reason: peritus_agent::DeveloperReviewRetryReason::InvalidSubmission,
-    })
+    review::parse(text, cycle)
+        .map_err(|error| RejectedReview {
+            error,
+            reason: peritus_agent::DeveloperReviewRetryReason::InvalidSubmission,
+        })
+        .and_then(|submission| {
+            if let Some(context) = delivery {
+                let result = submission
+                    .delivery
+                    .as_ref()
+                    .ok_or_else(|| {
+                        crate::delivery::invalid("independent capability assessment is missing")
+                    })
+                    .and_then(|review| {
+                        context.ledger.check_review(
+                            review,
+                            context.scope_only,
+                            context.candidate,
+                            context.commands,
+                        )
+                    });
+                result.map_err(|error| RejectedReview {
+                    error,
+                    reason: peritus_agent::DeveloperReviewRetryReason::InvalidSubmission,
+                })?;
+            }
+            Ok(submission)
+        })
 }
 
 struct RejectedReview {

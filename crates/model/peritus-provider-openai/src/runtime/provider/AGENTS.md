@@ -8,6 +8,7 @@ Implementation pieces for `provider.rs`: One-turn ownership of the pre-authentic
 
 | File | Role |
 | --- | --- |
+| [capacity.rs](capacity.rs) | Exact selected-model context capacity and shared reply-space resolution before model-view assembly. |
 | [cached.rs](cached.rs) | Finite official app-server routing, prediction forks, direct content-free progress, usage/errors and safe pre-inference fallback; notices stay outside the final decoder transcript. |
 | [failure.rs](failure.rs) | Redaction-safe runtime terminal classification. |
 | [invocation.rs](invocation.rs) | Hardened authentication and isolated one-turn process projections. |

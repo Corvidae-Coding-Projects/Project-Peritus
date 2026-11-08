@@ -143,3 +143,112 @@ fn praxis_stage3_daemon_child() {
         fixture::child(Path::new(&root)).expect("daemon fixture child");
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    #[test]
+    fn exact_continuation_retry_bypasses_every_conversation_mode(mode in 0u8..5) {
+        use crate::product_run::TestedLaunchRoute;
+        use peritus_app_protocol::ProductInteractionMode;
+
+        let mode = match mode {
+            0 => ProductInteractionMode::Chat,
+            1 => ProductInteractionMode::Plan,
+            2 => ProductInteractionMode::Design,
+            3 => ProductInteractionMode::Review,
+            _ => ProductInteractionMode::Build,
+        };
+        prop_assert_eq!(
+            crate::product_run::launch_mode(Some(mode), TestedLaunchRoute::ResumePipeline),
+            None,
+        );
+    }
+
+    #[test]
+    fn ordinary_launch_preserves_selected_conversation_mode(mode in 0u8..4) {
+        use crate::product_run::TestedLaunchRoute;
+        use peritus_app_protocol::ProductInteractionMode;
+        use peritus_product_runner::ConversationMode;
+
+        let (selected, expected) = match mode {
+            0 => (ProductInteractionMode::Chat, ConversationMode::Chat),
+            1 => (ProductInteractionMode::Plan, ConversationMode::Plan),
+            2 => (ProductInteractionMode::Design, ConversationMode::Design),
+            _ => (ProductInteractionMode::Review, ConversationMode::Review),
+        };
+        prop_assert_eq!(
+            crate::product_run::launch_mode(Some(selected), TestedLaunchRoute::SelectedMode),
+            Some(expected),
+        );
+    }
+
+    #[test]
+    fn typed_handoffs_bind_only_their_exact_semantic_source(
+        handoff_revision in any::<u64>(),
+        retained_checkpoint_revision in any::<u64>(),
+        retained_design_revision in any::<u64>(),
+        later_delta in any::<u64>(),
+    ) {
+        use peritus_product_runner::PipelineHandoff;
+
+        let continuation = PipelineHandoff::ContinueRetained {
+            conversation_revision: handoff_revision,
+        };
+        prop_assert_eq!(
+            continuation.requirements_revision(
+                handoff_revision,
+                Some(retained_checkpoint_revision),
+                Some(retained_design_revision),
+            ),
+            retained_design_revision,
+        );
+        let retry = PipelineHandoff::RetryRetained {
+            conversation_revision: handoff_revision,
+        };
+        prop_assert_eq!(
+            retry.requirements_revision(
+                handoff_revision,
+                Some(retained_checkpoint_revision),
+                Some(retained_design_revision),
+            ),
+            retained_checkpoint_revision,
+        );
+        prop_assume!(later_delta != 0);
+        let later_revision = handoff_revision.wrapping_add(later_delta);
+        prop_assert_eq!(
+            continuation.requirements_revision(
+                later_revision,
+                Some(retained_checkpoint_revision),
+                Some(retained_design_revision),
+            ),
+            later_revision,
+        );
+        prop_assert_eq!(
+            retry.requirements_revision(
+                later_revision,
+                Some(retained_checkpoint_revision),
+                Some(retained_design_revision),
+            ),
+            later_revision,
+        );
+        prop_assert_eq!(
+            continuation.requirements_revision(handoff_revision, None, None),
+            handoff_revision,
+        );
+    }
+
+    #[test]
+    fn requirement_amendment_always_binds_the_live_revision(
+        current_revision in any::<u64>(),
+        retained_revision in proptest::option::of(any::<u64>()),
+    ) {
+        use peritus_product_runner::PipelineHandoff;
+
+        prop_assert_eq!(
+            PipelineHandoff::CurrentConversation
+                .requirements_revision(current_revision, retained_revision, retained_revision),
+            current_revision,
+        );
+    }
+}

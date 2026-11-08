@@ -1,11 +1,13 @@
 //! Mandatory repository-grounded design document produced before implementation.
 
 mod artifact;
+mod evidence_input;
 mod expansion;
 mod expert_pass;
 mod expert_tools;
 #[cfg(test)]
 mod qualification;
+mod rejected;
 pub mod research;
 mod retention;
 mod reuse;
@@ -14,7 +16,7 @@ mod source;
 
 pub use expert_tools::{
     context as expert_context, definitions as expert_definitions, execute as execute_expert,
-    owns as expert_tool,
+    owns as expert_tool, reject as reject_expert_arguments,
 };
 pub const fn expert_policy() -> &'static str {
     expert_tools::POLICY
@@ -87,6 +89,37 @@ pub struct DesignDocument {
 pub enum DesignExpansionOutcome {
     Ready(Box<DesignDocument>),
     Waiting { question: String, conversation_revision: u64 },
+}
+
+/// Continues an already admitted delivery contract. Its baseline research remains historical;
+/// fresh workspace checks and capability review still qualify the current code separately.
+pub fn restore_admitted_delivery(
+    input: &ProductRunInput,
+    admitted_source: &str,
+) -> Option<DesignDocument> {
+    let (source, expansion) = expansion::restore_design_expansion_for_view(input).ok()?;
+    if expansion.stage() != ExpansionStage::Ready
+        || expansion.input_revision() != input.conversation.revision()
+    {
+        return None;
+    }
+    let path = input.trace_path.with_extension("design.md");
+    let markdown = String::from_utf8(
+        expansion::read_stable_regular(
+            &path,
+            MAXIMUM_DESIGN_BYTES as u64,
+            "admitted delivery design",
+        )
+        .ok()?,
+    )
+    .ok()?;
+    if crate::delivery::digest(format!("{}\n{}", input.task, markdown).as_bytes())
+        != admitted_source
+    {
+        return None;
+    }
+    let identity = ExpansionReceiptIdentity::ready(input, &source, &expansion, &markdown).ok()?;
+    Some(DesignDocument::restored_expanded(path, markdown, identity.input_revision, identity))
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

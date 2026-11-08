@@ -184,8 +184,11 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
         ["/effort", "writer" | "reviewer" | "fixer"] => {
             &["default", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
         }
-        ["/model"] => &["writer", "reviewer", "fixer", "refresh", "manual"],
-        ["/model", "writer" | "reviewer" | "fixer"] => &["refresh", "manual"],
+        ["/model" | "/models"] => &["writer", "reviewer", "fixer", "refresh", "manual"],
+        ["/model" | "/models", "writer" | "reviewer" | "fixer"] => &["refresh", "manual"],
+        ["/model" | "/models", "writer" | "reviewer" | "fixer", _] => {
+            &["minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
+        }
         _ => &[],
     };
     let mut matches: Vec<_> = choices

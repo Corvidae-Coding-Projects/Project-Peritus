@@ -13,6 +13,7 @@ use peritus_model_protocol::ContentBlock;
 #[derive(Clone)]
 pub(super) struct Evidence {
     pub(super) source: u64,
+    pub(super) last_seen: u64,
     pub(super) tool: String,
     pub(super) arguments: [u8; 32],
     pub(super) artifact: StoredArtifact,
@@ -20,6 +21,19 @@ pub(super) struct Evidence {
     pub(super) arguments_message: Option<(u64, usize)>,
     pub(super) host_step: bool,
     pub(super) file: Option<String>,
+    content: Option<String>,
+    pub(super) page: Option<crate::local_context::read_reuse::Page>,
+    pub(super) body_bytes: usize,
+}
+
+impl Evidence {
+    pub(super) fn has_current_content(&self, bindings: &super::bindings::Bindings) -> bool {
+        self.file.as_ref().and_then(|path| bindings.files.get(path)).is_some_and(|current| {
+            self.content
+                .as_deref()
+                .is_some_and(|content| current["content_sha256"].as_str() == Some(content))
+        })
+    }
 }
 
 #[derive(Default)]
@@ -50,6 +64,57 @@ impl Index {
         self.root
     }
 
+    fn classify(
+        &mut self,
+        memory: &LocalMemory,
+        evidence: &mut Evidence,
+    ) -> Result<(), DeveloperLoopError> {
+        // Directory/search results can include ignored files, empty directories,
+        // and other metadata outside the managed source snapshot.
+        let file_tool = evidence.tool == "workspace_read";
+        let memory_tool = matches!(
+            evidence.tool.as_str(),
+            "context_update"
+                | "context_recover"
+                | "context_read"
+                | "context_sources"
+                | "inspection_plan"
+                | "inspection_result_read"
+        );
+        if !memory_tool && !evidence.is_error && file_tool {
+            let value: serde_json::Value =
+                serde_json::from_slice(&memory.store.read(evidence.artifact)?)
+                    .map_err(|_| error("decode decision source descriptor"))?;
+            if evidence.tool == "workspace_read" {
+                evidence.file = value["path"].as_str().map(str::to_owned);
+                evidence.content = value["source_sha256"].as_str().map(str::to_owned);
+                evidence.page =
+                    crate::local_context::read_reuse::Page::from_value(evidence.source, &value);
+                evidence.body_bytes = value["content"].as_str().map_or(0, str::len);
+            }
+            self.unknown_dependencies |= value["path"].as_str().is_none_or(|path| {
+                std::path::Path::new(path).is_absolute()
+                    || crate::workspace_filter::generated(std::path::Path::new(path))
+            });
+        } else if !memory_tool {
+            self.unknown_dependencies = true;
+        }
+        if !evidence.is_error
+            && matches!(
+                evidence.tool.as_str(),
+                "workspace_write" | "workspace_patch" | "workspace_remove"
+            )
+        {
+            let value: serde_json::Value =
+                serde_json::from_slice(&memory.store.read(evidence.artifact)?)
+                    .map_err(|_| error("decode settled workspace effect"))?;
+            if value["changed"] != false {
+                evidence.file = value["path"].as_str().map(str::to_owned);
+            }
+        }
+        Ok(())
+    }
+
     // Immutable source classification is derived once per appended observation. This is
     // not a current-file, permission, candidate or request-validity cache.
     pub(super) const fn dependencies_are_managed(&self) -> bool {
@@ -73,31 +138,7 @@ impl Index {
                 }
             }
             if let Some(mut evidence) = evidence(memory, source.sequence)? {
-                // Directory/search results can include ignored files, empty directories,
-                // and other metadata outside the managed source snapshot.
-                let file_tool = evidence.tool == "workspace_read";
-                let memory_tool = matches!(
-                    evidence.tool.as_str(),
-                    "context_update"
-                        | "context_read"
-                        | "context_sources"
-                        | "inspection_plan"
-                        | "inspection_result_read"
-                );
-                if !memory_tool && !evidence.is_error && file_tool {
-                    let value: serde_json::Value =
-                        serde_json::from_slice(&memory.store.read(evidence.artifact)?)
-                            .map_err(|_| error("decode decision source descriptor"))?;
-                    if evidence.tool == "workspace_read" {
-                        evidence.file = value["path"].as_str().map(str::to_owned);
-                    }
-                    self.unknown_dependencies |= value["path"].as_str().is_none_or(|path| {
-                        std::path::Path::new(path).is_absolute()
-                            || crate::workspace_filter::generated(std::path::Path::new(path))
-                    });
-                } else if !memory_tool {
-                    self.unknown_dependencies = true;
-                }
+                self.classify(memory, &mut evidence)?;
                 if let Some(call) = &source.call {
                     evidence.arguments_message =
                         self.calls.get(&(source.invocation, call.id.clone())).copied();
@@ -111,13 +152,26 @@ impl Index {
                             | "skill_read"
                             | "skill_list"
                     );
-                let key = (
-                    evidence.tool.clone(),
-                    evidence.arguments,
-                    evidence.artifact.digest.into_bytes(),
-                );
+                let digest = if reusable {
+                    let mut value: serde_json::Value =
+                        serde_json::from_slice(&memory.store.read(evidence.artifact)?)
+                            .map_err(|_| error("decode reusable inspection"))?;
+                    if let Some(object) = value.as_object_mut() {
+                        // These describe delivery, not the inspected world. Exact original
+                        // bytes and each call binding stay in the immutable archive.
+                        object.remove("local_context");
+                        object.remove("read_reuse");
+                    }
+                    sha256(value.to_string().as_bytes()).into_bytes()
+                } else {
+                    evidence.artifact.digest.into_bytes()
+                };
+                let key = (evidence.tool.clone(), evidence.arguments, digest);
                 if reusable && let Some(prior) = self.inspections.get(&key) {
                     self.aliases.insert(evidence.source, *prior);
+                    if let Some(card) = self.cards.get_mut(prior) {
+                        card.last_seen = evidence.source;
+                    }
                 } else {
                     if reusable {
                         self.inspections.insert(key, evidence.source);
@@ -140,10 +194,16 @@ impl Index {
 fn evidence(memory: &LocalMemory, id: u64) -> Result<Option<Evidence>, DeveloperLoopError> {
     let source = memory.archived(id)?;
     if source.kind == ArchiveKind::ToolOutput {
+        // Successful retrieval is delivery of older evidence, not a new fact. Promoting
+        // receipts here recursively republishes their contents and crowds out current work.
+        if source.is_memory_receipt() && !source.is_error {
+            return Ok(None);
+        }
         let call =
             source.call.as_ref().ok_or_else(|| error("decision evidence has no tool binding"))?;
         return Ok(Some(Evidence {
             source: id,
+            last_seen: id,
             tool: call.name.clone(),
             arguments: call.arguments_digest,
             artifact: source.artifact,
@@ -151,6 +211,9 @@ fn evidence(memory: &LocalMemory, id: u64) -> Result<Option<Evidence>, Developer
             arguments_message: None,
             host_step: false,
             file: None,
+            content: None,
+            page: None,
+            body_bytes: 0,
         }));
     }
     if source.kind != ArchiveKind::HostObservation {
@@ -171,6 +234,7 @@ fn evidence(memory: &LocalMemory, id: u64) -> Result<Option<Evidence>, Developer
         nodes.get(index as usize).ok_or_else(|| error("decision plan ordinal unavailable"))?;
     Ok(Some(Evidence {
         source: id,
+        last_seen: id,
         tool: node.tool.name().to_owned(),
         arguments: sha256(arguments.to_string().as_bytes()).into_bytes(),
         artifact: output,
@@ -178,5 +242,8 @@ fn evidence(memory: &LocalMemory, id: u64) -> Result<Option<Evidence>, Developer
         arguments_message: None,
         host_step: true,
         file: None,
+        content: None,
+        page: None,
+        body_bytes: 0,
     }))
 }

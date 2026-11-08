@@ -23,6 +23,8 @@ pub(super) const READ: &str = "design_pass_read";
 pub(super) const SELECT: &str = "design_source_select";
 pub(super) const RECOVER: &str = "design_recover";
 pub(super) const PATCH: &str = "design_candidate_patch";
+pub(super) const PROPOSAL_READ: &str = "design_proposal_read";
+pub(super) const REPAIR: &str = "design_proposal_repair";
 
 pub(super) const POLICY: &str = r"# Domain expert design pass
 Produce an implementation-ready design by doing useful expert work: inspect the supplied design and relevant current code, identify concrete domain questions, research authoritative answers, and save actionable amendments. Preserve every source requirement, exclusion, value and current user instruction. The full domain-obligation policy above governs this pass.
@@ -33,10 +35,15 @@ Start with design_research_plan: identify applicable domains and a small set of 
 
 As soon as a question has a justified answer, save design_amendment with the actual design change, target section, rationale, affected contracts, failure behavior, exact evidence and observable acceptance. The host assigns and cross-links all ledger IDs and captures web metadata. Do not reproduce a complete structured ledger. Save useful work before researching unrelated questions. Further research must address a named unresolved question or a newly discovered necessary obligation; append that question to the plan first. If evidence is unavailable, retain an unknown/conflict amendment and report its precise limitation through the research_limited/wait_for_user boundary; never fabricate successful research.
 
+When a call is rejected, the host retains that exact proposal and returns a proposal handle and field pointer. Use design_proposal_read only for needed candidate bytes, then design_proposal_repair to change those fields. design_pass_read records returns the accepted predecessor, not the rejected proposal. Preserve unchanged Markdown, evidence and acceptance. Repairs recheck all current authority and identity constraints. Official/primary evidence requires a nonempty applicable version or publication date; never invent one. An engineering_rationale invariant may omit its redundant reference.kind; other reference kinds remain explicit.
+
 If retained candidate work exists, use design_recover once, inspect the relevant draft pages, reconcile current instructions and evidence, and update only affected questions/amendments. Prior candidate work is unapproved evidence. Every question must be resolved and source obligations preserved before design_publish. Call design_publish with the current draft_version and your substantive review, without resending unchanged Markdown or records. The host validates and publishes every required checkpoint. After successful publication, return a concise handoff; authorized coding proceeds automatically. No workspace edits, commands, commits, or permission expansion occur in this design stage.";
 
 pub fn owns(name: &str) -> bool {
-    matches!(name, PLAN | AMEND | PUBLISH | READ | SELECT | RECOVER | PATCH)
+    matches!(
+        name,
+        PLAN | AMEND | PUBLISH | READ | SELECT | RECOVER | PATCH | PROPOSAL_READ | REPAIR
+    )
 }
 
 mod schema;
@@ -57,7 +64,13 @@ pub fn context(
         .as_ref()
         .is_some_and(|state| state.stage() == super::ExpansionStage::Ready);
     let mut projection = pass.observation();
-    if recovery && !published {
+    if !published && let Some(rejected) = super::rejected::current(input)? {
+        projection["rejected_proposal"] = rejected;
+        projection["next_action"] = json!(
+            "Repair the retained rejected proposal with design_proposal_repair. Change only the indicated fields; do not regenerate unchanged research or Markdown."
+        );
+    }
+    if recovery && !published && projection.get("rejected_proposal").is_none() {
         projection["next_action"] = json!(
             "Use design_recover before creating a new worklist. Reconcile the saved draft and retained evidence with current instructions, then change only affected amendments or candidate fields."
         );
@@ -80,15 +93,59 @@ pub fn execute(
     workspace: &mut WorkspaceDeveloperTools,
     call: &CompletedToolCall,
 ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
-    let result = execute_inner(input, research, workspace, call);
+    let mut repaired = None;
+    let result = (|| {
+        let arguments: Value = serde_json::from_slice(call.arguments().canonical_bytes())
+            .map_err(|e| failure(e.to_string()))?;
+        if call.name().as_str() == PROPOSAL_READ {
+            schema::validate(call.name().as_str(), &arguments)
+                .map_err(|e| failure(e.to_string()))?;
+            return super::rejected::read(input, &arguments);
+        }
+        let target = if call.name().as_str() == REPAIR {
+            schema::validate(call.name().as_str(), &arguments)
+                .map_err(|e| failure(e.to_string()))?;
+            repaired = Some(super::rejected::repair(input, &arguments)?);
+            repaired.as_ref().expect("reconstructed repair")
+        } else {
+            call
+        };
+        let arguments = serde_json::from_slice(target.arguments().canonical_bytes())
+            .map_err(|e| failure(e.to_string()))?;
+        if let Err(error) = schema::validate(target.name().as_str(), &arguments) {
+            return super::rejected::retain(input, target, error.path(), error.detail());
+        }
+        execute_inner(input, research, workspace, target)
+    })();
     let is_error = result.is_err();
-    let value = result.unwrap_or_else(|error| json!({"error":error.detail()}));
+    let value = match result {
+        Ok(value) => value,
+        Err(error) => super::rejected::retain(input, repaired.as_ref().unwrap_or(call), "", error.detail())
+            .unwrap_or_else(|retention| json!({"error":{"code":"proposal_rejected","detail":error.detail(),"retention_error":retention.detail(),"effect_executed":false}})),
+    };
+    let is_error = is_error || value.get("error").is_some();
     Ok(DeveloperToolObservation {
         output: CanonicalJson::parse(
             &value.to_string(),
             JsonBounds::value(ProtocolLimits::PRODUCTION),
         )?,
         is_error,
+    })
+}
+
+pub fn reject(
+    input: &ProductRunInput,
+    call: &CompletedToolCall,
+    error: &peritus_model_protocol::ToolArgumentViolation,
+) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+    let value = super::rejected::retain(input, call, error.path(), error.detail())
+        .map_err(|e| DeveloperLoopError::Tool(e.to_string()))?;
+    Ok(DeveloperToolObservation {
+        output: CanonicalJson::parse(
+            &value.to_string(),
+            JsonBounds::value(ProtocolLimits::PRODUCTION),
+        )?,
+        is_error: true,
     })
 }
 
@@ -297,19 +354,7 @@ fn patch_candidate(
 }
 
 fn resolve_evidence(value: &Value) -> Result<Value, ProductRunnerError> {
-    let mut evidence = value.clone();
-    if evidence["reference"]["kind"] == "web" {
-        let reference = &evidence["reference"];
-        let start =
-            reference["start"].as_u64().ok_or_else(|| failure("web range start missing"))?;
-        let end = reference["end"].as_u64().ok_or_else(|| failure("web range end missing"))?;
-        if end <= start || end - start > 1_048_576 {
-            return Err(failure("invalid web evidence range"));
-        }
-        let page=peritus_tools_web::Store::for_user().and_then(|store|store.read(&json!({"source":reference["source"],"offset":start,"max_bytes":(end-start+4).min(1_048_576),"include_links":false}))).map_err(|e|failure(e.to_string()))?;
-        evidence["reference"] = json!({"kind":"web","source":reference["source"],"requested_url":page["requested_url"],"final_url":page["url"],"fetched_at_unix":page["fetched_at_unix"],"text_sha256":page["text_sha256"],"start":start,"end":end});
-    }
-    Ok(evidence)
+    super::evidence_input::resolve(value)
 }
 
 fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, ProductRunnerError> {
@@ -412,7 +457,14 @@ fn record_amendment(
         .ok_or_else(|| failure("amendment is not an object"))?
         .remove("expected_version");
     amendment.as_object_mut().expect("checked object").remove("source_sha256");
-    let mut amendment: Amendment =
+    let evidence = amendment["evidence"]
+        .as_array()
+        .ok_or_else(|| failure("missing evidence array"))?
+        .iter()
+        .map(resolve_evidence)
+        .collect::<Result<Vec<_>, _>>()?;
+    amendment["evidence"] = json!(evidence);
+    let amendment: Amendment =
         serde_json::from_value(amendment).map_err(|e| failure(e.to_string()))?;
     let question = pass
         .questions()
@@ -430,14 +482,9 @@ fn record_amendment(
             "amendment needs bounded Markdown, evidence and observable acceptance",
         ));
     }
-    amendment.evidence =
-        amendment.evidence.iter().map(resolve_evidence).collect::<Result<Vec<_>, _>>()?;
     if question.external_authority_required
         && !matches!(amendment.class.as_str(), "unknown" | "conflict")
-        && !amendment.evidence.iter().any(|e| {
-            e["reference"]["kind"] == "web"
-                && matches!(e["authority"].as_str(), Some("primary" | "official"))
-        })
+        && !amendment.evidence.iter().any(super::evidence_input::Evidence::is_external)
     {
         return Err(failure("this research question requires opened primary/official evidence"));
     }

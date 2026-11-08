@@ -16,6 +16,7 @@ pub(super) mod inspector;
 pub(super) mod library;
 mod markdown;
 mod memory;
+mod models;
 mod modules;
 mod permissions;
 mod progress;
@@ -59,7 +60,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
                 if model.chat.selecting_output() {
                     "Paste/F2/Esc returns · SELECT: drag, then terminal Copy · work continues"
                 } else {
-                    "↑ history · F3 prompts · /keys shortcuts · Drag to copy · F2 · Type /"
+                    "↑ history · F3 prompts · /models roles · /keys · Drag to copy · F2"
                 },
                 Style::default().fg(MUTED),
             ),
@@ -82,7 +83,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     } else if model.chat.effort_picker() {
         effort::draw(frame, regions[1], model);
     } else if model.chat.model_picker() {
-        draw_models(frame, regions[1], model);
+        models::draw(frame, regions[1], model);
     } else if model.chat.history.search.is_some() {
         history::draw(frame, regions[1], model);
     } else {
@@ -238,70 +239,4 @@ pub fn transcript_area(model: &AppModel, viewport: Rect) -> Rect {
     );
     composer::regions(viewport, draft.lines.len(), model.chat.working.elapsed_seconds().is_some())
         [1]
-}
-
-fn draw_models(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    let regions =
-        Layout::vertical([Constraint::Length(4), Constraint::Min(1), Constraint::Length(3)])
-            .split(area);
-    let Some(catalog) = &model.chat.catalog else {
-        let status = if model.model_discovery_pending() {
-            "Querying configured provider model catalog…"
-        } else {
-            "Model catalog unavailable. r retries discovery."
-        };
-        frame.render_widget(
-            Paragraph::new(format!(
-                "{status}\ne selects effort · Escape closes; no inference request is sent."
-            ))
-            .wrap(Wrap { trim: false }),
-            area,
-        );
-        return;
-    };
-    let provenance = if catalog.cached() {
-        "cached provider catalog"
-    } else if catalog.fetched_unix_seconds() == 0 {
-        "discovery unavailable"
-    } else {
-        "fresh provider catalog"
-    };
-    frame.render_widget(
-        Paragraph::new(format!(
-            "Model for {} · effort {} · {provenance}\nConfigured: {} · fetched at Unix {}\n{}",
-            model.chat.model_role.label(),
-            model.chat.model_role.choice(&model.chat.models).effort().label(),
-            catalog.configured(),
-            catalog.fetched_unix_seconds(),
-            catalog.error()
-        ))
-        .wrap(Wrap { trim: false }),
-        regions[0],
-    );
-    let items = catalog
-        .models()
-        .iter()
-        .map(|entry| {
-            ListItem::new(format!(
-                "{} · {} · tools {}",
-                entry.id(),
-                entry.label(),
-                match entry.tools() {
-                    Some(true) => "advertised",
-                    Some(false) => "unsupported",
-                    None => "unknown",
-                }
-            ))
-        })
-        .collect::<Vec<_>>();
-    let mut state = ListState::default();
-    if !items.is_empty() {
-        state.select(Some(model.chat.model_selection.min(items.len() - 1)));
-    }
-    frame.render_stateful_widget(
-        List::new(items).highlight_symbol("▸ ").highlight_style(Style::default().fg(ACCENT)),
-        regions[1],
-        &mut state,
-    );
-    frame.render_widget(Paragraph::new("Enter selects · e selects effort · Tab changes role · r refreshes · Esc closes\nListing is not capability verification. Manual fallback: /model [role] manual ID").wrap(Wrap { trim: false }), regions[2]);
 }

@@ -455,40 +455,31 @@ impl ModelProvider for OpenCodeRuntimeProvider {
         &self.profile
     }
 
-    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
-        let Some(model) = self.model_metadata()? else {
-            return Ok(self.profile.clone());
-        };
-        peritus_provider_core::catalog::profile_with_model_limits(
-            &self.profile,
-            &model,
-            output_tokens,
-        )
-    }
-
-    fn output_tokens_for_input(&self, input: u64, output: u64) -> Result<u64, ProviderCoreError> {
-        let Some(model) = self.model_metadata()? else {
-            return Ok(output.min(self.profile.limits().max_output_tokens()));
-        };
-        peritus_provider_core::catalog::output_tokens_for_input(
-            &self.profile,
-            &model,
-            input,
-            output,
-        )
-    }
-
     fn prepare_context<'a>(
         &'a self,
+        output_tokens: u64,
         cancellation: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
-        Box::pin(async {
+    ) -> BoxFuture<'a, Result<peritus_provider_core::PreparedModelContext, ProviderCoreError>> {
+        Box::pin(async move {
             let _loading = self.catalog_loading.lock().await;
             let empty = self.catalog.lock().map_err(|_| catalog_error())?.is_empty();
             if empty {
                 self.discover_models(cancellation).await?;
             }
-            Ok(())
+            self.model_metadata()?.map_or_else(
+                || {
+                    Ok(peritus_provider_core::PreparedModelContext::configured(
+                        self.profile.clone(),
+                    ))
+                },
+                |model| {
+                    peritus_provider_core::PreparedModelContext::advertised(
+                        &self.profile,
+                        &model,
+                        output_tokens,
+                    )
+                },
+            )
         })
     }
 

@@ -39,7 +39,7 @@ impl ExecutionContext {
             ));
         }
         let transcript = input.conversation.render();
-        let obligations = RunObligations::capture(&transcript, input.conversation.revision())?;
+        let obligations = RunObligations::capture(&input.task, input.requirements_revision())?;
         let baseline = input
             .resume
             .as_ref()
@@ -55,9 +55,13 @@ impl ExecutionContext {
             input.command_runtime.local_context_config().candidate_observation
                 == crate::CandidateObservationPolicy::Shared,
         )?;
-        let _ = recorder.refresh(input.conversation.revision())?;
+        let _ = recorder.refresh(input.requirements_revision())?;
         let next_phase = match (&input.resume, recorder.checkpoint()?) {
-            (Some(resume), Some(checkpoint)) => resume.plan(*checkpoint.identity(), &transcript)?,
+            (Some(resume), Some(checkpoint)) => resume.plan(
+                *checkpoint.identity(),
+                &transcript,
+                input.continues_existing_design(),
+            )?,
             _ => ProductRunPhase::Designing,
         };
         let (design, state, evidence, gate_report) = if let Some(resume) = &input.resume {
@@ -97,7 +101,24 @@ impl ExecutionContext {
                 (Some(design), state, evidence, resume.gate_report().cloned())
             }
         } else {
-            (None, None, RunEvidence::default(), None)
+            (crate::delivery::Delivery::recover_design(input)?, None, RunEvidence::default(), None)
+        };
+        let next_phase = if let Some(design) = &design {
+            let delivery = crate::delivery::Delivery::load(input, design)?;
+            if input.resume.is_none()
+                || (next_phase != ProductRunPhase::Designing
+                    && (delivery.planning() || delivery.constructing()))
+            {
+                ProductRunPhase::Writing
+            } else if next_phase == ProductRunPhase::Finalizing
+                && !crate::delivery::qualified(input, design)?
+            {
+                ProductRunPhase::Checking
+            } else {
+                next_phase
+            }
+        } else {
+            next_phase
         };
         Ok(Self {
             baseline,

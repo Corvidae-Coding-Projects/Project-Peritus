@@ -12,9 +12,25 @@ use peritus_model_protocol::{
 };
 use std::sync::Arc;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum PipelineIntent {
+    ContinueExisting,
+    AmendRequirements,
+}
+
+impl PipelineIntent {
+    fn parse(arguments: &serde_json::Value) -> Option<Self> {
+        match arguments.get("intent").and_then(serde_json::Value::as_str) {
+            Some("continue_existing") => Some(Self::ContinueExisting),
+            Some("amend_requirements") => Some(Self::AmendRequirements),
+            _ => None,
+        }
+    }
+}
+
 pub(super) struct ConversationTools<'a> {
     pub(super) workspace: WorkspaceDeveloperTools,
-    pub(super) requested_revision: Option<u64>,
+    pub(super) requested_pipeline: Option<(u64, PipelineIntent)>,
     pub(super) allow_pipeline: bool,
     pub(super) conversation: Arc<dyn ConversationView>,
     input: &'a crate::ProductRunInput,
@@ -35,7 +51,7 @@ impl<'a> ConversationTools<'a> {
                     .with_task_contract(&input.conversation.render());
                 if allow_design { tools.for_design_expansion() } else { tools }
             }),
-            requested_revision: None,
+            requested_pipeline: None,
             allow_pipeline,
             conversation: Arc::clone(&input.conversation),
             input,
@@ -55,6 +71,17 @@ impl<'a> ConversationTools<'a> {
 }
 
 impl DeveloperToolExecutor for ConversationTools<'_> {
+    fn reject_tool_arguments(
+        &mut self,
+        call: &CompletedToolCall,
+        error: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        if crate::design::expert_tool(call.name().as_str()) {
+            crate::design::reject_expert_arguments(self.input, call, error)
+        } else {
+            self.workspace.reject_tool_arguments(call, error)
+        }
+    }
     fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
         self.rebind_context = false;
         if let Some(research) = &mut self.research {
@@ -73,7 +100,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
         if self.allow_pipeline {
             // This phase can only inspect or hand off. Its optional inspection must not impose
             // another startup discovery phase before the executor that actually owns edits.
-            Some("Conversation is read-only. This conversation coordinator owns the current invocation; no pipeline is running here. A historical run_pipeline result is not an active handoff. For understood, explicitly authorized implementation, continuation or retry, call run_pipeline directly, even when an earlier invocation handed off before interruption. This is a new coordinator handoff, not redispatch of an already completed workspace operation. Its executor owns the one grounding check and target reads. A pending workspace grounding check is not a prerequisite to this handoff. For questions or read-only requests, inspect only the exact evidence needed to answer; do not start the pipeline.".to_owned())
+            Some("Conversation is read-only. This conversation coordinator owns the current invocation; no pipeline is running here. A historical run_pipeline result is not an active handoff. For understood, explicitly authorized implementation, continuation or retry, call run_pipeline directly, even when an earlier invocation handed off before interruption. Set intent=continue_existing only for an operational resume or retry of retained authorized requirements; set intent=amend_requirements for any added, removed, changed, or replaced behavior, constraint, or deliverable. This is a new coordinator handoff, not redispatch of an already completed workspace operation. Its executor owns the one grounding check and target reads. A pending workspace grounding check is not a prerequisite to this handoff. For questions or read-only requests, inspect only the exact evidence needed to answer; do not start the pipeline.".to_owned())
         } else {
             Some(format!(
                 "{}{}",
@@ -117,7 +144,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
     }
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if crate::design::expert_tool(call.name().as_str()) {
-            return if call.name().as_str() == "design_pass_read" {
+            return if matches!(call.name().as_str(), "design_pass_read" | "design_proposal_read") {
                 DeveloperToolEffect::ReadOnly
             } else {
                 DeveloperToolEffect::MutationCapable
@@ -177,6 +204,7 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
                         | "design_research_plan"
                         | "design_amendment"
                         | "design_recover"
+                        | "design_proposal_repair"
                 );
             return Ok(result);
         }
@@ -205,16 +233,18 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
         let arguments: serde_json::Value =
             serde_json::from_slice(call.arguments().canonical_bytes())
                 .map_err(|error| DeveloperLoopError::Tool(error.to_string()))?;
+        let intent = PipelineIntent::parse(&arguments);
         let allowed = self.allow_pipeline
-            && arguments.as_object().is_some_and(serde_json::Map::is_empty)
+            && arguments.as_object().is_some_and(|object| object.len() == 1)
+            && intent.is_some()
             && pipeline_permissions_allow(self.conversation.as_ref());
-        if allowed {
-            self.requested_revision = Some(self.conversation.incorporated_revision());
+        if let Some(intent) = intent.filter(|_| allowed) {
+            self.requested_pipeline = Some((self.conversation.incorporated_revision(), intent));
         }
         let output = if allowed {
-            r#"{"handoff":"The host will run the existing design, writer, verification, reviewer and fixer pipeline for the unchanged user conversation."}"#
+            r#"{"handoff":"The host will run the design, writer, verification, reviewer and fixer pipeline using the typed requirements intent supplied in this call."}"#
         } else {
-            r#"{"error":"Pipeline handoff requires an authorized implementation request, current read and write permissions, and an empty argument object. Process and network permissions are checked only by tools that need them."}"#
+            r#"{"error":"Pipeline handoff requires an authorized implementation request, current read and write permissions, and exactly one intent: continue_existing or amend_requirements. Process and network permissions are checked only by tools that need them."}"#
         };
         Ok(DeveloperToolObservation {
             output: CanonicalJson::parse(output, JsonBounds::value(ProtocolLimits::PRODUCTION))?,
@@ -223,11 +253,11 @@ impl DeveloperToolExecutor for ConversationTools<'_> {
     }
 
     fn yields_to_host(&self) -> bool {
-        self.requested_revision.is_some() || self.rebind_context
+        self.requested_pipeline.is_some() || self.rebind_context
     }
     fn response_blocker(&self, reply: &str) -> Option<String> {
         (self.allow_pipeline
-            && self.requested_revision.is_none()
+            && self.requested_pipeline.is_none()
             && super::handoff::promises_execution(reply))
         .then(|| super::handoff::CORRECTION.to_owned())
     }
@@ -246,8 +276,8 @@ pub(super) fn definition() -> Result<ToolDefinition, DeveloperLoopError> {
     let limits = ProtocolLimits::PRODUCTION;
     Ok(ToolDefinition::new(
         ToolName::new("run_pipeline".to_owned())?,
-        Some(BoundedText::new("Hand an explicitly authorized implementation, fix or effectful task to the existing production pipeline. It performs design, implementation, exact-target checks, independent review and fixes; progress stays in this chat. The host preserves the actual user conversation and selected models. Do not use for questions, explanations, diagnosis, planning or read-only review. This does not authorize work beyond the user's request.".to_owned(), limits)?),
-        JsonSchema::parse(r#"{"type":"object","properties":{},"required":[],"additionalProperties":false}"#, SchemaDialect::Draft202012, JsonBounds::schema(limits))?, true,
+        Some(BoundedText::new("Hand an explicitly authorized implementation, fix or effectful task to the existing production pipeline. It performs design, implementation, exact-target checks, independent review and fixes; progress stays in this chat. Set intent to continue_existing only when the latest user message operationally resumes or retries already-authorized retained work without changing its requirements. Set amend_requirements when the latest message adds, removes, changes, or replaces a requested behavior, constraint, or deliverable. The host preserves the actual user conversation and selected models. Do not use for questions, explanations, diagnosis, planning or read-only review. This does not authorize work beyond the user's request.".to_owned(), limits)?),
+        JsonSchema::parse(r#"{"type":"object","properties":{"intent":{"type":"string","enum":["continue_existing","amend_requirements"],"description":"Semantic relation between the latest user message and retained pipeline requirements."}},"required":["intent"],"additionalProperties":false}"#, SchemaDialect::Draft202012, JsonBounds::schema(limits))?, true,
     ))
 }
 

@@ -4,7 +4,7 @@
 
 Implementation pieces for `design.rs`: exact source capture, one startup repository-grounding check,
 focused domain research with immutable evidence, expansion state, task-plan publication, and
-host-validated accepted-design reuse. Grounding completion closes repeat root-wide discovery but not
+host-validated accepted-design reuse. The parent design.rs also restores an exact frozen design for a previously admitted delivery after interruption; baseline research is historical and current code requires fresh qualification. Grounding completion closes repeat root-wide discovery but not
 exact/scoped repository observations or the bounded attachment, web, computer-observation, and
 bundled-skill reads required by unresolved design obligations.
 
@@ -19,6 +19,8 @@ bundled-skill reads required by unresolved design obligations.
 | [expert_tools.rs](expert_tools.rs) | Transactional question/amendment, recovery, bounded candidate patch, exact source selection, and publish-by-version dispatch through existing evidence and Ready validation. Tool schemas live in [expert_tools/schema.rs](expert_tools/schema.rs). |
 | [expansion.rs](expansion.rs) | Host-owned domain-expansion lifecycle, typed evidence/obligation/acceptance/change/question records, exact answer binding, CAS manifest persistence, deterministic derived Markdown, and artifact-bound ready/partial publication. |
 | [research.rs](research.rs) | Design-expansion state tool, bounded model-facing source reads, steering refresh, material-question wait/resume/restart, historical views, validated publication, and required progress checkpoints. |
+| [evidence_input.rs](evidence_input.rs) | Authority-specific typed evidence input and matching schema; retained web identities stay host-owned. |
+| [rejected.rs](rejected.rs) | Private exact rejected proposals, bounded reads, digest/owner/source/version checks and field-level repair. |
 | [retention.rs](retention.rs) | Private historical source/ledger copies and unvalidated publication proposals retained across steering, rejection, and restart. |
 | [research_tests.rs](research_tests.rs) | Filesystem-backed steering, exact source selection, amendment/CAS/restart, evidence repair, large-draft deltas, permissions, context identities, and informed checkpoint scheduling regressions. |
 | [qualification.rs](qualification.rs) | Frozen Stage 8 fixture/rubric identity and schema checks used by the deterministic qualification suite. |

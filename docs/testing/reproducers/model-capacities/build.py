@@ -16,7 +16,7 @@ for line in records.open():
  if d.get('reason')=='compiler-artifact':
   for f in d['filenames']:
    if f.endswith('.rlib'):artifacts[d['target']['name']]=f
-libraries=['peritus_daemon','peritus_agent','peritus_product_runner','peritus_process','peritus_role','peritus_provider_core','peritus_provider_openai','peritus_model_protocol','peritus_types','serde_json','tokio']
+libraries=['peritus_daemon','peritus_agent','peritus_product_runner','peritus_process','peritus_role','peritus_provider_core','peritus_provider_openai','peritus_provider_opencode','peritus_model_protocol','peritus_types','serde_json','tokio','zeroize']
 deps=Path(artifacts['peritus_product_runner']).parent
 if deps.name!='deps':deps=deps/'deps'
 command=['rustc','--edition=2024','-C','debuginfo=0',str(Path(__file__).with_name('consumer.rs')),'-L','dependency='+str(deps),'-o',str(a.output/'consumer')]

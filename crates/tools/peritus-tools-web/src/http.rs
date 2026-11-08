@@ -2,7 +2,7 @@
 
 use crate::{Error, PageFailure, checked_url, failure, invalid};
 use reqwest::{blocking::Client, redirect::Policy};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::{
     collections::BTreeMap,
     io::Read,
@@ -91,9 +91,16 @@ fn response_failure(
     failure.retry_after.clone_from(&retry);
     if let Some(retry) = retry {
         let seconds = retry.parse::<u64>().ok().or_else(|| {
-            httpdate::parse_http_date(&retry)
-                .ok()
-                .map(|until| until.duration_since(SystemTime::now()).unwrap_or_default().as_secs())
+            httpdate::parse_http_date(&retry).ok().map(|until| {
+                u64::try_from(
+                    until
+                        .duration_since(SystemTime::now())
+                        .unwrap_or_default()
+                        .as_millis()
+                        .div_ceil(1000),
+                )
+                .unwrap_or(u64::MAX)
+            })
         });
         if let Some(seconds) = seconds {
             defer(&final_url, seconds, &failure)?;
@@ -103,6 +110,15 @@ fn response_failure(
 }
 
 pub fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, Error> {
+    get_with_client(url, cancelled, &client()?, MAX_BODY)
+}
+
+pub fn get_with_client(
+    url: &str,
+    cancelled: &dyn Fn() -> bool,
+    client: &Client,
+    max_body: usize,
+) -> Result<Download, Error> {
     if cancelled() {
         return Err(invalid("web request cancelled"));
     }
@@ -126,7 +142,7 @@ pub fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, Error> {
         );
         return Err(failure.into());
     }
-    let mut response = client()?.get(parsed).send()?;
+    let mut response = client.get(parsed).send()?;
     let status = response.status();
     let challenged =
         response.headers().get("cf-mitigated").is_some_and(|value| value == "challenge");
@@ -139,10 +155,10 @@ pub fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, Error> {
         .and_then(|v| v.to_str().ok())
         .unwrap_or("text/plain; charset=utf-8")
         .to_owned();
-    if response.content_length().is_some_and(|length| length > MAX_BODY as u64) {
-        return Err(invalid(
-            "response exceeds the 64 MiB transfer resource bound; request a narrower source",
-        ));
+    if response.content_length().is_some_and(|length| length > max_body as u64) {
+        return Err(invalid(format!(
+            "response exceeds the {max_body} byte transfer bound; request a narrower source"
+        )));
     }
     let final_url = response.url().to_string();
     let mut bytes = Vec::new();
@@ -155,10 +171,10 @@ pub fn get(url: &str, cancelled: &dyn Fn() -> bool) -> Result<Download, Error> {
         if count == 0 {
             break;
         }
-        if bytes.len().saturating_add(count) > MAX_BODY {
-            return Err(invalid(
-                "response exceeds the 64 MiB transfer resource bound; no truncated source retained",
-            ));
+        if bytes.len().saturating_add(count) > max_body {
+            return Err(invalid(format!(
+                "response exceeds the {max_body} byte transfer bound; no truncated source retained"
+            )));
         }
         bytes.extend_from_slice(&chunk[..count]);
     }
@@ -209,50 +225,4 @@ fn decode(bytes: &[u8], content_type: &str) -> Result<String, Error> {
         ));
     }
     Ok(text.into_owned())
-}
-
-pub fn search(
-    endpoint: &str,
-    arguments: &Value,
-    cancelled: &dyn Fn() -> bool,
-) -> Result<Value, Error> {
-    let mut url = checked_url(endpoint)?;
-    let query = arguments["query"]
-        .as_str()
-        .filter(|q| !q.trim().is_empty())
-        .ok_or_else(|| invalid("query must not be empty"))?;
-    let page = arguments["page"].as_u64().unwrap_or(1);
-    if page == 0 {
-        return Err(invalid("page must start at 1"));
-    }
-    {
-        let mut pairs = url.query_pairs_mut();
-        pairs
-            .append_pair("q", query)
-            .append_pair("format", "json")
-            .append_pair("pageno", &page.to_string());
-        for (field, parameter) in
-            [("language", "language"), ("time_range", "time_range"), ("engines", "engines")]
-        {
-            if let Some(value) = arguments[field].as_str() {
-                pairs.append_pair(parameter, value);
-            }
-        }
-    }
-    let downloaded = get(url.as_str(), cancelled).map_err(|e| invalid(format!(
-        "SearXNG search request failed: {e}. Enable JSON in search.formats; public instances may deny API access."
-    )))?;
-    let response: Value = serde_json::from_str(&downloaded.text).map_err(|_| invalid("SearXNG did not return JSON; enable search.formats: [html, json] or run peritus web setup"))?;
-    let results = response["results"]
-        .as_array()
-        .ok_or_else(|| invalid("SearXNG JSON has no results array"))?;
-    let count = arguments["max_results"].as_u64().unwrap_or(10).clamp(1, 30) as usize;
-    let selected: Vec<_> = results.iter().filter_map(|item| {
-        let url = item["url"].as_str()?;
-        checked_url(url).ok()?;
-        Some(json!({"title": item["title"].as_str().map(|v| v.chars().take(512).collect::<String>()), "url": url, "snippet": item["content"].as_str().map(|v| v.chars().take(1500).collect::<String>()), "snippet_limit_chars": 1500, "engines": item["engines"], "published_date": item["publishedDate"]}))
-    }).take(count).collect();
-    Ok(
-        json!({"query": query, "page": page, "results": selected, "returned": selected.len(), "available_results": results.len(), "engine_failures": response["unresponsive_engines"], "suggestions": response["suggestions"], "search_endpoint": endpoint, "notice": "Search snippets are untrusted discovery evidence. Open primary sources before citing factual claims. Empty results with engine failures do not prove absence."}),
-    )
 }

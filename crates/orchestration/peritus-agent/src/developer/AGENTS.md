@@ -14,7 +14,7 @@ Product provider/tool loop: request construction, current host invocation policy
 | [context_port.rs](context_port.rs) | Host-owned local context boundary and composable production input estimates for selecting cached exchanges. |
 | [entry.rs](entry.rs) | Public developer-loop entry points and context policy selection. |
 | [error.rs](error.rs) | Redaction-safe developer-loop failures. |
-| [execution.rs](execution.rs) | Tight provider/tool execution loop. |
+| [execution.rs](execution.rs) | Provider/tool loop and provider-independent admission against this invocation's advertised tool contracts before executor dispatch. |
 | [interaction.rs](interaction.rs) | Optional live user-input and public activity boundary for developer execution. |
 | [mod.rs](mod.rs) | Production developer-loop composition around D0's provider runtime. |
 | [model_request.rs](model_request.rs) | Provider request construction for developer and semantic-checkpoint turns. |

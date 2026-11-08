@@ -1,6 +1,6 @@
 //! Strict expert tool schemas, separate from state transactions.
 
-use super::{AMEND, PATCH, PLAN, PUBLISH, READ, RECOVER, SELECT};
+use super::{AMEND, PATCH, PLAN, PROPOSAL_READ, PUBLISH, READ, RECOVER, REPAIR, SELECT};
 use peritus_agent::DeveloperLoopError;
 use peritus_model_protocol::{
     BoundedText, JsonBounds, JsonSchema, ProtocolLimits, SchemaDialect, ToolDefinition, ToolName,
@@ -46,22 +46,27 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, DeveloperLoopError> {
     let short = json!({"type":"string","minLength":1,"maxLength":1024});
     let texts = json!({"type":"array","minItems":1,"maxItems":64,"items":short});
     let version = json!({"type":"integer","minimum":1});
-    let nullable_text = json!({"anyOf":[{"type":"null"},short]});
-    let reference = json!({"anyOf":[
-        object(json!({"kind":{"type":"string","enum":["repository"]},"path":short,"sha256":{"type":"string","minLength":64,"maxLength":64}})),
-        object(json!({"kind":{"type":"string","enum":["web"]},"source":{"type":"string","minLength":64,"maxLength":64},"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":1}})),
-        object(json!({"kind":{"type":"string","enum":["source_range"]},"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":1}})),
-        object(json!({"kind":{"type":"string","enum":["engineering_rationale"]},"invariant":text}))
-    ]});
     let question =
         object(json!({"question":short,"external_authority_required":{"type":"boolean"}}));
     let domain = object(
         json!({"discipline":short,"applicability":short,"risks":texts,"questions":{"type":"array","minItems":1,"maxItems":32,"items":question}}),
     );
-    let evidence = object(
-        json!({"title":short,"version":nullable_text,"authority":{"type":"string","enum":["source_design","repository","primary","official","engineering_rationale"]},"reference":reference}),
-    );
+    let evidence = crate::design::evidence_input::schema();
     Ok(vec![
+        definition(
+            PROPOSAL_READ,
+            "Read an exact bounded page of a rejected proposal by its error handle. This is unapproved candidate data, distinct from design_pass_read records (the accepted predecessor). Reading old proposals does not approve or rebind them.",
+            &object(
+                json!({"proposal":{"type":"string","minLength":64,"maxLength":64},"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":4,"maximum":32768}}),
+            ),
+        )?,
+        definition(
+            REPAIR,
+            "Repair only named JSON Pointer fields of a retained rejected proposal, preserving every other byte value. Each value_json is the new field value encoded as JSON. Use the source_sha256 and draft_version from the error. Source and predecessor fields cannot be patched. The host rechecks the complete proposal, current authority, evidence and binding before committing; a rejection returns a new repair handle.",
+            &mutation(
+                json!({"proposal":{"type":"string","minLength":64,"maxLength":64},"changes":{"type":"array","minItems":1,"maxItems":64,"items":object(json!({"path":{"type":"string","minLength":1,"maxLength":1024},"value_json":{"type":"string","minLength":1,"maxLength":32768}}))}}),
+            ),
+        )?,
         definition(
             PLAN,
             "Identify the applicable domains and concrete questions that can change this design. Append new domains only when research discovers a new obligation. External-authority questions require opened primary/official evidence. This saves a worklist, not a completed design; question IDs are returned by the host.",
@@ -110,4 +115,36 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, DeveloperLoopError> {
             "record_changes":{"type":"array","maxItems":128,"items":object(json!({"collection":{"type":"string","enum":["domains","evidence","obligations","acceptance_mappings","change_ledger"]},"id":short,"replacement_json":{"anyOf":[{"type":"null"},text]}}))}})),
         )?,
     ])
+}
+
+pub(super) fn validate(
+    name: &str,
+    value: &Value,
+) -> Result<(), peritus_model_protocol::ToolArgumentViolation> {
+    use peritus_model_protocol::ToolArgumentSchema;
+    use std::{collections::BTreeMap, sync::OnceLock};
+    static SCHEMAS: OnceLock<
+        Result<BTreeMap<String, ToolArgumentSchema>, peritus_model_protocol::ToolArgumentViolation>,
+    > = OnceLock::new();
+    let schemas = SCHEMAS
+        .get_or_init(|| {
+            definitions()
+                .map_err(|error| {
+                    peritus_model_protocol::ToolArgumentViolation::new("", error.to_string())
+                })?
+                .into_iter()
+                .map(|definition| {
+                    let schema = ToolArgumentSchema::compile(definition.parameters())?;
+                    Ok((definition.name().as_str().to_owned(), schema))
+                })
+                .collect()
+        })
+        .as_ref()
+        .map_err(Clone::clone)?;
+    schemas
+        .get(name)
+        .ok_or_else(|| {
+            peritus_model_protocol::ToolArgumentViolation::new("", "undeclared expert tool")
+        })?
+        .validate_value(value)
 }

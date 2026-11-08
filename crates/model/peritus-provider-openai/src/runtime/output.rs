@@ -53,6 +53,7 @@ pub struct RuntimeTurn {
 pub struct RuntimeToolCall {
     pub name: String,
     pub arguments: CanonicalJson,
+    pub typed_arguments: bool,
 }
 
 struct StructuredTurn {
@@ -63,6 +64,7 @@ struct StructuredTurn {
 struct StructuredToolCall {
     name: String,
     arguments_json: String,
+    typed_arguments: bool,
 }
 
 impl<'de> de::Deserialize<'de> for StructuredTurn {
@@ -119,26 +121,54 @@ impl<'de> Visitor<'de> for StructuredToolCallVisitor {
     type Value = StructuredToolCall;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("a name and arguments_json object")
+        formatter.write_str("one tool key and arguments, or a historical named tool call")
     }
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
         A: MapAccess<'de>,
     {
+        // A keyed variant makes tool selection precede its payload even when a
+        // downstream JSON implementation sorts object properties alphabetically.
+        let mut fields = Vec::new();
+        while let Some(field) = map.next_key::<String>()? {
+            if fields.len() >= 2 || fields.iter().any(|(key, _)| key == &field) {
+                return Err(de::Error::custom("duplicate or excessive tool call fields"));
+            }
+            let raw: Box<serde_json::value::RawValue> = map.next_value()?;
+            fields.push((field, raw));
+        }
+        if fields.len() == 1 {
+            let (name, raw) = fields.pop().ok_or_else(|| de::Error::missing_field("tool"))?;
+            let typed_arguments = !raw.get().starts_with('"');
+            let arguments_json = if typed_arguments {
+                raw.get().to_owned()
+            } else {
+                serde_json::from_str(raw.get()).map_err(de::Error::custom)?
+            };
+            return Ok(StructuredToolCall { name, arguments_json, typed_arguments });
+        }
+        // Previously retained named/arguments_json and named/arguments turns
+        // remain readable. Mixed forms and duplicate fields never acquire authority.
         let mut name = None;
         let mut arguments_json = None;
-        while let Some(field) = map.next_key::<String>()? {
+        let mut typed_arguments = false;
+        for (field, raw) in fields {
             match field.as_str() {
-                "name" if name.is_none() => name = Some(map.next_value()?),
+                "name" => name = Some(serde_json::from_str(raw.get()).map_err(de::Error::custom)?),
                 "arguments_json" if arguments_json.is_none() => {
-                    arguments_json = Some(map.next_value()?);
+                    arguments_json =
+                        Some(serde_json::from_str(raw.get()).map_err(de::Error::custom)?);
                 }
-                "name" | "arguments_json" => {
-                    return Err(de::Error::duplicate_field("tool call"));
+                "arguments" if arguments_json.is_none() => {
+                    arguments_json = Some(raw.get().to_owned());
+                    typed_arguments = true;
                 }
                 _ => {
-                    return Err(de::Error::unknown_field(&field, &["name", "arguments_json"]));
+                    return Err(de::Error::unknown_field(
+                        &field,
+                        &["name", "arguments_json", "arguments"],
+                    ));
                 }
             }
         }
@@ -146,6 +176,7 @@ impl<'de> Visitor<'de> for StructuredToolCallVisitor {
             name: name.ok_or_else(|| de::Error::missing_field("name"))?,
             arguments_json: arguments_json
                 .ok_or_else(|| de::Error::missing_field("arguments_json"))?,
+            typed_arguments,
         })
     }
 }
@@ -332,7 +363,11 @@ fn validate_turn(
         })?
         .into_parts();
         repairs.extend(audit);
-        tool_calls.push(RuntimeToolCall { name: call.name, arguments });
+        tool_calls.push(RuntimeToolCall {
+            name: call.name,
+            arguments,
+            typed_arguments: call.typed_arguments,
+        });
     }
     Ok(RuntimeTurn { content: turn.content, tool_calls, usage: state.usage, repairs })
 }
@@ -372,4 +407,50 @@ fn native_tool_item(item_type: &str) -> bool {
             | "image_generation"
             | "computer_use"
     )
+}
+
+#[cfg(test)]
+mod contract_replays {
+    use super::*;
+    use serde_json::json;
+    fn transcript(text: &str) -> Vec<u8> {
+        [json!({"type":"thread.started","thread_id":"replay"}), json!({"type":"turn.started"}), json!({"type":"item.completed","item":{"type":"agent_message","text":text}}), json!({"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":5,"total_tokens":17}})].iter().map(Value::to_string).collect::<Vec<_>>().join("\n").into_bytes()
+    }
+    #[test]
+    fn typed_and_historical_arguments_share_fail_closed_decoder() {
+        let allowed = BTreeSet::from(["record".to_owned()]);
+        for (field, value) in [
+            ("arguments", json!({"label":"exact","nullable":null})),
+            ("arguments_json", json!("{\"label\":\"exact\",\"nullable\":null}")),
+        ] {
+            let text =
+                json!({"content":"","tool_calls":[{"name":"record",field:value}]}).to_string();
+            let result = decode_with_usage(&transcript(&text), &allowed, 1..=1, None).turn.unwrap();
+            assert_eq!(
+                result.tool_calls[0].arguments.to_wire_string(),
+                "{\"label\":\"exact\",\"nullable\":null}"
+            );
+            assert_eq!(result.tool_calls[0].typed_arguments, field == "arguments");
+        }
+        for value in [
+            json!({"label":"exact","nullable":null}),
+            json!("{\"label\":\"exact\",\"nullable\":null}"),
+        ] {
+            let typed = value.is_object();
+            let text = json!({"content":"","tool_calls":[{"record":value}]}).to_string();
+            let result = decode_with_usage(&transcript(&text), &allowed, 1..=1, None).turn.unwrap();
+            assert_eq!(result.tool_calls[0].name, "record");
+            assert_eq!(result.tool_calls[0].typed_arguments, typed);
+            assert_eq!(
+                result.tool_calls[0].arguments.to_wire_string(),
+                "{\"label\":\"exact\",\"nullable\":null}"
+            );
+        }
+        for text in [
+            r#"{"content":"","tool_calls":[{"name":"record","arguments":{},"arguments_json":"{}"}]}"#,
+            r#"{"content":"","tool_calls":[{"name":"record","arguments":{"label":"first","label":"last"}}]}"#,
+        ] {
+            assert!(decode_with_usage(&transcript(text), &allowed, 1..=1, None).turn.is_err());
+        }
+    }
 }

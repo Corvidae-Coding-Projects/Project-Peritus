@@ -19,10 +19,13 @@ pub(super) fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     open["wait_ms"] = json!({"type":"integer","minimum":0,"maximum":5000,"default":500});
     let mut read = page;
     read["source"] = json!({"type":"string","minLength":64,"maxLength":64});
+    // A damaged optional search configuration must not prevent creating unrelated
+    // tools. Advertise the common baseline; execution reports the configuration error.
+    let external = peritus_tools_web::external_search_configured().unwrap_or(false);
     let entries = [
         (
             "web_search",
-            "Search the web with built-in keyless Rust metasearch, ready without setup or extra software. Returns URLs/snippets, engine failures and empty engines. Use web_open on primary sources before citing claims. Native engines: yahoo, duckduckgo, brave, startpage (comma-separated subset). Native search supports page=1 only; omit language/time_range and put dates/language in the query. Optional external SearXNG supports those extra filters/pages. Engine blocking can fail independently of page reading; retry/refine or open known URLs.",
+            "Search the web with built-in keyless Rust metasearch, ready without setup or extra software. Returns URLs/snippets, engine failures and empty engines. Use web_open on primary sources before citing claims. Native engines: yahoo, duckduckgo, brave, startpage (comma-separated subset). Native search supports page=1 only; omit language/time_range and put dates/language in the query. Optional external SearXNG supports those extra filters/pages. Backend health is tracked across queries and processes. Read engine_failures kinds and retry_after_seconds; query changes do not bypass cooldowns. Use retained sources or known authoritative URLs while backends recover. Only recognized empty-result pages are reported as no_results.",
             json!({"query":{"type":"string","minLength":1},"page":{"type":"integer","minimum":1,"default":1},"max_results":{"type":"integer","minimum":1,"maximum":30,"default":10},"language":{"type":"string"},"time_range":{"type":"string","enum":["day","month","year"]},"engines":{"type":"string"}}),
             vec!["query"],
         ),
@@ -45,7 +48,11 @@ pub(super) fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
             vec!["source", "query"],
         ),
     ];
-    entries.into_iter().map(|(name, description, properties, required)| {
+    entries.into_iter().map(|(name, description, mut properties, required)| {
+        if name == "web_search" && !external {
+            properties["page"]["enum"] = json!([1]);
+            if let Some(fields) = properties.as_object_mut() { fields.remove("language"); fields.remove("time_range"); }
+        }
         definition(name, description, &json!({"type":"object","additionalProperties":false,"properties":properties,"required":required}).to_string())
     }).collect()
 }

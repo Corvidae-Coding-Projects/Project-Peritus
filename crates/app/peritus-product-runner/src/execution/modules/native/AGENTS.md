@@ -9,6 +9,7 @@
 | [runtime.rs](runtime.rs) | Enabled-digest launch snapshot, existing native process host, per-call revision-bound live authority, framed service RPC, exact writer/reviewer route metadata, and cancellation/cleanup. |
 | [scoped_source.rs](scoped_source.rs) | Explicit current-workspace capture, immutable content-addressed manifests, revocable handles, mandatory Git/Peritus metadata exclusions, bounded range evidence, exact before/after byte verification, reuse and corruption fail-closure. |
 | [application_laboratory.rs](application_laboratory.rs) | Generic Linux disposable-source lifecycle, literal-argv execution, isolated module-worker execution, bounded raw process observations, cancellation, cleanup, and original-source verification. It contains no module-specific adapters or result semantics. |
+| [external_application.rs](external_application.rs) | Allowlisted external-application licensing, pinned release verification, private native installation, and owned lifecycle. The initial adapter is ARTEX for the Red Team module. |
 | [tools.rs](tools.rs) | Borrowed host service intersection and plugin-exported model functions; actual observation delivery. |
 | [publication.rs](publication.rs) | Shared enabled-package validation and exact-run actions, concrete progress, bounded summary, and export presentation for both clients. |
 

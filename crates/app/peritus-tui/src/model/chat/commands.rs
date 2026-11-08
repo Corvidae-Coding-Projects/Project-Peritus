@@ -4,6 +4,18 @@ use super::catalog::{self, Command};
 use crate::model::{AppModel, Effect, NoticeLevel, View};
 use peritus_app_protocol::{ProductInteractionMode as Mode, ProductRunControlAction as Control};
 
+#[derive(Debug)]
+pub(super) struct ModeChange {
+    run: peritus_types::RunId,
+    query: peritus_app_protocol::WorkbenchQuery,
+    mode: Mode,
+    text: String,
+}
+
+#[cfg(test)]
+#[path = "../../../../../../discovery/proptest-praxis/owner/tui_modes.rs"]
+mod mode_replay;
+
 impl AppModel {
     pub(super) fn slash_command(&mut self, text: &str) -> Vec<Effect> {
         let effects = self.dispatch_slash_command(text);
@@ -208,8 +220,37 @@ impl AppModel {
         }
     }
 
-    fn chat_mode_command(&mut self, mode: Mode, text: &str) -> Vec<Effect> {
-        if self.chat_work_active() && self.chat.mode != mode {
+    pub(in crate::model::chat) fn chat_mode_command(
+        &mut self,
+        mode: Mode,
+        text: &str,
+    ) -> Vec<Effect> {
+        let executing_mode = self
+            .chat
+            .snapshot
+            .as_ref()
+            .map_or(self.chat.mode, peritus_app_protocol::ProductInteractionSnapshot::mode);
+        if self.chat_work_active() && executing_mode != mode {
+            if !self.chat_mutation_pending()
+                && self
+                    .chat
+                    .workbench
+                    .goal
+                    .as_ref()
+                    .is_none_or(|goal| Some(goal.run()) != self.chat.run_id)
+                && let (Some(run), Some(query)) = (self.chat.run_id, self.chat.workbench.selected)
+            {
+                let effects = self.chat_control(Control::Cancel);
+                if !effects.is_empty() {
+                    self.chat.mode_change =
+                        Some(ModeChange { run, query, mode, text: text.to_owned() });
+                    self.clear_chat_command();
+                    text.clone_into(&mut self.chat.buffer);
+                    self.chat.cursor = self.chat.buffer.len();
+                    self.notice(NoticeLevel::Info, "Stopping the current turn before changing mode. Your follow-up will continue after the daemon confirms it stopped.");
+                }
+                return effects;
+            }
             self.notice(
                 NoticeLevel::Warning,
                 "Stop active work before changing mode. Your draft is retained.",
@@ -227,6 +268,47 @@ impl AppModel {
         } else {
             self.send_chat_message(text.to_owned())
         }
+    }
+
+    pub(in crate::model) const fn mode_change_pending(&self) -> bool {
+        self.chat.mode_change.is_some()
+    }
+
+    pub(in crate::model) fn abandon_chat_mode_change(&mut self) {
+        self.chat.mode_change = None;
+    }
+
+    pub(in crate::model) fn finish_chat_mode_change(&mut self) -> Vec<Effect> {
+        let Some(change) = self.chat.mode_change.as_ref() else { return Vec::new() };
+        if self.chat.run_id != Some(change.run)
+            || self.chat.workbench.selected != Some(change.query)
+        {
+            self.chat.mode_change = None;
+            return Vec::new();
+        }
+        if self.chat_work_active() {
+            return Vec::new();
+        }
+        if self
+            .chat
+            .snapshot
+            .as_ref()
+            .is_none_or(|snapshot| !snapshot.snapshot().operation().may_start_execution())
+        {
+            self.chat.mode_change = None;
+            self.notice(NoticeLevel::Warning, "The daemon has not established a resumable boundary. Your draft is retained; reconcile the run before continuing.");
+            return Vec::new();
+        }
+        let Some(change) = self.chat.mode_change.take() else { return Vec::new() };
+        self.chat.mode = change.mode;
+        if change.text.is_empty() || change.text != self.chat.buffer {
+            self.notice(
+                NoticeLevel::Info,
+                format!("{} selected. Submit your retained draft when ready.", change.mode.label()),
+            );
+            return Vec::new();
+        }
+        self.send_chat_message(change.text)
     }
 
     fn design_command(&mut self, text: &str) -> Vec<Effect> {

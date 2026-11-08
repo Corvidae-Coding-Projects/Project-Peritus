@@ -54,7 +54,7 @@ pub(super) struct Amendment {
     pub affected_contracts: Vec<String>,
     pub failure_behavior: String,
     pub acceptance: Vec<String>,
-    pub evidence: Vec<Value>,
+    pub evidence: Vec<super::evidence_input::Evidence>,
 }
 
 pub(super) fn failure(detail: impl Into<String>) -> ProductRunnerError {
@@ -326,10 +326,10 @@ impl ExpertPass {
         for (ei, evidence) in amendment.evidence.iter().enumerate() {
             let id = format!("{prefix}-evidence-{}-{}", index + 1, ei + 1);
             evidence_ids.push(id.clone());
-            if evidence["reference"]["kind"] == "source_range" {
+            if evidence.is_source() {
                 source_ids.push(id.clone());
             }
-            let mut evidence = evidence.clone();
+            let mut evidence = evidence.value()?;
             evidence["id"] = json!(id);
             evidence["domain_ids"] = json!([d]);
             evidence["obligation_ids"] = json!([o]);

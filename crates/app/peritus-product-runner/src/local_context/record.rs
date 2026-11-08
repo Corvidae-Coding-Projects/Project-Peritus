@@ -64,6 +64,7 @@ impl ArchivedObservation {
             matches!(
                 call.name.as_str(),
                 "context_read"
+                    | "context_recover"
                     | "context_sources"
                     | "context_update"
                     | "developer_evidence_read"

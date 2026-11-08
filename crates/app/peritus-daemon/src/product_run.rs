@@ -6,6 +6,8 @@ mod deliverable;
 mod doctor;
 mod error;
 mod execution;
+#[cfg(test)]
+pub use execution::{TestedLaunchRoute, launch_mode};
 mod improvements;
 mod interaction;
 mod library;
@@ -239,6 +241,7 @@ impl ProductRunService {
             provider_cancellation,
             String::new(),
             None,
+            execution::LaunchRoute::SelectedMode,
         )
         .await;
         Ok(snapshot)

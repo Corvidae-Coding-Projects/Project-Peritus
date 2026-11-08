@@ -11,8 +11,17 @@ mod stackexchange;
 use std::{env, path::PathBuf};
 
 pub use failure::{FailureKind, PageFailure};
+pub use search::SearchBackend;
 pub use setup::{configure, setup_local, status, stop};
 pub use source::Store;
+
+/// Whether the current host-selected backend supports filters and multiple pages.
+///
+/// # Errors
+/// Reports invalid saved endpoint configuration without selecting another backend silently.
+pub fn external_search_configured() -> Result<bool, Error> {
+    setup::endpoint().map(|endpoint| endpoint.is_some())
+}
 
 /// A failed web operation; no unsuccessful response is represented as a read source.
 #[derive(Debug, thiserror::Error)]

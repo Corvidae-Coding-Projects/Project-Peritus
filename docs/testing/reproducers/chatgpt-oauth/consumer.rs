@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             CancellationKind::BestEffortLocalAbort,
         )?;
         let provider = ChatGptProvider::new(&saved.credential_reference(), profile)?;
-        provider.prepare_context(&cancel).await?;
+        provider.prepare_context(u64::MAX, &cancel).await?;
         let report = verify_provider_connection(&provider, cancel).await?;
         for stage in report.completed {
             println!("Passed: {}", stage.label());

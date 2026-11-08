@@ -8,7 +8,7 @@ Direct native consumers of ProductRunner, including credentialed disposable-work
 
 | File | Role |
 | --- | --- |
-| [live_account_product_run.rs](live_account_product_run.rs) | Credentialed end-to-end writer/reviewer/fixer qualification on a temporary Rust repository. |
+| [live_account_product_run.rs](live_account_product_run.rs) | Credentialed end-to-end writer/reviewer/fixer qualification on a temporary Rust repository; PERITUS_DELIVERY_CAMPAIGN=1 exercises construction coverage and real CLI success/rejection behavior. PERITUS_LIVE_WORKSPACE and PERITUS_LIVE_STATE together reopen only that disposable fixture for recovery replay. |
 | [live_design_expansion.rs](live_design_expansion.rs) | Credentialed qualification for zero-question expansion, exact reuse, material answers, steering, guided Design without workspace edits, and browser-sized expert passes. [live_design_expansion/browser.rs](live_design_expansion/browser.rs) supplies the browser source/recovery cases and independently checks an actual authorized Rust edit. |
 
 ## Working in this area

@@ -40,6 +40,12 @@ pub(super) struct LocalMemory {
     pub(super) page_cache: super::pages::PageCache,
     pub(super) checkpoint_schema: u16,
     pub(super) transcript: TranscriptManifest,
+    /// Complete assistant/tool messages from the immediately preceding invocation.
+    ///
+    /// This is reconstructed from durable transcript records on restart. It is deliberately
+    /// separate from the current invocation so current policy and user input stay authoritative.
+    pub(super) prior_exchange_invocation: Option<u64>,
+    pub(super) prior_message_ids: Vec<u64>,
     pub(super) config: LocalContextConfig,
     pub(super) workspace: PathBuf,
     pub(super) trace_path: PathBuf,
@@ -141,6 +147,8 @@ impl LocalMemory {
             page_cache: super::pages::PageCache::default(),
             checkpoint_schema: super::record::CHECKPOINT_SCHEMA_VERSION,
             transcript: TranscriptManifest::default(),
+            prior_exchange_invocation: None,
+            prior_message_ids: Vec::new(),
             config,
             workspace: workspace.to_path_buf(),
             trace_path: trace_path.to_path_buf(),

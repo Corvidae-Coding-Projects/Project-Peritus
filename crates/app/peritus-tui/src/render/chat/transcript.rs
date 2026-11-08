@@ -83,7 +83,7 @@ pub fn transcript_rows(model: &AppModel, area: Rect) -> Vec<OutputRow> {
                 } else {
                     "/design guides a saved design. /plan and /review are read-only. /build starts checked delivery."
                 }),
-                Line::from("/model discovers models from your configured provider."),
+                Line::from("/model opens agent, model, and reasoning-effort menus."),
                 Line::from("/runs opens the existing run and candidate dashboard."),
             ],
             usize::from(area.width),

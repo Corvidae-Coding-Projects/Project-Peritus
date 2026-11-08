@@ -201,7 +201,46 @@ fn workspace_context(
         default,
     )
     .map_err(LauncherError::Tui)?;
-    if let Some(reviewer) = prepared.state().providers().reviewer() {
+    if let Some(roles) = prepared.state().providers().role_models() {
+        let defaults = [roles.writer(), roles.reviewer(), roles.fixer()];
+        let mut indices = [0; 3];
+        let mut models = Vec::new();
+        for (i, role) in defaults.into_iter().enumerate() {
+            indices[i] = prepared
+                .state()
+                .providers()
+                .enabled()
+                .iter()
+                .position(|kind| *kind == role.provider())
+                .ok_or_else(|| {
+                    LauncherError::Interaction("saved role provider is not enabled".into())
+                })?;
+            let effort = if role.effort() == peritus_product_state::RoleEffort::Off {
+                peritus_app_protocol::ProductModelEffort::Default
+            } else {
+                peritus_app_protocol::ProductModelEffort::parse(role.effort().label()).ok_or_else(
+                    || LauncherError::Interaction("saved role effort is unsupported".into()),
+                )?
+            };
+            models.push(
+                peritus_app_protocol::ProductModelChoice::new(
+                    role.model().to_owned(),
+                    role.manual(),
+                )
+                .map_err(|e| LauncherError::Interaction(e.to_string()))?
+                .with_effort(effort),
+            );
+        }
+        let [writer, reviewer, fixer]: [_; 3] = models
+            .try_into()
+            .map_err(|_| LauncherError::Interaction("incomplete role defaults".into()))?;
+        context = context
+            .with_role_models(
+                indices,
+                peritus_app_protocol::ProductRoleModels::new(writer, reviewer, fixer),
+            )
+            .map_err(LauncherError::Tui)?;
+    } else if let Some(reviewer) = prepared.state().providers().reviewer() {
         let index = prepared
             .state()
             .providers()

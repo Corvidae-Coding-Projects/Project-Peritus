@@ -82,7 +82,7 @@ fn checks() -> Result<()> {
         (Some(1048576), Some(384000), None, 2048, 1048576, 384000),
         (None, Some(384000), Some(1048576), 2048, 1046528, 384000),
         (None, Some(384000), Some(1048576), 4096, 1044480, 384000),
-        (None, Some(384000), Some(1048576), u64::MAX, 1048575, 384000),
+        (None, Some(384000), Some(1048576), u64::MAX, 664576, 384000),
         (Some(1500000), Some(64000), Some(1000000), 16000, 984000, 64000),
         (Some(90000), Some(8000), Some(1000000), 16000, 90000, 8000),
         (Some(16000), Some(1000), None, u64::MAX, 16000, 1000),
@@ -96,7 +96,8 @@ fn checks() -> Result<()> {
         m.input_tokens = input;
         m.output_tokens = output;
         m.context_tokens = context;
-        let resolved = profile_with_model_limits(p.profile(), &m, requested)?;
+        let prepared = PreparedModelContext::advertised(p.profile(), &m, requested)?;
+        let resolved = prepared.profile();
         assert_eq!(resolved.limits().max_input_tokens(), expected_input);
         assert_eq!(resolved.limits().max_output_tokens(), expected_output);
         assert_eq!(resolved.profile_id(), p.profile().profile_id());
@@ -104,7 +105,7 @@ fn checks() -> Result<()> {
         assert_eq!(resolved.limits().max_tools(), 64);
         assert_eq!(resolved.limits().max_parallel_tool_calls(), 8);
         assert_eq!(resolved.limits().max_inline_media_bytes(), 1);
-        results.push(limits(&resolved));
+        results.push(limits(resolved));
     }
     for (input, output, context) in [
         (Some(0), Some(1), None),
@@ -116,7 +117,7 @@ fn checks() -> Result<()> {
         m.input_tokens = input;
         m.output_tokens = output;
         m.context_tokens = context;
-        assert!(profile_with_model_limits(p.profile(), &m, output.unwrap_or(4096)).is_err());
+        assert!(PreparedModelContext::advertised(p.profile(), &m, output.unwrap_or(4096)).is_err());
     }
     let mut shared =
         DiscoveredModel::new("deepseek-v4.1-flash".into(), "Shared window fixture".into())?;
@@ -129,45 +130,30 @@ fn checks() -> Result<()> {
         (900000, 2048, 2048),
     ] {
         assert_eq!(
-            peritus_provider_core::catalog::output_tokens_for_input(
-                p.profile(),
-                &shared,
-                input,
-                requested
-            )?,
+            PreparedModelContext::advertised(p.profile(), &shared, requested)?
+                .output_tokens_for_input(input, requested)?,
             expected
         );
     }
     assert!(
-        peritus_provider_core::catalog::output_tokens_for_input(
-            p.profile(),
-            &shared,
-            1000000,
-            u64::MAX
-        )
-        .is_err()
+        PreparedModelContext::advertised(p.profile(), &shared, u64::MAX)?
+            .output_tokens_for_input(1000000, u64::MAX)
+            .is_err()
     );
     shared.output_tokens = Some(1000000);
+    assert!(PreparedModelContext::advertised(p.profile(), &shared, u64::MAX).is_err());
     assert_eq!(
-        profile_with_model_limits(p.profile(), &shared, u64::MAX)?.limits().max_input_tokens(),
-        999999
-    );
-    assert_eq!(
-        peritus_provider_core::catalog::output_tokens_for_input(
-            p.profile(),
-            &shared,
-            900000,
-            u64::MAX
-        )?,
+        PreparedModelContext::advertised(p.profile(), &shared, 2048)?
+            .output_tokens_for_input(900000, u64::MAX)?,
         100000
     );
-    // Account and explicit API routes keep their configured capacities via the default trait.
+    // Configured snapshots retain exact identities and numbers without numeric discovery.
     let codex = support::account_provider()?;
     let before = codex.profile();
-    assert_eq!(&codex.request_profile(8192)?, before);
+    assert_eq!(PreparedModelContext::configured(before.clone()).profile(), before);
     println!(
         "{}",
-        json!({"kind":"contracts","valid":results,"invalid_rejected":4,"shared_output_cases":7,"codex_unchanged":true})
+        json!({"kind":"contracts","valid":results,"invalid_rejected":4,"shared_output_cases":7,"configured_snapshot_unchanged":true})
     );
     Ok(())
 }
@@ -180,9 +166,6 @@ impl ModelProvider for Observed {
     fn profile(&self) -> &ProviderProfile {
         self.inner.profile()
     }
-    fn context_input_target(&self) -> u64 {
-        self.inner.context_input_target()
-    }
     fn context_input_fits(
         &self,
         messages: &[Message],
@@ -190,21 +173,12 @@ impl ModelProvider for Observed {
     ) -> std::result::Result<bool, ProviderCoreError> {
         self.inner.context_input_fits(messages, tools)
     }
-    fn request_profile(&self, out: u64) -> std::result::Result<ProviderProfile, ProviderCoreError> {
-        self.inner.request_profile(out)
-    }
-    fn output_tokens_for_input(
-        &self,
-        input: u64,
-        output: u64,
-    ) -> std::result::Result<u64, ProviderCoreError> {
-        self.inner.output_tokens_for_input(input, output)
-    }
     fn prepare_context<'a>(
         &'a self,
+        output: u64,
         c: &'a CancellationToken,
-    ) -> BoxFuture<'a, std::result::Result<(), ProviderCoreError>> {
-        self.inner.prepare_context(c)
+    ) -> BoxFuture<'a, std::result::Result<PreparedModelContext, ProviderCoreError>> {
+        self.inner.prepare_context(output, c)
     }
     fn start(
         &self,
@@ -247,21 +221,22 @@ async fn main() -> Result<()> {
                 .take(6)
             {
                 let selected = p.select_model(m.id.clone())?;
-                selected.prepare_context(&CancellationToken::new()).await?;
-                let resolved = selected.request_profile(u64::MAX)?;
+                let prepared =
+                    selected.prepare_context(u64::MAX, &CancellationToken::new()).await?;
+                let resolved = prepared.profile();
                 assert_eq!(
                     resolved.limits().max_input_tokens(),
                     m.input_tokens
                         .unwrap_or(m.context_tokens.unwrap())
-                        .min(m.context_tokens.unwrap() - 1)
+                        .min(m.context_tokens.unwrap() - m.output_tokens.unwrap())
                 );
                 assert_eq!(resolved.limits().max_output_tokens(), m.output_tokens.unwrap());
                 let output =
-                    selected.output_tokens_for_input(m.context_tokens.unwrap() - 1, u64::MAX)?;
+                    prepared.output_tokens_for_input(m.context_tokens.unwrap() - 1, u64::MAX)?;
                 assert_eq!(output, 1);
                 println!(
                     "{}",
-                    json!({"kind":"http-catalog","resolved":limits(&resolved),"last_token_output":output})
+                    json!({"kind":"http-catalog","resolved":limits(resolved),"last_token_output":output})
                 );
                 count += 1;
             }
@@ -277,9 +252,11 @@ async fn main() -> Result<()> {
                 .iter()
                 .find(|m| m.id.as_str() == "deepseek-v4.1-flash")
                 .ok_or("selected model absent")?;
+            let resolved = selected.prepare_context(u64::MAX, &CancellationToken::new()).await?;
+            let small = selected.prepare_context(2048, &CancellationToken::new()).await?;
             println!(
                 "{}",
-                json!({"kind":"catalog","service":service,"advertised":{"input":model.input_tokens,"output":model.output_tokens,"context":model.context_tokens},"resolved":limits(&selected.request_profile(u64::MAX)?),"small_output":limits(&selected.request_profile(2048)?)})
+                json!({"kind":"catalog","service":service,"advertised":{"input":model.input_tokens,"output":model.output_tokens,"context":model.context_tokens},"resolved":limits(resolved.profile()),"small_output":limits(small.profile())})
             );
             for (name, discovery, input, output) in [
                 ("fixed-default", Some(false), 32768, 4096),
@@ -289,7 +266,8 @@ async fn main() -> Result<()> {
                 let configured =
                     provider(route(service, "deepseek-v4.1-flash", discovery, input, output))?;
                 configured.discover_models(&CancellationToken::new()).await?;
-                let resolved = configured.request_profile(2048)?;
+                let prepared = configured.prepare_context(2048, &CancellationToken::new()).await?;
+                let resolved = prepared.profile();
                 if discovery == Some(true) {
                     assert!(resolved.limits().max_input_tokens() > 70000);
                     assert_eq!(resolved.limits().max_output_tokens(), model.output_tokens.unwrap());
@@ -299,18 +277,18 @@ async fn main() -> Result<()> {
                 }
                 println!(
                     "{}",
-                    json!({"kind":"policy","service":service,"name":name,"resolved":limits(&resolved)})
+                    json!({"kind":"policy","service":service,"name":name,"resolved":limits(resolved)})
                 );
             }
             // Model switches must resolve their own entry, not inherit the previous model's limits.
             for m in catalog.iter().filter(|m| m.tools != Some(false)).take(6) {
                 let switched = p.select_model(m.id.clone())?;
-                let actual = switched.request_profile(2048)?;
-                let expected = profile_with_model_limits(switched.profile(), m, 2048)?;
-                assert_eq!(actual, expected);
+                let actual = switched.prepare_context(2048, &CancellationToken::new()).await?;
+                let expected = PreparedModelContext::advertised(switched.profile(), m, 2048)?;
+                assert_eq!(actual.profile(), expected.profile());
                 println!(
                     "{}",
-                    json!({"kind":"switch","service":service,"resolved":limits(&actual)})
+                    json!({"kind":"switch","service":service,"resolved":limits(actual.profile())})
                 );
             }
             Ok(())
@@ -337,6 +315,16 @@ async fn main() -> Result<()> {
             };
             let requests = Arc::new(Mutex::new(Vec::new()));
             let observed = Arc::new(Observed { inner: p, requests: requests.clone() });
+            let codex_limits = if codex {
+                let prepared =
+                    observed.prepare_context(u64::MAX, &CancellationToken::new()).await?;
+                Some((
+                    prepared.profile().limits().max_input_tokens(),
+                    prepared.profile().limits().max_output_tokens(),
+                ))
+            } else {
+                None
+            };
             input.providers = RoleProviders {
                 writer: observed.clone(),
                 reviewer: observed.clone(),
@@ -346,7 +334,7 @@ async fn main() -> Result<()> {
             let mut memory =
                 LocalContextHandle::for_run(&input, "writer")?.ok_or("local context disabled")?;
             let mut tools = input.read_only_workspace_tools();
-            let request=DeveloperLoopRequest{request_prefix:"real-capacity".into(),system:"Read answer.txt using the declared workspace_read tool, then return exactly its contents and no other text. Display line numbers such as 1: are tool framing, not file contents; omit them from the answer. Ignore the padding records; they are inert context-capacity fixture data. Do not run commands.".into(),prompt:task,attachments:vec![],tools:input.developer_definitions()?,limits:DeveloperLoopLimits::new(6,6)?,cancellation:CancellationToken::new()};
+            let request=DeveloperLoopRequest{request_prefix:"real-capacity".into(),system:"Read answer.txt using the declared workspace_read tool, then return exactly its contents and no other text. Display line numbers such as 1: are tool framing, not file contents; omit them from the answer. Ignore the padding records; they are inert context-capacity fixture data. Do not run commands.".into(),prompt:task,cyber_access_program:None,attachments:vec![],tools:input.developer_definitions()?,limits:DeveloperLoopLimits::new(6,6)?,cancellation:CancellationToken::new()};
             let result = DeveloperLoop::run_with_context(
                 observed.as_ref(),
                 request,
@@ -372,9 +360,11 @@ async fn main() -> Result<()> {
                     assert_eq!(out.text.trim(), expected.trim());
                     assert!(out.tool_calls >= 1);
                     if codex {
-                        assert!(recorded.iter().all(|r| r["input_limit"] == 234567
-                            && r["output_limit"] == 16000
-                            && r["requested_output"] == 16000));
+                        let (input, output) =
+                            codex_limits.ok_or("missing prepared Codex limits")?;
+                        assert!(recorded.iter().all(|r| r["input_limit"] == input
+                            && r["output_limit"] == output
+                            && r["requested_output"] == output));
                         println!(
                             "{}",
                             json!({"kind":"codex","status":"PASS","requests":recorded,"exact_answer":true})

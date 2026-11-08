@@ -82,6 +82,16 @@ fn allowed_sources(
                 for message in decode_messages(&bytes, ProtocolLimits::PRODUCTION)? {
                     for block in message.content() {
                         if let ContentBlock::ToolResult(result) = block {
+                            if let Some(original) = memory.sources.iter().rev().find(|original| {
+                                original.sequence < id
+                                    && original.invocation == source.invocation
+                                    && original.kind == ArchiveKind::ToolOutput
+                                    && original.call.as_ref().is_some_and(|call| {
+                                        call.id == result.call_id().expose_for_wire()
+                                    })
+                            }) {
+                                descriptor.links.push(original.sequence);
+                            }
                             let value: Value = serde_json::from_slice(
                                 result.output().canonical_bytes(),
                             )
@@ -186,6 +196,11 @@ fn collect(
         }
     }
     let mut handles = Vec::new();
+    if value["representation"] == "semantic-json-v1"
+        && let Some(handle) = value["source"].as_str()
+    {
+        handles.push(handle);
+    }
     if let Some(handle) = value["local_context"]["handle"].as_str() {
         handles.push(handle);
     }

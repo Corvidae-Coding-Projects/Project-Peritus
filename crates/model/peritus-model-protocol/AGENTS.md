@@ -20,7 +20,7 @@ Local dependency waypoints: [peritus-codec](../../foundation/peritus-codec/AGENT
 | Folder | Role / next waypoint |
 | --- | --- |
 | [fixtures/](fixtures/AGENTS.md) | Retained wire/provider fixture inputs for `peritus-model-protocol`. Manifests identify the corpus; byte digests and expected streams are data, not runtime code. |
-| [examples/](examples/closed_tool_arguments.rs) | Public completed-tool-item argument regression. |
+| [examples/](examples/tool_admission.rs) | Public argument admission/projection replay and completed-tool-item regression. |
 | [src/](src/AGENTS.md) | Provider-neutral, versioned, bounded model protocol for Peritus. |
 
 ## Working in this area

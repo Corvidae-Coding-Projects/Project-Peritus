@@ -1,6 +1,7 @@
 //! One-turn ownership of the pre-authenticated Codex executable.
 
 mod cached;
+mod capacity;
 mod failure;
 mod invocation;
 
@@ -28,6 +29,7 @@ pub struct CodexRuntimeProvider {
     authenticated: AtomicBool,
     working_directory: std::sync::Arc<std::sync::Mutex<Option<std::sync::Arc<tempfile::TempDir>>>>,
     cache_anchor: std::sync::Arc<std::sync::OnceLock<Option<invocation::CacheAnchor>>>,
+    capacity: std::sync::Arc<capacity::Cache>,
 }
 
 /// Conventional client name for the account-backed Codex runtime provider.
@@ -43,6 +45,7 @@ impl CodexRuntimeProvider {
             authenticated: AtomicBool::new(false),
             working_directory: std::sync::Arc::new(std::sync::Mutex::new(None)),
             cache_anchor: std::sync::Arc::new(std::sync::OnceLock::new()),
+            capacity: std::sync::Arc::new(capacity::Cache::default()),
         }
     }
 
@@ -112,17 +115,6 @@ impl CodexRuntimeProvider {
             validate_request_profile(self.config.profile(), &request)?;
             let runtime = super::request::encode(&request)?;
             let projection = runtime.projection.clone();
-            if runtime.prompt.iter().filter(|byte| (**byte & 0xc0) != 0x80).count()
-                > super::request::MAX_INPUT_CHARACTERS
-            {
-                let stream = decode_failure(
-                    request.model().clone(),
-                    self.config.profile().provider().clone(),
-                    &DecodeFailure::InputLimit,
-                    peritus_model_protocol::UsageCounters::default(),
-                )?;
-                return Ok(OwnedModelStream::new(stream, cancellation).with_projection(projection));
-            }
             if let Err(error) = if self.authenticated.load(Ordering::Acquire) {
                 Ok(())
             } else {
@@ -150,6 +142,7 @@ impl CodexRuntimeProvider {
                 authenticated: AtomicBool::new(true),
                 working_directory: self.working_directory.clone(),
                 cache_anchor: self.cache_anchor.clone(),
+                capacity: self.capacity.clone(),
             };
             let owned_cancellation = cancellation.clone();
             let observations = progress.clone();
@@ -185,6 +178,10 @@ impl CodexRuntimeProvider {
                 cache_anchor,
                 cancellation: &cancellation,
                 progress,
+                context_window: self
+                    .capacity
+                    .selected(request.model())?
+                    .and_then(|m| m.max_context_tokens.or(m.context_tokens)),
             },
             &request,
             &runtime,
@@ -220,12 +217,17 @@ impl CodexRuntimeProvider {
                 return Ok(OwnedModelStream::new(stream, cancellation));
             }
         };
-        let decoded = decode_with_usage(
+        let mut decoded = decode_with_usage(
             output.process.stdout(),
             &runtime.allowed_tools,
             runtime.min_calls..=runtime.max_calls,
             output.final_message.as_deref().ok(),
         );
+        if let Ok(turn) = &mut decoded.turn
+            && let Err(error) = restore_typed_arguments(&request, turn)
+        {
+            decoded.turn = Err(error);
+        }
         if !output.process.exit().success() {
             let decoded_turn = super::output::reported_process_failure(output.process.stderr())
                 .map_or(decoded.turn, Err);
@@ -348,11 +350,17 @@ fn private_runtime_directory() -> std::io::Result<tempfile::TempDir> {
 }
 
 impl ModelProvider for CodexRuntimeProvider {
-    fn context_input_target(&self) -> u64 {
-        self.profile()
-            .limits()
-            .max_input_tokens()
-            .min((super::request::MAX_INPUT_CHARACTERS as u64) / 6)
+    fn prepare_context<'a>(
+        &'a self,
+        output_tokens: u64,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<peritus_provider_core::PreparedModelContext, ProviderCoreError>> {
+        Box::pin(self.capacity.prepare(
+            self.config.executable().as_path(),
+            self.profile(),
+            output_tokens,
+            cancellation,
+        ))
     }
 
     fn context_input_fits(
@@ -360,7 +368,11 @@ impl ModelProvider for CodexRuntimeProvider {
         messages: &[peritus_model_protocol::Message],
         tools: &[peritus_model_protocol::ToolDefinition],
     ) -> Result<bool, ProviderCoreError> {
-        super::request::context_fits(messages, tools)
+        super::request::context_fits(
+            messages,
+            tools,
+            self.config.process_limits().max_stdin_bytes(),
+        )
     }
 
     fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
@@ -427,6 +439,45 @@ impl fmt::Debug for CodexRuntimeProvider {
             .field("transport", &"[private owned process transport]")
             .field("working_directory", &"[private lazy directory]")
             .field("cache_anchor", &self.cache_anchor.get().is_some())
+            .field("capacity", &"[route-bound numeric model metadata]")
             .finish()
     }
+}
+
+fn restore_typed_arguments(
+    request: &ModelRequest,
+    turn: &mut super::output::RuntimeTurn,
+) -> Result<(), DecodeFailure> {
+    for call in &mut turn.tool_calls {
+        if call.typed_arguments {
+            let Some(definition) =
+                request.tools().iter().find(|tool| tool.name().as_str() == call.name)
+            else {
+                return Err(DecodeFailure::InvalidToolChoice);
+            };
+            let restored = (|| {
+                let schema =
+                    peritus_model_protocol::ToolArgumentSchema::compile(definition.parameters())
+                        .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+                let mut value = serde_json::from_slice(call.arguments.canonical_bytes())
+                    .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+                schema
+                    .restore_provider_value(&mut value)
+                    .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+                peritus_model_protocol::CanonicalJson::parse(
+                    &value.to_string(),
+                    peritus_model_protocol::JsonBounds::value(
+                        peritus_model_protocol::ProtocolLimits::PRODUCTION,
+                    ),
+                )
+                .map_err(|_| DecodeFailure::InvalidToolArguments)
+            })();
+            // Invalid proposals still reach shared host admission and its retained,
+            // field-level repair path. They are never executed by this transport.
+            if let Ok(arguments) = restored {
+                call.arguments = arguments;
+            }
+        }
+    }
+    Ok(())
 }

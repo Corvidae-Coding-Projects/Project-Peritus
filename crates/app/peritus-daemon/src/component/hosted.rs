@@ -61,33 +61,11 @@ impl ModelProvider for HostedProvider {
         self.adapter.profile()
     }
 
-    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
-        let Some(model) = self.model_metadata()? else {
-            return Ok(self.profile().clone());
-        };
-        peritus_provider_core::catalog::profile_with_model_limits(
-            self.profile(),
-            &model,
-            output_tokens,
-        )
-    }
-
-    fn output_tokens_for_input(&self, input: u64, output: u64) -> Result<u64, ProviderCoreError> {
-        let Some(model) = self.model_metadata()? else {
-            return Ok(output.min(self.profile().limits().max_output_tokens()));
-        };
-        peritus_provider_core::catalog::output_tokens_for_input(
-            self.profile(),
-            &model,
-            input,
-            output,
-        )
-    }
-
     fn prepare_context<'a>(
         &'a self,
+        output_tokens: u64,
         cancellation: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+    ) -> BoxFuture<'a, Result<peritus_provider_core::PreparedModelContext, ProviderCoreError>> {
         Box::pin(async move {
             let mut attempted = self.catalog_attempted.lock().await;
             if !self
@@ -108,7 +86,17 @@ impl ModelProvider for HostedProvider {
                 *attempted = true;
                 drop(result);
             }
-            self.adapter.prepare_context(cancellation).await
+            let configured = self.adapter.prepare_context(output_tokens, cancellation).await?;
+            self.model_metadata()?.map_or_else(
+                || Ok(configured),
+                |model| {
+                    peritus_provider_core::PreparedModelContext::advertised(
+                        self.profile(),
+                        &model,
+                        output_tokens,
+                    )
+                },
+            )
         })
     }
 

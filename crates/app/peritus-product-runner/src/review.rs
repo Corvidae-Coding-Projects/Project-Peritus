@@ -15,6 +15,13 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 struct ReviewWire {
     summary: String,
     findings: Vec<FindingWire>,
+    #[serde(default)]
+    delivery: Option<crate::delivery::DeliveryReview>,
+}
+
+pub struct ReviewedSubmission {
+    pub submission: ProductReviewSubmission,
+    pub delivery: Option<crate::delivery::DeliveryReview>,
 }
 
 #[derive(Deserialize)]
@@ -31,7 +38,7 @@ struct FindingWire {
     remediation: String,
 }
 
-pub fn parse(value: &str, cycle: u32) -> Result<ProductReviewSubmission, ProductRunnerError> {
+pub fn parse(value: &str, cycle: u32) -> Result<ReviewedSubmission, ProductRunnerError> {
     let review: ReviewWire = match last_typed_object(value) {
         Ok(review) => review,
         Err(TypedObjectError::Missing) => {
@@ -66,8 +73,9 @@ pub fn parse(value: &str, cycle: u32) -> Result<ProductReviewSubmission, Product
             .map_err(|error| invalid_owned(error.to_string()))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    ProductReviewSubmission::new(review.summary, findings)
-        .map_err(|error| invalid_owned(error.to_string()))
+    let submission = ProductReviewSubmission::new(review.summary, findings)
+        .map_err(|error| invalid_owned(error.to_string()))?;
+    Ok(ReviewedSubmission { submission, delivery: review.delivery })
 }
 
 #[allow(

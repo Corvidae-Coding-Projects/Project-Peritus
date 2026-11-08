@@ -107,6 +107,12 @@ impl AppModel {
             let Some(pending) = pending else { continue };
             match pending.timeout_recovery() {
                 Recovery::Read => {
+                    if matches!(pending, PendingRequest::ModelQuery(_)) {
+                        self.model_lookup_failed();
+                        if self.model_setup_step().is_none() {
+                            self.chat.close_model_picker();
+                        }
+                    }
                     if matches!(pending, PendingRequest::Doctor(_))
                         && let Some(panel) = &mut self.chat.doctor
                     {

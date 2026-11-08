@@ -21,6 +21,7 @@ struct ActiveCommand {
     request: Value,
     unowned_before: BTreeSet<PathBuf>,
     recorded: bool,
+    candidate_at_start: Option<String>,
 }
 
 impl ActiveCommandLedger {
@@ -29,6 +30,7 @@ impl ActiveCommandLedger {
         request: &Value,
         result: &Value,
         unowned_before: BTreeSet<PathBuf>,
+        candidate_at_start: Option<String>,
     ) -> Result<(), DeveloperLoopError> {
         let handle = result
             .get("handle")
@@ -38,7 +40,12 @@ impl ActiveCommandLedger {
             .commands
             .insert(
                 handle.to_owned(),
-                ActiveCommand { request: request.clone(), unowned_before, recorded: false },
+                ActiveCommand {
+                    request: request.clone(),
+                    unowned_before,
+                    recorded: false,
+                    candidate_at_start,
+                },
             )
             .is_some()
         {
@@ -73,7 +80,9 @@ impl ActiveCommandLedger {
         }
         if !command.recorded {
             ownership.record_command_creations(root, &command.unowned_before);
+            let start = evidence.successful_count();
             evidence.record_named("command_start", &command.request, result);
+            evidence.bind_since(start, command.candidate_at_start.as_deref());
             command.recorded = true;
         }
         Ok(())

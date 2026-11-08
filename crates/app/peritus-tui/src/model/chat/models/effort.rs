@@ -1,10 +1,11 @@
 //! Discoverable effort picker and exact per-role command handling.
 
-use super::{AppModel, Effect, KeyCode, KeyEvent, ModelRole, NoticeLevel};
+use super::{AppModel, Effect, KeyCode, KeyEvent, ModelRole, ModelStep, NoticeLevel};
 use peritus_app_protocol::ProductModelEffort;
 
 impl AppModel {
     pub(in crate::model::chat) fn effort_command(&mut self, arguments: &str) -> Vec<Effect> {
+        self.cancel_model_setup();
         let mut words = arguments.split_whitespace();
         let first = words.next();
         let value = match first {
@@ -42,7 +43,7 @@ impl AppModel {
             return self.invalid_effort();
         };
         let choice = self.chat.model_role.choice(&self.chat.models).clone().with_effort(effort);
-        self.save_model_choice(choice)
+        self.save_model_choice(self.chat.model_role, choice)
     }
 
     pub(super) fn open_effort_picker(&mut self) {
@@ -55,6 +56,10 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn effort_picker_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        let guided = self.model_setup_step() == Some(ModelStep::Effort);
+        if guided {
+            return self.model_picker_key(key);
+        }
         match key.code {
             KeyCode::Esc => self.chat.close_effort_picker(),
             KeyCode::Tab => {
@@ -74,7 +79,7 @@ impl AppModel {
                 if let Some(effort) = ProductModelEffort::ALL.get(self.chat.effort_selection) {
                     let choice =
                         self.chat.model_role.choice(&self.chat.models).clone().with_effort(*effort);
-                    return self.save_model_choice(choice);
+                    return self.save_model_choice(self.chat.model_role, choice);
                 }
             }
             _ => {}

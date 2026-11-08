@@ -8,10 +8,11 @@ use peritus_plugin_host::{
 };
 use peritus_plugin_sdk::{
     HOST_CAPABILITY_APPLICATION_LABORATORY, HOST_CAPABILITY_ATTACHMENT, HOST_CAPABILITY_CHECKPOINT,
-    HOST_CAPABILITY_MODEL, HOST_CAPABILITY_PRIVATE_STATE, HOST_CAPABILITY_PROFILE,
-    HOST_CAPABILITY_SCOPED_SOURCE, HOST_CAPABILITY_SOURCE_BUILD, HOST_CAPABILITY_WORKER,
-    JsonBounds, JsonPayload, MODULE_HOST_CONTRACT_VERSION, ModuleHostCapability, ModuleHostOutcome,
-    ModuleHostProfile, ModuleHostRequest, ModuleHostResult, PluginId, RequestId,
+    HOST_CAPABILITY_EXTERNAL_APPLICATION, HOST_CAPABILITY_MODEL, HOST_CAPABILITY_PRIVATE_STATE,
+    HOST_CAPABILITY_PROFILE, HOST_CAPABILITY_SCOPED_SOURCE, HOST_CAPABILITY_SOURCE_BUILD,
+    HOST_CAPABILITY_WORKER, JsonBounds, JsonPayload, MODULE_HOST_CONTRACT_VERSION,
+    ModuleHostCapability, ModuleHostOutcome, ModuleHostProfile, ModuleHostRequest,
+    ModuleHostResult, PluginId, RequestId,
 };
 use serde_json::{Value, json};
 use std::{
@@ -326,6 +327,24 @@ impl Runtime {
             && request.version == MODULE_HOST_CONTRACT_VERSION
         {
             self.application_laboratory_outcome(input, request)
+        } else if request.capability == HOST_CAPABILITY_EXTERNAL_APPLICATION
+            && request.version == MODULE_HOST_CONTRACT_VERSION
+        {
+            #[cfg(target_os = "linux")]
+            {
+                super::external_application::dispatch(
+                    input,
+                    &self.module_id,
+                    &request.operation,
+                    &request.input,
+                )
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                ModuleHostOutcome::Unsupported {
+                    detail: "managed external applications currently require Linux".into(),
+                }
+            }
         } else if request.capability == HOST_CAPABILITY_WORKER
             && request.version == MODULE_HOST_CONTRACT_VERSION
             && request.operation == "execute"
@@ -430,6 +449,10 @@ fn host_profile(input: &ProductRunInput) -> ModuleHostProfile {
     if cfg!(target_os = "linux") {
         capabilities.push(ModuleHostCapability {
             name: HOST_CAPABILITY_SOURCE_BUILD.into(),
+            version: MODULE_HOST_CONTRACT_VERSION,
+        });
+        capabilities.push(ModuleHostCapability {
+            name: HOST_CAPABILITY_EXTERNAL_APPLICATION.into(),
             version: MODULE_HOST_CONTRACT_VERSION,
         });
     }

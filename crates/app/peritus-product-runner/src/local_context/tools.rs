@@ -2,6 +2,7 @@
 
 mod entry_view;
 pub(super) mod read;
+mod recover;
 mod schema;
 mod secret_text;
 mod sources;
@@ -46,6 +47,13 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn reject_tool_arguments(
+        &mut self,
+        call: &CompletedToolCall,
+        error: &peritus_model_protocol::ToolArgumentViolation,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        self.base.reject_tool_arguments(call, error)
+    }
     fn prepare_model_request(&mut self) -> Result<(), DeveloperLoopError> {
         self.base.prepare_model_request()
     }
@@ -54,6 +62,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     }
     fn model_response_completed(&mut self) {
         self.base.model_response_completed();
+    }
+    fn steering_continues_work(&mut self) {
+        self.base.steering_continues_work();
     }
     fn take_host_tool_calls(&mut self) -> u32 {
         std::mem::take(&mut self.host_calls).saturating_add(self.base.take_host_tool_calls())
@@ -81,9 +92,11 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         match call.name().as_str() {
-            "context_read" | "context_sources" | "inspection_plan" | "inspection_result_read" => {
-                DeveloperToolEffect::ReadOnly
-            }
+            "context_read"
+            | "context_recover"
+            | "context_sources"
+            | "inspection_plan"
+            | "inspection_result_read" => DeveloperToolEffect::ReadOnly,
             "context_update" => DeveloperToolEffect::MutationCapable,
             _ => self.base.effect(call),
         }
@@ -114,6 +127,13 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         }
         Ok(output)
     }
+    fn observe_tool_outcome(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) {
+        self.base.observe_tool_outcome(call, observation);
+    }
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
@@ -134,6 +154,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     fn continuation_blocker(&self) -> Option<String> {
         self.base.continuation_blocker()
     }
+    fn segment_boundary_required(&self) -> bool {
+        self.base.segment_boundary_required()
+    }
 }
 
 impl MemoryTools<'_> {
@@ -152,7 +175,10 @@ impl MemoryTools<'_> {
             );
         }
         if !self.base.tool_calls_allowed()
-            || !matches!(name, "context_read" | "context_sources" | "context_update")
+            || !matches!(
+                name,
+                "context_read" | "context_recover" | "context_sources" | "context_update"
+            )
         {
             let candidate = if self.base.tool_calls_allowed() && name == "workspace_read" {
                 super::read_reuse::plan(&mut *self.memory.lock()?, call)
@@ -188,7 +214,7 @@ impl MemoryTools<'_> {
         }
         let permissions = self.memory.effective_permissions();
         let required: &[PermissionCapability] =
-            if matches!(name, "context_read" | "context_sources") {
+            if matches!(name, "context_read" | "context_recover" | "context_sources") {
                 &[PermissionCapability::Read]
             } else {
                 &[PermissionCapability::Read, PermissionCapability::Write]
@@ -219,6 +245,7 @@ impl MemoryTools<'_> {
         // No lock crosses base execution, and memory never updates its grounding/receipt state.
         let mut memory = self.memory.lock()?;
         let value = match name {
+            "context_recover" => recover::retrieve(&mut memory, call)?,
             "context_sources" => sources::execute(&memory, call.arguments().canonical_bytes())?,
             "context_read" => match memory.activity.context_candidate(call) {
                 Some(value)

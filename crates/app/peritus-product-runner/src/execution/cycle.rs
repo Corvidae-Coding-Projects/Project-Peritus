@@ -41,38 +41,6 @@ impl CycleInspection {
     }
 }
 
-pub(super) fn retained_inspection(
-    gate_report: Option<&gates::GateReport>,
-    evidence: &RunEvidence,
-    recorder: &CandidateRecorder,
-) -> Result<CycleInspection, ProductRunnerError> {
-    let gates = gate_report.cloned().ok_or_else(|| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InternalInvariant,
-            "resume fixer phase",
-            "fixer phase has no retained exact-target gate report",
-        )
-    })?;
-    let checkpoint = recorder.checkpoint()?.ok_or_else(|| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InternalInvariant,
-            "resume fixer phase",
-            "fixer phase has no exact candidate checkpoint",
-        )
-    })?;
-    let identity = checkpoint.identity();
-    Ok(CycleInspection {
-        gates,
-        evidence: evidence.clone(),
-        conversation_changed: false,
-        qualification: QualificationState::new(
-            checkpoint.gates().is_current_and_satisfied(identity),
-            checkpoint.obligations().is_current_and_satisfied(identity),
-            checkpoint.review().is_current_and_satisfied(identity),
-        ),
-    })
-}
-
 pub(super) struct GateInspection {
     pub(super) gates: gates::GateReport,
     pub(super) gates_satisfied: bool,
@@ -289,7 +257,7 @@ pub(super) async fn inspect_gates(
         gates: gate_report,
         gates_satisfied,
         evidence,
-        conversation_changed: input.conversation.revision() != state.conversation_revision,
+        conversation_changed: input.requirements_revision() != state.conversation_revision,
     })
 }
 

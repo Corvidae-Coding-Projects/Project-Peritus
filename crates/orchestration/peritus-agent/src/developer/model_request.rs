@@ -44,16 +44,16 @@ fn extensions(
 pub(super) fn build_model_request(
     request: &DeveloperLoopRequest,
     messages: &[Message],
-    profile: &peritus_model_protocol::ProviderProfile,
+    context: &peritus_provider_core::PreparedModelContext,
     negotiated: peritus_model_protocol::NegotiatedCapabilities,
     protocol_limits: ProtocolLimits,
     turn: u16,
     attempt: u8,
     kind: ModelTurnKind,
     required_tool: Option<&str>,
-    provider: &dyn peritus_provider_core::ModelProvider,
     reasoning: ReasoningPolicy,
 ) -> Result<ModelRequest, DeveloperLoopError> {
+    let profile = context.profile();
     let parallel_tools = if kind == ModelTurnKind::Developer
         && !request.tools.is_empty()
         && required_tool.is_none()
@@ -97,7 +97,7 @@ pub(super) fn build_model_request(
             request.limits.max_output_tokens(),
         ),
     };
-    let output_tokens = provider
+    let output_tokens = context
         .output_tokens_for_input(
             super::context_port::estimate_developer_request_tokens(messages, &tools),
             output_tokens,

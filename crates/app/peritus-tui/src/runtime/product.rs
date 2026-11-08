@@ -42,6 +42,7 @@ pub struct ProductLaunchContext {
     providers: Vec<ProductProviderOption>,
     default_provider: Option<usize>,
     reviewer: Option<(usize, peritus_app_protocol::ProductModelChoice)>,
+    role_models: Option<([usize; 3], peritus_app_protocol::ProductRoleModels)>,
     direct_folder_writable: Option<bool>,
     launcher_report: Option<peritus_app_protocol::DoctorReport>,
 }
@@ -74,6 +75,7 @@ impl ProductLaunchContext {
             providers,
             default_provider,
             reviewer: None,
+            role_models: None,
             direct_folder_writable: None,
             launcher_report: None,
         })
@@ -98,13 +100,51 @@ impl ProductLaunchContext {
     /// Reviewer provider override, or the ordinary provider default.
     #[must_use]
     pub fn reviewer_provider(&self) -> Option<usize> {
-        self.reviewer.as_ref().map(|(provider, _)| *provider).or(self.default_provider)
+        self.role_models
+            .as_ref()
+            .map(|(providers, _)| providers[1])
+            .or_else(|| self.reviewer.as_ref().map(|(provider, _)| *provider))
+            .or(self.default_provider)
     }
 
     /// Saved explicit reviewer model, if setup selected one.
     #[must_use]
     pub fn reviewer_model(&self) -> Option<&peritus_app_protocol::ProductModelChoice> {
-        self.reviewer.as_ref().map(|(_, model)| model)
+        self.role_models
+            .as_ref()
+            .map(|(_, models)| models.reviewer())
+            .or_else(|| self.reviewer.as_ref().map(|(_, model)| model))
+    }
+
+    /// Sets explicit startup choices for all three roles.
+    ///
+    /// # Errors
+    /// Rejects provider indices outside the configured catalog.
+    pub fn with_role_models(
+        mut self,
+        providers: [usize; 3],
+        models: peritus_app_protocol::ProductRoleModels,
+    ) -> Result<Self, TuiError> {
+        if providers.iter().any(|i| *i >= self.providers.len()) {
+            return Err(TuiError::InvalidValue("role provider is not configured".into()));
+        }
+        self.role_models = Some((providers, models));
+        Ok(self)
+    }
+    /// Explicit default role models, when startup collected them.
+    #[must_use]
+    pub fn role_models(&self) -> Option<&peritus_app_protocol::ProductRoleModels> {
+        self.role_models.as_ref().map(|(_, models)| models)
+    }
+    /// Writer provider selected during role setup.
+    #[must_use]
+    pub fn writer_provider(&self) -> Option<usize> {
+        self.role_models.as_ref().map(|(providers, _)| providers[0]).or(self.default_provider)
+    }
+    /// Fixer provider selected during role setup.
+    #[must_use]
+    pub fn fixer_provider(&self) -> Option<usize> {
+        self.role_models.as_ref().map(|(providers, _)| providers[2]).or(self.default_provider)
     }
 
     /// Selects the exact initial conversation, including a not-yet-started browser session.
