@@ -381,6 +381,63 @@ fn refresh_requests_fresh_catalog_and_removed_model_cannot_be_saved() {
 }
 
 #[test]
+fn catalog_refresh_during_effort_selection_preserves_the_model_when_going_back() {
+    let mut m = model();
+    m.chat.run_id = Some(RunId::new([8; 16]).unwrap());
+    let before = m.chat.models.clone();
+    submit(&mut m, "/model");
+    let initial = key(&mut m, KeyCode::Char('3'));
+    let respond = |m: &mut AppModel, req: &AppRequestEnvelope, ids: &[&str]| {
+        let AppRequestPayload::QueryModels(query) = req.payload() else {
+            panic!("catalog query expected")
+        };
+        m.handle_message(AppMessage::Response(AppResponseEnvelope::new(
+            req.context(),
+            req.request_id(),
+            req.correlation_id(),
+            AppResponsePayload::Models(
+                ProductModelCatalog::new(
+                    query.profile(),
+                    "configured-exact".into(),
+                    ids.iter()
+                        .map(|id| {
+                            ProductModelInfo::new((*id).into(), (*id).into(), Some(true)).unwrap()
+                        })
+                        .collect(),
+                    1,
+                    false,
+                    String::new(),
+                )
+                .unwrap(),
+            ),
+        )))
+    };
+    assert!(respond(&mut m, request(&initial), &["other", "selected"]).is_empty());
+    key(&mut m, KeyCode::Down);
+    let refresh = key(&mut m, KeyCode::Char('r'));
+    assert!(key(&mut m, KeyCode::Enter).is_empty());
+    assert_eq!(m.model_setup_choice().unwrap().id(), "selected");
+    assert!(respond(&mut m, request(&refresh), &["selected", "other"]).is_empty());
+    assert_eq!(m.model_setup_step(), Some(ModelStep::Effort));
+    assert!(key(&mut m, KeyCode::Esc).is_empty());
+    assert!(key(&mut m, KeyCode::Enter).is_empty());
+    assert_eq!(m.model_setup_choice().unwrap().id(), "selected");
+    assert_eq!(m.chat.models, before, "Back and re-entry must not publish settings");
+    key(&mut m, KeyCode::Home);
+    for _ in 0..5 {
+        key(&mut m, KeyCode::Down);
+    }
+    let saved = key(&mut m, KeyCode::Enter);
+    let AppRequestPayload::UpdateModels(update) = request(&saved).payload() else {
+        panic!("one atomic update")
+    };
+    assert_eq!(update.models().fixer().id(), "selected");
+    assert_eq!(update.models().fixer().effort(), ProductModelEffort::XHigh);
+    assert_eq!(update.models().writer(), before.writer());
+    assert_eq!(update.models().reviewer(), before.reviewer());
+}
+
+#[test]
 fn standalone_effort_still_changes_only_effort_and_model_steps_render_staged_choice() {
     let mut m = model();
     let before = m.chat.models.clone();

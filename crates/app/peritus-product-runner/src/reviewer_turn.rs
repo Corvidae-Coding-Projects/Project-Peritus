@@ -58,29 +58,30 @@ pub async fn complete(
     loop {
         check_cancelled(input)?;
         crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
-        if let Err(error) = providers.current().prepare_context(&input.provider_cancellation).await
-        {
-            let error = peritus_agent::DeveloperLoopError::Model(
-                peritus_agent::ModelDriveError::Provider(error),
-            );
-            if let Some(reason) = provider_recovery.retry(&error) {
-                accounting.record_role_retry()?;
-                correction = Some(crate::failover::RoleRecovery::correction(reason));
-                continue;
-            }
-            if let Some(switch) = providers.advance(&error) {
-                crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
-                provider_recovery.reset();
-                correction = None;
-                continue;
-            }
-            return Err(turn::developer_error(&error));
-        }
+        let model_context =
+            match providers.current().prepare_context(u64::MAX, &input.provider_cancellation).await
+            {
+                Ok(context) => context,
+                Err(error) => {
+                    let error = peritus_agent::DeveloperLoopError::Model(
+                        peritus_agent::ModelDriveError::Provider(error),
+                    );
+                    correction = recover_reviewer(
+                        input,
+                        cycle,
+                        accounting,
+                        &mut providers,
+                        &mut provider_recovery,
+                        &error,
+                    )?;
+                    continue;
+                }
+            };
         invocation = invocation.saturating_add(1);
         let request = prepare_request(
             input,
             &evidence,
-            providers.current().context_input_target(),
+            model_context.profile().limits().max_input_tokens(),
             correction.as_deref(),
             accounting.remaining(),
             memory.as_ref(),
@@ -118,18 +119,15 @@ pub async fn complete(
                 continue;
             }
             Err(error) => {
-                if let Some(reason) = provider_recovery.retry(&error) {
-                    accounting.record_role_retry()?;
-                    correction = Some(crate::failover::RoleRecovery::correction(reason));
-                    continue;
-                }
-                if let Some(switch) = providers.advance(&error) {
-                    crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
-                    provider_recovery.reset();
-                    correction = None;
-                    continue;
-                }
-                return Err(turn::developer_error(&error));
+                correction = recover_reviewer(
+                    input,
+                    cycle,
+                    accounting,
+                    &mut providers,
+                    &mut provider_recovery,
+                    &error,
+                )?;
+                continue;
             }
         };
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
@@ -146,6 +144,26 @@ pub async fn complete(
             return Ok(submission);
         }
     }
+}
+
+fn recover_reviewer(
+    input: &ProductRunInput,
+    cycle: u32,
+    accounting: &mut RunAccounting,
+    providers: &mut crate::failover::ProviderCursor<'_>,
+    recovery: &mut crate::failover::RoleRecovery,
+    error: &peritus_agent::DeveloperLoopError,
+) -> Result<Option<String>, ProductRunnerError> {
+    if let Some(reason) = recovery.retry(error) {
+        accounting.record_role_retry()?;
+        return Ok(Some(crate::failover::RoleRecovery::correction(reason)));
+    }
+    if let Some(switch) = providers.advance(error) {
+        crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+        recovery.reset();
+        return Ok(None);
+    }
+    Err(turn::developer_error(error))
 }
 
 fn checked_invocation(

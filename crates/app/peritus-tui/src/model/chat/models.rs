@@ -11,9 +11,12 @@ mod effort;
 
 mod direct;
 pub(super) use direct::PendingModelSelection;
+mod destination;
+mod menu;
 mod wizard;
-pub(super) use wizard::ModelSetup;
-pub use wizard::ModelStep;
+use menu::MenuStart;
+pub(super) use menu::ModelSetup;
+pub use menu::ModelStep;
 
 #[cfg(test)]
 #[path = "../../../../../../discovery/proptest-praxis/owner/tui_role_models.rs"]
@@ -54,7 +57,7 @@ impl AppModel {
     pub(super) fn model_command(&mut self, arguments: &str) -> Vec<Effect> {
         self.cancel_model_setup();
         if arguments.trim().is_empty() {
-            return self.start_model_setup(false, false);
+            return self.start_model_setup(MenuStart::Agents);
         }
         let mut words = arguments.split_whitespace();
         let first = words.next();
@@ -79,7 +82,11 @@ impl AppModel {
                 if words.next().is_some() {
                     return self.model_usage();
                 }
-                self.start_model_setup(true, command == Some("refresh"))
+                self.start_model_setup(if command == Some("refresh") {
+                    MenuStart::CatalogRefresh
+                } else {
+                    MenuStart::Models
+                })
             }
             Some(id) => self.direct_model_words(std::iter::once(id).chain(words), false),
         }
@@ -142,22 +149,26 @@ impl AppModel {
         if profile != Some(catalog.profile()) {
             return;
         }
-        // Metadata replies can arrive after arrow-key input. Keep the highlighted identifier
-        // across refresh/reordering instead of moving Enter's target back to the first row.
-        self.chat.model_selection = self
-            .chat
-            .catalog
-            .as_ref()
-            .filter(|previous| previous.profile() == catalog.profile())
-            .and_then(|previous| previous.models().get(self.chat.model_selection))
-            .and_then(|selected| {
-                catalog.models().iter().position(|model| model.id() == selected.id())
-            })
-            .or_else(|| {
-                let current = self.chat.model_role.choice(&self.chat.models).id();
-                catalog.models().iter().position(|model| model.id() == current)
-            })
-            .unwrap_or(0);
+        if let Some(menu) = &mut self.chat.model_setup {
+            menu.catalog_replaced(self.chat.catalog.as_ref(), &catalog, &self.chat.models);
+        } else {
+            // Metadata replies can arrive after arrow-key input. Keep the highlighted identifier
+            // across refresh/reordering instead of moving Enter's target back to the first row.
+            self.chat.model_selection = self
+                .chat
+                .catalog
+                .as_ref()
+                .filter(|previous| previous.profile() == catalog.profile())
+                .and_then(|previous| previous.models().get(self.chat.model_selection))
+                .and_then(|selected| {
+                    catalog.models().iter().position(|model| model.id() == selected.id())
+                })
+                .or_else(|| {
+                    let current = self.chat.model_role.choice(&self.chat.models).id();
+                    catalog.models().iter().position(|model| model.id() == current)
+                })
+                .unwrap_or(0);
+        }
         self.chat.catalog = Some(catalog);
     }
 
@@ -197,10 +208,10 @@ impl AppModel {
         };
         let effort =
             requested.unwrap_or_else(|| self.chat.model_role.choice(&self.chat.models).effort());
-        self.save_model_choice(choice.with_effort(effort))
+        self.save_model_choice(self.chat.model_role, choice.with_effort(effort))
     }
 
-    fn save_model_choice(&mut self, choice: ProductModelChoice) -> Vec<Effect> {
+    fn save_model_choice(&mut self, role: ModelRole, choice: ProductModelChoice) -> Vec<Effect> {
         if self.chat_submission_pending() {
             self.notice(
                 NoticeLevel::Warning,
@@ -219,9 +230,9 @@ impl AppModel {
             },
         );
         let writer_binding_changed =
-            self.chat.model_role == ModelRole::Writer && self.chat.models.writer() != &choice;
+            role == ModelRole::Writer && self.chat.models.writer() != &choice;
         let models = &self.chat.models;
-        let models = match self.chat.model_role {
+        let models = match role {
             ModelRole::Writer => {
                 ProductRoleModels::new(choice, models.reviewer().clone(), models.fixer().clone())
             }
@@ -261,10 +272,7 @@ impl AppModel {
         }
         self.notice(
             NoticeLevel::Info,
-            format!(
-                "{} selection for new conversation: {description}",
-                self.chat.model_role.label(),
-            ),
+            format!("{} selection for new conversation: {description}", role.label()),
         );
         Vec::new()
     }

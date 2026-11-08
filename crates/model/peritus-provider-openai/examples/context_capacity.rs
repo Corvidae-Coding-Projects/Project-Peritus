@@ -20,8 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ProcessLimits::PRODUCTION,
     )?);
     let cancel = CancellationToken::new();
-    provider.prepare_context(&cancel).await?;
-    let profile = provider.request_profile(256)?;
+    let prepared = provider.prepare_context(256, &cancel).await?;
+    let profile = prepared.profile();
     println!(
         "discovered model={} usable_input={} output={} bootstrap_input=200000",
         profile.model().as_str(),
@@ -48,9 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?];
     assert!(provider.context_input_fits(&messages, &[])?);
     let request = ModelRequest::new(
-        &profile,
+        profile,
         negotiate(
-            &profile,
+            profile,
             RequestedCapabilities::new(
                 &[Capability::ToolCalls, Capability::ReasoningControls, Capability::PromptCaching],
                 &[],

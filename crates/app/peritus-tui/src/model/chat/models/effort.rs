@@ -43,7 +43,7 @@ impl AppModel {
             return self.invalid_effort();
         };
         let choice = self.chat.model_role.choice(&self.chat.models).clone().with_effort(effort);
-        self.save_model_choice(choice)
+        self.save_model_choice(self.chat.model_role, choice)
     }
 
     pub(super) fn open_effort_picker(&mut self) {
@@ -57,13 +57,11 @@ impl AppModel {
 
     pub(in crate::model::chat) fn effort_picker_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         let guided = self.model_setup_step() == Some(ModelStep::Effort);
-        if guided && !self.model_setup_is_current() {
-            return Vec::new();
+        if guided {
+            return self.model_picker_key(key);
         }
         match key.code {
-            KeyCode::Esc | KeyCode::Backspace if guided => self.model_setup_back(),
             KeyCode::Esc => self.chat.close_effort_picker(),
-            KeyCode::Tab if guided => {}
             KeyCode::Tab => {
                 self.chat.model_role = self.chat.model_role.next();
                 self.open_effort_picker();
@@ -79,12 +77,9 @@ impl AppModel {
             KeyCode::End => self.chat.effort_selection = ProductModelEffort::ALL.len() - 1,
             KeyCode::Enter => {
                 if let Some(effort) = ProductModelEffort::ALL.get(self.chat.effort_selection) {
-                    if guided {
-                        return self.save_model_setup(*effort);
-                    }
                     let choice =
                         self.chat.model_role.choice(&self.chat.models).clone().with_effort(*effort);
-                    return self.save_model_choice(choice);
+                    return self.save_model_choice(self.chat.model_role, choice);
                 }
             }
             _ => {}

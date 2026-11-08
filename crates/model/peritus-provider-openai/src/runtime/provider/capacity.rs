@@ -21,9 +21,10 @@ impl Cache {
     pub async fn prepare(
         &self,
         executable: &Path,
-        selected: &ModelName,
+        profile: &ProviderProfile,
+        output: u64,
         cancellation: &CancellationToken,
-    ) -> Result<(), ProviderCoreError> {
+    ) -> Result<peritus_provider_core::PreparedModelContext, ProviderCoreError> {
         let fresh = self
             .snapshot
             .lock()
@@ -43,7 +44,7 @@ impl Cache {
                 .map_err(|_| catalog::unavailable("context capacity cache is unavailable"))? =
                 Some(Snapshot { fetched: Instant::now(), models });
         }
-        let model = self.selected(selected)?.ok_or_else(|| {
+        let model = self.selected(profile.model())?.ok_or_else(|| {
             catalog::unavailable("selected model context metadata has not been prepared")
         })?;
         if model.usable_context_tokens()?.is_none() {
@@ -51,7 +52,7 @@ impl Cache {
                 "selected model has no fresh advertised context capacity; refresh the official runtime model metadata rather than guessing a window",
             ));
         }
-        Ok(())
+        peritus_provider_core::PreparedModelContext::advertised(profile, &model, output)
     }
     pub fn selected(
         &self,
@@ -71,26 +72,5 @@ impl Cache {
                 })
             })
             .transpose()
-    }
-    pub fn profile(
-        &self,
-        profile: &ProviderProfile,
-        output: u64,
-    ) -> Result<ProviderProfile, ProviderCoreError> {
-        self.selected(profile.model())?.map_or_else(
-            || Ok(profile.clone()),
-            |m| catalog::profile_with_model_limits(profile, &m, output),
-        )
-    }
-    pub fn output(
-        &self,
-        profile: &ProviderProfile,
-        input: u64,
-        requested: u64,
-    ) -> Result<u64, ProviderCoreError> {
-        self.selected(profile.model())?.map_or_else(
-            || Ok(requested.min(profile.limits().max_output_tokens())),
-            |m| catalog::output_tokens_for_input(profile, &m, input, requested),
-        )
     }
 }

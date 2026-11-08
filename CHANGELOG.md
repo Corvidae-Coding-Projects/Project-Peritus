@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Prepare model context through one immutable capacity snapshot, bind declarative workflow stages to their owning jobs and declared inputs, and centralize model-menu transitions and destination checks behind their owning interfaces.
+
 ### Fixed
 
 - Collect explicit writer, reviewer, and fixer model/effort defaults at startup. Make `/model` and `/models` guided agent, model, and effort menus with one final save; retain direct shortcuts and reject stale selections after a destination change.

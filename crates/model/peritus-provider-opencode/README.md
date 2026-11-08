@@ -59,7 +59,7 @@ Model discovery uses `opencode models SERVICE --verbose`, including advertised m
 Numeric capacities are resolved from the exact service/model before context selection and
 generation. Shared context and separate input/output limits retain their distinct meanings.
 The base profile remains the route/capability contract and supplies missing-field fallbacks.
-Use `request_profile` after `prepare_context` when constructing requests directly; configured
+Use the prepared context's profile when constructing requests directly; configured
 fixed limits are available through `with_discovered_limits(false)` or the hosted route setting
 `discover_model_limits = false`. The product developer loop performs this resolution itself.
 Output-token limits are advisory. Text and Peritus tool history are supported; native session

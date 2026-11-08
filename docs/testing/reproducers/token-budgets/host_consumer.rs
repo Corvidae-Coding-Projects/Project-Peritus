@@ -1,4 +1,5 @@
 //! Production LocalContextHandle assembly on copied closed state; no provider inference/effects.
+// Copied-state replay intentionally uses its recorded profile, without live discovery.
 use peritus_agent::{
     DeveloperContextAssembly, DeveloperContextPort, DeveloperLoopLimits,
     estimate_developer_request_tokens,
@@ -198,6 +199,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         run_id: run,
         workspace_id: workspace,
+        source_root: workspace_root.clone(),
+        module_jobs: None,
         workspace_root,
         trace_path: host.join("replay.trace"),
         command_runtime: runtime,
@@ -225,6 +228,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         provider: provider.as_ref(),
         governing_input: None,
         invocation_policy: &system,
+        invocation_state: None,
         messages: &pins,
         tools: &tools,
         profile: provider.profile(),
@@ -278,7 +282,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     fs::write(host.join("published-inspection.json"), serde_json::to_vec(&published)?)?;
     println!(
         "{}",
-        json!({"case":"copied-real-host-assembly","result":"PASS","entries":ids.len(),"required_framing_tokens":additional,"assembled_estimated_tokens":estimate_developer_request_tokens(&view,&tools),"provider_input_target":provider.context_input_target(),"actual_provider_encoding_fits":true,"assembly_bytes":serialized.len(),"assembly_sha256":hex(peritus_codec::sha256(&serialized).as_bytes()),"entry_content_and_source_links_preserved":true,"uncovered_tail_recovered":snapshot["events"].as_array().unwrap().len(),"provider_requests":0,"effects_dispatched":0})
+        json!({"case":"copied-real-host-assembly","result":"PASS","entries":ids.len(),"required_framing_tokens":additional,"assembled_estimated_tokens":estimate_developer_request_tokens(&view,&tools),"provider_input_target":provider.profile().limits().max_input_tokens(),"actual_provider_encoding_fits":true,"assembly_bytes":serialized.len(),"assembly_sha256":hex(peritus_codec::sha256(&serialized).as_bytes()),"entry_content_and_source_links_preserved":true,"uncovered_tail_recovered":snapshot["events"].as_array().unwrap().len(),"provider_requests":0,"effects_dispatched":0})
     );
     Ok(())
 }

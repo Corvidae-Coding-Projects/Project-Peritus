@@ -36,12 +36,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rational = json!({"evidence":[{"authority":"engineering_rationale","version":null,"reference":{"invariant":"Retain committed state"}}],"nullable":null});
     schema.validate_value(&rational)?;
     let integers = compile(
-        &json!({"type":"integer","minimum":9007199254740993_u64,"maximum":18446744073709551614_u64}),
+        &json!({"type":"integer","minimum":9_007_199_254_740_993_u64,"maximum":18_446_744_073_709_551_614_u64}),
     )?;
     for (value, expected) in [
-        (9007199254740992_u64, false),
-        (9007199254740993, true),
-        (18446744073709551614, true),
+        (9_007_199_254_740_992_u64, false),
+        (9_007_199_254_740_993, true),
+        (18_446_744_073_709_551_614, true),
         (u64::MAX, false),
     ] {
         assert_eq!(integers.validate_value(&json!(value)).is_ok(), expected);

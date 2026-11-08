@@ -111,7 +111,7 @@ pub(super) async fn complete_turn(
     provider: &dyn ModelProvider,
     request: &DeveloperLoopRequest,
     messages: &mut Vec<Message>,
-    profile: &peritus_model_protocol::ProviderProfile,
+    model_context: &peritus_provider_core::PreparedModelContext,
     negotiated: peritus_model_protocol::NegotiatedCapabilities,
     protocol_limits: ProtocolLimits,
     turn: u16,
@@ -123,6 +123,7 @@ pub(super) async fn complete_turn(
     interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
     mut retry_context: Option<RetryContext<'_, '_>>,
 ) -> Result<Option<ModelSession>, DeveloperLoopError> {
+    let profile = model_context.profile();
     let maximum = request.limits.max_attempts_per_turn();
     let retry_prefix = match kind {
         ModelTurnKind::Developer => request.request_prefix.clone(),
@@ -159,14 +160,13 @@ pub(super) async fn complete_turn(
         let model_request = build_model_request(
             request,
             messages,
-            profile,
+            model_context,
             negotiated,
             protocol_limits,
             turn,
             attempt,
             kind,
             required_tool,
-            provider,
             reasoning,
         )?;
         if let Some(owner) = retry_context.as_mut() {

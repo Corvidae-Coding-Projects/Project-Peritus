@@ -10,7 +10,9 @@ Implementation pieces for `models.rs`: Exact provider-discovered selection; manu
 | --- | --- |
 | [effort.rs](effort.rs) | Discoverable effort picker and exact per-role command handling. |
 | [direct.rs](direct.rs) | Atomic model/effort commands with automatic catalog loading, retained drafts, and destination-bound response handling. |
-| [wizard.rs](wizard.rs) | Guided agent, model, and effort selection with staged choices, Back/Cancel, and one destination-bound final save. |
+| [wizard.rs](wizard.rs) | Thin UI adapter that dispatches owned menu actions to catalog queries and atomic daemon updates. |
+| [menu.rs](menu.rs) | Legal agent/model/effort states, navigation, selected identities across catalog replacement, and complete save actions. |
+| [destination.rs](destination.rs) | Shared destination snapshots and scope checks for guided and direct selections. |
 
 Owning module: [models.rs](../models.rs). Inspect that parent before changing the local pieces.
 

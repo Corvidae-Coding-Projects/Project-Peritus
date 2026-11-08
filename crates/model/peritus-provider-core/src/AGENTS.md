@@ -8,7 +8,8 @@ Provider-independent owned transport primitives for Peritus.
 
 | File | Role |
 | --- | --- |
-| [adapter.rs](adapter.rs) | Provider-neutral adapter ownership contract, metadata preparation, and effective request profiles. |
+| [adapter.rs](adapter.rs) | Provider-neutral adapter contract with atomic preparation of a turn's numeric context. |
+| [context.rs](context.rs) | Immutable prepared profile and shared-window output fitting from one exact model snapshot. |
 | [backoff.rs](backoff.rs) | Cancellation-aware execution of checked backoff delays. |
 | [cancellation.rs](cancellation.rs) | Race-free cooperative cancellation without a runtime type in the public API. |
 | [catalog.rs](catalog.rs) | Provider-owned model discovery and route-matched numeric capacity resolution; no bundled model names. |

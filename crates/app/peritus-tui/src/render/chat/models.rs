@@ -46,7 +46,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         .collect::<Vec<_>>();
     let mut state = ListState::default();
     if !items.is_empty() {
-        state.select(Some(model.chat.model_selection.min(items.len() - 1)));
+        state.select(Some(model.model_picker_selection().min(items.len() - 1)));
     }
     frame.render_stateful_widget(
         List::new(items).highlight_symbol("▸ ").highlight_style(Style::default().fg(ACCENT)),

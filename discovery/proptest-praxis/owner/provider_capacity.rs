@@ -38,16 +38,25 @@ fn maximum_window_and_reply_space_are_independent_of_bootstrap_limits() {
     assert_eq!(model.usable_context_tokens().unwrap(), Some(828_400));
     let p = profile();
     for (reply, input) in [(256, 828_144), (32_000, 796_400), (u64::MAX, 796_400)] {
-        let effective = crate::catalog::profile_with_model_limits(&p, &model, reply).unwrap();
+        let prepared = crate::PreparedModelContext::advertised(&p, &model, reply).unwrap();
+        let effective = prepared.profile();
         assert_eq!(effective.model(), p.model());
         assert_eq!(effective.profile_id(), p.profile_id());
         assert_eq!(effective.limits().max_input_tokens(), input);
     }
     assert_eq!(
-        crate::catalog::output_tokens_for_input(&p, &model, 828_000, u64::MAX).unwrap(),
+        crate::PreparedModelContext::advertised(&p, &model, u64::MAX)
+            .unwrap()
+            .output_tokens_for_input(828_000, u64::MAX)
+            .unwrap(),
         400
     );
-    assert!(crate::catalog::output_tokens_for_input(&p, &model, 828_400, u64::MAX).is_err());
+    assert!(
+        crate::PreparedModelContext::advertised(&p, &model, u64::MAX)
+            .unwrap()
+            .output_tokens_for_input(828_400, u64::MAX)
+            .is_err()
+    );
 }
 
 #[test]
@@ -86,4 +95,27 @@ fn contradictory_duplicate_and_malformed_runtime_metadata_is_rejected() {
     }
     fs::write(&path, "not-json").unwrap();
     assert!(enrich_file(selected(), &path).is_err());
+}
+
+#[test]
+fn prepared_context_keeps_one_snapshot_and_rejects_another_model() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("models_cache.json");
+    fs::write(&path, json!({"models":[row()]}).to_string()).unwrap();
+    let mut model = enrich_file(selected(), &path).unwrap().remove(0);
+    let p = profile();
+    let first = crate::PreparedModelContext::advertised(&p, &model, u64::MAX).unwrap();
+    model.max_context_tokens = Some(1_400_000);
+    model.output_tokens = Some(100_000);
+    let second = crate::PreparedModelContext::advertised(&p, &model, u64::MAX).unwrap();
+    assert_eq!(first.profile().limits().max_input_tokens(), 796_400);
+    assert_eq!(first.output_tokens_for_input(828_000, u64::MAX).unwrap(), 400);
+    assert_eq!(second.profile().limits().max_input_tokens(), 1_230_000);
+    assert_eq!(second.output_tokens_for_input(828_000, u64::MAX).unwrap(), 100_000);
+    model.id = ModelName::new("another-model".into()).unwrap();
+    assert!(crate::PreparedModelContext::advertised(&p, &model, u64::MAX).is_err());
+    let configured = crate::PreparedModelContext::configured(p.clone());
+    assert_eq!(configured.profile(), &p);
+    assert_eq!(configured.output_tokens_for_input(12, u64::MAX).unwrap(), 32_000);
+    assert!(configured.output_tokens_for_input(12, 0).is_err());
 }

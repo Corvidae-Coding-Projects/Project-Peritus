@@ -1,4 +1,5 @@
 //! Production LocalContextHandle assembly on copied closed state; no provider inference/effects.
+// Copied-state replay intentionally uses its recorded profile, without live discovery.
 use peritus_agent::{DeveloperContextAssembly,DeveloperContextPort,DeveloperLoopLimits,estimate_developer_request_tokens};
 use peritus_context::{ContextNodeId,working::*};
 use peritus_model_protocol::{CancellationKind,Capability,CapabilityMatrix,CapabilityProvenance,ContentBlock,ModelLimits,ModelName,OutputLimitEnforcement,ProtocolLimits,ProviderName,ProviderProfile,ResumeKind,Role,StateMode,WireDialect,decode_messages,encode_messages};
@@ -102,14 +103,14 @@ fn main()->Result<(),Box<dyn Error>>{
  let processes=peritus_process::ProcessStore::open(host.join("commands/processes"),&workspace_root)?;
  let runtime=CommandRuntime::open_direct(host.join("commands/router"),&workspace_root,run,processes)?;
  let provider_dyn:Arc<dyn ModelProvider>=provider.clone();
- let input=ProductRunInput{workspace_kind:ProductWorkspaceKind::InPlace{protected_paths:vec![],baseline_revision:state.binding().conversation_revision()},run_id:run,workspace_id:workspace,workspace_root,trace_path:host.join("replay.trace"),command_runtime:runtime,finding_state:String::new(),task:String::new(),max_elapsed:None,delivery_scope:ProductDeliveryScope::WorkspaceChanges,conversation:Arc::new(Conversation(state.binding().conversation_revision())),providers:RoleProviders{writer:provider_dyn.clone(),reviewer:provider_dyn.clone(),fixer:provider_dyn,fallbacks:vec![]},cancelled:Arc::new(AtomicBool::new(false)),provider_cancellation:CancellationToken::new(),resume:None};
+ let input=ProductRunInput{workspace_kind:ProductWorkspaceKind::InPlace{protected_paths:vec![],baseline_revision:state.binding().conversation_revision()},run_id:run,workspace_id:workspace,source_root:workspace_root.clone(),module_jobs:None,workspace_root,trace_path:host.join("replay.trace"),command_runtime:runtime,finding_state:String::new(),task:String::new(),max_elapsed:None,delivery_scope:ProductDeliveryScope::WorkspaceChanges,conversation:Arc::new(Conversation(state.binding().conversation_revision())),providers:RoleProviders{writer:provider_dyn.clone(),reviewer:provider_dyn.clone(),fixer:provider_dyn,fallbacks:vec![]},cancelled:Arc::new(AtomicBool::new(false)),provider_cancellation:CancellationToken::new(),resume:None};
  let mut context=LocalContextHandle::for_run(&input,"writer")?.expect("working memory enabled");
  let additional=context.additional_request_framing_tokens()?;
  if std::env::args().any(|arg|arg=="--load-only"){
   println!("{}",json!({"case":"production-context-load-over-1gib-trace","result":"PASS","trace_bytes":fs::metadata(host.join("replay.trace"))?.len(),"retained_sources":state.through_observation(),"retained_entries":state.entries(state.binding())?.len(),"required_framing_tokens":additional,"provider_requests":0,"effects_dispatched":0}));return Ok(());
  }
  let mut tools=input.developer_definitions()?;tools.extend(context.tool_definitions()?);
- let view=context.assemble(DeveloperContextAssembly{provider:provider.as_ref(),governing_input:None,invocation_policy:&system,messages:&pins,tools:&tools,profile:provider.profile()})?;
+ let view=context.assemble(DeveloperContextAssembly{provider:provider.as_ref(),governing_input:None,invocation_policy:&system,invocation_state:None,messages:&pins,tools:&tools,profile:provider.profile()})?;
  let body=view.iter().flat_map(|m|m.content()).filter_map(|b|if let ContentBlock::Text(t)=b{Some(t.expose_for_wire())}else{None}).filter(|t|t.starts_with("LOCAL WORKING STATE —")).collect::<Vec<_>>().join("\n");
  let entries=state.entries(state.binding())?;
  if !entries.is_empty(){assert!(body.contains("All entries and exact source bytes remain durable")&&body.contains("context_read"),"provider-sized view lacks exact retrieval notice");}
@@ -131,6 +132,6 @@ fn main()->Result<(),Box<dyn Error>>{
  let after_ids:BTreeSet<_>=after.entries(after.binding())?.iter().map(|e|hex(e.id().as_bytes())).collect();assert_eq!(ids,after_ids);
  for entry in state.entries(state.binding())?{let found=after.entry(after.binding(),entry.id())?;assert_eq!(found.content(),entry.content());assert_eq!(found.links(),entry.links());}
  fs::write(host.join("published-inspection.json"),serde_json::to_vec(&published)?)?;
- println!("{}",json!({"case":"copied-real-host-assembly","result":"PASS","entries":ids.len(),"visible_exact_entries":visible,"published_omitted_entries":published["validation"]["omitted_entries"],"checkpoint_schema":published["checkpoint"]["schema_version"],"published_sources":sources.len(),"required_framing_tokens":additional,"assembled_estimated_tokens":estimate_developer_request_tokens(&view,&tools),"provider_input_target":provider.context_input_target(),"actual_provider_encoding_fits":true,"assembly_bytes":serialized.len(),"assembly_sha256":hex(peritus_codec::sha256(&serialized).as_bytes()),"entry_content_and_source_links_preserved":true,"uncovered_tail_recovered":snapshot["events"].as_array().unwrap().len(),"provider_requests":0,"effects_dispatched":0}));
+ println!("{}",json!({"case":"copied-real-host-assembly","result":"PASS","entries":ids.len(),"visible_exact_entries":visible,"published_omitted_entries":published["validation"]["omitted_entries"],"checkpoint_schema":published["checkpoint"]["schema_version"],"published_sources":sources.len(),"required_framing_tokens":additional,"assembled_estimated_tokens":estimate_developer_request_tokens(&view,&tools),"provider_input_target":provider.profile().limits().max_input_tokens(),"actual_provider_encoding_fits":true,"assembly_bytes":serialized.len(),"assembly_sha256":hex(peritus_codec::sha256(&serialized).as_bytes()),"entry_content_and_source_links_preserved":true,"uncovered_tail_recovered":snapshot["events"].as_array().unwrap().len(),"provider_requests":0,"effects_dispatched":0}));
  Ok(())
 }

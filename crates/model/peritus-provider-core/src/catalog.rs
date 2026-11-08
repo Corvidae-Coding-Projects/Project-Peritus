@@ -95,7 +95,7 @@ impl DiscoveredModel {
 ///
 /// # Errors
 /// Returns a safe error for contradictory or zero token limits.
-pub fn profile_with_model_limits(
+pub(crate) fn profile_with_model_limits(
     profile: &ProviderProfile,
     model: &DiscoveredModel,
     requested_output: u64,
@@ -134,27 +134,6 @@ pub fn profile_with_model_limits(
         profile.cancellation_kind(),
     )
     .map_err(|_| unavailable("model limits contradict the configured provider profile"))
-}
-
-/// Fits output to the remaining shared window of already route/model-matched metadata.
-///
-/// # Errors
-/// Rejects zero output or an input that consumes the entire shared context.
-pub fn output_tokens_for_input(
-    profile: &ProviderProfile,
-    model: &DiscoveredModel,
-    input: u64,
-    requested: u64,
-) -> Result<u64, ProviderCoreError> {
-    let mut output =
-        requested.min(model.output_tokens.unwrap_or_else(|| profile.limits().max_output_tokens()));
-    if let Some(context) = model.usable_context_tokens()? {
-        output = output.min(context.saturating_sub(input));
-    }
-    if output == 0 {
-        return Err(unavailable("model context leaves no space for requested output"));
-    }
-    Ok(output)
 }
 
 /// Derives a new immutable profile identity for a selected model, preserving the explicit route.

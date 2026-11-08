@@ -10,7 +10,7 @@ mod registry;
 mod source_build;
 
 pub use definition::{Code, Definition, Manifest, Role, Stage};
-pub use jobs::{Job, JobState, StageOutput};
+pub use jobs::{Job, JobState, PendingStage, StageOutput};
 pub use market::{
     Catalog, MARKET_REPOSITORY, MarketEntry, ModuleOperation, SourceCatalog, SourceEntry,
 };

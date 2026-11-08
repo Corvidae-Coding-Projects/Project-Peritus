@@ -44,6 +44,10 @@ interfaces expose only Peritus-owned values and standard-library futures.
 - `ModelProvider` binds one adapter instance to an immutable `ProviderProfile`; requests are checked
   again at the effect boundary. `OwnedModelStream` owns cancellation, cancels live work on drop,
   and rejects end-of-stream before an explicit normalized terminal event.
+- `ModelProvider::prepare_context` loads required metadata and returns `PreparedModelContext`
+  for the exact selected model. Use its resolved profile for input projection and its
+  `output_tokens_for_input` operation for reply fitting. Both use one numeric snapshot even
+  when discovery refreshes concurrently. Transport-envelope checks remain adapter-owned.
 - `ProviderRequirement` checks text, image, context-window, and tool-protocol needs before a turn.
   Provider routes distinguish direct first-party APIs, reviewed compatible APIs, and official
   account runtimes. Fallback selection considers only capable, currently available routes that the

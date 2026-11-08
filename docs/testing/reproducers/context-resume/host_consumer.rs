@@ -1,3 +1,4 @@
+// Copied-state replay intentionally uses its recorded profile, without live discovery.
 use peritus_agent::{
     DeveloperContextAssembly, DeveloperContextPort, DeveloperLoopLimits, DeveloperLoopRequest,
     estimate_developer_request_tokens,
@@ -139,6 +140,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         run_id: run,
         workspace_id: workspace,
         workspace_root: host.join("workspace"),
+        source_root: host.join("workspace"),
+        module_jobs: None,
         trace_path: host.join("replay.trace"),
         command_runtime,
         finding_state: String::new(),
@@ -167,7 +170,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         tools: &tools,
         diff,
         gates,
-        max_input_tokens: provider.context_input_target(),
+        max_input_tokens: provider.profile().limits().max_input_tokens(),
         additional_framing_tokens: reserve,
     })?;
     assert!(prompt.starts_with(&instructions));
@@ -179,6 +182,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         system: system.clone(),
         prompt: prompt.clone(),
+        cyber_access_program: None,
         attachments: Vec::new(),
         tools: tools.clone(),
         limits: DeveloperLoopLimits::new(48, 512)?,
@@ -196,6 +200,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         provider: provider.as_ref(),
         governing_input: Some(&governing),
         invocation_policy: &initial[0],
+        invocation_state: None,
         messages: &initial,
         tools: &tools,
         profile: provider.profile(),
@@ -255,6 +260,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         provider: provider.as_ref(),
         governing_input: Some(&governing),
         invocation_policy: &initial[0],
+        invocation_state: None,
         messages: &view,
         tools: &tools,
         profile: provider.profile(),
@@ -262,7 +268,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert_eq!(view, reopened_view);
     assert!(provider.context_input_fits(&reopened_view, &tools)?);
     drop(reopened);
-    let report = json!({"ordinary_and_memory_tools":tools.len(),"provider_kind":settings["kind"],"provider_model":provider.profile().model().as_str(),"provider_target":provider.context_input_target(),"provider_profile_input":provider.profile().limits().max_input_tokens(),"reserved_memory_tokens":reserve,"projected_input_bytes":prompt.len(),"assembled_estimated_tokens":estimated,"old_oversized_pin_selected":false,"old_oversized_archive_bytes":675149,"old_oversized_archive_digest_preserved":true,"preserved_unknown_source":5927,"required_entries":required_ids.len(),"published_generation":published["checkpoint"]["generation"],"reopened_view_exactly_equal":true,"real_adapter_context_fits":true,"provider_requests_sent":0});
+    let report = json!({"ordinary_and_memory_tools":tools.len(),"provider_kind":settings["kind"],"provider_model":provider.profile().model().as_str(),"provider_target":provider.profile().limits().max_input_tokens(),"provider_profile_input":provider.profile().limits().max_input_tokens(),"reserved_memory_tokens":reserve,"projected_input_bytes":prompt.len(),"assembled_estimated_tokens":estimated,"old_oversized_pin_selected":false,"old_oversized_archive_bytes":675149,"old_oversized_archive_digest_preserved":true,"preserved_unknown_source":5927,"required_entries":required_ids.len(),"published_generation":published["checkpoint"]["generation"],"reopened_view_exactly_equal":true,"real_adapter_context_fits":true,"provider_requests_sent":0});
     fs::write(host.join("host-report.json"), serde_json::to_vec_pretty(&report)?)?;
     println!("{report}");
     Ok(())

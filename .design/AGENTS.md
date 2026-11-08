@@ -8,6 +8,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [deep-modules-and-interfaces.md](deep-modules-and-interfaces.md) | Cross-workspace interface survey, ownership-focused refactors, and compatibility constraints. |
 | [context-capacity-and-recovery.md](context-capacity-and-recovery.md) | Selected-model capacity discovery, semantic recovery, receipt dependencies, and mode-transition remediation. |
 | [openai-chatgpt-oauth.md](openai-chatgpt-oauth.md) | Optional direct ChatGPT OAuth design, compatibility constraints, and live-verification boundaries. |
 | [proptest-praxis-rollout.md](proptest-praxis-rollout.md) | Eight-stage property-testing design, package allocation, independent oracle plan, and bounded delivery status. |

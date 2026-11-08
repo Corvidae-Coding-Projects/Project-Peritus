@@ -26,55 +26,24 @@ pub enum ResponseCancellationOutcome {
 /// Their public boundary remains entirely Peritus-owned.
 pub trait ModelProvider: Send + Sync {
     /// Returns the configured route/capability contract and fallback numeric limits.
-    /// Use `request_profile` after metadata preparation for execution token capacities.
+    /// Use `prepare_context` for the numeric limits of an execution turn.
     fn profile(&self) -> &ProviderProfile;
 
-    /// Resolves numeric limits for this exact route/model and requested output allowance.
+    /// Prepares one exact model turn and returns its immutable numeric limits.
     ///
-    /// Call `prepare_context` first. Discovery may replace fallback token capacities, but must
-    /// preserve identity, capabilities, lifecycle guarantees, and non-token resource limits.
-    /// Providers without model-specific discovery retain their explicitly configured profile.
-    ///
-    /// # Errors
-    /// Rejects contradictory model metadata rather than sending an oversized request.
-    fn request_profile(&self, _output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
-        Ok(self.profile().clone())
-    }
-
-    /// Fits the requested output to model limits and any shared context remaining after input.
-    /// The input estimate must include message and tool framing. An uncapped caller uses
-    /// `u64::MAX`; this is not a reservation of the model's entire output maximum.
+    /// This operation owns metadata loading, model matching, reply reservation, and the
+    /// resulting profile. Callers use the returned context for projection and output fitting;
+    /// they do not coordinate a separate load/resolve/read sequence. Routes without numeric
+    /// discovery retain their explicitly configured profile.
     ///
     /// # Errors
-    /// Rejects an input that leaves no output space in an advertised shared context window.
-    fn output_tokens_for_input(
-        &self,
-        _input_tokens: u64,
-        requested: u64,
-    ) -> Result<u64, ProviderCoreError> {
-        Ok(requested.min(self.request_profile(requested)?.limits().max_output_tokens()))
-    }
-
-    /// Soft selection target accounting for a transport-specific input envelope.
-    /// This does not replace the model's token capacity or impose a global token ceiling.
-    fn context_input_target(&self) -> u64 {
-        self.request_profile(u64::MAX).map_or_else(
-            |_| self.profile().limits().max_input_tokens(),
-            |p| p.limits().max_input_tokens(),
-        )
-    }
-
-    /// Loads required runtime metadata before an initial role context is projected.
-    /// The default performs no work. Executable routers may need their advertised model input
-    /// allowance before a reviewer chooses which immutable evidence to include inline.
-    ///
-    /// # Errors
-    /// Returns the same cancellation or metadata failure that request startup would report.
+    /// Reports cancellation and missing or contradictory required metadata before inference.
     fn prepare_context<'a>(
         &'a self,
+        _requested_output: u64,
         _cancellation: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
-        Box::pin(async { Ok(()) })
+    ) -> BoxFuture<'a, Result<crate::PreparedModelContext, ProviderCoreError>> {
+        Box::pin(async move { Ok(crate::PreparedModelContext::configured(self.profile().clone())) })
     }
 
     /// Whether a prospective context fits this adapter's known transport envelope.

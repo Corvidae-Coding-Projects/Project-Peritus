@@ -17,6 +17,7 @@ Declarative module package and job domain. The host owns inference, tools and au
 | --- | --- |
 | [src/](src/AGENTS.md) | Definition, registry and checkpoint implementations. |
 | [examples/inspect_predecessor_integrity.rs](examples/inspect_predecessor_integrity.rs) | Public inspection replay for damaged predecessor outputs and recovery. |
+| [examples/pending_stage.rs](examples/pending_stage.rs) | Public manifest-bound stage replay for declared inputs, paging, publication, and restart. |
 | [bundled/](bundled/AGENTS.md) | Built-in workflow manifests using the same contract as installed packages. |
 
 Read callers for exact behavior. This map adds no testing or approval gates.

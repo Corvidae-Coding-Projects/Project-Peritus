@@ -8,6 +8,8 @@ use std::{
     io::{Read, Seek, SeekFrom},
     path::{Path, PathBuf},
 };
+mod stage;
+pub use stage::PendingStage;
 
 /// Committed output of one declared stage.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -40,6 +42,7 @@ pub struct JobState {
 /// Exclusive owner of one deterministic job. Closing it releases cross-process ownership.
 pub struct Job {
     root: PathBuf,
+    namespace: String,
     state: JobState,
     _lock: Option<fs::File>,
     definition: Definition,
@@ -66,7 +69,7 @@ impl Job {
             format!("{}:{}:{revision}:{task}", definition.manifest.id, definition.digest)
                 .as_bytes(),
         );
-        let root = root.join(key);
+        let root = root.join(&key);
         fs::create_dir_all(&root)?;
         let lock = fs::OpenOptions::new()
             .read(true)
@@ -102,7 +105,7 @@ impl Job {
                 return Err(invalid("module checkpoint stage order differs"));
             }
         }
-        let job = Self { root, state, _lock: Some(lock), definition };
+        let job = Self { root, namespace: key, state, _lock: Some(lock), definition };
         for output in &job.state.completed {
             job.verify(output)?;
         }
@@ -126,7 +129,7 @@ impl Job {
             format!("{}:{}:{revision}:{task}", definition.manifest.id, definition.digest)
                 .as_bytes(),
         );
-        let root = root.join(key);
+        let root = root.join(&key);
         let state: JobState = serde_json::from_slice(&fs::read(root.join("job.json"))?)?;
         if state.schema != 1
             || state.module != definition.manifest.id
@@ -142,7 +145,7 @@ impl Job {
                 return Err(invalid("module checkpoint stage order differs"));
             }
         }
-        let job = Self { root, state, _lock: None, definition };
+        let job = Self { root, namespace: key, state, _lock: None, definition };
         let page = match job.state.completed.split_last() {
             Some((output, predecessors)) => {
                 // The snapshot exposes every completed stage, so each retained predecessor

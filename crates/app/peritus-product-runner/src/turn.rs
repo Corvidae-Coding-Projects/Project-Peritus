@@ -280,7 +280,7 @@ async fn run_developer_invocation(
     (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
     ProductRunnerError,
 > {
-    let preparation = model.prepare_context(&input.provider_cancellation).await;
+    let preparation = model.prepare_context(u64::MAX, &input.provider_cancellation).await;
     let transcript = input.conversation.render();
     let media = input.media(&transcript, model.profile())?;
     let stable_context = input.conversation.stable_request_context();
@@ -306,31 +306,6 @@ async fn run_developer_invocation(
         context.findings.unwrap_or_default().to_owned(),
         context.correction.unwrap_or_default().to_owned(),
     );
-    let prompt = if let Some(evidence) = context.evidence {
-        let mut budget_tools = definitions.clone();
-        if let Some(memory) = context.memory {
-            budget_tools
-                .extend(memory.tool_definitions().map_err(|error| developer_error(&error))?);
-        }
-        writer_prompt::project_developer_evidence(&writer_prompt::DeveloperEvidencePrompt {
-            system: &system,
-            instructions: &instructions,
-            tools: &budget_tools,
-            diff: evidence.diff,
-            gates: evidence.gates,
-            max_input_tokens: model.context_input_target(),
-            additional_framing_tokens: context
-                .memory
-                .map(LocalContextHandle::additional_request_framing_tokens)
-                .transpose()
-                .map_err(|error| developer_error(&error))?
-                .unwrap_or(0),
-        })
-        .map_err(|error| developer_error(&error))?
-    } else {
-        instructions
-    };
-    let (prompt, attachments) = media.into_parts(prompt);
     let request_prefix = invocation_request_name(input, &identity)?;
     let mut tools = input.configure_tools(
         WorkspaceDeveloperTools::with_ownership(
@@ -345,13 +320,41 @@ async fn run_developer_invocation(
         .with_task_contract(&transcript),
     );
     tools = tools.with_reviewer_evidence_sources(archive);
-    if let Err(error) = preparation {
-        // Feed metadata failures through the same role recovery/failover path as inference.
-        return Ok((
-            Err(DeveloperLoopError::Model(peritus_agent::ModelDriveError::Provider(error))),
-            tools,
-        ));
-    }
+    let model_context = match preparation {
+        Ok(context) => context,
+        Err(error) => {
+            // Feed metadata failures through the same role recovery/failover path as inference.
+            return Ok((
+                Err(DeveloperLoopError::Model(peritus_agent::ModelDriveError::Provider(error))),
+                tools,
+            ));
+        }
+    };
+    let prompt = if let Some(evidence) = context.evidence {
+        let mut budget_tools = definitions.clone();
+        if let Some(memory) = context.memory {
+            budget_tools
+                .extend(memory.tool_definitions().map_err(|error| developer_error(&error))?);
+        }
+        writer_prompt::project_developer_evidence(&writer_prompt::DeveloperEvidencePrompt {
+            system: &system,
+            instructions: &instructions,
+            tools: &budget_tools,
+            diff: evidence.diff,
+            gates: evidence.gates,
+            max_input_tokens: model_context.profile().limits().max_input_tokens(),
+            additional_framing_tokens: context
+                .memory
+                .map(LocalContextHandle::additional_request_framing_tokens)
+                .transpose()
+                .map_err(|error| developer_error(&error))?
+                .unwrap_or(0),
+        })
+        .map_err(|error| developer_error(&error))?
+    } else {
+        instructions
+    };
+    let (prompt, attachments) = media.into_parts(prompt);
     let result = crate::local_context::run_live_invocation(
         model,
         DeveloperLoopRequest {

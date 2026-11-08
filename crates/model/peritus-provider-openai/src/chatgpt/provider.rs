@@ -7,7 +7,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::{
     BoxFuture, CancellationToken, Credential, CredentialReference, CredentialSource, ModelProvider,
     OwnedModelStream, ProviderAvailability, ProviderCoreError,
-    catalog::{DiscoveredModel, MAX_CATALOG_MODELS, profile_with_model_limits},
+    catalog::{DiscoveredModel, MAX_CATALOG_MODELS},
 };
 use std::{
     path::Path,
@@ -83,21 +83,11 @@ impl ModelProvider for ChatGptProvider {
             catalog: Arc::clone(&self.catalog),
         }))
     }
-    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
-        let saved =
-            self.catalog.lock().map_err(|_| auth("ChatGPT model catalog is unavailable"))?;
-        saved
-            .as_ref()
-            .and_then(|(_, models)| models.iter().find(|m| &m.id == self.profile().model()))
-            .map_or_else(
-                || Ok(self.profile().clone()),
-                |model| profile_with_model_limits(self.profile(), model, output_tokens),
-            )
-    }
     fn prepare_context<'a>(
         &'a self,
+        output_tokens: u64,
         cancel: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+    ) -> BoxFuture<'a, Result<peritus_provider_core::PreparedModelContext, ProviderCoreError>> {
         Box::pin(async move {
             self.ready(cancel).await?;
             let fresh = self
@@ -111,7 +101,25 @@ impl ModelProvider for ChatGptProvider {
                 *self.catalog.lock().map_err(|_| auth("ChatGPT catalog owner is unavailable"))? =
                     Some((Instant::now(), models));
             }
-            Ok(())
+            let saved =
+                self.catalog.lock().map_err(|_| auth("ChatGPT model catalog is unavailable"))?;
+            saved
+                .as_ref()
+                .and_then(|(_, models)| models.iter().find(|m| &m.id == self.profile().model()))
+                .map_or_else(
+                    || {
+                        Ok(peritus_provider_core::PreparedModelContext::configured(
+                            self.profile().clone(),
+                        ))
+                    },
+                    |model| {
+                        peritus_provider_core::PreparedModelContext::advertised(
+                            self.profile(),
+                            model,
+                            output_tokens,
+                        )
+                    },
+                )
         })
     }
     fn discover_models<'a>(

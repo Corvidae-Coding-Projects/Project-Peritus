@@ -14,6 +14,7 @@ Strict module metadata, atomic registry and digest-bound durable jobs.
 | [definition.rs](definition.rs) | Manifest/dependency validation, declared resources and package hashing. |
 | [registry.rs](registry.rs) | Per-user bundled/installed selection, immutable install and enablement. |
 | [jobs.rs](jobs.rs) | Exclusive ownership, ordered stage commits, exact output pages and integrity. |
+| [jobs/stage.rs](jobs/stage.rs) | Manifest-bound pending stage, resolved role, declared input reads, and consumed durable completion. |
 | [preparation.rs](preparation.rs) | Credential-free public HTTPS fetch with public-address and byte/digest enforcement. |
 | [source_build.rs](source_build.rs) | Durable source-build lifecycle, cancellation, interruption reconciliation and records. |
 | [source_build](source_build/AGENTS.md) | Pinned source capture, bounded build-process execution and atomic disabled packaging. |

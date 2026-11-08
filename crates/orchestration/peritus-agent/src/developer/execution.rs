@@ -74,14 +74,13 @@ impl DeveloperLoop {
                 if tools.tool_calls_allowed() { tool_definitions.clone() } else { Vec::new() };
             let selected = live.map(|(port, role)| port.provider(role)).transpose()?.flatten();
             let provider = selected.as_deref().unwrap_or(provider);
-            provider.prepare_context(&request.cancellation).await.map_err(|error| {
-                DeveloperLoopError::Model(crate::ModelDriveError::Provider(error))
-            })?;
-            let resolved_profile =
-                provider.request_profile(request.limits.max_output_tokens()).map_err(|error| {
+            let model_context = provider
+                .prepare_context(request.limits.max_output_tokens(), &request.cancellation)
+                .await
+                .map_err(|error| {
                     DeveloperLoopError::Model(crate::ModelDriveError::Provider(error))
                 })?;
-            let profile = &resolved_profile;
+            let profile = model_context.profile();
             let input = interaction.map(DeveloperInteraction::input).transpose()?;
             let latest_user_text = input.as_ref().and_then(|input| input.latest_user_text.clone());
             // A terminal-only phase still carries completed tool exchanges in its history.
@@ -210,7 +209,7 @@ impl DeveloperLoop {
                         provider,
                         &request,
                         &mut semantic_messages,
-                        profile,
+                        &model_context,
                         negotiated,
                         protocol_limits,
                         turn,
@@ -276,7 +275,7 @@ impl DeveloperLoop {
                 provider,
                 &request,
                 submitted,
-                profile,
+                &model_context,
                 negotiated,
                 protocol_limits,
                 turn,

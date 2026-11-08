@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [deep-modules-2026-11-07.md](deep-modules-2026-11-07.md) | Prepared-context, manifest-bound stage and owned model-menu refactors; source coverage, native replays and verification limits. |
 | [role-model-setup-2026-11-07.md](role-model-setup-2026-11-07.md) | Explicit startup role defaults, atomic role model/effort commands, persistence and late-response replays. |
 | [context-recovery-mode-2026-11-07.md](context-recovery-mode-2026-11-07.md) | Maximum-context discovery, real large inference, durable recovery dependency replays, and live Review-to-Chat remediation. |
 | [tool-contract-search-recovery-2026-11-07.md](tool-contract-search-recovery-2026-11-07.md) | Shared tool admission, exact rejected-proposal repair, tool-keyed Codex inference, durable search health and real HTTP/model replay evidence. |

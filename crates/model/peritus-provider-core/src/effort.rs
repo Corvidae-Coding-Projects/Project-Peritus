@@ -40,23 +40,12 @@ impl ModelProvider for EffortSelection {
         self.provider.profile()
     }
 
-    fn request_profile(&self, output_tokens: u64) -> Result<ProviderProfile, ProviderCoreError> {
-        self.provider.request_profile(output_tokens)
-    }
-
-    fn output_tokens_for_input(&self, input: u64, output: u64) -> Result<u64, ProviderCoreError> {
-        self.provider.output_tokens_for_input(input, output)
-    }
-
-    fn context_input_target(&self) -> u64 {
-        self.provider.context_input_target()
-    }
-
     fn prepare_context<'a>(
         &'a self,
+        output_tokens: u64,
         cancellation: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
-        self.provider.prepare_context(cancellation)
+    ) -> BoxFuture<'a, Result<crate::PreparedModelContext, ProviderCoreError>> {
+        self.provider.prepare_context(output_tokens, cancellation)
     }
 
     fn context_input_fits(

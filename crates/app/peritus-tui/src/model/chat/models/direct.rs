@@ -1,15 +1,13 @@
 //! Direct role commands load their catalog and save model plus effort in one transaction.
+use super::destination::ModelDestination;
 use super::{AppModel, Effect, ModelRole, NoticeLevel};
-use peritus_app_protocol::{ProductModelEffort, WorkbenchQuery};
-use peritus_types::{ProviderProfileId, RunId};
+use peritus_app_protocol::ProductModelEffort;
+use peritus_types::ProviderProfileId;
 
 #[derive(Debug)]
 pub(in crate::model::chat) struct PendingModelSelection {
     role: ModelRole,
-    profile: ProviderProfileId,
-    run: Option<RunId>,
-    conversation: Option<WorkbenchQuery>,
-    connection: u64,
+    destination: ModelDestination,
     id: String,
     effort: Option<ProductModelEffort>,
     command: String,
@@ -39,13 +37,14 @@ impl AppModel {
             );
             return Vec::new();
         }
-        let Some(profile) = self.role_profile() else {
+        let Some(destination) = ModelDestination::capture(self) else {
             self.notice(
                 NoticeLevel::Warning,
                 "Open a configured project before selecting role models.",
             );
             return Vec::new();
         };
+        let profile = destination.provider(self.chat.model_role);
         if manual
             || self.chat.catalog.as_ref().is_some_and(|catalog| {
                 catalog.profile() == profile && catalog.models().iter().any(|m| m.id() == id)
@@ -65,10 +64,7 @@ impl AppModel {
         let effects = self.query_chat_models(refresh);
         self.chat.pending_model = Some(PendingModelSelection {
             role: self.chat.model_role,
-            profile,
-            run: self.chat.run_id,
-            conversation: self.chat.workbench.selected,
-            connection: self.connection_generation,
+            destination,
             id: id.to_owned(),
             effort,
             command,
@@ -101,12 +97,7 @@ impl AppModel {
     }
 
     fn model_destination_matches(&self, selection: &PendingModelSelection) -> bool {
-        selection.role == self.chat.model_role
-            && Some(selection.profile) == self.role_profile()
-            && selection.run == self.chat.run_id
-            && selection.conversation == self.chat.workbench.selected
-            && selection.connection == self.connection_generation
-            && self.chat.buffer.is_empty()
+        selection.destination.matches_role(self, selection.role)
     }
 
     pub(super) fn finish_direct_model_selection(&mut self) -> Vec<Effect> {
@@ -116,7 +107,7 @@ impl AppModel {
             return Vec::new();
         }
         if !self.chat.catalog.as_ref().is_some_and(|catalog| {
-            catalog.profile() == selection.profile
+            catalog.profile() == selection.destination.provider(selection.role)
                 && catalog.models().iter().any(|m| m.id() == selection.id)
         }) {
             self.chat.buffer = selection.command;

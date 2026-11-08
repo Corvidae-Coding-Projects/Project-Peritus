@@ -352,28 +352,15 @@ fn private_runtime_directory() -> std::io::Result<tempfile::TempDir> {
 impl ModelProvider for CodexRuntimeProvider {
     fn prepare_context<'a>(
         &'a self,
+        output_tokens: u64,
         cancellation: &'a CancellationToken,
-    ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
+    ) -> BoxFuture<'a, Result<peritus_provider_core::PreparedModelContext, ProviderCoreError>> {
         Box::pin(self.capacity.prepare(
             self.config.executable().as_path(),
-            self.profile().model(),
+            self.profile(),
+            output_tokens,
             cancellation,
         ))
-    }
-
-    fn request_profile(
-        &self,
-        output_tokens: u64,
-    ) -> Result<peritus_model_protocol::ProviderProfile, ProviderCoreError> {
-        self.capacity.profile(self.profile(), output_tokens)
-    }
-
-    fn output_tokens_for_input(
-        &self,
-        input: u64,
-        requested: u64,
-    ) -> Result<u64, ProviderCoreError> {
-        self.capacity.output(self.profile(), input, requested)
     }
 
     fn context_input_fits(

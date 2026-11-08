@@ -40,9 +40,11 @@ https://developers.openai.com/siwc/token-sharing-open-source
 
 Generated named hosted routes set `discover_model_limits = true`. Their profile token numbers
 are fallbacks for missing metadata, rather than ceilings imposed on every selected model.
-`ModelProvider::prepare_context` loads the selected route's catalog before role projection and
-developer turns. `request_profile(requested_output_tokens)` then resolves the exact model's
-numeric limits for prompt assembly, local and legacy compaction, negotiation, and generation.
+`ModelProvider::prepare_context(requested_output_tokens, cancellation)` loads the selected route's
+catalog and returns a `PreparedModelContext` before role projection and developer turns.
+Its resolved profile supplies the exact model's numeric limits for prompt assembly, local and
+legacy compaction, negotiation, and generation. Its output-fitting operation uses the same
+immutable snapshot even if a shared catalog refreshes while a request is being assembled.
 Capabilities, route identity, non-token limits, and lifecycle guarantees remain configured.
 Changing the selected model reuses cached catalog entries without copying another model's limits.
 

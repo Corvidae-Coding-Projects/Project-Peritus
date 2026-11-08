@@ -13,7 +13,7 @@ python3 docs/testing/reproducers/model-capacities/build.py \
 
 `consumer checks` exercises the public capacity-resolution API against independently specified
 metadata, including partial fields, shared context, asymmetric ceilings, invalid values, and
-preservation of non-token limits and account-provider settings. `consumer catalog opencode-zen`
+preservation of non-token limits and explicitly configured snapshots. `consumer catalog opencode-zen`
 and `consumer catalog opencode-go` discover actual route catalogs without inference. Supply the
 private key file through `PERITUS_REAL_KEY_FILE`; never put its contents in command arguments.
 Catalog listing establishes metadata, not Go subscription entitlement.
@@ -26,7 +26,7 @@ limits, a completed tool call, and the exact answer. It records numeric request 
 `consumer fixed DIR` uses the explicit old 32K fixed profile and checks its negotiated limits
 remain 32K/4K. That value is a context selection target; local memory preserves literal task pins
 even when they exceed it. `consumer codex DIR` exercises an actual account-provider workspace
-read and exact-answer workflow, retaining its configured capacities. Use fresh directories.
+read and exact-answer workflow using the selected model's fresh advertised capacities. Use fresh directories.
 
 See the campaign report for commands, fixture generation, observed values, and limits of coverage.
 
@@ -41,5 +41,8 @@ python3 docs/testing/reproducers/model-capacities/replay.py \
 
 The fixed and automatic profiles use the same seeded 213 KiB context shape. The account smoke
 uses a small task. The actual expected answers are fresh fixture-file values, absent from prompts.
-Shared-window API cases also check that uncapped input selection does not reserve maximum output,
-and that generation shrinks its output allowance when assembled input fills the shared window.
+Shared-window API cases reserve the explicit reply allowance, or the advertised output maximum
+for an uncapped caller, and check that generation shrinks its allowance when assembled input
+fills the shared window. During the prepared-context API migration, older expectations that
+reserved only one token for uncapped callers were updated to this current reservation contract;
+historical campaign records describe the earlier implementation.
