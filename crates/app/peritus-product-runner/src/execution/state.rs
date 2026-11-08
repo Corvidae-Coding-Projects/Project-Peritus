@@ -39,7 +39,7 @@ impl ExecutionContext {
             ));
         }
         let transcript = input.conversation.render();
-        let obligations = RunObligations::capture(&input.task, input.conversation.revision())?;
+        let obligations = RunObligations::capture(&input.task, input.requirements_revision())?;
         let baseline = input
             .resume
             .as_ref()
@@ -55,9 +55,13 @@ impl ExecutionContext {
             input.command_runtime.local_context_config().candidate_observation
                 == crate::CandidateObservationPolicy::Shared,
         )?;
-        let _ = recorder.refresh(input.conversation.revision())?;
+        let _ = recorder.refresh(input.requirements_revision())?;
         let next_phase = match (&input.resume, recorder.checkpoint()?) {
-            (Some(resume), Some(checkpoint)) => resume.plan(*checkpoint.identity(), &transcript)?,
+            (Some(resume), Some(checkpoint)) => resume.plan(
+                *checkpoint.identity(),
+                &transcript,
+                input.continues_existing_design(),
+            )?,
             _ => ProductRunPhase::Designing,
         };
         let (design, state, evidence, gate_report) = if let Some(resume) = &input.resume {

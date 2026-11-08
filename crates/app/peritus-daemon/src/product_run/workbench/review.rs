@@ -261,10 +261,14 @@ pub(super) async fn resume_feedback(
             token,
             record.finding_state.clone(),
             record.resume.as_deref().cloned(),
+            crate::product_run::execution::LaunchRoute::SelectedMode,
         )
     };
     service
-        .spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6, launch.7)
+        .spawn(
+            launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6, launch.7,
+            launch.8,
+        )
         .await;
     Ok(())
 }

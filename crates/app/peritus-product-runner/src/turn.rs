@@ -66,7 +66,7 @@ pub async fn complete_developer_turn(
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut host = HostTurnEvidence {
         tool_calls: 0,
-        conversation_revision: input.conversation.revision(),
+        conversation_revision: input.requirements_revision(),
         verification_evidence: String::new(),
         successful_commands: Vec::new(),
     };
@@ -224,7 +224,7 @@ pub async fn complete_developer_turn(
                 summary: summary.0,
                 run_instructions: summary.1,
                 tool_calls: host.tool_calls,
-                conversation_revision: revision,
+                conversation_revision: input.requirements_revision(),
                 verification_evidence: host.verification_evidence,
                 successful_commands: host.successful_commands,
             })),
@@ -323,7 +323,7 @@ fn invocation_tools(
     if context.delivery.planning() {
         return input.read_only_workspace_tools();
     }
-    input.configure_tools(
+    let tools = input.configure_tools(
         WorkspaceDeveloperTools::with_ownership(
             input.workspace_root.clone(),
             context.ownership.clone(),
@@ -335,7 +335,18 @@ fn invocation_tools(
         .with_capability_verification()
         .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
         .with_task_contract(transcript),
-    )
+    );
+    if context.delivery.constructing() {
+        tools.with_construction_progress(
+            crate::delivery_requirement::ExternalEffectRequirement::from_task(
+                input.delivery_scope,
+                &input.task,
+            )
+            .is_required(),
+        )
+    } else {
+        tools
+    }
 }
 
 async fn run_developer_invocation(

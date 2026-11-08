@@ -186,6 +186,7 @@ fn run(spec: Value) -> Result<()> {
         max_elapsed: None,
         delivery_scope: ProductDeliveryScope::WorkspaceChanges,
         conversation: conversation.clone(),
+        pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
         providers: RoleProviders {
             writer: model.clone(),
             reviewer: model.clone(),

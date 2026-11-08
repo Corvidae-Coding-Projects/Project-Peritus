@@ -108,11 +108,7 @@ pub async fn discover_account_models(
     // This metadata process has no delegated tool children or live inference to preserve.
     let _ = child.kill().await;
     let _ = child.wait().await;
-    if kind == AccountCatalog::Codex {
-        result.and_then(super::codex_limits::enrich)
-    } else {
-        result
-    }
+    if kind == AccountCatalog::Codex { result.map(super::codex_limits::enrich) } else { result }
 }
 
 fn spawn_error(error: &std::io::Error) -> ProviderCoreError {

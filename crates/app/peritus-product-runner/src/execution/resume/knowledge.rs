@@ -59,7 +59,26 @@ impl ProductRunResume {
         &self,
         current: CandidateIdentity,
         transcript: &str,
+        continue_existing_design: bool,
     ) -> Result<ProductRunPhase, ProductRunnerError> {
+        let retained = self.checkpoint.identity();
+        // Content changes are expected inside an interrupted coding run and do not, by
+        // themselves, amend its accepted design. The refreshed checkpoint and subsequent gates
+        // own candidate freshness; the run/workspace lineage and retained design revision own
+        // semantic design reuse.
+        if continue_existing_design
+            && retained.same_lineage(&current)
+            && current.requirements_revision() == self.design_revision
+        {
+            return self.continuation_phase();
+        }
+        // Candidate identity, not incidental transcript growth, owns requirements freshness. A
+        // typed exact retry deliberately preserves the checkpoint requirements revision while
+        // still exposing its message to the resumed role. When source content and requirements
+        // are unchanged, replay the first incomplete phase without reinterpretation.
+        if retained.same_content_and_requirements(&current) {
+            return Ok(self.next_phase);
+        }
         let knowledge_identity = knowledge_candidate(current)?;
         let sources = sources(
             current.content_digest(),

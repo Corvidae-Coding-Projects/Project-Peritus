@@ -94,7 +94,7 @@ pub(super) fn from_initial_error(
 pub(super) fn finalize(
     mut request: FinalizationInput<'_>,
 ) -> Result<ProductRunOutcome, ProductRunnerError> {
-    let conversation_revision = request.input.conversation.revision();
+    let conversation_revision = request.input.requirements_revision();
     let mut cause = request.cause;
     let mut detail = if cause == SettlementCause::NoChangeComplete
         && request.state.is_none_or(|state| state.conversation_revision != conversation_revision)
@@ -254,7 +254,7 @@ fn candidate_output(
             .state
             .map_or_else(default_run_instructions, |state| state.run_instructions.clone()),
         fixer_cycles: request.state.map_or(0, |state| state.coordinator.completed_fixer_cycles()),
-        conversation_revision: request.input.conversation.revision(),
+        conversation_revision: request.input.requirements_revision(),
     })
 }
 

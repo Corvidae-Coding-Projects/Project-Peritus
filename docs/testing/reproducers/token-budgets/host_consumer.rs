@@ -209,6 +209,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         max_elapsed: None,
         delivery_scope: ProductDeliveryScope::WorkspaceChanges,
         conversation: Arc::new(Conversation(state.binding().conversation_revision())),
+        pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
         providers: RoleProviders {
             writer: provider_dyn.clone(),
             reviewer: provider_dyn.clone(),

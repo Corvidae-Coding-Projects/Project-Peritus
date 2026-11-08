@@ -91,7 +91,7 @@ impl Delivery {
         let workspace = format!("{:?}", input.workspace_id);
         let path = input.trace_path.with_extension("delivery.json");
         let mut delivery = Self::open(path, run, workspace, source, source_digest, requirements)?;
-        delivery.revision = input.conversation.revision();
+        delivery.revision = input.requirements_revision();
         Ok(delivery)
     }
 

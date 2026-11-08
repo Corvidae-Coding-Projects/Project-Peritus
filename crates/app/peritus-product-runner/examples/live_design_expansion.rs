@@ -538,6 +538,7 @@ impl Fixture {
             max_elapsed: Some(Duration::from_mins(30)),
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation,
+            pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
             providers: RoleProviders {
                 writer: Arc::clone(&provider),
                 reviewer: Arc::clone(&provider),

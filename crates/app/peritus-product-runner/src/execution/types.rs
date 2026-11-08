@@ -268,6 +268,68 @@ pub enum ProductDeliveryScope {
     AuthorizedExternalEffects,
 }
 
+/// Host-resolved meaning of the message that handed control to the coding pipeline.
+///
+/// Conversation revisions remain the live interruption clock. This separate binding prevents an
+/// operational "continue" message from masquerading as a requirements amendment and invalidating
+/// a retained design, while any later message still supersedes the active turn normally.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PipelineHandoff {
+    /// The current conversation contains requirements the candidate must newly incorporate.
+    CurrentConversation,
+    /// The bound message only resumes the already-authorized retained requirements.
+    ContinueRetained {
+        /// Exact live conversation revision classified as operational continuation.
+        conversation_revision: u64,
+    },
+    /// Exact retry of the phase and requirements already retained by the pipeline.
+    RetryRetained {
+        /// Exact live conversation revision at which the retry was admitted.
+        conversation_revision: u64,
+    },
+}
+
+impl PipelineHandoff {
+    /// Resolves the public-requirements identity independently from the live conversation clock.
+    #[must_use]
+    pub const fn requirements_revision(
+        self,
+        current_conversation_revision: u64,
+        retained_requirements_revision: Option<u64>,
+        retained_design_revision: Option<u64>,
+    ) -> u64 {
+        match self {
+            Self::ContinueRetained { conversation_revision }
+                if conversation_revision == current_conversation_revision =>
+            {
+                match retained_design_revision {
+                    Some(revision) => revision,
+                    None => current_conversation_revision,
+                }
+            }
+            Self::RetryRetained { conversation_revision }
+                if conversation_revision == current_conversation_revision =>
+            {
+                match retained_requirements_revision {
+                    Some(revision) => revision,
+                    None => current_conversation_revision,
+                }
+            }
+            _ => current_conversation_revision,
+        }
+    }
+
+    /// Whether the current message explicitly reaffirms the retained design contract.
+    #[must_use]
+    pub const fn continues_existing_design(self, current_conversation_revision: u64) -> bool {
+        matches!(
+            self,
+            Self::ContinueRetained { conversation_revision }
+                if conversation_revision == current_conversation_revision
+        )
+    }
+}
+
 impl ProductDeliveryScope {
     /// Whether an empty workspace candidate may be evaluated from external-effect evidence.
     #[must_use]
@@ -304,6 +366,8 @@ pub struct ProductRunInput {
     pub delivery_scope: ProductDeliveryScope,
     /// Live conversation, including the original task and all follow-ups.
     pub conversation: Arc<dyn ConversationView>,
+    /// Typed semantic meaning of the message that entered the effectful pipeline.
+    pub pipeline_handoff: PipelineHandoff,
     /// Role provider adapters.
     pub providers: RoleProviders,
     /// Shared cancellation state.
@@ -312,6 +376,32 @@ pub struct ProductRunInput {
     pub provider_cancellation: CancellationToken,
     /// Prior S5 handoff to validate and resume without repeating current phases.
     pub resume: Option<ProductRunResume>,
+}
+
+impl ProductRunInput {
+    /// Requirements revision that candidate evidence must bind to.
+    ///
+    /// This may intentionally differ from the live conversation revision for the one operational
+    /// continuation message admitted by [`PipelineHandoff::ContinueRetained`]. A subsequent live
+    /// message automatically becomes a new requirements revision.
+    #[must_use]
+    pub fn requirements_revision(&self) -> u64 {
+        self.pipeline_handoff.requirements_revision(
+            self.conversation.revision(),
+            self.resume
+                .as_ref()
+                .map(|resume| resume.checkpoint().identity().requirements_revision()),
+            self.resume.as_ref().map(ProductRunResume::design_revision),
+        )
+    }
+
+    /// Whether the admitted handoff explicitly resumes the retained design rather than merely
+    /// retrying the already-recorded phase.
+    #[must_use]
+    pub fn continues_existing_design(&self) -> bool {
+        self.pipeline_handoff.continues_existing_design(self.conversation.revision())
+            && self.resume.is_some()
+    }
 }
 
 /// Strongest exact candidate handoff, whether qualified or incomplete.

@@ -39,7 +39,7 @@ pub(super) async fn complete(
         Some(&state.findings),
         accounting,
     )?;
-    if checked.conversation_changed || input.conversation.revision() != state.conversation_revision
+    if checked.conversation_changed || input.requirements_revision() != state.conversation_revision
     {
         return Ok(CycleInspection::conversation_changed(checked));
     }
@@ -83,7 +83,7 @@ pub(super) async fn complete(
         accounting,
     )
     .await?;
-    if input.conversation.revision() != state.conversation_revision {
+    if input.requirements_revision() != state.conversation_revision {
         return Ok(CycleInspection::conversation_changed(checked));
     }
     let capability_review = submission

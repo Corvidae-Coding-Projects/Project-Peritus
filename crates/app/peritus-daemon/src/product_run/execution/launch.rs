@@ -3,8 +3,8 @@
 use super::runtime;
 use crate::product_run::{ProductRunRequest, ProductRunService};
 use peritus_product_runner::{
-    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunResume, ProductRunner,
-    RoleProviders, RunObserver,
+    ConversationView, PipelineHandoff, ProductDeliveryScope, ProductRunInput, ProductRunResume,
+    ProductRunner, RoleProviders, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -12,6 +12,12 @@ use std::{
     path::PathBuf,
     sync::{Arc, atomic::AtomicBool},
 };
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LaunchRoute {
+    SelectedMode,
+    ResumePipeline,
+}
 
 impl ProductRunService {
     #[allow(
@@ -28,6 +34,7 @@ impl ProductRunService {
         provider_cancellation: CancellationToken,
         finding_state: String,
         resume: Option<ProductRunResume>,
+        route: LaunchRoute,
     ) -> peritus_provider_core::BoxFuture<'_, ()> {
         Box::pin(async move {
             let service = self.clone();
@@ -65,6 +72,13 @@ impl ProductRunService {
                         records.get(&run_id).map(|record| record.interaction.mode)
                     });
                 let conversation: Arc<dyn ConversationView> = service.live_conversation(run_id);
+                let pipeline_handoff = if matches!(route, LaunchRoute::ResumePipeline) {
+                    PipelineHandoff::RetryRetained {
+                        conversation_revision: conversation.revision(),
+                    }
+                } else {
+                    PipelineHandoff::CurrentConversation
+                };
                 let input = ProductRunInput {
                     workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
@@ -79,26 +93,13 @@ impl ProductRunService {
                     max_elapsed: None,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation,
+                    pipeline_handoff,
                     providers,
                     cancelled: Arc::clone(&cancelled),
                     provider_cancellation: provider_cancellation.clone(),
                     resume,
                 };
-                let mode = match interaction_mode {
-                    Some(peritus_app_protocol::ProductInteractionMode::Chat) => {
-                        Some(peritus_product_runner::ConversationMode::Chat)
-                    }
-                    Some(peritus_app_protocol::ProductInteractionMode::Plan) => {
-                        Some(peritus_product_runner::ConversationMode::Plan)
-                    }
-                    Some(peritus_app_protocol::ProductInteractionMode::Design) => {
-                        Some(peritus_product_runner::ConversationMode::Design)
-                    }
-                    Some(peritus_app_protocol::ProductInteractionMode::Review) => {
-                        Some(peritus_product_runner::ConversationMode::Review)
-                    }
-                    Some(peritus_app_protocol::ProductInteractionMode::Build) | None => None,
-                };
+                let mode = launch_mode(interaction_mode, route);
                 let execution = async {
                     match mode {
                         Some(mode) if folder.is_some() => {
@@ -113,6 +114,16 @@ impl ProductRunService {
                             .await
                         }
                         Some(mode) => ProductRunner::converse(input, mode, observer).await,
+                        None if folder.is_some() => {
+                            let folder = folder.expect("folder selected");
+                            ProductRunner::run_folder(
+                                input,
+                                folder.writable(),
+                                folder.protected_paths(),
+                                observer,
+                            )
+                            .await
+                        }
                         None => ProductRunner::run(input, observer).await,
                     }
                 };
@@ -144,6 +155,34 @@ impl ProductRunService {
             let task = tokio::task::spawn_blocking(move || runtime.block_on(execution));
             tasks.push((run_id, task));
         })
+    }
+}
+
+/// Resolves the host-owned execution entry before provider work begins.
+///
+/// A retained continuation admitted by an exact retry is pipeline work regardless of the UI's
+/// conversational mode. Only new input is routed back through the selected coordinator.
+pub const fn launch_mode(
+    interaction_mode: Option<peritus_app_protocol::ProductInteractionMode>,
+    route: LaunchRoute,
+) -> Option<peritus_product_runner::ConversationMode> {
+    if matches!(route, LaunchRoute::ResumePipeline) {
+        return None;
+    }
+    match interaction_mode {
+        Some(peritus_app_protocol::ProductInteractionMode::Chat) => {
+            Some(peritus_product_runner::ConversationMode::Chat)
+        }
+        Some(peritus_app_protocol::ProductInteractionMode::Plan) => {
+            Some(peritus_product_runner::ConversationMode::Plan)
+        }
+        Some(peritus_app_protocol::ProductInteractionMode::Design) => {
+            Some(peritus_product_runner::ConversationMode::Design)
+        }
+        Some(peritus_app_protocol::ProductInteractionMode::Review) => {
+            Some(peritus_product_runner::ConversationMode::Review)
+        }
+        Some(peritus_app_protocol::ProductInteractionMode::Build) | None => None,
     }
 }
 

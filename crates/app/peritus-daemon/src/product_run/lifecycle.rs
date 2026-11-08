@@ -12,6 +12,7 @@ use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
 
+use super::execution::LaunchRoute;
 use super::persistence::persist_record;
 use super::{ProductRunService, ProductRunServiceError};
 use super::{snapshot::replace_snapshot, snapshot::workspace_has_active_run};
@@ -157,6 +158,7 @@ impl ProductRunService {
             token,
             finding_state,
             resume,
+            launch_route,
             snapshot,
         ) = {
             let mut records =
@@ -240,6 +242,15 @@ impl ProductRunService {
             } else {
                 None
             };
+            // An exact retry with a retained runner continuation is already an authorized
+            // execution decision. Do not ask a conversational model to rediscover that typed
+            // control intent and optionally decline to hand the continuation back to the
+            // pipeline. New or pending user input still enters the selected conversation mode.
+            let launch_route = if retry_revision.is_some() && record.resume.is_some() {
+                LaunchRoute::ResumePipeline
+            } else {
+                LaunchRoute::SelectedMode
+            };
             let previous = record.clone();
             if let Some(operation) = goal_resume {
                 record.goal_resume = Some(operation.id());
@@ -270,11 +281,22 @@ impl ProductRunService {
                 token,
                 record.finding_state.clone(),
                 record.resume.as_deref().cloned(),
+                launch_route,
                 record.snapshot.clone(),
             )
         };
-        self.spawn(request, root, source_root, providers, cancelled, token, finding_state, resume)
-            .await;
+        self.spawn(
+            request,
+            root,
+            source_root,
+            providers,
+            cancelled,
+            token,
+            finding_state,
+            resume,
+            launch_route,
+        )
+        .await;
         Ok(snapshot)
     }
 }

@@ -92,7 +92,7 @@ pub(super) fn configure(fixture: &Fixture) -> Result<(), String> {
         json!({"tool":"run_command","arguments":{"program":"dd","args":["if=effect-input.txt","of=effect-counter.txt","oflag=append","conv=notrunc","status=none"],"purpose":"external_effect","timeout_seconds":5}}),
         // This request is blocked after ResponseStarted, before the worker is killed.
         json!({"text":"The command effect is retained; its current state still needs inspection."}),
-        // Explicit recovery enters the ordinary conversational route and inspects retained state.
+        // Exact recovery resumes the retained pipeline and inspects state before another effect.
         json!({"tool":"workspace_read","arguments":{"path":"effect-counter.txt"}}),
         json!({"text":"The retained counter contains exactly one effect line."}),
     ];

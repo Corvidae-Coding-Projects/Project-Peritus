@@ -25,6 +25,9 @@ mod goal;
 mod handoff;
 mod launch;
 use handoff::{fail_handoff, terminal_summary};
+pub(super) use launch::LaunchRoute;
+#[cfg(test)]
+pub use launch::{LaunchRoute as TestedLaunchRoute, launch_mode};
 
 impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {

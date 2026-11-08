@@ -12,6 +12,7 @@ Concrete workspace executor lifecycle, construction, command ownership, mutation
 | [checkpoint_observer.rs](checkpoint_observer.rs) | Candidate-checkpoint classification for accepted developer tool effects. |
 | [command.rs](command.rs) | Structured command execution through the shared C4 router and C2 process owner. |
 | [construction.rs](construction.rs) | Read-only and explicitly writable filesystem/tool runtime construction. |
+| [construction_progress.rs](construction_progress.rs) | Construction-wide progress deadlines driven by observed candidate changes and continuing user steering. |
 | [effects.rs](effects.rs) | Effect receipts, delivery progress, and bounded filesystem mutations. |
 | [in_place.rs](in_place.rs) | Enroll task files or bounded directory subtrees before effects in non-Git work. |
 | [inspection_progress.rs](inspection_progress.rs) | Bounded, content-based detection of an unchanged inspection cycle. |

@@ -1,9 +1,9 @@
 //! Effect receipts, delivery progress, and bounded filesystem mutations.
 
 use super::{
-    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, ReceiptDecision,
-    TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools, WorkspaceToolMode,
-    atomic_write, checked, fs, object, observation, removal, required_string, string, tool,
+    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, ReceiptDecision, Value,
+    WorkspaceDeveloperTools, atomic_write, checked, fs, object, observation, removal,
+    required_string, string, tool,
 };
 
 impl WorkspaceDeveloperTools {
@@ -306,50 +306,6 @@ impl WorkspaceDeveloperTools {
             true,
         )
     }
-    pub(super) fn observe_delivery_progress(
-        &mut self,
-        name: &str,
-        arguments: &Value,
-        result: &Value,
-        accepted: bool,
-    ) {
-        if self.mode == WorkspaceToolMode::ReadOnly {
-            return;
-        }
-        let workspace_mutation = accepted
-            && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
-            && result.get("changed").and_then(Value::as_bool) == Some(true);
-        let external_effect = matches!(
-            name,
-            "run_command"
-                | "command_poll"
-                | "command_wait"
-                | "command_stdin"
-                | "command_resize"
-                | "command_signal"
-                | "command_cancel"
-                | "command_recover"
-                | "browser_control"
-                | "desktop_control"
-        ) && result.get("success").and_then(Value::as_bool) == Some(true)
-            && accepted
-            && (string(arguments, "purpose") == Some("external_effect")
-                || result.get("purpose").and_then(Value::as_str) == Some("external_effect"));
-        if workspace_mutation || external_effect {
-            self.tools_without_delivery_progress = 0;
-            self.progress_feedback_pending = false;
-            self.progress_nudges = 0;
-            return;
-        }
-        self.tools_without_delivery_progress =
-            self.tools_without_delivery_progress.saturating_add(1);
-        if self.tools_without_delivery_progress >= TOOLS_WITHOUT_DELIVERY_PROGRESS {
-            self.tools_without_delivery_progress = 0;
-            self.progress_nudges = self.progress_nudges.saturating_add(1);
-            self.progress_feedback_pending = true;
-        }
-    }
-
     pub(super) fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
         if matches!(
             name,

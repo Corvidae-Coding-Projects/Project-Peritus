@@ -134,6 +134,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     fn model_response_completed(&mut self) {
         self.base.model_response_completed();
     }
+    fn steering_continues_work(&mut self) {
+        self.base.steering_continues_work();
+    }
     fn take_host_tool_calls(&mut self) -> u32 {
         self.base.take_host_tool_calls()
     }
@@ -171,6 +174,9 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
     }
     fn continuation_blocker(&self) -> Option<String> {
         self.base.continuation_blocker()
+    }
+    fn segment_boundary_required(&self) -> bool {
+        self.base.segment_boundary_required()
     }
     fn take_progress_feedback(&mut self) -> Option<String> {
         self.base.take_progress_feedback()
@@ -226,6 +232,14 @@ impl DeveloperToolExecutor for MeasuredTools<'_> {
         let output = result?;
         self.record_observation(call, &output);
         Ok(output)
+    }
+
+    fn observe_tool_outcome(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) {
+        self.base.observe_tool_outcome(call, observation);
     }
 }
 

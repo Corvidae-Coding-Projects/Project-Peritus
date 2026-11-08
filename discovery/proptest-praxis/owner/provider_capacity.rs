@@ -2,6 +2,7 @@
 use super::*;
 use peritus_model_protocol::*;
 use peritus_types::ProviderProfileId;
+use proptest::prelude::*;
 use serde_json::json;
 use std::{fs, time::SystemTime};
 
@@ -95,6 +96,30 @@ fn contradictory_duplicate_and_malformed_runtime_metadata_is_rejected() {
     }
     fs::write(&path, "not-json").unwrap();
     assert!(enrich_file(selected(), &path).is_err());
+}
+
+#[test]
+fn optional_malformed_cache_retains_the_account_advertised_catalog() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("models_cache.json");
+    fs::write(&path, "{\"models\":[").unwrap();
+    let advertised = selected();
+    assert_eq!(enrich_file_best_effort(advertised.clone(), &path), advertised);
+}
+
+proptest! {
+    #[test]
+    fn arbitrary_incomplete_cache_bytes_cannot_change_or_disable_advertised_models(
+        tail in prop::collection::vec(any::<u8>(), 0..4096),
+    ) {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("models_cache.json");
+        let mut bytes = vec![0xff];
+        bytes.extend(tail);
+        fs::write(&path, bytes).unwrap();
+        let advertised = selected();
+        prop_assert_eq!(enrich_file_best_effort(advertised.clone(), &path), advertised);
+    }
 }
 
 #[test]

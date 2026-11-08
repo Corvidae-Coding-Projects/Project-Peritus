@@ -1,7 +1,7 @@
 //! Route/model-bound numeric capacities, refreshed independently of inference.
 use peritus_model_protocol::{ModelName, ProviderProfile};
 use peritus_provider_core::{
-    CancellationToken, ProviderCoreError,
+    CancellationToken, ProviderCoreError, ProviderCoreErrorKind,
     catalog::{self, DiscoveredModel},
 };
 use std::{
@@ -25,35 +25,73 @@ impl Cache {
         output: u64,
         cancellation: &CancellationToken,
     ) -> Result<peritus_provider_core::PreparedModelContext, ProviderCoreError> {
-        let fresh = self
-            .snapshot
-            .lock()
-            .map_err(|_| catalog::unavailable("context capacity cache is unavailable"))?
-            .as_ref()
-            .is_some_and(|s| s.fetched.elapsed() < Duration::from_mins(5));
+        let fresh = self.fresh()?;
         if !fresh {
-            let models = catalog::discover_account_models(
+            let discovered = catalog::discover_account_models(
                 executable,
                 catalog::AccountCatalog::Codex,
                 cancellation,
             )
-            .await?;
-            *self
-                .snapshot
-                .lock()
-                .map_err(|_| catalog::unavailable("context capacity cache is unavailable"))? =
-                Some(Snapshot { fetched: Instant::now(), models });
+            .await;
+            match discovered {
+                Ok(models) => {
+                    self.observe(profile.model(), models)?;
+                }
+                Err(error) if error.kind() == ProviderCoreErrorKind::Cancelled => {
+                    return Err(error);
+                }
+                Err(_) => {
+                    // Discovery is advisory for an explicit route and model. Keep a previous
+                    // exact-model observation, or the conservative configured envelope below.
+                }
+            }
         }
-        let model = self.selected(profile.model())?.ok_or_else(|| {
-            catalog::unavailable("selected model context metadata has not been prepared")
-        })?;
-        if model.usable_context_tokens()?.is_none() {
-            return Err(catalog::unavailable(
-                "selected model has no fresh advertised context capacity; refresh the official runtime model metadata rather than guessing a window",
-            ));
-        }
-        peritus_provider_core::PreparedModelContext::advertised(profile, &model, output)
+        self.prepared(profile, output)
     }
+
+    fn fresh(&self) -> Result<bool, ProviderCoreError> {
+        Ok(self
+            .snapshot
+            .lock()
+            .map_err(|_| catalog::unavailable("context capacity cache is unavailable"))?
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.fetched.elapsed() < Duration::from_mins(5)))
+    }
+
+    fn observe(
+        &self,
+        selected: &ModelName,
+        models: Vec<DiscoveredModel>,
+    ) -> Result<bool, ProviderCoreError> {
+        let mut matching = models.iter().filter(|model| &model.id == selected);
+        let usable = matching
+            .next()
+            .is_some_and(|model| model.usable_context_tokens().is_ok_and(|value| value.is_some()))
+            && matching.next().is_none();
+        if !usable {
+            return Ok(false);
+        }
+        *self
+            .snapshot
+            .lock()
+            .map_err(|_| catalog::unavailable("context capacity cache is unavailable"))? =
+            Some(Snapshot { fetched: Instant::now(), models });
+        Ok(true)
+    }
+
+    fn prepared(
+        &self,
+        profile: &ProviderProfile,
+        output: u64,
+    ) -> Result<peritus_provider_core::PreparedModelContext, ProviderCoreError> {
+        self.selected(profile.model())?.map_or_else(
+            || Ok(peritus_provider_core::PreparedModelContext::configured(profile.clone())),
+            |model| {
+                peritus_provider_core::PreparedModelContext::advertised(profile, &model, output)
+            },
+        )
+    }
+
     pub fn selected(
         &self,
         selected: &ModelName,
@@ -62,15 +100,13 @@ impl Cache {
             .snapshot
             .lock()
             .map_err(|_| catalog::unavailable("context capacity cache is unavailable"))?;
-        snapshot
+        Ok(snapshot
             .as_ref()
-            .map(|s| {
-                s.models.iter().find(|m| &m.id == selected).cloned().ok_or_else(|| {
-                    catalog::unavailable(
-                        "the selected model is absent from the current account catalog",
-                    )
-                })
-            })
-            .transpose()
+            .and_then(|snapshot| snapshot.models.iter().find(|model| &model.id == selected))
+            .cloned())
     }
 }
+
+#[cfg(test)]
+#[path = "../../../../../../discovery/proptest-praxis/owner/openai_capacity.rs"]
+mod replay;

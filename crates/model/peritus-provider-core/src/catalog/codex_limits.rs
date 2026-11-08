@@ -10,15 +10,22 @@ use std::{
 };
 const MAX_BYTES: u64 = 16 * 1024 * 1024;
 
-pub(super) fn enrich(
-    models: Vec<DiscoveredModel>,
-) -> Result<Vec<DiscoveredModel>, ProviderCoreError> {
+pub(super) fn enrich(models: Vec<DiscoveredModel>) -> Vec<DiscoveredModel> {
     let root = std::env::var_os("CODEX_HOME").map(PathBuf::from).or_else(|| {
         std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
             .map(|p| PathBuf::from(p).join(".codex"))
     });
-    let Some(root) = root else { return Ok(models) };
-    enrich_file(models, &root.join("models_cache.json"))
+    let Some(root) = root else { return models };
+    enrich_file_best_effort(models, &root.join("models_cache.json"))
+}
+
+fn enrich_file_best_effort(models: Vec<DiscoveredModel>, path: &Path) -> Vec<DiscoveredModel> {
+    let retained = models.clone();
+    // This cache is an optional numeric hint written by another process. Its bytes do not own
+    // model identity, selection, route, capabilities, effort, or inference availability. A
+    // missing, concurrently rewritten, stale-format, or contradictory snapshot therefore keeps
+    // the exact account-advertised models with unknown capacity instead of disabling them.
+    enrich_file(models, path).unwrap_or(retained)
 }
 
 fn enrich_file(

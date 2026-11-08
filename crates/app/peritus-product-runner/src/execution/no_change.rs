@@ -64,7 +64,7 @@ pub(super) async fn review(
         Some(&state.findings),
         accounting,
     )?;
-    if input.conversation.revision() != revision {
+    if input.requirements_revision() != revision {
         return Ok(ReviewResult::ConversationChanged);
     }
     deadline::require_phase_window(
@@ -98,7 +98,7 @@ pub(super) async fn review(
     )
     .await?;
     check_cancelled(input)?;
-    if input.conversation.revision() != revision {
+    if input.requirements_revision() != revision {
         return Ok(ReviewResult::ConversationChanged);
     }
     let assessment =

@@ -31,9 +31,9 @@ pub use checkpoint::CandidateRecorder;
 pub use resume::ProductRunResume;
 pub use turn_result::{AppliedTurn, AppliedWrite, HostTurnEvidence};
 pub use types::{
-    ConversationView, NativeModuleJobConfiguration, ProductDeliveryScope, ProductRunInput,
-    ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunQuestion, ProductRunUpdate,
-    ProductRunner, RoleProviders, RunObserver, WorkspaceMutationKind,
+    ConversationView, NativeModuleJobConfiguration, PipelineHandoff, ProductDeliveryScope,
+    ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunQuestion,
+    ProductRunUpdate, ProductRunner, RoleProviders, RunObserver, WorkspaceMutationKind,
 };
 
 use peritus_obligations::FailureDisposition;
@@ -42,16 +42,14 @@ use peritus_run_settlement::{CandidateStage, SettlementCause};
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, review};
 use checkpoint::CheckpointEvidence;
-use cycle::{
-    CycleInspection, GateInspection, apply_fix, create_design, inspect_gates, retained_inspection,
-};
+use cycle::{CycleInspection, GateInspection, apply_fix, create_design, inspect_gates};
 use state::{ExecutionContext, RunState};
 use summary::completion_summary;
 use terminal_exit::ActiveExit;
 mod driver;
 
 pub fn delivery_requirements(input: &ProductRunInput) -> Result<Vec<String>, ProductRunnerError> {
-    Ok(obligations::RunObligations::capture(&input.task, input.conversation.revision())?.ids())
+    Ok(obligations::RunObligations::capture(&input.task, input.requirements_revision())?.ids())
 }
 
 impl ProductRunner {
@@ -87,7 +85,7 @@ impl ProductRunner {
                     "an executable phase has no retained run state",
                 )
             })?;
-            if input.conversation.revision() != state.conversation_revision {
+            if input.requirements_revision() != state.conversation_revision {
                 execution.next_phase = ProductRunPhase::Designing;
                 let design = create_design(
                     input,
@@ -298,15 +296,10 @@ impl ProductRunner {
                     inspected
                 }
                 ProductRunPhase::Fixing => {
-                    let inspected = retained_inspection(
-                        execution.gate_report.as_ref(),
-                        &execution.evidence,
-                        &execution.recorder,
-                    )?;
                     if let Some((question, revision)) = apply_fix(
                         input,
                         observe,
-                        &inspected.evidence,
+                        &execution.evidence,
                         state,
                         &mut workspace_ownership,
                         accounting,

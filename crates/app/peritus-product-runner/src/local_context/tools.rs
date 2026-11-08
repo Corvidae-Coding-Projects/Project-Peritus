@@ -63,6 +63,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     fn model_response_completed(&mut self) {
         self.base.model_response_completed();
     }
+    fn steering_continues_work(&mut self) {
+        self.base.steering_continues_work();
+    }
     fn take_host_tool_calls(&mut self) -> u32 {
         std::mem::take(&mut self.host_calls).saturating_add(self.base.take_host_tool_calls())
     }
@@ -124,6 +127,13 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         }
         Ok(output)
     }
+    fn observe_tool_outcome(
+        &mut self,
+        call: &CompletedToolCall,
+        observation: &DeveloperToolObservation,
+    ) {
+        self.base.observe_tool_outcome(call, observation);
+    }
     fn completion_blocker(&self) -> Option<String> {
         self.base.completion_blocker()
     }
@@ -143,6 +153,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     }
     fn continuation_blocker(&self) -> Option<String> {
         self.base.continuation_blocker()
+    }
+    fn segment_boundary_required(&self) -> bool {
+        self.base.segment_boundary_required()
     }
 }
 

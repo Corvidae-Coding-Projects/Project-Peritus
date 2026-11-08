@@ -89,6 +89,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             max_elapsed: None,
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(FixedConversation(task, reuse)),
+            pipeline_handoff: peritus_product_runner::PipelineHandoff::CurrentConversation,
             providers: RoleProviders {
                 writer: Arc::clone(&writer),
                 reviewer,

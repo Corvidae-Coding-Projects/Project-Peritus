@@ -11,7 +11,7 @@ use super::{
 use crate::{ConversationMode, ProductRunnerError};
 use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_run_settlement::{SettlementCause, SettlementReducer};
-use tools::ConversationTools;
+use tools::{ConversationTools, PipelineIntent};
 
 impl ProductRunner {
     /// Answers conversationally, or hands authorized effects to the production pipeline.
@@ -31,7 +31,7 @@ impl ProductRunner {
         reason = "conversation ownership, research state, handoff, and settlement order remain explicit"
     )]
     pub(super) async fn converse_scoped(
-        input: ProductRunInput,
+        mut input: ProductRunInput,
         mode: ConversationMode,
         writable: bool,
         observe: RunObserver,
@@ -114,7 +114,7 @@ impl ProductRunner {
                         continuing_segment = true;
                         continue;
                     }
-                    if let Some(revision) = tools.requested_revision {
+                    if let Some((revision, intent)) = tools.requested_pipeline {
                         // Steering after the handoff tool must return to conversation, not launch
                         // work authorized against an older user message.
                         if input.conversation.revision() != revision {
@@ -130,6 +130,16 @@ impl ProductRunner {
                         // exclusive owner before entering the shared execution pipeline.
                         drop(memory);
                         drop(tools);
+                        input.pipeline_handoff = match intent {
+                            PipelineIntent::ContinueExisting => {
+                                super::PipelineHandoff::ContinueRetained {
+                                    conversation_revision: revision,
+                                }
+                            }
+                            PipelineIntent::AmendRequirements => {
+                                super::PipelineHandoff::CurrentConversation
+                            }
+                        };
                         return Box::pin(Self::run_accounted(input, observe, accounting)).await;
                     }
                     (
@@ -243,7 +253,7 @@ fn invalid(detail: &str) -> ProductRunnerError {
 pub(super) fn system(mode: ConversationMode) -> String {
     let policy = match mode {
         ConversationMode::Chat => {
-            "You are Peritus, a conversational coding assistant. Choose the next action from the current user conversation and follow its exact scope. For understood, authorized implementation, fixes, command execution, continuation or retries, call run_pipeline immediately. A short approval such as 'go ahead' or 'yes, do that' approves the concrete work just proposed; execute that scope without another approval round. The pipeline owns target reads, skills, edits, commands and real testing, so do not duplicate its discovery here. Questions, explanations, planning, diagnosis and read-only review stay conversational unless the user also authorizes effects; inspect only the evidence needed to answer them. Ask a question only for a material unresolved ambiguity. State actual blockers clearly. Conversation has no direct edit or command authority. Preserve unrelated changes."
+            "You are Peritus, a conversational coding assistant. Choose the next action from the current user conversation and follow its exact scope. For understood, authorized implementation, fixes, command execution, continuation or retries, call run_pipeline immediately. Classify that handoff precisely: use continue_existing only when the latest message resumes or retries already-authorized retained work without changing a requirement; use amend_requirements when it adds, removes, changes, or replaces requested behavior, constraints, or deliverables. A short approval such as 'go ahead' or 'yes, do that' continues the concrete work just proposed unless it also changes that scope. The pipeline owns target reads, skills, edits, commands and real testing, so do not duplicate its discovery here. Questions, explanations, planning, diagnosis and read-only review stay conversational unless the user also authorizes effects; inspect only the evidence needed to answer them. Ask a question only for a material unresolved ambiguity. State actual blockers clearly. Conversation has no direct edit or command authority. Preserve unrelated changes."
         }
         ConversationMode::Plan => {
             "You are Peritus in read-only planning mode. Discuss and inspect relevant repository evidence to propose a practical design or plan. Do not implement, invoke processes, change files, or claim the plan was approved. Answer conversationally; ask only material questions."

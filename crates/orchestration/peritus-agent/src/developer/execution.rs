@@ -325,6 +325,7 @@ impl DeveloperLoop {
                         revision: input_revision,
                     });
                 }
+                tools.steering_continues_work();
                 continue;
             }
             if calls.is_empty() {
@@ -485,6 +486,9 @@ impl DeveloperLoop {
                     }
                     observation
                 };
+                if !yielded {
+                    tools.observe_tool_outcome(&call, &observation);
+                }
                 trace.record(DeveloperTraceEvent::ToolObservation {
                     call: &call,
                     observation: &observation,
@@ -544,6 +548,9 @@ impl DeveloperLoop {
                     .append_host(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
+            if tools.segment_boundary_required() {
+                return Err(DeveloperLoopError::SegmentExhausted);
+            }
             if let Some(blocker) = continuation_blocker {
                 return Err(DeveloperLoopError::Tool(blocker));
             }

@@ -90,6 +90,7 @@ fn input(root: &std::path::Path, conversation: Arc<Inputs>) -> ProductRunInput {
         max_elapsed: None,
         delivery_scope: crate::ProductDeliveryScope::WorkspaceChanges,
         conversation,
+        pipeline_handoff: crate::PipelineHandoff::CurrentConversation,
         providers: crate::RoleProviders {
             writer: provider.clone(),
             reviewer: provider.clone(),
