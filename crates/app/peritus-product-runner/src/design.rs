@@ -91,6 +91,37 @@ pub enum DesignExpansionOutcome {
     Waiting { question: String, conversation_revision: u64 },
 }
 
+/// Continues an already admitted delivery contract. Its baseline research remains historical;
+/// fresh workspace checks and capability review still qualify the current code separately.
+pub fn restore_admitted_delivery(
+    input: &ProductRunInput,
+    admitted_source: &str,
+) -> Option<DesignDocument> {
+    let (source, expansion) = expansion::restore_design_expansion_for_view(input).ok()?;
+    if expansion.stage() != ExpansionStage::Ready
+        || expansion.input_revision() != input.conversation.revision()
+    {
+        return None;
+    }
+    let path = input.trace_path.with_extension("design.md");
+    let markdown = String::from_utf8(
+        expansion::read_stable_regular(
+            &path,
+            MAXIMUM_DESIGN_BYTES as u64,
+            "admitted delivery design",
+        )
+        .ok()?,
+    )
+    .ok()?;
+    if crate::delivery::digest(format!("{}\n{}", input.task, markdown).as_bytes())
+        != admitted_source
+    {
+        return None;
+    }
+    let identity = ExpansionReceiptIdentity::ready(input, &source, &expansion, &markdown).ok()?;
+    Some(DesignDocument::restored_expanded(path, markdown, identity.input_revision, identity))
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 /// Internal receipt identity preserved across durable run continuation.

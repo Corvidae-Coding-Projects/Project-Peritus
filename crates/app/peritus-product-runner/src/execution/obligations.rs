@@ -77,15 +77,22 @@ impl RunObligations {
         gates_satisfied: bool,
         review_satisfied: bool,
         evidence_text: &str,
+        delivery: &crate::delivery::Delivery,
+        delivery_candidate: &str,
     ) -> Result<QualificationReport, ProductRunnerError> {
-        let satisfied = gates_satisfied && review_satisfied;
-        let evidence_digest =
-            digest(b"peritus-product-obligation-evidence-v1", evidence_text.as_bytes());
         let mut evidence = self
             .ledger
             .entries()
             .iter()
             .map(|entry| {
+                let id = hex_id(entry.id());
+                let (capabilities_satisfied, capability_evidence) =
+                    delivery.requirement_evidence(&id, delivery_candidate);
+                let satisfied = gates_satisfied && review_satisfied && capabilities_satisfied;
+                let evidence_digest = digest(
+                    b"peritus-product-obligation-evidence-v2",
+                    format!("{id}\n{capability_evidence}\n{evidence_text}").as_bytes(),
+                );
                 let binding = EvidenceBinding::new(
                     entry.id(),
                     self.ledger.digest(),
@@ -106,12 +113,16 @@ impl RunObligations {
         let mut output = String::from(
             "Literal public obligation ledger (each clause remains acceptance-critical):\n",
         );
-        for (index, entry) in self.ledger.entries().iter().enumerate() {
+        for entry in self.ledger.entries() {
             let clause = String::from_utf8_lossy(entry.clause().exact());
-            let _ = write!(output, "  {}. {}", index + 1, clause.trim());
+            let _ = write!(output, "  [{}] {}", hex_id(entry.id()), clause.trim());
             output.push('\n');
         }
         bundle::limit_text(&output, 256 * 1024)
+    }
+
+    pub(super) fn ids(&self) -> Vec<String> {
+        self.ledger.entries().iter().map(|entry| hex_id(entry.id())).collect()
     }
 
     pub(super) fn append_report(report: &mut String, qualification: &QualificationReport) {
@@ -126,6 +137,13 @@ impl RunObligations {
             qualification.invalid_count(),
         );
     }
+}
+
+fn hex_id(id: RequirementId) -> String {
+    id.digest().as_bytes().iter().fold(String::with_capacity(64), |mut text, byte| {
+        let _ = write!(text, "{byte:02x}");
+        text
+    })
 }
 
 fn clause_spans(text: &str, maximum: usize) -> Vec<(usize, usize)> {

@@ -42,19 +42,7 @@ pub(super) async fn review(
     evidence: &mut RunEvidence,
 ) -> Result<ReviewResult, ProductRunnerError> {
     check_cancelled(input)?;
-    if !state
-        .successful_commands
-        .iter()
-        .any(|command| command.purpose == CommandPurpose::Verification)
-        || state
-            .successful_commands
-            .iter()
-            .any(|command| command.purpose == CommandPurpose::ExternalEffect)
-    {
-        return Err(incomplete(
-            "A no-patch conclusion requires successful real-interface verification and no external effect.",
-        ));
-    }
+    require_verification(state)?;
     let source = baseline.content_digest(&input.workspace_root)?;
     let cycle = state.coordinator.completed_fixer_cycles().saturating_add(1);
     let revision = state.conversation_revision;
@@ -86,6 +74,8 @@ pub(super) async fn review(
     )?;
     let review_cycle = next_review_cycle(state)?;
     let conversation = input.conversation.render();
+    let mut delivery = crate::delivery::Delivery::load(input, &state.design)?;
+    let delivery_candidate = crate::delivery::candidate(input)?;
     let submission = reviewer_turn::complete(
         input,
         cycle,
@@ -97,6 +87,12 @@ pub(super) async fn review(
             gates: &evidence.gates,
             developer_commands: &evidence.developer_commands,
             prior: &evidence.review,
+            delivery: Some(reviewer_turn::DeliveryReviewContext {
+                ledger: &delivery,
+                scope_only: false,
+                candidate: &delivery_candidate,
+                commands: &state.successful_commands,
+            }),
         },
         accounting,
     )
@@ -105,11 +101,15 @@ pub(super) async fn review(
     if input.conversation.revision() != revision {
         return Ok(ReviewResult::ConversationChanged);
     }
+    let assessment =
+        submission.delivery.ok_or_else(|| incomplete("capability evidence is missing"))?;
+    let capability_qualified =
+        delivery.qualify(assessment, &delivery_candidate, &state.successful_commands)?;
     state
         .findings
-        .admit_review(review_cycle, submission)
+        .admit_review(review_cycle, submission.submission)
         .map_err(|error| incomplete(&error.to_string()))?;
-    evidence.review = review::render(&state.findings);
+    evidence.review = review::render(&state.findings) + &delivery.prompt()?;
     let clean = baseline.changed_paths(&input.workspace_root)?.is_empty()
         && baseline.content_digest(&input.workspace_root)? == source;
     let satisfied = !state.findings.open_findings().any(peritus_review::ProductFinding::blocking);
@@ -128,7 +128,7 @@ pub(super) async fn review(
             "The no-patch investigation changed source during independent review; no candidate was accepted.",
         ));
     }
-    if !satisfied {
+    if !satisfied || !capability_qualified {
         return Ok(ReviewResult::FixRequired);
     }
     state.task_summary =
@@ -152,4 +152,21 @@ fn incomplete(detail: &str) -> ProductRunnerError {
         "review no-patch investigation",
         detail,
     )
+}
+
+fn require_verification(state: &RunState) -> Result<(), ProductRunnerError> {
+    if !state
+        .successful_commands
+        .iter()
+        .any(|command| command.purpose == CommandPurpose::Verification)
+        || state
+            .successful_commands
+            .iter()
+            .any(|command| command.purpose == CommandPurpose::ExternalEffect)
+    {
+        return Err(incomplete(
+            "A no-patch conclusion requires successful real-interface verification and no external effect.",
+        ));
+    }
+    Ok(())
 }

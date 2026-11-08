@@ -4,7 +4,7 @@
 
 Implementation pieces for `design.rs`: exact source capture, one startup repository-grounding check,
 focused domain research with immutable evidence, expansion state, task-plan publication, and
-host-validated accepted-design reuse. Grounding completion closes repeat root-wide discovery but not
+host-validated accepted-design reuse. The parent design.rs also restores an exact frozen design for a previously admitted delivery after interruption; baseline research is historical and current code requires fresh qualification. Grounding completion closes repeat root-wide discovery but not
 exact/scoped repository observations or the bounded attachment, web, computer-observation, and
 bundled-skill reads required by unresolved design obligations.
 

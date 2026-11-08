@@ -13,6 +13,7 @@ Retained drivers/consumers for replaying actual program defects with disposable 
 | File | Role |
 | --- | --- |
 | [domain-design-expansion/](domain-design-expansion/AGENTS.md) | Frozen 12-case Stage 8 semantic fixture set and mandatory rubric for source-preserving, domain-aware design qualification. |
+| [capability-non-git-command.py](capability-non-git-command.py) | Builds and operates the [native consumer](capability-non-git-command.rs) against real standalone command execution without a Git repository; retains child death and effect receipts. |
 | [trace-streaming.py](trace-streaming.py) | Actual before/after trace CLI output, errors, torn tails, peak RSS and sparse-payload filtering replay. |
 | [trace-reader.rs](trace-reader.rs) | Public reader consumer operating actual append, snapshot, rewind and fresh-process-equivalent reopen behavior. |
 | [tui-markdown-documents.py](tui-markdown-documents.py) | Signed-in read-only provider journey for long Markdown, cross-chunk code fences, tables, literal Python, genuine hash text and raw numbered details. |

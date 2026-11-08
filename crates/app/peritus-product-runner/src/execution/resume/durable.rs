@@ -17,7 +17,7 @@ use crate::{
     developer_tools::{CommandPurpose, SuccessfulCommand},
 };
 
-const DURABLE_VERSION: u16 = 4;
+const DURABLE_VERSION: u16 = 5;
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -86,6 +86,8 @@ struct DurableEvidence {
 struct DurableCommand {
     command: String,
     purpose: u16,
+    #[serde(default)]
+    observed_candidate: Option<String>,
 }
 
 pub(super) fn encode(resume: &ProductRunResume) -> Result<Vec<u8>, ProductRunnerError> {
@@ -195,7 +197,7 @@ fn decode_inner(
 }
 
 const fn supported_version(version: u16) -> bool {
-    matches!(version, 2 | 3 | DURABLE_VERSION)
+    matches!(version, 2 | 3 | 4 | DURABLE_VERSION)
 }
 
 impl DurableCheckpoint {
@@ -303,7 +305,11 @@ impl DurableCommand {
             CommandPurpose::ExternalEffect => 1,
             CommandPurpose::Verification => 2,
         };
-        Self { command: value.command.clone(), purpose }
+        Self {
+            command: value.command.clone(),
+            purpose,
+            observed_candidate: value.observed_candidate.clone(),
+        }
     }
 
     fn into_command(self) -> Result<SuccessfulCommand, ProductRunnerError> {
@@ -312,7 +318,11 @@ impl DurableCommand {
             2 => CommandPurpose::Verification,
             _ => return Err(durable_error("retained command has an invalid purpose")),
         };
-        Ok(SuccessfulCommand { command: self.command, purpose })
+        Ok(SuccessfulCommand {
+            command: self.command,
+            purpose,
+            observed_candidate: self.observed_candidate,
+        })
     }
 }
 

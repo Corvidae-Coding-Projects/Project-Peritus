@@ -8,6 +8,7 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [capability-delivery-2026-11-08.md](capability-delivery-2026-11-08.md) | Construction-first scheduling, independent capability qualification, interrupted-process recovery, real CLI/library consumers, and verification limits. |
 | [deep-modules-2026-11-07.md](deep-modules-2026-11-07.md) | Prepared-context, manifest-bound stage and owned model-menu refactors; source coverage, native replays and verification limits. |
 | [role-model-setup-2026-11-07.md](role-model-setup-2026-11-07.md) | Explicit startup role defaults, atomic role model/effort commands, persistence and late-response replays. |
 | [context-recovery-mode-2026-11-07.md](context-recovery-mode-2026-11-07.md) | Maximum-context discovery, real large inference, durable recovery dependency replays, and live Review-to-Chat remediation. |

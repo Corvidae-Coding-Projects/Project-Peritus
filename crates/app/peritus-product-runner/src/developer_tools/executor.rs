@@ -71,6 +71,7 @@ pub struct WorkspaceDeveloperTools {
     mode: WorkspaceToolMode,
     in_place_scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
     command_evidence: CommandEvidence,
+    capability_verification: bool,
     reviewer_evidence: Option<ReviewerEvidenceSources>,
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
@@ -226,6 +227,40 @@ impl WorkspaceDeveloperTools {
 
     pub(crate) fn successful_commands(&self) -> Vec<super::SuccessfulCommand> {
         self.command_evidence.successful()
+    }
+
+    pub(crate) const fn with_capability_verification(mut self) -> Self {
+        self.capability_verification = true;
+        self
+    }
+
+    fn verification_before(&self, name: &str) -> Result<Option<String>, DeveloperLoopError> {
+        let observes_behavior = matches!(
+            name,
+            "run_command"
+                | "command_start"
+                | "command_wait"
+                | "command_poll"
+                | "command_stdin"
+                | "browser_control"
+                | "desktop_control"
+                | "computer_snapshot"
+        );
+        (self.capability_verification && observes_behavior)
+            .then(|| self.delivery_checkpoint())
+            .transpose()
+    }
+
+    fn delivery_checkpoint(&self) -> Result<String, DeveloperLoopError> {
+        let checkpoint = self
+            .in_place_scope
+            .as_ref()
+            .map_or_else(
+                || crate::progress::WorkspaceCheckpoint::capture(&self.root),
+                |scope| scope.progress_checkpoint(&self.root),
+            )
+            .map_err(|error| tool(error.to_string()))?;
+        Ok(crate::delivery::digest(checkpoint.digest().as_bytes()))
     }
 
     fn read_reviewer_evidence(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
@@ -769,6 +804,8 @@ impl WorkspaceDeveloperTools {
                 return Ok(observation);
             }
         }
+        let successful_before = self.command_evidence.successful_count();
+        let candidate_before = self.verification_before(call.name().as_str())?;
         let result = self.dispatch_reusing_read(call, arguments, reused);
         let (mut value, is_error, accepted) = match result {
             Ok(value) => {
@@ -806,6 +843,22 @@ impl WorkspaceDeveloperTools {
                     .complete(&value, is_error)?;
             }
         }
-        self.finish_observation(call, arguments, &value, is_error, accepted, effect && accepted)
+        let observation = self.finish_observation(
+            call,
+            arguments,
+            &value,
+            is_error,
+            accepted,
+            effect && accepted,
+        )?;
+        if self.capability_verification
+            && self.command_evidence.successful_count() > successful_before
+        {
+            let candidate_after = self.delivery_checkpoint()?;
+            let unchanged = candidate_before.as_deref() == Some(candidate_after.as_str());
+            self.command_evidence
+                .bind_since(successful_before, unchanged.then_some(candidate_after.as_str()));
+        }
+        Ok(observation)
     }
 }

@@ -147,6 +147,70 @@ fn proposal(version: u64) -> serde_json::Value {
 }
 
 #[test]
+fn admitted_delivery_recovers_exact_design_but_rejects_changed_scope_and_artifact() {
+    let directory = tempfile::tempdir().unwrap();
+    let conversation =
+        Arc::new(Inputs { received: AtomicU64::new(1), incorporated: AtomicU64::new(1) });
+    let mut input = input(directory.path(), conversation.clone());
+    let mut tools =
+        DesignTools::new(&input, input.read_only_workspace_tools().for_design_expansion()).unwrap();
+    tools
+        .execute(&named_call("workspace_list", &serde_json::json!({"path":"","depth":1})))
+        .unwrap();
+    for (name, value) in [
+        (crate::design::expert_tools::PLAN, plan(1, false)),
+        (crate::design::expert_tools::AMEND, amendment(2, &source_evidence())),
+        (
+            crate::design::expert_tools::PUBLISH,
+            serde_json::json!({"expected_version":3,"review":"Complete source, required recovery, and actual acceptance are preserved."}),
+        ),
+    ] {
+        let result = tools.execute(&expert_call(&input, name, &value)).unwrap();
+        assert!(!result.is_error, "{}", result.output.to_wire_string());
+    }
+    drop(tools);
+    let markdown = std::fs::read_to_string(input.trace_path.with_extension("design.md")).unwrap();
+    let source = crate::delivery::digest(format!("{}\n{markdown}", input.task).as_bytes());
+    let document = crate::design::restore_admitted_delivery(&input, &source).unwrap();
+    assert!(
+        crate::delivery::Delivery::recover_design(&input).unwrap().is_none(),
+        "a Ready design without admitted work is not a delivery continuation"
+    );
+    let mut delivery = crate::delivery::Delivery::load(&input, &document).unwrap();
+    delivery.propose(serde_json::from_value(serde_json::json!([{
+        "id":"state", "requirements":crate::execution::delivery_requirements(&input).unwrap(),
+        "source_quote":"Publish atomic state", "outcome":"Publish and recover real state", "depends_on":[],
+        "kind":"behavior", "positive":"Read back committed bytes", "negative":"Failed writes preserve prior bytes"
+    }])).unwrap()).unwrap();
+    delivery
+        .review_scope(
+            &crate::delivery::DeliveryReview {
+                scope_complete: true,
+                scope_evidence: "Original state and recovery obligations are mapped.".into(),
+                capabilities: vec![],
+            },
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        crate::delivery::Delivery::recover_design(&input).unwrap().unwrap().markdown(),
+        markdown
+    );
+    assert!(crate::design::restore_admitted_delivery(&input, "wrong-source").is_none());
+    input.task.push_str(" changed scope");
+    assert!(crate::delivery::Delivery::recover_design(&input).unwrap().is_none());
+    input.task = "Publish atomic state".into();
+    conversation.received.store(2, Ordering::Release);
+    conversation.incorporated.store(2, Ordering::Release);
+    assert!(crate::delivery::Delivery::recover_design(&input).unwrap().is_none());
+    conversation.received.store(1, Ordering::Release);
+    conversation.incorporated.store(1, Ordering::Release);
+    std::fs::write(input.trace_path.with_extension("design.md"), format!("{markdown}\nchanged"))
+        .unwrap();
+    assert!(crate::delivery::Delivery::recover_design(&input).unwrap().is_none());
+}
+
+#[test]
 fn steering_refreshes_stale_design_and_preserves_proposal_through_restart() {
     let directory = tempfile::tempdir().unwrap();
     let conversation =

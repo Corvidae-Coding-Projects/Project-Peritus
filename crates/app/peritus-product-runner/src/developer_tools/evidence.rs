@@ -87,6 +87,22 @@ pub struct SuccessfulCommand {
     pub command: String,
     /// Acceptance role declared by the developer when it requested the command.
     pub purpose: CommandPurpose,
+    /// Exact workspace checkpoint observed before and after this verification. Legacy or
+    /// source-changing commands remain unbound and cannot qualify a capability.
+    pub observed_candidate: Option<String>,
+}
+
+impl SuccessfulCommand {
+    pub(crate) fn verification_reference(&self) -> String {
+        crate::delivery::digest(
+            format!(
+                "peritus-verification-v1\n{}\n{}",
+                self.observed_candidate.as_deref().unwrap_or_default(),
+                self.command
+            )
+            .as_bytes(),
+        )
+    }
 }
 
 #[derive(Default)]
@@ -109,8 +125,11 @@ impl CommandEvidence {
         if result.get("success").and_then(Value::as_bool) == Some(true)
             && let Some(purpose) = CommandPurpose::from_arguments(arguments)
         {
-            self.successful
-                .push(SuccessfulCommand { command: format!("{tool} {request}"), purpose });
+            self.successful.push(SuccessfulCommand {
+                command: format!("{tool} {request}"),
+                purpose,
+                observed_candidate: None,
+            });
         }
     }
 
@@ -125,6 +144,19 @@ impl CommandEvidence {
 
     pub(super) fn successful(&self) -> Vec<SuccessfulCommand> {
         self.successful.clone()
+    }
+
+    pub(super) const fn successful_count(&self) -> usize {
+        self.successful.len()
+    }
+
+    pub(super) fn bind_since(&mut self, start: usize, candidate: Option<&str>) {
+        for command in self.successful.iter_mut().skip(start) {
+            command.observed_candidate = match (&command.observed_candidate, candidate) {
+                (Some(previous), Some(current)) if previous != current => None,
+                (_, candidate) => candidate.map(str::to_owned),
+            };
+        }
     }
 }
 

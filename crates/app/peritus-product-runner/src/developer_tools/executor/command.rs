@@ -77,6 +77,8 @@ impl WorkspaceDeveloperTools {
         arguments: &Value,
         call_id: &str,
     ) -> Result<Value, DeveloperLoopError> {
+        let candidate_at_start =
+            self.capability_verification.then(|| self.delivery_checkpoint()).transpose()?;
         let command = self.parse_command(arguments)?;
         if command.timeout.is_zero() {
             return self.exhausted_result(command.requested_timeout_seconds);
@@ -111,7 +113,7 @@ impl WorkspaceDeveloperTools {
             })?
         };
         let result = annotate_result(self, result, &command)?;
-        self.active_commands.started(arguments, &result, unowned_before)?;
+        self.active_commands.started(arguments, &result, unowned_before, candidate_at_start)?;
         Ok(result)
     }
 

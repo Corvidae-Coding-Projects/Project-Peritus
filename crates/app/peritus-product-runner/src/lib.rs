@@ -21,6 +21,7 @@ pub mod context_projection;
 pub mod control;
 mod conversation_mode;
 
+mod delivery;
 mod delivery_requirement;
 
 mod design;

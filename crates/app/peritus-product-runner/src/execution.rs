@@ -50,6 +50,10 @@ use summary::completion_summary;
 use terminal_exit::ActiveExit;
 mod driver;
 
+pub fn delivery_requirements(input: &ProductRunInput) -> Result<Vec<String>, ProductRunnerError> {
+    Ok(obligations::RunObligations::capture(&input.task, input.conversation.revision())?.ids())
+}
+
 impl ProductRunner {
     #[allow(clippy::too_many_lines, reason = "the E0 effect and decision order remains explicit")]
     async fn run_until_terminal(
@@ -68,7 +72,13 @@ impl ProductRunner {
 
         loop {
             if execution.next_phase == ProductRunPhase::Finalizing {
-                return Ok(ActiveExit::completed());
+                let design = execution.design.as_ref().ok_or_else(|| {
+                    crate::delivery::invalid("finalization lacks an accepted design")
+                })?;
+                if crate::delivery::qualified(input, design)? {
+                    return Ok(ActiveExit::completed());
+                }
+                execution.next_phase = ProductRunPhase::Fixing;
             }
             let state = execution.state.as_mut().ok_or_else(|| {
                 ProductRunnerError::new(
@@ -233,6 +243,7 @@ impl ProductRunner {
                     })?;
                     let identity = checkpoint.identity();
                     if checked.gates_satisfied
+                        && crate::delivery::qualified(input, &state.design)?
                         && checkpoint.obligations().is_current_and_satisfied(identity)
                         && checkpoint.review().is_current_and_satisfied(identity)
                     {
@@ -312,7 +323,9 @@ impl ProductRunner {
                     execution.next_phase = ProductRunPhase::Verifying;
                     continue;
                 }
-                ProductRunPhase::Finalizing => return Ok(ActiveExit::completed()),
+                ProductRunPhase::Finalizing => {
+                    return Err(crate::delivery::invalid("unvalidated finalization transition"));
+                }
                 ProductRunPhase::Designing
                 | ProductRunPhase::Writing
                 | ProductRunPhase::Complete => {
@@ -337,6 +350,10 @@ impl ProductRunner {
                 &state.successful_commands,
             ) {
                 ProductionDecision::Accept if inspected.qualification.all_satisfied() => {
+                    if !crate::delivery::qualified(input, &state.design)? {
+                        execution.next_phase = ProductRunPhase::Checking;
+                        continue;
+                    }
                     let changed_paths = inspected.gates.report.changed_paths().to_vec();
                     let successful_commands = acceptance::successful_command_lines(
                         input.delivery_scope,
