@@ -53,6 +53,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn abandon_chat_observations(&mut self) {
+        self.chat.mode_change = None;
         let requests: Vec<_> = self
             .pending
             .iter()
@@ -136,6 +137,9 @@ impl AppModel {
             self.view = crate::model::View::Conversation;
         }
         self.accept_chat(binding.interaction().clone());
+        if self.chat.mode_change.is_some() {
+            return self.finish_chat_mode_change();
+        }
         let mut history_effects =
             deferred_history.map_or_else(Vec::new, |history| self.resume_deferred_history(history));
         if let Some(PendingRequest::ProductMessageBinding { message, mode, .. }) = pending {

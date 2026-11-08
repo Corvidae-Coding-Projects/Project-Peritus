@@ -9,6 +9,16 @@ use peritus_app_protocol::{
 
 mod effort;
 
+mod direct;
+pub(super) use direct::PendingModelSelection;
+mod wizard;
+pub(super) use wizard::ModelSetup;
+pub use wizard::ModelStep;
+
+#[cfg(test)]
+#[path = "../../../../../../discovery/proptest-praxis/owner/tui_role_models.rs"]
+mod replay;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModelRole {
     Writer,
@@ -42,6 +52,10 @@ impl ModelRole {
 
 impl AppModel {
     pub(super) fn model_command(&mut self, arguments: &str) -> Vec<Effect> {
+        self.cancel_model_setup();
+        if arguments.trim().is_empty() {
+            return self.start_model_setup(false, false);
+        }
         let mut words = arguments.split_whitespace();
         let first = words.next();
         let command = match first {
@@ -60,31 +74,14 @@ impl AppModel {
             other => other,
         };
         match command {
-            Some("manual") => {
-                if let Some(id) = words.next()
-                    && words.next().is_none()
-                {
-                    return self.choose_model(id, true);
+            Some("manual") => self.direct_model_words(words, true),
+            None | Some("refresh") => {
+                if words.next().is_some() {
+                    return self.model_usage();
                 }
-                self.notice(
-                    NoticeLevel::Warning,
-                    "Usage: /model [writer|reviewer|fixer] manual MODEL_ID",
-                );
-                Vec::new()
+                self.start_model_setup(true, command == Some("refresh"))
             }
-            None | Some("refresh") if words.next().is_none() => {
-                self.clear_chat_command();
-                self.chat.show_model_picker();
-                self.query_chat_models(command == Some("refresh"))
-            }
-            Some(id) if words.next().is_none() => self.choose_model(id, false),
-            _ => {
-                self.notice(
-                    NoticeLevel::Warning,
-                    "Usage: /model [writer|reviewer|fixer] [refresh|MODEL_ID|manual MODEL_ID]",
-                );
-                Vec::new()
-            }
+            Some(id) => self.direct_model_words(std::iter::once(id).chain(words), false),
         }
     }
 
@@ -113,7 +110,8 @@ impl AppModel {
             .collect()
     }
 
-    pub(super) fn abandon_model_discovery(&mut self) {
+    pub(in crate::model) fn abandon_model_discovery(&mut self) {
+        self.chat.pending_model = None;
         self.pending.retain(|_, pending| !matches!(pending, PendingRequest::ModelQuery(_)));
         self.pending_started.retain(|id, _| self.pending.contains_key(id));
     }
@@ -126,11 +124,13 @@ impl AppModel {
         &mut self,
         catalog: &ProductModelCatalog,
         pending: Option<&PendingRequest>,
-    ) {
+    ) -> Vec<Effect> {
         if matches!(pending, Some(PendingRequest::ModelQuery(query)) if query.profile() == catalog.profile())
         {
             self.accept_model_catalog(catalog.clone());
+            return self.finish_direct_model_selection();
         }
+        Vec::new()
     }
 
     pub(in crate::model) fn accept_model_catalog(&mut self, catalog: ProductModelCatalog) {
@@ -153,59 +153,20 @@ impl AppModel {
             .and_then(|selected| {
                 catalog.models().iter().position(|model| model.id() == selected.id())
             })
+            .or_else(|| {
+                let current = self.chat.model_role.choice(&self.chat.models).id();
+                catalog.models().iter().position(|model| model.id() == current)
+            })
             .unwrap_or(0);
         self.chat.catalog = Some(catalog);
     }
 
-    pub(super) fn model_picker_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        match key.code {
-            KeyCode::Esc => {
-                self.abandon_model_discovery();
-                self.chat.close_model_picker();
-            }
-            KeyCode::Tab => {
-                self.chat.model_role = self.chat.model_role.next();
-                return self.query_chat_models(false);
-            }
-            KeyCode::Char('r') => return self.query_chat_models(true),
-            KeyCode::Char('e') => {
-                self.open_effort_picker();
-                return Vec::new();
-            }
-            KeyCode::Up => self.chat.model_selection = self.chat.model_selection.saturating_sub(1),
-            KeyCode::Home => self.chat.model_selection = 0,
-            KeyCode::End => {
-                self.chat.model_selection = self
-                    .chat
-                    .catalog
-                    .as_ref()
-                    .map_or(0, |catalog| catalog.models().len().saturating_sub(1));
-            }
-            KeyCode::Down => {
-                self.chat.model_selection = (self.chat.model_selection + 1).min(
-                    self.chat
-                        .catalog
-                        .as_ref()
-                        .map_or(0, |catalog| catalog.models().len().saturating_sub(1)),
-                );
-            }
-            KeyCode::Enter => {
-                if let Some(id) = self
-                    .chat
-                    .catalog
-                    .as_ref()
-                    .and_then(|catalog| catalog.models().get(self.chat.model_selection))
-                    .map(|model| model.id().to_owned())
-                {
-                    return self.choose_model(&id, false);
-                }
-            }
-            _ => {}
-        }
-        Vec::new()
-    }
-
-    fn choose_model(&mut self, id: &str, manual: bool) -> Vec<Effect> {
+    fn choose_model_with_effort(
+        &mut self,
+        id: &str,
+        manual: bool,
+        requested: Option<peritus_app_protocol::ProductModelEffort>,
+    ) -> Vec<Effect> {
         if self.chat_submission_pending() {
             self.notice(
                 NoticeLevel::Warning,
@@ -234,7 +195,8 @@ impl AppModel {
                 return Vec::new();
             }
         };
-        let effort = self.chat.model_role.choice(&self.chat.models).effort();
+        let effort =
+            requested.unwrap_or_else(|| self.chat.model_role.choice(&self.chat.models).effort());
         self.save_model_choice(choice.with_effort(effort))
     }
 
@@ -271,9 +233,7 @@ impl AppModel {
             }
         };
         self.clear_chat_command();
-        self.abandon_model_discovery();
-        self.chat.close_model_picker();
-        self.chat.close_effort_picker();
+        self.cancel_model_setup();
         if let Some(run_id) = self.chat.run_id {
             let effect = self.request(
                 AppRequestPayload::UpdateModels(peritus_app_protocol::ProductModelUpdate::new(

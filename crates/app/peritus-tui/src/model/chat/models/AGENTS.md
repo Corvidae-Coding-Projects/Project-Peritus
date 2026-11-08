@@ -9,6 +9,8 @@ Implementation pieces for `models.rs`: Exact provider-discovered selection; manu
 | File | Role |
 | --- | --- |
 | [effort.rs](effort.rs) | Discoverable effort picker and exact per-role command handling. |
+| [direct.rs](direct.rs) | Atomic model/effort commands with automatic catalog loading, retained drafts, and destination-bound response handling. |
+| [wizard.rs](wizard.rs) | Guided agent, model, and effort selection with staged choices, Back/Cancel, and one destination-bound final save. |
 
 Owning module: [models.rs](../models.rs). Inspect that parent before changing the local pieces.
 

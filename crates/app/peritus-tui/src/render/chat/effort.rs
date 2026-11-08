@@ -4,16 +4,21 @@ use super::{
     ACCENT, AppModel, Constraint, Frame, Layout, List, ListItem, ListState, Paragraph, Rect, Style,
     Wrap,
 };
+use crate::model::chat::ModelStep;
 use peritus_app_protocol::ProductModelEffort;
 
 pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let regions =
-        Layout::vertical([Constraint::Length(3), Constraint::Min(1), Constraint::Length(4)])
+        Layout::vertical([Constraint::Length(4), Constraint::Min(1), Constraint::Length(4)])
             .split(area);
-    let choice = model.chat.model_role.choice(&model.chat.models);
+    let guided = model.model_setup_step() == Some(ModelStep::Effort);
+    let choice = model
+        .model_setup_choice()
+        .unwrap_or_else(|| model.chat.model_role.choice(&model.chat.models));
     frame.render_widget(
         Paragraph::new(format!(
-            "Reasoning effort for {}\nCurrent selection: {}\nModel: {}",
+            "{} for {}\nCurrent selection: {}\nModel: {}",
+            if guided { "3/3 · Choose reasoning effort" } else { "Reasoning effort" },
             model.chat.model_role.label(),
             if choice.effort() == ProductModelEffort::Default {
                 "not selected"
@@ -28,7 +33,9 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let items = ProductModelEffort::ALL
         .into_iter()
         .map(|effort| {
-            ListItem::new(if effort == ProductModelEffort::Default {
+            ListItem::new(if guided && effort == ProductModelEffort::Default {
+                "No reasoning effort (non-reasoning models only)".to_owned()
+            } else if effort == ProductModelEffort::Default {
                 "not selected — choose an effort before sending".to_owned()
             } else {
                 effort.label().to_owned()
@@ -42,7 +49,10 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         regions[1],
         &mut state,
     );
-    frame.render_widget(Paragraph::new(
-        "Enter saves · Tab changes role · Esc cancels\nSupport depends on provider/model; unsupported values are not substituted.\nSaved changes apply to the next model turn; no effort is chosen automatically.",
+    frame.render_widget(Paragraph::new(if guided {
+        "↑/↓ chooses · Enter saves model and effort · Esc back\nReasoning models require an explicit effort; unsupported values are not substituted.\nSaved changes apply to the next model turn."
+    }else {
+        "Enter saves · Tab changes role · Esc cancels\nSupport depends on provider/model; unsupported values are not substituted.\nSaved changes apply to the next model turn; no effort is chosen automatically."
+    },
     ).wrap(Wrap { trim: false }), regions[2]);
 }

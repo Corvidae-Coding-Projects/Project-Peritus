@@ -24,6 +24,7 @@ use peritus_app_protocol::{
 };
 use peritus_types::RunId;
 
+pub use models::{ModelRole, ModelStep};
 pub use working::WorkingIndicator;
 
 #[derive(Debug)]
@@ -54,14 +55,17 @@ pub struct ChatUi {
     picker: Option<picker::Picker>,
     pub(crate) effort_selection: usize,
     pub(crate) model_selection: usize,
-    pub(crate) model_role: models::ModelRole,
-    pub(crate) provider_role: Option<models::ModelRole>,
+    pub(crate) model_role: ModelRole,
+    pending_model: Option<models::PendingModelSelection>,
+    model_setup: Option<models::ModelSetup>,
+    pub(crate) provider_role: Option<ModelRole>,
     pub(crate) doctor: Option<doctor::DoctorPanel>,
     pub(crate) module_menu: Option<modules::ModuleMenu>,
     module_generation: u64,
     pub(crate) workbench: workbench::WorkbenchUi,
     interrupt_requested: bool,
     pasted_command: bool,
+    mode_change: Option<commands::ModeChange>,
 }
 
 #[derive(Debug)]
@@ -98,7 +102,9 @@ impl Default for ChatUi {
             picker: None,
             effort_selection: 0,
             model_selection: 0,
-            model_role: models::ModelRole::Writer,
+            model_role: ModelRole::Writer,
+            pending_model: None,
+            model_setup: None,
             provider_role: None,
             doctor: None,
             module_menu: None,
@@ -106,6 +112,7 @@ impl Default for ChatUi {
             workbench: workbench::WorkbenchUi::default(),
             interrupt_requested: false,
             pasted_command: false,
+            mode_change: None,
         }
     }
 }
@@ -176,6 +183,13 @@ impl AppModel {
         self.send_chat_message(self.chat.buffer.clone())
     }
     pub(super) fn send_chat_message(&mut self, text: String) -> Vec<Effect> {
+        if self.mode_change_pending() {
+            self.notice(
+                NoticeLevel::Info,
+                "Waiting for the current turn to stop before changing mode; draft retained.",
+            );
+            return Vec::new();
+        }
         if self.chat_mutation_pending()
             || self
                 .pending
@@ -187,6 +201,11 @@ impl AppModel {
                 "Waiting for the previous input receipt; this draft is retained.",
             );
             return Vec::new();
+        }
+        if self.chat.active()
+            && self.chat.snapshot.as_ref().is_some_and(|snapshot| snapshot.mode() != self.chat.mode)
+        {
+            return self.chat_mode_command(self.chat.mode, &text);
         }
         if self.context.is_none() {
             self.notice(
@@ -265,9 +284,6 @@ impl AppModel {
             self.notice(NoticeLevel::Error, "This conversation belongs to another workspace. Open its project before continuing.");
             return;
         }
-        if self.chat.snapshot.is_none() {
-            self.chat.mode = snapshot.mode();
-        }
         // Model updates append a durable activity. A delayed pre-selection poll must not
         // overwrite a newer acknowledgement, including after a reconnect.
         if self.chat.snapshot.as_ref().is_some_and(|current| {
@@ -278,6 +294,16 @@ impl AppModel {
                     .map_or(0, peritus_app_protocol::ProductActivity::sequence)
         }) {
             return;
+        }
+        // Follow an acknowledged daemon transition (including another local client's),
+        // while retaining an explicit local choice awaiting its first submission.
+        if self
+            .chat
+            .snapshot
+            .as_ref()
+            .is_none_or(|old| old.mode() != snapshot.mode() && self.chat.mode == old.mode())
+        {
+            self.chat.mode = snapshot.mode();
         }
         let old_writer = (
             self.chat_providers().map(peritus_app_protocol::ProductProviderSelection::writer),
@@ -307,6 +333,7 @@ impl AppModel {
     }
     pub(super) fn chat_control(&mut self, action: ProductRunControlAction) -> Vec<Effect> {
         if action == ProductRunControlAction::Cancel {
+            self.chat.mode_change = None;
             if self
                 .pending
                 .values()

@@ -2,6 +2,7 @@
 
 mod entry_view;
 pub(super) mod read;
+mod recover;
 mod schema;
 mod secret_text;
 mod sources;
@@ -88,9 +89,11 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
 
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         match call.name().as_str() {
-            "context_read" | "context_sources" | "inspection_plan" | "inspection_result_read" => {
-                DeveloperToolEffect::ReadOnly
-            }
+            "context_read"
+            | "context_recover"
+            | "context_sources"
+            | "inspection_plan"
+            | "inspection_result_read" => DeveloperToolEffect::ReadOnly,
             "context_update" => DeveloperToolEffect::MutationCapable,
             _ => self.base.effect(call),
         }
@@ -159,7 +162,10 @@ impl MemoryTools<'_> {
             );
         }
         if !self.base.tool_calls_allowed()
-            || !matches!(name, "context_read" | "context_sources" | "context_update")
+            || !matches!(
+                name,
+                "context_read" | "context_recover" | "context_sources" | "context_update"
+            )
         {
             let candidate = if self.base.tool_calls_allowed() && name == "workspace_read" {
                 super::read_reuse::plan(&mut *self.memory.lock()?, call)
@@ -195,7 +201,7 @@ impl MemoryTools<'_> {
         }
         let permissions = self.memory.effective_permissions();
         let required: &[PermissionCapability] =
-            if matches!(name, "context_read" | "context_sources") {
+            if matches!(name, "context_read" | "context_recover" | "context_sources") {
                 &[PermissionCapability::Read]
             } else {
                 &[PermissionCapability::Read, PermissionCapability::Write]
@@ -226,6 +232,7 @@ impl MemoryTools<'_> {
         // No lock crosses base execution, and memory never updates its grounding/receipt state.
         let mut memory = self.memory.lock()?;
         let value = match name {
+            "context_recover" => recover::retrieve(&mut memory, call)?,
             "context_sources" => sources::execute(&memory, call.arguments().canonical_bytes())?,
             "context_read" => match memory.activity.context_candidate(call) {
                 Some(value)

@@ -14,28 +14,50 @@ const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, a
 // Codex 0.162.1 validates the sum of new-turn text characters locally, before inference.
 // Keep this transport envelope separate from model token limits and document-reader bounds.
 pub(super) const MAX_INPUT_CHARACTERS: usize = 1 << 20;
-const CONTEXT_FRAMING_RESERVE_CHARACTERS: usize = 4_096;
+const CONTEXT_FRAMING_RESERVE_BYTES: usize = 4_096;
 
 pub(super) fn context_fits(
     messages: &[peritus_model_protocol::Message],
     tools: &[peritus_model_protocol::ToolDefinition],
+    maximum_stdin_bytes: usize,
 ) -> Result<bool, ProviderCoreError> {
+    let schema_bytes = tools
+        .iter()
+        .map(|t| {
+            let schema = peritus_model_protocol::ToolArgumentSchema::compile(t.parameters())
+                .map_err(|_| invalid("invalid host schema in context envelope"))?;
+            let projected =
+                schema.provider_schema().unwrap_or_else(|_| serde_json::json!({"type":"string"}));
+            serde_json::to_vec(&projected)
+                .map(|b| b.len())
+                .map_err(|_| invalid("encode host schema"))
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .fold(0usize, usize::saturating_add);
     let mut images = Vec::new();
     let messages = messages
         .iter()
-        .map(|item| message(item, &mut images, false))
+        .map(|item| message(item, &mut images, true))
         .collect::<Result<Vec<_>, _>>()?;
     let tools = tools.iter().map(tool).collect::<Result<Vec<_>, _>>()?;
     let projected =
         object(vec![("messages", Value::Array(messages)), ("host_tools", Value::Array(tools))]);
-    let text = serde_json::to_string(&projected)
-        .map_err(|_| invalid("Codex context projection could not be encoded"))?;
-    Ok(text
-        .chars()
-        .count()
-        .saturating_add(PROMPT_PREFIX.chars().count())
-        .saturating_add(CONTEXT_FRAMING_RESERVE_CHARACTERS)
-        <= MAX_INPUT_CHARACTERS)
+    let text = format!(
+        "{PROMPT_PREFIX}{}",
+        serde_json::to_string(&projected).map_err(|_| invalid("encode context envelope"))?
+    );
+    let text_bytes =
+        serde_json::to_vec(&text).map_err(|_| invalid("encode injected context text"))?.len();
+    let media_bytes = images
+        .iter()
+        .map(|i| i.bytes.len().div_ceil(3).saturating_mul(4).saturating_add(256))
+        .fold(0usize, usize::saturating_add);
+    Ok(text_bytes
+        .saturating_add(media_bytes)
+        .saturating_add(schema_bytes)
+        .saturating_add(CONTEXT_FRAMING_RESERVE_BYTES)
+        <= maximum_stdin_bytes)
 }
 
 pub struct RuntimeRequest {

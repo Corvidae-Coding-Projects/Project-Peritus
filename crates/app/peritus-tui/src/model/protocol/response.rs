@@ -85,11 +85,14 @@ impl AppModel {
             && error.code() == peritus_app_protocol::AppErrorCode::MissingRequiredFeature
         {
             self.notice(NoticeLevel::Error,
-                "Selected reasoning effort is unsupported by this provider. Prior model/effort retained; choose another level or default.");
+                "Selected reasoning effort is unsupported by this provider. Prior model/effort retained; choose an explicit supported level.");
             return Vec::new();
         }
         if matches!(pending, Some(PendingRequest::ModelQuery(_))) {
-            self.chat.close_model_picker();
+            self.model_lookup_failed();
+            if self.model_setup_step().is_none() {
+                self.chat.close_model_picker();
+            }
         }
         if let Some(PendingRequest::ProductMessageBinding { run_id, .. }) = pending {
             if self.chat.run_id == Some(*run_id) {
@@ -244,7 +247,9 @@ impl AppModel {
                 }
                 return self.interaction_response(snapshot, pending);
             }
-            AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
+            AppResponsePayload::Models(catalog) => {
+                return self.accept_model_response(catalog, pending);
+            }
             AppResponsePayload::SubscriptionStarted(started) => {
                 self.accept_subscription_response(*started);
             }
@@ -264,9 +269,7 @@ impl AppModel {
                 self.notice(NoticeLevel::Info, "prompt response accepted as protocol input");
             }
             AppResponsePayload::Acknowledged(_) => return self.accept_ack(pending),
-            AppResponsePayload::Error(error) => {
-                return self.response_error(error, pending);
-            }
+            AppResponsePayload::Error(error) => return self.response_error(error, pending),
             AppResponsePayload::CommandResult(result) => {
                 self.notice(NoticeLevel::Info, format!("command result: {result:?}"));
             }
@@ -316,6 +319,9 @@ impl AppModel {
             self.view = View::Conversation;
         }
         self.accept_chat(snapshot.clone());
+        if self.mode_change_pending() {
+            return self.finish_chat_mode_change();
+        }
         if let Some(PendingRequest::WorkbenchChatContinue { run, goal, mode }) = pending {
             return self.continue_workbench_chat(*run, *goal, *mode);
         }

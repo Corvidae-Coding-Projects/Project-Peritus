@@ -41,7 +41,7 @@ impl Span {
 }
 
 #[derive(Clone)]
-struct Page {
+pub(in crate::local_context) struct Page {
     id: u64,
     path: String,
     digest: String,
@@ -50,7 +50,7 @@ struct Page {
 }
 
 impl Page {
-    fn from_value(id: u64, value: &Value) -> Option<Self> {
+    pub(in crate::local_context) fn from_value(id: u64, value: &Value) -> Option<Self> {
         value.get("content")?.as_str()?;
         let span: Span = serde_json::from_value(value.get("source_range")?.clone()).ok()?;
         if span.start.line == 0 || span.start > span.end {
@@ -63,6 +63,47 @@ impl Page {
             span,
             eof: value.get("eof").and_then(Value::as_bool).unwrap_or(false),
         })
+    }
+}
+
+/// Body coverage within one proposed provider view; this never grants source authority.
+#[derive(Default)]
+pub(in crate::local_context) struct Coverage(BTreeMap<(String, String), Vec<Span>>);
+impl Coverage {
+    pub(in crate::local_context) fn contains(&self, page: &Page) -> bool {
+        let Some(spans) = self.0.get(&(page.path.clone(), page.digest.clone())) else {
+            return false;
+        };
+        if page.span.start == page.span.end {
+            return spans.contains(&page.span);
+        }
+        let mut through = page.span.start;
+        for span in spans {
+            if span.start > through {
+                return false;
+            }
+            through = through.max(span.end);
+            if through >= page.span.end {
+                return true;
+            }
+        }
+        false
+    }
+    pub(in crate::local_context) fn record(&mut self, page: &Page) {
+        let spans = self.0.entry((page.path.clone(), page.digest.clone())).or_default();
+        spans.push(page.span);
+        spans.sort_by_key(|span| span.start);
+        let mut merged: Vec<Span> = Vec::new();
+        for span in spans.drain(..) {
+            if let Some(last) = merged.last_mut()
+                && span.start <= last.end
+            {
+                last.end = last.end.max(span.end);
+            } else {
+                merged.push(span);
+            }
+        }
+        *spans = merged;
     }
 }
 

@@ -2,7 +2,7 @@
 
 use super::index::Evidence;
 use crate::local_context::{error, memory::LocalMemory, tools::source_handle};
-use peritus_agent::{DeveloperContextEstimate, DeveloperLoopError};
+use peritus_agent::DeveloperLoopError;
 use peritus_model_protocol::{ContentBlock, Message, Role};
 
 const PREFIX: &str = "DECISION TOOL EVIDENCE V1";
@@ -21,8 +21,8 @@ pub(super) fn sequence(message: &Message) -> u64 {
 pub(super) fn fit(
     memory: &mut LocalMemory,
     evidence: &Evidence,
-    required: DeveloperContextEstimate,
-    maximum: u64,
+    required: &[Message],
+    envelope: &super::Envelope<'_>,
     bindings: &super::bindings::Bindings,
 ) -> Result<Option<(Message, bool)>, DeveloperLoopError> {
     let bytes = memory.store.read(evidence.artifact)?;
@@ -54,20 +54,21 @@ pub(super) fn fit(
         )
     };
     let check = |card: &Message| {
-        required.with(DeveloperContextEstimate::messages(std::slice::from_ref(card))).tokens()
-            <= maximum
+        let mut candidate = required.to_vec();
+        candidate.push(card.clone());
+        envelope.fits(&candidate)
     };
     let full = make(exact.len())?;
-    let (card, clipped) = if check(&full) {
+    let (card, clipped) = if check(&full)? {
         (full, false)
     } else {
-        if !check(&make(0)?) {
+        if !check(&make(0)?)? {
             return Ok(None);
         }
         let (mut low, mut high) = (0, exact.len());
         while low < high {
             let middle = low + (high - low).div_ceil(2);
-            if check(&make(middle)?) {
+            if check(&make(middle)?)? {
                 low = middle;
             } else {
                 high = middle - 1;

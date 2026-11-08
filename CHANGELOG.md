@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Collect explicit writer, reviewer, and fixer model/effort defaults at startup. Make `/model` and `/models` guided agent, model, and effort menus with one final save; retain direct shortcuts and reject stale selections after a destination change.
+- Resolve the selected Codex model's advertised maximum context before assembly, account for shared reply space, and use isolated injected-data turns for large normal requests. Preserve explicit access-program routing and report its actual transport bounds.
+- Separate semantic recovery from exact archive readers. Exclude successful retrieval receipts from task evidence, retain actual pages required by visible-reuse receipts, prioritize current continuations, and recheck transitive source permissions after restart.
+- Allow explicit conversation-mode switches to stop active non-goal work and continue a retained follow-up after confirmed cancellation. Synchronize daemon mode acknowledgements while preserving newer local choices and drafts.
 - Validate provider tool proposals against the active invocation's complete host argument contracts before dispatch. Codex constrains typed arguments where its schema can preserve the host contract; historical and explicitly host-validated tools remain supported.
 - Retain rejected expert-design proposals privately across restart and repair individual JSON Pointer fields with source/version checks, preserving unchanged work and accepted checkpoints. Align authority-specific evidence schemas and typed records.
 - Share search backend health and request spacing across queries and processes. Preserve Retry-After, classify challenges and parser drift separately from empty results, and retain partial results and external SearXNG metadata.

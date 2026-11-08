@@ -1,5 +1,6 @@
 //! Provider-owned model discovery; no bundled model names or implicit fallback catalog.
 
+mod codex_limits;
 mod http;
 mod parse;
 mod runtime;
@@ -34,6 +35,10 @@ pub struct DiscoveredModel {
     pub output_tokens: Option<u64>,
     /// Shared input-plus-output context window, when separately advertised.
     pub context_tokens: Option<u64>,
+    /// Largest shared window explicitly advertised by the selected runtime.
+    pub max_context_tokens: Option<u64>,
+    /// Runtime-owned usable fraction of that window, when advertised.
+    pub effective_context_percent: Option<u8>,
 }
 
 impl DiscoveredModel {
@@ -55,7 +60,28 @@ impl DiscoveredModel {
             input_tokens: None,
             output_tokens: None,
             context_tokens: None,
+            max_context_tokens: None,
+            effective_context_percent: None,
         })
+    }
+}
+
+impl DiscoveredModel {
+    /// Resolves the widest advertised shared window without inferring a model name.
+    ///
+    /// # Errors
+    /// Rejects invalid or overflowing provider metadata.
+    pub fn usable_context_tokens(&self) -> Result<Option<u64>, ProviderCoreError> {
+        let Some(window) = self.max_context_tokens.or(self.context_tokens) else { return Ok(None) };
+        let percent = u64::from(self.effective_context_percent.unwrap_or(100));
+        if window == 0 || !(1..=100).contains(&percent) {
+            return Err(unavailable("advertised context capacity is invalid"));
+        }
+        window
+            .checked_mul(percent)
+            .map(|n| Some(n / 100))
+            .filter(|n| *n != Some(0))
+            .ok_or_else(|| unavailable("advertised context capacity overflows"))
     }
 }
 
@@ -63,7 +89,8 @@ impl DiscoveredModel {
 ///
 /// Input, output, and shared context are independent constraints. Reserve only the requested
 /// output (bounded by the advertised maximum), never subtract the maximum twice. Uncapped
-/// callers reserve only minimum reply space here and fit output after assembling input. Missing fields
+/// callers reserve the advertised or configured output allowance so optional history cannot
+/// consume reply space. Missing fields
 /// retain configured fallbacks; zero or impossible metadata is rejected.
 ///
 /// # Errors
@@ -75,15 +102,11 @@ pub fn profile_with_model_limits(
 ) -> Result<ProviderProfile, ProviderCoreError> {
     let fallback = profile.limits();
     let output = model.output_tokens.unwrap_or_else(|| fallback.max_output_tokens());
-    let mut input =
-        model.input_tokens.or(model.context_tokens).unwrap_or_else(|| fallback.max_input_tokens());
-    if let Some(context) = model.context_tokens {
+    let context = model.usable_context_tokens()?;
+    let mut input = model.input_tokens.or(context).unwrap_or_else(|| fallback.max_input_tokens());
+    if let Some(context) = context {
         let available = context
-            .checked_sub(if requested_output == u64::MAX {
-                1
-            } else {
-                output.min(requested_output)
-            })
+            .checked_sub(output.min(requested_output))
             .filter(|n| *n > 0)
             .ok_or_else(|| unavailable("model context cannot accommodate requested output"))?;
         input = input.min(available);
@@ -125,7 +148,7 @@ pub fn output_tokens_for_input(
 ) -> Result<u64, ProviderCoreError> {
     let mut output =
         requested.min(model.output_tokens.unwrap_or_else(|| profile.limits().max_output_tokens()));
-    if let Some(context) = model.context_tokens {
+    if let Some(context) = model.usable_context_tokens()? {
         output = output.min(context.saturating_sub(input));
     }
     if output == 0 {

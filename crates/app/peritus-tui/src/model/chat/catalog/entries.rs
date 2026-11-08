@@ -100,7 +100,13 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         command: Command::Model,
         name: "/model",
-        description: "Discover and select provider models",
+        description: "Choose an agent, model, and reasoning effort from menus",
+        arguments: Arguments::Model,
+    },
+    CommandSpec {
+        command: Command::Model,
+        name: "/models",
+        description: "View agent settings and choose a model and effort",
         arguments: Arguments::Model,
     },
     CommandSpec {

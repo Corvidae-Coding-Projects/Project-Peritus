@@ -8,6 +8,7 @@ Implementation pieces for `catalog.rs`: Provider-owned model discovery; no bundl
 
 | File | Role |
 | --- | --- |
+| [codex_limits.rs](codex_limits.rs) | Bounded fresh numeric runtime-cache metadata, matched only to the current discovered model catalog. |
 | [http.rs](http.rs) | Bounded authenticated GET discovery with same-origin token pagination. |
 | [parse.rs](parse.rs) | Strict bounded catalog projections shared by HTTP and official account protocols. |
 | [runtime.rs](runtime.rs) | Bounded official account-runtime metadata queries, with no inference or credential custody. |

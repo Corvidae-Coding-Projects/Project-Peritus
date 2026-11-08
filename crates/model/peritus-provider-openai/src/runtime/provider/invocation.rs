@@ -32,6 +32,7 @@ pub(super) struct TurnContext<'a> {
     pub(super) transport: &'a dyn ProcessTransport,
     pub(super) working_directory: &'a Path,
     pub(super) cache_anchor: Option<&'a CacheAnchor>,
+    pub(super) context_window: Option<u64>,
     pub(super) cancellation: &'a CancellationToken,
     pub(super) progress: std::sync::Arc<super::super::live::Progress>,
 }
@@ -91,25 +92,24 @@ pub(super) async fn run_turn(
     // Keep the native environment prefix stable across requests. The previous fresh cwd
     // changed Codex's environment instructions ahead of the entire reusable host prompt.
     // Artifacts remain private and per-turn; native tools and session persistence stay off.
-    if let Some(anchor) = context.cache_anchor {
-        if let Some(output) = super::cached::run_turn(
-            context.config,
-            context.transport,
-            runtime,
-            context.working_directory,
-            anchor,
-            context.cancellation,
-            context.progress.clone(),
-        )
-        .await?
-        {
+    // Native injected data supports the model window without routing the complete
+    // transcript through the CLI's one-MiB new-input text validator.
+    if runtime.cyber_access_program().is_none() {
+        if let Some(output) = super::cached::run_turn(&context, runtime).await? {
             return Ok(output);
         }
-        // No model turn was submitted. A stale/unsupported routing anchor must
-        // not strand otherwise usable account requests or replay accepted work.
-        anchor.available.store(false, std::sync::atomic::Ordering::Release);
-        eprintln!("peritus: Codex cache routing unavailable; using isolated turns");
+        if let Some(anchor) = context.cache_anchor {
+            anchor.available.store(false, std::sync::atomic::Ordering::Release);
+        }
         context.progress.begin_transport();
+    }
+    if runtime.prompt.iter().filter(|b| (**b & 0xc0) != 0x80).count()
+        > super::super::request::MAX_INPUT_CHARACTERS
+    {
+        return Err(ProviderCoreError::configuration(
+            "codex_runtime_transport",
+            "the selected runtime/access-program transport cannot accept this context; its isolated CLI limit is one MiB of text and no context was silently discarded",
+        ));
     }
     let directory =
         tempfile::tempdir_in(context.working_directory).map_err(|_| temporary_failure())?;
@@ -120,7 +120,7 @@ pub(super) async fn run_turn(
     let schema_path = path_argument(schema.path())?;
     let image_paths = write_images(directory.path(), runtime.images())?;
     let final_path = directory.path().join("final-response.json");
-    let arguments = arguments(
+    let mut arguments = arguments(
         request.model().as_str(),
         runtime.reasoning_effort(),
         runtime.cyber_access_program(),
@@ -128,6 +128,9 @@ pub(super) async fn run_turn(
         path_argument(&final_path)?,
         &image_paths,
     );
+    if let Some(window) = context.context_window {
+        arguments.splice(1..1, ["--config".into(), format!("model_context_window={window}")]);
+    }
     let process = ProcessRequest::new(
         context.config.executable().process_executable().clone(),
         arguments,

@@ -8,6 +8,7 @@ Feature designs and investigation records. Designs explain intent; current calle
 
 | File | Role |
 | --- | --- |
+| [context-capacity-and-recovery.md](context-capacity-and-recovery.md) | Selected-model capacity discovery, semantic recovery, receipt dependencies, and mode-transition remediation. |
 | [openai-chatgpt-oauth.md](openai-chatgpt-oauth.md) | Optional direct ChatGPT OAuth design, compatibility constraints, and live-verification boundaries. |
 | [proptest-praxis-rollout.md](proptest-praxis-rollout.md) | Eight-stage property-testing design, package allocation, independent oracle plan, and bounded delivery status. |
 | [incremental-execution-efficiency.md](incremental-execution-efficiency.md) | Proposed incremental storage, context compilation, provider framing, and read-only operation scheduling with preserved functionality and measured acceptance. |

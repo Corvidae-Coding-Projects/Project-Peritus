@@ -127,6 +127,11 @@ pub struct ProcessLimits {
 }
 
 impl ProcessLimits {
+    /// Maximum cumulative serialized input, including follow-up protocol messages.
+    #[must_use]
+    pub const fn max_stdin_bytes(self) -> usize {
+        self.max_stdin_bytes
+    }
     /// Production defaults for an account-runtime model turn.
     pub const PRODUCTION: Self = Self {
         max_stdin_bytes: 16 * 1024 * 1024,

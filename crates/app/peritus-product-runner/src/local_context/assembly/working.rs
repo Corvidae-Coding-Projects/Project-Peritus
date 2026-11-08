@@ -21,7 +21,7 @@ pub(super) fn notice(
 ) -> Result<String, DeveloperLoopError> {
     let count = state.entries(state.binding()).map_err(|_| error("working scope mismatch"))?.len();
     Ok(format!(
-        "{PREFIX}\nrevision={} through=obs:{:06}; retained_entries={count}\nAll entries and exact source bytes remain durable. This is a provider-sized view, not a complete inventory. Use context_read with observation_ids=[], query=null, cursor=null, offset=0 and max_bytes={} to read exact state pages; follow each returned cursor. Preserve unresolved contradictions and failed approaches; a pending or unknown effect requires host recovery, never redispatch.\n",
+        "{PREFIX}\nrevision={} through=obs:{:06}; retained_entries={count}\nAll entries and exact source bytes remain durable. Continue the current unfinished action using the visible state. Omission does not require enumerating history. When a specific missing working entry is needed, context_read with observation_ids=[], query=null, cursor=null, offset=0 and max_bytes={} reads state pages. Preserve unresolved contradictions and failed approaches; a pending or unknown effect requires host recovery, never redispatch.\n",
         state.revision(),
         state.through_observation(),
         memory.config.max_read_bytes

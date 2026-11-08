@@ -368,7 +368,11 @@ pub struct AppModel {
 impl AppModel {
     pub(crate) fn with_product(seed: [u8; 32], product: Option<ProductLaunchContext>) -> Self {
         let mut chat = chat::ChatUi::default();
-        if let Some(reviewer) = product.as_ref().and_then(ProductLaunchContext::reviewer_model) {
+        if let Some(models) = product.as_ref().and_then(ProductLaunchContext::role_models) {
+            chat.models = models.clone();
+        } else if let Some(reviewer) =
+            product.as_ref().and_then(ProductLaunchContext::reviewer_model)
+        {
             chat.models = peritus_app_protocol::ProductRoleModels::new(
                 peritus_app_protocol::ProductModelChoice::default(),
                 reviewer.clone(),
@@ -507,6 +511,9 @@ impl AppModel {
     }
 
     fn interrupt_connection(&mut self) {
+        self.abandon_chat_mode_change();
+        self.model_lookup_failed();
+        self.cancel_model_setup();
         self.context = None;
         if let Some(terminal) = &mut self.terminal {
             terminal.disconnect();

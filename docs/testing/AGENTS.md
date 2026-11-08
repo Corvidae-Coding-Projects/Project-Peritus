@@ -8,6 +8,8 @@ Real-interface campaign reports and reproducible defects. These document observe
 
 | File | Role |
 | --- | --- |
+| [role-model-setup-2026-11-07.md](role-model-setup-2026-11-07.md) | Explicit startup role defaults, atomic role model/effort commands, persistence and late-response replays. |
+| [context-recovery-mode-2026-11-07.md](context-recovery-mode-2026-11-07.md) | Maximum-context discovery, real large inference, durable recovery dependency replays, and live Review-to-Chat remediation. |
 | [tool-contract-search-recovery-2026-11-07.md](tool-contract-search-recovery-2026-11-07.md) | Shared tool admission, exact rejected-proposal repair, tool-keyed Codex inference, durable search health and real HTTP/model replay evidence. |
 | [browser-design-update-live-2026-11-06.md](browser-design-update-live-2026-11-06.md) | Actual browser design update, preserved baseline, authoritative amendments, assisted steering, document gate regression/fix and final review evidence. |
 | [domain-design-expert-pass-2026-11-06.md](domain-design-expert-pass-2026-11-06.md) | Expert amendment workflow, browser-sized live research and coding handoff, retained-draft recovery, source/context/CAS regressions, and local installation evidence. |

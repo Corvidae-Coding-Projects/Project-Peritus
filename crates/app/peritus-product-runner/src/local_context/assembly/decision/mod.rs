@@ -13,6 +13,14 @@ mod render;
 #[path = "../../../../../../../discovery/proptest-praxis/owner/decision.rs"]
 mod praxis_decision;
 
+#[cfg(test)]
+#[path = "../../../../../../../discovery/proptest-praxis/owner/recovery.rs"]
+mod praxis_recovery;
+
+#[cfg(test)]
+#[path = "../../../../../../../discovery/proptest-praxis/owner/recovery_coverage.rs"]
+mod praxis_recovery_coverage;
+
 use crate::local_context::{error, memory::LocalMemory};
 pub(in crate::local_context) use dependencies::capture as request_dependencies;
 pub(in crate::local_context) use index::Index;
@@ -20,16 +28,16 @@ use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
 use peritus_model_protocol::{Message, ProviderProfile, Role, ToolDefinition};
 use peritus_provider_core::ModelProvider;
 
+#[derive(Clone, Copy)]
 struct Envelope<'a> {
     tools: &'a [ToolDefinition],
     profile: &'a ProviderProfile,
     provider: Option<&'a dyn ModelProvider>,
+    target: u64,
 }
 impl Envelope<'_> {
     fn fits(&self, messages: &[Message]) -> Result<bool, DeveloperLoopError> {
-        if estimate_developer_request_tokens(messages, self.tools)
-            > self.profile.limits().max_input_tokens()
-        {
+        if estimate_developer_request_tokens(messages, self.tools) > self.target {
             return Ok(false);
         }
         self.provider.map_or(Ok(true), |provider| {
@@ -50,7 +58,8 @@ pub(super) fn append(
 ) -> Result<(usize, u64), DeveloperLoopError> {
     let reference_messages = messages.clone();
     let reference_selected = selected.clone();
-    let envelope = Envelope { tools, profile, provider };
+    let envelope =
+        Envelope { tools, profile, provider, target: profile.limits().max_input_tokens() };
     let Some(plan) = plan::Plan::prepare(memory, messages, tools)? else {
         fallback(memory, "native_replay_dependency");
         return memory.append_history(

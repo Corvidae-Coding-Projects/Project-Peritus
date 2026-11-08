@@ -49,8 +49,9 @@ pub struct ProductUi {
 
 impl ProductUi {
     pub(super) fn new(launch: ProductLaunchContext) -> Self {
-        let default = launch.default_provider().unwrap_or(0);
+        let default = launch.writer_provider().unwrap_or(0);
         let reviewer = launch.reviewer_provider().unwrap_or(default);
+        let fixer = launch.fixer_provider().unwrap_or(default);
         let resume =
             launch.resumes_latest_conversation().then_some(resume::LatestConversation::default());
         Self {
@@ -71,7 +72,7 @@ impl ProductUi {
             resume,
             writer: default,
             reviewer,
-            fixer: default,
+            fixer,
         }
     }
 
